@@ -79,31 +79,31 @@ We need to create instance of pandas DataFrame with our data.
         </tr>
       </thead>
       <tbody>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>13779</th>
           <td>onboarding_welcome_screen</td>
           <td>1538341204985002000</td>
           <td>3f711081df2e582efe4be33349b811ae</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>13780</th>
           <td>onboarding__chooseLoginType</td>
           <td>1538341208435003000</td>
           <td>3f711081df2e582efe4be33349b811ae</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>13781</th>
           <td>onboarding_privacy_policyShown</td>
           <td>1538341208468004000</td>
           <td>3f711081df2e582efe4be33349b811ae</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>13782</th>
           <td>onboarding_login_Type1</td>
           <td>1538341208478005000</td>
           <td>3f711081df2e582efe4be33349b811ae</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>13783</th>
           <td>onboarding_privacy_policyAccepted</td>
           <td>1538341211123008000</td>
@@ -130,11 +130,11 @@ We need to create instance of pandas DataFrame with our data.
         .dataframe tbody tr th:only-of-type {
             vertical-align: middle;
         }
-    
+
         .dataframe tbody tr th {
             vertical-align: top;
         }
-    
+
         .dataframe thead th {
             text-align: right;
         }
@@ -149,31 +149,31 @@ We need to create instance of pandas DataFrame with our data.
         </tr>
       </thead>
       <tbody>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>0</th>
           <td>onboarding__chooseLoginType</td>
           <td>lost</td>
           <td>0.000242</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>1</th>
           <td>onboarding__chooseLoginType</td>
           <td>onboarding_login_Type1</td>
           <td>0.100024</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>2</th>
           <td>onboarding__chooseLoginType</td>
           <td>onboarding_login_Type2</td>
           <td>0.038415</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>3</th>
           <td>onboarding__chooseLoginType</td>
           <td>onboarding_privacy_policyShown</td>
           <td>0.515342</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>4</th>
           <td>onboarding__loginFailure</td>
           <td>lost</td>
@@ -206,11 +206,11 @@ number of unique users, who passed through edge via next chunk
         .dataframe tbody tr th:only-of-type {
             vertical-align: middle;
         }
-    
+
         .dataframe tbody tr th {
             vertical-align: top;
         }
-    
+
         .dataframe thead th {
             text-align: right;
         }
@@ -227,7 +227,7 @@ number of unique users, who passed through edge via next chunk
         </tr>
       </thead>
       <tbody>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>30255</th>
           <td>onboarding_welcome_screen</td>
           <td>1538341610616002000</td>
@@ -235,7 +235,7 @@ number of unique users, who passed through edge via next chunk
           <td>onboarding_otherLogin__show</td>
           <td>1.538342e+18</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>30256</th>
           <td>onboarding_otherLogin__show</td>
           <td>1538341616091017000</td>
@@ -243,7 +243,7 @@ number of unique users, who passed through edge via next chunk
           <td>onboarding_welcome_screen</td>
           <td>1.538342e+18</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>30257</th>
           <td>onboarding_welcome_screen</td>
           <td>1538341620614024000</td>
@@ -251,7 +251,7 @@ number of unique users, who passed through edge via next chunk
           <td>onboarding_welcome_screen</td>
           <td>1.538342e+18</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>30258</th>
           <td>onboarding_welcome_screen</td>
           <td>1538341626961003000</td>
@@ -259,7 +259,7 @@ number of unique users, who passed through edge via next chunk
           <td>onboarding_welcome_screen</td>
           <td>1.538342e+18</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>30259</th>
           <td>onboarding_welcome_screen</td>
           <td>1538341628689012000</td>
@@ -288,11 +288,11 @@ number of unique users, who passed through edge via next chunk
         .dataframe tbody tr th:only-of-type {
             vertical-align: middle;
         }
-    
+
         .dataframe tbody tr th {
             vertical-align: top;
         }
-    
+
         .dataframe thead th {
             text-align: right;
         }
@@ -307,31 +307,31 @@ number of unique users, who passed through edge via next chunk
         </tr>
       </thead>
       <tbody>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>84</th>
           <td>onboarding_welcome_screen</td>
           <td>onboarding_welcome_screen</td>
           <td>2586</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>85</th>
           <td>onboarding_welcome_screen</td>
           <td>passed</td>
           <td>2330</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>3</th>
           <td>onboarding__chooseLoginType</td>
           <td>onboarding_privacy_policyShown</td>
           <td>2112</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>79</th>
           <td>onboarding_welcome_screen</td>
           <td>onboarding__chooseLoginType</td>
           <td>1898</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>67</th>
           <td>onboarding_privacy_policyShown</td>
           <td>onboarding_login_Type1</td>
@@ -359,11 +359,11 @@ or adjacency matrix
         .dataframe tbody tr th:only-of-type {
             vertical-align: middle;
         }
-    
+
         .dataframe tbody tr th {
             vertical-align: top;
         }
-    
+
         .dataframe thead th {
             text-align: right;
         }
@@ -376,399 +376,132 @@ or adjacency matrix
           <th>lost</th>
           <th>onboarding_login_Type1</th>
           <th>onboarding_login_Type2</th>
-          <th>onboarding_privacy_policyShown</th>
-          <th>onboarding__loginFailure</th>
-          <th>onboarding_login_Type1_cancel</th>
-          <th>onboarding_welcome_screen</th>
-          <th>onboarding_otherLogin__show</th>
-          <th>onboarding_privacy_policyAccepted</th>
-          <th>onboarding_privacy_policyDecline</th>
-          <th>onboarding_privacy_policyTapToPolicy</th>
-          <th>onboarding_otherLogin__chooseLoginType</th>
-          <th>passed</th>
-          <th>onboarding_otherLogin_privacy_policyDecline</th>
-          <th>onboarding_otherLogin_privacy_policyShown</th>
-          <th>onboarding_profile_edit_close</th>
-          <th>onboarding_otherLogin__close</th>
         </tr>
       </thead>
       <tbody>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding__chooseLoginType</th>
           <td>0.00</td>
           <td>0.00</td>
           <td>0.1</td>
           <td>0.04</td>
-          <td>0.52</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>lost</th>
           <td>0.00</td>
           <td>0.00</td>
           <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_login_Type1</th>
           <td>0.00</td>
           <td>0.01</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.03</td>
-          <td>0.00</td>
-          <td>0.04</td>
-          <td>0.00</td>
-          <td>0.4</td>
-          <td>0.01</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_login_Type2</th>
           <td>0.01</td>
           <td>0.01</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.01</td>
-          <td>0.1</td>
-          <td>0.01</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.01</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_privacy_policyShown</th>
           <td>0.00</td>
           <td>0.00</td>
           <td>0.4</td>
           <td>0.11</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding__loginFailure</th>
           <td>0.00</td>
           <td>0.00</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.12</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_login_Type1_cancel</th>
           <td>0.05</td>
           <td>0.02</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.04</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_welcome_screen</th>
           <td>0.47</td>
           <td>0.25</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>1.21</td>
-          <td>0.39</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.56</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_otherLogin__show</th>
           <td>0.00</td>
           <td>0.02</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.21</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.17</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.12</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_privacy_policyAccepted</th>
           <td>0.03</td>
           <td>0.04</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.10</td>
-          <td>0.00</td>
-          <td>0.29</td>
-          <td>0.02</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.03</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_privacy_policyDecline</th>
           <td>0.01</td>
           <td>0.00</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.01</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_privacy_policyTapToPolicy</th>
           <td>0.00</td>
           <td>0.00</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_otherLogin__chooseLoginType</th>
           <td>0.00</td>
           <td>0.00</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.03</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.12</td>
-          <td>0.01</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>passed</th>
           <td>0.00</td>
           <td>0.00</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_otherLogin_privacy_policyDecline</th>
           <td>0.00</td>
           <td>0.00</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_otherLogin_privacy_policyShown</th>
           <td>0.00</td>
           <td>0.01</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.08</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.01</td>
-          <td>0.00</td>
-          <td>0.02</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_profile_edit_close</th>
           <td>0.01</td>
           <td>0.00</td>
           <td>0.0</td>
           <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.01</td>
-          <td>0.01</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_otherLogin__close</th>
           <td>0.06</td>
           <td>0.02</td>
           <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.03</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.0</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
-          <td>0.00</td>
           <td>0.00</td>
         </tr>
       </tbody>
@@ -792,416 +525,153 @@ All similar parameters work for adjacency matrix calculation.
     <style scoped>
         .dataframe tbody tr th:only-of-type {
             vertical-align: middle;
+            font-size: 12px;
         }
-    
+
         .dataframe tbody tr th {
             vertical-align: top;
+            font-size: 12px;
         }
-    
+
         .dataframe thead th {
             text-align: right;
+            font-size: 12px;
         }
     </style>
     <table border="1" class="dataframe">
       <thead>
-        <tr style="text-align: right;">
+        <tr style="font-size: 10px;text-align: right;">
           <th></th>
           <th>onboarding__chooseLoginType</th>
           <th>lost</th>
           <th>onboarding_login_Type1</th>
           <th>onboarding_login_Type2</th>
-          <th>onboarding_privacy_policyShown</th>
-          <th>onboarding__loginFailure</th>
-          <th>onboarding_login_Type1_cancel</th>
-          <th>onboarding_welcome_screen</th>
-          <th>onboarding_otherLogin__show</th>
-          <th>onboarding_privacy_policyAccepted</th>
-          <th>onboarding_privacy_policyDecline</th>
-          <th>onboarding_privacy_policyTapToPolicy</th>
-          <th>onboarding_otherLogin__chooseLoginType</th>
-          <th>passed</th>
-          <th>onboarding_otherLogin_privacy_policyDecline</th>
-          <th>onboarding_otherLogin_privacy_policyShown</th>
-          <th>onboarding_profile_edit_close</th>
-          <th>onboarding_otherLogin__close</th>
         </tr>
       </thead>
       <tbody>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding__chooseLoginType</th>
           <td>0.0</td>
           <td>1.0</td>
           <td>356.0</td>
           <td>142.0</td>
-          <td>2112.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>lost</th>
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_login_Type1</th>
           <td>12.0</td>
           <td>40.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>104.0</td>
-          <td>0.0</td>
-          <td>180.0</td>
-          <td>10.0</td>
-          <td>1639.0</td>
-          <td>43.0</td>
-          <td>17.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_login_Type2</th>
           <td>34.0</td>
           <td>32.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>5.0</td>
-          <td>0.0</td>
-          <td>4.0</td>
-          <td>44.0</td>
-          <td>405.0</td>
-          <td>54.0</td>
-          <td>5.0</td>
-          <td>0.0</td>
-          <td>22.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_privacy_policyShown</th>
           <td>0.0</td>
           <td>0.0</td>
           <td>1667.0</td>
           <td>455.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding__loginFailure</th>
           <td>0.0</td>
           <td>1.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>457.0</td>
-          <td>18.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_login_Type1_cancel</th>
           <td>200.0</td>
           <td>91.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>14.0</td>
-          <td>181.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>1.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_welcome_screen</th>
           <td>1898.0</td>
           <td>1043.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>4.0</td>
-          <td>0.0</td>
-          <td>2586.0</td>
-          <td>1581.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>2330.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>16.0</td>
-          <td>3.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_otherLogin__show</th>
           <td>0.0</td>
           <td>82.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>1.0</td>
-          <td>0.0</td>
-          <td>873.0</td>
-          <td>2.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>644.0</td>
-          <td>2.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>445.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_privacy_policyAccepted</th>
           <td>127.0</td>
           <td>161.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>402.0</td>
-          <td>0.0</td>
-          <td>1187.0</td>
-          <td>81.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>121.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_privacy_policyDecline</th>
           <td>46.0</td>
           <td>17.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>38.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_privacy_policyTapToPolicy</th>
           <td>1.0</td>
           <td>7.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>10.0</td>
-          <td>4.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_otherLogin__chooseLoginType</th>
           <td>3.0</td>
           <td>12.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>136.0</td>
-          <td>9.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>1.0</td>
-          <td>5.0</td>
-          <td>501.0</td>
-          <td>41.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>passed</th>
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_otherLogin_privacy_policyDecline</th>
           <td>11.0</td>
           <td>4.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>14.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_otherLogin_privacy_policyShown</th>
           <td>9.0</td>
           <td>33.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>339.0</td>
-          <td>18.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>24.0</td>
-          <td>0.0</td>
-          <td>80.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_profile_edit_close</th>
           <td>34.0</td>
           <td>19.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>42.0</td>
-          <td>40.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>1.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
         </tr>
-        <tr>
+        <tr style="font-size: 10px;">
           <th>onboarding_otherLogin__close</th>
           <td>249.0</td>
           <td>99.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>11.0</td>
-          <td>120.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
-          <td>1.0</td>
-          <td>0.0</td>
-          <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
         </tr>
@@ -1224,7 +694,7 @@ turning ``user_based`` equal ``False``.
 
 .. raw:: html
 
-    
+
             <iframe
                 width="900"
                 height="900"
@@ -1232,7 +702,7 @@ turning ``user_based`` equal ``False``.
                 frameborder="0"
                 allowfullscreen
             ></iframe>
-            
+
 
 
 If you change node positions and want to save resulting layout, you can
@@ -1241,7 +711,7 @@ click on donwload button and load it to graph visualizer as follows.
 .. code:: ipython3
 
     data.retention.plot_graph(layout_dump='node_params.json', width=800, height=800)
-            
+
 
 
 Also you can use other data columns and aggregation functions from
@@ -1258,20 +728,6 @@ timestamps.
     data['seconds_between_events'] = (data.next_timestamp - data.event_timestamp).dt.total_seconds()
     # use show_percent=False to visualize absolute value
     data.retention.plot_graph(user_based=False, edge_col='seconds_between_events', edge_attributes='time_mean', thresh=0.01, width=800, height=800, show_percent=False)
-
-
-
-.. raw:: html
-
-    
-            <iframe
-                width="900"
-                height="900"
-                src="_static/index-time.html"
-                frameborder="0"
-                allowfullscreen
-            ></iframe>
-            
 
 
 Temporal funnel
@@ -1299,7 +755,7 @@ And we can calculate temporal funnel difference between two groups
 
     # create group filter based on target events
     diff_filter = data.retention.create_filter()
-    
+
     # calculate difference table between two groups
     diff_table = data.retention.get_step_matrix_difference(diff_filter, max_steps=30)
 
@@ -1394,7 +850,7 @@ can visualize graph for them.
 
 .. raw:: html
 
-    
+
             <iframe
                 width="900"
                 height="900"
@@ -1402,7 +858,7 @@ can visualize graph for them.
                 frameborder="0"
                 allowfullscreen
             ></iframe>
-            
+
 
 
 .. code:: ipython3
@@ -1417,7 +873,7 @@ can visualize graph for them.
 
 .. raw:: html
 
-    
+
             <iframe
                 width="900"
                 height="900"
@@ -1425,7 +881,7 @@ can visualize graph for them.
                 frameborder="0"
                 allowfullscreen
             ></iframe>
-            
+
 
 
 Supervised classifier
@@ -1455,7 +911,7 @@ event. Green nodes mean positive effect, red nodes – negative.
 
 .. parsed-literal::
 
-    
+
                 ROC-AUC: 0.9124591164734438
                 PR-AUC: 0.8975341600045529
                 Accuracy: 0.8849514563106796
@@ -1463,7 +919,7 @@ event. Green nodes mean positive effect, red nodes – negative.
 
 .. raw:: html
 
-    
+
             <iframe
                 width="600"
                 height="600"
@@ -1471,7 +927,7 @@ event. Green nodes mean positive effect, red nodes – negative.
                 frameborder="0"
                 allowfullscreen
             ></iframe>
-            
+
 
 
 You can use any different model with sklearn-api (ont only sklearn
@@ -1494,25 +950,11 @@ And pass params to it.
     model.permutation_importance(features, target, thresh=0.)
 
 
-.. parsed-literal::
+Output:
 
-    
-                ROC-AUC: 0.9592964985907655
-                PR-AUC: 0.9456069017198432
-                Accuracy: 0.9269417475728156
-                
-    
+            ROC-AUC: 0.9592964985907655
 
+            PR-AUC: 0.9456069017198432
 
-.. raw:: html
-
-    
-            <iframe
-                width="600"
-                height="600"
-                src="_static/imp2.html"
-                frameborder="0"
-                allowfullscreen
-            ></iframe>
-            
+            Accuracy: 0.9269417475728156
 

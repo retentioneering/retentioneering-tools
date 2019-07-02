@@ -46,7 +46,7 @@ extensions = [
     'sphinx.ext.githubpages',
 ]
 
-# Add any paths that contain templates here, relative to this directory.
+# Add any paths that contain _templates here, relative to this directory.
 templates_path = ['_templates']
 
 # The suffix(es) of source filenames.
@@ -92,11 +92,11 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-# Custom sidebar templates, must be a dictionary that maps document names
+# Custom sidebar _templates, must be a dictionary that maps document names
 # to template names.
 #
 # The default sidebars (for documents that don't match any pattern) are
-# defined by theme itself.  Builtin themes are using these templates by
+# defined by theme itself.  Builtin themes are using these _templates by
 # default: ``['localtoc.html', 'relations.html', 'sourcelink.html',
 # 'searchbox.html']``.
 #

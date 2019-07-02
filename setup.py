@@ -20,9 +20,10 @@ setup(
         'eli5>=0.8.2',
     ],
     classifiers=[
+        "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
-        "LICENSE :: OSI APPROVED :: MOZILLA PUBLIC LICENSE 2.0 (MPL 2.0)"
+        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
 
     ],
     packages=find_packages()

@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+                circle {
+                  fill: #ccc;
+                  stroke: #333;
+                  stroke-width: 1.5px;
+                }
+
+                .circle.source_node {
+                  fill: #f3f310;
+                }
+
+                .circle.nice_node {
+                  fill: green;
+                }
+
+                .circle.bad_node {
+                  fill: red;
+                }
+
+                .link {
+                  fill: none;
+                  stroke: #666;
+                  stroke-opacity: 0.7;
+                }
+
+                #nice_target {
+                  fill: green;
+                }
+
+                .link.nice_target {
+                  stroke: green;
+                }
+
+                #source {
+                  fill: yellow;
+                }
+
+                .link.source {
+                  stroke: #f3f310;
+                }
+                
+                .link.positive {
+                  stroke: green;
+                }
+                
+                .link.negative {
+                  stroke: red;
+                }
+
+                #source {
+                  fill: orange;
+                }
+
+                .link.source1 {
+                  stroke: orange;
+                }
+
+                #bad_target {
+                  fill: red;
+                }
+
+                .link.bad_target {
+                  stroke: red;
+                }
+                text {
+                  font: 12px sans-serif;
+                  pointer-events: none;
+                  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+                }
+
+</style>
+<body>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<div>
+  <input type="checkbox" class="checkbox" value="weighted"><label> Show weights </label>
+</div>
+<div id="option">
+    <input name="downloadButton" 
+           type="button" 
+           value="download" 
+           onclick="downloadLayout()" />
+</div>
+<script>
+
+var links = [{"source": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "target": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "weight": 0.011209767256739864, "weight_text": 0.001553398058252431, "type": "nice_node"}, {"source": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "weight": 0.022682763274996416, "weight_text": 0.0031553398058252746, "type": "nice_node"}, {"source": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "weight": 1.0397207708399179, "weight_text": 0.2070873786407767, "type": "nice_node"}, {"source": {"index": 3, "name": "onboarding_otherLogin__chooseLoginType", "x": 213.28042730027246, "y": 201.06593087521105, "type": "nice_node", "degree": 31.893491124260272}, "target": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "weight": 0.0017570577152560074, "weight_text": 0.00024271844660195274, "type": "nice_node"}, {"source": {"index": 1, "name": "onboarding_otherLogin_privacy_policyShown", "x": 211.5351669917193, "y": 167.15618023356075, "type": "nice_node", "degree": 31.005917159763193}, "target": {"index": 3, "name": "onboarding_otherLogin__chooseLoginType", "x": 213.28042730027246, "y": 201.06593087521105, "type": "nice_node", "degree": 31.893491124260272}, "weight": 0.002810305271695704, "weight_text": 0.0003883495145631244, "type": "nice_node"}, {"source": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 1, "name": "onboarding_otherLogin_privacy_policyShown", "x": 211.5351669917193, "y": 167.15618023356075, "type": "nice_node", "degree": 31.005917159763193}, "weight": 0.00035157623505614895, "weight_text": 4.854368932039055e-05, "type": "nice_node"}, {"source": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "target": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "weight": 0.0014058107870616038, "weight_text": 0.0001941747572815622, "type": "nice_node"}, {"source": {"index": 4, "name": "onboarding_privacy_policyShown", "x": 225.1915873550669, "y": 271.3933850854386, "type": "bad_node", "degree": 30.828402366863777}, "target": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "weight": 0.04843594249648897, "weight_text": 0.006796116504854388, "type": "nice_node"}, {"source": {"index": 0, "name": "onboarding_login_Type1", "x": 236.3435270359544, "y": 265.80945033727664, "type": "nice_node", "degree": 32.781065088757344}, "target": {"index": 4, "name": "onboarding_privacy_policyShown", "x": 225.1915873550669, "y": 271.3933850854386, "type": "bad_node", "degree": 30.828402366863777}, "weight": 0.04332055729563256, "weight_text": 0.006067961165048574, "type": "bad_node"}, {"source": {"index": 14, "name": "onboarding_privacy_policyAccepted", "x": 256.0627860034512, "y": 273.63826949452243, "type": "nice_node", "degree": 57.988165680473124}, "target": {"index": 0, "name": "onboarding_login_Type1", "x": 236.3435270359544, "y": 265.80945033727664, "type": "nice_node", "degree": 32.781065088757344}, "weight": 0.003512059670460109, "weight_text": 0.0004854368932039055, "type": "nice_node"}, {"source": {"index": 7, "name": "onboarding__loginFailure", "x": 285.1301566278339, "y": 246.1579012537378, "type": "nice_node", "degree": 31.360946745562025}, "target": {"index": 14, "name": "onboarding_privacy_policyAccepted", "x": 256.0627860034512, "y": 273.63826949452243, "type": "nice_node", "degree": 57.988165680473124}, "weight": 0.0014058107870616038, "weight_text": 0.0001941747572815622, "type": "nice_node"}, {"source": {"index": 9, "name": "onboarding_login_Type1_cancel", "x": 325.0, "y": 249.96953831519016, "type": "nice_node", "degree": 30.828402366863777}, "target": {"index": 7, "name": "onboarding__loginFailure", "x": 285.1301566278339, "y": 246.1579012537378, "type": "nice_node", "degree": 31.360946745562025}, "weight": 0.0014058107870616038, "weight_text": 0.0001941747572815622, "type": "nice_node"}, {"source": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "target": {"index": 9, "name": "onboarding_login_Type1_cancel", "x": 325.0, "y": 249.96953831519016, "type": "nice_node", "degree": 30.828402366863777}, "weight": -0.0003516586582745937, "weight_text": -4.854368932039055e-05, "type": "nice_node"}, {"source": {"index": 10, "name": "onboarding_login_Type2", "x": 246.73676621294072, "y": 277.318191145341, "type": "nice_node", "degree": 32.95857988165676}, "target": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "weight": 0.0052650106704755836, "weight_text": 0.0007281553398058582, "type": "nice_node"}, {"source": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "target": {"index": 10, "name": "onboarding_login_Type2", "x": 246.73676621294072, "y": 277.318191145341, "type": "nice_node", "degree": 32.95857988165676}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 10, "name": "onboarding_login_Type2", "x": 246.73676621294072, "y": 277.318191145341, "type": "nice_node", "degree": 32.95857988165676}, "target": {"index": 4, "name": "onboarding_privacy_policyShown", "x": 225.1915873550669, "y": 271.3933850854386, "type": "bad_node", "degree": 30.828402366863777}, "weight": -0.0010552233991283715, "weight_text": -0.00014563106796117165, "type": "bad_node"}, {"source": {"index": 14, "name": "onboarding_privacy_policyAccepted", "x": 256.0627860034512, "y": 273.63826949452243, "type": "nice_node", "degree": 57.988165680473124}, "target": {"index": 10, "name": "onboarding_login_Type2", "x": 246.73676621294072, "y": 277.318191145341, "type": "nice_node", "degree": 32.95857988165676}, "weight": 0.07509281319240088, "weight_text": 0.010631067961165041, "type": "nice_node"}, {"source": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 14, "name": "onboarding_privacy_policyAccepted", "x": 256.0627860034512, "y": 273.63826949452243, "type": "nice_node", "degree": 57.988165680473124}, "weight": 0.008065478228376916, "weight_text": 0.0011165048543689382, "type": "nice_node"}, {"source": {"index": 15, "name": "onboarding_otherLogin__close", "x": 181.48240058993616, "y": 255.11594675054712, "type": "nice_node", "degree": 31.18343195266261}, "target": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "weight": 0.00245930491909372, "weight_text": 0.00033980582524273384, "type": "nice_node"}, {"source": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "target": {"index": 15, "name": "onboarding_otherLogin__close", "x": 181.48240058993616, "y": 255.11594675054712, "type": "nice_node", "degree": 31.18343195266261}, "weight": 0.0017570577152560074, "weight_text": 0.00024271844660195274, "type": "nice_node"}, {"source": {"index": 8, "name": "onboarding_privacy_policyDecline", "x": 127.5620976215592, "y": 50.0, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 10, "name": "onboarding_login_Type2", "x": 246.73676621294072, "y": 277.318191145341, "type": "nice_node", "degree": 32.95857988165676}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 0, "name": "onboarding_login_Type1", "x": 236.3435270359544, "y": 265.80945033727664, "type": "nice_node", "degree": 32.781065088757344}, "target": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "weight": 0.0007030700855221927, "weight_text": 9.70873786407811e-05, "type": "nice_node"}, {"source": {"index": 7, "name": "onboarding__loginFailure", "x": 285.1301566278339, "y": 246.1579012537378, "type": "nice_node", "degree": 31.360946745562025}, "target": {"index": 0, "name": "onboarding_login_Type1", "x": 236.3435270359544, "y": 265.80945033727664, "type": "nice_node", "degree": 32.781065088757344}, "weight": 0.0007030700855221927, "weight_text": 9.70873786407811e-05, "type": "nice_node"}, {"source": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 0, "name": "onboarding_login_Type1", "x": 236.3435270359544, "y": 265.80945033727664, "type": "nice_node", "degree": 32.781065088757344}, "weight": 0.0014058107870616038, "weight_text": 0.0001941747572815622, "type": "nice_node"}, {"source": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "target": {"index": 8, "name": "onboarding_privacy_policyDecline", "x": 127.5620976215592, "y": 50.0, "type": "nice_node", "degree": 30.473372781064946}, "weight": -0.0003516586582745937, "weight_text": -4.854368932039055e-05, "type": "nice_node"}, {"source": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "target": {"index": 9, "name": "onboarding_login_Type1_cancel", "x": 325.0, "y": 249.96953831519016, "type": "nice_node", "degree": 30.828402366863777}, "weight": 0.0014058107870616038, "weight_text": 0.0001941747572815622, "type": "nice_node"}, {"source": {"index": 13, "name": "onboarding_privacy_policyTapToPolicy", "x": 125.89025308260148, "y": 350.0, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 10, "name": "onboarding_login_Type2", "x": 246.73676621294072, "y": 277.318191145341, "type": "nice_node", "degree": 32.95857988165676}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "target": {"index": 10, "name": "onboarding_login_Type2", "x": 246.73676621294072, "y": 277.318191145341, "type": "nice_node", "degree": 32.95857988165676}, "weight": 0.00210822241310243, "weight_text": 0.0002912621359223433, "type": "nice_node"}, {"source": {"index": 6, "name": "onboarding_profile_edit_close", "x": 230.12624555785789, "y": 147.61213300186432, "type": "nice_node", "degree": 31.360946745562025}, "target": {"index": 1, "name": "onboarding_otherLogin_privacy_policyShown", "x": 211.5351669917193, "y": 167.15618023356075, "type": "nice_node", "degree": 31.005917159763193}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "target": {"index": 6, "name": "onboarding_profile_edit_close", "x": 230.12624555785789, "y": 147.61213300186432, "type": "nice_node", "degree": 31.360946745562025}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "target": {"index": 14, "name": "onboarding_privacy_policyAccepted", "x": 256.0627860034512, "y": 273.63826949452243, "type": "nice_node", "degree": 57.988165680473124}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 3, "name": "onboarding_otherLogin__chooseLoginType", "x": 213.28042730027246, "y": 201.06593087521105, "type": "nice_node", "degree": 31.893491124260272}, "weight": 0.0007030700855221927, "weight_text": 9.70873786407811e-05, "type": "nice_node"}, {"source": {"index": 8, "name": "onboarding_privacy_policyDecline", "x": 127.5620976215592, "y": 50.0, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 0, "name": "onboarding_login_Type1", "x": 236.3435270359544, "y": 265.80945033727664, "type": "nice_node", "degree": 32.781065088757344}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "target": {"index": 15, "name": "onboarding_otherLogin__close", "x": 181.48240058993616, "y": 255.11594675054712, "type": "nice_node", "degree": 31.18343195266261}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "target": {"index": 1, "name": "onboarding_otherLogin_privacy_policyShown", "x": 211.5351669917193, "y": 167.15618023356075, "type": "nice_node", "degree": 31.005917159763193}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 11, "name": "onboarding_otherLogin_privacy_policyDecline", "x": 75.0, "y": 173.39821075918553, "type": "nice_node", "degree": 31.360946745562025}, "target": {"index": 1, "name": "onboarding_otherLogin_privacy_policyShown", "x": 211.5351669917193, "y": 167.15618023356075, "type": "nice_node", "degree": 31.005917159763193}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "target": {"index": 11, "name": "onboarding_otherLogin_privacy_policyDecline", "x": 75.0, "y": 173.39821075918553, "type": "nice_node", "degree": 31.360946745562025}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 8, "name": "onboarding_privacy_policyDecline", "x": 127.5620976215592, "y": 50.0, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 13, "name": "onboarding_privacy_policyTapToPolicy", "x": 125.89025308260148, "y": 350.0, "type": "nice_node", "degree": 30.473372781064946}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "target": {"index": 14, "name": "onboarding_privacy_policyAccepted", "x": 256.0627860034512, "y": 273.63826949452243, "type": "nice_node", "degree": 57.988165680473124}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 15, "name": "onboarding_otherLogin__close", "x": 181.48240058993616, "y": 255.11594675054712, "type": "nice_node", "degree": 31.18343195266261}, "target": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 6, "name": "onboarding_profile_edit_close", "x": 230.12624555785789, "y": 147.61213300186432, "type": "nice_node", "degree": 31.360946745562025}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 6, "name": "onboarding_profile_edit_close", "x": 230.12624555785789, "y": 147.61213300186432, "type": "nice_node", "degree": 31.360946745562025}, "target": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "target": {"index": 0, "name": "onboarding_login_Type1", "x": 236.3435270359544, "y": 265.80945033727664, "type": "nice_node", "degree": 32.781065088757344}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "target": {"index": 8, "name": "onboarding_privacy_policyDecline", "x": 127.5620976215592, "y": 50.0, "type": "nice_node", "degree": 30.473372781064946}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "target": {"index": 1, "name": "onboarding_otherLogin_privacy_policyShown", "x": 211.5351669917193, "y": 167.15618023356075, "type": "nice_node", "degree": 31.005917159763193}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "target": {"index": 3, "name": "onboarding_otherLogin__chooseLoginType", "x": 213.28042730027246, "y": 201.06593087521105, "type": "nice_node", "degree": 31.893491124260272}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 6, "name": "onboarding_profile_edit_close", "x": 230.12624555785789, "y": 147.61213300186432, "type": "nice_node", "degree": 31.360946745562025}, "target": {"index": 3, "name": "onboarding_otherLogin__chooseLoginType", "x": 213.28042730027246, "y": 201.06593087521105, "type": "nice_node", "degree": 31.893491124260272}, "weight": 0.0014058107870616038, "weight_text": 0.0001941747572815622, "type": "nice_node"}, {"source": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "target": {"index": 6, "name": "onboarding_profile_edit_close", "x": 230.12624555785789, "y": 147.61213300186432, "type": "nice_node", "degree": 31.360946745562025}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 9, "name": "onboarding_login_Type1_cancel", "x": 325.0, "y": 249.96953831519016, "type": "nice_node", "degree": 30.828402366863777}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "target": {"index": 11, "name": "onboarding_otherLogin_privacy_policyDecline", "x": 75.0, "y": 173.39821075918553, "type": "nice_node", "degree": 31.360946745562025}, "weight": 0.0017570577152560074, "weight_text": 0.00024271844660195274, "type": "nice_node"}, {"source": {"index": 13, "name": "onboarding_privacy_policyTapToPolicy", "x": 125.89025308260148, "y": 350.0, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 0, "name": "onboarding_login_Type1", "x": 236.3435270359544, "y": 265.80945033727664, "type": "nice_node", "degree": 32.781065088757344}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 14, "name": "onboarding_privacy_policyAccepted", "x": 256.0627860034512, "y": 273.63826949452243, "type": "nice_node", "degree": 57.988165680473124}, "target": {"index": 13, "name": "onboarding_privacy_policyTapToPolicy", "x": 125.89025308260148, "y": 350.0, "type": "nice_node", "degree": 30.473372781064946}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 7, "name": "onboarding__loginFailure", "x": 285.1301566278339, "y": 246.1579012537378, "type": "nice_node", "degree": 31.360946745562025}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "target": {"index": 0, "name": "onboarding_login_Type1", "x": 236.3435270359544, "y": 265.80945033727664, "type": "nice_node", "degree": 32.781065088757344}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 10, "name": "onboarding_login_Type2", "x": 246.73676621294072, "y": 277.318191145341, "type": "nice_node", "degree": 32.95857988165676}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "target": {"index": 3, "name": "onboarding_otherLogin__chooseLoginType", "x": 213.28042730027246, "y": 201.06593087521105, "type": "nice_node", "degree": 31.893491124260272}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 7, "name": "onboarding__loginFailure", "x": 285.1301566278339, "y": 246.1579012537378, "type": "nice_node", "degree": 31.360946745562025}, "target": {"index": 10, "name": "onboarding_login_Type2", "x": 246.73676621294072, "y": 277.318191145341, "type": "nice_node", "degree": 32.95857988165676}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 11, "name": "onboarding_otherLogin_privacy_policyDecline", "x": 75.0, "y": 173.39821075918553, "type": "nice_node", "degree": 31.360946745562025}, "target": {"index": 3, "name": "onboarding_otherLogin__chooseLoginType", "x": 213.28042730027246, "y": 201.06593087521105, "type": "nice_node", "degree": 31.893491124260272}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 7, "name": "onboarding__loginFailure", "x": 285.1301566278339, "y": 246.1579012537378, "type": "nice_node", "degree": 31.360946745562025}, "target": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, "target": {"index": 15, "name": "onboarding_otherLogin__close", "x": 181.48240058993616, "y": 255.11594675054712, "type": "nice_node", "degree": 31.18343195266261}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 7, "name": "onboarding__loginFailure", "x": 285.1301566278339, "y": 246.1579012537378, "type": "nice_node", "degree": 31.360946745562025}, "target": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 3, "name": "onboarding_otherLogin__chooseLoginType", "x": 213.28042730027246, "y": 201.06593087521105, "type": "nice_node", "degree": 31.893491124260272}, "target": {"index": 9, "name": "onboarding_login_Type1_cancel", "x": 325.0, "y": 249.96953831519016, "type": "nice_node", "degree": 30.828402366863777}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "target": {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}, {"source": {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, "target": {"index": 13, "name": "onboarding_privacy_policyTapToPolicy", "x": 125.89025308260148, "y": 350.0, "type": "nice_node", "degree": 30.473372781064946}, "weight": 0.0, "weight_text": 0.0, "type": "nice_node"}];
+var node_params = {"onboarding_otherLogin__show": "nice_node", "onboarding_welcome_screen": "nice_node", "onboarding_otherLogin__chooseLoginType": "nice_node", "onboarding_otherLogin_privacy_policyShown": "nice_node", "onboarding__chooseLoginType": "nice_node", "onboarding_privacy_policyShown": "bad_node", "onboarding_login_Type1": "nice_node", "onboarding_privacy_policyAccepted": "nice_node", "onboarding__loginFailure": "nice_node", "onboarding_login_Type1_cancel": "nice_node", "onboarding_login_Type2": "nice_node", "onboarding_otherLogin__close": "nice_node", "onboarding_privacy_policyDecline": "nice_node", "onboarding_privacy_policyTapToPolicy": "nice_node", "onboarding_profile_edit_close": "nice_node", "onboarding_otherLogin_privacy_policyDecline": "nice_node"};
+
+var nodes = [{"index": 0, "name": "onboarding_login_Type1", "x": 236.3435270359544, "y": 265.80945033727664, "type": "nice_node", "degree": 32.781065088757344}, {"index": 1, "name": "onboarding_otherLogin_privacy_policyShown", "x": 211.5351669917193, "y": 167.15618023356075, "type": "nice_node", "degree": 31.005917159763193}, {"index": 2, "name": "onboarding__chooseLoginType", "x": 212.27223383819492, "y": 273.59759027266693, "type": "nice_node", "degree": 32.781065088757266}, {"index": 3, "name": "onboarding_otherLogin__chooseLoginType", "x": 213.28042730027246, "y": 201.06593087521105, "type": "nice_node", "degree": 31.893491124260272}, {"index": 4, "name": "onboarding_privacy_policyShown", "x": 225.1915873550669, "y": 271.3933850854386, "type": "bad_node", "degree": 30.828402366863777}, {"index": 5, "name": "onboarding_otherLogin__show", "x": 202.4741503504007, "y": 235.66766532760465, "type": "nice_node", "degree": 60.473372781064946}, {"index": 6, "name": "onboarding_profile_edit_close", "x": 230.12624555785789, "y": 147.61213300186432, "type": "nice_node", "degree": 31.360946745562025}, {"index": 7, "name": "onboarding__loginFailure", "x": 285.1301566278339, "y": 246.1579012537378, "type": "nice_node", "degree": 31.360946745562025}, {"index": 8, "name": "onboarding_privacy_policyDecline", "x": 127.5620976215592, "y": 50.0, "type": "nice_node", "degree": 30.473372781064946}, {"index": 9, "name": "onboarding_login_Type1_cancel", "x": 325.0, "y": 249.96953831519016, "type": "nice_node", "degree": 30.828402366863777}, {"index": 10, "name": "onboarding_login_Type2", "x": 246.73676621294072, "y": 277.318191145341, "type": "nice_node", "degree": 32.95857988165676}, {"index": 11, "name": "onboarding_otherLogin_privacy_policyDecline", "x": 75.0, "y": 173.39821075918553, "type": "nice_node", "degree": 31.360946745562025}, {"index": 12, "name": "onboarding_welcome_screen", "x": 224.01360571634612, "y": 245.09178907040075, "type": "nice_node", "degree": 30.473372781064946}, {"index": 13, "name": "onboarding_privacy_policyTapToPolicy", "x": 125.89025308260148, "y": 350.0, "type": "nice_node", "degree": 30.473372781064946}, {"index": 14, "name": "onboarding_privacy_policyAccepted", "x": 256.0627860034512, "y": 273.63826949452243, "type": "nice_node", "degree": 57.988165680473124}, {"index": 15, "name": "onboarding_otherLogin__close", "x": 181.48240058993616, "y": 255.11594675054712, "type": "nice_node", "degree": 31.18343195266261}];
+
+var width = 500,
+    height = 500;
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+let defs = svg.append("g").selectAll("marker")
+    .data(links)
+  .enter().append("marker")
+    .attr("id", function(d) { return d.source.index + '-' + d.target.index; })
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", function(d) {
+        if (d.target.name !== d.source.name) {
+            return 7 + d.target.degree; 
+        } else {
+            return 0;
+        }
+    })
+    .attr("refY", calcMarkers)
+    .attr("markerWidth", 10)
+    .attr("markerHeight", 10)
+    .attr("markerUnits", "userSpaceOnUse")
+    .attr("orient", "auto");
+
+defs.append("path")
+    .attr("d", "M0,-5L10,0L0,5");
+
+function calcMarkers(d) {
+    let dist = Math.sqrt((nodes[d.target.index].x - nodes[d.source.index].x) ** 2 + (nodes[d.target.index].y - nodes[d.source.index].y) ** 2);
+    if (dist > 0 && dist <= 200){
+        return - Math.sqrt((0.5 - (d.target.degree ) / 2 / dist)) * (d.target.degree) / 2;
+    } else {
+        return 0;
+    }
+}
+
+var path = svg.append("g").selectAll("path")
+    .data(links)
+  .enter().append("path")
+    .attr("class", function(d) { return "link " + d.type; })
+    .attr("stroke-width", function(d) { return (d.weight * 20); })
+    .attr("marker-end", function(d) { return "url(#" + d.source.index + '-' + d.target.index + ")"; })
+    .attr("id", function(d,i) { return "link_"+i; })
+    .attr("d", linkArc)
+    ;
+
+var edgetext = svg.append("g").selectAll("text")
+    .data(links)
+   .enter().append("text")
+   .append("textPath")
+    .attr("xlink:href",function(d,i){return "#link_"+i;})
+    .style("text-anchor","middle")
+    .attr("startOffset", "50%")
+    ;
+    
+function update() {
+    d3.selectAll(".checkbox").each(function(d) {
+        cb = d3.select(this);
+        if (cb.property("checked")) {
+            edgetext = edgetext.text(function(d) {
+                if (1 !== 1) {
+                    return Math.round(d.weight_text * 100) / 100;
+                } else {
+                    return Math.round(d.weight_text * 100) + "%";
+                }
+            })
+        } else {
+            edgetext = edgetext.text(function(d) { return ; })
+        }
+    })
+};
+
+d3.selectAll(".checkbox").on("change",update);
+
+function dragstarted(d) {
+  d3.select(this).raise().classed("active", true);
+}
+
+function dragged(d) {
+  d3.select(this).attr("cx", d.x = d3.event.x).attr("cy", d.y = d3.event.y);
+}
+
+function dragended(d) {
+  d3.select(this).classed("active", false);
+  path = path.attr("d", linkArc);
+  text = text
+        .attr('x', function(d) { return d.x; })
+        .attr('y', function(d) { return d.y; })
+        ;
+  defs = defs.attr("refY", calcMarkers);
+  defs.append("path")
+    .attr("d", "M0,-5L10,0L0,5");
+};
+
+var circle = svg.append("g").selectAll("circle")
+    .data(nodes)
+  .enter().append("circle")
+    .attr("class", function(d) { return "circle " + d.type; })
+    .attr("r", function(d) { return d.degree; })
+    .attr('cx', function(d) { return d.x; })
+    .attr('cy', function(d) { return d.y; })
+    .call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
+
+var text = svg.append("g").selectAll("text")
+    .data(nodes)
+  .enter().append("text")
+    .attr('x', function(d) { return d.x; })
+    .attr('y', function(d) { return d.y; })
+    .text(function(d) { return d.name; });
+
+function linkArc(d) {
+  var dx = nodes[d.target.index].x - nodes[d.source.index].x,
+      dy = nodes[d.target.index].y - nodes[d.source.index].y,
+      dr = dx * dx + dy * dy;
+      dr = Math.sqrt(dr);
+      if (dr > 200) {
+        dr *= 5
+      } else {
+        dr /= 2
+      };
+      if (dr > 0) {return "M" + nodes[d.source.index].x + "," + nodes[d.source.index].y + "A" + (dr * 1.1) + "," + (dr * 1.1) + " 0 0,1 " + nodes[d.target.index].x + "," + nodes[d.target.index].y;}
+      else {return "M" + nodes[d.source.index].x + "," + nodes[d.source.index].y + "A" + 20 + "," + 20 + " 0 1,0 " + (nodes[d.target.index].x + 0.1) + "," + (nodes[d.target.index].y + 0.1);}
+}
+
+function downloadLayout() {
+    var a = document.createElement("a");
+    var file = new Blob([JSON.stringify(nodes)], {type: "text/json;charset=utf-8"});
+    a.href = URL.createObjectURL(file);
+    a.download = "node_params.json";
+    a.click();
+}
+
+
+</script>

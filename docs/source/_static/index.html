@@ -1,0 +1,182 @@
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+                circle {
+                  fill: #ccc;
+                  stroke: #333;
+                  stroke-width: 1.5px;
+                }
+
+                .circle.source_node {
+                  fill: #f3f310;
+                }
+
+                .circle.nice_node {
+                  fill: green;
+                }
+
+                .circle.bad_node {
+                  fill: red;
+                }
+
+                .link {
+                  fill: none;
+                  stroke: #666;
+                  stroke-opacity: 0.7;
+                }
+
+                #nice_target {
+                  fill: green;
+                }
+
+                .link.nice_target {
+                  stroke: green;
+                }
+
+                #source {
+                  fill: yellow;
+                }
+
+                .link.source {
+                  stroke: #f3f310;
+                }
+
+                #source {
+                  fill: orange;
+                }
+
+                .link.source1 {
+                  stroke: orange;
+                }
+
+                #bad_target {
+                  fill: red;
+                }
+
+                .link.bad_target {
+                  stroke: red;
+                }
+                text {
+                  font: 18px sans-serif;
+                  pointer-events: none;
+                  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+                }
+
+</style>
+<body>
+<script src="//d3js.org/d3.v4.min.js"></script>
+<div>
+  <input type="checkbox" class="checkbox" value="weighted"><label> Show weights </label>
+</div>
+<script>
+
+var links = [{'source': {'index': 10, 'name': 'onboarding__chooseLoginType', 'x': 75.0, 'y': 50.0, 'type': 'suit_node', 'degree': 16.666666666666668}, 'target': {'index': 4, 'name': 'onboarding_login_Type1', 'x': 327.0833333333333, 'y': 530.0, 'type': 'suit_node', 'degree': 10.0}, 'weight': 0.09533214358604969, 'weight_text': 0.10002416042522348, 'type': 'suit'}, {'source': {'index': 10, 'name': 'onboarding__chooseLoginType', 'x': 75.0, 'y': 50.0, 'type': 'suit_node', 'degree': 16.666666666666668}, 'target': {'index': 0, 'name': 'onboarding_privacy_policyShown', 'x': 327.0833333333333, 'y': 470.0, 'type': 'suit_node', 'degree': 10.0}, 'weight': 0.4156410702815114, 'weight_text': 0.5153418700169123, 'type': 'suit'}, {'source': {'index': 13, 'name': 'onboarding__loginFailure', 'x': 327.0833333333333, 'y': 590.0000000000001, 'type': 'suit_node', 'degree': 6.666666666666666}, 'target': {'index': 7, 'name': 'onboarding_login_Type1_cancel', 'x': 304.16666666666663, 'y': 650.0, 'type': 'suit_node', 'degree': 6.666666666666666}, 'weight': 0.11598280678301476, 'weight_text': 0.12297656438753322, 'type': 'suit'}, {'source': {'index': 4, 'name': 'onboarding_login_Type1', 'x': 327.0833333333333, 'y': 530.0, 'type': 'suit_node', 'degree': 10.0}, 'target': {'index': 1, 'name': 'onboarding_privacy_policyAccepted', 'x': 418.75, 'y': 350.0, 'type': 'suit_node', 'degree': 13.333333333333332}, 'weight': 0.3382654023832595, 'weight_text': 0.4025126842232423, 'type': 'suit'}, {'source': {'index': 7, 'name': 'onboarding_login_Type1_cancel', 'x': 304.16666666666663, 'y': 650.0, 'type': 'suit_node', 'degree': 6.666666666666666}, 'target': {'index': 10, 'name': 'onboarding__chooseLoginType', 'x': 75.0, 'y': 50.0, 'type': 'suit_node', 'degree': 16.666666666666668}, 'weight': 0.05178846048966019, 'weight_text': 0.05315293549166465, 'type': 'suit'}, {'source': {'index': 11, 'name': 'onboarding_login_Type2', 'x': 350.0, 'y': 410.0, 'type': 'suit_node', 'degree': 6.666666666666666}, 'target': {'index': 1, 'name': 'onboarding_privacy_policyAccepted', 'x': 418.75, 'y': 350.0, 'type': 'suit_node', 'degree': 13.333333333333332}, 'weight': 0.09401346207627816, 'weight_text': 0.09857453491181445, 'type': 'suit'}, {'source': {'index': 9, 'name': 'onboarding_otherLogin__chooseLoginType', 'x': 556.25, 'y': 230.0, 'type': 'suit_node', 'degree': 6.666666666666666}, 'target': {'index': 8, 'name': 'onboarding_otherLogin_privacy_policyShown', 'x': 533.3333333333334, 'y': 290.0, 'type': 'suit_node', 'degree': 6.666666666666666}, 'weight': 0.11512185106904972, 'weight_text': 0.12201014737859386, 'type': 'suit'}, {'source': {'index': 2, 'name': 'onboarding_otherLogin__close', 'x': 625.0, 'y': 50.0, 'type': 'suit_node', 'degree': 6.666666666666666}, 'target': {'index': 10, 'name': 'onboarding__chooseLoginType', 'x': 75.0, 'y': 50.0, 'type': 'suit_node', 'degree': 16.666666666666668}, 'weight': 0.060013318370544966, 'weight_text': 0.06185068857211887, 'type': 'suit'}, {'source': {'index': 3, 'name': 'onboarding_otherLogin__show', 'x': 602.0833333333333, 'y': 110.0, 'type': 'suit_node', 'degree': 13.333333333333332}, 'target': {'index': 9, 'name': 'onboarding_otherLogin__chooseLoginType', 'x': 556.25, 'y': 230.0, 'type': 'suit_node', 'degree': 6.666666666666666}, 'weight': 0.15914285765648378, 'weight_text': 0.17250543609567529, 'type': 'suit'}, {'source': {'index': 3, 'name': 'onboarding_otherLogin__show', 'x': 602.0833333333333, 'y': 110.0, 'type': 'suit_node', 'degree': 13.333333333333332}, 'target': {'index': 2, 'name': 'onboarding_otherLogin__close', 'x': 625.0, 'y': 50.0, 'type': 'suit_node', 'degree': 6.666666666666666}, 'weight': 0.11253452750409877, 'weight_text': 0.1191108963517758, 'type': 'suit'}, {'source': {'index': 3, 'name': 'onboarding_otherLogin__show', 'x': 602.0833333333333, 'y': 110.0, 'type': 'suit_node', 'degree': 13.333333333333332}, 'target': {'index': 5, 'name': 'onboarding_welcome_screen', 'x': 487.49999999999994, 'y': 170.0, 'type': 'source_node', 'degree': 30.0}, 'weight': 0.1919792086473035, 'weight_text': 0.21164532495771926, 'type': 'source'}, {'source': {'index': 8, 'name': 'onboarding_otherLogin_privacy_policyShown', 'x': 533.3333333333334, 'y': 290.0, 'type': 'suit_node', 'degree': 6.666666666666666}, 'target': {'index': 5, 'name': 'onboarding_welcome_screen', 'x': 487.49999999999994, 'y': 170.0, 'type': 'source_node', 'degree': 30.0}, 'weight': 0.07916883366029843, 'weight_text': 0.08238705001208022, 'type': 'source'}, {'source': {'index': 1, 'name': 'onboarding_privacy_policyAccepted', 'x': 418.75, 'y': 350.0, 'type': 'suit_node', 'degree': 13.333333333333332}, 'target': {'index': 13, 'name': 'onboarding__loginFailure', 'x': 327.0833333333333, 'y': 590.0000000000001, 'type': 'suit_node', 'degree': 6.666666666666666}, 'weight': 0.09335346865225487, 'weight_text': 0.09784972215510992, 'type': 'suit'}, {'source': {'index': 1, 'name': 'onboarding_privacy_policyAccepted', 'x': 418.75, 'y': 350.0, 'type': 'suit_node', 'degree': 13.333333333333332}, 'target': {'index': 5, 'name': 'onboarding_welcome_screen', 'x': 487.49999999999994, 'y': 170.0, 'type': 'source_node', 'degree': 30.0}, 'weight': 0.2525217204714927, 'weight_text': 0.28726745590722397, 'type': 'source'}, {'source': {'index': 0, 'name': 'onboarding_privacy_policyShown', 'x': 327.0833333333333, 'y': 470.0, 'type': 'suit_node', 'degree': 10.0}, 'target': {'index': 4, 'name': 'onboarding_login_Type1', 'x': 327.0833333333333, 'y': 530.0, 'type': 'suit_node', 'degree': 10.0}, 'weight': 0.3398145893700888, 'weight_text': 0.40468712249335587, 'type': 'suit'}, {'source': {'index': 0, 'name': 'onboarding_privacy_policyShown', 'x': 327.0833333333333, 'y': 470.0, 'type': 'suit_node', 'degree': 10.0}, 'target': {'index': 11, 'name': 'onboarding_login_Type2', 'x': 350.0, 'y': 410.0, 'type': 'suit_node', 'degree': 6.666666666666666}, 'weight': 0.1049497040574956, 'weight_text': 0.11065474752355642, 'type': 'suit'}, {'source': {'index': 5, 'name': 'onboarding_welcome_screen', 'x': 487.49999999999994, 'y': 170.0, 'type': 'source_node', 'degree': 30.0}, 'target': {'index': 6, 'name': 'lost', 'x': 395.83333333333337, 'y': 230.0, 'type': 'bad_node', 'degree': 3.333333333333333}, 'weight': 0.22473686937332288, 'weight_text': 0.2519932350809374, 'type': 'source'}, {'source': {'index': 5, 'name': 'onboarding_welcome_screen', 'x': 487.49999999999994, 'y': 170.0, 'type': 'source_node', 'degree': 30.0}, 'target': {'index': 10, 'name': 'onboarding__chooseLoginType', 'x': 75.0, 'y': 50.0, 'type': 'suit_node', 'degree': 16.666666666666668}, 'weight': 0.3840569403866228, 'weight_text': 0.4682290408311186, 'type': 'source'}, {'source': {'index': 5, 'name': 'onboarding_welcome_screen', 'x': 487.49999999999994, 'y': 170.0, 'type': 'source_node', 'degree': 30.0}, 'target': {'index': 3, 'name': 'onboarding_otherLogin__show', 'x': 602.0833333333333, 'y': 110.0, 'type': 'suit_node', 'degree': 13.333333333333332}, 'weight': 0.3270049975648797, 'weight_text': 0.38680840782797776, 'type': 'source'}, {'source': {'index': 5, 'name': 'onboarding_welcome_screen', 'x': 487.49999999999994, 'y': 170.0, 'type': 'source_node', 'degree': 30.0}, 'target': {'index': 5, 'name': 'onboarding_welcome_screen', 'x': 487.49999999999994, 'y': 170.0, 'type': 'source_node', 'degree': 30.0}, 'weight': 0.7943919659194436, 'weight_text': 1.2130949504711284, 'type': 'source'}, {'source': {'index': 5, 'name': 'onboarding_welcome_screen', 'x': 487.49999999999994, 'y': 170.0, 'type': 'source_node', 'degree': 30.0}, 'target': {'index': 12, 'name': 'passed', 'x': 418.75, 'y': 290.0, 'type': 'nice_node', 'degree': 3.333333333333333}, 'weight': 0.44656732429525303, 'weight_text': 0.5629379077071757, 'type': 'source'}];
+var node_params = {'lost': 'bad_target', 'passed': 'nice_target', 'onboarding_welcome_screen': 'source'};
+
+var nodes = [{'index': 0, 'name': 'onboarding_privacy_policyShown', 'x': 327.0833333333333, 'y': 470.0, 'type': 'suit_node', 'degree': 10.0}, {'index': 1, 'name': 'onboarding_privacy_policyAccepted', 'x': 418.75, 'y': 350.0, 'type': 'suit_node', 'degree': 13.333333333333332}, {'index': 2, 'name': 'onboarding_otherLogin__close', 'x': 625.0, 'y': 50.0, 'type': 'suit_node', 'degree': 6.666666666666666}, {'index': 3, 'name': 'onboarding_otherLogin__show', 'x': 602.0833333333333, 'y': 110.0, 'type': 'suit_node', 'degree': 13.333333333333332}, {'index': 4, 'name': 'onboarding_login_Type1', 'x': 327.0833333333333, 'y': 530.0, 'type': 'suit_node', 'degree': 10.0}, {'index': 5, 'name': 'onboarding_welcome_screen', 'x': 487.49999999999994, 'y': 170.0, 'type': 'source_node', 'degree': 30.0}, {'index': 6, 'name': 'lost', 'x': 395.83333333333337, 'y': 230.0, 'type': 'bad_node', 'degree': 3.333333333333333}, {'index': 7, 'name': 'onboarding_login_Type1_cancel', 'x': 304.16666666666663, 'y': 650.0, 'type': 'suit_node', 'degree': 6.666666666666666}, {'index': 8, 'name': 'onboarding_otherLogin_privacy_policyShown', 'x': 533.3333333333334, 'y': 290.0, 'type': 'suit_node', 'degree': 6.666666666666666}, {'index': 9, 'name': 'onboarding_otherLogin__chooseLoginType', 'x': 556.25, 'y': 230.0, 'type': 'suit_node', 'degree': 6.666666666666666}, {'index': 10, 'name': 'onboarding__chooseLoginType', 'x': 75.0, 'y': 50.0, 'type': 'suit_node', 'degree': 16.666666666666668}, {'index': 11, 'name': 'onboarding_login_Type2', 'x': 350.0, 'y': 410.0, 'type': 'suit_node', 'degree': 6.666666666666666}, {'index': 12, 'name': 'passed', 'x': 418.75, 'y': 290.0, 'type': 'nice_node', 'degree': 3.333333333333333}, {'index': 13, 'name': 'onboarding__loginFailure', 'x': 327.0833333333333, 'y': 590.0000000000001, 'type': 'suit_node', 'degree': 6.666666666666666}];
+
+var width = 800,
+    height = 800;
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+// Per-type markers, as they don't inherit styles.
+svg.append("defs").selectAll("marker")
+    .data(["source", "nice_target", "bad_target", "suit", "end"])
+  .enter().append("marker")
+    .attr("id", function(d) { return d; })
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 20)
+    .attr("refY", -1.5)
+    .attr("markerWidth", 10)
+    .attr("markerHeight", 10)
+    .attr("markerUnits", "userSpaceOnUse")
+    .attr("orient", "auto")
+  .append("path")
+    .attr("d", "M0,-5L10,0L0,5");
+
+var path = svg.append("g").selectAll("path")
+    .data(links)
+  .enter().append("path")
+    .attr("class", function(d) { return "link " + d.type; })
+    .attr("stroke-width", function(d) { return (d.weight * 20); })
+    .attr("marker-end", function(d) { return "url(#" + d.type + ")"; })
+    .attr("id", function(d,i) { return "link_"+i; })
+    .attr("d", linkArc)
+    ;
+
+var edgetext = svg.append("g").selectAll("text")
+    .data(links)
+   .enter().append("text")
+   .append("textPath")
+    .attr("xlink:href",function(d,i){return "#link_"+i;})
+    .style("text-anchor","middle")
+    .attr("startOffset", "50%")
+    ;
+    
+function update() {
+    d3.selectAll(".checkbox").each(function(d) {
+        cb = d3.select(this);
+        if (cb.property("checked")) {
+            edgetext = edgetext.text(function(d) { return Math.round(d.weight * 100) + "%"; })
+        } else {
+            edgetext = edgetext.text(function(d) { return ; })
+        }
+    })
+};
+
+d3.selectAll(".checkbox").on("change",update);
+
+function dragstarted(d) {
+  d3.select(this).raise().classed("active", true);
+}
+
+function dragged(d) {
+  d3.select(this).attr("cx", d.x = d3.event.x).attr("cy", d.y = d3.event.y);
+}
+
+function dragended(d) {
+  d3.select(this).classed("active", false);
+  path = path.attr("d", linkArc);
+  text = text
+        .attr('x', function(d) { return d.x; })
+        .attr('y', function(d) { return d.y; })
+        ;
+};
+
+var circle = svg.append("g").selectAll("circle")
+    .data(nodes)
+  .enter().append("circle")
+    .attr("class", function(d) { return "circle " + d.type; })
+    .attr("r", function(d) { return d.degree; })
+    .attr('cx', function(d) { return d.x; })
+    .attr('cy', function(d) { return d.y; })
+    .call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
+
+var text = svg.append("g").selectAll("text")
+    .data(nodes)
+  .enter().append("text")
+    .attr('x', function(d) { return d.x; })
+    .attr('y', function(d) { return d.y; })
+    .text(function(d) { return d.name; });
+
+function linkArc(d) {
+  var dx = nodes[d.target.index].x - nodes[d.source.index].x,
+      dy = nodes[d.target.index].y - nodes[d.source.index].y,
+      dr = dx * dx + dy * dy;
+      dr = Math.sqrt(dr);
+      if (dr > 200) {
+        dr *= 5
+      } else {
+        dr /= 2
+      };
+      if (dr > 0) {return "M" + nodes[d.source.index].x + "," + nodes[d.source.index].y + "A" + (dr * 1.1) + "," + (dr * 1.1) + " 0 0,1 " + nodes[d.target.index].x + "," + nodes[d.target.index].y;}
+      else {return "M" + nodes[d.source.index].x + "," + nodes[d.source.index].y + "A" + 20 + "," + 20 + " 0 1,0 " + (nodes[d.target.index].x + 0.1) + "," + (nodes[d.target.index].y + 0.1);}
+}
+</script>

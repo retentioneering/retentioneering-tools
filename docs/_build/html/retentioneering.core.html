@@ -1,0 +1,1092 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>retentioneering.core package &mdash; Retentioneering Tools 1.0.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="retentioneering.visualization package" href="retentioneering.visualization.html" />
+    <link rel="prev" title="retentioneering package" href="retentioneering.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Retentioneering Tools
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="early_steps.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mobile-app-case.html">Mobile app case</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="retentioneering.html">Documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="retentioneering.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">retentioneering.core package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.clustering">retentioneering.core.clustering module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.feature_extraction">retentioneering.core.feature_extraction module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.model">retentioneering.core.model module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.node_metrics">retentioneering.core.node_metrics module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.preprocessing">retentioneering.core.preprocessing module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.tree_selector">retentioneering.core.tree_selector module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.utils">retentioneering.core.utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="retentioneering.visualization.html">retentioneering.visualization package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="retentioneering.html#module-retentioneering">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Retentioneering Tools</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="retentioneering.html">retentioneering package</a> &raquo;</li>
+        
+      <li>retentioneering.core package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/retentioneering.core.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="retentioneering-core-package">
+<h1>retentioneering.core package<a class="headerlink" href="#retentioneering-core-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-retentioneering.core.clustering">
+<span id="retentioneering-core-clustering-module"></span><h2>retentioneering.core.clustering module<a class="headerlink" href="#module-retentioneering.core.clustering" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="retentioneering.core.clustering.simple_cluster">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">simple_cluster</code><span class="sig-paren">(</span><em>data</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.simple_cluster" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds cluster of users in data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – feature matrix for clustering</li>
+<li><strong>kwargs</strong> – keyword arguments for sklearn.cluster.KMeans</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">np.array of clusters</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-retentioneering.core.feature_extraction">
+<span id="retentioneering-core-feature-extraction-module"></span><h2>retentioneering.core.feature_extraction module<a class="headerlink" href="#module-retentioneering.core.feature_extraction" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="retentioneering.core.feature_extraction.counts_embedder">
+<code class="descclassname">retentioneering.core.feature_extraction.</code><code class="descname">counts_embedder</code><span class="sig-paren">(</span><em>data</em>, <em>ngram_range=(1</em>, <em>1)</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.feature_extraction.counts_embedder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate session embedding (continuous vector form) by counting of events appearance for user</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – clickstream dataset</li>
+<li><strong>ngram_range</strong> – range of ngrams to use in feature extraction</li>
+<li><strong>kwargs</strong> – index_col, event_col params</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with sessions vectorized by counts of events</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.feature_extraction.frequency_embedder">
+<code class="descclassname">retentioneering.core.feature_extraction.</code><code class="descname">frequency_embedder</code><span class="sig-paren">(</span><em>data</em>, <em>ngram_range=(1</em>, <em>1)</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.feature_extraction.frequency_embedder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Similar to <cite>count_embedder</cite>, but normalize events count over index_col story</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – clickstream dataset</li>
+<li><strong>ngram_range</strong> – range of ngrams to use in feature extraction</li>
+<li><strong>kwargs</strong> – index_col, event_col params</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with sessions vectorized by frequencies of events</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.feature_extraction.learn_tsne">
+<code class="descclassname">retentioneering.core.feature_extraction.</code><code class="descname">learn_tsne</code><span class="sig-paren">(</span><em>data</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.feature_extraction.learn_tsne" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates TSNE transform for given matrix features</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – array of features</li>
+<li><strong>kwargs</strong> – arguments for sklearn.manifold.TSNE</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">np.ndarray with calculated TSNE transform</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.feature_extraction.tfidf_embedder">
+<code class="descclassname">retentioneering.core.feature_extraction.</code><code class="descname">tfidf_embedder</code><span class="sig-paren">(</span><em>data</em>, <em>ngram_range=(1</em>, <em>1)</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.feature_extraction.tfidf_embedder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Similar to <cite>frequency_embedder</cite>, but normalize events frequencies with inversed document frequency</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – clickstream dataset</li>
+<li><strong>ngram_range</strong> – range of ngrams to use in feature extraction</li>
+<li><strong>kwargs</strong> – index_col, event_col params</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with sessions vectorized by Tf-Idf of events</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-retentioneering.core.model">
+<span id="retentioneering-core-model-module"></span><h2>retentioneering.core.model module<a class="headerlink" href="#module-retentioneering.core.model" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="retentioneering.core.model.ModelDescriptor">
+<em class="property">class </em><code class="descclassname">retentioneering.core.model.</code><code class="descname">ModelDescriptor</code><span class="sig-paren">(</span><em>model</em>, <em>data</em>, <em>target</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.model.ModelDescriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="retentioneering.core.model.ModelDescriptor.permutation_importance">
+<code class="descname">permutation_importance</code><span class="sig-paren">(</span><em>test_sample</em>, <em>test_target</em>, <em>node_params=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.model.ModelDescriptor.permutation_importance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates permutation importance of features.
+If node_params is not None, then plots graph weighted by permutation importance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>test_sample</strong> – test feature subsample</li>
+<li><strong>test_target</strong> – vector of targets for test sample</li>
+<li><strong>node_params</strong> – <p>mapping describes which node should be highlighted by target or source type
+Node param should be represented in the following form
+<a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>{</p>
+<blockquote>
+<div><blockquote>
+<div>’lost’: ‘bad_target’,
+‘passed’: ‘nice_target’,
+‘onboarding_welcome_screen’: ‘source’,</div></blockquote>
+<p>}```</p>
+</div></blockquote>
+<p>If mapping is not given, it will be constracted from config</p>
+</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Nothing</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.model.ModelDescriptor.predict">
+<code class="descname">predict</code><span class="sig-paren">(</span><em>features</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.model.ModelDescriptor.predict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.model.ModelDescriptor.shap_descriptor">
+<code class="descname">shap_descriptor</code><span class="sig-paren">(</span><em>test_sample</em>, <em>test_index=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.model.ModelDescriptor.shap_descriptor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Describes model using [SHAP](<a class="reference external" href="https://github.com/slundberg/shap">https://github.com/slundberg/shap</a>) force_plot</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>test_sample</strong> – test feature subsample</li>
+<li><strong>test_index</strong> – idx of test example</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.model.ModelDescriptor.show_quality_metrics">
+<code class="descname">show_quality_metrics</code><span class="sig-paren">(</span><em>test_sample</em>, <em>test_target</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.model.ModelDescriptor.show_quality_metrics" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.model.ModelDescriptor.visualize_results">
+<code class="descname">visualize_results</code><span class="sig-paren">(</span><em>plot_type='projections'</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.model.ModelDescriptor.visualize_results" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-retentioneering.core.node_metrics">
+<span id="retentioneering-core-node-metrics-module"></span><h2>retentioneering.core.node_metrics module<a class="headerlink" href="#module-retentioneering.core.node_metrics" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-retentioneering.core.preprocessing">
+<span id="retentioneering-core-preprocessing-module"></span><h2>retentioneering.core.preprocessing module<a class="headerlink" href="#module-retentioneering.core.preprocessing" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="retentioneering.core.preprocessing.split_sessions">
+<code class="descclassname">retentioneering.core.preprocessing.</code><code class="descname">split_sessions</code><span class="sig-paren">(</span><em>data</em>, <em>minimal_thresh=30</em>, <em>lower_filter=1</em>, <em>upper_filter=99</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.preprocessing.split_sessions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates column session with session rank in given data</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – clickstream data</li>
+<li><strong>minimal_thresh</strong> – minimal threshold in seconds between two sessions</li>
+<li><strong>lower_filter</strong> – percentile of time between event to filter (greater)</li>
+<li><strong>upper_filter</strong> – percentile of time between event to filter (lower)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Nothing</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.preprocessing.weight_by_mechanics">
+<code class="descclassname">retentioneering.core.preprocessing.</code><code class="descname">weight_by_mechanics</code><span class="sig-paren">(</span><em>data</em>, <em>main_event_map</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.preprocessing.weight_by_mechanics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates weights of mechanics over index_col</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – clickstream or features data</li>
+<li><strong>main_event_map</strong> – mapping of main events into mechanics</li>
+<li><strong>kwargs</strong> – LDA and extract_features params</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">session weighted by mechanics or</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-retentioneering.core.tree_selector">
+<span id="retentioneering-core-tree-selector-module"></span><h2>retentioneering.core.tree_selector module<a class="headerlink" href="#module-retentioneering.core.tree_selector" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="retentioneering.core.tree_selector.show_tree_filter">
+<code class="descclassname">retentioneering.core.tree_selector.</code><code class="descname">show_tree_filter</code><span class="sig-paren">(</span><em>event_col</em>, <em>width=500</em>, <em>height=500</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.tree_selector.show_tree_filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shows tree selector, based on your event names.
+It uses <cite>_</cite> for splitting event names for group aggregation</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>event_col</strong> – column with events</li>
+<li><strong>width</strong> – width of IFrame</li>
+<li><strong>height</strong> – height of IFrame</li>
+<li><strong>kwargs</strong> – do nothing</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">nothing</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.tree_selector.use_tree_filter">
+<code class="descclassname">retentioneering.core.tree_selector.</code><code class="descname">use_tree_filter</code><span class="sig-paren">(</span><em>data</em>, <em>path</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.tree_selector.use_tree_filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filters data based on config from tree filter</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – clickstream of events</li>
+<li><strong>path</strong> – path to aggregation config</li>
+<li><strong>kwargs</strong> – do nothing</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">filtered clickstream</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-retentioneering.core.utils">
+<span id="retentioneering-core-utils-module"></span><h2>retentioneering.core.utils module<a class="headerlink" href="#module-retentioneering.core.utils" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="retentioneering.core.utils.BaseDataset">
+<em class="property">class </em><code class="descclassname">retentioneering.core.utils.</code><code class="descname">BaseDataset</code><span class="sig-paren">(</span><em>pandas_obj</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#retentioneering.core.utils.BaseTrajectory" title="retentioneering.core.utils.BaseTrajectory"><code class="xref py py-class docutils literal notranslate"><span class="pre">retentioneering.core.utils.BaseTrajectory</span></code></a></p>
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.create_filter">
+<code class="descname">create_filter</code><span class="sig-paren">(</span><em>index_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.create_filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates positive users filter for get_step_matrix_difference method</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>index_col</strong> – name of index by which to create filter.
+if None, then <cite>index_col</cite> from config is used.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">pd.Series with filter</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.create_model">
+<code class="descname">create_model</code><span class="sig-paren">(</span><em>model_type=&lt;class 'sklearn.linear_model.logistic.LogisticRegression'&gt;</em>, <em>regression_targets=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.create_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates model explainer for given model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>model_type</strong> – model class in sklearn-api style (should have methods <cite>fit</cite>, <cite>predict_proba</cite></li>
+<li><strong>regression_targets</strong> – mapping from index_col to regression target e.g. LTV of user</li>
+<li><strong>kwargs</strong> – params for model and explainer</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.extract_features">
+<code class="descname">extract_features</code><span class="sig-paren">(</span><em>feature_type='tfidf'</em>, <em>drop_targets=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.extract_features" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vectorize users`s trajectories
+Available vectorization methods is <cite>Tf-Idf</cite> (feature_type=’tfidf’),
+<cite>Event Frequencies</cite> (feature_type=’frequency’) and <cite>Event Counts</cite> (feature_type=’count’).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>feature_type</strong> – type of vectorizer</li>
+<li><strong>drop_targets</strong> – if True, then targets will be removed from feature generation</li>
+<li><strong>kwargs</strong> – keyword arguments for vectorizer</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">encoded users trajectories</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">pd.DataFrame of (number of users, number of unique events | event n-grams)</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.extract_features_from_test">
+<code class="descname">extract_features_from_test</code><span class="sig-paren">(</span><em>test</em>, <em>train=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.extract_features_from_test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.filter_cluster">
+<code class="descname">filter_cluster</code><span class="sig-paren">(</span><em>cluster_name</em>, <em>index_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.filter_cluster" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.get_clusters">
+<code class="descname">get_clusters</code><span class="sig-paren">(</span><em>plot_type=None</em>, <em>refit_cluster=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.get_clusters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds cluster of users in data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>plot_type</strong> – type of clustering visualization.
+Available methods are (<cite>cluster_heatmap</cite>, <cite>cluster_tsne</cite>, <cite>cluster_pie</cite>).
+Please, see examples to understand different visualizations</li>
+<li><strong>kwargs</strong> – keyword arguments for clusterer</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">np.array of clusters</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.get_positive_users">
+<code class="descname">get_positive_users</code><span class="sig-paren">(</span><em>index_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.get_positive_users" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds users, who have positive_target_event</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>index_col</strong> – name of index by which to create targets.
+if None, then <cite>index_col</cite> from config is used.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">np.array of users with positive_target_event in trajectory</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.get_step_matrix_difference">
+<code class="descname">get_step_matrix_difference</code><span class="sig-paren">(</span><em>groups</em>, <em>plot_type=True</em>, <em>max_steps=30</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.get_step_matrix_difference" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots heatmap with difference of events distributions over steps between two given groups</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>groups</strong> – boolean vector that splits data in to groups</li>
+<li><strong>plot_type</strong> – if True, then heatmap plot will be shown in interactive mode</li>
+<li><strong>max_steps</strong> – maximum number of steps to show</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with step matrix</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.index_based_split">
+<code class="descname">index_based_split</code><span class="sig-paren">(</span><em>index_col=None</em>, <em>test_size=0.2</em>, <em>seed=0</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.index_based_split" title="Permalink to this definition">¶</a></dt>
+<dd><p>Split dataset based on index</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>index_col</strong> – index col, if None, than use config</li>
+<li><strong>test_size</strong> – rate of test subsample</li>
+<li><strong>seed</strong> – random seed</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">train, test</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.learn_tsne">
+<code class="descname">learn_tsne</code><span class="sig-paren">(</span><em>targets=None</em>, <em>plot_type=None</em>, <em>refit=False</em>, <em>regression_targets=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.learn_tsne" title="Permalink to this definition">¶</a></dt>
+<dd><p>Learns TSNE projection for selected feature space (<cite>feature_type</cite> in kwargs)
+and visualize it with chosen visualization type</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>targets</strong> – vector of targets for users
+if None, then calculates automatically based on <cite>positive-</cite> and <cite>negative_target_event</cite></li>
+<li><strong>plot_type</strong> – type of visualization: <cite>clusters</cite> or <cite>targets</cite>
+if None, then only calculates tsne without vis</li>
+<li><strong>refit</strong> – if True, then tsne will be refitted e.g. it is needed if you perform hyperparam selection</li>
+<li><strong>regression_targets</strong> – mapping from index_col to regression target e.g. LTV of user</li>
+<li><strong>kwargs</strong> – parameters for feature extraction, sklearn.manifold.TSNE and sklearn.cluster.KMeans</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">np.array with TSNE transform for user tracks</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="retentioneering.core.utils.BaseDataset.make_regression_targets">
+<em class="property">static </em><code class="descname">make_regression_targets</code><span class="sig-paren">(</span><em>features</em>, <em>regression_targets</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.make_regression_targets" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates target vector for given features</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>features</strong> – feature matrix</li>
+<li><strong>regression_targets</strong> – mapping from index_col to regression target e.g. LTV of user</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">list of targets alligned to feature matrix indices</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.prepare">
+<code class="descname">prepare</code><span class="sig-paren">(</span><em>first_event=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.prepare" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add target events based on target event description in config</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>first_event</strong> – if not None, then adds <cite>first_event</cite> prevously others to clickstream</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">input data updated with target events</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.remove_events">
+<code class="descname">remove_events</code><span class="sig-paren">(</span><em>event_list</em>, <em>mode='equal'</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.remove_events" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="docutils">
+<dt>Removes events from event_list using different modes:</dt>
+<dd><cite>equal</cite> – full event name match with element from event_list,
+<cite>startswith</cite> – event name starts with element from event_list,
+<cite>contains</cite> – event name contains element from event_list,</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>event_list</strong> – list of events or elements,
+that should be contained in <cite>event_col</cite></li>
+<li><strong>mode</strong> – type of comparison: <cite>equal</cite>, <cite>startswith</cite> or <cite>contains</cite></li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with filtered clickstream</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.select_bbox_from_tsne">
+<code class="descname">select_bbox_from_tsne</code><span class="sig-paren">(</span><em>bbox</em>, <em>plotting=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.select_bbox_from_tsne" title="Permalink to this definition">¶</a></dt>
+<dd><p>Selects data filtered by cordinates of tsne plot</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>bbox</strong> – <p>list of lists that contains angles of bbox
+<a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a>bbox = [</p>
+<blockquote>
+<div>[0, 0], # [min x, max x]
+[10, 10] # [min y, max y]</div></blockquote>
+<p>]```</p>
+</li>
+<li><strong>plotting</strong> – if True, then visualize graph of selected users</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with filtered clickstream of users in bbox</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.show_tree_selector">
+<code class="descname">show_tree_selector</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.show_tree_selector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shows tree selector, based on your event names.
+It uses <cite>_</cite> for splitting event names for group aggregation</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – event_col and params for iframe: <cite>width</cite> and <cite>height</cite></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.survival_curves">
+<code class="descname">survival_curves</code><span class="sig-paren">(</span><em>groups</em>, <em>spec_event=None</em>, <em>time_min=None</em>, <em>time_max=None</em>, <em>event_col=None</em>, <em>index_col=None</em>, <em>target_event=None</em>, <em>time_step='D'</em>, <em>plotting=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.survival_curves" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot survival curves for given grouping</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>groups</strong> – np.array of clickstream shape, that splits data into different groups</li>
+<li><strong>spec_event</strong> – event specific for test,
+e.g. we change auth flow, so we need to compare only users, who have started authorization,
+in this case <cite>spec_event=’auth_start’</cite></li>
+<li><strong>time_min</strong> – time when a/b test was started. if None, then whole dataset is used</li>
+<li><strong>time_max</strong> – time when a/b test was ended. if None, then whole dataset is used</li>
+<li><strong>event_col</strong> – name of event column, e.g. <cite>event_name</cite> in our examples.
+If None, init_config is used.</li>
+<li><strong>index_col</strong> – name of index column, e.g. <cite>user_pseudo_id</cite> in our examples.
+If None, init_config is used.</li>
+<li><strong>target_event</strong> – name of target event. If None, init_config is used.</li>
+<li><strong>time_step</strong> – <p>time step for calculation of survival rate at specific time.
+Default is day (<cite>‘D’</cite>).
+Possible options:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>(<cite>‘D’</cite> – day, <cite>‘M’</cite> – month, <cite>‘h’</cite> – hour, <cite>‘m’</cite> – minute, <cite>‘Y’</cite> – year,</dt>
+<dd><cite>’W’</cite> – week, <cite>‘s’</cite> – seconds, <cite>‘ms’</cite> – milliseconds.</dd>
+</dl>
+</div></blockquote>
+</li>
+<li><strong>plotting</strong> – if True, then plots survival curves</li>
+<li><strong>kwargs</strong> – do nothing</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with points at survival curves and prints chi-squared LogRank test for equality statistics</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.use_tree_filter">
+<code class="descname">use_tree_filter</code><span class="sig-paren">(</span><em>path</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.use_tree_filter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filters and aggregate data based on given config</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>path</strong> – path to aggregation config</li>
+<li><strong>kwargs</strong> – do nothing</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">filtered clickstream</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="retentioneering.core.utils.BaseTrajectory">
+<em class="property">class </em><code class="descclassname">retentioneering.core.utils.</code><code class="descname">BaseTrajectory</code><span class="sig-paren">(</span><em>pandas_obj</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseTrajectory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="staticmethod">
+<dt id="retentioneering.core.utils.BaseTrajectory.calculate_node_metrics">
+<em class="property">static </em><code class="descname">calculate_node_metrics</code><span class="sig-paren">(</span><em>metric_type='centrality'</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseTrajectory.calculate_node_metrics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate metrics on graph</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>metric_type</strong> – type of metrics, e.g. node centrality</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseTrajectory.get_adjacency">
+<code class="descname">get_adjacency</code><span class="sig-paren">(</span><em>cols=None</em>, <em>edge_attributes='event_count'</em>, <em>norm=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseTrajectory.get_adjacency" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates graph in the matrix format</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – list of source and target columns, e.g. <cite>event_name</cite>, <cite>next_event</cite> correspondingly</li>
+<li><strong>edge_attributes</strong> – name of edge weighting,
+second part after <cite>_</cite> should be a valid pandas.groupby.agg() parameter, e.g. <cite>count</cite>, <cite>mean</cite>. <cite>sum</cite> and etc.</li>
+<li><strong>norm</strong> – normalize over number of users</li>
+<li><strong>kwargs</strong> – params from edgelist</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with graph in m   atrix format</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseTrajectory.get_edgelist">
+<code class="descname">get_edgelist</code><span class="sig-paren">(</span><em>cols=None</em>, <em>edge_col=None</em>, <em>edge_attributes='event_count'</em>, <em>norm=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseTrajectory.get_edgelist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates graph in the following representation: <cite>source_node, target_node, edge_weight</cite></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cols</strong> – list of source and target columns, e.g. <cite>event_name</cite>, <cite>next_event</cite> correspondingly</li>
+<li><strong>edge_col</strong> – aggregation column for edge weighting,
+e.g. set it to <cite>index_col</cite> and <cite>edge_attributes=’unique’</cite> to calculate unique users passed through edge</li>
+<li><strong>edge_attributes</strong> – name of edge weighting,
+second part after <cite>_</cite> should be a valid pandas.groupby.agg() parameter, e.g. <cite>count</cite>, <cite>mean</cite>. <cite>sum</cite> and etc.</li>
+<li><strong>norm</strong> – normalize over number of users</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with graph in edgelist format</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseTrajectory.get_step_matrix">
+<code class="descname">get_step_matrix</code><span class="sig-paren">(</span><em>max_steps=None</em>, <em>plot_type=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseTrajectory.get_step_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots heatmap with distribution of events over event steps (ordering in the session by event time)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>max_steps</strong> – maximum number of steps to show</li>
+<li><strong>plot_type</strong> – if True, then plot in interactive session (jupyter notebook)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with distribution of events over event order</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseTrajectory.plot_graph">
+<code class="descname">plot_graph</code><span class="sig-paren">(</span><em>user_based=True</em>, <em>node_params=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseTrajectory.plot_graph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create interactive graph visualization</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>user_based</strong> – if True, then edge weights is calculated as unique rate of users who go through them</li>
+<li><strong>node_params</strong> – <p>mapping describes which node should be highlighted by target or source type
+Node param should be represented in the following form
+<a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a>{</p>
+<blockquote>
+<div><blockquote>
+<div>’lost’: ‘bad_target’,
+‘passed’: ‘nice_target’,
+‘onboarding_welcome_screen’: ‘source’,</div></blockquote>
+<p>}```</p>
+</div></blockquote>
+<p>If mapping is not given, it will be constracted from config</p>
+</li>
+<li><strong>kwargs</strong> – other parameters for visualization</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Nothing</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseTrajectory.split_sessions">
+<code class="descname">split_sessions</code><span class="sig-paren">(</span><em>by_event=None</em>, <em>minimal_thresh=30</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseTrajectory.split_sessions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates column session with session rank</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>by_event</strong> – if not None, then split sessions by specific event,
+else sessions are automatically defined from time diffrence between events</li>
+<li><strong>minimal_thresh</strong> – minimal time distance between sessions for case of automatic definition</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Nothing</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseTrajectory.weight_by_mechanics">
+<code class="descname">weight_by_mechanics</code><span class="sig-paren">(</span><em>main_event_map</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseTrajectory.weight_by_mechanics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates weights of mechanics over index_col</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>main_event_map</strong> – mapping of main events for mechanics</li>
+<li><strong>kwargs</strong> – keyword arguments for feature_extraction and sklearn LDA model</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">weights of mechanics for each user and mechanics description</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.utils.init_config">
+<code class="descclassname">retentioneering.core.utils.</code><code class="descname">init_config</code><span class="sig-paren">(</span><em>**config</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.init_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize config and pandas accessors</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>positive_target_event</strong> – name of positive target event</li>
+<li><strong>negative_target_event</strong> – name of negative target event</li>
+<li><strong>index_col</strong> – name of index column, e.g. <cite>user_pseudo_id</cite> in our examples</li>
+<li><strong>event_col</strong> – name of event column, e.g. <cite>event_name</cite> in our examples</li>
+<li><strong>event_time_col</strong> – name of event timestamp column, e.g. <cite>event_timestamp</cite> in our examples</li>
+<li><strong>pos_target_definition</strong> – optional, if exists then add target event with described logic:
+If empty dict, then adds <cite>positive_target_event</cite> for users, who have not it in the end of track.
+If contains <cite>time_limit</cite>, then adds event to session after time_limit seconds of inactivity.
+If contains <cite>event_list</cite>, then replace events from list with <cite>positive_target_event</cite></li>
+<li><strong>neg_target_definition</strong> – optional, similar to <cite>pos_target_definition</cite></li>
+<li><strong>experiments_folder</strong> – optional, where to save results of analysis.
+If unexists then folder named with current timestamp will be created.</li>
+<li><strong>source_event</strong> – optional, name of session / user trajectory starting event</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Nothing</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-retentioneering.core">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-retentioneering.core" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="retentioneering.visualization.html" class="btn btn-neutral float-right" title="retentioneering.visualization package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="retentioneering.html" class="btn btn-neutral float-left" title="retentioneering package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Retentioneering User Trajectory Analysis Lab
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

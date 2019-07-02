@@ -1,0 +1,1526 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Introduction &mdash; Retentioneering Tools 1.0.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Mobile app case" href="mobile-app-case.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Retentioneering Tools
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#first-steps">First steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#temporal-funnel">Temporal funnel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#clustering">Clustering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#supervised-classifier">Supervised classifier</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="mobile-app-case.html">Mobile app case</a></li>
+<li class="toctree-l1"><a class="reference internal" href="retentioneering.html">Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Retentioneering Tools</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Introduction</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/early_steps.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<p>This notebook can be found <a class="reference external" href="https://github.com/retentioneering/retentioneering-tools/blob/master/examples/early_steps.ipynb">here</a>.</p>
+<div class="section" id="first-steps">
+<h2>First steps<a class="headerlink" href="#first-steps" title="Permalink to this headline">¶</a></h2>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering</span> <span class="k">import</span> <span class="n">init_config</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+</pre></div>
+</div>
+<p>Firstly, we need to initialize our config file</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">init_config</span><span class="p">(</span>
+    <span class="n">experiments_folder</span><span class="o">=</span><span class="s1">&#39;experiments&#39;</span><span class="p">,</span> <span class="c1"># folder for saving experiment results: graph visualization, heatmaps and etc.</span>
+    <span class="n">index_col</span><span class="o">=</span><span class="s1">&#39;user_pseudo_id&#39;</span><span class="p">,</span> <span class="c1"># column by which we split users / sessions / whatever</span>
+    <span class="n">event_col</span><span class="o">=</span><span class="s1">&#39;event_name&#39;</span><span class="p">,</span> <span class="c1"># column that describes event</span>
+    <span class="n">event_time_col</span><span class="o">=</span><span class="s1">&#39;event_timestamp&#39;</span><span class="p">,</span> <span class="c1"># column that describes timestamp of event</span>
+    <span class="n">positive_target_event</span><span class="o">=</span><span class="s1">&#39;lost&#39;</span><span class="p">,</span> <span class="c1"># name of positive target event</span>
+    <span class="n">negative_target_event</span><span class="o">=</span><span class="s1">&#39;passed&#39;</span><span class="p">,</span> <span class="c1"># name of negative target event</span>
+    <span class="n">pos_target_definition</span><span class="o">=</span><span class="p">{</span> <span class="c1"># how to define positive event, e.g. empty means that add passed for whom was not &#39;lost&#39;</span>
+        <span class="s1">&#39;time_limit&#39;</span><span class="p">:</span> <span class="mi">600</span>
+    <span class="p">},</span>
+    <span class="n">neg_target_definition</span><span class="o">=</span><span class="p">{</span> <span class="c1"># how to define negative event, e.g. users who were inactive for 600 seconds.</span>
+
+    <span class="p">},</span>
+<span class="c1">#     neg_target_definition={ # you also can define target event as list of other events</span>
+<span class="c1">#         &#39;event_list&#39;: [&#39;lost&#39;]</span>
+<span class="c1">#     }</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>We need to create instance of pandas DataFrame with our data.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;data/train.csv&#39;</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;event_timestamp&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">prepare</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>event_name</th>
+      <th>event_timestamp</th>
+      <th>user_pseudo_id</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>13779</th>
+      <td>onboarding_welcome_screen</td>
+      <td>1538341204985002000</td>
+      <td>3f711081df2e582efe4be33349b811ae</td>
+    </tr>
+    <tr>
+      <th>13780</th>
+      <td>onboarding__chooseLoginType</td>
+      <td>1538341208435003000</td>
+      <td>3f711081df2e582efe4be33349b811ae</td>
+    </tr>
+    <tr>
+      <th>13781</th>
+      <td>onboarding_privacy_policyShown</td>
+      <td>1538341208468004000</td>
+      <td>3f711081df2e582efe4be33349b811ae</td>
+    </tr>
+    <tr>
+      <th>13782</th>
+      <td>onboarding_login_Type1</td>
+      <td>1538341208478005000</td>
+      <td>3f711081df2e582efe4be33349b811ae</td>
+    </tr>
+    <tr>
+      <th>13783</th>
+      <td>onboarding_privacy_policyAccepted</td>
+      <td>1538341211123008000</td>
+      <td>3f711081df2e582efe4be33349b811ae</td>
+    </tr>
+  </tbody>
+</table>
+</div><div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edgelist</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_edgelist</span><span class="p">()</span>
+<span class="n">edgelist</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>event_name</th>
+      <th>next_event</th>
+      <th>event_count</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>onboarding__chooseLoginType</td>
+      <td>lost</td>
+      <td>0.000242</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>onboarding__chooseLoginType</td>
+      <td>onboarding_login_Type1</td>
+      <td>0.100024</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>onboarding__chooseLoginType</td>
+      <td>onboarding_login_Type2</td>
+      <td>0.038415</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>onboarding__chooseLoginType</td>
+      <td>onboarding_privacy_policyShown</td>
+      <td>0.515342</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>onboarding__loginFailure</td>
+      <td>lost</td>
+      <td>0.000242</td>
+    </tr>
+  </tbody>
+</table>
+</div><p>You can use any columns as edge source and target using <code class="docutils literal notranslate"><span class="pre">cols</span></code> param,
+by default it is equal to list of <code class="docutils literal notranslate"><span class="pre">event_col</span></code> and automatically
+created <code class="docutils literal notranslate"><span class="pre">next_event</span></code> (shift of it) is used.</p>
+<p>Also you can use any column and any aggregation e.g.&nbsp;one can calculate
+number of unique users, who passed through edge via next chunk</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>event_name</th>
+      <th>event_timestamp</th>
+      <th>user_pseudo_id</th>
+      <th>next_event</th>
+      <th>next_timestamp</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>30255</th>
+      <td>onboarding_welcome_screen</td>
+      <td>1538341610616002000</td>
+      <td>000bf8e1812a0335c7e65d52b3f6e816</td>
+      <td>onboarding_otherLogin__show</td>
+      <td>1.538342e+18</td>
+    </tr>
+    <tr>
+      <th>30256</th>
+      <td>onboarding_otherLogin__show</td>
+      <td>1538341616091017000</td>
+      <td>000bf8e1812a0335c7e65d52b3f6e816</td>
+      <td>onboarding_welcome_screen</td>
+      <td>1.538342e+18</td>
+    </tr>
+    <tr>
+      <th>30257</th>
+      <td>onboarding_welcome_screen</td>
+      <td>1538341620614024000</td>
+      <td>000bf8e1812a0335c7e65d52b3f6e816</td>
+      <td>onboarding_welcome_screen</td>
+      <td>1.538342e+18</td>
+    </tr>
+    <tr>
+      <th>30258</th>
+      <td>onboarding_welcome_screen</td>
+      <td>1538341626961003000</td>
+      <td>000bf8e1812a0335c7e65d52b3f6e816</td>
+      <td>onboarding_welcome_screen</td>
+      <td>1.538342e+18</td>
+    </tr>
+    <tr>
+      <th>30259</th>
+      <td>onboarding_welcome_screen</td>
+      <td>1538341628689012000</td>
+      <td>000bf8e1812a0335c7e65d52b3f6e816</td>
+      <td>onboarding_welcome_screen</td>
+      <td>1.538342e+18</td>
+    </tr>
+  </tbody>
+</table>
+</div><div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">edgelist</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_edgelist</span><span class="p">(</span><span class="n">edge_col</span><span class="o">=</span><span class="s1">&#39;user_pseudo_id&#39;</span><span class="p">,</span> <span class="n">edge_attributes</span><span class="o">=</span><span class="s1">&#39;users_nunique&#39;</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">edgelist</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;users_nunique&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>event_name</th>
+      <th>next_event</th>
+      <th>users_nunique</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>84</th>
+      <td>onboarding_welcome_screen</td>
+      <td>onboarding_welcome_screen</td>
+      <td>2586</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>onboarding_welcome_screen</td>
+      <td>passed</td>
+      <td>2330</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>onboarding__chooseLoginType</td>
+      <td>onboarding_privacy_policyShown</td>
+      <td>2112</td>
+    </tr>
+    <tr>
+      <th>79</th>
+      <td>onboarding_welcome_screen</td>
+      <td>onboarding__chooseLoginType</td>
+      <td>1898</td>
+    </tr>
+    <tr>
+      <th>67</th>
+      <td>onboarding_privacy_policyShown</td>
+      <td>onboarding_login_Type1</td>
+      <td>1667</td>
+    </tr>
+  </tbody>
+</table>
+</div><p>or adjacency matrix</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_adjacency</span><span class="p">()</span>
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>onboarding__chooseLoginType</th>
+      <th>lost</th>
+      <th>onboarding_login_Type1</th>
+      <th>onboarding_login_Type2</th>
+      <th>onboarding_privacy_policyShown</th>
+      <th>onboarding__loginFailure</th>
+      <th>onboarding_login_Type1_cancel</th>
+      <th>onboarding_welcome_screen</th>
+      <th>onboarding_otherLogin__show</th>
+      <th>onboarding_privacy_policyAccepted</th>
+      <th>onboarding_privacy_policyDecline</th>
+      <th>onboarding_privacy_policyTapToPolicy</th>
+      <th>onboarding_otherLogin__chooseLoginType</th>
+      <th>passed</th>
+      <th>onboarding_otherLogin_privacy_policyDecline</th>
+      <th>onboarding_otherLogin_privacy_policyShown</th>
+      <th>onboarding_profile_edit_close</th>
+      <th>onboarding_otherLogin__close</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>onboarding__chooseLoginType</th>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.1</td>
+      <td>0.04</td>
+      <td>0.52</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>lost</th>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_login_Type1</th>
+      <td>0.00</td>
+      <td>0.01</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.03</td>
+      <td>0.00</td>
+      <td>0.04</td>
+      <td>0.00</td>
+      <td>0.4</td>
+      <td>0.01</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_login_Type2</th>
+      <td>0.01</td>
+      <td>0.01</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.01</td>
+      <td>0.1</td>
+      <td>0.01</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.01</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_privacy_policyShown</th>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.4</td>
+      <td>0.11</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding__loginFailure</th>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.12</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_login_Type1_cancel</th>
+      <td>0.05</td>
+      <td>0.02</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.04</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_welcome_screen</th>
+      <td>0.47</td>
+      <td>0.25</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>1.21</td>
+      <td>0.39</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.56</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_otherLogin__show</th>
+      <td>0.00</td>
+      <td>0.02</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.21</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.17</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.12</td>
+    </tr>
+    <tr>
+      <th>onboarding_privacy_policyAccepted</th>
+      <td>0.03</td>
+      <td>0.04</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.10</td>
+      <td>0.00</td>
+      <td>0.29</td>
+      <td>0.02</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.03</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_privacy_policyDecline</th>
+      <td>0.01</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.01</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_privacy_policyTapToPolicy</th>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_otherLogin__chooseLoginType</th>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.03</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.12</td>
+      <td>0.01</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>passed</th>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_otherLogin_privacy_policyDecline</th>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_otherLogin_privacy_policyShown</th>
+      <td>0.00</td>
+      <td>0.01</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.08</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.01</td>
+      <td>0.00</td>
+      <td>0.02</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_profile_edit_close</th>
+      <td>0.01</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.01</td>
+      <td>0.01</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+    <tr>
+      <th>onboarding_otherLogin__close</th>
+      <td>0.06</td>
+      <td>0.02</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.03</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.0</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+      <td>0.00</td>
+    </tr>
+  </tbody>
+</table>
+</div><p>All similar parameters work for adjacency matrix calculation.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_adjacency</span><span class="p">(</span><span class="n">edge_col</span><span class="o">=</span><span class="s1">&#39;user_pseudo_id&#39;</span><span class="p">,</span> <span class="n">edge_attributes</span><span class="o">=</span><span class="s1">&#39;users_nunique&#39;</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>onboarding__chooseLoginType</th>
+      <th>lost</th>
+      <th>onboarding_login_Type1</th>
+      <th>onboarding_login_Type2</th>
+      <th>onboarding_privacy_policyShown</th>
+      <th>onboarding__loginFailure</th>
+      <th>onboarding_login_Type1_cancel</th>
+      <th>onboarding_welcome_screen</th>
+      <th>onboarding_otherLogin__show</th>
+      <th>onboarding_privacy_policyAccepted</th>
+      <th>onboarding_privacy_policyDecline</th>
+      <th>onboarding_privacy_policyTapToPolicy</th>
+      <th>onboarding_otherLogin__chooseLoginType</th>
+      <th>passed</th>
+      <th>onboarding_otherLogin_privacy_policyDecline</th>
+      <th>onboarding_otherLogin_privacy_policyShown</th>
+      <th>onboarding_profile_edit_close</th>
+      <th>onboarding_otherLogin__close</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>onboarding__chooseLoginType</th>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>356.0</td>
+      <td>142.0</td>
+      <td>2112.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>lost</th>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_login_Type1</th>
+      <td>12.0</td>
+      <td>40.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>104.0</td>
+      <td>0.0</td>
+      <td>180.0</td>
+      <td>10.0</td>
+      <td>1639.0</td>
+      <td>43.0</td>
+      <td>17.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_login_Type2</th>
+      <td>34.0</td>
+      <td>32.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>5.0</td>
+      <td>0.0</td>
+      <td>4.0</td>
+      <td>44.0</td>
+      <td>405.0</td>
+      <td>54.0</td>
+      <td>5.0</td>
+      <td>0.0</td>
+      <td>22.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_privacy_policyShown</th>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>1667.0</td>
+      <td>455.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding__loginFailure</th>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>457.0</td>
+      <td>18.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_login_Type1_cancel</th>
+      <td>200.0</td>
+      <td>91.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>14.0</td>
+      <td>181.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_welcome_screen</th>
+      <td>1898.0</td>
+      <td>1043.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>4.0</td>
+      <td>0.0</td>
+      <td>2586.0</td>
+      <td>1581.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>2330.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>16.0</td>
+      <td>3.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_otherLogin__show</th>
+      <td>0.0</td>
+      <td>82.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>873.0</td>
+      <td>2.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>644.0</td>
+      <td>2.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>445.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_privacy_policyAccepted</th>
+      <td>127.0</td>
+      <td>161.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>402.0</td>
+      <td>0.0</td>
+      <td>1187.0</td>
+      <td>81.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>121.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_privacy_policyDecline</th>
+      <td>46.0</td>
+      <td>17.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>38.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_privacy_policyTapToPolicy</th>
+      <td>1.0</td>
+      <td>7.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>10.0</td>
+      <td>4.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_otherLogin__chooseLoginType</th>
+      <td>3.0</td>
+      <td>12.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>136.0</td>
+      <td>9.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>5.0</td>
+      <td>501.0</td>
+      <td>41.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>passed</th>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_otherLogin_privacy_policyDecline</th>
+      <td>11.0</td>
+      <td>4.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>14.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_otherLogin_privacy_policyShown</th>
+      <td>9.0</td>
+      <td>33.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>339.0</td>
+      <td>18.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>24.0</td>
+      <td>0.0</td>
+      <td>80.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_profile_edit_close</th>
+      <td>34.0</td>
+      <td>19.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>42.0</td>
+      <td>40.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>onboarding_otherLogin__close</th>
+      <td>249.0</td>
+      <td>99.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>11.0</td>
+      <td>120.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+    </tr>
+  </tbody>
+</table>
+</div><p>or we can simply visualize graph.</p>
+<p>By default weight in visualization is equal to rate of unique users, who
+pass the edge, you can change it to rate of all event occasions by
+turning <code class="docutils literal notranslate"><span class="pre">user_based</span></code> equal <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">thresh</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">800</span><span class="p">)</span>
+</pre></div>
+</div>
+<iframe
+    width="900"
+    height="900"
+    src="_static/index.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><p>If you change node positions and want to save resulting layout, you can
+click on donwload button and load it to graph visualizer as follows.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">layout_dump</span><span class="o">=</span><span class="s1">&#39;node_params.json&#39;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">800</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Also you can use other data columns and aggregation functions from
+<code class="docutils literal notranslate"><span class="pre">retention.get_edgelist()</span></code> method (be sure that in this case
+<code class="docutils literal notranslate"><span class="pre">user_based=False</span></code>).</p>
+<p>For example, we can visualize mean time between events.</p>
+<p>Firtly, we should add column with time difference between event
+timestamps.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;seconds_between_events&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">next_timestamp</span> <span class="o">-</span> <span class="n">data</span><span class="o">.</span><span class="n">event_timestamp</span><span class="p">)</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+<span class="c1"># use show_percent=False to visualize absolute value</span>
+<span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">user_based</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">edge_col</span><span class="o">=</span><span class="s1">&#39;seconds_between_events&#39;</span><span class="p">,</span> <span class="n">edge_attributes</span><span class="o">=</span><span class="s1">&#39;time_mean&#39;</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span> <span class="n">show_percent</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<iframe
+    width="900"
+    height="900"
+    src="_static/index-time.html"
+    frameborder="0"
+    allowfullscreen
+></iframe></div>
+<div class="section" id="temporal-funnel">
+<h2>Temporal funnel<a class="headerlink" href="#temporal-funnel" title="Permalink to this headline">¶</a></h2>
+<p>Let’s plot the temporal funnel. Rows correspond to different events and
+columns correspond to step number in the user trajectory, value
+corresponds to fraction of all users who had corresponding event at
+corresponding step. For example, you can see that all users in the
+analysis start from “welcome_screen” (step 1) and end ended up passed
+(~0.6) or lost (~0.4) after 24 steps</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">desc_table</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="_images/output_24_0.png" src="_images/output_24_0.png" />
+<p>And we can calculate temporal funnel difference between two groups</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># create group filter based on target events</span>
+<span class="n">diff_filter</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">create_filter</span><span class="p">()</span>
+
+<span class="c1"># calculate difference table between two groups</span>
+<span class="n">diff_table</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_step_matrix_difference</span><span class="p">(</span><span class="n">diff_filter</span><span class="p">,</span> <span class="n">max_steps</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="_images/output_26_0.png" src="_images/output_26_0.png" />
+</div>
+<div class="section" id="clustering">
+<h2>Clustering<a class="headerlink" href="#clustering" title="Permalink to this headline">¶</a></h2>
+<p>We can use clustering with different visualizations</p>
+<p>Clutermap allows to see how important different events are for
+clustering. For example we can see that <code class="docutils literal notranslate"><span class="pre">onboarding_welcome_screen</span></code> is
+always equal, so it does not affect clustering, but
+<code class="docutils literal notranslate"><span class="pre">onboarding_chooseLoginType</span></code> varies accross users and creates some
+clusters.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;cluster_heatmap&#39;</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/output_30_0.png" src="_images/output_30_0.png" />
+<p>Then it will be useful to visualize projection of user trajectories to
+understand how many clusters we have.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">learn_tsne</span><span class="p">(</span><span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;targets&#39;</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/output_32_0.png" src="_images/output_32_0.png" />
+<p>We can see that projection is poor, so it will be good to tune it. To
+update TSNE weights we need to set <code class="docutils literal notranslate"><span class="pre">refit</span></code> parameter to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+<p>Any parameter from <code class="docutils literal notranslate"><span class="pre">sklearn.manifold.TSNE</span></code> can be used, e.g.
+<code class="docutils literal notranslate"><span class="pre">perplexity</span></code> can help to obtain better visualization.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">learn_tsne</span><span class="p">(</span><span class="n">perplexity</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;targets&#39;</span><span class="p">,</span> <span class="n">refit</span><span class="o">=</span><span class="kc">True</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/output_34_0.png" src="_images/output_34_0.png" />
+<p>Now we can see two dense cirle clusters.</p>
+<p>Any parameters from <code class="docutils literal notranslate"><span class="pre">sklearn.cluster.KMeans</span></code> can be used.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;cluster_tsne&#39;</span><span class="p">,</span> <span class="n">refit_cluster</span><span class="o">=</span><span class="kc">True</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/output_36_0.png" src="_images/output_36_0.png" />
+<p>We do not use target events in clustering, so we can compare different
+groups in terms of what target event is likely to occur in them.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;cluster_pie&#39;</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/output_38_0.png" src="_images/output_38_0.png" />
+<p>We can see that clusters <code class="docutils literal notranslate"><span class="pre">0</span></code> and <code class="docutils literal notranslate"><span class="pre">1</span></code> are pretty interesting, so we
+can visualize graph for them.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">data</span>
+ <span class="o">.</span><span class="n">retention</span>
+ <span class="o">.</span><span class="n">filter_cluster</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+ <span class="o">.</span><span class="n">retention</span>
+ <span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">800</span><span class="p">))</span>
+</pre></div>
+</div>
+<iframe
+    width="900"
+    height="900"
+    src="_static/cluster1.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">data</span>
+ <span class="o">.</span><span class="n">retention</span>
+ <span class="o">.</span><span class="n">filter_cluster</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+ <span class="o">.</span><span class="n">retention</span>
+ <span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">800</span><span class="p">))</span>
+</pre></div>
+</div>
+<iframe
+    width="900"
+    height="900"
+    src="_static/cluster2.html"
+    frameborder="0"
+    allowfullscreen
+></iframe></div>
+<div class="section" id="supervised-classifier">
+<h2>Supervised classifier<a class="headerlink" href="#supervised-classifier" title="Permalink to this headline">¶</a></h2>
+<p>Supervised learning is usually better then clustering.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">create_model</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>To understand what features are meaningful, we can visualize graph of
+weights.</p>
+<p>Larger the node or edge, larger its effect on probability of target
+event. Green nodes mean positive effect, red nodes – negative.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">features</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+<span class="n">target</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_positive_users</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">permutation_importance</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ROC</span><span class="o">-</span><span class="n">AUC</span><span class="p">:</span> <span class="mf">0.9124591164734438</span>
+<span class="n">PR</span><span class="o">-</span><span class="n">AUC</span><span class="p">:</span> <span class="mf">0.8975341600045529</span>
+<span class="n">Accuracy</span><span class="p">:</span> <span class="mf">0.8849514563106796</span>
+</pre></div>
+</div>
+<iframe
+    width="600"
+    height="600"
+    src="_static/importance.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><p>You can use any different model with sklearn-api (ont only sklearn
+package has it e.g. <code class="docutils literal notranslate"><span class="pre">lightgm</span></code> can be used too).</p>
+<p>And pass params to it.</p>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="k">import</span> <span class="n">RandomForestClassifier</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">RandomForestClassifier</span><span class="p">,</span> <span class="n">n_estimators</span><span class="o">=</span><span class="mi">25</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">features</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+<span class="n">target</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_positive_users</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">permutation_importance</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ROC</span><span class="o">-</span><span class="n">AUC</span><span class="p">:</span> <span class="mf">0.9592964985907655</span>
+<span class="n">PR</span><span class="o">-</span><span class="n">AUC</span><span class="p">:</span> <span class="mf">0.9456069017198432</span>
+<span class="n">Accuracy</span><span class="p">:</span> <span class="mf">0.9269417475728156</span>
+</pre></div>
+</div>
+<iframe
+    width="600"
+    height="600"
+    src="_static/imp2.html"
+    frameborder="0"
+    allowfullscreen
+></iframe></div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="mobile-app-case.html" class="btn btn-neutral float-right" title="Mobile app case" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Retentioneering User Trajectory Analysis Lab
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

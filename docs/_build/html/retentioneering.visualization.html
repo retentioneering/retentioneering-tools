@@ -1,0 +1,360 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>retentioneering.visualization package &mdash; Retentioneering Tools 1.0.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="retentioneering.core package" href="retentioneering.core.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Retentioneering Tools
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="early_steps.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mobile-app-case.html">Mobile app case</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="retentioneering.html">Documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="retentioneering.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="retentioneering.core.html">retentioneering.core package</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">retentioneering.visualization package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.visualization.plot">retentioneering.visualization.plot module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.visualization">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="retentioneering.html#module-retentioneering">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Retentioneering Tools</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="retentioneering.html">retentioneering package</a> &raquo;</li>
+        
+      <li>retentioneering.visualization package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/retentioneering.visualization.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="retentioneering-visualization-package">
+<h1>retentioneering.visualization package<a class="headerlink" href="#retentioneering-visualization-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-retentioneering.visualization.plot">
+<span id="retentioneering-visualization-plot-module"></span><h2>retentioneering.visualization.plot module<a class="headerlink" href="#module-retentioneering.visualization.plot" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="retentioneering.visualization.plot.cluster_heatmap">
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_heatmap</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_heatmap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Visualizes features for users with heatmap</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – feature matrix</li>
+<li><strong>clusters</strong> – do nothing, need for compatibility with other cluster visualization methods</li>
+<li><strong>target</strong> – do nothing, need for compatibility with other cluster visualization methods</li>
+<li><strong>plot_name</strong> – name of plot to save</li>
+<li><strong>kwargs</strong> – do nothing, need for compatibility with other cluster visualization methods</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">saves plot to <cite>experiments_folder</cite></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.visualization.plot.cluster_pie">
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_pie</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>plot_cnt=6</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_pie" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots pie-charts of target distribution for different clusters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – feature matrix</li>
+<li><strong>clusters</strong> – np.array of cluster ids</li>
+<li><strong>target</strong> – boolean vector, if True, then user have <cite>positive_target_event</cite> in trajectory</li>
+<li><strong>plot_name</strong> – name of plot to save</li>
+<li><strong>plot_cnt</strong> – number of clusters to plot</li>
+<li><strong>kwargs</strong> – width and height of plot</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">saves plot to <cite>experiments_folder</cite></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.visualization.plot.cluster_tsne">
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_tsne</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_tsne" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots TSNE projection of user stories and colors by founded clusters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – feature matrix</li>
+<li><strong>clusters</strong> – np.array of cluster ids</li>
+<li><strong>target</strong> – do nothing, need for compatibility with other cluster visualization methods</li>
+<li><strong>plot_name</strong> – name of plot to save</li>
+<li><strong>kwargs</strong> – do nothing, needs for plot usage with other functions</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">saves plot to <cite>experiments_folder</cite></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.visualization.plot.graph">
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">graph</code><span class="sig-paren">(</span><em>data</em>, <em>node_params=None</em>, <em>thresh=0.05</em>, <em>width=500</em>, <em>height=500</em>, <em>interactive=True</em>, <em>layout_dump=None</em>, <em>show_percent=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.graph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots graph by its edgelist representation</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – graph in edgelist form</li>
+<li><strong>node_params</strong> – <p>mapping describes which node should be highlighted by target or source type
+Node param should be represented in the following form
+<a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>{</p>
+<blockquote>
+<div><blockquote>
+<div>’lost’: ‘bad_target’,
+‘passed’: ‘nice_target’,
+‘onboarding_welcome_screen’: ‘source’,</div></blockquote>
+<p>}```</p>
+</div></blockquote>
+<p>If mapping is not given, it will be constracted from config</p>
+</li>
+<li><strong>thresh</strong> – threshold for filtering low frequency edges</li>
+<li><strong>width</strong> – width of plot</li>
+<li><strong>height</strong> – height of plot</li>
+<li><strong>interactive</strong> – if True, then opens graph visualization in Jupyter Notebook IFrame</li>
+<li><strong>layout_dump</strong> – path to layout dump</li>
+<li><strong>show_percent</strong> – if True, then all edge weights are converted to percents</li>
+<li><strong>kwargs</strong> – do nothing, needs for plot.graph usage with other functions</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">saves to <cite>experiments_folder</cite> webpage with js graph visualization</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.visualization.plot.step_matrix">
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">step_matrix</code><span class="sig-paren">(</span><em>diff</em>, <em>plot_name=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.step_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots heatmap with distribution of events over event steps (ordering in the session by event time)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>diff</strong> – table for heatmap visualization</li>
+<li><strong>plot_name</strong> – name of plot to save</li>
+<li><strong>kwargs</strong> – do nothing, needs for plot usage with other functions</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">saves heatmap to <cite>experiments_folder</cite></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-retentioneering.visualization">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-retentioneering.visualization" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="retentioneering.core.html" class="btn btn-neutral float-left" title="retentioneering.core package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Retentioneering User Trajectory Analysis Lab
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

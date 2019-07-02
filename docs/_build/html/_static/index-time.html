@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+                circle {
+                  fill: #ccc;
+                  stroke: #333;
+                  stroke-width: 1.5px;
+                }
+
+                .circle.source_node {
+                  fill: #f3f310;
+                }
+
+                .circle.nice_node {
+                  fill: green;
+                }
+
+                .circle.bad_node {
+                  fill: red;
+                }
+
+                .link {
+                  fill: none;
+                  stroke: #666;
+                  stroke-opacity: 0.7;
+                }
+
+                #nice_target {
+                  fill: green;
+                }
+
+                .link.nice_target {
+                  stroke: green;
+                }
+
+                #source {
+                  fill: yellow;
+                }
+
+                .link.source {
+                  stroke: #f3f310;
+                }
+                
+                .link.positive {
+                  stroke: green;
+                }
+                
+                .link.negative {
+                  stroke: red;
+                }
+
+                #source {
+                  fill: orange;
+                }
+
+                .link.source1 {
+                  stroke: orange;
+                }
+
+                #bad_target {
+                  fill: red;
+                }
+
+                .link.bad_target {
+                  stroke: red;
+                }
+                text {
+                  font: 12px sans-serif;
+                  pointer-events: none;
+                  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
+                }
+
+</style>
+<body>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<div>
+  <input type="checkbox" class="checkbox" value="weighted"><label> Show weights </label>
+</div>
+<div id="option">
+    <input name="downloadButton" 
+           type="button" 
+           value="download" 
+           onclick="downloadLayout()" />
+</div>
+<script>
+
+var links = [{"source": {"index": 0, "name": "onboarding_login_Type1", "x": 546.0091877730907, "y": 387.4483189390834, "type": "suit_node", "degree": 2.326923076923077}, "target": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "weight": 0.024492207264947233, "weight_text": 0.17279909872270105, "type": "suit"}, {"source": {"index": 5, "name": "onboarding_login_Type1_cancel", "x": 551.0492705171339, "y": 380.82827669747746, "type": "suit_node", "degree": 2.326923076923077}, "target": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "weight": 0.1744599918210202, "weight_text": 1.2946709004935628, "type": "suit"}, {"source": {"index": 6, "name": "onboarding_login_Type2", "x": 544.4717655023851, "y": 355.3028659303936, "type": "suit_node", "degree": 6.9423076923076925}, "target": {"index": 4, "name": "onboarding__chooseLoginType", "x": 458.1652854040624, "y": 50.0, "type": "suit_node", "degree": 11.557692307692308}, "weight": 0.004693886462174942, "weight_text": 0.03289844567931062, "type": "suit"}, {"source": {"index": 6, "name": "onboarding_login_Type2", "x": 544.4717655023851, "y": 355.3028659303936, "type": "suit_node", "degree": 6.9423076923076925}, "target": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "weight": 0.28146095148497974, "weight_text": 2.166525730852863, "type": "suit"}, {"source": {"index": 6, "name": "onboarding_login_Type2", "x": 544.4717655023851, "y": 355.3028659303936, "type": "suit_node", "degree": 6.9423076923076925}, "target": {"index": 13, "name": "passed", "x": 625.0, "y": 641.5479715299352, "type": "bad_node", "degree": 13.865384615384617}, "weight": 0.0023960464065064862, "weight_text": 0.016780513518856115, "type": "bad_target"}, {"source": {"index": 7, "name": "onboarding_otherLogin__chooseLoginType", "x": 525.6911091930044, "y": 288.76175054082, "type": "suit_node", "degree": 4.634615384615385}, "target": {"index": 4, "name": "onboarding__chooseLoginType", "x": 458.1652854040624, "y": 50.0, "type": "suit_node", "degree": 11.557692307692308}, "weight": 0.001840237007943495, "weight_text": 0.012885560119191432, "type": "suit"}, {"source": {"index": 7, "name": "onboarding_otherLogin__chooseLoginType", "x": 525.6911091930044, "y": 288.76175054082, "type": "suit_node", "degree": 4.634615384615385}, "target": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "weight": 0.011785533396020256, "weight_text": 0.08279795359434822, "type": "suit"}, {"source": {"index": 12, "name": "onboarding_otherLogin__close", "x": 599.6897392395377, "y": 551.4778021625859, "type": "suit_node", "degree": 4.634615384615385}, "target": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "weight": 0.37814156963561985, "weight_text": 3.009598278020602, "type": "suit"}, {"source": {"index": 12, "name": "onboarding_otherLogin__close", "x": 599.6897392395377, "y": 551.4778021625859, "type": "suit_node", "degree": 4.634615384615385}, "target": {"index": 13, "name": "passed", "x": 625.0, "y": 641.5479715299352, "type": "bad_node", "degree": 13.865384615384617}, "weight": 1.0397207708399179, "weight_text": 10.49673834259483, "type": "bad_target"}, {"source": {"index": 11, "name": "onboarding_otherLogin__show", "x": 617.6428528108296, "y": 615.3599906277175, "type": "suit_node", "degree": 4.634615384615385}, "target": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "weight": 0.001500640538642681, "weight_text": 0.010506475324924623, "type": "suit"}, {"source": {"index": 11, "name": "onboarding_otherLogin__show", "x": 617.6428528108296, "y": 615.3599906277175, "type": "suit_node", "degree": 4.634615384615385}, "target": {"index": 13, "name": "passed", "x": 625.0, "y": 641.5479715299352, "type": "bad_node", "degree": 13.865384615384617}, "weight": 0.11366051733221483, "weight_text": 0.8262865426431505, "type": "bad_target"}, {"source": {"index": 2, "name": "onboarding_otherLogin_privacy_policyShown", "x": 564.477623785119, "y": 382.2625202752542, "type": "suit_node", "degree": 2.326923076923077}, "target": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "weight": 0.01347927050222453, "weight_text": 0.09475066937131173, "type": "suit"}, {"source": {"index": 10, "name": "onboarding_privacy_policyAccepted", "x": 507.2836136242986, "y": 446.043561767393, "type": "suit_node", "degree": 9.25}, "target": {"index": 4, "name": "onboarding__chooseLoginType", "x": 458.1652854040624, "y": 50.0, "type": "suit_node", "degree": 11.557692307692308}, "weight": 0.002247102712298861, "weight_text": 0.01573661712194166, "type": "suit"}, {"source": {"index": 10, "name": "onboarding_privacy_policyAccepted", "x": 507.2836136242986, "y": 446.043561767393, "type": "suit_node", "degree": 9.25}, "target": {"index": 1, "name": "onboarding__loginFailure", "x": 250.9169785063167, "y": 600.150688038314, "type": "suit_node", "degree": 2.326923076923077}, "weight": 0.0027662318192428364, "weight_text": 0.01937546792181567, "type": "suit"}, {"source": {"index": 10, "name": "onboarding_privacy_policyAccepted", "x": 507.2836136242986, "y": 446.043561767393, "type": "suit_node", "degree": 9.25}, "target": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "weight": 0.00778415406543582, "weight_text": 0.05461373697973552, "type": "suit"}, {"source": {"index": 10, "name": "onboarding_privacy_policyAccepted", "x": 507.2836136242986, "y": 446.043561767393, "type": "suit_node", "degree": 9.25}, "target": {"index": 13, "name": "passed", "x": 625.0, "y": 641.5479715299352, "type": "bad_node", "degree": 13.865384615384617}, "weight": 0.007173847880750267, "weight_text": 0.05032157326299521, "type": "bad_target"}, {"source": {"index": 9, "name": "onboarding_privacy_policyTapToPolicy", "x": 75.0, "y": 635.8479478970273, "type": "suit_node", "degree": 2.326923076923077}, "target": {"index": 3, "name": "onboarding_privacy_policyDecline", "x": 77.02627386541246, "y": 650.0, "type": "suit_node", "degree": 2.326923076923077}, "weight": 0.0016045827027443798, "weight_text": 0.01123459772892003, "type": "suit"}, {"source": {"index": 14, "name": "onboarding_profile_edit_close", "x": 526.8020715315445, "y": 292.88783448130357, "type": "suit_node", "degree": 6.9423076923076925}, "target": {"index": 4, "name": "onboarding__chooseLoginType", "x": 458.1652854040624, "y": 50.0, "type": "suit_node", "degree": 11.557692307692308}, "weight": 0.010328755887843051, "weight_text": 0.07252825427505302, "type": "suit"}, {"source": {"index": 14, "name": "onboarding_profile_edit_close", "x": 526.8020715315445, "y": 292.88783448130357, "type": "suit_node", "degree": 6.9423076923076925}, "target": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "weight": 0.0433634438420293, "weight_text": 0.3078785996157342, "type": "suit"}, {"source": {"index": 14, "name": "onboarding_profile_edit_close", "x": 526.8020715315445, "y": 292.88783448130357, "type": "suit_node", "degree": 6.9423076923076925}, "target": {"index": 13, "name": "passed", "x": 625.0, "y": 641.5479715299352, "type": "bad_node", "degree": 13.865384615384617}, "weight": 0.0020701079741579174, "weight_text": 0.01449625513409036, "type": "bad_target"}, {"source": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "target": {"index": 4, "name": "onboarding__chooseLoginType", "x": 458.1652854040624, "y": 50.0, "type": "suit_node", "degree": 11.557692307692308}, "weight": 0.0014374686781276757, "weight_text": 0.010063976506791472, "type": "suit"}, {"source": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "target": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "weight": 0.007399562589240496, "weight_text": 0.051908777047971366, "type": "suit"}, {"source": {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, "target": {"index": 13, "name": "passed", "x": 625.0, "y": 641.5479715299352, "type": "bad_node", "degree": 13.865384615384617}, "weight": 0.0023849937451081954, "weight_text": 0.016703045561584716, "type": "bad_target"}];
+var node_params = {"lost": "nice_target", "passed": "bad_target"};
+
+var nodes = [{"index": 0, "name": "onboarding_login_Type1", "x": 546.0091877730907, "y": 387.4483189390834, "type": "suit_node", "degree": 2.326923076923077}, {"index": 1, "name": "onboarding__loginFailure", "x": 250.9169785063167, "y": 600.150688038314, "type": "suit_node", "degree": 2.326923076923077}, {"index": 2, "name": "onboarding_otherLogin_privacy_policyShown", "x": 564.477623785119, "y": 382.2625202752542, "type": "suit_node", "degree": 2.326923076923077}, {"index": 3, "name": "onboarding_privacy_policyDecline", "x": 77.02627386541246, "y": 650.0, "type": "suit_node", "degree": 2.326923076923077}, {"index": 4, "name": "onboarding__chooseLoginType", "x": 458.1652854040624, "y": 50.0, "type": "suit_node", "degree": 11.557692307692308}, {"index": 5, "name": "onboarding_login_Type1_cancel", "x": 551.0492705171339, "y": 380.82827669747746, "type": "suit_node", "degree": 2.326923076923077}, {"index": 6, "name": "onboarding_login_Type2", "x": 544.4717655023851, "y": 355.3028659303936, "type": "suit_node", "degree": 6.9423076923076925}, {"index": 7, "name": "onboarding_otherLogin__chooseLoginType", "x": 525.6911091930044, "y": 288.76175054082, "type": "suit_node", "degree": 4.634615384615385}, {"index": 8, "name": "onboarding_welcome_screen", "x": 552.4112727286589, "y": 383.27103212377006, "type": "suit_node", "degree": 30.01923076923077}, {"index": 9, "name": "onboarding_privacy_policyTapToPolicy", "x": 75.0, "y": 635.8479478970273, "type": "suit_node", "degree": 2.326923076923077}, {"index": 10, "name": "onboarding_privacy_policyAccepted", "x": 507.2836136242986, "y": 446.043561767393, "type": "suit_node", "degree": 9.25}, {"index": 11, "name": "onboarding_otherLogin__show", "x": 617.6428528108296, "y": 615.3599906277175, "type": "suit_node", "degree": 4.634615384615385}, {"index": 12, "name": "onboarding_otherLogin__close", "x": 599.6897392395377, "y": 551.4778021625859, "type": "suit_node", "degree": 4.634615384615385}, {"index": 13, "name": "passed", "x": 625.0, "y": 641.5479715299352, "type": "bad_node", "degree": 13.865384615384617}, {"index": 14, "name": "onboarding_profile_edit_close", "x": 526.8020715315445, "y": 292.88783448130357, "type": "suit_node", "degree": 6.9423076923076925}];
+
+var width = 800,
+    height = 800;
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+let defs = svg.append("g").selectAll("marker")
+    .data(links)
+  .enter().append("marker")
+    .attr("id", function(d) { return d.source.index + '-' + d.target.index; })
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", function(d) {
+        if (d.target.name !== d.source.name) {
+            return 7 + d.target.degree; 
+        } else {
+            return 0;
+        }
+    })
+    .attr("refY", calcMarkers)
+    .attr("markerWidth", 10)
+    .attr("markerHeight", 10)
+    .attr("markerUnits", "userSpaceOnUse")
+    .attr("orient", "auto");
+
+defs.append("path")
+    .attr("d", "M0,-5L10,0L0,5");
+
+function calcMarkers(d) {
+    let dist = Math.sqrt((nodes[d.target.index].x - nodes[d.source.index].x) ** 2 + (nodes[d.target.index].y - nodes[d.source.index].y) ** 2);
+    if (dist > 0 && dist <= 200){
+        return - Math.sqrt((0.5 - (d.target.degree ) / 2 / dist)) * (d.target.degree) / 2;
+    } else {
+        return 0;
+    }
+}
+
+var path = svg.append("g").selectAll("path")
+    .data(links)
+  .enter().append("path")
+    .attr("class", function(d) { return "link " + d.type; })
+    .attr("stroke-width", function(d) { return (d.weight * 20); })
+    .attr("marker-end", function(d) { return "url(#" + d.source.index + '-' + d.target.index + ")"; })
+    .attr("id", function(d,i) { return "link_"+i; })
+    .attr("d", linkArc)
+    ;
+
+var edgetext = svg.append("g").selectAll("text")
+    .data(links)
+   .enter().append("text")
+   .append("textPath")
+    .attr("xlink:href",function(d,i){return "#link_"+i;})
+    .style("text-anchor","middle")
+    .attr("startOffset", "50%")
+    ;
+    
+function update() {
+    d3.selectAll(".checkbox").each(function(d) {
+        cb = d3.select(this);
+        if (cb.property("checked")) {
+            edgetext = edgetext.text(function(d) {
+                if (1 === 1) {
+                    return Math.round(d.weight_text * 100) / 100;
+                } else {
+                    return Math.round(d.weight_text * 100) + "%";
+                }
+            })
+        } else {
+            edgetext = edgetext.text(function(d) { return ; })
+        }
+    })
+};
+
+d3.selectAll(".checkbox").on("change",update);
+
+function dragstarted(d) {
+  d3.select(this).raise().classed("active", true);
+}
+
+function dragged(d) {
+  d3.select(this).attr("cx", d.x = d3.event.x).attr("cy", d.y = d3.event.y);
+}
+
+function dragended(d) {
+  d3.select(this).classed("active", false);
+  path = path.attr("d", linkArc);
+  text = text
+        .attr('x', function(d) { return d.x; })
+        .attr('y', function(d) { return d.y; })
+        ;
+  defs = defs.attr("refY", calcMarkers);
+  defs.append("path")
+    .attr("d", "M0,-5L10,0L0,5");
+};
+
+var circle = svg.append("g").selectAll("circle")
+    .data(nodes)
+  .enter().append("circle")
+    .attr("class", function(d) { return "circle " + d.type; })
+    .attr("r", function(d) { return d.degree; })
+    .attr('cx', function(d) { return d.x; })
+    .attr('cy', function(d) { return d.y; })
+    .call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
+
+var text = svg.append("g").selectAll("text")
+    .data(nodes)
+  .enter().append("text")
+    .attr('x', function(d) { return d.x; })
+    .attr('y', function(d) { return d.y; })
+    .text(function(d) { return d.name; });
+
+function linkArc(d) {
+  var dx = nodes[d.target.index].x - nodes[d.source.index].x,
+      dy = nodes[d.target.index].y - nodes[d.source.index].y,
+      dr = dx * dx + dy * dy;
+      dr = Math.sqrt(dr);
+      if (dr > 200) {
+        dr *= 5
+      } else {
+        dr /= 2
+      };
+      if (dr > 0) {return "M" + nodes[d.source.index].x + "," + nodes[d.source.index].y + "A" + (dr * 1.1) + "," + (dr * 1.1) + " 0 0,1 " + nodes[d.target.index].x + "," + nodes[d.target.index].y;}
+      else {return "M" + nodes[d.source.index].x + "," + nodes[d.source.index].y + "A" + 20 + "," + 20 + " 0 1,0 " + (nodes[d.target.index].x + 0.1) + "," + (nodes[d.target.index].y + 0.1);}
+}
+
+function downloadLayout() {
+    var a = document.createElement("a");
+    var file = new Blob([JSON.stringify(nodes)], {type: "text/json;charset=utf-8"});
+    a.href = URL.createObjectURL(file);
+    a.download = "node_params.json";
+    a.click();
+}
+
+
+</script>

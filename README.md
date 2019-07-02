@@ -26,6 +26,6 @@ pip3 install retentioneering
     
 ### First steps
 
-To start use our package, please, see the [documentation]() 
+To start use our package, please, see the [documentation](https://retentioneering.github.io/retentioneering-tools/) 
 
         

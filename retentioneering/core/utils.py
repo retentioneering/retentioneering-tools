@@ -502,6 +502,8 @@ class BaseDataset(BaseTrajectory):
 
     def _convert_timestamp(self, time_col=None):
         timestamp = self._obj[time_col or self.retention_config['event_time_col']].iloc[0]
+        if hasattr(timestamp, 'second'):
+            return
         if type(timestamp) != str:
             l = len(str(timestamp))
             self._obj[time_col or self.retention_config['event_time_col']] *= 10 ** (19 - l)

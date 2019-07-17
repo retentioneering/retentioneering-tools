@@ -152,7 +152,7 @@ class BaseTrajectory(object):
         """
         if name not in agg.index:
             return pd.Series([0] * agg.shape[1], index=agg.columns, name='Accumulated ' + name)
-        return agg.loc[name].cumsum().rename('Accumulated ' + name)
+        return agg.loc[name].cumsum().shift(1).fillna(0).rename('Accumulated ' + name)
 
     def get_step_matrix(self, max_steps=None, plot_type=True, dt_means=False, **kwargs):
         """

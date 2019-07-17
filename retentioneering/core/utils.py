@@ -154,7 +154,7 @@ class BaseTrajectory(object):
             return pd.Series([0] * agg.shape[1], index=agg.columns, name='Accumulated ' + name)
         return agg.loc[name].cumsum().rename('Accumulated ' + name)
 
-    def get_step_matrix(self, max_steps=None, plot_type=True, **kwargs):
+    def get_step_matrix(self, max_steps=None, plot_type=True, dt_means=False, **kwargs):
         """
         Plots heatmap with distribution of events over event steps (ordering in the session by event time)
 
@@ -179,6 +179,11 @@ class BaseTrajectory(object):
         piv = piv.round(2)
         if plot_type:
             plot.step_matrix(piv)
+        if dt_means:
+            means = np.array(self._obj.groupby('event_rank').apply(
+                lambda x: np.exp(np.mean(np.log((x.next_timestamp - x.event_timestamp).dt.total_seconds() + 1e-20)))
+            ))
+            piv = pd.concat([piv, pd.DataFrame([means], columns=piv.columns, index=['dt_mean'])])
         return piv
 
     @staticmethod

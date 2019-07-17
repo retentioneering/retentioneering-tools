@@ -91,7 +91,7 @@ __TEMPLATE__ = """
 
 </style>
 <body>
-<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://api.retentioneering.com/files/d3.v4.min.js"></script>
 <div>
   <input type="checkbox" class="checkbox" value="weighted"><label> Show weights </label>
 </div>

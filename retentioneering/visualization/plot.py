@@ -473,7 +473,7 @@ def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
 
 
 @__save_plot__
-def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=6, **kwargs):
+def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, **kwargs):
     """
     Plots pie-charts of target distribution for different clusters
 
@@ -489,16 +489,21 @@ def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=6, **kwargs):
     cl.target = np.where(cl.target, data.retention.retention_config['positive_target_event'],
                          data.retention.retention_config['negative_target_event'])
     pie_data = cl.groupby(['clusters', 'target']).size().rename('target_dist').reset_index()
+    targets = list(set(pie_data.target))
 
-    fig, ax = sns.mpl.pyplot.subplots(1 if plot_cnt <= 2 else (plot_cnt // 2 + 1), 2)
+    if plot_cnt is None:
+        plot_cnt = len(set(clusters))
+
+    fig, ax = sns.mpl.pyplot.subplots(1 if plot_cnt <= 2 else (plot_cnt // 2 + plot_cnt % 2), 2)
     fig.set_size_inches(kwargs.get('width', 20), kwargs.get('height', 10))
     for i, j in enumerate(pie_data.clusters.unique()):
         tmp = pie_data[pie_data.clusters == j]
+        tmp.index = tmp.target
         if plot_cnt <= 2:
-            ax[i].pie(tmp.target_dist.values, labels=tmp.target.values, autopct='%1.1f%%')
+            ax[i].pie(tmp.target_dist.reindex(targets).fillna(0).values, labels=targets, autopct='%1.1f%%')
             ax[i].set_title('Class {}'.format(i))
         else:
-            ax[i // 2][i % 2].pie(tmp.target_dist.values, labels=tmp.target.values, autopct='%1.1f%%')
+            ax[i // 2][i % 2].pie(tmp.target_dist.reindex(targets).fillna(0).values, labels=targets, autopct='%1.1f%%')
             ax[i // 2][i % 2].set_title('Class {}'.format(i))
 
     plot_name = plot_name if plot_name is not None else 'clusters_pie_{}.svg'.format(

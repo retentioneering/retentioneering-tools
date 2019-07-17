@@ -203,10 +203,10 @@ class BaseTrajectory(object):
         max_new = desc_new.shape[1]
         if max_old < max_new:
             for i in range(max_old, max_new + 1):
-                desc_old[i] = desc_old[i - 1]
+                desc_old[i] = np.where(desc_old.index.str.startswith('Accumulated'), desc_old[i - 1], 0)
         elif max_old > max_new:
             for i in range(max_new, max_old + 1):
-                desc_new[i] = desc_new[i - 1]
+                desc_new[i] = np.where(desc_new.index.str.startswith('Accumulated'), desc_new[i - 1], 0)
         return desc_old, desc_new
 
     def split_sessions(self, by_event=None, minimal_thresh=30):
@@ -349,7 +349,7 @@ class BaseDataset(BaseTrajectory):
             self.clusters = clustering.simple_cluster(features, **kwargs)
             self._create_cluster_mapping(features.index.values)
 
-        target = self.get_positive_users()
+        target = self.get_positive_users(**kwargs)
         target = features.index.isin(target)
         if hasattr(self, '_tsne'):
             features.retention._tsne = self._tsne
@@ -388,7 +388,7 @@ class BaseDataset(BaseTrajectory):
         if regression_targets is not None:
             target = self.make_regression_targets(features, regression_targets)
         else:
-            target = features.index.isin(self.get_positive_users())
+            target = features.index.isin(self.get_positive_users(**kwargs))
         kwargs.pop('ngram_range')
         mod = ModelDescriptor(model_type, features, target, **kwargs)
         return mod
@@ -505,7 +505,7 @@ class BaseDataset(BaseTrajectory):
         if hasattr(timestamp, 'second'):
             return
         if type(timestamp) != str:
-            l = len(str(timestamp))
+            l = len(str(int(timestamp)))
             self._obj[time_col or self.retention_config['event_time_col']] *= 10 ** (19 - l)
         self._obj[
             time_col or self.retention_config['event_time_col']
@@ -552,7 +552,7 @@ class BaseDataset(BaseTrajectory):
             data = self._process_empty(data, other, target)
         return data
 
-    def get_positive_users(self, index_col=None):
+    def get_positive_users(self, index_col=None, **kwargs):
         """
         Finds users, who have positive_target_event
 
@@ -577,6 +577,51 @@ class BaseDataset(BaseTrajectory):
         """
         pos_users = self.get_positive_users(index_col)
         return self._obj[index_col or self.retention_config['index_col']].isin(pos_users)
+    
+    def calculate_delays(self, plotting, time_col=None, index_col=None, event_col=None, bins=50):
+        """
+        Displays the logarithm of delays in nanoseconds on a histogram
+        
+        :param plot: bool parameter for visualization
+        :param index_col: name of index by which we calculate timedata
+        :param bins: number of bins for visualisation
+        :return: a list of delays in nanoseconds
+        """
+        import numpy as np
+        self._get_shift(index_col, event_col)
+        delays = np.log((self._obj['next_timestamp'] - self._obj[time_col or self.retention_config['event_time_col']]) // pd.Timedelta('1ns'))  # there are still NaTs here, but that's okay
+        
+        if plotting == True:
+            import matplotlib.pyplot as plt
+            plt.hist(delays[~np.isnan(delays)], bins=bins)
+            plt.show()
+        return delays
+    
+    def insert_sleep_events(self, events, delays=None, time_col=None, index_col=None, event_col=None):
+        """
+        Inserts the given sleep events (not inplace)
+        
+        :param events: dict of events containing event name and logtime ranges
+        :param delays: a list of delays from display delays
+        :return: pd.DataFrame with inserted values
+        """
+        
+        if delays == None:
+            delays = self.calculate_delays(False, time_col, index_col, event_col)
+        
+        data = self._obj.copy()
+        to_add = []
+        
+        for event_name, (t_min, t_max) in events.items():
+            tmp = data.loc[(delays >= t_min) & (delays < t_max)]
+            tmp[event_col or self.retention_config['event_col']] = event_name
+            tmp[time_col or self.retention_config['event_time_col']] += pd.Timedelta((np.e ** t_min) / 2)
+            to_add.append(tmp)
+            data['next_event'] = np.where((delays >= t_min) & (delays < t_max), event_name, data['next_event'])
+            data['next_timestamp'] = np.where((delays >= t_min) & (delays < t_max), data[time_col or self.retention_config['event_time_col']] + pd.Timedelta((np.e ** t_min) / 2), data['next_timestamp'])
+        to_add.append(data)
+        to_add = pd.concat(to_add)
+        return to_add.sort_values('event_timestamp')
 
     def remove_events(self, event_list, mode='equal'):
         """
@@ -619,7 +664,7 @@ class BaseDataset(BaseTrajectory):
                 if regression_targets is not None:
                     targets = self.make_regression_targets(features, regression_targets)
                 else:
-                    targets = features.index.isin(self.get_positive_users())
+                    targets = features.index.isin(self.get_positive_users(**kwargs))
                     targets = np.where(targets, self.retention_config['positive_target_event'],
                                        self.retention_config['negative_target_event'])
             self._tsne_targets = targets

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='retentioneering',
-    version='1.0.0',
+    version='1.0.2',
     license='Mozilla Public License',
     description='Python package for user trajectories analysis in the app',
     long_description='Python package for user trajectories analysis in the app',

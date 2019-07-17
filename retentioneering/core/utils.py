@@ -578,7 +578,7 @@ class BaseDataset(BaseTrajectory):
         pos_users = self.get_positive_users(index_col)
         return self._obj[index_col or self.retention_config['index_col']].isin(pos_users)
     
-    def calculate_delays(self, plotting, time_col=None, index_col=None, event_col=None, bins=50):
+    def calculate_delays(self, plotting=True, time_col=None, index_col=None, event_col=None, bins=50):
         """
         Displays the logarithm of delays in nanoseconds on a histogram
         
@@ -593,7 +593,7 @@ class BaseDataset(BaseTrajectory):
         
         if plotting == True:
             import matplotlib.pyplot as plt
-            plt.hist(delays[~np.isnan(delays)], bins=bins)
+            plt.hist(delays[~np.isnan(delays) & ~np.isinf(delays)], bins=bins)
             plt.show()
         return delays
     

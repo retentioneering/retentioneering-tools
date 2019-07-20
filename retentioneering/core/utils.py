@@ -274,7 +274,7 @@ class BaseTrajectory(object):
                 if name is None:
                     continue
                 node_params.update({name: val})
-        plot.graph(self._obj.trajectory.get_edgelist(**kwargs), node_params, plot_name, **kwargs)
+        plot.graph(self._obj.trajectory.get_edgelist(**kwargs), node_params, plot_name=plot_name, **kwargs)
 
     @staticmethod
     def calculate_node_metrics(metric_type='centrality'):

@@ -336,7 +336,7 @@ class BaseDataset(BaseTrajectory):
                   .apply(lambda x: self.retention_config['positive_target_event'] in x))
         return target
 
-    def get_clusters(self, plot_type=None, refit_cluster=False, **kwargs):
+    def get_clusters(self, plot_type=None, plot_name=None, refit_cluster=False, **kwargs):
         """
         Finds cluster of users in data.
 
@@ -360,7 +360,7 @@ class BaseDataset(BaseTrajectory):
             features.retention._tsne = self._tsne
         if plot_type:
             func = getattr(plot, plot_type)
-            res = func(features, self.clusters, target, **kwargs)
+            res = func(features, self.clusters, target, plot_name=plot_name, **kwargs)
             if res is not None:
                 self._tsne = res
         return self.clusters
@@ -647,7 +647,7 @@ class BaseDataset(BaseTrajectory):
             data = data.loc[func(data[self.retention_config['event_col']], event)]
         return data.reset_index(drop=True)
 
-    def learn_tsne(self, targets=None, plot_type=None, refit=False, regression_targets=None, **kwargs):
+    def learn_tsne(self, targets=None, plot_type=None, plot_name=None, refit=False, regression_targets=None, **kwargs):
         """
         Learns TSNE projection for selected feature space (`feature_type` in kwargs)
         and visualize it with chosen visualization type
@@ -682,7 +682,7 @@ class BaseDataset(BaseTrajectory):
         else:
             return self._tsne
 
-        plot.cluster_tsne(self._obj, targets, targets)
+        plot.cluster_tsne(self._obj, targets, targets, plot_name=plot_name)
         return self._tsne
 
     def select_bbox_from_tsne(self, bbox, plotting=True, **kwargs):

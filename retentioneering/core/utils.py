@@ -409,7 +409,7 @@ class BaseDataset(BaseTrajectory):
         """
         return [regression_targets.get(i) for i in features.index]
 
-    def get_step_matrix_difference(self, groups, plot_type=True, max_steps=30, plot_name, **kwargs):
+    def get_step_matrix_difference(self, groups, plot_type=True, max_steps=30, plot_name=None, **kwargs):
         """
         Plots heatmap with difference of events distributions over steps between two given groups
 

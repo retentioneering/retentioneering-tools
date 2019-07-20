@@ -154,7 +154,7 @@ class BaseTrajectory(object):
             return pd.Series([0] * agg.shape[1], index=agg.columns, name='Accumulated ' + name)
         return agg.loc[name].cumsum().shift(1).fillna(0).rename('Accumulated ' + name)
 
-    def get_step_matrix(self, max_steps=None, plot_type=True, dt_means=False, **kwargs):
+    def get_step_matrix(self, max_steps=None, plot_type=True, dt_means=False, plot_name=None, **kwargs):
         """
         Plots heatmap with distribution of events over event steps (ordering in the session by event time)
 
@@ -178,7 +178,7 @@ class BaseTrajectory(object):
             piv = piv.append(self._add_accums(piv, i))
         piv = piv.round(2)
         if plot_type:
-            plot.step_matrix(piv)
+            plot.step_matrix(piv, plot_name=plot_name)
         if dt_means:
             means = np.array(self._obj.groupby('event_rank').apply(
                 lambda x: np.exp(np.mean(np.log((x.next_timestamp - x.event_timestamp).dt.total_seconds() + 1e-20)))
@@ -240,7 +240,7 @@ class BaseTrajectory(object):
         mechs, mech_desc = preprocessing.weight_by_mechanics(self._obj, main_event_map, **kwargs)
         return mechs, mech_desc
 
-    def plot_graph(self, user_based=True, node_params=None, **kwargs):
+    def plot_graph(self, user_based=True, node_params=None, plot_name=None, **kwargs):
         """
         Create interactive graph visualization
 
@@ -274,7 +274,7 @@ class BaseTrajectory(object):
                 if name is None:
                     continue
                 node_params.update({name: val})
-        plot.graph(self._obj.trajectory.get_edgelist(**kwargs), node_params, **kwargs)
+        plot.graph(self._obj.trajectory.get_edgelist(**kwargs), node_params, plot_name, **kwargs)
 
     @staticmethod
     def calculate_node_metrics(metric_type='centrality'):
@@ -409,7 +409,7 @@ class BaseDataset(BaseTrajectory):
         """
         return [regression_targets.get(i) for i in features.index]
 
-    def get_step_matrix_difference(self, groups, plot_type=True, max_steps=30, **kwargs):
+    def get_step_matrix_difference(self, groups, plot_type=True, max_steps=30, plot_name, **kwargs):
         """
         Plots heatmap with difference of events distributions over steps between two given groups
 
@@ -425,7 +425,7 @@ class BaseDataset(BaseTrajectory):
         diff = desc_new - desc_old
         diff = diff.sort_index(axis=1)
         if plot_type:
-            plot.step_matrix(diff)
+            plot.step_matrix(diff, plot_name=plot_name)
         return diff
 
     def _process_target_config(self, data, cfg, target):

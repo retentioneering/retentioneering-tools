@@ -25,7 +25,7 @@ class Agent:
         probs = self._probs.loc[:, str(self._state)]
         vals = probs.index
         probs = np.nan_to_num(probs.values)
-        if np.sum(probs) == 1:
+        if np.sum(probs) != 0:
             return np.random.choice(vals, p=probs)
         return 
 

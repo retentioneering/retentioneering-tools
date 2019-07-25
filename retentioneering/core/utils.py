@@ -154,12 +154,13 @@ class BaseTrajectory(object):
             return pd.Series([0] * agg.shape[1], index=agg.columns, name='Accumulated ' + name)
         return agg.loc[name].cumsum().shift(1).fillna(0).rename('Accumulated ' + name)
 
-    def get_step_matrix(self, max_steps=None, plot_type=True, dt_means=False, **kwargs):
+    def get_step_matrix(self, max_steps=None, plot_type=True, **kwargs):
         """
         Plots heatmap with distribution of events over event steps (ordering in the session by event time)
 
         :param max_steps: maximum number of steps to show
         :param plot_type: if True, then plot in interactive session (jupyter notebook)
+        :param thr: optional, if True, display only the rows with at least one value >= thr
         :return: pd.DataFrame with distribution of events over event order
         """
         target_event_list = self.retention_config['target_event_list']
@@ -177,13 +178,18 @@ class BaseTrajectory(object):
         for i in target_event_list:
             piv = piv.append(self._add_accums(piv, i))
         piv = piv.round(2)
+        if kwargs.get('thr'):
+            tail = piv.tail(2)
+            piv.drop(tail.index, inplace=True)
+            piv = piv.loc[(piv >= kwargs.get('thr')).any(1)]
+            piv = pd.concat([piv, tail])
         if plot_type:
             plot.step_matrix(piv)
-        if dt_means:
+        if kwargs.get('dt_means') is not None:
             means = np.array(self._obj.groupby('event_rank').apply(
                 lambda x: np.exp(np.mean(np.log((x.next_timestamp - x.event_timestamp).dt.total_seconds() + 1e-20)))
             ))
-            piv = pd.concat([piv, pd.DataFrame([means], columns=piv.columns, index=['dt_mean'])])
+            piv = pd.concat([piv, pd.DataFrame([means[:max_steps]], columns=piv.columns, index=['dt_mean'])])
         return piv
 
     @staticmethod
@@ -524,6 +530,8 @@ class BaseDataset(BaseTrajectory):
         :return: input data updated with target events
         """
         self._convert_timestamp()
+        if hasattr(self._obj, 'next_timestamp'):
+            self._convert_timestamp('next_timestamp')
         if first_event is not None:
             data = self._add_first_event(first_event)
         else:

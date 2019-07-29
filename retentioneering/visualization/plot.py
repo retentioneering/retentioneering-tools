@@ -493,6 +493,12 @@ def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, **kwargs)
 
     if plot_cnt is None:
         plot_cnt = len(set(clusters))
+    
+    if kwargs.get('vol', True):  # vol = False in kwargs in case you want to disable
+        _, counts = np.unique(clusters, return_counts=True)
+        volumes = 100 * (counts / sum(counts))
+    else:
+        volumes = [None] * plot_cnt
 
     fig, ax = sns.mpl.pyplot.subplots(1 if plot_cnt <= 2 else (plot_cnt // 2 + plot_cnt % 2), 2)
     fig.set_size_inches(kwargs.get('width', 20), kwargs.get('height', 10))
@@ -501,10 +507,12 @@ def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, **kwargs)
         tmp.index = tmp.target
         if plot_cnt <= 2:
             ax[i].pie(tmp.target_dist.reindex(targets).fillna(0).values, labels=targets, autopct='%1.1f%%')
-            ax[i].set_title('Class {}'.format(i))
+            ax[i].set_title('Class {}\nCluster volume {}%'.format(i, round(volumes[i], 1)))
         else:
             ax[i // 2][i % 2].pie(tmp.target_dist.reindex(targets).fillna(0).values, labels=targets, autopct='%1.1f%%')
-            ax[i // 2][i % 2].set_title('Class {}'.format(i))
+            ax[i // 2][i % 2].set_title('Class {}\nCluster volume {}%'.format(i, round(volumes[i], 1)))
+    if plot_cnt % 2 == 1:
+        fig.delaxes(ax[plot_cnt // 2, 1])
 
     plot_name = plot_name if plot_name is not None else 'clusters_pie_{}.svg'.format(
         datetime.now()).replace(':', '_').replace('.', '_')

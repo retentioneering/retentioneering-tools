@@ -366,7 +366,7 @@ def _prepare_given_layout(nodes_path, node_params, degrees):
 
 
 def graph(data, node_params=None, thresh=.05, width=500, height=500, interactive=True,
-          layout_dump=None, show_percent=True, plot_name=None, **kwargs):
+          layout_dump=None, show_percent=True, **kwargs):
     """
     Plots graph by its edgelist representation
 
@@ -399,7 +399,7 @@ def graph(data, node_params=None, thresh=.05, width=500, height=500, interactive
         nodes=json.dumps(res.get('nodes')).encode('latin1').decode('utf-8'),
         show_percent="1 !== 1" if show_percent else "1 === 1"
     )
-    if not plot_name:
+    if kwargs.get(plot_name) is None:
         if hasattr(data, 'trajectory'):
             plot_name = f'{data.trajectory.retention_config["experiments_folder"]}/index_{datetime.now()}'
         else:

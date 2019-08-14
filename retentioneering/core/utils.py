@@ -170,6 +170,12 @@ class BaseTrajectory(object):
             return pd.Series([0] * agg.shape[1], index=agg.columns, name='Accumulated ' + name)
         return agg.loc[name].cumsum().shift(1).fillna(0).rename('Accumulated ' + name)
 
+    def process_thr(self, data, thr, mod=lambda x: x):
+        tail = data[data.index.str.startswith('Accumulated')]
+        data.drop(tail.index, inplace=True)
+        data = data.loc[(mod(data) >= thr).any(1)]
+        return pd.concat([data, tail])
+
     def get_step_matrix(self, max_steps=None, plot_type=True, **kwargs):
         """
         Plots heatmap with distribution of events over event steps (ordering in the session by event time)
@@ -199,10 +205,7 @@ class BaseTrajectory(object):
                 piv = piv.append(self._add_accums(piv, i))
         piv = piv.round(2)
         if kwargs.get('thr'):
-            tail = piv.tail(2)
-            piv.drop(tail.index, inplace=True)
-            piv = piv.loc[(piv >= kwargs.get('thr')).any(1)]
-            piv = pd.concat([piv, tail])
+            piv = self.process_thr(piv, kwargs['thr'])
         if plot_type:
             plot.step_matrix(piv)
         if kwargs.get('dt_means') is not None:
@@ -444,11 +447,18 @@ class BaseDataset(BaseTrajectory):
         :param max_steps: maximum number of steps to show
         :return: pd.DataFrame with step matrix
         """
+        if kwargs.get('thr'):
+            thr_value = kwargs['thr']
+            kwargs['thr'] = None
+        else:
+            thr_value = None
         desc_old = self._obj[~groups].copy().trajectory.get_step_matrix(plot_type=False, max_steps=max_steps, **kwargs)
         desc_new = self._obj[groups].copy().trajectory.get_step_matrix(plot_type=False, max_steps=max_steps, **kwargs)
         desc_old, desc_new = self._create_diff_index(desc_old, desc_new)
         desc_old, desc_new = self._diff_step_allign(desc_old, desc_new)
         diff = desc_new - desc_old
+        if thr_value:
+            diff = self.process_thr(diff, thr_value, mod=abs)
         diff = diff.sort_index(axis=1)
         if plot_type:
             plot.step_matrix(diff)

@@ -208,7 +208,8 @@ class BaseTrajectory(object):
                 piv = piv.append(self._add_accums(piv, i))
         piv = piv.round(2)
         if kwargs.get('thr'):
-            piv = self.process_thr(piv, kwargs['thr'], **kwargs)
+            thr = kwargs.pop('thr')
+            piv = self.process_thr(piv, thr, **kwargs)
         if plot_type:
             plot.step_matrix(piv)
         if kwargs.get('dt_means') is not None:

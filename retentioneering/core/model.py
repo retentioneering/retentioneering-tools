@@ -3,8 +3,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-
-import shap
 import eli5
 from eli5.sklearn import PermutationImportance
 from retentioneering.visualization import plot
@@ -30,30 +28,32 @@ class ModelDescriptor(object):
     def _fit_model(self):
         self.mod.fit(self.data, self.target)
 
-    def _fit_shap(self, test_sample):
-        if not hasattr(self, 'shap_values'):
-            explainer = shap.KernelExplainer(self.mod.predict_proba, self.data, link="logit")
-            shap_values = explainer.shap_values(test_sample, nsamples=100)
-            setattr(self, 'shap_values', shap_values)
-            setattr(self, 'shap_explainer', explainer)
-
-    def shap_descriptor(self, test_sample, test_index=None):
-        """
-        Describes model using [SHAP](https://github.com/slundberg/shap) force_plot
-
-        :param test_sample: test feature subsample
-        :param test_index: idx of test example
-        :return:
-        """
-        self._fit_shap(test_sample)
-        explainer = getattr(self, 'shap_explainer')
-        shap_values = getattr(self, 'shap_values')
-        if test_index is None:
-            test_index = 0
-        else:
-            test_index = test_sample.index.tolist().index(test_index)
-        shap.force_plot(explainer.expected_value[1], shap_values[1][test_index, :],
-                        test_sample.iloc[test_index, :], link="logit")
+    # def _fit_shap(self, test_sample):
+    #     if not hasattr(self, 'shap_values'):
+    #         import shap
+    #         explainer = shap.KernelExplainer(self.mod.predict_proba, self.data, link="logit")
+    #         shap_values = explainer.shap_values(test_sample, nsamples=100)
+    #         setattr(self, 'shap_values', shap_values)
+    #         setattr(self, 'shap_explainer', explainer)
+    #
+    # def shap_descriptor(self, test_sample, test_index=None):
+    #     import shap
+    #     """
+    #     Describes model using [SHAP](https://github.com/slundberg/shap) force_plot
+    #
+    #     :param test_sample: test feature subsample
+    #     :param test_index: idx of test example
+    #     :return:
+    #     """
+    #     self._fit_shap(test_sample)
+    #     explainer = getattr(self, 'shap_explainer')
+    #     shap_values = getattr(self, 'shap_values')
+    #     if test_index is None:
+    #         test_index = 0
+    #     else:
+    #         test_index = test_sample.index.tolist().index(test_index)
+    #     shap.force_plot(explainer.expected_value[1], shap_values[1][test_index, :],
+    #                     test_sample.iloc[test_index, :], link="logit")
 
     def permutation_importance(self, test_sample, test_target, node_params=None, **kwargs):
         """

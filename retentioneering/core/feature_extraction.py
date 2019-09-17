@@ -8,6 +8,8 @@ import pandas as pd
 import numpy as np
 from collections import Counter
 from sklearn.manifold import TSNE
+from sklearn import decomposition
+from sklearn import manifold
 
 
 def _uni_counts_embedder(data, **kwargs):
@@ -121,3 +123,29 @@ def learn_tsne(data, **kwargs):
     kwargs = {i: j for i, j in kwargs.items() if i in _tsne_filter}
     res = TSNE(random_state=0, **kwargs).fit_transform(data.values)
     return pd.DataFrame(res, index=data.index.values)
+
+
+def get_manifold(data, manifold_type, **kwargs):
+    if hasattr(decomposition, manifold_type):
+        man = getattr(decomposition, manifold_type)
+    elif hasattr(manifold, manifold_type):
+        man = getattr(manifold, manifold_type)
+    else:
+        raise ValueError(f'There is not such manifold {manifold_type}')
+    tsvd = man(**{i: j for i, j in kwargs.items() if i in man.get_params(man)})
+    res = tsvd.fit_transform(data)
+    return pd.DataFrame(res, index=data.index)
+
+
+def merge_features(features, metadata, meta_index_col=None, manifold_type=None, fillna=None, drop=False, **kwargs):
+    if manifold_type is not None:
+        features = get_manifold(features, manifold_type, **kwargs)
+    if meta_index_col is not None:
+        metadata.index = metadata[meta_index_col].values
+        metadata = metadata.drop(meta_index_col, 1)
+    res = features.join(metadata, rsuffix='_meta',)
+    if drop and (fillna is None):
+        res = res[res.isnull().sum(1) == 0].copy()
+    if fillna is not None:
+        res = res.fillna(fillna)
+    return res

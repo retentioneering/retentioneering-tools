@@ -11,7 +11,7 @@ import networkx as nx
 from datetime import timedelta
 from retentioneering.core import feature_extraction
 from retentioneering.core import clustering
-from retentioneering.visualization import plot
+from retentioneering.visualization import plot, funnel
 from sklearn.linear_model import LogisticRegression
 from retentioneering.core.model import ModelDescriptor
 from retentioneering.core import node_metrics
@@ -96,7 +96,6 @@ class BaseTrajectory(object):
     def get_edgelist(self, cols=None, edge_col=None, edge_attributes='event_count', norm=True, **kwargs):
         """
         Creates graph in the following representation: `source_node, target_node, edge_weight`
-
         :param cols: list of source and target columns, e.g. `event_name`, `next_event` correspondingly
         :param edge_col: aggregation column for edge weighting,
             e.g. set it to `index_col` and `edge_attributes='unique'` to calculate unique users passed through edge
@@ -113,7 +112,7 @@ class BaseTrajectory(object):
         self._get_shift(event_col=cols[0], shift_name=cols[1], **kwargs)
         data = self._obj.copy()
         if kwargs.get('reverse'):
-            data = data[data['non-detriment']]
+            data = data[data['non-detriment'].fillna(False)]
             data.drop('non-detriment', axis=1, inplace=True)
         agg = (data
                .groupby(cols)[edge_col or self.retention_config['event_time_col']]
@@ -170,19 +169,72 @@ class BaseTrajectory(object):
             return pd.Series([0] * agg.shape[1], index=agg.columns, name='Accumulated ' + name)
         return agg.loc[name].cumsum().shift(1).fillna(0).rename('Accumulated ' + name)
 
-    def process_thr(self, data, thr, mod=lambda x: x, **kwargs):
-        tail = data[data.index.str.startswith('Accumulated')]
+    def _process_thr(self, data, thr, max_steps=30, mod=lambda x: x, **kwargs):
+        f = data.index.str.startswith('Accumulated')
         if kwargs.get('targets', True):
-            targets = data[data.index.isin(self.retention_config['target_event_list'])]
-            tail = pd.concat([targets, tail])
-        data.drop(tail.index, inplace=True)
-        data = data.loc[(mod(data) >= thr).any(1)]
-        return pd.concat([data, tail])
+            f |= data.index.isin(self.retention_config['target_event_list'])
+        print("""
+        Unused events on first {} steps:
+            {}
+        """.format(max_steps, '\n\t'.join(data[f].index.tolist())))
+        return data.loc[(mod(data) >= thr).any(1) | f]
 
-    def get_step_matrix(self, max_steps=None, plot_type=True, **kwargs):
+    @staticmethod
+    def _sort_matrix(step_matrix):
+        x = step_matrix.copy()
+        order = []
+        for i in x.columns:
+            new_r = x[i].idxmax()
+            order.append(new_r)
+            x = x.drop(new_r)
+            if x.shape[0] == 0:
+                break
+        order.extend(list(set(step_matrix.index) - set(order)))
+        return step_matrix.loc[order]
+
+    def _add_reverse_rank(self, index_col=None, event_col=None, **kwargs):
+
+        d = {
+            'pos': self.retention_config['positive_target_event'],
+            'neg': self.retention_config['negative_target_event']
+        }
+
+        if type(kwargs.get('reverse')) == list:
+            targets = [d[i] for i in kwargs.get('reverse')]
+        else:
+            targets = [d[kwargs.get('reverse')]]
+
+        self._obj['convpoint'] = self._obj[
+            event_col or self.retention_config['event_col']
+        ].isin(targets).astype(int)
+        self._obj['convpoint'] = (
+                self
+                ._obj
+                .groupby(index_col or self.retention_config['index_col'])
+                .convpoint
+                .cumsum() - self._obj['convpoint']
+        )
+        self._obj['event_rank'] = (
+                self
+                ._obj
+                .groupby([index_col or self.retention_config['index_col'], 'convpoint'])
+                .event_rank
+                .apply(lambda x: x.max() - x + 1)
+        )
+        self._obj['non-detriment'] = (
+            self
+            ._obj
+            .groupby([index_col or self.retention_config['index_col'], 'convpoint'])[
+                event_col or self.retention_config['event_col']
+            ].apply(
+                lambda x: pd.Series([x.iloc[-1] in targets] * x.shape[0], index=x.index))
+        )
+        if not self._obj['non-detriment'].any():
+            raise ValueError('There is not {} event in this group'.format(targets[0]))
+
+    def get_step_matrix(self, max_steps=30, plot_type=True, sorting=True, **kwargs):
         """
         Plots heatmap with distribution of events over event steps (ordering in the session by event time)
-
         :param max_steps: maximum number of steps to show
         :param plot_type: if True, then plot in interactive session (jupyter notebook)
         :param thr: optional, if True, display only the rows with at least one value >= thr
@@ -206,17 +258,25 @@ class BaseTrajectory(object):
         if not kwargs.get('reverse'):
             for i in target_event_list:
                 piv = piv.append(self._add_accums(piv, i))
-        piv = piv.round(2)
         if kwargs.get('thr'):
             thr = kwargs.pop('thr')
-            piv = self.process_thr(piv, thr, **kwargs)
-        if plot_type:
-            plot.step_matrix(piv)
+            piv = self._process_thr(piv, thr, max_steps, **kwargs)
+        if sorting:
+            piv = self._sort_matrix(piv)
         if kwargs.get('dt_means') is not None:
             means = np.array(self._obj.groupby('event_rank').apply(
                 lambda x: np.exp(np.mean(np.log((x.next_timestamp - x.event_timestamp).dt.total_seconds() + 1e-20)))
             ))
             piv = pd.concat([piv, pd.DataFrame([means[:max_steps]], columns=piv.columns, index=['dt_mean'])])
+        if not kwargs.get('for_diff'):
+            if kwargs.get('reverse'):
+                piv.columns = ['n'] + ['n - {}'.format(i - 1) for i in piv.columns[1:]]
+        if plot_type:
+            plot.step_matrix(
+                piv.round(2),
+                title=kwargs.get('title',
+                                 'Step matrix {}'
+                                 .format('reversed' if kwargs.get('reverse') else '')), **kwargs)
         return piv
 
     @staticmethod
@@ -307,7 +367,8 @@ class BaseTrajectory(object):
                 if name is None:
                     continue
                 node_params.update({name: val})
-        plot.graph(self._obj.trajectory.get_edgelist(**kwargs), node_params, **kwargs)
+        path = plot.graph(self._obj.trajectory.get_edgelist(**kwargs), node_params, **kwargs)
+        return path
 
     @staticmethod
     def calculate_node_metrics(metric_type='centrality'):
@@ -328,7 +389,7 @@ class BaseDataset(BaseTrajectory):
         super(BaseDataset, self).__init__(pandas_obj)
         self._embedding_types = ['tfidf', 'counts', 'frequency']
 
-    def extract_features(self, feature_type='tfidf', drop_targets=True, **kwargs):
+    def extract_features(self, feature_type='tfidf', drop_targets=True, metadata=None, **kwargs):
         """
         Vectorize users`s trajectories
         Available vectorization methods is `Tf-Idf` (feature_type='tfidf'),
@@ -354,7 +415,10 @@ class BaseDataset(BaseTrajectory):
             ].copy()
         else:
             tmp = self._obj
-        return func(tmp, **kwargs)
+        res = func(tmp, **kwargs)
+        if metadata is not None:
+            res = feature_extraction.merge_features(res, metadata, **kwargs)
+        return res
 
     def extract_features_from_test(self, test, train=None, **kwargs):
         if train is None:
@@ -369,7 +433,7 @@ class BaseDataset(BaseTrajectory):
                   .apply(lambda x: self.retention_config['positive_target_event'] in x))
         return target
 
-    def get_clusters(self, plot_type=None, refit_cluster=False, **kwargs):
+    def get_clusters(self, plot_type=None, refit_cluster=False, method='simple_cluster', **kwargs):
         """
         Finds cluster of users in data.
 
@@ -384,16 +448,24 @@ class BaseDataset(BaseTrajectory):
         else:
             features = self.extract_features(**kwargs)
         if not hasattr(self, 'clusters') or refit_cluster:
-            self.clusters = clustering.simple_cluster(features, **kwargs)
+            clusterer = getattr(clustering, method)
+            self.clusters, self._metrics = clusterer(features, **kwargs)
             self._create_cluster_mapping(features.index.values)
 
         target = self.get_positive_users(**kwargs)
         target = features.index.isin(target)
+        self._metrics['homogen'] = clustering.homogeneity_score(target, self.clusters)
         if hasattr(self, '_tsne'):
             features.retention._tsne = self._tsne
         if plot_type:
             func = getattr(plot, plot_type)
-            res = func(features, self.clusters, target, **kwargs)
+            res = func(
+                features,
+                clustering.aggregate_cl(self.clusters, 7) if method == 'dbscan' else self.clusters,
+                target,
+                metrics=self._metrics,
+                **kwargs
+            )
             if res is not None:
                 self._tsne = res
         return self.clusters
@@ -404,9 +476,92 @@ class BaseDataset(BaseTrajectory):
             self.cluster_mapping[cluster] = ids[self.clusters == cluster].tolist()
 
     def filter_cluster(self, cluster_name, index_col=None):
-        ids = self.cluster_mapping[cluster_name]
+        ids = []
+        if type(cluster_name) is list:
+            for i in cluster_name:
+                ids.extend(self.cluster_mapping[i])
+        else:
+            ids = self.cluster_mapping[cluster_name]
         return self._obj[self._obj[
             index_col or self.retention_config['index_col']].isin(ids)].copy().reset_index(drop=True)
+
+    def cluster_funnel(self, cluster, funnel_events, index_col=None, user_based=True, **kwargs):
+        """
+        Creates the funnel for a particular cluster
+        :param cluster: the number of the cluster to explore, must fit as filter_cluster argument
+        :param funnel_events: the events to include in the funnel
+        :return: the chart
+        """
+        if user_based:
+            counts = self.filter_cluster(
+                cluster, index_col=index_col
+            ).groupby('event_name')[index_col or self.retention_config['index_col']].nunique().loc[funnel_events]
+        else:
+            counts = self.filter_cluster(
+                cluster, index_col=index_col
+            ).groupby('event_name')[self.retention_config['event_time_col']].count().loc[funnel_events]
+        counts = counts.fillna(0)
+        return funnel.funnel_chart(counts.astype(int).tolist(), funnel_events, 'Funnel for cluster {}'.format(cluster))
+
+    def cluster_top_events(self, n=3):
+        if not hasattr(self, 'clusters'):
+            raise ValueError('Please build clusters first')
+        if not hasattr(self, '_inv_cl_map'):
+            self._inv_cl_map = {k: i for i, j in self.cluster_mapping.items() for k in j}
+        cl = self._obj[self.retention_config['index_col']].map(self._inv_cl_map).rename('cluster')
+        topn = self._obj.groupby([cl, self.retention_config['event_col']]).size().sort_values(
+            ascending=False).reset_index()
+        tot = topn.groupby(['cluster'])[0].sum()
+        topn = topn.join(tot, on='cluster', rsuffix='_tot')
+        topn['freq'] = (topn['0'] / topn['0_tot'] * 100).round(2).astype(str) + '%'
+        for i in set(topn.cluster):
+            print(f'Cluster {i}:')
+            print(topn[topn.cluster == i].iloc[:n, [1, 2, 4]].rename({
+                '0': 'count'
+            }, axis=1))
+
+    def cluster_event_dist(self, cl1, cl2=None, n=3, event_col=None, index_col=None, **kwargs):
+        clus = self.filter_cluster(cl1, index_col=index_col)
+        top_cluster = (clus
+                       [event_col or self.retention_config['event_col']]
+                       .value_counts().head(n) / clus.shape[0]).reset_index()
+        cr0 = (
+            clus[
+                clus[event_col or self.retention_config['event_col']] == self.retention_config['positive_target_event']
+            ][index_col or self.retention_config['index_col']].nunique()
+        ) / clus[index_col or self.retention_config['index_col']].nunique()
+        if cl2 is None:
+            clus2 = self._obj
+        else:
+            clus2 = self.filter_cluster(cl2, index_col=index_col)
+        top_all = (clus2
+                   [event_col or self.retention_config['event_col']]
+                   .value_counts()
+                   .loc[top_cluster['index']]
+                   / clus2.shape[0]).reset_index()
+        cr1 = (
+            clus2[
+                clus2[event_col or self.retention_config['event_col']] == self.retention_config['positive_target_event']
+            ][index_col or self.retention_config['index_col']].nunique()
+        ) / clus2[index_col or self.retention_config['index_col']].nunique()
+        top_all.columns = [event_col or self.retention_config['event_col'], 'freq', ]
+        top_cluster.columns = [event_col or self.retention_config['event_col'], 'freq', ]
+
+        top_all['hue'] = 'all' if cl2 is None else f'cluster {cl2}'
+        top_cluster['hue'] = f'cluster {cl1}'
+
+        plot.cluster_event_dist(
+            top_all.append(top_cluster, ignore_index=True, sort=False),
+            event_col or self.retention_config['event_col'],
+            cl1,
+            [
+                clus[index_col or self.retention_config['index_col']].nunique() / self._obj[index_col or self.retention_config['index_col']].nunique(),
+                clus2[index_col or self.retention_config['index_col']].nunique() / self._obj[
+                    index_col or self.retention_config['index_col']].nunique(),
+             ],
+            [cr0, cr1],
+            cl2
+        )
 
     def create_model(self, model_type=LogisticRegression, regression_targets=None, **kwargs):
         """
@@ -442,30 +597,63 @@ class BaseDataset(BaseTrajectory):
         """
         return [regression_targets.get(i) for i in features.index]
 
-    def get_step_matrix_difference(self, groups, plot_type=True, max_steps=30, **kwargs):
+    def get_step_matrix_difference(self, groups, plot_type=True, max_steps=30, sorting=True, **kwargs):
         """
         Plots heatmap with difference of events distributions over steps between two given groups
-
         :param groups: boolean vector that splits data in to groups
         :param plot_type: if True, then heatmap plot will be shown in interactive mode
         :param max_steps: maximum number of steps to show
         :return: pd.DataFrame with step matrix
         """
+        reverse = None
         thr_value = kwargs.pop('thr', None)
-        desc_old = self._obj[~groups].copy().trajectory.get_step_matrix(plot_type=False, max_steps=max_steps, **kwargs)
-        desc_new = self._obj[groups].copy().trajectory.get_step_matrix(plot_type=False, max_steps=max_steps, **kwargs)
-        desc_old, desc_new = self._create_diff_index(desc_old, desc_new)
-        desc_old, desc_new = self._diff_step_allign(desc_old, desc_new)
-        diff = desc_new - desc_old
+        if groups.mean() == 1:
+            diff = self._obj[groups].copy().trajectory.get_step_matrix(plot_type=False, max_steps=max_steps, **kwargs)
+        elif groups.mean() == 0:
+            diff = -self._obj[~groups].copy().trajectory.get_step_matrix(plot_type=False, max_steps=max_steps, **kwargs)
+        else:
+            reverse = kwargs.pop('reverse', None)
+            if type(reverse) is list:
+                desc_old = self._obj[~groups].copy().trajectory.get_step_matrix(plot_type=False,
+                                                                                max_steps=max_steps, reverse='neg',
+                                                                                for_diff=True,
+                                                                                **kwargs)
+                desc_new = self._obj[groups].copy().trajectory.get_step_matrix(plot_type=False,
+                                                                               max_steps=max_steps,
+                                                                               for_diff=True,
+                                                                               reverse='pos', **kwargs)
+            else:
+                desc_old = self._obj[~groups].copy().trajectory.get_step_matrix(plot_type=False,
+                                                                                max_steps=max_steps,
+                                                                                for_diff=True,
+                                                                                reverse=reverse, **kwargs)
+                desc_new = self._obj[groups].copy().trajectory.get_step_matrix(plot_type=False,
+                                                                               max_steps=max_steps,
+                                                                               for_diff=True,
+                                                                               reverse=reverse, **kwargs)
+            desc_old, desc_new = self._create_diff_index(desc_old, desc_new)
+            desc_old, desc_new = self._diff_step_allign(desc_old, desc_new)
+            diff = desc_new - desc_old
         if thr_value:
-            diff = self.process_thr(diff, thr_value, mod=abs, **kwargs)
+            diff = self._process_thr(diff, thr_value, max_steps, mod=abs, **kwargs)
         diff = diff.sort_index(axis=1)
+        if kwargs.get('reverse'):
+            diff.columns = ['n'] + ['n - {}'.format(i - 1) for i in diff.columns[1:]]
+        if sorting:
+            diff = self._sort_matrix(diff)
         if plot_type:
-            plot.step_matrix(diff)
+            plot.step_matrix(
+                diff.round(2),
+                title=kwargs.get('title',
+                                 'Step matrix ({}) difference between positive and negative class ({} - {})'.format(
+                                     'reversed' if reverse else '',
+                                     self.retention_config['positive_target_event'],
+                                     self.retention_config['negative_target_event'],
+                                 )), **kwargs)
         return diff
 
     def _process_target_config(self, data, cfg, target):
-        target = 'positive_event_name' if target.startswith('pos_') else 'negative_event_name'
+        target = 'positive_target_event' if target.startswith('pos_') else 'negative_target_event'
         target = self.retention_config.get(target)
         for key, val in cfg.items():
             func = getattr(self, f'_process_{key}')
@@ -482,34 +670,33 @@ class BaseDataset(BaseTrajectory):
             col = self.retention_config.get('event_time_col')
             change_next = False
         data[col] = pd.to_datetime(data[col])
-        thresh = pd.to_datetime(data[col].max()) - timedelta(seconds=threshold)
-        bads = set(data[data[col] >= thresh][self.retention_config.get('index_col')])
-        goods = set(data[self.retention_config.get('index_col')]) - bads
-        tmp = data[data[self.retention_config.get('index_col')].isin(goods)]
-        tmp = tmp.groupby(self.retention_config.get('index_col')).tail(1)
+        max_time = data[col].max()
+        tmp = data.groupby(self.retention_config['index_col']).tail(1)
+        tmp = tmp[(max_time - tmp[col]).dt.total_seconds() > threshold]
+
         if change_next:
-            tmp[self.retention_config.get('index_col')] = tmp.next_event.values
+            tmp[self.retention_config.get('event_col')] = tmp.next_event.values
             tmp.next_event = name
             tmp[self.retention_config.get('event_time_col')] += timedelta(seconds=1)
             tmp['next_timestamp'] += timedelta(seconds=1)
         else:
-            tmp[self.retention_config.get('index_col')] = name
+            tmp[self.retention_config.get('event_col')] = name
             tmp[self.retention_config.get('event_time_col')] += timedelta(seconds=1)
         data.reset_index(drop=True, inplace=True)
 
         return data.append(tmp, ignore_index=True).reset_index(drop=True)
 
     def _process_event_list(self, data, event_list, name):
-        if 'next_event_name' in data:
-            col = 'next_event_name'
+        if 'next_event' in data:
+            col = 'next_event'
         else:
             col = self.retention_config.get('event_col')
         data[col] = np.where(data[col].isin(event_list), name, data[col])
         return data
 
     def _process_empty(self, data, other, name):
-        if 'next_event_name' in data:
-            col = 'next_event_name'
+        if 'next_event' in data:
+            col = 'next_event'
             change_next = True
             data['next_timestamp'] \
                 = pd.to_datetime(data[self.retention_config.get('event_time_col')])
@@ -538,7 +725,7 @@ class BaseDataset(BaseTrajectory):
         if 'next_event' in top1:
             top1.next_event = top1[self.retention_config['event_col']].values
         top1[self.retention_config['event_col']] = first_event
-        top1[self.retention_config['event_time_col']] -= 1
+        top1[self.retention_config['event_time_col']] -= timedelta(seconds=1)
         return top1.append(self._obj, ignore_index=True).reset_index(drop=True)
 
     def _convert_timestamp(self, time_col=None):
@@ -560,12 +747,22 @@ class BaseDataset(BaseTrajectory):
         :return: input data updated with target events
         """
         self._convert_timestamp()
+        self._obj.sort_values(self.retention_config['event_time_col'], inplace=True)
         if hasattr(self._obj, 'next_timestamp'):
             self._convert_timestamp('next_timestamp')
         if first_event is not None:
             data = self._add_first_event(first_event)
         else:
             data = self._obj.copy()
+        prev_shape = data.shape[0]
+        data = data[data[self.retention_config.get('event_col')].notnull()]
+        data = data[data[self.retention_config.get('index_col')].notnull()]
+        if data.shape[0] - prev_shape:
+            print("There is null {} or {} in your data.\nDataset is filtered for {} of missed data.".format(
+                self.retention_config.get('event_col'),
+                self.retention_config.get('index_col'),
+                data.shape[0] - prev_shape
+            ))
         targets = {
             'pos_target_definition',
             'neg_target_definition'
@@ -608,9 +805,16 @@ class BaseDataset(BaseTrajectory):
                       [self.retention_config['event_col']] == self.retention_config['positive_target_event']]
             [index_col or self.retention_config['index_col']]
         )
-        return pos_users
+        return pos_users.tolist()
 
-    def create_filter(self, index_col=None):
+    def filter_event_window(self, event_name, neighbor_range=3, event_col=None, index_col=None):
+        self._obj['flg'] = self._obj[event_col or self.retention_config['event_col']] == event_name
+        f = pd.Series([False] * self._obj.shape[0], index=self._obj.index)
+        for i in range(-neighbor_range, neighbor_range + 1, 1):
+            f |= self._obj.groupby(index_col or self.retention_config['index_col']).flg.shift(i).fillna(False)
+        return self._obj[f].copy()
+
+    def create_filter(self, index_col=None, cluster_list=None, cluster_mapping=None):
         """
         Creates positive users filter for get_step_matrix_difference method
 
@@ -618,8 +822,14 @@ class BaseDataset(BaseTrajectory):
             if None, then `index_col` from config is used.
         :return: pd.Series with filter
         """
-        pos_users = self.get_positive_users(index_col)
-        return self._obj[index_col or self.retention_config['index_col']].isin(pos_users)
+        if cluster_list is None:
+            pos_users = self.get_positive_users(index_col)
+            return self._obj[index_col or self.retention_config['index_col']].isin(pos_users)
+        else:
+            ids = []
+            for i in cluster_list:
+                ids.extend((cluster_mapping or self.cluster_mapping)[i])
+            return self._obj[index_col or self.retention_config['index_col']].isin(ids)
     
     def calculate_delays(self, plotting=True, time_col=None, index_col=None, event_col=None, bins=50):
         """
@@ -636,7 +846,7 @@ class BaseDataset(BaseTrajectory):
         
         if plotting == True:
             import matplotlib.pyplot as plt
-            plt.hist(delays[~np.isnan(delays) & ~np.isinf(delays)], bins=bins)
+            plt.hist(delays[~np.isnan(delays) & ~np.isinf(delays)], bins=bins, log=True)
             plt.show()
         return delays
     
@@ -664,7 +874,7 @@ class BaseDataset(BaseTrajectory):
             data['next_timestamp'] = np.where((delays >= t_min) & (delays < t_max), data[time_col or self.retention_config['event_time_col']] + pd.Timedelta((np.e ** t_min) / 2), data['next_timestamp'])
         to_add.append(data)
         to_add = pd.concat(to_add)
-        return to_add.sort_values('event_timestamp')
+        return to_add.sort_values('event_timestamp').reset_index(drop=True)
 
     def remove_events(self, event_list, mode='equal'):
         """
@@ -685,7 +895,8 @@ class BaseDataset(BaseTrajectory):
             data = data.loc[func(data[self.retention_config['event_col']], event)]
         return data.reset_index(drop=True)
 
-    def learn_tsne(self, targets=None, plot_type=None, refit=False, regression_targets=None, **kwargs):
+    def learn_tsne(self, targets=None, plot_type=None, refit=False, regression_targets=None,
+                   sample_size=None, sample_frac=None, **kwargs):
         """
         Learns TSNE projection for selected feature space (`feature_type` in kwargs)
         and visualize it with chosen visualization type
@@ -711,16 +922,28 @@ class BaseDataset(BaseTrajectory):
                     targets = np.where(targets, self.retention_config['positive_target_event'],
                                        self.retention_config['negative_target_event'])
             self._tsne_targets = targets
+
+        if sample_frac is not None:
+            features = features.sample(frac=sample_frac, random_state=0)
+        elif sample_size is not None:
+            features = features.sample(n=sample_size, random_state=0)
+
         if not (hasattr(self, '_tsne') and not refit):
             self._tsne = feature_extraction.learn_tsne(features, **kwargs)
         if plot_type == 'clusters':
+            if kwargs.get('cmethod') is not None:
+                kwargs['method'] = kwargs.pop('cmethod')
             targets = self.get_clusters(plot_type=None, **kwargs)
         elif plot_type == 'targets':
             targets = self._tsne_targets
         else:
             return self._tsne
-
-        plot.cluster_tsne(self._obj, targets, targets)
+        plot.cluster_tsne(
+            self._obj,
+            clustering.aggregate_cl(targets, 7) if kwargs.get('method') == 'dbscan' else targets,
+            targets,
+            **kwargs
+        )
         return self._tsne
 
     def select_bbox_from_tsne(self, bbox, plotting=True, **kwargs):

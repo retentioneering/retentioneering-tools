@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='retentioneering',
-    version='1.0.2',
+    version='1.0.4',
     license='Mozilla Public License',
     description='Python package for user trajectories analysis in the app',
     long_description='Python package for user trajectories analysis in the app',
@@ -18,6 +18,7 @@ setup(
         'scikit-learn>=0.20.2',
         'shap>=0.29.1',
         'eli5>=0.8.2',
+        'plotly>=4.1.0',
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

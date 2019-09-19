@@ -44,6 +44,14 @@ retentioneering.core.preprocessing module
     :undoc-members:
     :show-inheritance:
 
+retentioneering.core.simulator module
+-------------------------------------
+
+.. automodule:: retentioneering.core.simulator
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 retentioneering.core.tree\_selector module
 ------------------------------------------
 

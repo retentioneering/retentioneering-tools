@@ -4,6 +4,14 @@ retentioneering.visualization package
 Submodules
 ----------
 
+retentioneering.visualization.funnel module
+-------------------------------------------
+
+.. automodule:: retentioneering.visualization.funnel
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 retentioneering.visualization.plot module
 -----------------------------------------
 

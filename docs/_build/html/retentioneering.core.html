@@ -84,6 +84,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="early_steps.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mobile-app-case.html">Mobile app case</a></li>
+<li class="toctree-l1"><a class="reference internal" href="release-notes.html">Release 1.0.4 description</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="retentioneering.html">Documentation</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="retentioneering.html#subpackages">Subpackages</a><ul class="current">
 <li class="toctree-l3 current"><a class="current reference internal" href="#">retentioneering.core package</a><ul>
@@ -93,6 +94,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.model">retentioneering.core.model module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.node_metrics">retentioneering.core.node_metrics module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.preprocessing">retentioneering.core.preprocessing module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.simulator">retentioneering.core.simulator module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.tree_selector">retentioneering.core.tree_selector module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core.utils">retentioneering.core.utils module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.core">Module contents</a></li>
@@ -178,8 +180,85 @@
 <div class="section" id="module-retentioneering.core.clustering">
 <span id="retentioneering-core-clustering-module"></span><h2>retentioneering.core.clustering module<a class="headerlink" href="#module-retentioneering.core.clustering" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
+<dt id="retentioneering.core.clustering.GMM">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">GMM</code><span class="sig-paren">(</span><em>data</em>, <em>max_n_clusters=None</em>, <em>use_csi=True</em>, <em>random_state=0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.GMM" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds cluster of users in data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – feature matrix for clustering</li>
+<li><strong>kwargs</strong> – keyword arguments for sklearn.cluster.KMeans</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">np.array of clusters</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.clustering.aggregate_cl">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">aggregate_cl</code><span class="sig-paren">(</span><em>cl</em>, <em>max_cl_number</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.aggregate_cl" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.clustering.calc_all_metrics">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">calc_all_metrics</code><span class="sig-paren">(</span><em>data</em>, <em>km</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.calc_all_metrics" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.clustering.calc_mean_dist_from_center">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">calc_mean_dist_from_center</code><span class="sig-paren">(</span><em>data</em>, <em>km</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.calc_mean_dist_from_center" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.clustering.calc_mean_pd">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">calc_mean_pd</code><span class="sig-paren">(</span><em>data</em>, <em>cl</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.calc_mean_pd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.clustering.cluster_stability_index">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">cluster_stability_index</code><span class="sig-paren">(</span><em>data</em>, <em>clusterer</em>, <em>base_clusterer=None</em>, <em>n_samples=10</em>, <em>frac=1</em>, <em>sample_size=None</em>, <em>replace=True</em>, <em>weights=None</em>, <em>random_state=0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.cluster_stability_index" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.clustering.dbscan">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">dbscan</code><span class="sig-paren">(</span><em>data</em>, <em>use_csi=True</em>, <em>epsq=None</em>, <em>max_cl_number=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.dbscan" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds cluster of users in data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – feature matrix for clustering</li>
+<li><strong>kwargs</strong> – keyword arguments for sklearn.cluster.KMeans</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">np.array of clusters</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.clustering.find_best_eps">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">find_best_eps</code><span class="sig-paren">(</span><em>data</em>, <em>q=0.05</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.find_best_eps" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.clustering.find_best_n_clusters">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">find_best_n_clusters</code><span class="sig-paren">(</span><em>data</em>, <em>clusterer</em>, <em>max_n_clusters</em>, <em>random_state</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.find_best_n_clusters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
 <dt id="retentioneering.core.clustering.simple_cluster">
-<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">simple_cluster</code><span class="sig-paren">(</span><em>data</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.simple_cluster" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">simple_cluster</code><span class="sig-paren">(</span><em>data</em>, <em>max_n_clusters=None</em>, <em>use_csi=True</em>, <em>random_state=0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.simple_cluster" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finds cluster of users in data.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -246,6 +325,11 @@
 </dd></dl>
 
 <dl class="function">
+<dt id="retentioneering.core.feature_extraction.get_manifold">
+<code class="descclassname">retentioneering.core.feature_extraction.</code><code class="descname">get_manifold</code><span class="sig-paren">(</span><em>data</em>, <em>manifold_type</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.feature_extraction.get_manifold" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
 <dt id="retentioneering.core.feature_extraction.learn_tsne">
 <code class="descclassname">retentioneering.core.feature_extraction.</code><code class="descname">learn_tsne</code><span class="sig-paren">(</span><em>data</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.feature_extraction.learn_tsne" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculates TSNE transform for given matrix features</p>
@@ -265,6 +349,11 @@
 </tbody>
 </table>
 </dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.feature_extraction.merge_features">
+<code class="descclassname">retentioneering.core.feature_extraction.</code><code class="descname">merge_features</code><span class="sig-paren">(</span><em>features</em>, <em>metadata</em>, <em>meta_index_col=None</em>, <em>manifold_type=None</em>, <em>fillna=None</em>, <em>drop=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.feature_extraction.merge_features" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="function">
 <dt id="retentioneering.core.feature_extraction.tfidf_embedder">
@@ -335,27 +424,6 @@ Node param should be represented in the following form
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="retentioneering.core.model.ModelDescriptor.shap_descriptor">
-<code class="descname">shap_descriptor</code><span class="sig-paren">(</span><em>test_sample</em>, <em>test_index=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.model.ModelDescriptor.shap_descriptor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Describes model using [SHAP](<a class="reference external" href="https://github.com/slundberg/shap">https://github.com/slundberg/shap</a>) force_plot</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>test_sample</strong> – test feature subsample</li>
-<li><strong>test_index</strong> – idx of test example</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
 <dt id="retentioneering.core.model.ModelDescriptor.show_quality_metrics">
 <code class="descname">show_quality_metrics</code><span class="sig-paren">(</span><em>test_sample</em>, <em>test_target</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.model.ModelDescriptor.show_quality_metrics" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -419,6 +487,51 @@ Node param should be represented in the following form
 </dd></dl>
 
 </div>
+<div class="section" id="module-retentioneering.core.simulator">
+<span id="retentioneering-core-simulator-module"></span><h2>retentioneering.core.simulator module<a class="headerlink" href="#module-retentioneering.core.simulator" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="retentioneering.core.simulator.Agent">
+<em class="property">class </em><code class="descclassname">retentioneering.core.simulator.</code><code class="descname">Agent</code><span class="sig-paren">(</span><em>probs</em>, <em>user_type</em>, <em>config=None</em>, <em>user_id=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.simulator.Agent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="retentioneering.core.simulator.Agent.simulate">
+<code class="descname">simulate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.simulator.Agent.simulate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="retentioneering.core.simulator.Simulator">
+<em class="property">class </em><code class="descclassname">retentioneering.core.simulator.</code><code class="descname">Simulator</code><span class="sig-paren">(</span><em>path=''</em>, <em>tables='dynamic_matrix'</em>, <em>num_pops=100</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.simulator.Simulator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="retentioneering.core.simulator.Simulator.create_population">
+<code class="descname">create_population</code><span class="sig-paren">(</span><em>path</em>, <em>config</em>, <em>tables</em>, <em>num_pops</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.simulator.Simulator.create_population" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="retentioneering.core.simulator.Simulator.prepare_step_matrix">
+<em class="property">static </em><code class="descname">prepare_step_matrix</code><span class="sig-paren">(</span><em>mat</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.simulator.Simulator.prepare_step_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mat</strong> – step matrix with dt_means</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">prepared matrix</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.simulator.Simulator.simulate">
+<code class="descname">simulate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.simulator.Simulator.simulate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
 <div class="section" id="module-retentioneering.core.tree_selector">
 <span id="retentioneering-core-tree-selector-module"></span><h2>retentioneering.core.tree_selector module<a class="headerlink" href="#module-retentioneering.core.tree_selector" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
@@ -475,8 +588,49 @@ It uses <cite>_</cite> for splitting event names for group aggregation</p>
 <em class="property">class </em><code class="descclassname">retentioneering.core.utils.</code><code class="descname">BaseDataset</code><span class="sig-paren">(</span><em>pandas_obj</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#retentioneering.core.utils.BaseTrajectory" title="retentioneering.core.utils.BaseTrajectory"><code class="xref py py-class docutils literal notranslate"><span class="pre">retentioneering.core.utils.BaseTrajectory</span></code></a></p>
 <dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.calculate_delays">
+<code class="descname">calculate_delays</code><span class="sig-paren">(</span><em>plotting=True</em>, <em>time_col=None</em>, <em>index_col=None</em>, <em>event_col=None</em>, <em>bins=50</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.calculate_delays" title="Permalink to this definition">¶</a></dt>
+<dd><p>Displays the logarithm of delays in nanoseconds on a histogram</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>plot</strong> – bool parameter for visualization</li>
+<li><strong>index_col</strong> – name of index by which we calculate timedata</li>
+<li><strong>bins</strong> – number of bins for visualisation</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a list of delays in nanoseconds</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.cluster_event_dist">
+<code class="descname">cluster_event_dist</code><span class="sig-paren">(</span><em>cl1</em>, <em>cl2=None</em>, <em>n=3</em>, <em>event_col=None</em>, <em>index_col=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.cluster_event_dist" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.cluster_funnel">
+<code class="descname">cluster_funnel</code><span class="sig-paren">(</span><em>cluster</em>, <em>funnel_events</em>, <em>index_col=None</em>, <em>user_based=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.cluster_funnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates the funnel for a particular cluster
+:param cluster: the number of the cluster to explore, must fit as filter_cluster argument
+:param funnel_events: the events to include in the funnel
+:return: the chart</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.cluster_top_events">
+<code class="descname">cluster_top_events</code><span class="sig-paren">(</span><em>n=3</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.cluster_top_events" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.create_filter">
-<code class="descname">create_filter</code><span class="sig-paren">(</span><em>index_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.create_filter" title="Permalink to this definition">¶</a></dt>
+<code class="descname">create_filter</code><span class="sig-paren">(</span><em>index_col=None</em>, <em>cluster_list=None</em>, <em>cluster_mapping=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.create_filter" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates positive users filter for get_step_matrix_difference method</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -515,7 +669,7 @@ if None, then <cite>index_col</cite> from config is used.</td>
 
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.extract_features">
-<code class="descname">extract_features</code><span class="sig-paren">(</span><em>feature_type='tfidf'</em>, <em>drop_targets=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.extract_features" title="Permalink to this definition">¶</a></dt>
+<code class="descname">extract_features</code><span class="sig-paren">(</span><em>feature_type='tfidf'</em>, <em>drop_targets=True</em>, <em>metadata=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.extract_features" title="Permalink to this definition">¶</a></dt>
 <dd><p>Vectorize users`s trajectories
 Available vectorization methods is <cite>Tf-Idf</cite> (feature_type=’tfidf’),
 <cite>Event Frequencies</cite> (feature_type=’frequency’) and <cite>Event Counts</cite> (feature_type=’count’).</p>
@@ -551,8 +705,13 @@ Available vectorization methods is <cite>Tf-Idf</cite> (feature_type=’tfidf’
 <dd></dd></dl>
 
 <dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.filter_event_window">
+<code class="descname">filter_event_window</code><span class="sig-paren">(</span><em>event_name</em>, <em>neighbor_range=3</em>, <em>event_col=None</em>, <em>index_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.filter_event_window" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.get_clusters">
-<code class="descname">get_clusters</code><span class="sig-paren">(</span><em>plot_type=None</em>, <em>refit_cluster=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.get_clusters" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_clusters</code><span class="sig-paren">(</span><em>plot_type=None</em>, <em>refit_cluster=False</em>, <em>method='simple_cluster'</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.get_clusters" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finds cluster of users in data.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -575,7 +734,7 @@ Please, see examples to understand different visualizations</li>
 
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.get_positive_users">
-<code class="descname">get_positive_users</code><span class="sig-paren">(</span><em>index_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.get_positive_users" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_positive_users</code><span class="sig-paren">(</span><em>index_col=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.get_positive_users" title="Permalink to this definition">¶</a></dt>
 <dd><p>Finds users, who have positive_target_event</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -592,24 +751,12 @@ if None, then <cite>index_col</cite> from config is used.</td>
 
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.get_step_matrix_difference">
-<code class="descname">get_step_matrix_difference</code><span class="sig-paren">(</span><em>groups</em>, <em>plot_type=True</em>, <em>max_steps=30</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.get_step_matrix_difference" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plots heatmap with difference of events distributions over steps between two given groups</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>groups</strong> – boolean vector that splits data in to groups</li>
-<li><strong>plot_type</strong> – if True, then heatmap plot will be shown in interactive mode</li>
-<li><strong>max_steps</strong> – maximum number of steps to show</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with step matrix</p>
-</td>
-</tr>
-</tbody>
-</table>
+<code class="descname">get_step_matrix_difference</code><span class="sig-paren">(</span><em>groups</em>, <em>plot_type=True</em>, <em>max_steps=30</em>, <em>sorting=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.get_step_matrix_difference" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots heatmap with difference of events distributions over steps between two given groups
+:param groups: boolean vector that splits data in to groups
+:param plot_type: if True, then heatmap plot will be shown in interactive mode
+:param max_steps: maximum number of steps to show
+:return: pd.DataFrame with step matrix</p>
 </dd></dl>
 
 <dl class="method">
@@ -635,8 +782,29 @@ if None, then <cite>index_col</cite> from config is used.</td>
 </dd></dl>
 
 <dl class="method">
+<dt id="retentioneering.core.utils.BaseDataset.insert_sleep_events">
+<code class="descname">insert_sleep_events</code><span class="sig-paren">(</span><em>events</em>, <em>delays=None</em>, <em>time_col=None</em>, <em>index_col=None</em>, <em>event_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.insert_sleep_events" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inserts the given sleep events (not inplace)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>events</strong> – dict of events containing event name and logtime ranges</li>
+<li><strong>delays</strong> – a list of delays from display delays</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with inserted values</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.learn_tsne">
-<code class="descname">learn_tsne</code><span class="sig-paren">(</span><em>targets=None</em>, <em>plot_type=None</em>, <em>refit=False</em>, <em>regression_targets=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.learn_tsne" title="Permalink to this definition">¶</a></dt>
+<code class="descname">learn_tsne</code><span class="sig-paren">(</span><em>targets=None</em>, <em>plot_type=None</em>, <em>refit=False</em>, <em>regression_targets=None</em>, <em>sample_size=None</em>, <em>sample_frac=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.learn_tsne" title="Permalink to this definition">¶</a></dt>
 <dd><p>Learns TSNE projection for selected feature space (<cite>feature_type</cite> in kwargs)
 and visualize it with chosen visualization type</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -881,15 +1049,16 @@ second part after <cite>_</cite> should be a valid pandas.groupby.agg() paramete
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseTrajectory.get_edgelist">
 <code class="descname">get_edgelist</code><span class="sig-paren">(</span><em>cols=None</em>, <em>edge_col=None</em>, <em>edge_attributes='event_count'</em>, <em>norm=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseTrajectory.get_edgelist" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creates graph in the following representation: <cite>source_node, target_node, edge_weight</cite></p>
+<dd><p>Creates graph in the following representation: <cite>source_node, target_node, edge_weight</cite>
+:param cols: list of source and target columns, e.g. <cite>event_name</cite>, <cite>next_event</cite> correspondingly
+:param edge_col: aggregation column for edge weighting,</p>
+<blockquote>
+<div>e.g. set it to <cite>index_col</cite> and <cite>edge_attributes=’unique’</cite> to calculate unique users passed through edge</div></blockquote>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>cols</strong> – list of source and target columns, e.g. <cite>event_name</cite>, <cite>next_event</cite> correspondingly</li>
-<li><strong>edge_col</strong> – aggregation column for edge weighting,
-e.g. set it to <cite>index_col</cite> and <cite>edge_attributes=’unique’</cite> to calculate unique users passed through edge</li>
 <li><strong>edge_attributes</strong> – name of edge weighting,
 second part after <cite>_</cite> should be a valid pandas.groupby.agg() parameter, e.g. <cite>count</cite>, <cite>mean</cite>. <cite>sum</cite> and etc.</li>
 <li><strong>norm</strong> – normalize over number of users</li>
@@ -905,23 +1074,13 @@ second part after <cite>_</cite> should be a valid pandas.groupby.agg() paramete
 
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseTrajectory.get_step_matrix">
-<code class="descname">get_step_matrix</code><span class="sig-paren">(</span><em>max_steps=None</em>, <em>plot_type=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseTrajectory.get_step_matrix" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plots heatmap with distribution of events over event steps (ordering in the session by event time)</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>max_steps</strong> – maximum number of steps to show</li>
-<li><strong>plot_type</strong> – if True, then plot in interactive session (jupyter notebook)</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with distribution of events over event order</p>
-</td>
-</tr>
-</tbody>
-</table>
+<code class="descname">get_step_matrix</code><span class="sig-paren">(</span><em>max_steps=30</em>, <em>plot_type=True</em>, <em>sorting=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseTrajectory.get_step_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots heatmap with distribution of events over event steps (ordering in the session by event time)
+:param max_steps: maximum number of steps to show
+:param plot_type: if True, then plot in interactive session (jupyter notebook)
+:param thr: optional, if True, display only the rows with at least one value &gt;= thr
+:param reverse: optional, displays reversed trajectories from the target events, can be ‘pos’, ‘neg’ or [‘pos’, ‘neg’]
+:return: pd.DataFrame with distribution of events over event order</p>
 </dd></dl>
 
 <dl class="method">

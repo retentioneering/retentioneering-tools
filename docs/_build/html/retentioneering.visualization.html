@@ -83,11 +83,13 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="early_steps.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mobile-app-case.html">Mobile app case</a></li>
+<li class="toctree-l1"><a class="reference internal" href="release-notes.html">Release 1.0.4 description</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="retentioneering.html">Documentation</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="retentioneering.html#subpackages">Subpackages</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="retentioneering.core.html">retentioneering.core package</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">retentioneering.visualization package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.visualization.funnel">retentioneering.visualization.funnel module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.visualization.plot">retentioneering.visualization.plot module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.visualization">Module contents</a></li>
 </ul>
@@ -168,8 +170,32 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
+<div class="section" id="module-retentioneering.visualization.funnel">
+<span id="retentioneering-visualization-funnel-module"></span><h2>retentioneering.visualization.funnel module<a class="headerlink" href="#module-retentioneering.visualization.funnel" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="retentioneering.visualization.funnel.funnel_chart">
+<code class="descclassname">retentioneering.visualization.funnel.</code><code class="descname">funnel_chart</code><span class="sig-paren">(</span><em>values</em>, <em>phases</em>, <em>chart_title</em>, <em>labels=None</em>, <em>shuffle_colors=False</em>, <em>title_size=20</em>, <em>font_size=14</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.funnel.funnel_chart" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tool to create a nice funnel chart.</p>
+<p>values - numbers (of users)
+labels - values displayed on chart
+phases - name of the step</p>
+<p>–
+code source = <a class="reference external" href="https://plot.ly/python/funnel-charts/">https://plot.ly/python/funnel-charts/</a></p>
+</dd></dl>
+
+</div>
 <div class="section" id="module-retentioneering.visualization.plot">
 <span id="retentioneering-visualization-plot-module"></span><h2>retentioneering.visualization.plot module<a class="headerlink" href="#module-retentioneering.visualization.plot" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="retentioneering.visualization.plot.cluster_bar">
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_bar</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>plot_cnt=None</em>, <em>metrics=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_bar" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.visualization.plot.cluster_event_dist">
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_event_dist</code><span class="sig-paren">(</span><em>bars</em>, <em>event_col</em>, <em>cl1</em>, <em>sizes</em>, <em>crs</em>, <em>cl2=None</em>, <em>plot_name=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_event_dist" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="function">
 <dt id="retentioneering.visualization.plot.cluster_heatmap">
 <code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_heatmap</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_heatmap" title="Permalink to this definition">¶</a></dt>
@@ -196,7 +222,7 @@
 
 <dl class="function">
 <dt id="retentioneering.visualization.plot.cluster_pie">
-<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_pie</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>plot_cnt=6</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_pie" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_pie</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>plot_cnt=None</em>, <em>metrics=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_pie" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plots pie-charts of target distribution for different clusters</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -245,7 +271,7 @@
 
 <dl class="function">
 <dt id="retentioneering.visualization.plot.graph">
-<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">graph</code><span class="sig-paren">(</span><em>data</em>, <em>node_params=None</em>, <em>thresh=0.05</em>, <em>width=500</em>, <em>height=500</em>, <em>interactive=True</em>, <em>layout_dump=None</em>, <em>show_percent=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.graph" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">graph</code><span class="sig-paren">(</span><em>data</em>, <em>node_params=None</em>, <em>thresh=0.05</em>, <em>width=500</em>, <em>height=500</em>, <em>interactive=True</em>, <em>layout_dump=None</em>, <em>show_percent=True</em>, <em>plot_name=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.graph" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plots graph by its edgelist representation</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -284,7 +310,7 @@ Node param should be represented in the following form
 
 <dl class="function">
 <dt id="retentioneering.visualization.plot.step_matrix">
-<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">step_matrix</code><span class="sig-paren">(</span><em>diff</em>, <em>plot_name=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.step_matrix" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">step_matrix</code><span class="sig-paren">(</span><em>diff</em>, <em>plot_name=None</em>, <em>title=''</em>, <em>vmin=None</em>, <em>vmax=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.step_matrix" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plots heatmap with distribution of events over event steps (ordering in the session by event time)</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />

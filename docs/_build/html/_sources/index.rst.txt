@@ -19,6 +19,7 @@ Contents
    Installation <installation.rst>
    Introduction <early_steps.rst>
    Mobile app case <mobile-app-case.rst>
+   Release 1.0.4 description <release-notes.rst>
    Documentation <retentioneering.rst>
 
 

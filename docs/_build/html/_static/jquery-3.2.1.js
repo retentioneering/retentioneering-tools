@@ -9834,7 +9834,7 @@ jQuery.fn.load = function( url, params, callback ) {
 		callback = params;
 		params = undefined;
 
-	// Otherwise, _build a param string
+	// Otherwise, build a param string
 	} else if ( params && typeof params === "object" ) {
 		type = "POST";
 	}

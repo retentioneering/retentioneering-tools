@@ -182,14 +182,18 @@
 <dl class="function">
 <dt id="retentioneering.core.clustering.GMM">
 <code class="descclassname">retentioneering.core.clustering.</code><code class="descname">GMM</code><span class="sig-paren">(</span><em>data</em>, <em>max_n_clusters=None</em>, <em>use_csi=True</em>, <em>random_state=0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.GMM" title="Permalink to this definition">¶</a></dt>
-<dd><p>Finds cluster of users in data.</p>
+<dd><p>Finds cluster of users in data using Gaussian Mixture Models.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>data</strong> – feature matrix for clustering</li>
-<li><strong>kwargs</strong> – keyword arguments for sklearn.cluster.KMeans</li>
+<li><strong>data</strong> – pd.DataFrame with features for clustering indexed by users (sessions)</li>
+<li><strong>max_n_clusters</strong> – maximal number of clusters for automatic selection for number of clusters.
+if None, then use n_clusters from arguments</li>
+<li><strong>use_csi</strong> – if True, then cluster stability index will be calculated (may take a lot of time)</li>
+<li><strong>random_state</strong> – random state for GaussianMixture clusterer</li>
+<li><strong>kwargs</strong> – keyword arguments for sklearn.mixture.GaussianMixture</li>
 </ul>
 </td>
 </tr>
@@ -203,43 +207,19 @@
 <dl class="function">
 <dt id="retentioneering.core.clustering.aggregate_cl">
 <code class="descclassname">retentioneering.core.clustering.</code><code class="descname">aggregate_cl</code><span class="sig-paren">(</span><em>cl</em>, <em>max_cl_number</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.aggregate_cl" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="retentioneering.core.clustering.calc_all_metrics">
-<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">calc_all_metrics</code><span class="sig-paren">(</span><em>data</em>, <em>km</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.calc_all_metrics" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="retentioneering.core.clustering.calc_mean_dist_from_center">
-<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">calc_mean_dist_from_center</code><span class="sig-paren">(</span><em>data</em>, <em>km</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.calc_mean_dist_from_center" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="retentioneering.core.clustering.calc_mean_pd">
-<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">calc_mean_pd</code><span class="sig-paren">(</span><em>data</em>, <em>cl</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.calc_mean_pd" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="retentioneering.core.clustering.cluster_stability_index">
-<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">cluster_stability_index</code><span class="sig-paren">(</span><em>data</em>, <em>clusterer</em>, <em>base_clusterer=None</em>, <em>n_samples=10</em>, <em>frac=1</em>, <em>sample_size=None</em>, <em>replace=True</em>, <em>weights=None</em>, <em>random_state=0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.cluster_stability_index" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="retentioneering.core.clustering.dbscan">
-<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">dbscan</code><span class="sig-paren">(</span><em>data</em>, <em>use_csi=True</em>, <em>epsq=None</em>, <em>max_cl_number=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.dbscan" title="Permalink to this definition">¶</a></dt>
-<dd><p>Finds cluster of users in data.</p>
+<dd><p>Aggregate small clusters to one, based on max_cl_number.
+Usually it is used for visualization purposes, because large number of different colors is hard to distinct.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>data</strong> – feature matrix for clustering</li>
-<li><strong>kwargs</strong> – keyword arguments for sklearn.cluster.KMeans</li>
+<li><strong>cl</strong> – results of clustering</li>
+<li><strong>max_cl_number</strong> – maximum number of unique clusters</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">np.array of clusters</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">clustering with merged to -1 small clusters</p>
 </td>
 </tr>
 </tbody>
@@ -247,14 +227,167 @@
 </dd></dl>
 
 <dl class="function">
+<dt id="retentioneering.core.clustering.calc_all_metrics">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">calc_all_metrics</code><span class="sig-paren">(</span><em>data</em>, <em>km</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.calc_all_metrics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates all quality metrics
+(Cluster Stability Index, Silhouette score, Homogeneity, distances) for clustering</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – pd.DataFrame with features for clustering indexed by users (sessions)</li>
+<li><strong>km</strong> – already fitted clusterer</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">dict with metrics</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.clustering.calc_mean_dist_from_center">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">calc_mean_dist_from_center</code><span class="sig-paren">(</span><em>data</em>, <em>km</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.calc_mean_dist_from_center" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates mean distance from cluster centers
+(will be calculated only for KMeans and GMM, because DBSCAN may have ambiguous form of clusters)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – pd.DataFrame with features for clustering indexed by users (sessions)</li>
+<li><strong>km</strong> – already fitted clusterer</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">mapping of clusters names to mean distance from cluster centers</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.clustering.calc_mean_pd">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">calc_mean_pd</code><span class="sig-paren">(</span><em>data</em>, <em>cl</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.calc_mean_pd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates mean pairwise distance inside clusters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – pd.DataFrame with features for clustering indexed by users (sessions)</li>
+<li><strong>cl</strong> – results of clustering</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">mapping of clusters names to pairwise distance inside clusters</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.clustering.cluster_stability_index">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">cluster_stability_index</code><span class="sig-paren">(</span><em>data</em>, <em>clusterer</em>, <em>base_clusterer=None</em>, <em>n_samples=10</em>, <em>frac=1</em>, <em>sample_size=None</em>, <em>replace=True</em>, <em>weights=None</em>, <em>random_state=0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.cluster_stability_index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates cluster stability index.
+Rate of samples with unchanged clustering in random subsamples of data</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – pd.DataFrame with features for clustering indexed by users (sessions)</li>
+<li><strong>clusterer</strong> – sklearn clusterer class, e.g. sklearn.cluster.KMeans or sklearn.mixture.GaussianMixture</li>
+<li><strong>base_clusterer</strong> – results of base clustering</li>
+<li><strong>n_samples</strong> – number of random subsamples for CSI calculation</li>
+<li><strong>frac</strong> – rate of users (sessions) in each subsample (relative to input data)</li>
+<li><strong>sample_size</strong> – number of users (sessions) in each subsample, can’t be used with frac</li>
+<li><strong>replace</strong> – subsampling with replace</li>
+<li><strong>weights</strong> – weights of each sample for weighted random sampling</li>
+<li><strong>random_state</strong> – random state for sampling</li>
+<li><strong>kwargs</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">value of CSI</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="retentioneering.core.clustering.dbscan">
+<code class="descclassname">retentioneering.core.clustering.</code><code class="descname">dbscan</code><span class="sig-paren">(</span><em>data</em>, <em>use_csi=True</em>, <em>epsq=None</em>, <em>max_cl_number=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.dbscan" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds cluster of users in data using DBSCAN</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>data</strong> – pd.DataFrame with features for clustering indexed by users (sessions)</li>
+<li><strong>use_csi</strong> – if True, then cluster stability index will be calculated (may take a lot of time)</li>
+<li><strong>epsq</strong> – quantile of nearest neighbor positive distance between dots (value of it will be an eps),</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>if None, then eps from key-words will be used.
+:param max_cl_number: maximal number of clusters for aggregation of small clusters
+:param kwargs: keyword arguments for sklearn.cluster.KMeans
+:return: np.array of clusters</p>
+</dd></dl>
+
+<dl class="function">
 <dt id="retentioneering.core.clustering.find_best_eps">
 <code class="descclassname">retentioneering.core.clustering.</code><code class="descname">find_best_eps</code><span class="sig-paren">(</span><em>data</em>, <em>q=0.05</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.find_best_eps" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Find best maximal distance (eps) between dots for DBSCAN clustering</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – pd.DataFrame with features for clustering indexed by users (sessions)</li>
+<li><strong>q</strong> – quantile of nearest neighbor positive distance between dots (value of it will be an eps)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">optimal eps</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="function">
 <dt id="retentioneering.core.clustering.find_best_n_clusters">
 <code class="descclassname">retentioneering.core.clustering.</code><code class="descname">find_best_n_clusters</code><span class="sig-paren">(</span><em>data</em>, <em>clusterer</em>, <em>max_n_clusters</em>, <em>random_state</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.clustering.find_best_n_clusters" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Finds best number of cluster for KMeans and Gaussian Mixture</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – pd.DataFrame with features for clustering indexed by users (sessions)</li>
+<li><strong>clusterer</strong> – sklearn clusterer class, e.g. sklearn.cluster.KMeans or sklearn.mixture.GaussianMixture</li>
+<li><strong>max_n_clusters</strong> – maximal number of clusters for searching</li>
+<li><strong>random_state</strong> – random state for clusterer</li>
+<li><strong>kwargs</strong> – arguments for clusterer</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">optimal key-word arguments for clustering method</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="function">
 <dt id="retentioneering.core.clustering.simple_cluster">
@@ -265,7 +398,11 @@
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>data</strong> – feature matrix for clustering</li>
+<li><strong>data</strong> – pd.DataFrame with features for clustering indexed by users (sessions)</li>
+<li><strong>max_n_clusters</strong> – maximal number of clusters for automatic selection for number of clusters.
+if None, then use n_clusters from arguments</li>
+<li><strong>use_csi</strong> – if True, then cluster stability index will be calculated (may take a lot of time)</li>
+<li><strong>random_state</strong> – random state for KMeans clusterer</li>
 <li><strong>kwargs</strong> – keyword arguments for sklearn.cluster.KMeans</li>
 </ul>
 </td>
@@ -327,7 +464,24 @@
 <dl class="function">
 <dt id="retentioneering.core.feature_extraction.get_manifold">
 <code class="descclassname">retentioneering.core.feature_extraction.</code><code class="descname">get_manifold</code><span class="sig-paren">(</span><em>data</em>, <em>manifold_type</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.feature_extraction.get_manifold" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Reduce number of dimensions</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – pd.DataFrame with features for clustering indexed by users (sessions)</li>
+<li><strong>manifold_type</strong> – name dimensionality reduction method from sklearn.decomposition and sklearn.manifold</li>
+<li><strong>kwargs</strong> – key-word arguments for sklearn.decomposition and sklearn.manifold methods</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with reduced data</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="function">
 <dt id="retentioneering.core.feature_extraction.learn_tsne">
@@ -353,7 +507,29 @@
 <dl class="function">
 <dt id="retentioneering.core.feature_extraction.merge_features">
 <code class="descclassname">retentioneering.core.feature_extraction.</code><code class="descname">merge_features</code><span class="sig-paren">(</span><em>features</em>, <em>metadata</em>, <em>meta_index_col=None</em>, <em>manifold_type=None</em>, <em>fillna=None</em>, <em>drop=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.feature_extraction.merge_features" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Adds metadata to Tf-Idf of trajectories (reduced if manifold_type is not None)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>metadata</strong> – pd.DataFrame with trajectory features indexed by users (sessions)</li>
+<li><strong>features</strong> – pd.DataFrame with users` metadata</li>
+<li><strong>meta_index_col</strong> – name of column that contains id of users / sessions same as in trajectories.
+If None, then pd.DataFrame.index is used.</li>
+<li><strong>manifold_type</strong> – name dimensionality reduction method from sklearn.decomposition and sklearn.manifold</li>
+<li><strong>fillna</strong> – value for filling users metadata if some users was not in pd.DataFrame with metadata.</li>
+<li><strong>drop</strong> – if True, then drops users, who was not mentioned in pd.DataFrame with metadata</li>
+<li><strong>kwargs</strong> – key-word arguments for sklearn.decomposition and sklearn.manifold methods</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with trajectory features (possibly reduced) and users metadata.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="function">
 <dt id="retentioneering.core.feature_extraction.tfidf_embedder">
@@ -421,12 +597,40 @@ Node param should be represented in the following form
 <dl class="method">
 <dt id="retentioneering.core.model.ModelDescriptor.predict">
 <code class="descname">predict</code><span class="sig-paren">(</span><em>features</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.model.ModelDescriptor.predict" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Predicts probability of positive and negative targets (in classifacation task)
+or values of regeression_targets (in regression task)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>features</strong> – features for model</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">pd.DataFrame with predictions</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="retentioneering.core.model.ModelDescriptor.show_quality_metrics">
 <code class="descname">show_quality_metrics</code><span class="sig-paren">(</span><em>test_sample</em>, <em>test_target</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.model.ModelDescriptor.show_quality_metrics" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Print metrics of quality for model</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>test_sample</strong> – test feature subsample</li>
+<li><strong>test_target</strong> – vector of targets for test sample</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="retentioneering.core.model.ModelDescriptor.visualize_results">
@@ -597,7 +801,8 @@ It uses <cite>_</cite> for splitting event names for group aggregation</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>plot</strong> – bool parameter for visualization</li>
-<li><strong>index_col</strong> – name of index by which we calculate timedata</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
 <li><strong>bins</strong> – number of bins for visualisation</li>
 </ul>
 </td>
@@ -612,15 +817,56 @@ It uses <cite>_</cite> for splitting event names for group aggregation</p>
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.cluster_event_dist">
 <code class="descname">cluster_event_dist</code><span class="sig-paren">(</span><em>cl1</em>, <em>cl2=None</em>, <em>n=3</em>, <em>event_col=None</em>, <em>index_col=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.cluster_event_dist" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Plots frequency of top events in cluster cl1 in comparison
+with frequency of such events in whole data or in cluster cl2.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cl1</strong> – id of first cluster (search top events from it)</li>
+<li><strong>cl2</strong> – id of second cluster (to compare with top events from first cluster).
+If None, then compares with all data.</li>
+<li><strong>n</strong> – number of top events</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
+<li><strong>event_col</strong> – name of  custom event column,
+e.g. you may want to aggregate some events or rename and use it as new event column</li>
+<li><strong>kwargs</strong> – do nothing</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">nothing</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.cluster_funnel">
 <code class="descname">cluster_funnel</code><span class="sig-paren">(</span><em>cluster</em>, <em>funnel_events</em>, <em>index_col=None</em>, <em>user_based=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.cluster_funnel" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creates the funnel for a particular cluster
-:param cluster: the number of the cluster to explore, must fit as filter_cluster argument
-:param funnel_events: the events to include in the funnel
-:return: the chart</p>
+<dd><p>Plots funnel over given event list as number of users, who pass through each event</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cluster</strong> – cluster id or list of cluster ids</li>
+<li><strong>funnel_events</strong> – list of event in funnel (order in visualization will be the same)</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
+<li><strong>user_based</strong> – if True, then edge weights is calculated as unique rate of users who go through them,
+else as event count</li>
+<li><strong>kwargs</strong> – do nothing</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">plotly chart</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -631,15 +877,23 @@ It uses <cite>_</cite> for splitting event names for group aggregation</p>
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.create_filter">
 <code class="descname">create_filter</code><span class="sig-paren">(</span><em>index_col=None</em>, <em>cluster_list=None</em>, <em>cluster_mapping=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.create_filter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creates positive users filter for get_step_matrix_difference method</p>
+<dd><p>Creates filter for get_step_matrix_difference method based on target classes or clusters</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>index_col</strong> – name of index by which to create filter.
-if None, then <cite>index_col</cite> from config is used.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
+<li><strong>cluster_list</strong> – list of clusters from which others will be substract</li>
+<li><strong>cluster_mapping</strong> – mapping from clusters to list of users,
+IMPORTANT: if you use cluster subsample of source data,
+then it will be necessary to set cluster_mapping=source_data.retention.cluster_mapping</li>
+</ul>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">pd.Series with filter</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">boolean pd.Series with filter</p>
+</td>
 </tr>
 </tbody>
 </table>
@@ -656,7 +910,8 @@ if None, then <cite>index_col</cite> from config is used.</td>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>model_type</strong> – model class in sklearn-api style (should have methods <cite>fit</cite>, <cite>predict_proba</cite></li>
 <li><strong>regression_targets</strong> – mapping from index_col to regression target e.g. LTV of user</li>
-<li><strong>kwargs</strong> – params for model and explainer</li>
+<li><strong>kwargs</strong> – params for model class that you use,
+also contains all arguments from .retention.extract_features</li>
 </ul>
 </td>
 </tr>
@@ -680,7 +935,19 @@ Available vectorization methods is <cite>Tf-Idf</cite> (feature_type=’tfidf’
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>feature_type</strong> – type of vectorizer</li>
 <li><strong>drop_targets</strong> – if True, then targets will be removed from feature generation</li>
-<li><strong>kwargs</strong> – keyword arguments for vectorizer</li>
+<li><strong>metadata</strong> – pd.DataFrame with trajectory features indexed by users (sessions)</li>
+<li><strong>meta_index_col</strong> – name of column that contains id of users / sessions same as in trajectories.
+If None, then pd.DataFrame.index is used.</li>
+<li><strong>manifold_type</strong> – name dimensionality reduction method from sklearn.decomposition and sklearn.manifold</li>
+<li><strong>fillna</strong> – value for filling users metadata if some users was not in pd.DataFrame with metadata.</li>
+<li><strong>drop</strong> – if True, then drops users, who was not mentioned in pd.DataFrame with metadata</li>
+<li><strong>kwargs</strong> – key-word arguments for sklearn.decomposition and sklearn.manifold methods</li>
+<li><strong>ngram_range</strong> – range of ngrams to use in feature extraction</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
+<li><strong>event_col</strong> – name of  custom event column,
+e.g. you may want to aggregate some events or rename and use it as new event column</li>
+<li><strong>kwargs</strong> – key-word arguments for sklearn.decomposition and sklearn.manifold methods</li>
 </ul>
 </td>
 </tr>
@@ -697,12 +964,49 @@ Available vectorization methods is <cite>Tf-Idf</cite> (feature_type=’tfidf’
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.extract_features_from_test">
 <code class="descname">extract_features_from_test</code><span class="sig-paren">(</span><em>test</em>, <em>train=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.extract_features_from_test" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Extracts features from test pd.DataFrame</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>test</strong> – test subsample of clickstream</li>
+<li><strong>train</strong> – train subsample of clickstream</li>
+<li><strong>kwargs</strong> – all arguments from .retention.extract_features</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">encoded users trajectories</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">pd.DataFrame of (number of users in test, number of unique events | event n-grams in train)</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.filter_cluster">
 <code class="descname">filter_cluster</code><span class="sig-paren">(</span><em>cluster_name</em>, <em>index_col=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.filter_cluster" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Filters clusters by id or list of ids.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cluster_name</strong> – cluster id or list of cluster ids</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.filter_event_window">
@@ -717,11 +1021,48 @@ Available vectorization methods is <cite>Tf-Idf</cite> (feature_type=’tfidf’
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>plot_type</strong> – type of clustering visualization.
-Available methods are (<cite>cluster_heatmap</cite>, <cite>cluster_tsne</cite>, <cite>cluster_pie</cite>).
+Available methods are (<cite>cluster_heatmap</cite>, <cite>cluster_tsne</cite>, <cite>cluster_pie</cite>, <cite>cluster_bar</cite>).
 Please, see examples to understand different visualizations</li>
-<li><strong>kwargs</strong> – keyword arguments for clusterer</li>
+<li><strong>refit_cluster</strong> – if False, then cached results of clustering is used</li>
+<li><strong>method</strong> – Method of clustering
+Available methods are (<cite>simple_cluster</cite>, <cite>dbscan</cite>, <cite>GMM</cite>).</li>
+<li><strong>use_csi</strong> – if True, then cluster stability index will be calculated (may take a lot of time)</li>
+<li><strong>epsq</strong> – quantile of nearest neighbor positive distance between dots (value of it will be an eps),</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>if None, then eps from key-words will be used.
+:param max_cl_number: maximal number of clusters for aggregation of small clusters
+:param max_n_clusters: maximal number of clusters for automatic selection for number of clusters.</p>
+<blockquote>
+<div>if None, then use n_clusters from arguments</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>random_state</strong> – random state for KMeans and GMM clusterers</li>
+<li><strong>kwargs</strong> – keyword arguments for clusterers
+For more information, please, see sklearn.cluster.KMeans,
+sklearn.cluster.DBSCAN, sklearn.mixture.GaussianMixture docs.</li>
+<li><strong>feature_type</strong> – type of vectorizer</li>
+<li><strong>drop_targets</strong> – if True, then targets will be removed from feature generation</li>
+<li><strong>metadata</strong> – pd.DataFrame with trajectory features indexed by users (sessions)</li>
+<li><strong>meta_index_col</strong> – name of column that contains id of users / sessions same as in trajectories.
+If None, then pd.DataFrame.index is used.</li>
+<li><strong>manifold_type</strong> – name dimensionality reduction method from sklearn.decomposition and sklearn.manifold</li>
+<li><strong>fillna</strong> – value for filling users metadata if some users was not in pd.DataFrame with metadata.</li>
+<li><strong>drop</strong> – if True, then drops users, who was not mentioned in pd.DataFrame with metadata</li>
+<li><strong>kwargs</strong> – key-word arguments for sklearn.decomposition and sklearn.manifold methods</li>
+<li><strong>ngram_range</strong> – range of ngrams to use in feature extraction</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
+<li><strong>event_col</strong> – name of  custom event column,
+e.g. you may want to aggregate some events or rename and use it as new event column</li>
 </ul>
 </td>
 </tr>
@@ -740,8 +1081,8 @@ Please, see examples to understand different visualizations</li>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>index_col</strong> – name of index by which to create targets.
-if None, then <cite>index_col</cite> from config is used.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">np.array of users with positive_target_event in trajectory</td>
 </tr>
@@ -752,11 +1093,37 @@ if None, then <cite>index_col</cite> from config is used.</td>
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseDataset.get_step_matrix_difference">
 <code class="descname">get_step_matrix_difference</code><span class="sig-paren">(</span><em>groups</em>, <em>plot_type=True</em>, <em>max_steps=30</em>, <em>sorting=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseDataset.get_step_matrix_difference" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plots heatmap with difference of events distributions over steps between two given groups
-:param groups: boolean vector that splits data in to groups
-:param plot_type: if True, then heatmap plot will be shown in interactive mode
-:param max_steps: maximum number of steps to show
-:return: pd.DataFrame with step matrix</p>
+<dd><p>Plots heatmap with difference of events distributions over steps between two given groups</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>groups</strong> – boolean vector that splits data in to groups</li>
+<li><strong>max_steps</strong> – maximum number of steps to show</li>
+<li><strong>plot_type</strong> – if True, then show plot in interactive session (jupyter notebook)</li>
+<li><strong>thr</strong> – optional, if True, display only the rows with at least one value &gt;= thr</li>
+<li><strong>reverse</strong> – optional, displays reversed trajectories from the target events, can be ‘pos’, ‘neg’ or [‘pos’, ‘neg’]</li>
+<li><strong>sorting</strong> – if True, then automatically places elements with highest values in top</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
+<li><strong>event_col</strong> – name of  custom event column,
+e.g. you may want to aggregate some events or rename and use it as new event column</li>
+<li><strong>cols</strong> – list of source and target columns, e.g. <cite>event_name</cite>, <cite>next_event</cite> correspondingly</li>
+<li><strong>edge_col</strong> – aggregation column for edge weighting,
+e.g. set it to <cite>index_col</cite> and <cite>edge_attributes=’unique’</cite> to calculate unique users passed through edge</li>
+<li><strong>edge_attributes</strong> – name of edge weighting,
+second part after <cite>_</cite> should be a valid pandas.groupby.agg() parameter, e.g. <cite>count</cite>, <cite>mean</cite>. <cite>sum</cite> and etc.</li>
+<li><strong>dt_means</strong> – if True, adds mean time between events to step matrix</li>
+<li><strong>title</strong> – title for step matrix plot</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with step matrix</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -768,7 +1135,8 @@ if None, then <cite>index_col</cite> from config is used.</td>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>index_col</strong> – index col, if None, than use config</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
 <li><strong>test_size</strong> – rate of test subsample</li>
 <li><strong>seed</strong> – random seed</li>
 </ul>
@@ -792,6 +1160,11 @@ if None, then <cite>index_col</cite> from config is used.</td>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>events</strong> – dict of events containing event name and logtime ranges</li>
 <li><strong>delays</strong> – a list of delays from display delays</li>
+<li><strong>time_col</strong> – name of custom time column</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
+<li><strong>event_col</strong> – name of  custom event column,
+e.g. you may want to aggregate some events or rename and use it as new event column</li>
 </ul>
 </td>
 </tr>
@@ -818,11 +1191,12 @@ if None, then calculates automatically based on <cite>positive-</cite> and <cite
 if None, then only calculates tsne without vis</li>
 <li><strong>refit</strong> – if True, then tsne will be refitted e.g. it is needed if you perform hyperparam selection</li>
 <li><strong>regression_targets</strong> – mapping from index_col to regression target e.g. LTV of user</li>
-<li><strong>kwargs</strong> – parameters for feature extraction, sklearn.manifold.TSNE and sklearn.cluster.KMeans</li>
+<li><strong>cmethod</strong> – method of clustering if plot_type = ‘clusters’</li>
+<li><strong>kwargs</strong> – parameters for .retention.extract_features, sklearn.manifold.TSNE and .retention.get_clusters</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">np.array with TSNE transform for user tracks</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with TSNE transform for user tracks indexed by id of users</p>
 </td>
 </tr>
 </tbody>
@@ -929,9 +1303,16 @@ It uses <cite>_</cite> for splitting event names for group aggregation</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – event_col and params for iframe: <cite>width</cite> and <cite>height</cite></td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>event_col</strong> – name of  custom event column,
+e.g. you may want to aggregate some events or rename and use it as new event column</li>
+<li><strong>width</strong> – width of iframe with filters</li>
+<li><strong>height</strong> – height of iframe with filters</li>
+</ul>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Nothing</p>
+</td>
 </tr>
 </tbody>
 </table>
@@ -952,10 +1333,10 @@ e.g. we change auth flow, so we need to compare only users, who have started aut
 in this case <cite>spec_event=’auth_start’</cite></li>
 <li><strong>time_min</strong> – time when a/b test was started. if None, then whole dataset is used</li>
 <li><strong>time_max</strong> – time when a/b test was ended. if None, then whole dataset is used</li>
-<li><strong>event_col</strong> – name of event column, e.g. <cite>event_name</cite> in our examples.
-If None, init_config is used.</li>
-<li><strong>index_col</strong> – name of index column, e.g. <cite>user_pseudo_id</cite> in our examples.
-If None, init_config is used.</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
+<li><strong>event_col</strong> – name of  custom event column,
+e.g. you may want to aggregate some events or rename and use it as new event column</li>
 <li><strong>target_event</strong> – name of target event. If None, init_config is used.</li>
 <li><strong>time_step</strong> – <p>time step for calculation of survival rate at specific time.
 Default is day (<cite>‘D’</cite>).
@@ -1035,11 +1416,14 @@ Possible options:</p>
 <li><strong>edge_attributes</strong> – name of edge weighting,
 second part after <cite>_</cite> should be a valid pandas.groupby.agg() parameter, e.g. <cite>count</cite>, <cite>mean</cite>. <cite>sum</cite> and etc.</li>
 <li><strong>norm</strong> – normalize over number of users</li>
-<li><strong>kwargs</strong> – params from edgelist</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
+<li><strong>event_col</strong> – name of  custom event column,
+e.g. you may want to aggregate some events or rename and use it as new event column</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with graph in m   atrix format</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with graph in matrix format</p>
 </td>
 </tr>
 </tbody>
@@ -1062,6 +1446,11 @@ second part after <cite>_</cite> should be a valid pandas.groupby.agg() paramete
 <li><strong>edge_attributes</strong> – name of edge weighting,
 second part after <cite>_</cite> should be a valid pandas.groupby.agg() parameter, e.g. <cite>count</cite>, <cite>mean</cite>. <cite>sum</cite> and etc.</li>
 <li><strong>norm</strong> – normalize over number of users</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
+<li><strong>event_col</strong> – name of  custom event column,
+e.g. you may want to aggregate some events or rename and use it as new event column</li>
+<li><strong>shift_name</strong> – name of column that contains next event of user</li>
 </ul>
 </td>
 </tr>
@@ -1075,12 +1464,36 @@ second part after <cite>_</cite> should be a valid pandas.groupby.agg() paramete
 <dl class="method">
 <dt id="retentioneering.core.utils.BaseTrajectory.get_step_matrix">
 <code class="descname">get_step_matrix</code><span class="sig-paren">(</span><em>max_steps=30</em>, <em>plot_type=True</em>, <em>sorting=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.core.utils.BaseTrajectory.get_step_matrix" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plots heatmap with distribution of events over event steps (ordering in the session by event time)
-:param max_steps: maximum number of steps to show
-:param plot_type: if True, then plot in interactive session (jupyter notebook)
-:param thr: optional, if True, display only the rows with at least one value &gt;= thr
-:param reverse: optional, displays reversed trajectories from the target events, can be ‘pos’, ‘neg’ or [‘pos’, ‘neg’]
-:return: pd.DataFrame with distribution of events over event order</p>
+<dd><p>Plots heatmap with distribution of events over event steps (ordering in the session by event time)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>max_steps</strong> – maximum number of steps to show</li>
+<li><strong>plot_type</strong> – if True, then plot in interactive session (jupyter notebook)</li>
+<li><strong>thr</strong> – optional, if True, display only the rows with at least one value &gt;= thr</li>
+<li><strong>reverse</strong> – optional, displays reversed trajectories from the target events, can be ‘pos’, ‘neg’ or [‘pos’, ‘neg’]</li>
+<li><strong>sorting</strong> – if True, then automatically places elements with highest values in top</li>
+<li><strong>index_col</strong> – name of custom indexation column,
+e.g. if in config you define index_col as user_id, but want to use function over sessions</li>
+<li><strong>event_col</strong> – name of  custom event column,
+e.g. you may want to aggregate some events or rename and use it as new event column</li>
+<li><strong>cols</strong> – list of source and target columns, e.g. <cite>event_name</cite>, <cite>next_event</cite> correspondingly</li>
+<li><strong>edge_col</strong> – aggregation column for edge weighting,
+e.g. set it to <cite>index_col</cite> and <cite>edge_attributes=’unique’</cite> to calculate unique users passed through edge</li>
+<li><strong>edge_attributes</strong> – name of edge weighting,
+second part after <cite>_</cite> should be a valid pandas.groupby.agg() parameter, e.g. <cite>count</cite>, <cite>mean</cite>. <cite>sum</cite> and etc.</li>
+<li><strong>dt_means</strong> – if True, adds mean time between events to step matrix</li>
+<li><strong>title</strong> – title for step matrix plot</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">pd.DataFrame with distribution of events over event order</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -1092,20 +1505,30 @@ second part after <cite>_</cite> should be a valid pandas.groupby.agg() paramete
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>user_based</strong> – if True, then edge weights is calculated as unique rate of users who go through them</li>
+<li><strong>user_based</strong> – if True, then edge weights is calculated as unique rate of users who go through them,
+IMPORTANT: if you want to use edge weighting different
+to unique user number, you should turn this argument False</li>
 <li><strong>node_params</strong> – <p>mapping describes which node should be highlighted by target or source type
 Node param should be represented in the following form
 <a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a>{</p>
 <blockquote>
 <div><blockquote>
-<div>’lost’: ‘bad_target’,
-‘passed’: ‘nice_target’,
-‘onboarding_welcome_screen’: ‘source’,</div></blockquote>
+<div>’lost’: ‘bad_target’,  # highlight node and all incoming edges with red color
+‘passed’: ‘nice_target’,  # highlight node and all incoming edges with green color
+‘onboarding_welcome_screen’: ‘source’,  # highlight node and all outgoing edges with yellow color
+‘choose_login_type’: ‘nice_node’,  # highlight node with red color
+‘accept_privacy_policy’: ‘bad_node’,  # highlight node with green color</div></blockquote>
 <p>}```</p>
 </div></blockquote>
-<p>If mapping is not given, it will be constracted from config</p>
+<p>If mapping is not given, it will be constructed from config</p>
 </li>
-<li><strong>kwargs</strong> – other parameters for visualization</li>
+<li><strong>width</strong> – width of plot</li>
+<li><strong>height</strong> – height of plot</li>
+<li><strong>interactive</strong> – if True, then opens graph visualization in Jupyter Notebook IFrame</li>
+<li><strong>layout_dump</strong> – path to layout dump</li>
+<li><strong>show_percent</strong> – if True, then all edge weights are converted to percents</li>
+<li><strong>targets</strong> – list of nodes that ignore threshold filter</li>
+<li><strong>kwargs</strong> – params for .retention.get_edgelist</li>
 </ul>
 </td>
 </tr>
@@ -1148,7 +1571,8 @@ else sessions are automatically defined from time diffrence between events</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>main_event_map</strong> – mapping of main events for mechanics</li>
-<li><strong>kwargs</strong> – keyword arguments for feature_extraction and sklearn LDA model</li>
+<li><strong>kwargs</strong> – keyword arguments for .retention.extract_features
+and sklearn.decomposition.LatentDirichletAllocation</li>
 </ul>
 </td>
 </tr>

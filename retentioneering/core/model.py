@@ -64,11 +64,13 @@ class ModelDescriptor(object):
         :param test_target: vector of targets for test sample
         :param node_params: mapping describes which node should be highlighted by target or source type
             Node param should be represented in the following form
+
             ```{
                     'lost': 'bad_target',
                     'passed': 'nice_target',
                     'onboarding_welcome_screen': 'source',
                 }```
+
             If mapping is not given, it will be constracted from config
         :return: Nothing
         """
@@ -81,6 +83,13 @@ class ModelDescriptor(object):
         self._plot_perm_imp(perm, test_sample, node_params, **kwargs)
 
     def show_quality_metrics(self, test_sample, test_target):
+        """
+        Print metrics of quality for model
+
+        :param test_sample: test feature subsample
+        :param test_target: vector of targets for test sample
+        :return:
+        """
         if hasattr(self.mod, 'predict_proba'):
             from sklearn.metrics import accuracy_score
             from sklearn.metrics import roc_auc_score
@@ -143,6 +152,13 @@ class ModelDescriptor(object):
         pass
 
     def predict(self, features):
+        """
+        Predicts probability of positive and negative targets (in classifacation task)
+        or values of regeression_targets (in regression task)
+
+        :param features: features for model
+        :return: pd.DataFrame with predictions
+        """
         if hasattr(self.mod, 'predict_proba'):
             return pd.DataFrame(self.mod.predict_proba(features), index=features.index, columns=[False, True])
         else:

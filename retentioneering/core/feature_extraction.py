@@ -126,6 +126,14 @@ def learn_tsne(data, **kwargs):
 
 
 def get_manifold(data, manifold_type, **kwargs):
+    """
+    Reduce number of dimensions
+
+    :param data: pd.DataFrame with features for clustering indexed by users (sessions)
+    :param manifold_type: name dimensionality reduction method from sklearn.decomposition and sklearn.manifold
+    :param kwargs: key-word arguments for sklearn.decomposition and sklearn.manifold methods
+    :return: pd.DataFrame with reduced data
+    """
     if hasattr(decomposition, manifold_type):
         man = getattr(decomposition, manifold_type)
     elif hasattr(manifold, manifold_type):
@@ -138,6 +146,19 @@ def get_manifold(data, manifold_type, **kwargs):
 
 
 def merge_features(features, metadata, meta_index_col=None, manifold_type=None, fillna=None, drop=False, **kwargs):
+    """
+    Adds metadata to Tf-Idf of trajectories (reduced if manifold_type is not None)
+
+    :param metadata: pd.DataFrame with trajectory features indexed by users (sessions)
+    :param features: pd.DataFrame with users` metadata
+    :param meta_index_col: name of column that contains id of users / sessions same as in trajectories.
+        If None, then pd.DataFrame.index is used.
+    :param manifold_type: name dimensionality reduction method from sklearn.decomposition and sklearn.manifold
+    :param fillna: value for filling users metadata if some users was not in pd.DataFrame with metadata.
+    :param drop: if True, then drops users, who was not mentioned in pd.DataFrame with metadata
+    :param kwargs: key-word arguments for sklearn.decomposition and sklearn.manifold methods
+    :return: pd.DataFrame with trajectory features (possibly reduced) and users metadata.
+    """
     if manifold_type is not None:
         features = get_manifold(features, manifold_type, **kwargs)
     if meta_index_col is not None:

@@ -102,6 +102,11 @@ class BaseTrajectory(object):
         :param edge_attributes: name of edge weighting,
             second part after `_` should be a valid pandas.groupby.agg() parameter, e.g. `count`, `mean`. `sum` and etc.
         :param norm: normalize over number of users
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param event_col: name of  custom event column,
+            e.g. you may want to aggregate some events or rename and use it as new event column
+        :param shift_name: name of column that contains next event of user
         :return: pd.DataFrame with graph in edgelist format
         """
         if cols is None:
@@ -131,8 +136,11 @@ class BaseTrajectory(object):
         :param edge_attributes: name of edge weighting,
             second part after `_` should be a valid pandas.groupby.agg() parameter, e.g. `count`, `mean`. `sum` and etc.
         :param norm: normalize over number of users
-        :param kwargs: params from edgelist
-        :return: pd.DataFrame with graph in m   atrix format
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param event_col: name of  custom event column,
+            e.g. you may want to aggregate some events or rename and use it as new event column
+        :return: pd.DataFrame with graph in matrix format
         """
         agg = self.get_edgelist(cols=cols, edge_attributes=edge_attributes, norm=norm, **kwargs)
         G = nx.DiGraph()
@@ -235,10 +243,23 @@ class BaseTrajectory(object):
     def get_step_matrix(self, max_steps=30, plot_type=True, sorting=True, **kwargs):
         """
         Plots heatmap with distribution of events over event steps (ordering in the session by event time)
+
         :param max_steps: maximum number of steps to show
         :param plot_type: if True, then plot in interactive session (jupyter notebook)
         :param thr: optional, if True, display only the rows with at least one value >= thr
         :param reverse: optional, displays reversed trajectories from the target events, can be 'pos', 'neg' or ['pos', 'neg']
+        :param sorting: if True, then automatically places elements with highest values in top
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param event_col: name of  custom event column,
+            e.g. you may want to aggregate some events or rename and use it as new event column
+        :param cols: list of source and target columns, e.g. `event_name`, `next_event` correspondingly
+        :param edge_col: aggregation column for edge weighting,
+            e.g. set it to `index_col` and `edge_attributes='unique'` to calculate unique users passed through edge
+        :param edge_attributes: name of edge weighting,
+            second part after `_` should be a valid pandas.groupby.agg() parameter, e.g. `count`, `mean`. `sum` and etc.
+        :param dt_means: if True, adds mean time between events to step matrix
+        :param title: title for step matrix plot
         :return: pd.DataFrame with distribution of events over event order
         """
         target_event_list = self.retention_config['target_event_list']
@@ -327,7 +348,8 @@ class BaseTrajectory(object):
         Calculates weights of mechanics over index_col
 
         :param main_event_map: mapping of main events for mechanics
-        :param kwargs: keyword arguments for feature_extraction and sklearn LDA model
+        :param kwargs: keyword arguments for .retention.extract_features
+            and sklearn.decomposition.LatentDirichletAllocation
         :return: weights of mechanics for each user and mechanics description
         """
         mechs, mech_desc = preprocessing.weight_by_mechanics(self._obj, main_event_map, **kwargs)
@@ -337,16 +359,26 @@ class BaseTrajectory(object):
         """
         Create interactive graph visualization
 
-        :param user_based: if True, then edge weights is calculated as unique rate of users who go through them
+        :param user_based: if True, then edge weights is calculated as unique rate of users who go through them,
+            IMPORTANT: if you want to use edge weighting different
+            to unique user number, you should turn this argument False
         :param node_params: mapping describes which node should be highlighted by target or source type
             Node param should be represented in the following form
             ```{
-                    'lost': 'bad_target',
-                    'passed': 'nice_target',
-                    'onboarding_welcome_screen': 'source',
+                    'lost': 'bad_target',  # highlight node and all incoming edges with red color
+                    'passed': 'nice_target',  # highlight node and all incoming edges with green color
+                    'onboarding_welcome_screen': 'source',  # highlight node and all outgoing edges with yellow color
+                    'choose_login_type': 'nice_node',  # highlight node with red color
+                    'accept_privacy_policy': 'bad_node',  # highlight node with green color
                 }```
-            If mapping is not given, it will be constracted from config
-        :param kwargs: other parameters for visualization
+            If mapping is not given, it will be constructed from config
+        :param width: width of plot
+        :param height: height of plot
+        :param interactive: if True, then opens graph visualization in Jupyter Notebook IFrame
+        :param layout_dump: path to layout dump
+        :param show_percent: if True, then all edge weights are converted to percents
+        :param targets: list of nodes that ignore threshold filter
+        :param kwargs: params for .retention.get_edgelist
         :return: Nothing
         """
         if user_based:
@@ -397,7 +429,19 @@ class BaseDataset(BaseTrajectory):
 
         :param feature_type: type of vectorizer
         :param drop_targets: if True, then targets will be removed from feature generation
-        :param kwargs: keyword arguments for vectorizer
+        :param metadata: pd.DataFrame with trajectory features indexed by users (sessions)
+        :param meta_index_col: name of column that contains id of users / sessions same as in trajectories.
+            If None, then pd.DataFrame.index is used.
+        :param manifold_type: name dimensionality reduction method from sklearn.decomposition and sklearn.manifold
+        :param fillna: value for filling users metadata if some users was not in pd.DataFrame with metadata.
+        :param drop: if True, then drops users, who was not mentioned in pd.DataFrame with metadata
+        :param kwargs: key-word arguments for sklearn.decomposition and sklearn.manifold methods
+        :param ngram_range: range of ngrams to use in feature extraction
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param event_col: name of  custom event column,
+            e.g. you may want to aggregate some events or rename and use it as new event column
+        :param kwargs: key-word arguments for sklearn.decomposition and sklearn.manifold methods
         :return: encoded users trajectories
         :rtype: pd.DataFrame of (number of users, number of unique events | event n-grams)
         """
@@ -421,6 +465,15 @@ class BaseDataset(BaseTrajectory):
         return res
 
     def extract_features_from_test(self, test, train=None, **kwargs):
+        """
+        Extracts features from test pd.DataFrame
+
+        :param test: test subsample of clickstream
+        :param train: train subsample of clickstream
+        :param kwargs: all arguments from .retention.extract_features
+        :return: encoded users trajectories
+        :rtype: pd.DataFrame of (number of users in test, number of unique events | event n-grams in train)
+        """
         if train is None:
             train = self.extract_features(**kwargs)
         test = test.retention.extract_features(**kwargs)
@@ -438,9 +491,35 @@ class BaseDataset(BaseTrajectory):
         Finds cluster of users in data.
 
         :param plot_type: type of clustering visualization.
-            Available methods are (`cluster_heatmap`, `cluster_tsne`, `cluster_pie`).
+            Available methods are (`cluster_heatmap`, `cluster_tsne`, `cluster_pie`, `cluster_bar`).
             Please, see examples to understand different visualizations
-        :param kwargs: keyword arguments for clusterer
+        :param refit_cluster: if False, then cached results of clustering is used
+        :param method: Method of clustering
+            Available methods are (`simple_cluster`, `dbscan`, `GMM`).
+        :param use_csi: if True, then cluster stability index will be calculated (may take a lot of time)
+        :param epsq: quantile of nearest neighbor positive distance between dots (value of it will be an eps),
+        if None, then eps from key-words will be used.
+        :param max_cl_number: maximal number of clusters for aggregation of small clusters
+        :param max_n_clusters: maximal number of clusters for automatic selection for number of clusters.
+            if None, then use n_clusters from arguments
+        :param random_state: random state for KMeans and GMM clusterers
+        :param kwargs: keyword arguments for clusterers
+            For more information, please, see sklearn.cluster.KMeans,
+            sklearn.cluster.DBSCAN, sklearn.mixture.GaussianMixture docs.
+        :param feature_type: type of vectorizer
+        :param drop_targets: if True, then targets will be removed from feature generation
+        :param metadata: pd.DataFrame with trajectory features indexed by users (sessions)
+        :param meta_index_col: name of column that contains id of users / sessions same as in trajectories.
+            If None, then pd.DataFrame.index is used.
+        :param manifold_type: name dimensionality reduction method from sklearn.decomposition and sklearn.manifold
+        :param fillna: value for filling users metadata if some users was not in pd.DataFrame with metadata.
+        :param drop: if True, then drops users, who was not mentioned in pd.DataFrame with metadata
+        :param kwargs: key-word arguments for sklearn.decomposition and sklearn.manifold methods
+        :param ngram_range: range of ngrams to use in feature extraction
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param event_col: name of  custom event column,
+            e.g. you may want to aggregate some events or rename and use it as new event column
         :return: np.array of clusters
         """
         if hasattr(self, 'datatype') and self.datatype == 'features':
@@ -476,6 +555,14 @@ class BaseDataset(BaseTrajectory):
             self.cluster_mapping[cluster] = ids[self.clusters == cluster].tolist()
 
     def filter_cluster(self, cluster_name, index_col=None):
+        """
+        Filters clusters by id or list of ids.
+
+        :param cluster_name: cluster id or list of cluster ids
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :return:
+        """
         ids = []
         if type(cluster_name) is list:
             for i in cluster_name:
@@ -487,10 +574,16 @@ class BaseDataset(BaseTrajectory):
 
     def cluster_funnel(self, cluster, funnel_events, index_col=None, user_based=True, **kwargs):
         """
-        Creates the funnel for a particular cluster
-        :param cluster: the number of the cluster to explore, must fit as filter_cluster argument
-        :param funnel_events: the events to include in the funnel
-        :return: the chart
+        Plots funnel over given event list as number of users, who pass through each event
+
+        :param cluster: cluster id or list of cluster ids
+        :param funnel_events: list of event in funnel (order in visualization will be the same)
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param user_based: if True, then edge weights is calculated as unique rate of users who go through them,
+            else as event count
+        :param kwargs: do nothing
+        :return: plotly chart
         """
         if user_based:
             counts = self.filter_cluster(
@@ -521,6 +614,21 @@ class BaseDataset(BaseTrajectory):
             }, axis=1))
 
     def cluster_event_dist(self, cl1, cl2=None, n=3, event_col=None, index_col=None, **kwargs):
+        """
+        Plots frequency of top events in cluster cl1 in comparison
+        with frequency of such events in whole data or in cluster cl2.
+
+        :param cl1: id of first cluster (search top events from it)
+        :param cl2: id of second cluster (to compare with top events from first cluster).
+            If None, then compares with all data.
+        :param n: number of top events
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param event_col: name of  custom event column,
+            e.g. you may want to aggregate some events or rename and use it as new event column
+        :param kwargs: do nothing
+        :return: nothing
+        """
         clus = self.filter_cluster(cl1, index_col=index_col)
         top_cluster = (clus
                        [event_col or self.retention_config['event_col']]
@@ -569,7 +677,8 @@ class BaseDataset(BaseTrajectory):
 
         :param model_type: model class in sklearn-api style (should have methods `fit`, `predict_proba`
         :param regression_targets: mapping from index_col to regression target e.g. LTV of user
-        :param kwargs: params for model and explainer
+        :param kwargs: params for model class that you use,
+            also contains all arguments from .retention.extract_features
         :return:
         """
         if hasattr(self, 'datatype') and self.datatype == 'features':
@@ -600,9 +709,24 @@ class BaseDataset(BaseTrajectory):
     def get_step_matrix_difference(self, groups, plot_type=True, max_steps=30, sorting=True, **kwargs):
         """
         Plots heatmap with difference of events distributions over steps between two given groups
+
         :param groups: boolean vector that splits data in to groups
-        :param plot_type: if True, then heatmap plot will be shown in interactive mode
         :param max_steps: maximum number of steps to show
+        :param plot_type: if True, then show plot in interactive session (jupyter notebook)
+        :param thr: optional, if True, display only the rows with at least one value >= thr
+        :param reverse: optional, displays reversed trajectories from the target events, can be 'pos', 'neg' or ['pos', 'neg']
+        :param sorting: if True, then automatically places elements with highest values in top
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param event_col: name of  custom event column,
+            e.g. you may want to aggregate some events or rename and use it as new event column
+        :param cols: list of source and target columns, e.g. `event_name`, `next_event` correspondingly
+        :param edge_col: aggregation column for edge weighting,
+            e.g. set it to `index_col` and `edge_attributes='unique'` to calculate unique users passed through edge
+        :param edge_attributes: name of edge weighting,
+            second part after `_` should be a valid pandas.groupby.agg() parameter, e.g. `count`, `mean`. `sum` and etc.
+        :param dt_means: if True, adds mean time between events to step matrix
+        :param title: title for step matrix plot
         :return: pd.DataFrame with step matrix
         """
         reverse = None
@@ -796,8 +920,8 @@ class BaseDataset(BaseTrajectory):
         """
         Finds users, who have positive_target_event
 
-        :param index_col: name of index by which to create targets.
-            if None, then `index_col` from config is used.
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
         :return: np.array of users with positive_target_event in trajectory
         """
         pos_users = (
@@ -807,7 +931,18 @@ class BaseDataset(BaseTrajectory):
         )
         return pos_users.tolist()
 
-    def filter_event_window(self, event_name, neighbor_range=3, event_col=None, index_col=None):
+    def filter_event_window(self, event_name, neighbor_range=3, index_col=None, event_col=None):
+        """
+        Filters clickstream data for specific event and its neighborhood.
+
+        :param event_name: event of interest
+        :param neighbor_range: number of events at left and right from event of interest
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param event_col: name of  custom event column,
+            e.g. you may want to aggregate some events or rename and use it as new event column
+        :return:
+        """
         self._obj['flg'] = self._obj[event_col or self.retention_config['event_col']] == event_name
         f = pd.Series([False] * self._obj.shape[0], index=self._obj.index)
         for i in range(-neighbor_range, neighbor_range + 1, 1):
@@ -816,11 +951,15 @@ class BaseDataset(BaseTrajectory):
 
     def create_filter(self, index_col=None, cluster_list=None, cluster_mapping=None):
         """
-        Creates positive users filter for get_step_matrix_difference method
+        Creates filter for get_step_matrix_difference method based on target classes or clusters
 
-        :param index_col: name of index by which to create filter.
-            if None, then `index_col` from config is used.
-        :return: pd.Series with filter
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param cluster_list: list of clusters from which others will be substract
+        :param cluster_mapping: mapping from clusters to list of users,
+            IMPORTANT: if you use cluster subsample of source data,
+            then it will be necessary to set cluster_mapping=source_data.retention.cluster_mapping
+        :return: boolean pd.Series with filter
         """
         if cluster_list is None:
             pos_users = self.get_positive_users(index_col)
@@ -836,7 +975,8 @@ class BaseDataset(BaseTrajectory):
         Displays the logarithm of delays in nanoseconds on a histogram
         
         :param plot: bool parameter for visualization
-        :param index_col: name of index by which we calculate timedata
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
         :param bins: number of bins for visualisation
         :return: a list of delays in nanoseconds
         """
@@ -856,6 +996,11 @@ class BaseDataset(BaseTrajectory):
         
         :param events: dict of events containing event name and logtime ranges
         :param delays: a list of delays from display delays
+        :param time_col: name of custom time column
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param event_col: name of  custom event column,
+            e.g. you may want to aggregate some events or rename and use it as new event column
         :return: pd.DataFrame with inserted values
         """
         
@@ -907,8 +1052,9 @@ class BaseDataset(BaseTrajectory):
             if None, then only calculates tsne without vis
         :param refit: if True, then tsne will be refitted e.g. it is needed if you perform hyperparam selection
         :param regression_targets: mapping from index_col to regression target e.g. LTV of user
-        :param kwargs: parameters for feature extraction, sklearn.manifold.TSNE and sklearn.cluster.KMeans
-        :return: np.array with TSNE transform for user tracks
+        :param cmethod: method of clustering if plot_type = 'clusters'
+        :param kwargs: parameters for .retention.extract_features, sklearn.manifold.TSNE and .retention.get_clusters
+        :return: pd.DataFrame with TSNE transform for user tracks indexed by id of users
         """
         if hasattr(self, 'datatype') and self.datatype == 'features':
             features = self._obj.copy()
@@ -976,8 +1122,11 @@ class BaseDataset(BaseTrajectory):
         Shows tree selector, based on your event names.
         It uses `_` for splitting event names for group aggregation
 
-        :param kwargs: event_col and params for iframe: `width` and `height`
-        :return:
+        :param event_col: name of  custom event column,
+            e.g. you may want to aggregate some events or rename and use it as new event column
+        :param width: width of iframe with filters
+        :param height: height of iframe with filters
+        :return: Nothing
         """
         from retentioneering.core.tree_selector import show_tree_filter
         show_tree_filter(kwargs.get('event_col') or self._obj[self.retention_config['event_col']], **kwargs)
@@ -1017,16 +1166,16 @@ class BaseDataset(BaseTrajectory):
             in this case `spec_event='auth_start'`
         :param time_min: time when a/b test was started. if None, then whole dataset is used
         :param time_max: time when a/b test was ended. if None, then whole dataset is used
-        :param event_col: name of event column, e.g. `event_name` in our examples.
-            If None, init_config is used.
-        :param index_col: name of index column, e.g. `user_pseudo_id` in our examples.
-            If None, init_config is used.
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param event_col: name of  custom event column,
+            e.g. you may want to aggregate some events or rename and use it as new event column
         :param target_event: name of target event. If None, init_config is used.
         :param time_step: time step for calculation of survival rate at specific time.
             Default is day (`'D'`).
             Possible options:
                 (`'D'` -- day, `'M'` -- month, `'h'` -- hour, `'m'` -- minute, `'Y'` -- year,
-                 `'W'` -- week, `'s'` -- seconds, `'ms'` -- milliseconds.
+                 `'W'` -- week, `'s'` -- seconds, `'ms'` -- milliseconds).
         :param plotting: if True, then plots survival curves
         :param kwargs: do nothing
         :return: pd.DataFrame with points at survival curves and prints chi-squared LogRank test for equality statistics
@@ -1101,7 +1250,8 @@ class BaseDataset(BaseTrajectory):
         """
         Split dataset based on index
 
-        :param index_col: index col, if None, than use config
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
         :param test_size: rate of test subsample
         :param seed: random seed
         :return: train, test

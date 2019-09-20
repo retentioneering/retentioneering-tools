@@ -5,4 +5,3 @@ rete-tools-doc
    :maxdepth: 4
 
    retentioneering
-   setup

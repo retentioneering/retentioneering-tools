@@ -419,7 +419,8 @@ def graph(data, node_params=None, thresh=.05, width=500, height=500, interactive
     """
     if node_params is None:
         node_params = _prepare_node_params(node_params, data)
-    res = _make_json_data(data, node_params, layout_dump, thresh=thresh, width=width - 100, height=height - 100, **kwargs)
+    res = _make_json_data(data, node_params, layout_dump, thresh=thresh,
+                          width=width - 100, height=height - 100, **kwargs)
     x = __TEMPLATE__.format(
         width=width,
         height=height,

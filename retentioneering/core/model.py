@@ -14,6 +14,8 @@ class ModelDescriptor(object):
     def __init__(self, model, data, target, **kwargs):
         self.data = data
         self.target = target
+        self.feature_extraction_kwargs = kwargs
+        self.feature_extraction_kwargs.update({'ngram_range': kwargs.get('feature_range')})
         if hasattr(model, 'get_params'):
             model_filter = model.get_params(model)
             kwargs = {i: j for i, j in kwargs.items() if i in model_filter}
@@ -55,6 +57,12 @@ class ModelDescriptor(object):
     #     shap.force_plot(explainer.expected_value[1], shap_values[1][test_index, :],
     #                     test_sample.iloc[test_index, :], link="logit")
 
+    def permutation_importance_raw(self, test, **kwargs):
+        test_sample = self.prepare_test(test)
+        test_target = test.retention.get_positive_users()
+        test_target = test_sample.index.isin(test_target)
+        self.permutation_importance(test_sample, test_target, node_params=None, **kwargs)
+
     def permutation_importance(self, test_sample, test_target, node_params=None, **kwargs):
         """
         Calculates permutation importance of features.
@@ -82,7 +90,13 @@ class ModelDescriptor(object):
         eli5.show_weights(perm, feature_names=[' '.join(i) if type(i) == tuple else i for i in test_sample.columns])
         self._plot_perm_imp(perm, test_sample, node_params, **kwargs)
 
-    def show_quality_metrics(self, test_sample, test_target):
+    def show_quality_raw(self, test):
+        test_sample = self.prepare_test(test)
+        test_target = test.retention.get_positive_users()
+        test_target = test_sample.index.isin(test_target)
+        return self.show_quality_metrics(test_sample, test_target, use_print=False)
+
+    def show_quality_metrics(self, test_sample, test_target, use_print=True):
         """
         Print metrics of quality for model
 
@@ -99,22 +113,28 @@ class ModelDescriptor(object):
             for i in range(1, 100):
                 split.update({i: accuracy_score(test_target, preds > (i / 100))})
             best_split = pd.Series(split).idxmax() / 100
-            print(f"""
-            ROC-AUC: {roc_auc_score(test_target, preds)}
-            PR-AUC: {average_precision_score(test_target, preds)}
-            Accuracy: {accuracy_score(test_target, preds > best_split)}
-            """)
+            roc = roc_auc_score(test_target, preds)
+            aps = average_precision_score(test_target, preds)
+            ac = accuracy_score(test_target, preds > best_split)
+            if use_print:
+                print(f"""
+                ROC-AUC: {roc}
+                PR-AUC: {aps}
+                Accuracy: {ac}
+                """)
+            return roc, aps, ac
         else:
             from sklearn.metrics import mean_squared_error
             from sklearn.metrics import mean_absolute_error
             from sklearn.metrics import r2_score
             import numpy as np
             preds = self.mod.predict(test_sample)
-            print(f"""
-            RMSE: {np.sqrt(mean_squared_error(test_target, preds))}
-            MAE: {mean_absolute_error(test_target, preds)}
-            R-squared: {r2_score(test_target, preds)}
-            """)
+            if use_print:
+                print(f"""
+                RMSE: {np.sqrt(mean_squared_error(test_target, preds))}
+                MAE: {mean_absolute_error(test_target, preds)}
+                R-squared: {r2_score(test_target, preds)}
+                """)
 
     @staticmethod
     def _plot_perm_imp(perm, test_sample, node_params, **kwargs):
@@ -163,6 +183,28 @@ class ModelDescriptor(object):
             return pd.DataFrame(self.mod.predict_proba(features), index=features.index, columns=[False, True])
         else:
             return pd.DataFrame(self.mod.predict(features), index=features.index, columns=['prediction'])
+
+    def prepare_test(self, test):
+        """
+        Transforms test clickstream as train
+
+        :param test: raw clickstream
+        :return: pd.DataFrame with test features
+        """
+        test = test.retention.extract_features(**self.feature_extraction_kwargs)
+        test = test.loc[:, self.data.columns.tolist()]
+        return test.fillna(0)
+
+    def predict_raw(self, data):
+        """
+        Predicts probability of positive and negative targets (in classifacation task)
+        or values of regeression_targets (in regression task)
+
+        :param data: raw clickstream
+        :return: pd.DataFrame with predictions
+        """
+        features = self.prepare_test(data)
+        return self.predict(features)
 
 
 class __LogRegWrapper__(object):

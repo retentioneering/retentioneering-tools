@@ -222,18 +222,11 @@ Predict app remove
     # create model on train
     model = data_train_clean.retention.create_model()
 
-    # extract features for test
-    # parameter wo_last_k - how many steps in advance you want to predict
-    features_test = data_train_clean.retention.extract_features_from_test(data_test_clean, ngram_range=(1,2),wo_last_k=0)
-
-    # add targets to test
-    target = features_test.index.isin(data_test_clean.retention.get_positive_users())
-
 
 .. code:: ipython3
 
-    # make prediction and visualize the features importance
-    model.permutation_importance(features_test, target, thresh=0.6)
+    # make prediction and visualize the features importance on test data
+    model.permutation_importance_raw(data_test_clean, target, thresh=0.6)
 
 Output:
             ROC-AUC: 0.7141610867520931

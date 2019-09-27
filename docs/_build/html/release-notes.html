@@ -306,7 +306,7 @@ android позволяет трекать событие удаления при
 <p>Применим фильтрацию и агрегацию ивентов, например, нам не нужны
 технические события firebase <code class="docutils literal notranslate"><span class="pre">screen_view</span></code> и <code class="docutils literal notranslate"><span class="pre">user_engagement</span></code>.</p>
 <p>Представленный здесь файл может быть получен через вызов
-<code class="docutils literal notranslate"><span class="pre">data.retention.show_tree_filter</span></code> и агрегации по дереву событий.</p>
+<code class="docutils literal notranslate"><span class="pre">data.retention.show_tree_selector</span></code> и агрегации по дереву событий.</p>
 <div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">use_tree_filter</span><span class="p">(</span><span class="s1">&#39;filter_list.json&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -344,7 +344,7 @@ android позволяет трекать событие удаления при
 <div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;dbscan&#39;</span><span class="p">,</span> <span class="n">epsq</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="s1">&#39;user_session&#39;</span><span class="p">,</span> <span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;cluster_pie&#39;</span><span class="p">);</span>
 </pre></div>
 </div>
-<img alt="_images/output_24_0.png" src="_images/output_24_0.png" />
+<img alt="_images/output_24_1.png" src="_images/output_24_1.png" />
 <p>В заголовке графика <code class="docutils literal notranslate"><span class="pre">clusters_pie</span></code> появились разные метрики,
 описывающие поведение кластеризации: 1. Silhouette показывает насколько
 в среднем кластера плотные и насколько далеко они находятся от
@@ -530,9 +530,9 @@ android позволяет трекать событие удаления при
 поэтому будет “перетягивать” на себя эффект от метаинформации о
 пользователях. Чтобы решить эту проблему можно “уплотнить” Tf-Idf фичи,
 используя параметр <code class="docutils literal notranslate"><span class="pre">manifold_type</span></code>. Использовать можно любой метод из
-<code class="docutils literal notranslate"><span class="pre">`sklearn.manifold</span></code> &lt;<a class="reference external" href="https://scikit-learn.org/stable/modules/manifold.html">https://scikit-learn.org/stable/modules/manifold.html</a>&gt;`__
+<a class="reference external" href="https://scikit-learn.org/stable/modules/manifold.html">sklearn.manifold</a>
 и
-<code class="docutils literal notranslate"><span class="pre">`sklearn.decomposition</span></code> &lt;<a class="reference external" href="https://scikit-learn.org/stable/modules/classes.html#module-sklearn.decomposition">https://scikit-learn.org/stable/modules/classes.html#module-sklearn.decomposition</a>&gt;`__.
+<a class="reference external" href="https://scikit-learn.org/stable/modules/classes.html#module-sklearn.decomposition">sklearn.decomposition</a>.
 Параметры для этих трансформаций можно найти в документации sklearn.</p>
 <div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">feats</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span> <span class="n">manifold_type</span><span class="o">=</span><span class="s1">&#39;TruncatedSVD&#39;</span><span class="p">,</span> <span class="n">n_components</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
 </pre></div>

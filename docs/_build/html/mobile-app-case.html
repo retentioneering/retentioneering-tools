@@ -308,17 +308,10 @@ cannibiling users from mobile app.</p>
 </div>
 <div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># create model on train</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">data_train_clean</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">create_model</span><span class="p">()</span>
-
-<span class="c1"># extract features for test</span>
-<span class="c1"># parameter wo_last_k - how many steps in advance you want to predict</span>
-<span class="n">features_test</span> <span class="o">=</span> <span class="n">data_train_clean</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">extract_features_from_test</span><span class="p">(</span><span class="n">data_test_clean</span><span class="p">,</span> <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span><span class="n">wo_last_k</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-
-<span class="c1"># add targets to test</span>
-<span class="n">target</span> <span class="o">=</span> <span class="n">features_test</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">data_test_clean</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_positive_users</span><span class="p">())</span>
 </pre></div>
 </div>
-<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># make prediction and visualize the features importance</span>
-<span class="n">model</span><span class="o">.</span><span class="n">permutation_importance</span><span class="p">(</span><span class="n">features_test</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># make prediction and visualize the features importance on test data</span>
+<span class="n">model</span><span class="o">.</span><span class="n">permutation_importance_raw</span><span class="p">(</span><span class="n">data_test_clean</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
 </pre></div>
 </div>
 <dl class="docutils">

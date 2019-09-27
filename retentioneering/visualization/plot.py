@@ -388,7 +388,7 @@ def __save_plot__(func):
         idx = 'id: ' + str(int(datetime.now().timestamp()))
         coords = vis_object.axis()
         vis_object.text((coords[0] - (coords[1] - coords[0]) / 10), (coords[3] + (coords[3] - coords[2]) / 10), idx, fontsize=8)
-        vis_object.get_figure().savefig(name, bbox_inches="tight", dpi=600)
+        vis_object.get_figure().savefig(name, bbox_inches="tight", dpi=200)
         return res
     return save_plot_wrapper
 
@@ -455,6 +455,19 @@ def step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
     plot_name = 'desc_table_{}.png'.format(plot_name or datetime.now()).replace(':', '_').replace('.', '_')
     plot_name = diff.retention.retention_config['experiments_folder'] + '/' + plot_name
     return heatmap, plot_name
+
+
+@__save_plot__
+def core_event_dist(rates, thresh, plot_name=None, **kwargs):
+    hist = sns.distplot(rates.values, hist=True, bins=kwargs.get('bins'), kde=kwargs.get('kde'))
+    if thresh is not None:
+        sns.mpl.pyplot.axvline(thresh, c='C1')
+
+    plot_name = plot_name if plot_name is not None else 'clusters_heatmap_{}.svg'.format(
+        datetime.now()).replace(':', '_').replace('.', '_')
+    rates = rates.reset_index()
+    plot_name = rates.retention.retention_config['experiments_folder'] + '/' + plot_name
+    return hist, plot_name
 
 
 @__save_plot__

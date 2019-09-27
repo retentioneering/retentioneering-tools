@@ -240,7 +240,7 @@ class BaseTrajectory(object):
         if not self._obj['non-detriment'].any():
             raise ValueError('There is not {} event in this group'.format(targets[0]))
 
-    def get_step_matrix(self, max_steps=30, plot_type=True, sorting=True, **kwargs):
+    def get_step_matrix(self, max_steps=30, plot_type=True, sorting=True, cols=None, **kwargs):
         """
         Plots heatmap with distribution of events over event steps (ordering in the session by event time)
 
@@ -267,7 +267,7 @@ class BaseTrajectory(object):
         self._add_event_rank(**kwargs)
         if kwargs.get('reverse'):
             self._add_reverse_rank(**kwargs)
-        agg = self.get_edgelist(cols=['event_rank', self.retention_config['event_col']], norm=False, **kwargs)
+        agg = self.get_edgelist(cols=cols or ['event_rank', self.retention_config['event_col']], norm=False, **kwargs)
         if max_steps:
             agg = agg[agg.event_rank <= max_steps]
         agg.columns = ['event_rank', 'event_name', 'freq']
@@ -284,11 +284,6 @@ class BaseTrajectory(object):
             piv = self._process_thr(piv, thr, max_steps, **kwargs)
         if sorting:
             piv = self._sort_matrix(piv)
-        if kwargs.get('dt_means') is not None:
-            means = np.array(self._obj.groupby('event_rank').apply(
-                lambda x: np.exp(np.mean(np.log((x.next_timestamp - x.event_timestamp).dt.total_seconds() + 1e-20)))
-            ))
-            piv = pd.concat([piv, pd.DataFrame([means[:max_steps]], columns=piv.columns, index=['dt_mean'])])
         if not kwargs.get('for_diff'):
             if kwargs.get('reverse'):
                 piv.columns = ['n'] + ['n - {}'.format(i - 1) for i in piv.columns[1:]]
@@ -298,6 +293,11 @@ class BaseTrajectory(object):
                 title=kwargs.get('title',
                                  'Step matrix {}'
                                  .format('reversed' if kwargs.get('reverse') else '')), **kwargs)
+        if kwargs.get('dt_means') is not None:
+            means = np.array(self._obj.groupby('event_rank').apply(
+                lambda x: (x.next_timestamp - x.event_timestamp).dt.total_seconds().mean()
+            ))
+            piv = pd.concat([piv, pd.DataFrame([means[:max_steps]], columns=piv.columns, index=['dt_mean'])])
         return piv
 
     @staticmethod
@@ -572,7 +572,7 @@ class BaseDataset(BaseTrajectory):
         return self._obj[self._obj[
             index_col or self.retention_config['index_col']].isin(ids)].copy().reset_index(drop=True)
 
-    def cluster_funnel(self, cluster, funnel_events, index_col=None, user_based=True, **kwargs):
+    def cluster_funnel(self, cluster, funnel_events, index_col=None, event_col=None, user_based=True, **kwargs):
         """
         Plots funnel over given event list as number of users, who pass through each event
 
@@ -588,11 +588,11 @@ class BaseDataset(BaseTrajectory):
         if user_based:
             counts = self.filter_cluster(
                 cluster, index_col=index_col
-            ).groupby('event_name')[index_col or self.retention_config['index_col']].nunique().loc[funnel_events]
+            ).groupby(event_col or self.retention_config['event_col'])[index_col or self.retention_config['index_col']].nunique().loc[funnel_events]
         else:
             counts = self.filter_cluster(
                 cluster, index_col=index_col
-            ).groupby('event_name')[self.retention_config['event_time_col']].count().loc[funnel_events]
+            ).groupby(event_col or self.retention_config['event_col'])[self.retention_config['event_time_col']].count().loc[funnel_events]
         counts = counts.fillna(0)
         return funnel.funnel_chart(counts.astype(int).tolist(), funnel_events, 'Funnel for cluster {}'.format(cluster))
 
@@ -691,8 +691,8 @@ class BaseDataset(BaseTrajectory):
             target = self.make_regression_targets(features, regression_targets)
         else:
             target = features.index.isin(self.get_positive_users(**kwargs))
-        kwargs.pop('ngram_range')
-        mod = ModelDescriptor(model_type, features, target, **kwargs)
+        feature_range = kwargs.pop('ngram_range')
+        mod = ModelDescriptor(model_type, features, target, feature_range=feature_range, **kwargs)
         return mod
 
     @staticmethod
@@ -931,23 +931,61 @@ class BaseDataset(BaseTrajectory):
         )
         return pos_users.tolist()
 
-    def filter_event_window(self, event_name, neighbor_range=3, index_col=None, event_col=None):
+    def filter_event_window(self, event_name, neighbor_range=3, event_col=None, index_col=None, use_padding=True):
         """
         Filters clickstream data for specific event and its neighborhood.
 
         :param event_name: event of interest
         :param neighbor_range: number of events at left and right from event of interest
-        :param index_col: name of custom indexation column,
-            e.g. if in config you define index_col as user_id, but want to use function over sessions
         :param event_col: name of  custom event column,
             e.g. you may want to aggregate some events or rename and use it as new event column
+        :param index_col: name of custom indexation column,
+            e.g. if in config you define index_col as user_id, but want to use function over sessions
+        :param use_padding: if True, then all tracks is alligned with `sleep` event.
+            After allignment all first `event_name` in a trajectory will be at a point `neighbor_range` + 1.
         :return:
         """
         self._obj['flg'] = self._obj[event_col or self.retention_config['event_col']] == event_name
         f = pd.Series([False] * self._obj.shape[0], index=self._obj.index)
         for i in range(-neighbor_range, neighbor_range + 1, 1):
             f |= self._obj.groupby(index_col or self.retention_config['index_col']).flg.shift(i).fillna(False)
-        return self._obj[f].copy()
+        x = self._obj[f].copy()
+        if use_padding:
+            x = self._pad_event_window(x, event_name, neighbor_range, event_col, index_col)
+        return x
+
+    def _pad_number(self, x, event_name, neighbor_range, event_col=None):
+        minn = x[x[event_col or self.retention_config['event_col']] == event_name].event_rank.min()
+        return neighbor_range - minn + 1
+
+    def _pad_time(self, x, event_name, event_col=None):
+        minn = (x[x[event_col or self.retention_config['event_col']] == event_name]
+                [self.retention_config['event_time_col']].min())
+        return minn - pd.Timedelta(1, 's')
+
+    def _pad_event_window(self, x, event_name, neighbor_range=3, event_col=None, index_col=None):
+        x['event_rank'] = 1
+        x.event_rank = x.groupby(index_col or self.retention_config['index_col']).event_rank.cumsum()
+        res = x.groupby(index_col or self.retention_config['index_col']).apply(self._pad_number,
+                                                                               event_name=event_name,
+                                                                               neighbor_range=neighbor_range,
+                                                                               event_col=event_col)
+        res = res.map(lambda y: ' '.join(y * ['sleep']))
+        res = res.str.split(expand=True).reset_index().melt(index_col or self.retention_config['index_col'])
+        res = res.drop('variable', 1)
+        res = res[res.value.notnull()]
+        tm = (x
+              .groupby(index_col or self.retention_config['index_col']).apply(self._pad_time,
+                                                                              event_name=event_name,
+                                                                              event_col=event_col))
+        res = res.join(tm.rename('time'), on=index_col or self.retention_config['index_col'])
+        res.columns = [
+            index_col or self.retention_config['index_col'],
+            event_col or self.retention_config['event_col'],
+            self.retention_config['event_time_col']
+        ]
+        res = res.append(x.loc[:, res.columns.tolist()], ignore_index=True, sort=False)
+        return res.reset_index(drop=True)
 
     def create_filter(self, index_col=None, cluster_list=None, cluster_mapping=None):
         """
@@ -1260,3 +1298,60 @@ class BaseDataset(BaseTrajectory):
         ids = np.random.permutation(self._obj[index_col or self.retention_config['index_col']].unique())
         f = self._obj[index_col or self.retention_config['index_col']].isin(ids[int(ids.shape[0] * test_size):])
         return self._obj[f].copy(), self._obj[~f].copy()
+
+    def step_matrix_bootstrap(self, n_samples=10, sample_size=None, sample_rate=1, random_state=0, **kwargs):
+        """
+        Estimates means and standard deviation of step matrix via bootstrap
+
+        :param n_samples: number of samples for bootstrap
+        :param sample_size: size of each subsample
+        :param sample_rate: rate of each subsample (can't be used with `sample_size`)
+        :param random_state: random state for sampling
+        :param kwargs: all arguments from .retention.get_step_matrix
+        :return: two pd.DataFrames: with means and with stds
+        """
+        res = []
+        base = pd.DataFrame(0,
+                            index=self._obj[kwargs.get('event_col') or self.retention_config['event_col']].unique(),
+                            columns=range(1, kwargs.get('max_steps') or 31)
+                            )
+        thr = kwargs.pop('thr', None)
+        plot_type = kwargs.pop('plot_type', None)
+        for i in range(n_samples):
+            tmp = self._obj.sample(n=sample_size, frac=sample_rate, replace=True, random_state=random_state + i)
+            tmp = (tmp.retention.get_step_matrix(plot_type=False, **kwargs) + base).fillna(0)
+            tmp = tmp.loc[base.index.tolist()]
+            res.append(tmp.values[:, :, np.newaxis])
+        kwargs.update({'thr': thr})
+        res = np.concatenate(res, axis=2)
+        piv = pd.DataFrame(res.mean(2), index=base.index, columns=base.columns)
+        stds = pd.DataFrame(res.std(2), index=base.index, columns=base.columns)
+
+        if not kwargs.get('reverse'):
+            for i in self.retention_config['target_event_list']:
+                piv = piv.append(self._add_accums(piv, i))
+        if kwargs.get('thr'):
+            thr = kwargs.pop('thr')
+            piv = self._process_thr(piv, thr, kwargs.get('max_steps' or 30), **kwargs)
+        if kwargs.get('sorting'):
+            piv = self._sort_matrix(piv)
+        if not kwargs.get('for_diff'):
+            if kwargs.get('reverse'):
+                piv.columns = ['n'] + ['n - {}'.format(i - 1) for i in piv.columns[1:]]
+        if plot_type:
+            plot.step_matrix(
+                piv.round(2),
+                title=kwargs.get('title',
+                                 'Step matrix {}'
+                                 .format('reversed' if kwargs.get('reverse') else '')), **kwargs)
+            plot.step_matrix(
+                stds.round(3),
+                title=kwargs.get('title',
+                                 'Step matrix std'), **kwargs)
+        if kwargs.get('dt_means') is not None:
+            means = np.array(self._obj.groupby('event_rank').apply(
+                lambda x: (x.next_timestamp - x.event_timestamp).dt.total_seconds().mean()
+            ))
+            piv = pd.concat([piv, pd.DataFrame([means[:kwargs.get('max_steps' or 30)]],
+                                               columns=piv.columns, index=['dt_mean'])])
+        return piv, stds

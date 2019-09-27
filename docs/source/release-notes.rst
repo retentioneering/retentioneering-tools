@@ -163,7 +163,7 @@ android позволяет трекать событие удаления при
 технические события firebase ``screen_view`` и ``user_engagement``.
 
 Представленный здесь файл может быть получен через вызов
-``data.retention.show_tree_filter`` и агрегации по дереву событий.
+``data.retention.show_tree_selector`` и агрегации по дереву событий.
 
 .. code:: ipython3
 
@@ -216,7 +216,7 @@ DBSCAN
 
 
 
-.. image:: _static/output_24_0.png
+.. image:: _static/output_24_1.png
 
 
 В заголовке графика ``clusters_pie`` появились разные метрики,
@@ -476,9 +476,9 @@ GMM
 поэтому будет “перетягивать” на себя эффект от метаинформации о
 пользователях. Чтобы решить эту проблему можно “уплотнить” Tf-Idf фичи,
 используя параметр ``manifold_type``. Использовать можно любой метод из
-```sklearn.manifold`` <https://scikit-learn.org/stable/modules/manifold.html>`__
+`sklearn.manifold <https://scikit-learn.org/stable/modules/manifold.html>`__
 и
-```sklearn.decomposition`` <https://scikit-learn.org/stable/modules/classes.html#module-sklearn.decomposition>`__.
+`sklearn.decomposition <https://scikit-learn.org/stable/modules/classes.html#module-sklearn.decomposition>`__.
 Параметры для этих трансформаций можно найти в документации sklearn.
 
 .. code:: ipython3

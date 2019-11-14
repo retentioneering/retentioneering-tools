@@ -2,35 +2,55 @@ import numpy as np
 import plotly
 import plotly.offline as py
 import plotly.graph_objs as go
-plotly.offline.init_notebook_mode()
 
 
 def funnel_chart(values, phases, chart_title, labels=None, shuffle_colors=False,
-                 title_size=20, font_size=14):
-    '''
-    Tool to create a nice funnel chart.
+                 title_size=20, font_size=14, interactive=True):
+    """
+    Funnel visualization.
 
-    values - numbers (of users)
-    labels - values displayed on chart
-    phases - name of the step
+    Parameters
+    -------
+    values: list
+        Aggregate values for each funnel step.
+    phases: list
+        Step names of the funnel.
+    chart_title: str
+        Name of the funnel chart.
+    labels: bool, optional
+        Values displayed on chart. Default: ``None``
+    shuffle_colors: bool, optional
+        Shuffles funnel parts colors. Default: ``False``
+    title_size: int, optional
+        Size of title font. Default: ``20``
+    font_size: int, optional
+        Size of values font. Default: ``14``
 
-    --
-    code source = https://plot.ly/python/funnel-charts/
-    '''
+    Returns
+    -------
+    Funnel visualisation
+
+    Return type
+    -------
+    Plotly funnel
+    """
+
+    if interactive:
+        plotly.offline.init_notebook_mode()
 
     if labels is None:
         first_value = values[0]
         labels = [str(value) + ' / '
-                  + str(round(value/values[0]*100, 1)) + '%'
+                  + str(round(value / values[0] * 100, 1)) + '%'
                   for value in values]
 
     print(labels)
-    
+
     tableau20 = [(31, 119, 180), (174, 199, 232), (255, 127, 14), (255, 187, 120),
-             (44, 160, 44), (152, 223, 138), (214, 39, 40), (255, 152, 150),
-             (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),
-             (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),
-             (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)]
+                 (44, 160, 44), (152, 223, 138), (214, 39, 40), (255, 152, 150),
+                 (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),
+                 (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),
+                 (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)]
 
     # color of each funnel section
     colors = ['rgb' + str(x) for x in tableau20]
@@ -64,32 +84,32 @@ def funnel_chart(values, phases, chart_title, labels=None, shuffle_colors=False,
     label_y = []
 
     for i in range(n_phase):
-            if (i == n_phase-1):
-                    points = [phase_w[i] / 2, height, phase_w[i] / 2, height - section_h]
-            else:
-                    points = [phase_w[i] / 2, height, phase_w[i+1] / 2, height - section_h]
+        if (i == n_phase - 1):
+            points = [phase_w[i] / 2, height, phase_w[i] / 2, height - section_h]
+        else:
+            points = [phase_w[i] / 2, height, phase_w[i + 1] / 2, height - section_h]
 
-            path = 'M {0} {1} L {2} {3} L -{2} {3} L -{0} {1} Z'.format(*points)
+        path = 'M {0} {1} L {2} {3} L -{2} {3} L -{0} {1} Z'.format(*points)
 
-            shape = {
-                    'type': 'path',
-                    'path': path,
-                    'fillcolor': colors[i],
-                    'line': {
-                        'width': 1,
-                        'color': colors[i]
-                    }
+        shape = {
+            'type': 'path',
+            'path': path,
+            'fillcolor': colors[i],
+            'line': {
+                'width': 1,
+                'color': colors[i]
             }
-            shapes.append(shape)
+        }
+        shapes.append(shape)
 
-            # Y-axis location for this section's details (text)
-            label_y.append(height - (section_h / 2))
+        # Y-axis location for this section's details (text)
+        label_y.append(height - (section_h / 2))
 
-            height = height - (section_h + section_d)
+        height = height - (section_h + section_d)
 
     # For phase names
     label_trace = go.Scatter(
-        x=[-450]*n_phase,
+        x=[-450] * n_phase,
         y=label_y,
         mode='text',
         text=phases,
@@ -103,7 +123,7 @@ def funnel_chart(values, phases, chart_title, labels=None, shuffle_colors=False,
 
     # For phase values
     value_trace = go.Scatter(
-        x=[450]*n_phase,
+        x=[450] * n_phase,
         y=label_y,
         mode='text',
         text=labels,

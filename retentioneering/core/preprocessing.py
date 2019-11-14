@@ -28,13 +28,26 @@ def _find_threshold(time_val):
 
 def split_sessions(data, minimal_thresh=30, lower_filter=1, upper_filter=99):
     """
-    Creates column session with session rank in given data
+    Creates ``session`` column with session rank in given dataset.
 
-    :param data: clickstream data
-    :param minimal_thresh: minimal threshold in seconds between two sessions
-    :param lower_filter: percentile of time between event to filter (greater)
-    :param upper_filter: percentile of time between event to filter (lower)
-    :return: Nothing
+    Parameters
+    --------
+    data: pd.DataFrame
+        Clickstream data.
+    minimal_thresh: int, optional
+        Minimal time difference in seconds between two sessions. If  threshold value of time difference between sessions is lower that ``minimal_thresh``, then sessions are split based on this parameter. Default: ``30``
+    lower_filter: float, optional
+        Minimal percentile of time distribution between events to be considered as different sessions. For instance, equal to 1 would mean that cutoff time diffrecence between events (time difference between pseudosessions) should not be less than 1st percentile of time distribution between events. Range of possible values: [0, 100]. Default: ``1``
+    upper_filter: float, optional
+        Same as ``lower_filter`` but as an upper limit. Range of possible values: [0, 100]. Default: ``99``
+
+    Returns
+    -------
+    Creates session column in dataset.
+
+    Return type
+    -------
+    pd.DataFrame
     """
     time_col = data.retention.retention_config['event_time_col']
     if 'next_timestamp' not in data.columns:
@@ -49,6 +62,7 @@ def split_sessions(data, minimal_thresh=30, lower_filter=1, upper_filter=99):
         thresh = minimal_thresh
     data['session'] = time_delta > thresh
     data['session'] = data.groupby(data.retention.retention_config['index_col']).session.cumsum()
+    data['session'] = data.groupby(data.retention.retention_config['index_col']).session.shift(1).fillna(0)
 
 
 def _learn_lda(data, **kwargs):
@@ -88,12 +102,20 @@ def _map_mechanic_names(res, main_event_map):
 
 def weight_by_mechanics(data, main_event_map, **kwargs):
     """
-    Calculates weights of mechanics over index_col
+    Calculates weights of mechanics over ``index_col``.
 
-    :param data: clickstream or features data
-    :param main_event_map: mapping of main events into mechanics
-    :param kwargs: LDA and extract_features params
-    :return: session weighted by mechanics or
+    Parameters
+    --------
+    data: pd.DataFrame
+        Сlickstream or features data.
+    main_event_map: dict
+        Mapping of main events into mechanics.
+    kwargs: optional
+        ``sklearn.decomposition.LatentDirichletAllocation()`` and ``BaseDataset.retention.extract_features()`` parameters.
+
+    Returns
+    -------
+    Weights of mechanics for each ``index_col`` and mechanics description.
     """
     mech_desc, lda = _learn_lda(data, **kwargs)
     mechanics = _map_mechanic_names(mech_desc, main_event_map)

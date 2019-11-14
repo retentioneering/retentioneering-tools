@@ -30,33 +30,6 @@ class ModelDescriptor(object):
     def _fit_model(self):
         self.mod.fit(self.data, self.target)
 
-    # def _fit_shap(self, test_sample):
-    #     if not hasattr(self, 'shap_values'):
-    #         import shap
-    #         explainer = shap.KernelExplainer(self.mod.predict_proba, self.data, link="logit")
-    #         shap_values = explainer.shap_values(test_sample, nsamples=100)
-    #         setattr(self, 'shap_values', shap_values)
-    #         setattr(self, 'shap_explainer', explainer)
-    #
-    # def shap_descriptor(self, test_sample, test_index=None):
-    #     import shap
-    #     """
-    #     Describes model using [SHAP](https://github.com/slundberg/shap) force_plot
-    #
-    #     :param test_sample: test feature subsample
-    #     :param test_index: idx of test example
-    #     :return:
-    #     """
-    #     self._fit_shap(test_sample)
-    #     explainer = getattr(self, 'shap_explainer')
-    #     shap_values = getattr(self, 'shap_values')
-    #     if test_index is None:
-    #         test_index = 0
-    #     else:
-    #         test_index = test_sample.index.tolist().index(test_index)
-    #     shap.force_plot(explainer.expected_value[1], shap_values[1][test_index, :],
-    #                     test_sample.iloc[test_index, :], link="logit")
-
     def permutation_importance_raw(self, test, **kwargs):
         test_sample = self.prepare_test(test)
         test_target = test.retention.get_positive_users()
@@ -66,21 +39,40 @@ class ModelDescriptor(object):
     def permutation_importance(self, test_sample, test_target, node_params=None, **kwargs):
         """
         Calculates permutation importance of features.
-        If node_params is not None, then plots graph weighted by permutation importance.
+        If ``node_params`` is not `None`, then plots graph weighted by permutation importance.
 
-        :param test_sample: test feature subsample
-        :param test_target: vector of targets for test sample
-        :param node_params: mapping describes which node should be highlighted by target or source type
-            Node param should be represented in the following form
-
-            ```{
-                    'lost': 'bad_target',
-                    'passed': 'nice_target',
-                    'onboarding_welcome_screen': 'source',
-                }```
-
-            If mapping is not given, it will be constracted from config
-        :return: Nothing
+        Parameters
+        -------
+        test_sample: pd.DataFrame
+            Test feature subsample.
+        test_target: np.array
+            Vector of targets for test sample.
+        node_params: dict, optional
+            Event mapping describing which nodes or edges should be highlighted by different colors for better visualisation. Dictionary keys are ``event_col`` values, while keys have the following possible values:
+                - ``bad_target``: highlights node and all incoming edges with red color;
+                - ``nice_target``: highlights node and all incoming edges with green color;
+                - ``bad_node``: highlights node with red color;
+                - ``nice_node``: highlights node with green color;
+                - ``source``: highlights node and all outgoing edges with yellow color.
+            Example ``node_params`` is shown below:
+            ```
+            {
+                'lost': 'bad_target',
+                'purchased': 'nice_target',
+                'onboarding_welcome_screen': 'source',
+                'choose_login_type': 'nice_node',
+                'accept_privacy_policy': 'bad_node',
+            }
+            ```
+            If ``node_params=None``, it will be constructed from ``retention_config`` variable, so that:
+            ```
+            {
+                'positive_target_event': 'nice_target',
+                'negative_target_event': 'bad_target',
+                'source_event': 'source',
+            }
+            ```
+            Default: ``None``
         """
         self.show_quality_metrics(test_sample, test_target)
         if hasattr(self.mod, 'coef_'):
@@ -98,11 +90,23 @@ class ModelDescriptor(object):
 
     def show_quality_metrics(self, test_sample, test_target, use_print=True):
         """
-        Print metrics of quality for model
+        Calculate model quality metrics.
 
-        :param test_sample: test feature subsample
-        :param test_target: vector of targets for test sample
-        :return:
+        Parameters
+        -------
+        test_sample: pd.DataFrame
+            Test feature subsample.
+        test_target: np.array
+            Vector of targets for test sample.
+        use_print: bool, optional
+            If ``True``, prints out ROC-AUC, PR-AUC and accuracy in prediction task and RMSE, MAE and R-Squared in regression task.
+        Returns
+        -------
+        ROC-AUC, PR-AUC and accuracy metrics in prediction task and RMSE, MAE and R-Squared in regression task.
+
+        Return type
+        -------
+        Int
         """
         if hasattr(self.mod, 'predict_proba'):
             from sklearn.metrics import accuracy_score
@@ -165,7 +169,7 @@ class ModelDescriptor(object):
         for key in edge_cols:
             data.append([key[0], key[1], weights.get(key)])
 
-        plot.graph(pd.DataFrame(data), node_params, node_weights=node_weights, **kwargs)
+        plot.graph(pd.DataFrame(data), node_params, node_weights=node_weights, is_model=True, **kwargs)
 
     def visualize_results(self, plot_type='projections'):
         raise NotImplementedError('Sorry! This function is not ready now.')
@@ -173,11 +177,20 @@ class ModelDescriptor(object):
 
     def predict(self, features):
         """
-        Predicts probability of positive and negative targets (in classifacation task)
-        or values of regeression_targets (in regression task)
+        Predicts probability of ``positive_target_event`` and ``negative_target_event`` in classifacation task or values of ``regeression_targets`` in regression task.
 
-        :param features: features for model
-        :return: pd.DataFrame with predictions
+        Parameters
+        -------
+        features: pd.DataFrame
+            Dataframe with test features. For more information refer to ``prepare_test()`` method.
+
+        Returns
+        -------
+        Dataframe with predictions.
+
+        Return type
+        -------
+        pd.DataFrame
         """
         if hasattr(self.mod, 'predict_proba'):
             return pd.DataFrame(self.mod.predict_proba(features), index=features.index, columns=[False, True])
@@ -186,10 +199,20 @@ class ModelDescriptor(object):
 
     def prepare_test(self, test):
         """
-        Transforms test clickstream as train
+        Transforms test clickstream into train.
 
-        :param test: raw clickstream
-        :return: pd.DataFrame with test features
+        Parameters
+        ---------
+        test: pd.DataFrame
+            Raw clickstream.
+
+        Returns
+        --------
+        Dataframe with test features.
+
+        Return type
+        -------
+        pd.DataFrame
         """
         test = test.retention.extract_features(**self.feature_extraction_kwargs)
         test = test.loc[:, self.data.columns.tolist()]
@@ -197,11 +220,20 @@ class ModelDescriptor(object):
 
     def predict_raw(self, data):
         """
-        Predicts probability of positive and negative targets (in classifacation task)
-        or values of regeression_targets (in regression task)
+        Predicts probability of ``positive_target_event`` and ``negative_target_event`` in classifacation task or values of ``regeression_targets`` in regression task.
 
-        :param data: raw clickstream
-        :return: pd.DataFrame with predictions
+        Parameters
+        --------
+        data: pd.DataFrame
+            Raw clickstream.
+
+        Returns
+        --------
+        Dataframe with predictions.
+
+        Return type
+        --------
+        pd.DataFrame
         """
         features = self.prepare_test(data)
         return self.predict(features)

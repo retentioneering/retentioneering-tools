@@ -44,12 +44,30 @@ def _ngram_agg(x, ngram_range):
 
 def counts_embedder(data, ngram_range=(1, 1), **kwargs):
     """
-    Calculate session embedding (continuous vector form) by counting of events appearance for user
+    Calculate ``index_col`` embedding (continuous vector form) by counting ``event_col`` appearance for each ``index_col``.
 
-    :param data: clickstream dataset
-    :param ngram_range: range of ngrams to use in feature extraction
-    :param kwargs: index_col, event_col params
-    :return: pd.DataFrame with sessions vectorized by counts of events
+    Parameters
+    --------
+    data: pd.DataFrame
+        Clickstream dataset.
+    ngram_range: tuple, optional
+        Range of ngrams to use in feature extraction. Default: ``(1, 1)``
+    index_col: str, optional
+        Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
+    event_col: str, optional
+        Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
+    last_k: int, optional
+        Include only the last ``last_k`` events for each ``index_col``.
+    wo_last: int, optional
+        Exclude ``last_k`` events for each ``index_col``.
+
+    Returns
+    --------
+    Vectorized dataframe with ``index_col`` as index and counts of ``event_col`` values as dataframe values.
+
+    Return type
+    -------
+    pd.DataFrame
     """
     if max(ngram_range) == 1:
         return _uni_counts_embedder(data, **kwargs)
@@ -78,12 +96,26 @@ def counts_embedder(data, ngram_range=(1, 1), **kwargs):
 
 def frequency_embedder(data, ngram_range=(1, 1), **kwargs):
     """
-    Similar to `count_embedder`, but normalize events count over index_col story
+    Similar to ``count_embedder()``, but normalizes events count over ``index_col``.
 
-    :param data: clickstream dataset
-    :param ngram_range: range of ngrams to use in feature extraction
-    :param kwargs: index_col, event_col params
-    :return: pd.DataFrame with sessions vectorized by frequencies of events
+    Parameters
+    -------
+    data: pd.DataFrame
+        Clickstream dataset.
+    ngram_range: tuple, optional
+        Range of ngrams to use in feature extraction. Default: ``(1, 1)``
+    index_col: str, optional
+        Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
+    event_col: str, optional
+        Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
+
+    Returns
+    -------
+    Dataframe with sessions vectorized by frequencies of events.
+
+    Return type
+    -------
+    pd.DataFrame
     """
     cv = counts_embedder(data, ngram_range, **kwargs)
     freq = pd.DataFrame(
@@ -97,12 +129,26 @@ def frequency_embedder(data, ngram_range=(1, 1), **kwargs):
 
 def tfidf_embedder(data, ngram_range=(1, 1), **kwargs):
     """
-    Similar to `frequency_embedder`, but normalize events frequencies with inversed document frequency
+    Similar to ``frequency_embedder()``, but normalizes event frequencies with inversed document frequency.
 
-    :param data: clickstream dataset
-    :param ngram_range: range of ngrams to use in feature extraction
-    :param kwargs: index_col, event_col params
-    :return: pd.DataFrame with sessions vectorized by Tf-Idf of events
+    Parameters
+    --------
+    data: pd.DataFrame
+        Clickstream dataset.
+    ngram_range: tuple, optional
+        Range of ngrams to use in feature extraction. Default: ``(1, 1)``
+    index_col: str, optional
+        Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
+    event_col: str, optional
+        Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
+
+    Returns
+    --------
+    Dataframe with ``index_col`` vectorized by TF-IDF of events.
+
+    Return type
+    -------
+    pd.DataFrame
     """
     tf = frequency_embedder(data, ngram_range, **kwargs)
     idf = np.log((tf.shape[0]) / ((tf > 0).sum(0) + 1e-20)).values
@@ -113,11 +159,22 @@ def tfidf_embedder(data, ngram_range=(1, 1), **kwargs):
 
 def learn_tsne(data, **kwargs):
     """
-    Calculates TSNE transform for given matrix features
+    Calculates TSNE transformation for given matrix features.
 
-    :param data: array of features
-    :param kwargs: arguments for sklearn.manifold.TSNE
-    :return: np.ndarray with calculated TSNE transform
+    Parameters
+    --------
+    data: np.array
+        Array of features.
+    kwargs: optional
+        Parameters for ``sklearn.manifold.TSNE()``
+
+    Returns
+    -------
+    Calculated TSNE transform
+
+    Return type
+    -------
+    np.ndarray
     """
     _tsne_filter = TSNE.get_params(TSNE)
     kwargs = {i: j for i, j in kwargs.items() if i in _tsne_filter}
@@ -127,12 +184,24 @@ def learn_tsne(data, **kwargs):
 
 def get_manifold(data, manifold_type, **kwargs):
     """
-    Reduce number of dimensions
+    Reduces number of dimensions.
 
-    :param data: pd.DataFrame with features for clustering indexed by users (sessions)
-    :param manifold_type: name dimensionality reduction method from sklearn.decomposition and sklearn.manifold
-    :param kwargs: key-word arguments for sklearn.decomposition and sklearn.manifold methods
-    :return: pd.DataFrame with reduced data
+    Parameters
+    ---------
+    data: pd.DataFrame
+        Dataframe with features for clustering indexed as in ``retention_config.index_col``
+    manifold_type: str
+        Name dimensionality reduction method from ``sklearn.decomposition`` and ``sklearn.manifold``
+    kwargs: optional
+        Parameters for ``sklearn.decomposition`` and ``sklearn.manifold`` methods.
+
+    Returns
+    --------
+    pd.DataFrame with reduced dimensions.
+
+    Return type
+    --------
+    pd.DataFrame
     """
     if hasattr(decomposition, manifold_type):
         man = getattr(decomposition, manifold_type)
@@ -147,17 +216,32 @@ def get_manifold(data, manifold_type, **kwargs):
 
 def merge_features(features, metadata, meta_index_col=None, manifold_type=None, fillna=None, drop=False, **kwargs):
     """
-    Adds metadata to Tf-Idf of trajectories (reduced if manifold_type is not None)
+    Adds metadata to TFIDF of trajectories. Eeduced if ``manifold_type`` is not ``None``.
 
-    :param metadata: pd.DataFrame with trajectory features indexed by users (sessions)
-    :param features: pd.DataFrame with users` metadata
-    :param meta_index_col: name of column that contains id of users / sessions same as in trajectories.
-        If None, then pd.DataFrame.index is used.
-    :param manifold_type: name dimensionality reduction method from sklearn.decomposition and sklearn.manifold
-    :param fillna: value for filling users metadata if some users was not in pd.DataFrame with metadata.
-    :param drop: if True, then drops users, who was not mentioned in pd.DataFrame with metadata
-    :param kwargs: key-word arguments for sklearn.decomposition and sklearn.manifold methods
-    :return: pd.DataFrame with trajectory features (possibly reduced) and users metadata.
+    Parameters
+    --------
+    features: pd.DataFrame
+        Dataframe with users` metadata.
+    metadata: pd.DataFrame
+        Dataframe with user or session properties or any other information you would like to extract as features (e.g. user properties, LTV values, etc.). Default: ``None``
+    meta_index_col: str, optional
+        Used when metadata is not ``None``. Name of column in ``metadata`` dataframe that contains the same ID as in ``index_col``, or if not defined, same as in retention_config (e.g ID of users or sessions). If ``None``, then index of metadata dataframe is used instead. Default: ``None``
+    manifold_type: str, optional
+        Name dimensionality reduction method from ``sklearn.decomposition`` and ``sklearn.manifold``. Default: ``None``
+    fillna: optional
+        Value for filling missing metadata for any ``index_col`` value. Default: ``None``
+    drop: bool, optional
+        If ``True``, then drops users which do not exist in ``metadata`` dataframe. Default: ``False``
+    kwargs: optional
+        Keyword arguments for ``sklearn.decomposition`` and ``sklearn.manifold`` methods.
+
+    Returns
+    -------
+    Dataframe with trajectory features (possibly reduced) and users metadata.
+
+    Return type
+    -------
+    pd.DataFrame
     """
     if manifold_type is not None:
         features = get_manifold(features, manifold_type, **kwargs)
@@ -170,3 +254,22 @@ def merge_features(features, metadata, meta_index_col=None, manifold_type=None, 
     if fillna is not None:
         res = res.fillna(fillna)
     return res
+
+
+def drop_equal_features(features, users, thres=0.1, **kwargs):
+    """
+    Drop nonzero features with equal counts of negative and positive user's
+
+    :param features: array of features
+    :param users: list of positive users (e.g. data.retention.get_positive_users())
+    :param thres: threshold of dropping (e.g 0.1 means area of drop equals [0.9,1.1]
+    :return: dropped features: array of features
+    """
+    feat_group = features.groupby(features.index.isin(users)).agg(lambda x: (x > 0).sum())
+    feat_neg = feat_group.iloc[0]
+    feat_pos = feat_group.iloc[1]
+    feat_neg += 10**-6
+    feat_div = feat_pos / feat_neg - 1.
+
+    features_drop = features.drop(features.columns[feat_div.abs() < thres], axis=1)
+    return features_drop

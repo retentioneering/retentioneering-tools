@@ -6,247 +6,16 @@
 
 import networkx as nx
 import seaborn as sns
-from IPython.display import IFrame, display # TODO understand how to use visualization without it
+from IPython.display import IFrame, display  # TODO understand how to use visualization without it
 import numpy as np
 from datetime import datetime
 import pandas as pd
 import json
 from functools import wraps
-
-# from MulticoreTSNE import MulticoreTSNE as TSNE
-
-
-__TEMPLATE__ = """
-<!DOCTYPE html>
-<meta charset="utf-8">
-<style>
-                circle {{
-                  fill: #ccc;
-                  stroke: #333;
-                  stroke-width: 1.5px;
-                }}
-
-                .circle.source_node {{
-                  fill: #f3f310;
-                }}
-
-                .circle.nice_node {{
-                  fill: green;
-                }}
-
-                .circle.bad_node {{
-                  fill: red;
-                }}
-
-                .link {{
-                  fill: none;
-                  stroke: #666;
-                  stroke-opacity: 0.7;
-                }}
-
-                #nice_target {{
-                  fill: green;
-                }}
-
-                .link.nice_target {{
-                  stroke: green;
-                }}
-
-                #source {{
-                  fill: yellow;
-                }}
-
-                .link.source {{
-                  stroke: #f3f310;
-                }}
-                
-                .link.positive {{
-                  stroke: green;
-                }}
-                
-                .link.negative {{
-                  stroke: red;
-                }}
-
-                #source {{
-                  fill: orange;
-                }}
-
-                .link.source1 {{
-                  stroke: orange;
-                }}
-
-                #bad_target {{
-                  fill: red;
-                }}
-
-                .link.bad_target {{
-                  stroke: red;
-                }}
-                text {{
-                  font: 12px sans-serif;
-                  pointer-events: none;
-                  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
-                }}
-
-</style>
-<body>
-<script src="https://api.retentioneering.com/files/d3.v4.min.js"></script>
-<div>
-  <input type="checkbox" class="checkbox" value="weighted"><label> Show weights </label>
-</div>
-<div id="option">
-    <input name="downloadButton" 
-           type="button" 
-           value="download" 
-           onclick="downloadLayout()" />
-</div>
-<script>
-
-var links = {links};
-var node_params = {node_params};
-
-var nodes = {nodes};
-
-var width = {width},
-    height = {height};
-
-var svg = d3.select("body").append("svg")
-    .attr("width", width)
-    .attr("height", height);
-
-let defs = svg.append("g").selectAll("marker")
-    .data(links)
-  .enter().append("marker")
-    .attr("id", function(d) {{ return d.source.index + '-' + d.target.index; }})
-    .attr("viewBox", "0 -5 10 10")
-    .attr("refX", function(d) {{
-        if (d.target.name !== d.source.name) {{
-            return 7 + d.target.degree; 
-        }} else {{
-            return 0;
-        }}
-    }})
-    .attr("refY", calcMarkers)
-    .attr("markerWidth", 10)
-    .attr("markerHeight", 10)
-    .attr("markerUnits", "userSpaceOnUse")
-    .attr("orient", "auto");
-
-defs.append("path")
-    .attr("d", "M0,-5L10,0L0,5");
-
-function calcMarkers(d) {{
-    let dist = Math.sqrt((nodes[d.target.index].x - nodes[d.source.index].x) ** 2 + (nodes[d.target.index].y - nodes[d.source.index].y) ** 2);
-    if (dist > 0 && dist <= 200){{
-        return - Math.sqrt((0.5 - (d.target.degree ) / 2 / dist)) * (d.target.degree) / 2;
-    }} else {{
-        return 0;
-    }}
-}}
-
-var path = svg.append("g").selectAll("path")
-    .data(links)
-  .enter().append("path")
-    .attr("class", function(d) {{ return "link " + d.type; }})
-    .attr("stroke-width", function(d) {{ return Math.max(d.weight * 20, 1); }})
-    .attr("marker-end", function(d) {{ return "url(#" + d.source.index + '-' + d.target.index + ")"; }})
-    .attr("id", function(d,i) {{ return "link_"+i; }})
-    .attr("d", linkArc)
-    ;
-
-var edgetext = svg.append("g").selectAll("text")
-    .data(links)
-   .enter().append("text")
-   .append("textPath")
-    .attr("xlink:href",function(d,i){{return "#link_"+i;}})
-    .style("text-anchor","middle")
-    .attr("startOffset", "50%")
-    ;
-    
-function update() {{
-    d3.selectAll(".checkbox").each(function(d) {{
-        cb = d3.select(this);
-        if (cb.property("checked")) {{
-            edgetext = edgetext.text(function(d) {{
-                if ({show_percent}) {{
-                    return Math.round(d.weight_text * 100) / 100;
-                }} else {{
-                    return Math.round(d.weight_text * 100) + "%";
-                }}
-            }})
-        }} else {{
-            edgetext = edgetext.text(function(d) {{ return ; }})
-        }}
-    }})
-}};
-
-d3.selectAll(".checkbox").on("change",update);
-
-function dragstarted(d) {{
-  d3.select(this).raise().classed("active", true);
-}}
-
-function dragged(d) {{
-  d3.select(this).attr("cx", d.x = d3.event.x).attr("cy", d.y = d3.event.y);
-}}
-
-function dragended(d) {{
-  d3.select(this).classed("active", false);
-  path = path.attr("d", linkArc);
-  text = text
-        .attr('x', function(d) {{ return d.x; }})
-        .attr('y', function(d) {{ return d.y; }})
-        ;
-  defs = defs.attr("refY", calcMarkers);
-  defs.append("path")
-    .attr("d", "M0,-5L10,0L0,5");
-}};
-
-var circle = svg.append("g").selectAll("circle")
-    .data(nodes)
-  .enter().append("circle")
-    .attr("class", function(d) {{ return "circle " + d.type; }})
-    .attr("r", function(d) {{ return d.degree; }})
-    .attr('cx', function(d) {{ return d.x; }})
-    .attr('cy', function(d) {{ return d.y; }})
-    .call(d3.drag()
-        .on("start", dragstarted)
-        .on("drag", dragged)
-        .on("end", dragended));
-
-var text = svg.append("g").selectAll("text")
-    .data(nodes)
-  .enter().append("text")
-    .attr('x', function(d) {{ return d.x; }})
-    .attr('y', function(d) {{ return d.y; }})
-    .text(function(d) {{ return d.name; }});
-
-function linkArc(d) {{
-  var dx = nodes[d.target.index].x - nodes[d.source.index].x,
-      dy = nodes[d.target.index].y - nodes[d.source.index].y,
-      dr = dx * dx + dy * dy;
-      dr = Math.sqrt(dr);
-      if (dr > 200) {{
-        dr *= 5
-      }} else {{
-        dr /= 2
-      }};
-      if (dr > 0) {{return "M" + nodes[d.source.index].x + "," + nodes[d.source.index].y + "A" + (dr * 1.1) + "," + (dr * 1.1) + " 0 0,1 " + nodes[d.target.index].x + "," + nodes[d.target.index].y;}}
-      else {{return "M" + nodes[d.source.index].x + "," + nodes[d.source.index].y + "A" + 20 + "," + 20 + " 0 1,0 " + (nodes[d.target.index].x + 0.1) + "," + (nodes[d.target.index].y + 0.1);}}
-}}
-
-function downloadLayout() {{
-    var a = document.createElement("a");
-    var file = new Blob([JSON.stringify(nodes)], {{type: "text/json;charset=utf-8"}});
-    a.href = URL.createObjectURL(file);
-    a.download = "node_params.json";
-    a.click();
-}}
-
-
-</script>
-"""
+from retentioneering.visualization.cloud_logger import MongoLoader
+import altair as alt
+import os
+from retentioneering.visualization import templates
 
 
 def _calc_layout(data, node_params, width=500, height=500, **kwargs):
@@ -264,10 +33,10 @@ def _calc_layout(data, node_params, width=500, height=500, **kwargs):
     max_x = max([j[0] for i, j in pos_new.items()])
     max_y = max([j[1] for i, j in pos_new.items()])
     pos_new = {
-        i: [(j[0] - min_x) / (max_x - min_x) * (width - 150) + 75, (j[1] - min_y) / (max_y - min_y) * (height - 100) + 50]
+        i: [(j[0] - min_x) / (max_x - min_x) * (width - 150) + 75,
+            (j[1] - min_y) / (max_y - min_y) * (height - 100) + 50]
         for i, j in pos_new.items()
     }
-        # pos_new.update({i: [j[0] * width, j[1] * height] for i, j in pos.items()})
     return pos_new, dict(G.degree)
 
 
@@ -283,7 +52,7 @@ def _prepare_nodes(data, pos, node_params, degrees):
             "x": node_pos[0],
             "y": node_pos[1],
             "type": (node_params.get(node) or "suit").split('_')[0] + '_node',
-            "degree": (abs(degrees.get(node, 0)) + 1/120) / abs(max_degree) * 30
+            "degree": (abs(degrees.get(node, 0))) / abs(max_degree) * 30 + 4
         }})
     return nodes
 
@@ -295,7 +64,7 @@ def _prepare_edges(data, nodes):
         edges.append({
             "source": nodes.get(row.source),
             "target": nodes.get(row.target),
-            "weight": np.log1p(row.weight_norm) * 1.5,
+            "weight": np.log1p(abs(row.weight_norm + 1e-100)) * 1.5,
             "weight_text": row.weight,
             "type": row['type']
         })
@@ -379,55 +148,147 @@ def _prepare_given_layout(nodes_path, node_params, degrees):
 def __save_plot__(func):
     @wraps(func)
     def save_plot_wrapper(*args, **kwargs):
+        sns.mpl.pyplot.show()
         sns.mpl.pyplot.close()
         res = func(*args, **kwargs)
         if len(res) == 2:
-            (vis_object, name), res = res, None
+            (vis_object, name), res, cfg = res, None, None
+        elif len(res) == 3:
+            (vis_object, name, res), cfg = res, None
         else:
-            vis_object, name, res = res
+            vis_object, name, res, cfg = res
         idx = 'id: ' + str(int(datetime.now().timestamp()))
         coords = vis_object.axis()
-        vis_object.text((coords[0] - (coords[1] - coords[0]) / 10), (coords[3] + (coords[3] - coords[2]) / 10), idx, fontsize=8)
-        vis_object.get_figure().savefig(name, bbox_inches="tight", dpi=200)
+        if '_3d_' not in name:
+            vis_object.text((coords[0] - (coords[1] - coords[0]) / 10),
+                            (coords[3] + (coords[3] - coords[2]) / 10), idx, fontsize=8)
+            vis_object.text(0, 0.05, 'Retentioneering', fontsize=50, color='gray', va='bottom', alpha=0.1)
+        vis_object.get_figure().savefig(name, bbox_inches="tight", dpi=cfg.get('save_dpi') or 200)
+        if cfg.get('mongo_client') is not None:
+            print(f'DB {idx}')
+            ml = MongoLoader(cfg.get('mongo_client'), collection=cfg.get('mongo_user'))
+            ml.put(name if '.' in name else name + '.png', idx.split(' ')[1])
+            if '.html' in name:
+                ml.put(vis_object.get_raw(name), idx.split(' ')[1] + '_config')
         return res
     return save_plot_wrapper
 
 
-@__save_plot__
-def graph(data, node_params=None, thresh=.05, width=500, height=500, interactive=True,
-          layout_dump=None, show_percent=True, plot_name=None, **kwargs):
-    """
-    Plots graph by its edgelist representation
+def __altair_save_plot__(func):
+    @wraps(func)
+    def altair_save_plot_wrapper(*args, **kwargs):
+        res = func(*args, **kwargs)
+        vis_object, plot_name, res, cfg = res
+        idx = 'id: ' + str(int(datetime.now().timestamp()))
+        plot_name_preffix = func.__name__
 
-    :param data: graph in edgelist form
-    :param node_params: mapping describes which node should be highlighted by target or source type
-            Node param should be represented in the following form
-            ```{
-                    'lost': 'bad_target',
-                    'passed': 'nice_target',
-                    'onboarding_welcome_screen': 'source',
-                }```
-            If mapping is not given, it will be constracted from config
-    :param thresh: threshold for filtering low frequency edges
-    :param width: width of plot
-    :param height: height of plot
-    :param interactive: if True, then opens graph visualization in Jupyter Notebook IFrame
-    :param layout_dump: path to layout dump
-    :param show_percent: if True, then all edge weights are converted to percents
-    :param kwargs: do nothing, needs for plot.graph usage with other functions
-    :return: saves to `experiments_folder` webpage with js graph visualization
+        plot_name = '{}_{}'.format(plot_name_preffix, plot_name or datetime.now()).replace(':', '_').replace('.',
+                                                                                                             '_').replace(
+            ' ', '_') + '.html'
+        if hasattr(pd.DataFrame, 'retention'):
+            plot_name = pd.DataFrame().retention.retention_config['experiments_folder'] + '/' + plot_name
+        else:
+            path = 'experiments'
+            if not os.path.exists(path):
+                os.mkdir(path)
+            plot_name = path + '/' + plot_name
+        vis_object.title = idx
+
+        print("You can save plot as SVG or PNG by open three-dotted button at right =>")
+        watermark = alt.Chart().mark_text(
+            align='center', baseline='top', dy=vis_object.height // 2 + 30, fontSize=32, fontWeight=200,
+            color='#d3d3d3', text='Retentioneering'
+        )
+        vis_object.save(plot_name)
+        if kwargs.get('interactive', True):
+            alt.renderers.enable('notebook')
+            display(vis_object + watermark)
+
+        if cfg.get('mongo_client') is not None:
+            print(f'DB {idx}')
+            ml = MongoLoader(cfg.get('mongo_client'), collection=cfg.get('mongo_user'))
+            ml.put(plot_name if '.' in plot_name else plot_name + '.svg', idx.split(' ')[1])
+        return res
+    return altair_save_plot_wrapper
+
+
+@__save_plot__
+def graph(data, node_params=None, thresh=.05, width=800, height=500, interactive=True,
+          layout_dump=None, show_percent=True, plot_name=None, node_weights=None, **kwargs):
+    """
+    Create interactive graph visualization. Each node is a unique ``event_col`` value, edges are transitions between events and edge weights are calculated metrics. By default, it is a percentage of unique users that have passed though a particular edge visualized with the edge thickness. Node sizes are  Graph loop is a transition to the same node, which may happen if users encountered multiple errors or made any action at least twice.
+    Graph nodes are movable on canvas which helps to visualize user trajectories but is also a cumbersome process to place all the nodes so it forms a story.
+    That is why IFrame object also has a download button. By pressing it, a JSON configuration file with all the node parameters is downloaded. It contains node names, their positions, relative sizes and types. It it used as ``layout_dump`` parameter for layout configuration. Finally, show weights toggle shows and hides edge weights.
+
+    Parameters
+    ---------
+    data: pd.DataFrame
+        Graph in edgelist form.
+    node_params: dict, optional
+        Event mapping describing which nodes or edges should be highlighted by different colors for better visualisation. Dictionary keys are ``event_col`` values, while keys have the following possible values:
+            - ``bad_target``: highlights node and all incoming edges with red color;
+            - ``nice_target``: highlights node and all incoming edges with green color;
+            - ``bad_node``: highlights node with red color;
+            - ``nice_node``: highlights node with green color;
+            - ``source``: highlights node and all outgoing edges with yellow color.
+        Example ``node_params`` is shown below:
+        ```
+        {
+            'lost': 'bad_target',
+            'purchased': 'nice_target',
+            'onboarding_welcome_screen': 'source',
+            'choose_login_type': 'nice_node',
+            'accept_privacy_policy': 'bad_node',
+        }
+        ```
+        If ``node_params=None``, it will be constructed from ``retention_config`` variable, so that:
+        ```
+        {
+            'positive_target_event': 'nice_target',
+            'negative_target_event': 'bad_target',
+            'source_event': 'source',
+        }
+        ```
+    thresh: float, optional
+        Minimal edge weight value to be rendered on a graph. If a node has no edges of the weight >= ``thresh``, then it is not shown on a graph. It is used to filter out rare event and not to clutter visualization. Default: ``0.05``
+    width: float, optional
+        Width of plot in pixels. Default: ``500``
+    height: float, optional
+        Height of plot in pixels. Default: ``500``
+    interactive: bool, optional
+        If ``True``, then plots graph visualization in interactive session (Jupyter notebook). Default: ``True``
+    layout_dump: str, optional
+        Path to layout configuration file relative to current directory. If defined, uses configuration file as a graph layout. Default: ``None``
+    show_percent: bool, optional
+        If ``True``, then all edge weights are converted to percents by multiplying by 100 and adding percentage sign. Default: ``True``
+
+    Returns
+    -------
+    Saves webpage with JS graph visualization to ``retention_config.experiments_folder``.
+
+    Return type
+    -------
+    HTML
     """
     if node_params is None:
         node_params = _prepare_node_params(node_params, data)
     res = _make_json_data(data, node_params, layout_dump, thresh=thresh,
-                          width=width - 100, height=height - 100, **kwargs)
+                          width=width - width / 3, height=height - height / 3, node_weights=node_weights, **kwargs)
+    res['node_params'] = node_params
+    show = 0
+    if show_percent:
+        show = 1
+    dump = 1 if (layout_dump is not None) or (kwargs.get('is_model', False)) else 0
+    __TEMPLATE__ = templates.__OLD_TEMPLATE__ if kwargs.get('use_old', False) else templates.__TEMPLATE__
     x = __TEMPLATE__.format(
         width=width,
         height=height,
         links=json.dumps(res.get('links')).encode('latin1').decode('utf-8'),
         node_params=json.dumps(node_params).encode('latin1').decode('utf-8'),
         nodes=json.dumps(res.get('nodes')).encode('latin1').decode('utf-8'),
-        show_percent="1 !== 1" if show_percent else "1 === 1"
+        show_percent=show,
+        layout_dump=dump,
+        thresh=thresh,
     )
     if hasattr(data, 'trajectory'):
         if plot_name is None:
@@ -436,51 +297,101 @@ def graph(data, node_params=None, thresh=.05, width=500, height=500, interactive
         if plot_name is None:
             plot_name = 'index'
     plot_name = plot_name.replace(':', '_').replace('.', '_') + '.html'
-    return ___DynamicFigureWrapper__(x, interactive, width, height), plot_name, plot_name
+    return (
+        ___DynamicFigureWrapper__(x, interactive, width, height, res),
+        plot_name,
+        plot_name,
+        data.retention.retention_config
+    )
+
+
+@__altair_save_plot__
+def altair_step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, font_size=12, **kwargs):
+    heatmap_data = diff.reset_index().melt('index')
+    heatmap_data.columns = ['y', 'x', 'z']
+    table = alt.Chart(heatmap_data).encode(
+        x=alt.X('x:O', sort=None),
+        y=alt.Y('y:O', sort=None)
+    )
+    heatmap = table.mark_rect().encode(
+        color=alt.Color(
+            'z:Q',
+            scale=alt.Scale(scheme='blues'),
+            legend=alt.Legend(direction='horizontal'))
+    )
+    text = table.mark_text(
+        align='center', fontSize=font_size
+    ).encode(
+        text='z',
+        color=alt.condition(
+            abs(alt.datum.z) < 0.8,
+            alt.value('black'),
+            alt.value('white'))
+    )
+    heatmap_object = (heatmap + text).properties(
+        width=3 * font_size * len(diff.columns), height=2 * font_size * diff.shape[0]
+    )
+    return heatmap_object, plot_name, None, diff.retention.retention_config
 
 
 @__save_plot__
 def step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
     """
-    Plots heatmap with distribution of events over event steps (ordering in the session by event time)
+    Plots heatmap with distribution of users over events and trajectories steps ordered by timestamp. Rows are event names, columns are trajectory steps (in session or user story) and values are shares of users experiencing specific event on a specific step of trajectory. If used with `diff` filter, then shows users share difference between datasets.
 
-    :param diff: table for heatmap visualization
-    :param plot_name: name of plot to save
-    :param kwargs: do nothing, needs for plot usage with other functions
-    :return: saves heatmap to `experiments_folder`
+    Parameters
+    --------
+    diff: pd.DataFrame
+        Table for heatmap visualization.
+    plot_name: str, optional
+        Name of the plot to save. Default: ``None``
+    title: str, optional
+        Title for step matrix plot.
+    kwargs: optional
+        ``sns.heatmap`` parameters.
+
+    Returns
+    --------
+    Dataframe with ``max_steps`` number of columns and ``len(event_col.unique)`` number of rows at max, or less if used ``thr`` > 0.
+    Saves heatmap to ``retention_config.experiments_folder``
+
+    Return type
+    --------
+    pd.DataFrame
+    PNG
     """
+
     sns.mpl.pyplot.figure(figsize=(20, 10))
     heatmap = sns.heatmap(diff, annot=True, cmap="BrBG", center=0, vmin=vmin, vmax=vmax)
     heatmap.set_title(title)
     plot_name = 'desc_table_{}.png'.format(plot_name or datetime.now()).replace(':', '_').replace('.', '_')
     plot_name = diff.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return heatmap, plot_name
-
-
-@__save_plot__
-def core_event_dist(rates, thresh, plot_name=None, **kwargs):
-    hist = sns.distplot(rates.values, hist=True, bins=kwargs.get('bins'), kde=kwargs.get('kde'))
-    if thresh is not None:
-        sns.mpl.pyplot.axvline(thresh, c='C1')
-
-    plot_name = plot_name if plot_name is not None else 'clusters_heatmap_{}.svg'.format(
-        datetime.now()).replace(':', '_').replace('.', '_')
-    rates = rates.reset_index()
-    plot_name = rates.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return hist, plot_name
+    return heatmap, plot_name, None, diff.retention.retention_config
 
 
 @__save_plot__
 def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
     """
-    Plots TSNE projection of user stories and colors by founded clusters
+    Plots TSNE projection of user stories colored by clusters. Each point represents a user session or whole user trajectory.
 
-    :param data: feature matrix
-    :param clusters: np.array of cluster ids
-    :param target: do nothing, need for compatibility with other cluster visualization methods
-    :param plot_name: name of plot to save
-    :param kwargs: do nothing, needs for plot usage with other functions
-    :return: saves plot to `experiments_folder`
+    Parameters
+    --------
+    data: pd.DataFrame
+        Feature matrix.
+    clusters: np.array
+        Array of cluster IDs.
+    target: np.array
+        Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
+    plot_name: str, optional
+        Name of plot to save. Default: ``'clusters_tsne_{timestamp}.svg'``
+
+    Returns
+    -------
+    Saves plot to ``retention_config.experiments_folder``
+
+    Return type
+    -------
+    PNG
     """
 
     if hasattr(data.retention, '_tsne'):
@@ -498,11 +409,35 @@ def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
     plot_name = plot_name if plot_name is not None else 'clusters_tsne_{}.svg'.format(
         datetime.now()).replace(':', '_').replace('.', '_')
     plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return scatter, plot_name, tsne2
+    return scatter, plot_name, tsne2, data.retention.retention_config
 
 
 @__save_plot__
 def cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=None, **kwargs):
+    """
+    Plots bar charts with cluster sizes and average target conversion rate.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Feature matrix.
+    clusters : np.array
+        Array of cluster IDs.
+    target: np.array
+        Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
+    plot_name : str, optional
+        Name of plot to save. Default: ``'clusters_bar_{timestamp}.svg'``
+    kwargs: optional
+        Width and height of plot.
+
+    Returns
+    -------
+    Saves plot to ``retention_config.experiments_folder``
+
+    Return type
+    -------
+    PNG
+    """
     cl = pd.DataFrame([clusters, target], index=['clusters', 'target']).T
     cl['cnt'] = 1
     cl.target = cl.target.astype(int)
@@ -522,7 +457,7 @@ def cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
     plot_name = plot_name if plot_name is not None else 'clusters_bar_{}.svg'.format(
         datetime.now()).replace(':', '_').replace('.', '_')
     plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return bar, plot_name
+    return bar, plot_name, None, data.retention.retention_config
 
 
 @__save_plot__
@@ -540,21 +475,34 @@ def cluster_event_dist(bars, event_col, cl1, sizes, crs, cl2=None, plot_name=Non
     plot_name = plot_name if plot_name is not None else 'clusters_event_dist_{}.svg'.format(
         datetime.now()).replace(':', '_').replace('.', '_')
     plot_name = bars.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return bar, plot_name
+    return bar, plot_name, None, bars.retention.retention_config
 
 
 @__save_plot__
 def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, metrics=None, **kwargs):
     """
-    Plots pie-charts of target distribution for different clusters
+    Plots pie-charts of target distribution for different clusters.
 
-    :param data: feature matrix
-    :param clusters: np.array of cluster ids
-    :param target: boolean vector, if True, then user have `positive_target_event` in trajectory
-    :param plot_name: name of plot to save
-    :param plot_cnt: number of clusters to plot
-    :param kwargs: width and height of plot
-    :return: saves plot to `experiments_folder`
+    Parameters
+    -------
+    data: pd.DataFrame
+        Feature matrix
+    clusters: np.array
+        Array of cluster IDs.
+    target: np.array
+        Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
+    plot_name: str, optional
+        Name of plot to save. Default: ``'clusters_pie_{timestamp}.svg'``
+    kwargs: optional
+        Width and height of plot.
+
+    Returns
+    -------
+    Saves plot to ``retention_config.experiments_folder``
+
+    Return type
+    -------
+    PNG
     """
     cl = pd.DataFrame([clusters, target], index=['clusters', 'target']).T
     cl.target = np.where(cl.target, data.retention.retention_config['positive_target_event'],
@@ -564,7 +512,7 @@ def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
 
     if plot_cnt is None:
         plot_cnt = len(set(clusters))
-    
+
     if kwargs.get('vol', True):  # vol = False in kwargs in case you want to disable
         _, counts = np.unique(clusters, return_counts=True)
         volumes = 100 * (counts / sum(counts))
@@ -572,11 +520,12 @@ def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
         volumes = [None] * plot_cnt
 
     fig, ax = sns.mpl.pyplot.subplots(1 if plot_cnt <= 2 else (plot_cnt // 2 + plot_cnt % 2), 2)
-    fig.suptitle('Distribution of targets in clusters. Silhouette: {:.2f}, Homogeneity: {:.2f}, Cluster stability: {:.2f}'.format(
-        metrics.get('silhouette') if (metrics or {}).get('silhouette') is not None else 0,
-        metrics.get('homogen') if metrics is not None else 0,
-        metrics.get('csi') if (metrics or {}).get('csi') is not None else 0
-    ))
+    fig.suptitle(
+        'Distribution of targets in clusters. Silhouette: {:.2f}, Homogeneity: {:.2f}, Cluster stability: {:.2f}'.format(
+            metrics.get('silhouette') if (metrics or {}).get('silhouette') is not None else 0,
+            metrics.get('homogen') if metrics is not None else 0,
+            metrics.get('csi') if (metrics or {}).get('csi') is not None else 0
+        ))
     fig.set_size_inches(kwargs.get('width', 20), kwargs.get('height', 10))
     for i, j in enumerate(pie_data.clusters.unique()):
         tmp = pie_data[pie_data.clusters == j]
@@ -595,20 +544,32 @@ def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
     plot_name = plot_name if plot_name is not None else 'clusters_pie_{}.svg'.format(
         datetime.now()).replace(':', '_').replace('.', '_')
     plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return ___FigureWrapper__(fig), plot_name
+    return ___FigureWrapper__(fig), plot_name, None, data.retention.retention_config
 
 
 @__save_plot__
 def cluster_heatmap(data, clusters, target, plot_name=None, **kwargs):
     """
-    Visualizes features for users with heatmap
+    Visualizes feature usage with heatmap.
 
-    :param data: feature matrix
-    :param clusters: do nothing, need for compatibility with other cluster visualization methods
-    :param target: do nothing, need for compatibility with other cluster visualization methods
-    :param plot_name: name of plot to save
-    :param kwargs: do nothing, need for compatibility with other cluster visualization methods
-    :return: saves plot to `experiments_folder`
+    Parameters
+    --------
+    data: pd.DataFrame
+        Feature matrix.
+    clusters: np.array
+        Array of cluster IDs.
+    target: np.array
+        Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
+    plot_name: str, optional
+        Name of plot to save. Default: ``'clusters_heatmap_{timestamp}.svg'``
+
+    Returns
+    -------
+    Saves plot to ``retention_config.experiments_folder``
+
+    Return type
+    -------
+    PNG
     """
     heatmap = sns.clustermap(data.values,
                              cmap="BrBG",
@@ -623,7 +584,50 @@ def cluster_heatmap(data, clusters, target, plot_name=None, **kwargs):
     plot_name = plot_name if plot_name is not None else 'clusters_heatmap_{}.svg'.format(
         datetime.now()).replace(':', '_').replace('.', '_')
     plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return heatmap, plot_name
+    return heatmap, plot_name, None, data.retention.retention_config
+
+
+@__save_plot__
+def core_event_dist(rates, thresh, plot_name=None, **kwargs):
+    hist = sns.distplot(rates.values, hist=True, bins=kwargs.get('bins'), kde=kwargs.get('kde'))
+    if thresh is not None:
+        sns.mpl.pyplot.axvline(thresh, c='C1')
+
+    plot_name = plot_name if plot_name is not None else 'clusters_heatmap_{}.svg'.format(
+        datetime.now()).replace(':', '_').replace('.', '_')
+    rates = rates.reset_index()
+    plot_name = rates.retention.retention_config['experiments_folder'] + '/' + plot_name
+    return hist, plot_name, None, rates.retention.retention_config
+
+
+@__save_plot__
+def tsne_3d(data, clusters, target, plot_name=None, use_coloring=False, **kwargs):
+    if hasattr(data.retention, '_tsne'):
+        tsne2 = data.retention._tsne.copy()
+    else:
+        tsne2 = data.retention.learn_tsne(clusters, **kwargs)
+    tsne = tsne2.values
+    fig = sns.mpl.pyplot.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    if target is not None:
+        scatter = ax.scatter(tsne[:, 0], tsne[:, 1], target, c=['C{}'.format(i) for i in clusters])
+        lgs = []
+        for i in set(clusters):
+            lgs.append(sns.mpl.lines.Line2D([0], [0], linestyle="none", c='C{}'.format(i), marker='o'))
+        ax.legend(lgs, set(clusters), numpoints=1)
+    else:
+        scatter = ax.scatter(tsne[:, 0], tsne[:, 1], clusters)
+
+    ax.set_xlabel('TSNE 0')
+    ax.set_ylabel('TSNE 1')
+    ax.set_zlabel('Target')
+
+    scatter = ___FigureWrapper__(fig)
+    plot_name = plot_name if plot_name is not None else 'clusters_3d_tsne_{}.svg'.format(
+        datetime.now()).replace(':', '_').replace('.', '_')
+    plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
+    return scatter, plot_name, None, data.retention.retention_config
 
 
 class ___FigureWrapper__(object):
@@ -659,9 +663,10 @@ class __SaveFigWrapper__(object):
 
 
 class ___DynamicFigureWrapper__(object):
-    def __init__(self, fig, interactive, width, height):
+    def __init__(self, fig, interactive, width, height, links):
         self.fig = fig
         self.interactive, self.width, self.height = interactive, width, height
+        self.links = links
 
     def get_figure(self):
         savefig = __SaveFigWrapper__(self.fig, self.interactive, self.width, self.height)
@@ -672,5 +677,12 @@ class ___DynamicFigureWrapper__(object):
         res = parts[:1] + [f'<p>{text}</p>'] + parts[1:]
         self.fig = '\n'.join(res)
 
-    def axis(self):
+    def get_raw(self, path):
+        base = '.'.join(path.split('.')[:-1])
+        with open(base + '_config.json', 'w') as f:
+            json.dump(self.links, f)
+        return base + '_config.json'
+
+    @staticmethod
+    def axis():
         return 4 * [0]

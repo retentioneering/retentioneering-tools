@@ -125,14 +125,26 @@ def _create_node(idx, splitted_names, res, pre):
 
 def show_tree_filter(event_col, width=500, height=500, **kwargs):
     """
-    Shows tree selector, based on your event names.
-    It uses `_` for splitting event names for group aggregation
+    Shows tree selector for events filtering and aggregation, based on values in ``event_col`` column. It uses `_` for event names splitting, so ideally the event name structure in the dataset should include underscores and have a hierarchical, e.g. ``[section]_[page]_[action]``. In this case event names are separated into levels, so that all the events with the same ``[section]`` will be placed under the same tree node, etc.
+    There two kind of checkboxes in tree selector: large blue and small white. The former are used to include or exclude event from original dataset. The latter are used for event aggregation: toggle on a checkbox against an event name level, e.g. a specific ``[section]_[page]``, to aggregate all the underlying events, all the ``[actions]`` in this example, to this level.
+    Tree filter has a download button in the end of event list, which downloads a JSON config file, which you then need to use to filter and aggregate events with ``use_tree_filter()`` function.
 
-    :param event_col: column with events
-    :param width: width of IFrame
-    :param height: height of IFrame
-    :param kwargs: do nothing
-    :return: nothing
+    Parameters
+    --------
+    event_col: str
+        Column with event names.
+    width: int, optional
+        Width of IFrame in pixels.
+    height: int, optional
+        Height of IFrame in pixels.
+
+    Returns
+    --------
+    Renders events tree selector
+
+    Return type
+    --------
+    IFrame
     """
 
     splitted_names = pd.Series(event_col.unique()).str.split('_', expand=True)
@@ -145,12 +157,22 @@ def show_tree_filter(event_col, width=500, height=500, **kwargs):
 
 def use_tree_filter(data, path, **kwargs):
     """
-    Filters data based on config from tree filter
+    Uses generated with ``show_tree_filter()`` JSON config to filter and aggregate ``event_col`` values of dataset.
 
-    :param data: clickstream of events
-    :param path: path to aggregation config
-    :param kwargs: do nothing
-    :return: filtered clickstream
+    Parameters
+    --------
+    data: pd.DataFrame
+        Event dataset. Should include the same event column as in ``event_col`` of ``retention_config``.
+    path: str
+        Path to JSON config file generated with ``show_tree_filter()`` function.
+
+    Returns
+    --------
+    Filtered and aggregated dataset
+
+    Return type
+    --------
+    pd.DataFrame
     """
     with open(path) as f:
         tree_filter = json.load(f)

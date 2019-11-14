@@ -1,3 +1,9 @@
+# Copyright (C) 2019 Maxim Godzi, Anatoly Zaytsev, Dmitrii Kiselev
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+
 import numpy as np
 import os
 import pandas as pd
@@ -12,7 +18,7 @@ class Agent:
         self._state = 1
         self.user_type = user_type
         if user_id is None:
-            user_id = np.random.randint(1e6)
+            user_id = np.random.randint(1, int(1e9))
         self.user_id = user_id
         if config is None:
             self.config = {
@@ -86,7 +92,7 @@ class Simulator:
     def prepare_restriction_graph(self, graph):
         posibilities = {}
         for i in graph.columns:
-            posibilities[i] = (graph.loc[i] > 0).tolist()
+            posibilities[i] = graph.loc[i][(graph.loc[i] > 0)].index.tolist()
         self.restriction_pos = posibilities
 
     @staticmethod

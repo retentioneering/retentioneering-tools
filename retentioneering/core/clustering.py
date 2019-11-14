@@ -29,14 +29,26 @@ __KMEANS_FILTER__ = [
 
 def find_best_n_clusters(data, clusterer, max_n_clusters, random_state, **kwargs):
     """
-    Finds best number of cluster for KMeans and Gaussian Mixture
+    Finds best number of clusters for KMeans and Gaussian Mixture.
 
-    :param data: pd.DataFrame with features for clustering indexed by users (sessions)
-    :param clusterer: sklearn clusterer class, e.g. sklearn.cluster.KMeans or sklearn.mixture.GaussianMixture
-    :param max_n_clusters: maximal number of clusters for searching
-    :param random_state: random state for clusterer
-    :param kwargs: arguments for clusterer
-    :return: optimal key-word arguments for clustering method
+    Parameters
+    -------
+    data: pd.DataFrame
+        Dataframe with features for clustering with index as in ``retention_config.index_col``
+    clusterer: sklearn clusterer class
+        For instance, ``sklearn.cluster.KMeans`` or ``sklearn.mixture.GaussianMixture``.
+    max_n_clusters: int
+        Maximal number of clusters for searching.
+    random_state: int
+        Random state for clusterer.
+
+    Returns
+    -------
+    Optimal keyword arguments for clustering method.
+
+    Return type
+    ------
+    Dict
     """
     args = {i: j for i, j in kwargs.items() if i in clusterer.get_params(clusterer)}
     if 'n_clusters' in clusterer.get_params(clusterer):
@@ -58,11 +70,22 @@ def find_best_n_clusters(data, clusterer, max_n_clusters, random_state, **kwargs
 
 def find_best_eps(data, q=0.05):
     """
-    Find best maximal distance (eps) between dots for DBSCAN clustering
+    Find best maximal distance (eps) between dots for DBSCAN clustering.
 
-    :param data: pd.DataFrame with features for clustering indexed by users (sessions)
-    :param q: quantile of nearest neighbor positive distance between dots (value of it will be an eps)
-    :return: optimal eps
+    Parameters
+    -------
+    data: pd.DataFrame
+        Dataframe with features for clustering indexed as in ``retention_config.index_col``
+    q: float, optional
+        Quantile of nearest neighbor positive distance between dots. The value of it will be an eps. Default: ``0.05``
+
+    Returns
+    -------
+    Optimal eps
+
+    Return type
+    -------
+    Float
     """
     nn = NearestNeighbors()
     nn.fit(data)
@@ -76,13 +99,26 @@ def simple_cluster(data, max_n_clusters=None, use_csi=True, random_state=0, **kw
     """
     Finds cluster of users in data.
 
-    :param data: pd.DataFrame with features for clustering indexed by users (sessions)
-    :param max_n_clusters: maximal number of clusters for automatic selection for number of clusters.
-        if None, then use n_clusters from arguments
-    :param use_csi: if True, then cluster stability index will be calculated (may take a lot of time)
-    :param random_state: random state for KMeans clusterer
-    :param kwargs: keyword arguments for sklearn.cluster.KMeans
-    :return: np.array of clusters
+    Parameters
+    -------
+    data: pd.DataFrame
+        Dataframe with features for clustering indexed as in ``retention_config.index_col``
+    max_n_clusters: int, optional
+        Maximal number of clusters for automatic selection for number of clusters. If ``None``, then uses n_clusters from arguments. Default: `None```
+    use_csi: bool, optional
+        If ``True``, then cluster stability index will be calculated. IMPORTANT: it may take a lot of time. Default: ``True``
+    random_state: int, optional
+        Random state for KMeans clusterer. Default: ``0``
+    kwargs: optional
+        Parameters for ``sklearn.cluster.KMeans``
+
+    Returns
+    -------
+    Array of clusters
+
+    Return type
+    -------
+    np.array
     """
     if max_n_clusters is not None:
         kmargs = find_best_n_clusters(data, KMeans, max_n_clusters, random_state, **kwargs)
@@ -101,12 +137,23 @@ def simple_cluster(data, max_n_clusters=None, use_csi=True, random_state=0, **kw
 
 def aggregate_cl(cl, max_cl_number):
     """
-    Aggregate small clusters to one, based on max_cl_number.
-    Usually it is used for visualization purposes, because large number of different colors is hard to distinct.
+    Aggregate small clusters to one, based on ``max_cl_number``.
+    Usually it is used for visualization purposes because large number of different colors is hard to distinct.
 
-    :param cl: results of clustering
-    :param max_cl_number: maximum number of unique clusters
-    :return: clustering with merged to -1 small clusters
+    Parameters
+    --------
+    cl: ndarray
+        Results of clustering.
+    max_cl_number: int
+        Maximum number of unique clusters.
+
+    Returns
+    -------
+    Clustering with merged to -1 small clusters.
+
+    Return type
+    -------
+    ndarray
     """
     res = {}
     for i in set(cl) - {-1}:
@@ -119,15 +166,26 @@ def dbscan(data, use_csi=True, epsq=None, max_cl_number=None, **kwargs):
     """
     Finds cluster of users in data using DBSCAN
 
-    :param data: pd.DataFrame with features for clustering indexed by users (sessions)
-    :param use_csi: if True, then cluster stability index will be calculated (may take a lot of time)
-    :param epsq: quantile of nearest neighbor positive distance between dots (value of it will be an eps),
-        if None, then eps from key-words will be used.
+    Parameters
+    -------
+    data: pd.DataFrame
+        Dataframe with features for clustering indexed by users (sessions)
+    use_csi: bool, optional
+        If ``True``, then cluster stability index will be calculated. IMPORTANT: it may take a lot of time. Default: ``True``
+    epsq: float, optional
+        Quantile of nearest neighbor positive distance between dots, its value will be an eps. If ``None``, then eps from keywords will be used. Default: ``None``
+    max_cl_number: int, optional
+        Maximal number of clusters for aggregation of small clusters. Default: ``None``
+    kwargs: optional
+        Parameters for ``sklearn.cluster.KMeans``
 
-    :param max_cl_number: maximal number of clusters for aggregation of small clusters
-    :param kwargs: keyword arguments for sklearn.cluster.KMeans
+    Returns
+    --------
+    Array of clusters
 
-    :return: np.array of clusters
+    Return type
+    -------
+    np.array
     """
     kmargs = {i: j for i, j in kwargs.items() if i in DBSCAN.get_params(DBSCAN)}
     if epsq is not None:
@@ -148,13 +206,26 @@ def GMM(data, max_n_clusters=None, use_csi=True, random_state=0, **kwargs):
     """
     Finds cluster of users in data using Gaussian Mixture Models.
 
-    :param data: pd.DataFrame with features for clustering indexed by users (sessions)
-    :param max_n_clusters: maximal number of clusters for automatic selection for number of clusters.
-        if None, then use n_clusters from arguments
-    :param use_csi: if True, then cluster stability index will be calculated (may take a lot of time)
-    :param random_state: random state for GaussianMixture clusterer
-    :param kwargs: keyword arguments for sklearn.mixture.GaussianMixture
-    :return: np.array of clusters
+    Parameters
+    --------
+    data: pd.DataFrame
+        Dataframe with features for clustering indexed as in ``retention_config.index_col``
+    max_n_clusters: int, optional
+        Maximal number of clusters for automatic selection for number of clusters. If ``None``, then uses ```n_clusters`` from arguments. Default: `None```
+    use_csi: bool, optional
+        If ``True``, then cluster stability index will be calculated. IMPORTANT: it may take a lot of time. Default: ``True``
+    random_state: int, optional
+        Random state for GaussianMixture clusterer.
+    kwargs: optional
+        Parameters for ``sklearn.mixture.GaussianMixture``
+
+    Returns
+    --------
+    Array of clusters
+
+    Return type
+    --------
+    np.array
     """
     if max_n_clusters is not None:
         kmargs = find_best_n_clusters(data, GaussianMixture, max_n_clusters, random_state, **kwargs)
@@ -174,12 +245,22 @@ def GMM(data, max_n_clusters=None, use_csi=True, random_state=0, **kwargs):
 
 def calc_mean_dist_from_center(data, km):
     """
-    Calculates mean distance from cluster centers
-    (will be calculated only for KMeans and GMM, because DBSCAN may have ambiguous form of clusters)
+    Calculates mean distance from cluster centers. Note that it will be calculated only for KMeans and GMM, because DBSCAN may have ambiguous form of clusters.
 
-    :param data: pd.DataFrame with features for clustering indexed by users (sessions)
-    :param km: already fitted clusterer
-    :return: mapping of clusters names to mean distance from cluster centers
+    Parameters
+    --------
+    data: pd.DataFrame
+        Dataframe with features for clustering indexed as in ``retention_config.index_col``
+    km:
+        Already fitted clusterer.
+
+    Returns
+    -------
+    Mapping of clusters names to mean distance from cluster centers.
+
+    Return type
+    -------
+    Dict
     """
     res = {}
     cl = km.labels_
@@ -191,11 +272,22 @@ def calc_mean_dist_from_center(data, km):
 
 def calc_mean_pd(data, cl):
     """
-    Calculates mean pairwise distance inside clusters
+    Calculates mean pairwise distance inside clusters.
 
-    :param data: pd.DataFrame with features for clustering indexed by users (sessions)
-    :param cl: results of clustering
-    :return: mapping of clusters names to pairwise distance inside clusters
+    Parameters
+    --------
+    data: pd.DataFrame
+        Dataframe with features for clustering indexed as in ``retention_config.index_col``
+    cl:
+        Results of clustering.
+
+    Returns
+    --------
+    Mapping of clusters names to pairwise distance inside clusters.
+
+    Return type
+    -------
+    Dict
     """
     res = {}
     for i in set(cl):
@@ -214,12 +306,22 @@ def _calc_mean_pd(data, f):
 
 def calc_all_metrics(data, km):
     """
-    Calculates all quality metrics
-    (Cluster Stability Index, Silhouette score, Homogeneity, distances) for clustering
+    Calculates all quality metrics: Cluster Stability Index, Silhouette score, Homogeneity, distances for clustering.
 
-    :param data: pd.DataFrame with features for clustering indexed by users (sessions)
-    :param km: already fitted clusterer
-    :return: dict with metrics
+    Parameters
+    --------
+    data: pd.DataFrame
+        Dataframe with features for clustering indexed as in ``retention_config.index_col``
+    km:
+        Already fitted clusterer.
+
+    Returns
+    --------
+    Metrics scores
+
+    Return type
+    --------
+    Dict
     """
     res = {}
     cl = km.labels_
@@ -255,20 +357,36 @@ def _cluster_ohe(clusterer, data):
 def cluster_stability_index(data, clusterer, base_clusterer=None, n_samples=10, frac=1, sample_size=None,
                             replace=True, weights=None, random_state=0, **kwargs):
     """
-    Calculates cluster stability index.
-    Rate of samples with unchanged clustering in random subsamples of data
+    Calculates cluster stability index: rate of random data subsamples with unchanged clustering.
 
-    :param data: pd.DataFrame with features for clustering indexed by users (sessions)
-    :param clusterer: sklearn clusterer class, e.g. sklearn.cluster.KMeans or sklearn.mixture.GaussianMixture
-    :param base_clusterer: results of base clustering
-    :param n_samples: number of random subsamples for CSI calculation
-    :param frac: rate of users (sessions) in each subsample (relative to input data)
-    :param sample_size: number of users (sessions) in each subsample, can't be used with frac
-    :param replace: subsampling with replace
-    :param weights: weights of each sample for weighted random sampling
-    :param random_state: random state for sampling
-    :param kwargs:
-    :return: value of CSI
+    Parameters
+    --------
+    data: pd.DataFrame
+        Dataframe with features for clustering indexed as in ``retention_config.index_col``
+    clusterer: sklearn clusterer class
+        For instance, ``sklearn.cluster.KMeans`` or ``sklearn.mixture.GaussianMixture``
+    base_clusterer: optional
+        Results of base clustering. Default: ``None``
+    n_samples: int, optional
+        Number of random subsamples for CSI calculation. Default: ``10``
+    frac: int, optional
+        Rate of ``retention_config.index_col`` values in each subsample relative to input data. Default: ``1``
+    sample_size: int, optional
+        Number of ``retention_config.index_col`` values in each subsample. Cannot be used with frac. Default: ``None``
+    replace: bool, optional
+        Subsampling with replace. Default: ``True``
+    weights: float
+        Weights of each sample for weighted random sampling. Default: ``None``
+    random_state: int, optional
+        Random state for sampling.
+
+    Returns
+    --------
+    Value of CSI
+
+    Return type
+    --------
+    Float
     """
     if base_clusterer is None:
         base_clusterer = _cluster_ohe(clusterer, data)

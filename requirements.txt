@@ -3,6 +3,8 @@ numpy
 networkx
 seaborn
 scikit-learn
-shap
 eli5
 scipy
+altair
+vega
+pymongo

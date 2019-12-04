@@ -478,7 +478,7 @@ class BaseTrajectory(object):
         mechs, mech_desc = preprocessing.weight_by_mechanics(self._obj, main_event_map, **kwargs)
         return mechs, mech_desc
 
-    def plot_graph(self, user_based=True, node_params=None, index_col=None, node_weights=None, **kwargs):
+    def plot_graph(self, user_based=True, node_params=None, index_col=None, node_weights=None, norm=True, **kwargs):
         """
         Create interactive graph visualization. Each node is a unique ``event_col`` value, edges are transitions between events and edge weights are calculated metrics. By default, it is a percentage of unique users that have passed though a particular edge visualized with the edge thickness. Node sizes are  Graph loop is a transition to the same node, which may happen if users encountered multiple errors or made any action at least twice.
         Graph nodes are movable on canvas which helps to visualize user trajectories but is also a cumbersome process to place all the nodes so it forms a story.
@@ -546,7 +546,7 @@ class BaseTrajectory(object):
             kwargs.update({
                 'edge_col': self._index_col(),
                 'edge_attributes': '_nunique',
-                'norm': True,
+                'norm': norm,
             })
         if node_params is None:
             _node_params = {

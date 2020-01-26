@@ -1,6 +1,6 @@
 # Retentioneering
 
-[![Pipi version](https://img.shields.io/badge/-pypi 1.0.6-blue)](https://pypi.org/project/retentioneering/)
+[![Pipi version](https://img.shields.io/badge/-pypi-blue)](https://pypi.org/project/retentioneering/)
 [![Telegram](https://img.shields.io/badge/channel-on%20telegram-blue)](https://t.me/retentioneering_meetups)
 
 Python Framework and Tools for user trajectories analysis.

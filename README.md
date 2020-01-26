@@ -1,34 +1,38 @@
 # Retentioneering
-Framework and Tools for user trajectories analysis.
 
-To start use our package, please, see the [documentation](https://retentioneering.github.io/retentioneering-tools/)
+[![Pipi version](https://img.shields.io/badge/-pypi 1.0.6-blue)](https://pypi.org/project/retentioneering/)
+[![Telegram](https://img.shields.io/badge/channel-on%20telegram-blue)](https://t.me/retentioneering_meetups)
+
+Python Framework and Tools for user trajectories analysis.
+
+To start use our package please see the [documentation](https://retentioneering.github.io/retentioneering-tools/)
 
 ## Installation
 
 ### Python and Jupyter
 
 Firstly, you need to install python and Jupyter.
-We supports only python 3.
+We support only python 3.
 For quick start better to install [Anaconda](https://www.anaconda.com/).
 
 ### Python package
 
-- You can install our package using pip.
+- You can install our package using pip:
 
 ```bash
 pip3 install retentioneering
 ```
 
-- Or directly from source
+- Or directly from the source:
 
     ```bash
-    git clone path-to-our-rep.git
-    cd retentioneering-framework
+    git clone https://github.com/retentioneering/retentioneering-tools
+    cd retentioneering-tools
     python3 setup.py install --user
     ```
 
 ## Introduction
-It's better to start with this things to understand Retentioneering.
+It's better to start with notebooks listed below to understand Retentioneering:
 
 ### [First steps](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#first-steps)
 Configuration, preparing your data graph basics.

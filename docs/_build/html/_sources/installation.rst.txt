@@ -21,7 +21,7 @@ Python package
 
     .. code:: bash
 
-        git clone https://github.com/retentioneering/retentioneering-tools
+        git clone path-to-our-rep.git
 
         cd retentioneering-framework
 

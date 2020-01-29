@@ -4,14 +4,6 @@ retentioneering.core package
 Submodules
 ----------
 
-retentioneering.core.attribution module
----------------------------------------
-
-.. automodule:: retentioneering.core.attribution
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 retentioneering.core.clustering module
 --------------------------------------
 
@@ -24,14 +16,6 @@ retentioneering.core.feature\_extraction module
 -----------------------------------------------
 
 .. automodule:: retentioneering.core.feature_extraction
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-retentioneering.core.market\_simulator module
----------------------------------------------
-
-.. automodule:: retentioneering.core.market_simulator
     :members:
     :undoc-members:
     :show-inheritance:
@@ -56,14 +40,6 @@ retentioneering.core.preprocessing module
 -----------------------------------------
 
 .. automodule:: retentioneering.core.preprocessing
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-retentioneering.core.simulator module
--------------------------------------
-
-.. automodule:: retentioneering.core.simulator
     :members:
     :undoc-members:
     :show-inheritance:

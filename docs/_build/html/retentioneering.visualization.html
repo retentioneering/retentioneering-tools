@@ -83,16 +83,12 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="early_steps.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mobile-app-case.html">Mobile app case</a></li>
-<li class="toctree-l1"><a class="reference internal" href="release-notes.html">Release 1.0.4 description</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="retentioneering.html">Documentation</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="retentioneering.html#subpackages">Subpackages</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="retentioneering.core.html">retentioneering.core package</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">retentioneering.visualization package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.visualization.cloud_logger">retentioneering.visualization.cloud_logger module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.visualization.funnel">retentioneering.visualization.funnel module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.visualization.plot">retentioneering.visualization.plot module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.visualization.templates">retentioneering.visualization.templates module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-retentioneering.visualization">Module contents</a></li>
 </ul>
 </li>
@@ -172,228 +168,142 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-retentioneering.visualization.cloud_logger">
-<span id="retentioneering-visualization-cloud-logger-module"></span><h2>retentioneering.visualization.cloud_logger module<a class="headerlink" href="#module-retentioneering.visualization.cloud_logger" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="retentioneering.visualization.cloud_logger.MongoLoader">
-<em class="property">class </em><code class="descclassname">retentioneering.visualization.cloud_logger.</code><code class="descname">MongoLoader</code><span class="sig-paren">(</span><em>client</em>, <em>db='retelogs'</em>, <em>collection=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.cloud_logger.MongoLoader" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<dl class="method">
-<dt id="retentioneering.visualization.cloud_logger.MongoLoader.get">
-<code class="descname">get</code><span class="sig-paren">(</span><em>idx</em>, <em>path=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.cloud_logger.MongoLoader.get" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="retentioneering.visualization.cloud_logger.MongoLoader.put">
-<code class="descname">put</code><span class="sig-paren">(</span><em>path</em>, <em>idx</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.cloud_logger.MongoLoader.put" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-</div>
-<div class="section" id="module-retentioneering.visualization.funnel">
-<span id="retentioneering-visualization-funnel-module"></span><h2>retentioneering.visualization.funnel module<a class="headerlink" href="#module-retentioneering.visualization.funnel" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt id="retentioneering.visualization.funnel.funnel_chart">
-<code class="descclassname">retentioneering.visualization.funnel.</code><code class="descname">funnel_chart</code><span class="sig-paren">(</span><em>values</em>, <em>phases</em>, <em>chart_title</em>, <em>labels=None</em>, <em>shuffle_colors=False</em>, <em>title_size=20</em>, <em>font_size=14</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.funnel.funnel_chart" title="Permalink to this definition">¶</a></dt>
-<dd><p>Funnel visualization.</p>
-<dl class="docutils">
-<dt>values: list</dt>
-<dd>Aggregate values for each funnel step.</dd>
-<dt>phases: list</dt>
-<dd>Step names of the funnel.</dd>
-<dt>chart_title: str</dt>
-<dd>Name of the funnel chart.</dd>
-<dt>labels: bool, optional</dt>
-<dd>Values displayed on chart. Default: <code class="docutils literal notranslate"><span class="pre">None</span></code></dd>
-<dt>shuffle_colors: bool, optional</dt>
-<dd>Shuffles funnel parts colors. Default: <code class="docutils literal notranslate"><span class="pre">False</span></code></dd>
-<dt>title_size: int, optional</dt>
-<dd>Size of title font. Default: <code class="docutils literal notranslate"><span class="pre">20</span></code></dd>
-<dt>font_size: int, optional</dt>
-<dd>Size of values font. Default: <code class="docutils literal notranslate"><span class="pre">14</span></code></dd>
-</dl>
-<p>Funnel visualisation</p>
-<p>Plotly funnel</p>
-</dd></dl>
-
-</div>
 <div class="section" id="module-retentioneering.visualization.plot">
 <span id="retentioneering-visualization-plot-module"></span><h2>retentioneering.visualization.plot module<a class="headerlink" href="#module-retentioneering.visualization.plot" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
-<dt id="retentioneering.visualization.plot.altair_step_matrix">
-<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">altair_step_matrix</code><span class="sig-paren">(</span><em>diff</em>, <em>plot_name=None</em>, <em>title=''</em>, <em>vmin=None</em>, <em>vmax=None</em>, <em>font_size=12</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.altair_step_matrix" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
-<dt id="retentioneering.visualization.plot.cluster_bar">
-<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_bar</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>plot_cnt=None</em>, <em>metrics=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_bar" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plots bar charts with cluster sizes and average target conversion rate.</p>
-<dl class="docutils">
-<dt>data <span class="classifier-delimiter">:</span> <span class="classifier">pd.DataFrame</span></dt>
-<dd>Feature matrix.</dd>
-<dt>clusters <span class="classifier-delimiter">:</span> <span class="classifier">np.array</span></dt>
-<dd>Array of cluster IDs.</dd>
-<dt>target: np.array</dt>
-<dd>Boolean vector, if <code class="docutils literal notranslate"><span class="pre">True</span></code>, then user has <cite>positive_target_event</cite> in trajectory.</dd>
-<dt>plot_name <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
-<dd>Name of plot to save. Default: <code class="docutils literal notranslate"><span class="pre">'clusters_bar_{timestamp}.svg'</span></code></dd>
-<dt>kwargs: optional</dt>
-<dd>Width and height of plot.</dd>
-</dl>
-<p>Saves plot to <code class="docutils literal notranslate"><span class="pre">retention_config.experiments_folder</span></code></p>
-<p>PNG</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="retentioneering.visualization.plot.cluster_event_dist">
-<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_event_dist</code><span class="sig-paren">(</span><em>bars</em>, <em>event_col</em>, <em>cl1</em>, <em>sizes</em>, <em>crs</em>, <em>cl2=None</em>, <em>plot_name=None</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_event_dist" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
 <dt id="retentioneering.visualization.plot.cluster_heatmap">
 <code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_heatmap</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_heatmap" title="Permalink to this definition">¶</a></dt>
-<dd><p>Visualizes feature usage with heatmap.</p>
-<dl class="docutils">
-<dt>data: pd.DataFrame</dt>
-<dd>Feature matrix.</dd>
-<dt>clusters: np.array</dt>
-<dd>Array of cluster IDs.</dd>
-<dt>target: np.array</dt>
-<dd>Boolean vector, if <code class="docutils literal notranslate"><span class="pre">True</span></code>, then user has <cite>positive_target_event</cite> in trajectory.</dd>
-<dt>plot_name: str, optional</dt>
-<dd>Name of plot to save. Default: <code class="docutils literal notranslate"><span class="pre">'clusters_heatmap_{timestamp}.svg'</span></code></dd>
-</dl>
-<p>Saves plot to <code class="docutils literal notranslate"><span class="pre">retention_config.experiments_folder</span></code></p>
-<p>PNG</p>
+<dd><p>Visualizes features for users with heatmap</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – feature matrix</li>
+<li><strong>clusters</strong> – do nothing, need for compatibility with other cluster visualization methods</li>
+<li><strong>target</strong> – do nothing, need for compatibility with other cluster visualization methods</li>
+<li><strong>plot_name</strong> – name of plot to save</li>
+<li><strong>kwargs</strong> – do nothing, need for compatibility with other cluster visualization methods</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">saves plot to <cite>experiments_folder</cite></p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="retentioneering.visualization.plot.cluster_pie">
-<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_pie</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>plot_cnt=None</em>, <em>metrics=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_pie" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plots pie-charts of target distribution for different clusters.</p>
-<dl class="docutils">
-<dt>data: pd.DataFrame</dt>
-<dd>Feature matrix</dd>
-<dt>clusters: np.array</dt>
-<dd>Array of cluster IDs.</dd>
-<dt>target: np.array</dt>
-<dd>Boolean vector, if <code class="docutils literal notranslate"><span class="pre">True</span></code>, then user has <cite>positive_target_event</cite> in trajectory.</dd>
-<dt>plot_name: str, optional</dt>
-<dd>Name of plot to save. Default: <code class="docutils literal notranslate"><span class="pre">'clusters_pie_{timestamp}.svg'</span></code></dd>
-<dt>kwargs: optional</dt>
-<dd>Width and height of plot.</dd>
-</dl>
-<p>Saves plot to <code class="docutils literal notranslate"><span class="pre">retention_config.experiments_folder</span></code></p>
-<p>PNG</p>
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_pie</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>plot_cnt=6</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_pie" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots pie-charts of target distribution for different clusters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – feature matrix</li>
+<li><strong>clusters</strong> – np.array of cluster ids</li>
+<li><strong>target</strong> – boolean vector, if True, then user have <cite>positive_target_event</cite> in trajectory</li>
+<li><strong>plot_name</strong> – name of plot to save</li>
+<li><strong>plot_cnt</strong> – number of clusters to plot</li>
+<li><strong>kwargs</strong> – width and height of plot</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">saves plot to <cite>experiments_folder</cite></p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="retentioneering.visualization.plot.cluster_tsne">
 <code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">cluster_tsne</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.cluster_tsne" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plots TSNE projection of user stories colored by clusters. Each point represents a user session or whole user trajectory.</p>
-<dl class="docutils">
-<dt>data: pd.DataFrame</dt>
-<dd>Feature matrix.</dd>
-<dt>clusters: np.array</dt>
-<dd>Array of cluster IDs.</dd>
-<dt>target: np.array</dt>
-<dd>Boolean vector, if <code class="docutils literal notranslate"><span class="pre">True</span></code>, then user has <cite>positive_target_event</cite> in trajectory.</dd>
-<dt>plot_name: str, optional</dt>
-<dd>Name of plot to save. Default: <code class="docutils literal notranslate"><span class="pre">'clusters_tsne_{timestamp}.svg'</span></code></dd>
-</dl>
-<p>Saves plot to <code class="docutils literal notranslate"><span class="pre">retention_config.experiments_folder</span></code></p>
-<p>PNG</p>
+<dd><p>Plots TSNE projection of user stories and colors by founded clusters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – feature matrix</li>
+<li><strong>clusters</strong> – np.array of cluster ids</li>
+<li><strong>target</strong> – do nothing, need for compatibility with other cluster visualization methods</li>
+<li><strong>plot_name</strong> – name of plot to save</li>
+<li><strong>kwargs</strong> – do nothing, needs for plot usage with other functions</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">saves plot to <cite>experiments_folder</cite></p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
-<dt id="retentioneering.visualization.plot.core_event_dist">
-<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">core_event_dist</code><span class="sig-paren">(</span><em>rates</em>, <em>thresh</em>, <em>plot_name=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.core_event_dist" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
 <dt id="retentioneering.visualization.plot.graph">
-<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">graph</code><span class="sig-paren">(</span><em>data</em>, <em>node_params=None</em>, <em>thresh=0.05</em>, <em>width=800</em>, <em>height=700</em>, <em>interactive=True</em>, <em>layout_dump=None</em>, <em>show_percent=True</em>, <em>plot_name=None</em>, <em>node_weights=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.graph" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create interactive graph visualization. Each node is a unique <code class="docutils literal notranslate"><span class="pre">event_col</span></code> value, edges are transitions between events and edge weights are calculated metrics. By default, it is a percentage of unique users that have passed though a particular edge visualized with the edge thickness. Node sizes are  Graph loop is a transition to the same node, which may happen if users encountered multiple errors or made any action at least twice.
-Graph nodes are movable on canvas which helps to visualize user trajectories but is also a cumbersome process to place all the nodes so it forms a story.
-That is why IFrame object also has a download button. By pressing it, a JSON configuration file with all the node parameters is downloaded. It contains node names, their positions, relative sizes and types. It it used as <code class="docutils literal notranslate"><span class="pre">layout_dump</span></code> parameter for layout configuration. Finally, show weights toggle shows and hides edge weights.</p>
-<dl class="docutils">
-<dt>data: pd.DataFrame</dt>
-<dd>Graph in edgelist form.</dd>
-<dt>node_params: dict, optional</dt>
-<dd><dl class="first docutils">
-<dt>Event mapping describing which nodes or edges should be highlighted by different colors for better visualisation. Dictionary keys are <code class="docutils literal notranslate"><span class="pre">event_col</span></code> values, while keys have the following possible values:</dt>
-<dd><ul class="first last simple">
-<li><code class="docutils literal notranslate"><span class="pre">bad_target</span></code>: highlights node and all incoming edges with red color;</li>
-<li><code class="docutils literal notranslate"><span class="pre">nice_target</span></code>: highlights node and all incoming edges with green color;</li>
-<li><code class="docutils literal notranslate"><span class="pre">bad_node</span></code>: highlights node with red color;</li>
-<li><code class="docutils literal notranslate"><span class="pre">nice_node</span></code>: highlights node with green color;</li>
-<li><code class="docutils literal notranslate"><span class="pre">source</span></code>: highlights node and all outgoing edges with yellow color.</li>
-</ul>
-</dd>
-</dl>
-<p>Example <code class="docutils literal notranslate"><span class="pre">node_params</span></code> is shown below:
-<a href="#id1"><span class="problematic" id="id2">``</span></a>`
-{</p>
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">graph</code><span class="sig-paren">(</span><em>data</em>, <em>node_params=None</em>, <em>thresh=0.05</em>, <em>width=500</em>, <em>height=500</em>, <em>interactive=True</em>, <em>layout_dump=None</em>, <em>show_percent=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.graph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots graph by its edgelist representation</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>data</strong> – graph in edgelist form</li>
+<li><strong>node_params</strong> – <p>mapping describes which node should be highlighted by target or source type
+Node param should be represented in the following form
+<a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>{</p>
 <blockquote>
-<div>‘lost’: ‘bad_target’,
-‘purchased’: ‘nice_target’,
-‘onboarding_welcome_screen’: ‘source’,
-‘choose_login_type’: ‘nice_node’,
-‘accept_privacy_policy’: ‘bad_node’,</div></blockquote>
-<p>If <code class="docutils literal notranslate"><span class="pre">node_params=None</span></code>, it will be constructed from <code class="docutils literal notranslate"><span class="pre">retention_config</span></code> variable, so that:
-<a href="#id3"><span class="problematic" id="id4">``</span></a>`
-{</p>
-<blockquote class="last">
-<div>‘positive_target_event’: ‘nice_target’,
-‘negative_target_event’: ‘bad_target’,
-‘source_event’: ‘source’,</div></blockquote>
-</dd>
-<dt>thresh: float, optional</dt>
-<dd>Minimal edge weight value to be rendered on a graph. If a node has no edges of the weight &gt;= <code class="docutils literal notranslate"><span class="pre">thresh</span></code>, then it is not shown on a graph. It is used to filter out rare event and not to clutter visualization. Default: <code class="docutils literal notranslate"><span class="pre">0.05</span></code></dd>
-<dt>width: float, optional</dt>
-<dd>Width of plot in pixels. Default: <code class="docutils literal notranslate"><span class="pre">500</span></code></dd>
-<dt>height: float, optional</dt>
-<dd>Height of plot in pixels. Default: <code class="docutils literal notranslate"><span class="pre">500</span></code></dd>
-<dt>interactive: bool, optional</dt>
-<dd>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, then plots graph visualization in interactive session (Jupyter notebook). Default: <code class="docutils literal notranslate"><span class="pre">True</span></code></dd>
-<dt>layout_dump: str, optional</dt>
-<dd>Path to layout configuration file relative to current directory. If defined, uses configuration file as a graph layout. Default: <code class="docutils literal notranslate"><span class="pre">None</span></code></dd>
-<dt>show_percent: bool, optional</dt>
-<dd>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, then all edge weights are converted to percents by multiplying by 100 and adding percentage sign. Default: <code class="docutils literal notranslate"><span class="pre">True</span></code></dd>
-</dl>
-<p>Saves webpage with JS graph visualization to <code class="docutils literal notranslate"><span class="pre">retention_config.experiments_folder</span></code>.</p>
-<p>HTML</p>
+<div><blockquote>
+<div>’lost’: ‘bad_target’,
+‘passed’: ‘nice_target’,
+‘onboarding_welcome_screen’: ‘source’,</div></blockquote>
+<p>}```</p>
+</div></blockquote>
+<p>If mapping is not given, it will be constracted from config</p>
+</li>
+<li><strong>thresh</strong> – threshold for filtering low frequency edges</li>
+<li><strong>width</strong> – width of plot</li>
+<li><strong>height</strong> – height of plot</li>
+<li><strong>interactive</strong> – if True, then opens graph visualization in Jupyter Notebook IFrame</li>
+<li><strong>layout_dump</strong> – path to layout dump</li>
+<li><strong>show_percent</strong> – if True, then all edge weights are converted to percents</li>
+<li><strong>kwargs</strong> – do nothing, needs for plot.graph usage with other functions</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">saves to <cite>experiments_folder</cite> webpage with js graph visualization</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
 <dt id="retentioneering.visualization.plot.step_matrix">
-<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">step_matrix</code><span class="sig-paren">(</span><em>diff</em>, <em>plot_name=None</em>, <em>title=''</em>, <em>vmin=None</em>, <em>vmax=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.step_matrix" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plots heatmap with distribution of users over events and trajectories steps ordered by timestamp. Rows are event names, columns are trajectory steps (in session or user story) and values are shares of users experiencing specific event on a specific step of trajectory. If used with <cite>diff</cite> filter, then shows users share difference between datasets.</p>
-<dl class="docutils">
-<dt>diff: pd.DataFrame</dt>
-<dd>Table for heatmap visualization.</dd>
-<dt>plot_name: str, optional</dt>
-<dd>Name of the plot to save. Default: <code class="docutils literal notranslate"><span class="pre">None</span></code></dd>
-<dt>title: str, optional</dt>
-<dd>Title for step matrix plot.</dd>
-<dt>kwargs: optional</dt>
-<dd><code class="docutils literal notranslate"><span class="pre">sns.heatmap</span></code> parameters.</dd>
-</dl>
-<p>Dataframe with <code class="docutils literal notranslate"><span class="pre">max_steps</span></code> number of columns and <code class="docutils literal notranslate"><span class="pre">len(event_col.unique)</span></code> number of rows at max, or less if used <code class="docutils literal notranslate"><span class="pre">thr</span></code> &gt; 0.
-Saves heatmap to <code class="docutils literal notranslate"><span class="pre">retention_config.experiments_folder</span></code></p>
-<p>pd.DataFrame
-PNG</p>
+<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">step_matrix</code><span class="sig-paren">(</span><em>diff</em>, <em>plot_name=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.step_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots heatmap with distribution of events over event steps (ordering in the session by event time)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>diff</strong> – table for heatmap visualization</li>
+<li><strong>plot_name</strong> – name of plot to save</li>
+<li><strong>kwargs</strong> – do nothing, needs for plot usage with other functions</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">saves heatmap to <cite>experiments_folder</cite></p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
-<dl class="function">
-<dt id="retentioneering.visualization.plot.tsne_3d">
-<code class="descclassname">retentioneering.visualization.plot.</code><code class="descname">tsne_3d</code><span class="sig-paren">(</span><em>data</em>, <em>clusters</em>, <em>target</em>, <em>plot_name=None</em>, <em>use_coloring=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#retentioneering.visualization.plot.tsne_3d" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</div>
-<div class="section" id="module-retentioneering.visualization.templates">
-<span id="retentioneering-visualization-templates-module"></span><h2>retentioneering.visualization.templates module<a class="headerlink" href="#module-retentioneering.visualization.templates" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-retentioneering.visualization">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-retentioneering.visualization" title="Permalink to this headline">¶</a></h2>

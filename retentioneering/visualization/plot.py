@@ -159,10 +159,12 @@ def __save_plot__(func):
             vis_object, name, res, cfg = res
         idx = 'id: ' + str(int(datetime.now().timestamp()))
         coords = vis_object.axis()
+        
+
         if '_3d_' not in name:
             vis_object.text((coords[0] - (coords[1] - coords[0]) / 10),
                             (coords[3] + (coords[3] - coords[2]) / 10), idx, fontsize=8)
-            vis_object.text(0, 0.05, 'Retentioneering', fontsize=50, color='gray', va='bottom', alpha=0.1)
+            vis_object.text(0.25, 0.05, 'Retentioneering', fontsize=50, color='gray', va='bottom', alpha=0.1)
         vis_object.get_figure().savefig(name, bbox_inches="tight", dpi=cfg.get('save_dpi') or 200)
         if cfg.get('mongo_client') is not None:
             print(f'DB {idx}')
@@ -179,7 +181,7 @@ def __altair_save_plot__(func):
     def altair_save_plot_wrapper(*args, **kwargs):
         res = func(*args, **kwargs)
         vis_object, plot_name, res, cfg = res
-        idx = 'id: ' + str(int(datetime.now().timestamp()))
+        idx = 'id: ' + str(int(datetime.now().timestamp())) + ", Retentioneering Copyright"
         plot_name_preffix = func.__name__
 
         plot_name = '{}_{}'.format(plot_name_preffix, plot_name or datetime.now()).replace(':', '_').replace('.',
@@ -200,9 +202,21 @@ def __altair_save_plot__(func):
             color='#d3d3d3', text='Retentioneering'
         )
         vis_object.save(plot_name)
-        if kwargs.get('interactive', True):
+
+        render_in_template = True
+
+        if render_in_template and kwargs.get('interactive', True):
+            html_object = templates.__VEGA_TEMPLATE__.format(
+                visual_object=json.dumps(vis_object.to_dict()),
+                func_name=func.__name__
+            )
+            fig = ___DynamicFigureWrapper__(html_object, True, vis_object.width, vis_object.height, res)
+            fig.get_figure().savefig(plot_name, bbox_inches="tight", dpi=cfg.get('save_dpi') or 200)
+
+        elif kwargs.get('interactive', True):
+            print("You can save plot as SVG or PNG by open three-dotted button at right =>")
             alt.renderers.enable('notebook')
-            display(vis_object + watermark)
+            display(vis_object)
 
         if cfg.get('mongo_client') is not None:
             print(f'DB {idx}')
@@ -270,6 +284,9 @@ def graph(data, node_params=None, thresh=.05, width=800, height=500, interactive
     -------
     HTML
     """
+    dump = 1
+    if layout_dump is None:
+        dump = 0
     if node_params is None:
         node_params = _prepare_node_params(node_params, data)
     res = _make_json_data(data, node_params, layout_dump, thresh=thresh,
@@ -292,11 +309,11 @@ def graph(data, node_params=None, thresh=.05, width=800, height=500, interactive
     )
     if hasattr(data, 'trajectory'):
         if plot_name is None:
-            plot_name = f'{data.trajectory.retention_config["experiments_folder"]}/index_{datetime.now()}'
+            plot_name = f'index_{datetime.now()}'
     else:
         if plot_name is None:
             plot_name = 'index'
-    plot_name = plot_name.replace(':', '_').replace('.', '_') + '.html'
+    plot_name = f"{data.trajectory.retention_config['experiments_folder']}/{plot_name.replace(':', '_').replace('.', '_')}" + '.html'
     return (
         ___DynamicFigureWrapper__(x, interactive, width, height, res),
         plot_name,
@@ -317,7 +334,7 @@ def altair_step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, fon
         color=alt.Color(
             'z:Q',
             scale=alt.Scale(scheme='blues'),
-            legend=alt.Legend(direction='horizontal'))
+        )
     )
     text = table.mark_text(
         align='center', fontSize=font_size
@@ -329,7 +346,8 @@ def altair_step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, fon
             alt.value('white'))
     )
     heatmap_object = (heatmap + text).properties(
-        width=3 * font_size * len(diff.columns), height=2 * font_size * diff.shape[0]
+        width=3 * font_size * len(diff.columns), 
+        height=2 * font_size * diff.shape[0]
     )
     return heatmap_object, plot_name, None, diff.retention.retention_config
 
@@ -364,9 +382,33 @@ def step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
     sns.mpl.pyplot.figure(figsize=(20, 10))
     heatmap = sns.heatmap(diff, annot=True, cmap="BrBG", center=0, vmin=vmin, vmax=vmax)
     heatmap.set_title(title)
-    plot_name = 'desc_table_{}.png'.format(plot_name or datetime.now()).replace(':', '_').replace('.', '_')
+    plot_name = plot_name or 'step_matrix_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = diff.retention.retention_config['experiments_folder'] + '/' + plot_name
     return heatmap, plot_name, None, diff.retention.retention_config
+
+
+@__altair_save_plot__
+def altair_cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
+
+    if hasattr(data.retention, '_tsne'):
+        tsne = data.retention._tsne.copy()
+    else:
+        tsne = data.retention.learn_tsne(clusters, **kwargs)
+    tsne['color'] = clusters
+    tsne.columns = ['x', 'y', 'color']
+    
+    scatter = alt.Chart(tsne).mark_point().encode(
+        x='x',
+        y='y',
+        color=alt.Color(
+            'color',
+            scale=alt.Scale(scheme='plasma')
+        )
+    ).properties(
+        width=800,
+        height=600
+    )
+    return scatter, plot_name, tsne, data.retention.retention_config
 
 
 @__save_plot__
@@ -405,11 +447,40 @@ def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
         f.colorbar(points)
         scatter = ___FigureWrapper__(f)
     else:
-        scatter = sns.scatterplot(tsne[:, 0], tsne[:, 1], hue=clusters, legend='full', palette="BrBG")
-    plot_name = plot_name if plot_name is not None else 'clusters_tsne_{}.svg'.format(
-        datetime.now()).replace(':', '_').replace('.', '_')
+        scatter = sns.scatterplot(tsne[:, 0], tsne[:, 1], hue=clusters, legend='full', palette= sns.color_palette("bright")[0:np.unique(clusters).shape[0]])
+    plot_name = plot_name or 'cluster_tsne_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
     return scatter, plot_name, tsne2, data.retention.retention_config
+
+@__altair_save_plot__
+def altair_cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=None, **kwargs):
+    cl = pd.DataFrame([clusters, target], index=['clusters', 'target']).T
+    cl['cnt'] = 1
+    cl.target = cl.target.astype(int)
+    bars = cl.groupby('clusters').agg({
+        'cnt': 'sum',
+        'target': 'mean'
+    }).reset_index()
+    bars.cnt /= bars.cnt.sum()
+    bars = bars.loc[:, ['clusters', 'cnt']].append(bars.loc[:, ['clusters', 'target']], ignore_index=True, sort=False)
+    bars['target'] = np.where(bars.target.isnull(), bars.cnt, bars.target)
+    bars['Metric'] = np.where(bars['cnt'].isnull(), 'Average CR', 'Cluster size')
+    # print(bars, type(bars))
+    bar = alt.Chart(bars).mark_bar().encode(
+        x='Metric:O',
+        y='target:Q',
+        color='Metric:N',
+        column='clusters:N'
+    ).properties(
+        width=60,
+        height=200
+    )
+
+    return bar, plot_name, None, data.retention.retention_config
+
+
+
+        
 
 
 @__save_plot__
@@ -454,8 +525,7 @@ def cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
     bar.set_yticklabels(y_value)
     bar.set(ylabel=None)
 
-    plot_name = plot_name if plot_name is not None else 'clusters_bar_{}.svg'.format(
-        datetime.now()).replace(':', '_').replace('.', '_')
+    plot_name = plot_name or 'cluster_bar_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
     return bar, plot_name, None, data.retention.retention_config
 
@@ -472,8 +542,7 @@ def cluster_event_dist(bars, event_col, cl1, sizes, crs, cl2=None, plot_name=Non
     tit += f'vs. all data (CR: {round(crs[1] * 100, 2)}%)' if cl2 is None else f'vs. cluster {cl2} (size: {round(sizes[1] * 100, 2)}%, CR: {round(crs[1] * 100, 2)}%)'
     bar.set_title(tit)
 
-    plot_name = plot_name if plot_name is not None else 'clusters_event_dist_{}.svg'.format(
-        datetime.now()).replace(':', '_').replace('.', '_')
+    plot_name = plot_name or 'cluster_event_dist_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = bars.retention.retention_config['experiments_folder'] + '/' + plot_name
     return bar, plot_name, None, bars.retention.retention_config
 
@@ -541,8 +610,7 @@ def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
     if plot_cnt % 2 == 1:
         fig.delaxes(ax[plot_cnt // 2, 1])
 
-    plot_name = plot_name if plot_name is not None else 'clusters_pie_{}.svg'.format(
-        datetime.now()).replace(':', '_').replace('.', '_')
+    plot_name = plot_name or 'cluster_pie_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
     return ___FigureWrapper__(fig), plot_name, None, data.retention.retention_config
 
@@ -581,8 +649,7 @@ def cluster_heatmap(data, clusters, target, plot_name=None, **kwargs):
     heatmap.ax_row_dendrogram.set_visible(False)
     heatmap = heatmap.ax_heatmap
 
-    plot_name = plot_name if plot_name is not None else 'clusters_heatmap_{}.svg'.format(
-        datetime.now()).replace(':', '_').replace('.', '_')
+    plot_name = plot_name or 'cluster_heatmap_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
     return heatmap, plot_name, None, data.retention.retention_config
 
@@ -593,12 +660,20 @@ def core_event_dist(rates, thresh, plot_name=None, **kwargs):
     if thresh is not None:
         sns.mpl.pyplot.axvline(thresh, c='C1')
 
-    plot_name = plot_name if plot_name is not None else 'clusters_heatmap_{}.svg'.format(
-        datetime.now()).replace(':', '_').replace('.', '_')
+    plot_name = plot_name or 'core_event_dist_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     rates = rates.reset_index()
     plot_name = rates.retention.retention_config['experiments_folder'] + '/' + plot_name
     return hist, plot_name, None, rates.retention.retention_config
 
+
+@__save_plot__
+def permutation_importance(x, plot_name=None, **kwargs):
+    fig = sns.mpl.pyplot.figure(figsize=[20, 7])
+    sns.mpl.pyplot.xticks(rotation="vertical")
+    sns.mpl.pyplot.title("Permutation importances")
+    sns.mpl.pyplot.bar(x.feature.map(lambda x: " ".join(x)), x.importances_mean, yerr=x.importances_std)
+    plot_name = plot_name or 'permutation_importance_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
+    return ___FigureWrapper__(fig), plot_name, None, x.retention.retention_config
 
 @__save_plot__
 def tsne_3d(data, clusters, target, plot_name=None, use_coloring=False, **kwargs):
@@ -624,8 +699,7 @@ def tsne_3d(data, clusters, target, plot_name=None, use_coloring=False, **kwargs
     ax.set_zlabel('Target')
 
     scatter = ___FigureWrapper__(fig)
-    plot_name = plot_name if plot_name is not None else 'clusters_3d_tsne_{}.svg'.format(
-        datetime.now()).replace(':', '_').replace('.', '_')
+    plot_name = plot_name or 'tsne_3d_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
     return scatter, plot_name, None, data.retention.retention_config
 
@@ -673,9 +747,10 @@ class ___DynamicFigureWrapper__(object):
         return savefig
 
     def text(self, x, y, text, *args, **kwargs):
-        parts = self.fig.split('<body>')
-        res = parts[:1] + [f'<p>{text}</p>'] + parts[1:]
-        self.fig = '\n'.join(res)
+        # parts = self.fig.split('<main>')
+        # res = parts[:1] + [f'<p>{text}</p>'] + parts[1:]
+        # self.fig = '\n'.join(res)
+        pass
 
     def get_raw(self, path):
         base = '.'.join(path.split('.')[:-1])

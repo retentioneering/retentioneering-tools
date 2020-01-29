@@ -5,6 +5,7 @@
 
 
 import os
+import json
 import pandas as pd
 import numpy as np
 import networkx as nx
@@ -73,19 +74,24 @@ def init_config(**config):
     if not os.path.exists(config['experiments_folder']):
         os.mkdir(config['experiments_folder'])
 
+    with open(os.path.join(config['experiments_folder'], "config.json"), "w") as f:
+        json.dump(config, f)
+
     @pd.api.extensions.register_dataframe_accessor("trajectory")
     class RetentioneeringTrajectory(BaseTrajectory):
 
         def __init__(self, pandas_obj):
             super(RetentioneeringTrajectory, self).__init__(pandas_obj)
-            self.retention_config = config
+            with open(os.path.join(config['experiments_folder'], "config.json")) as f:
+                self.retention_config = json.load(f)
 
     @pd.api.extensions.register_dataframe_accessor("retention")
     class RetentioneeringDataset(BaseDataset):
 
         def __init__(self, pandas_obj):
             super(RetentioneeringDataset, self).__init__(pandas_obj)
-            self.retention_config = config
+            with open(os.path.join(config['experiments_folder'], "config.json")) as f:
+                self.retention_config = json.load(f)
 
 
 class BaseTrajectory(object):
@@ -101,6 +107,16 @@ class BaseTrajectory(object):
                 'event_name': 'event_name',
                 'event_timestamp': 'event_timestamp',
             }}
+
+    def update_config(self, config):
+        """
+        Updates retentioneering config without kernel restart. Works only for new pd.DaraFrames (not already initiated)
+
+        :param config:
+        :return:
+        """
+        with open(os.path.join(self.retention_config['experiments_folder'], "config.json"), "w") as f:
+            json.dump(config, f)
 
     def _init_cols(self, caller_locals):
         if caller_locals:
@@ -368,12 +384,14 @@ class BaseTrajectory(object):
         pd.DataFrame
         """
         self._init_cols(locals())
+
         target_event_list = self.retention_config['target_event_list']
         # TODO give filter, return to desc tables ???
         self._add_event_rank(**kwargs)
         if kwargs.get('reverse'):
             self._add_reverse_rank(**kwargs)
         agg = self.get_edgelist(cols=cols or ['event_rank', self._event_col()], norm=False, **kwargs)
+  
         if max_steps:
             agg = agg[agg.event_rank <= max_steps]
         agg.columns = ['event_rank', 'event_name', 'freq']
@@ -405,6 +423,43 @@ class BaseTrajectory(object):
             ))
             piv = pd.concat([piv, pd.DataFrame([means[:max_steps]], columns=piv.columns, index=['dt_mean'])])
         return piv
+
+    def get_sub_step_matrix(self, event, rank, max_steps=30, plot_type=True, sorting=True, cols=None, **kwargs):
+        """
+        Plots sub heatmap from given step_matrix, row and col
+        """
+        self._init_cols(locals())
+        if not 'event_rank' in self._obj.columns:
+            self._add_event_rank(**kwargs)
+
+        rank_sorted_data = self._obj[self._obj.event_rank >= rank]
+
+        users_first_events = rank_sorted_data.groupby(self._index_col()).head(1)
+        event_sorted_ids = users_first_events[users_first_events[self._event_col()] == event][self._index_col()].values
+        
+        event_sorted_data = rank_sorted_data[rank_sorted_data[self._index_col()].isin(event_sorted_ids)].copy()
+
+        step_matrix_df = event_sorted_data.retention.get_step_matrix(max_steps, plot_type, sorting, cols)
+
+        return step_matrix_df
+
+    def get_filter_step_matrix(self, event, rank, max_steps=30, plot_type=True, sorting=True, cols=None, **kwargs):
+        """
+        Plots step matrix with users, that were at given event at given rank
+        """
+        self._init_cols(locals())
+        if not 'event_rank' in self._obj.columns:
+            self._add_event_rank(**kwargs)
+
+        event_at_rank = self._obj[self._obj.event_rank == rank]
+        
+        users_at_event_rank = event_at_rank[self._index_col()][event_at_rank[self._event_col()] == event]
+        
+        sorted_data = self._obj[self._obj[self._index_col()].isin(users_at_event_rank)].copy()
+        
+        step_matrix_df = sorted_data.retention.get_step_matrix(max_steps, plot_type, sorting, cols)
+
+        return step_matrix_df
 
     @staticmethod
     def _create_diff_index(desc_old, desc_new):
@@ -1262,7 +1317,8 @@ class BaseDataset(BaseTrajectory):
         )
         return pos_users.tolist()
 
-    def filter_event_window(self, event_name, neighbor_range=3, event_col=None, index_col=None, use_padding=True):
+    def filter_event_window(self, event_name, neighbor_range=3, direction="both",
+                            event_col=None, index_col=None, use_padding=True):
         """
         Filters clickstream data for specific event and its neighborhood.
 
@@ -1272,6 +1328,10 @@ class BaseDataset(BaseTrajectory):
             Event of interest.
         neighbor_range:
             Number of events to the left and right from event of interest. Default: ``3``
+        direction:
+            If "both" then takes all neighbours of specific event in both sides: before and after
+            If "before" then takes events only before specific event
+            If "after" then takes events only after specific event
         index_col: str, optional
             Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
         event_col: str, optional
@@ -1291,9 +1351,13 @@ class BaseDataset(BaseTrajectory):
         self._obj['flg'] = self._obj[self._event_col()] == event_name
         f = pd.Series([False] * self._obj.shape[0], index=self._obj.index)
         for i in range(-neighbor_range, neighbor_range + 1, 1):
+            if (direction == "after") and (i < 0):
+                continue
+            if (direction == "before") and (i > 0):
+                continue
             f |= self._obj.groupby(self._index_col()).flg.shift(i).fillna(False)
         x = self._obj[f].copy()
-        if use_padding:
+        if use_padding and (direction != "after"):
             x = self._pad_event_window(x, event_name, neighbor_range, event_col, index_col)
         return x
 
@@ -1329,7 +1393,8 @@ class BaseDataset(BaseTrajectory):
             self._event_col(),
             self._event_time_col()
         ]
-        res = res.append(x.loc[:, res.columns.tolist()], ignore_index=True, sort=False)
+        res = res.reindex(x.columns, axis=1)
+        res = res.append(x, ignore_index=True, sort=False)
         return res.reset_index(drop=True)
 
     def create_filter(self, index_col=None, cluster_list=None, cluster_mapping=None):
@@ -1363,7 +1428,7 @@ class BaseDataset(BaseTrajectory):
                 ids.extend((cluster_mapping or self.cluster_mapping)[i])
             return self._obj[self._index_col()].isin(ids)
     
-    def calculate_delays(self, plotting=True, time_col=None, index_col=None, event_col=None, bins=50):
+    def calculate_delays(self, plotting=True, time_col=None, index_col=None, event_col=None, bins=15, **kwargs):
         """
         Displays the logarithm of delay between ``time_col`` with the next value in nanoseconds as a histogram.
 
@@ -1382,7 +1447,7 @@ class BaseDataset(BaseTrajectory):
 
         Returns
         -------
-        Delays in logarithm of nanoseconds for each ``time_col``. Index is preserved as in original dataset.
+        Delays in seconds for each ``time_col``. Index is preserved as in original dataset.
 
         Return type
         -------
@@ -1390,14 +1455,18 @@ class BaseDataset(BaseTrajectory):
         """
         self._init_cols(locals())
         self._get_shift(self._index_col(), self._event_col())
-        delays = np.log((self._obj['next_timestamp'] - self._obj[self._event_time_col()]) // pd.Timedelta('1ns'))
 
-        if plotting == True:
-            import matplotlib.pyplot as plt
-            plt.hist(delays[~np.isnan(delays) & ~np.isinf(delays)], bins=bins, log=True)
+        delays = np.log((self._obj['next_timestamp'] - self._obj[self._event_time_col()]) // pd.Timedelta('1s'))
+        
+        if plotting:
+            fig, ax = plot.sns.mpl.pyplot.subplots(figsize=kwargs.get('figsize', (15, 7)))  # control figsize for proper display on large bin numbers
+            _, bins, _ = plt.hist(delays[~np.isnan(delays) & ~np.isinf(delays)], bins=bins, log=True)
+            if not kwargs.get('logvals', False):  # test & compare with logarithmic and normal
+                plt.xticks(bins, np.around(np.exp(bins), 1))
             plt.show()
-        return delays
-    
+
+        return np.exp(delays)
+
     def insert_sleep_events(self, events, delays=None, time_col=None, index_col=None, event_col=None):
         """
         Populates given dataset with sleep events representing time difference between occuring events. Note that this method is not inplace.
@@ -1426,7 +1495,7 @@ class BaseDataset(BaseTrajectory):
 
         self._init_cols(locals())
 
-        if delays == None:
+        if delays is None:
             delays = self.calculate_delays(False, self._event_time_col(), self._index_col(), self._event_col())
 
         data = self._obj.copy()

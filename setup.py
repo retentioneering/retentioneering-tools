@@ -24,7 +24,7 @@ setup(
         'numpy>=1.16.1',
         'networkx>=2.3',
         'seaborn>=0.9.0',
-        'scikit-learn>=0.20.2',
+        'scikit-learn>=0.22.1',
         'altair',
         'vega',
         'pymongo'

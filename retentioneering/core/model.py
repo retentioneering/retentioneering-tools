@@ -3,8 +3,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-import eli5
-from eli5.sklearn import PermutationImportance
+from sklearn.inspection import permutation_importance as perm_imp
 from retentioneering.visualization import plot
 import pandas as pd
 
@@ -34,7 +33,7 @@ class ModelDescriptor(object):
         test_sample = self.prepare_test(test)
         test_target = test.retention.get_positive_users()
         test_target = test_sample.index.isin(test_target)
-        self.permutation_importance(test_sample, test_target, node_params=None, **kwargs)
+        return self.permutation_importance(test_sample, test_target, node_params=None, **kwargs)
 
     def permutation_importance(self, test_sample, test_target, node_params=None, **kwargs):
         """
@@ -75,12 +74,13 @@ class ModelDescriptor(object):
             Default: ``None``
         """
         self.show_quality_metrics(test_sample, test_target)
-        if hasattr(self.mod, 'coef_'):
-            self._plot_perm_imp(__LogRegWrapper__(self.mod.coef_[0]), test_sample, node_params, **kwargs)
-            return
-        perm = PermutationImportance(self.mod, random_state=0).fit(test_sample, test_target)
-        eli5.show_weights(perm, feature_names=[' '.join(i) if type(i) == tuple else i for i in test_sample.columns])
+        perm = perm_imp(self.mod, test_sample, test_target, random_state=0)
+        perm.pop('importances')
+        perm['feature'] = test_sample.columns
+        self.permutation_importance_table = pd.DataFrame(perm).sort_values('importances_mean', ascending=False)
+        plot.permutation_importance(self.permutation_importance_table, **kwargs)
         self._plot_perm_imp(perm, test_sample, node_params, **kwargs)
+        return self.permutation_importance_table
 
     def show_quality_raw(self, test):
         test_sample = self.prepare_test(test)
@@ -142,7 +142,7 @@ class ModelDescriptor(object):
 
     @staticmethod
     def _plot_perm_imp(perm, test_sample, node_params, **kwargs):
-        weights = dict(zip(test_sample.columns.tolist(), perm.feature_importances_))
+        weights = dict(zip(test_sample.columns.tolist(), perm["importances_mean"]))
 
         if node_params is None:
             node_params = {}

@@ -35,7 +35,7 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Release 1.0.4 description" href="release-notes.html" />
+    <link rel="next" title="retentioneering package" href="retentioneering.html" />
     <link rel="prev" title="Introduction" href="early_steps.html" /> 
 </head>
 
@@ -92,7 +92,6 @@
 <li class="toctree-l2"><a class="reference internal" href="#predict-app-remove">Predict app remove</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="release-notes.html">Release 1.0.4 description</a></li>
 <li class="toctree-l1"><a class="reference internal" href="retentioneering.html">Documentation</a></li>
 </ul>
 
@@ -308,10 +307,17 @@ cannibiling users from mobile app.</p>
 </div>
 <div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># create model on train</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">data_train_clean</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">create_model</span><span class="p">()</span>
+
+<span class="c1"># extract features for test</span>
+<span class="c1"># parameter wo_last_k - how many steps in advance you want to predict</span>
+<span class="n">features_test</span> <span class="o">=</span> <span class="n">data_train_clean</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">extract_features_from_test</span><span class="p">(</span><span class="n">data_test_clean</span><span class="p">,</span> <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span><span class="n">wo_last_k</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># add targets to test</span>
+<span class="n">target</span> <span class="o">=</span> <span class="n">features_test</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">data_test_clean</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_positive_users</span><span class="p">())</span>
 </pre></div>
 </div>
-<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># make prediction and visualize the features importance on test data</span>
-<span class="n">model</span><span class="o">.</span><span class="n">permutation_importance_raw</span><span class="p">(</span><span class="n">data_test_clean</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># make prediction and visualize the features importance</span>
+<span class="n">model</span><span class="o">.</span><span class="n">permutation_importance</span><span class="p">(</span><span class="n">features_test</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
 </pre></div>
 </div>
 <dl class="docutils">
@@ -332,7 +338,7 @@ cannibiling users from mobile app.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="release-notes.html" class="btn btn-neutral float-right" title="Release 1.0.4 description" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="retentioneering.html" class="btn btn-neutral float-right" title="retentioneering package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="early_steps.html" class="btn btn-neutral float-left" title="Introduction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

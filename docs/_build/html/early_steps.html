@@ -90,7 +90,6 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="mobile-app-case.html">Mobile app case</a></li>
-<li class="toctree-l1"><a class="reference internal" href="release-notes.html">Release 1.0.4 description</a></li>
 <li class="toctree-l1"><a class="reference internal" href="retentioneering.html">Documentation</a></li>
 </ul>
 
@@ -918,7 +917,11 @@ package has it e.g. <code class="docutils literal notranslate"><span class="pre"
 <span class="n">model</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">RandomForestClassifier</span><span class="p">,</span> <span class="n">n_estimators</span><span class="o">=</span><span class="mi">25</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">permutation_importance_raw</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.</span><span class="p">)</span>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">features</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+<span class="n">target</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">retention</span><span class="o">.</span><span class="n">get_positive_users</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="code ipython3 highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">permutation_importance</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Output:</p>

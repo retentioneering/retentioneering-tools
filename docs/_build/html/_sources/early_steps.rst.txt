@@ -940,10 +940,14 @@ And pass params to it.
     from sklearn.ensemble import RandomForestClassifier
     model = data.retention.create_model(RandomForestClassifier, n_estimators=25)
 
+.. code:: ipython3
+
+    features = data.retention.extract_features(ngram_range=(1,2))
+    target = features.index.isin(data.retention.get_positive_users())
 
 .. code:: ipython3
 
-    model.permutation_importance_raw(data, thresh=0.)
+    model.permutation_importance(features, target, thresh=0.)
 
 
 Output:

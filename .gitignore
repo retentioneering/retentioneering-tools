@@ -105,3 +105,4 @@ venv.bak/
 *.ipynb_checkpoints
 *early_steps_mock.ipynb
 *netprint_case.ipynb
+*.DS_Store

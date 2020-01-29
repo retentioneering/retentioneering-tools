@@ -1,5 +1,5 @@
-rete-public-release-1113
-========================
+retentioneering-release-version
+===============================
 
 .. toctree::
    :maxdepth: 4

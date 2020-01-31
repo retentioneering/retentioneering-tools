@@ -3,7 +3,7 @@
 [![Pipi version](https://img.shields.io/badge/-pypi_v1.0.7-blue)](https://pypi.org/project/retentioneering/)
 [![Telegram](https://img.shields.io/badge/channel-on%20telegram-blue)](https://t.me/retentioneering_meetups)
 
-Retentioneering is the framework to explore, grow and optimize your product based on deep analysis of user trajectories. Retentioneering provides systematic and quantitative approach to search for insights, continuous KPI optimization, product improvement and marketing optimization.
+Retentioneering is a framework to explore, grow and optimize your product based on deep analysis of user trajectories. Retentioneering provides systematic and quantitative approach to search for insights, continuous KPI optimization, product improvement and marketing optimization.
 
 To start use our package please see the [documentation](https://retentioneering.github.io/retentioneering-tools/)
 

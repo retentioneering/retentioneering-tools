@@ -28,7 +28,7 @@ pip3 install retentioneering
     ```bash
     git clone https://github.com/retentioneering/retentioneering-tools
     cd retentioneering-tools
-    python3 setup.py install --user
+    python3 setup.py install
     ```
 
 ## Introduction

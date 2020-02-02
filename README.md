@@ -1,18 +1,85 @@
-# Retentioneering
+<div align="left">
 
-[![Pipi version](https://img.shields.io/badge/-pypi_v1.0.7-blue)](https://pypi.org/project/retentioneering/)
+<a href="https://github.com/retentioneering/retentioneering-tools">
+        <img src="https://github.com/retentioneering/pics/blob/master/pics/logo_long_black.png"
+        width=950" height="150">
+</a>
+
+[![Pipi version](https://img.shields.io/pypi/v/retentioneering)](https://pypi.org/project/retentioneering/)
 [![Telegram](https://img.shields.io/badge/channel-on%20telegram-blue)](https://t.me/retentioneering_meetups)
+[![Reddit](https://img.shields.io/reddit/subreddit-subscribers/retentioneering?style=social)](https://www.reddit.com/r/retentioneering/)
+[![Python version](https://img.shields.io/pypi/pyversions/retentioneering)](https://pypi.org/project/retentioneering/)
+[![License](https://img.shields.io/pypi/l/retentioneering)](https://www.mozilla.org/en-US/MPL/)
 
-Retentioneering is a framework to explore, grow and optimize your product based on deep analysis of user trajectories. Retentioneering provides systematic and quantitative approach to search for insights, continuous KPI optimization, product improvement and marketing optimization.
 
-To start use our package please see the [documentation](https://retentioneering.github.io/retentioneering-tools/)
+## What is it?
+
+Retentioneering is a Python framework to explore, grow and optimize your product based on deep analysis of user trajectories. Using Retentioneering you can vectorize clickstream logs and cluster user trajectories to automatically identify common successful or churn patterns. You can explore those patterns using our tools such as graph visualizer, step matrix, classifier and many others.
+
+
+## How it works?
+
+All you need to get started with Retentioneering is clickstream log of events from your web-site or app: {user_ID, event_ID, timestamp} (or use provided sample [datasets](https://github.com/retentioneering/retentioneering-tools/tree/master/examples/data) in .csv format). You can vectorize individual user trajectories in dataset and plot all your users logs on 2D map using TSNE projection:
+
+```python
+data.retention.learn_tsne(plot_type='targets');
+```
+<div align="center">
+
+<a href="https://github.com/retentioneering/retentioneering-tools">
+        <img src="https://github.com/retentioneering/pics/blob/master/pics/intro_1.png"
+        width=980" height="224">
+</a>
+
+<div align="left">
+
+Users with similar patterns will appear as close dots at such map. Group of users who do not reach specified target event represent some systematic problem: usage pattern which systematically does not lead to product goals. Next you can segment users based on their behavior in the product.
+
+<div align="center">
+
+<a href="https://github.com/retentioneering/retentioneering-tools">
+        <img src="https://github.com/retentioneering/pics/blob/master/pics/intro_2.png"
+        width=897" height="443">
+</a>
+
+<div align="left">
+
+
+Obtained user segments can be explored with graph visualizer or step matrixes or clustered again:
+
+```python
+(data.retention.filter_cluster(4)
+ .retention.plot_graph(thresh = 0.05))
+```
+<div align="left">
+
+<a href="https://github.com/retentioneering/retentioneering-tools">
+        <img src="https://github.com/retentioneering/pics/blob/master/pics/graph_0.png"
+        width=585" height="263">
+</a>
+
+
+Plot reverse step matrix where rows correspond to events and columns show event position in the trajectory. Numbers show fraction of users having corresponding event at corresponding step:
+
+```python
+(data.retention.filter_cluster(4)
+.retention.get_step_matrix(reverse='neg'))
+```
+<div align="left">
+
+<a href="https://github.com/retentioneering/retentioneering-tools">
+        <img src="https://github.com/retentioneering/pics/blob/master/pics/matrix_0.png"
+        width=590" height="280">
+</a>
+
+To explore more features please see the [documentation](https://retentioneering.github.io/retentioneering-tools/)
 
 ## Installation
 
 ### Python and Jupyter
 
 Firstly, you need to install python and Jupyter.
-We support only python 3.
+We support only python 3.6 or higher versions.
 For quick start better to install [Anaconda](https://www.anaconda.com/).
 
 ### Python package
@@ -25,33 +92,25 @@ pip3 install retentioneering
 
 - Or directly from the source:
 
-    ```bash
-    git clone https://github.com/retentioneering/retentioneering-tools
-    cd retentioneering-tools
-    python3 setup.py install
-    ```
-
-## Introduction
-It's better to start with notebooks listed below to understand Retentioneering:
-
-### [First steps](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#first-steps)
-Configuration, preparing your data graph basics.
-
-### [Temporal funnel](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#temporal-funnel)
-Also known as Step Matrix.
-
-### [Clustering](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#clustering)
-Clutermap, TSNE projections, target events in clustering, cluster graphs.
-
-### [Supervised classifier](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#supervised-classifier)
-Supervised learning, sklearn-api.
-
-## Mobile application cases
-In this example we will perform an analysis for the app focusing on investigation why people remove app.
-
-### [Analysis](https://retentioneering.github.io/retentioneering-tools/_build/html/mobile-app-case.html#analysis)
-Step matrix and clustering.
-### [Predict application remove](https://retentioneering.github.io/retentioneering-tools/_build/html/mobile-app-case.html#predict-app-remove)
+```bash
+git clone https://github.com/retentioneering/retentioneering-tools
+cd retentioneering-tools
+pip3 install .
+```
 
 ## Documentation
-### [Packages and Subpackages](https://retentioneering.github.io/retentioneering-tools/_build/html/retentioneering.html)
+
+#### Explore [example notebooks](https://github.com/retentioneering/retentioneering-tools/tree/master/examples) to get started or go through documentation pages:
+
+- [First steps](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#first-steps) Configuration, preparing your data graph basics.
+- [Step Matrix](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#temporal-funnel), [Clustering](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#clustering) Clustermap, TSNE projections, target events in clustering, cluster graphs.
+- [Supervised classifier](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#supervised-classifier) Supervised learning, sklearn-api.
+- [Analysis](https://retentioneering.github.io/retentioneering-tools/_build/html/mobile-app-case.html#analysis) Step matrix and clustering.
+- [Predict application remove](https://retentioneering.github.io/retentioneering-tools/_build/html/mobile-app-case.html#predict-app-remove)
+- [Packages and Subpackages](https://retentioneering.github.io/retentioneering-tools/_build/html/retentioneering.html)
+
+## Contributing
+
+This is community-driven open source project in active development. Any contributions, new ideas, bug reports, bug fixes, documentation improvements are very welcome.
+
+Feel free to reach out to us: retentioneering[at]gmail.com

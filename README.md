@@ -47,6 +47,7 @@ Obtained user segments can be explored with graph visualizer or step matrixes or
 ```
 <div align="left">
 
+
 [![graph 0](https://github.com/retentioneering/pics/blob/master/pics/graph_0.png)](https://github.com/retentioneering/retentioneering-tools)
 
 
@@ -58,8 +59,7 @@ Plot reverse step matrix where rows correspond to events and columns show event 
 ```
 <div align="left">
 
-
-[![matrix 0](https://github.com/retentioneering/pics/blob/master/pics/matrix_0.png)](https://github.com/retentioneering/retentioneering-tools)
+<img src="https://github.com/retentioneering/pics/blob/master/pics/matrix_0.png" width="500px">
 
 
 To explore more features please see the [documentation](https://retentioneering.github.io/retentioneering-tools/)

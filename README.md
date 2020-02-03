@@ -47,8 +47,7 @@ Obtained user segments can be explored with graph visualizer or step matrixes or
 ```
 <div align="left">
 
-
-[![graph 0](https://github.com/retentioneering/pics/blob/master/pics/graph_0.png)](https://github.com/retentioneering/retentioneering-tools)
+<img src="https://github.com/retentioneering/pics/blob/master/pics/graph_0.png" width="600px">
 
 
 Plot reverse step matrix where rows correspond to events and columns show event position in the trajectory. Numbers show fraction of users having corresponding event at corresponding step:

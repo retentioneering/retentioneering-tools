@@ -1,9 +1,6 @@
 <div align="left">
 
-<a href="https://github.com/retentioneering/retentioneering-tools">
-        <img src="https://github.com/retentioneering/pics/blob/master/pics/logo_long_black.png"
-        width=950" height="150">
-</a>
+[![Rete logo](https://github.com/retentioneering/pics/blob/master/pics/logo_long_black.png)](https://github.com/retentioneering/retentioneering-tools)
 
 [![Pipi version](https://img.shields.io/pypi/v/retentioneering)](https://pypi.org/project/retentioneering/)
 [![Telegram](https://img.shields.io/badge/channel-on%20telegram-blue)](https://t.me/retentioneering_meetups)
@@ -26,10 +23,9 @@ data.retention.learn_tsne(plot_type='targets');
 ```
 <div align="center">
 
-<a href="https://github.com/retentioneering/retentioneering-tools">
-        <img src="https://github.com/retentioneering/pics/blob/master/pics/intro_1.png"
-        width=980" height="224">
-</a>
+
+[![intro 1](https://github.com/retentioneering/pics/blob/master/pics/intro_1.png)](https://github.com/retentioneering/retentioneering-tools)
+
 
 <div align="left">
 
@@ -37,10 +33,8 @@ Users with similar patterns will appear as close dots at such map. Group of user
 
 <div align="center">
 
-<a href="https://github.com/retentioneering/retentioneering-tools">
-        <img src="https://github.com/retentioneering/pics/blob/master/pics/intro_2.png"
-        width=897" height="443">
-</a>
+[![intro 2](https://github.com/retentioneering/pics/blob/master/pics/intro_2.png)](https://github.com/retentioneering/retentioneering-tools)
+
 
 <div align="left">
 
@@ -53,10 +47,7 @@ Obtained user segments can be explored with graph visualizer or step matrixes or
 ```
 <div align="left">
 
-<a href="https://github.com/retentioneering/retentioneering-tools">
-        <img src="https://github.com/retentioneering/pics/blob/master/pics/graph_0.png"
-        width=585" height="263">
-</a>
+[![graph 0](https://github.com/retentioneering/pics/blob/master/pics/graph_0.png)](https://github.com/retentioneering/retentioneering-tools)
 
 
 Plot reverse step matrix where rows correspond to events and columns show event position in the trajectory. Numbers show fraction of users having corresponding event at corresponding step:
@@ -67,10 +58,9 @@ Plot reverse step matrix where rows correspond to events and columns show event 
 ```
 <div align="left">
 
-<a href="https://github.com/retentioneering/retentioneering-tools">
-        <img src="https://github.com/retentioneering/pics/blob/master/pics/matrix_0.png"
-        width=590" height="280">
-</a>
+
+[![matrix 0](https://github.com/retentioneering/pics/blob/master/pics/matrix_0.png)](https://github.com/retentioneering/retentioneering-tools)
+
 
 To explore more features please see the [documentation](https://retentioneering.github.io/retentioneering-tools/)
 

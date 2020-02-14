@@ -27,8 +27,8 @@ def _uni_counts_embedder(data, **kwargs):
     cv = data.groupby([index_col, event_col]).size().rename('event_count').reset_index()
     cv = cv.pivot(index=index_col, columns=event_col).fillna(0)
     cv.columns = cv.columns.levels[1]
-    cv.columns.name = None
-    cv.index.name = None
+    cv.columns.set_names(None, inplace=True)
+    cv.index.set_names(None, inplace=True)
     setattr(cv.retention, 'datatype', 'features')
     return cv
 
@@ -89,8 +89,8 @@ def counts_embedder(data, ngram_range=(1, 1), **kwargs):
     cv = data.groupby(index_col)[event_col].apply(_ngram_agg, ngram_range=ngram_range).reset_index()
     cv = cv.pivot(index=index_col, columns='level_1', values=event_col).fillna(0)
     cv = cv.loc[:, [i for i in cv.columns if i[-1] == i[-1]]]
-    cv.columns.name = None
-    cv.index.name = None
+    cv.columns.set_names(None, inplace=True)
+    cv.index.set_names(None, inplace=True)
     return cv
 
 

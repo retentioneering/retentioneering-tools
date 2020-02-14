@@ -196,16 +196,20 @@ class BaseTrajectory(object):
         -------
         pd.DataFrame
         """
+
         if cols is None:
             cols = [
                 self.retention_config['event_col'],
                 'next_event'
             ]
+        
         self._get_shift(event_col=cols[0], shift_name=cols[1], **kwargs)
         data = self._obj.copy()
+        
         if kwargs.get('reverse'):
             data = data[data['non-detriment'].fillna(False)]
             data.drop('non-detriment', axis=1, inplace=True)
+        
         agg = (data
                .groupby(cols)[edge_col or self.retention_config['event_time_col']]
                .agg(edge_attributes.split('_')[1])
@@ -383,6 +387,7 @@ class BaseTrajectory(object):
         -------
         pd.DataFrame
         """
+
         self._init_cols(locals())
 
         target_event_list = self.retention_config['target_event_list']
@@ -391,7 +396,6 @@ class BaseTrajectory(object):
         if kwargs.get('reverse'):
             self._add_reverse_rank(**kwargs)
         agg = self.get_edgelist(cols=cols or ['event_rank', self._event_col()], norm=False, **kwargs)
-  
         if max_steps:
             agg = agg[agg.event_rank <= max_steps]
         agg.columns = ['event_rank', 'event_name', 'freq']
@@ -422,6 +426,50 @@ class BaseTrajectory(object):
                 lambda x: (x.next_timestamp - x.event_timestamp).dt.total_seconds().mean()
             ))
             piv = pd.concat([piv, pd.DataFrame([means[:max_steps]], columns=piv.columns, index=['dt_mean'])])
+        return piv
+
+    def extended_add_reverse_rank(self, index_col=None, event_col=None, **kwargs):
+        self._obj['event_rank'] = (
+            self
+            ._obj
+            .groupby([self._index_col()])
+            .event_rank
+            .apply(lambda x: x.max() - x + 1)
+        )
+        return
+
+
+    def get_reverse_filter_step_matrix(self, event=None, reverse_rank=1, max_steps=30, plot_type=True, sorting=True, cols=None, **kwargs):
+        if event is None:
+            event = self.retention_config['negative_target_event']
+
+        data = self._obj.copy()
+        data = data.retention.prepare()
+
+        if not 'event_rank' in data.retention._obj.columns:
+            data.retention._add_event_rank(**kwargs)
+        
+        data.retention.extended_add_reverse_rank(**kwargs)
+        
+        event_at_rank = data.retention._obj[data.retention._obj.event_rank == reverse_rank]
+        users_at_event_rank = event_at_rank[event_at_rank[data.retention._event_col()] == event][data.retention._index_col()].values
+
+        data = data.retention._obj[data.retention._obj[data.retention._index_col()].isin(users_at_event_rank)]
+
+        agg = data.retention.get_edgelist(cols=cols or ['event_rank', self._event_col()], norm=False, **kwargs)
+        agg.columns = ['event_rank', 'event_name', 'freq']
+        tot_cnt = agg[agg['event_rank'] == 1].freq.sum()
+        agg['freq'] = agg['freq'] / tot_cnt
+        piv = agg.pivot(index='event_name', columns='event_rank', values='freq').fillna(0)
+        piv.columns.name = None
+        piv.index.name = None
+        piv.columns = ['n'] + ['n - {}'.format(i - 1) for i in piv.columns[1:]]
+        if plot_type:
+            plot.step_matrix(
+                piv.round(2),
+                title=kwargs.get('title',
+                                 'Step matrix {}'
+                                 .format('reversed' if kwargs.get('reverse') else '')), **kwargs)
         return piv
 
     def get_sub_step_matrix(self, event, rank, max_steps=30, plot_type=True, sorting=True, cols=None, **kwargs):

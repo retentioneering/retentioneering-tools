@@ -221,7 +221,7 @@ __TEMPLATE__ = """
 
       textMarkersSelection.append("text")
           .style("dominant-baseline", "central")
-          .style("font-size", "20px")
+          .style("font-size", "13px")
           .append("textPath")
           .attr("xlink:href", function(d,i) {{ return "#link_"+i; }})
           .attr("startOffset", "35%")
@@ -230,7 +230,7 @@ __TEMPLATE__ = """
 
       textMarkersSelection.append("text")
           .style("dominant-baseline", "central")
-          .style("font-size", "20px")
+          .style("font-size", "13px")
           .append("textPath")
           .attr("xlink:href", function(d,i) {{ return "#link_"+i; }})
           .attr("startOffset", "65%")
@@ -337,8 +337,14 @@ __TEMPLATE__ = """
             }} else {{
               dr /= 2
             }};
-            if (dr > 0) {{return "M" + nodes[whereEquals(d.source.index)].x + "," + nodes[whereEquals(d.source.index)].y + "A" + (dr * 1.1) + "," + (dr * 1.1) + " 0 0,1 " + nodes[whereEquals(d.target.index)].x + "," + nodes[whereEquals(d.target.index)].y;}}
-            else {{return "M" + nodes[whereEquals(d.source.index)].x + "," + nodes[whereEquals(d.source.index)].y + "A" + 20 + "," + 20 + " 0 1,0 " + (nodes[whereEquals(d.target.index)].x + 0.1) + "," + (nodes[whereEquals(d.target.index)].y + 0.1);}}
+            if (dr > 0) {{
+              return "M" + nodes[whereEquals(d.source.index)].x + "," + nodes[whereEquals(d.source.index)].y + "A" + (dr * 1.1) + "," + (dr * 1.1) + " 0 0,1 " + nodes[whereEquals(d.target.index)].x + "," + nodes[whereEquals(d.target.index)].y;
+            }}
+            else {{
+              minRadius = 24;
+              radius = Math.max(minRadius, nodes[whereEquals(d.source.index)].degree);
+              return "M" + nodes[whereEquals(d.source.index)].x + "," + nodes[whereEquals(d.source.index)].y + "A" + radius + "," + radius + " 0 1,0 " + (nodes[whereEquals(d.target.index)].x + 0.1) + "," + (nodes[whereEquals(d.target.index)].y + 0.1);
+            }}
         }}
 
         //synch with 'show names' and 'show weights' checkboxes

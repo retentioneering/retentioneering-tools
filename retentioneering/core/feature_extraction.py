@@ -6,6 +6,7 @@
 
 import pandas as pd
 import numpy as np
+import umap.umap_ as umap
 from collections import Counter
 from sklearn.manifold import TSNE
 from sklearn import decomposition
@@ -180,6 +181,34 @@ def learn_tsne(data, **kwargs):
     kwargs = {i: j for i, j in kwargs.items() if i in _tsne_filter}
     res = TSNE(random_state=0, **kwargs).fit_transform(data.values)
     return pd.DataFrame(res, index=data.index.values)
+
+def learn_umap(data, **kwargs):
+    """
+    Calculates UMAP transformation for given matrix features.
+
+    Parameters
+    --------
+    data: np.array
+        Array of features.
+    kwargs: optional
+        Parameters for ``umap.UMAP()``
+
+    Returns
+    -------
+    Calculated UMAP transform
+
+    Return type
+    -------
+    np.ndarray
+    """
+    #_tsne_filter = TSNE.get_params(TSNE)
+    #kwargs = {i: j for i, j in kwargs.items() if i in _tsne_filter}
+    #res = TSNE(random_state=0, **kwargs).fit_transform(data.values)
+    reducer = umap.UMAP()
+    _umap_filter = reducer.get_params()
+    kwargs = {i: j for i, j in kwargs.items() if i in _umap_filter}
+    embedding = umap.UMAP(random_state=0, min_dist = 1, **kwargs).fit_transform(data.values)
+    return pd.DataFrame(embedding, index=data.index.values)
 
 
 def get_manifold(data, manifold_type, **kwargs):

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='retentioneering',
-    version='1.0.7.5',
+    version='1.0.7.6',
     license='Mozilla Public License',
     description='Product analytics and marketing optimization framework based on deep user trajectories analysis',
     long_description="""
@@ -28,7 +28,8 @@ setup(
         'altair',
         'vega',
         'pymongo',
-        'plotly'
+        'plotly',
+        'umap-learn'
     ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',

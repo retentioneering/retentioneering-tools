@@ -159,7 +159,7 @@ def __save_plot__(func):
             vis_object, name, res, cfg = res
         idx = 'id: ' + str(int(datetime.now().timestamp()))
         coords = vis_object.axis()
-        
+
 
         if '_3d_' not in name:
             vis_object.text((coords[0] - (coords[1] - coords[0]) / 10),
@@ -346,7 +346,7 @@ def altair_step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, fon
             alt.value('white'))
     )
     heatmap_object = (heatmap + text).properties(
-        width=3 * font_size * len(diff.columns), 
+        width=3 * font_size * len(diff.columns),
         height=2 * font_size * diff.shape[0]
     )
     return heatmap_object, plot_name, None, diff.retention.retention_config
@@ -396,7 +396,7 @@ def altair_cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
         tsne = data.retention.learn_tsne(clusters, **kwargs)
     tsne['color'] = clusters
     tsne.columns = ['x', 'y', 'color']
-    
+
     scatter = alt.Chart(tsne).mark_point().encode(
         x='x',
         y='y',
@@ -480,7 +480,7 @@ def altair_cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, me
 
 
 
-        
+
 
 
 @__save_plot__
@@ -730,7 +730,7 @@ class __SaveFigWrapper__(object):
         self.height = height
 
     def savefig(self, name, **kwargs):
-        with open(name, 'w') as f:
+        with open(name, 'w', encoding="utf-8") as f:
             f.write(self.data)
         if self.interactive:
             display(IFrame(name, width=self.width + 200, height=self.height + 200))

@@ -9,7 +9,6 @@ import json
 import pandas as pd
 import numpy as np
 import networkx as nx
-import matplotlib as plt
 from datetime import timedelta
 from retentioneering.core import feature_extraction
 from retentioneering.core import clustering
@@ -18,7 +17,6 @@ from sklearn.linear_model import LogisticRegression
 from retentioneering.core.model import ModelDescriptor
 from retentioneering.core import node_metrics
 from retentioneering.core import preprocessing
-from operator import itemgetter
 
 def init_config(**config):
     """
@@ -787,7 +785,7 @@ class BaseDataset(BaseTrajectory):
         self._init_cols(locals())
         target = (self._obj
                   .groupby(self._index_col())
-                  .apply(lambda x: self.retention_config['positive_target_event'] in x[self._event_col()].values))
+                  .apply(lambda x: self.retention_config['positive_target_event'] in x[self._event_col()]))
         return target
 
     def get_clusters(self, plot_type=None, refit_cluster=False, method='simple_cluster', **kwargs):
@@ -1586,7 +1584,7 @@ class BaseDataset(BaseTrajectory):
                                               data['next_timestamp'])
         to_add.append(data)
         to_add = pd.concat(to_add)
-        return to_add.sort_values(self._event_time_col()).reset_index(drop=True)
+        return to_add.sort_values(self.['event_timestamp']).reset_index(drop=True)
 
     def remove_events(self, event_list, mode='equal'):
         """
@@ -2153,186 +2151,6 @@ class BaseDataset(BaseTrajectory):
         f = self.create_trajectory_filter(event_list, index_col, event_col, **kwargs)
         f = self._obj[self._index_col()].isin(f[f].index.tolist())
         return self._obj[f].copy().reset_index(drop=True)
-
-    def is_cycle(self, data):
-        """
-            Utilite for cycle search
-        """
-        temp = data.split(' ')
-        return True if temp[0] == temp[-1] and len(set(temp)) > 1 else False
-
-    def is_loop(self, data):
-        """
-            Utilite for loop search
-        """
-        temp = data.split(' ')
-        return True if temp[0] == temp[-1] and len(set(temp)) == 1 else False
-
-    def get_fraction(self,fraction = 1,random_state = 42):
-        # print(self,fraction,random_state)
-        """
-            Selects fraction of good users and the same number of bad users
-
-            Parameters
-            --------
-            fraction: float, optional
-                Fraction of users. Should be in interval of (0,1]
-            random_state: int, optional
-                random state for numpy choice function
-
-            Returns
-            --------
-            Two dataframes: with good and bad users
-
-            Return type
-            --------
-            tuple of pd.DataFrame
-        """
-        if fraction <= 0 or fraction > 1:
-            raise ValueError('The fraction is <= 0 or > 1')
-        self._init_cols(locals())
-
-        np.random.seed(random_state)
-        good_users = self.get_positive_users()
-        bad_users = self.get_negative_users()
-        good_idx = np.random.choice(range(len(good_users)), int(len(good_users) * fraction), replace=False).astype(
-            'int64')
-        bad_idx = np.random.choice(range(len(bad_users)), len(good_users), replace=False).astype('int64')
-
-        return (self._obj[self._obj[self._index_col()].isin([x for x in itemgetter(*good_idx)(good_users)])], \
-                self._obj[self._obj[self._index_col()].isin([x for x in itemgetter(*bad_idx)(bad_users)])])
-
-
-
-
-    def sequence_search(self, data, sequences, interval, is_bad):
-        """
-            Utilite for sequence search. Looking for sequences in data, grouped by _index_col
-        """
-        for length in interval:
-            if len(data) >= length:
-                start_ind = length
-                for ind in range(start_ind, len(data)):
-                    try:
-                        sequences[' '.join(data[ind - length: ind])][is_bad] += 1
-                    except:
-                        sequences[' '.join(data[ind - length: ind])] = [0, 0, 0]
-                        sequences[' '.join(data[ind - length: ind])][is_bad] = 1
-
-    def find_sequences(self, interval, fraction=1, random_state=42, exclude_cycles = False, exclude_loops = False):
-        """
-            Finds all subsequences of length lying in interval
-
-            Parameters
-            --------
-            fraction: float, optional
-                Fraction of users. Should be in interval of (0,1]
-            random_state: int, optional
-                random state for numpy choice function
-
-            Returns
-            --------
-            Two dataframes: with good and bad users
-
-            Return type
-            --------
-            tuple of pd.DataFrame
-        """
-        self._init_cols(locals())
-        sequences = dict()
-        interval = [x for x in interval if type(x) == int]
-        if len(interval) == 0:
-            raise ValueError('Please enter integers in interval')
-        good,bad = self.get_fraction(fraction, random_state)
-        for el in good.groupby(self._index_col()):
-            self.sequence_search(el[1][self._event_col()], sequences, interval, 0)
-        for el in bad.groupby(self._index_col()):
-            self.sequence_search(el[1][self._event_col()], sequences, interval, 1)
-
-        for key, val in sequences.items():
-            try:
-                sequences[key][2] = val[0] / val[1]
-            except:
-                pass
-
-        temp = pd.DataFrame(data = [[a[0]] + a[1] for a in sequences.items()],\
-                            columns = ['Sequence','Good','Lost','Coefficient'])
-        if exclude_cycles:
-            temp = temp[~temp.Sequence.apply(lambda x: self.is_cycle(x))]
-        if exclude_loops:
-            temp = temp[~temp.Sequence.apply(lambda x: self.is_loop(x))]
-
-        return temp.sort_values('Lost',ascending = False).reset_index(drop=True)
-
-    def loop_search(self, data, self_loops, event_list, is_bad):
-        """
-        Utilite for loop searching
-        """
-        # print(data)
-        self._init_cols(locals())
-        event_list = {k: 0 for k in event_list}
-        #     global self_loops
-        for ind, url in enumerate(data[1:]):
-            if data[ind] == data[ind + 1]:
-                try:
-                    self_loops[url][is_bad] += 1
-                    if event_list[url] == 0:
-                        self_loops[url][is_bad + 3] += 1
-                        event_list[url] = 1
-                except:
-                    self_loops[url] = [0, 0, 0, 0, 0, 0]
-                    self_loops[url][is_bad] = 1
-                    if event_list[url] == 0:
-                        self_loops[url][is_bad + 3] += 1
-                        event_list[url] = 1
-
-    def find_cycles(self,interval,fraction = 1,random_state = 42):
-        """
-
-        Parameters
-        ----------
-        interval - interval of lengths for search. Any int number
-        fraction - fraction of good users. Any float in (0,1]
-        random_state - random_state for numpy random seed
-
-        Returns pd.DataFrame with cycles
-        -------
-
-        """
-        self._init_cols(locals())
-        temp = self.find_sequences(interval,fraction,random_state).reset_index()
-        return temp[temp['Sequence'].apply(lambda x: self.is_cycle(x))].reset_index(drop=True)
-
-    def find_loops(self,fraction = 1,random_state = 42):
-        """
-        Function for loop searching
-        Parameters
-        ----------
-        fraction - fraction of good users. Any float in (0,1]
-        random_state - random_state for numpy random seed
-
-        Returns pd.DataFrame with loops. Good, Lost columns are for all occurences, (Good/Lost)_no_duplicates are for counting each cycle only once for user in which they occur
-        -------
-
-        """
-        self._init_cols(locals())
-        self_loops = dict()
-        event_list = self._obj[self._event_col()].unique()
-        good, bad = self.get_fraction(fraction, random_state)
-        for el in good.groupby(self._index_col()):
-            self.loop_search(el[1][self._event_col()].values, self_loops, event_list, 0)
-
-        for el in bad.groupby(self._index_col()):
-            self.loop_search(el[1][self._event_col()].values, self_loops, event_list, 1)
-
-        for key, val in self_loops.items():
-            if val[0] != 0:
-                self_loops[key][2] = val[1] / val[0]
-            if val[3] != 0:
-                self_loops[key][5] = val[4] / val[3]
-
-        return pd.DataFrame(data = [[a[0]] + a[1] for a in self_loops.items()], columns=['Sequence','Good', 'Lost', 'Coefficient', 'Good_no_duplicates', \
-                                                'Lost_no_duplicates', 'Coefficient_2']).sort_values('Lost', ascending=False).reset_index(drop=True)
 
 
 

@@ -1,0 +1,10 @@
+pandas
+numpy
+networkx
+seaborn
+scikit-learn
+eli5
+scipy
+altair
+vega
+pymongo

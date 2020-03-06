@@ -6,7 +6,6 @@
 
 import pandas as pd
 import numpy as np
-import umap.umap_ as umap
 from collections import Counter
 from sklearn.manifold import TSNE
 from sklearn import decomposition
@@ -28,8 +27,8 @@ def _uni_counts_embedder(data, **kwargs):
     cv = data.groupby([index_col, event_col]).size().rename('event_count').reset_index()
     cv = cv.pivot(index=index_col, columns=event_col).fillna(0)
     cv.columns = cv.columns.levels[1]
-    cv.columns.set_names(None, inplace=True)
-    cv.index.set_names(None, inplace=True)
+    cv.columns.name = None
+    cv.index.name = None
     setattr(cv.retention, 'datatype', 'features')
     return cv
 
@@ -90,8 +89,8 @@ def counts_embedder(data, ngram_range=(1, 1), **kwargs):
     cv = data.groupby(index_col)[event_col].apply(_ngram_agg, ngram_range=ngram_range).reset_index()
     cv = cv.pivot(index=index_col, columns='level_1', values=event_col).fillna(0)
     cv = cv.loc[:, [i for i in cv.columns if i[-1] == i[-1]]]
-    cv.columns.set_names(None, inplace=True)
-    cv.index.set_names(None, inplace=True)
+    cv.columns.name = None
+    cv.index.name = None
     return cv
 
 
@@ -181,34 +180,6 @@ def learn_tsne(data, **kwargs):
     kwargs = {i: j for i, j in kwargs.items() if i in _tsne_filter}
     res = TSNE(random_state=0, **kwargs).fit_transform(data.values)
     return pd.DataFrame(res, index=data.index.values)
-
-def learn_umap(data, **kwargs):
-    """
-    Calculates UMAP transformation for given matrix features.
-
-    Parameters
-    --------
-    data: np.array
-        Array of features.
-    kwargs: optional
-        Parameters for ``umap.UMAP()``
-
-    Returns
-    -------
-    Calculated UMAP transform
-
-    Return type
-    -------
-    np.ndarray
-    """
-    #_tsne_filter = TSNE.get_params(TSNE)
-    #kwargs = {i: j for i, j in kwargs.items() if i in _tsne_filter}
-    #res = TSNE(random_state=0, **kwargs).fit_transform(data.values)
-    reducer = umap.UMAP()
-    _umap_filter = reducer.get_params()
-    kwargs = {i: j for i, j in kwargs.items() if i in _umap_filter}
-    embedding = umap.UMAP(random_state=0, min_dist = 1, **kwargs).fit_transform(data.values)
-    return pd.DataFrame(embedding, index=data.index.values)
 
 
 def get_manifold(data, manifold_type, **kwargs):

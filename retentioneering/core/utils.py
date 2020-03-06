@@ -199,20 +199,16 @@ class BaseTrajectory(object):
         -------
         pd.DataFrame
         """
-
         if cols is None:
             cols = [
                 self.retention_config['event_col'],
                 'next_event'
             ]
-
         self._get_shift(event_col=cols[0], shift_name=cols[1], **kwargs)
         data = self._obj.copy()
-
         if kwargs.get('reverse'):
             data = data[data['non-detriment'].fillna(False)]
             data.drop('non-detriment', axis=1, inplace=True)
-
         agg = (data
                .groupby(cols)[edge_col or self.retention_config['event_time_col']]
                .agg(edge_attributes.split('_')[1])
@@ -390,7 +386,6 @@ class BaseTrajectory(object):
         -------
         pd.DataFrame
         """
-
         self._init_cols(locals())
 
         target_event_list = self.retention_config['target_event_list']
@@ -399,6 +394,7 @@ class BaseTrajectory(object):
         if kwargs.get('reverse'):
             self._add_reverse_rank(**kwargs)
         agg = self.get_edgelist(cols=cols or ['event_rank', self._event_col()], norm=False, **kwargs)
+  
         if max_steps:
             agg = agg[agg.event_rank <= max_steps]
         agg.columns = ['event_rank', 'event_name', 'freq']
@@ -431,50 +427,6 @@ class BaseTrajectory(object):
             piv = pd.concat([piv, pd.DataFrame([means[:max_steps]], columns=piv.columns, index=['dt_mean'])])
         return piv
 
-    def extended_add_reverse_rank(self, index_col=None, event_col=None, **kwargs):
-        self._obj['event_rank'] = (
-            self
-            ._obj
-            .groupby([self._index_col()])
-            .event_rank
-            .apply(lambda x: x.max() - x + 1)
-        )
-        return
-
-
-    def get_reverse_filter_step_matrix(self, event=None, reverse_rank=1, max_steps=30, plot_type=True, sorting=True, cols=None, **kwargs):
-        if event is None:
-            event = self.retention_config['negative_target_event']
-
-        data = self._obj.copy()
-        data = data.retention.prepare()
-
-        if not 'event_rank' in data.retention._obj.columns:
-            data.retention._add_event_rank(**kwargs)
-
-        data.retention.extended_add_reverse_rank(**kwargs)
-
-        event_at_rank = data.retention._obj[data.retention._obj.event_rank == reverse_rank]
-        users_at_event_rank = event_at_rank[event_at_rank[data.retention._event_col()] == event][data.retention._index_col()].values
-
-        data = data.retention._obj[data.retention._obj[data.retention._index_col()].isin(users_at_event_rank)]
-
-        agg = data.retention.get_edgelist(cols=cols or ['event_rank', self._event_col()], norm=False, **kwargs)
-        agg.columns = ['event_rank', 'event_name', 'freq']
-        tot_cnt = agg[agg['event_rank'] == 1].freq.sum()
-        agg['freq'] = agg['freq'] / tot_cnt
-        piv = agg.pivot(index='event_name', columns='event_rank', values='freq').fillna(0)
-        piv.columns.name = None
-        piv.index.name = None
-        piv.columns = ['n'] + ['n - {}'.format(i - 1) for i in piv.columns[1:]]
-        if plot_type:
-            plot.step_matrix(
-                piv.round(2),
-                title=kwargs.get('title',
-                                 'Step matrix {}'
-                                 .format('reversed' if kwargs.get('reverse') else '')), **kwargs)
-        return piv
-
     def get_sub_step_matrix(self, event, rank, max_steps=30, plot_type=True, sorting=True, cols=None, **kwargs):
         """
         Plots sub heatmap from given step_matrix, row and col
@@ -487,7 +439,7 @@ class BaseTrajectory(object):
 
         users_first_events = rank_sorted_data.groupby(self._index_col()).head(1)
         event_sorted_ids = users_first_events[users_first_events[self._event_col()] == event][self._index_col()].values
-
+        
         event_sorted_data = rank_sorted_data[rank_sorted_data[self._index_col()].isin(event_sorted_ids)].copy()
 
         step_matrix_df = event_sorted_data.retention.get_step_matrix(max_steps, plot_type, sorting, cols)
@@ -503,11 +455,11 @@ class BaseTrajectory(object):
             self._add_event_rank(**kwargs)
 
         event_at_rank = self._obj[self._obj.event_rank == rank]
-
+        
         users_at_event_rank = event_at_rank[self._index_col()][event_at_rank[self._event_col()] == event]
-
+        
         sorted_data = self._obj[self._obj[self._index_col()].isin(users_at_event_rank)].copy()
-
+        
         step_matrix_df = sorted_data.retention.get_step_matrix(max_steps, plot_type, sorting, cols)
 
         return step_matrix_df
@@ -1501,7 +1453,7 @@ class BaseDataset(BaseTrajectory):
             for i in cluster_list:
                 ids.extend((cluster_mapping or self.cluster_mapping)[i])
             return self._obj[self._index_col()].isin(ids)
-
+    
     def calculate_delays(self, plotting=True, time_col=None, index_col=None, event_col=None, bins=15, **kwargs):
         """
         Displays the logarithm of delay between ``time_col`` with the next value in nanoseconds as a histogram.
@@ -1531,7 +1483,7 @@ class BaseDataset(BaseTrajectory):
         self._get_shift(self._index_col(), self._event_col())
 
         delays = np.log((self._obj['next_timestamp'] - self._obj[self._event_time_col()]) // pd.Timedelta('1s'))
-
+        
         if plotting:
             fig, ax = plot.sns.mpl.pyplot.subplots(figsize=kwargs.get('figsize', (15, 7)))  # control figsize for proper display on large bin numbers
             _, bins, _ = plt.hist(delays[~np.isnan(delays) & ~np.isinf(delays)], bins=bins, log=True)
@@ -1621,9 +1573,6 @@ class BaseDataset(BaseTrajectory):
     def learn_tsne(self, targets=None, plot_type=None, refit=False, regression_targets=None,
                    sample_size=None, sample_frac=None, proj_type=None, **kwargs):
         """
-        <<<REPLACED BY project() function>>>
-        <<< NO LONGER SUPPORTED AND WILL BE REMOVED IN THE FUTURE VERSIONS>>
-
         Learns TSNE projection for selected feature space (`feature_type` in kwargs) and visualizes it with chosen visualization type.
 
         Parameters
@@ -1673,88 +1622,6 @@ class BaseDataset(BaseTrajectory):
 
         if not (hasattr(self, '_tsne') and not refit):
             self._tsne = feature_extraction.learn_tsne(features, **kwargs)
-        if plot_type == 'clusters':
-            if kwargs.get('cmethod') is not None:
-                kwargs['method'] = kwargs.pop('cmethod')
-            old_targs = targets.copy()
-            targets = self.get_clusters(plot_type=None, **kwargs)
-        elif plot_type == 'targets':
-            targets = self._tsne_targets
-        else:
-            return self._tsne
-        if proj_type == '3d':
-            plot.tsne_3d(
-                self._obj,
-                clustering.aggregate_cl(targets, 7) if kwargs.get('method') == 'dbscan' else targets,
-                old_targs,
-                **kwargs
-            )
-        else:
-            plot.cluster_tsne(
-                self._obj,
-                clustering.aggregate_cl(targets, 7) if kwargs.get('method') == 'dbscan' else targets,
-                targets,
-                **kwargs
-            )
-        return self._tsne
-
-    def project(self, method='umap', targets=None, plot_type=None, refit=False, regression_targets=None,
-                   sample_size=None, sample_frac=None, proj_type=None, **kwargs):
-        """
-        Learns manifold projection using selected method for selected feature space (`feature_type` in kwargs) and visualizes it with chosen visualization type.
-
-        Parameters
-        --------
-        targets: np.array, optional
-            Vector of targets for users. if None, then calculates automatically based on ``positive_target_event`` and ``negative_target_event``.
-        method: 'umap' or 'tsne'
-        plot_type: str, optional
-            Type of projection visualization:
-                - ``clusters``: colors trajectories with different colors depending on cluster number.
-                - ``targets``: color trajectories based on target reach.
-            If ``None``, then only calculates TSNE without visualization. Default: ``None``
-        refit: bool, optional
-            If ``True``, then TSNE will be refitted, e.g. it is needed if you perform hyperparameters selection.
-        regression_targets: dict, optional
-            Mapping of ``index_col`` to regression target for custom coloring. For example, if you want to visually evaluate average LTV of user with trajectories clusterization. For more information refer to ``BaseDataset.retention.make_regression_targets()``.
-        cmethod: str, optional
-            Method of clustering if plot_type = 'clusters'. Refer to ``BaseDataset.retention.get_clusters()`` for more information.
-        kwargs: optional
-            Parameters for ``BaseDataset.retention.extract_features()``, ``sklearn.manifold.TSNE`` and ``BaseDataset.retention.get_clusters()``
-
-        Returns
-        --------
-        Dataframe with data in the low-dimensional space for user trajectories indexed by user IDs.
-
-        Return type
-        --------
-        pd.DataFrame
-        """
-        old_targs = None
-        if hasattr(self, 'datatype') and self.datatype == 'features':
-            features = self._obj.copy()
-        else:
-            features = self.extract_features(**kwargs)
-            if targets is None:
-                if regression_targets is not None:
-                    targets = self.make_regression_targets(features, regression_targets)
-                else:
-                    targets = features.index.isin(self.get_positive_users(**kwargs))
-                    targets = np.where(targets, self.retention_config['positive_target_event'],
-                                       self.retention_config['negative_target_event'])
-            self._tsne_targets = targets
-
-        if sample_frac is not None:
-            features = features.sample(frac=sample_frac, random_state=0)
-        elif sample_size is not None:
-            features = features.sample(n=sample_size, random_state=0)
-
-        if not (hasattr(self, '_tsne') and not refit):
-            if method == 'tsne':
-                self._tsne = feature_extraction.learn_tsne(features, **kwargs)
-            if method == 'umap':
-                self._tsne = feature_extraction.learn_umap(features, **kwargs)
-
         if plot_type == 'clusters':
             if kwargs.get('cmethod') is not None:
                 kwargs['method'] = kwargs.pop('cmethod')

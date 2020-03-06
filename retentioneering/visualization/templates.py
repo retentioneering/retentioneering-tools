@@ -18,7 +18,7 @@ __VEGA_TEMPLATE__ = """
 
   <script type="text/javascript">
     var visualObject = {visual_object};
-
+    
     vegaEmbed('#visual-object-view', visualObject);
   </script>
 </body>
@@ -124,11 +124,11 @@ __TEMPLATE__ = """
         let offsetMaxX = -minX + maxX;
         let offsetMaxY = -minY + maxY;
 
-        //Coordinates now have some unpredicted values. I set them so they fill my viewbox with some padding from borders.
+        //Coordinates now have some unpredicted values. I set them so they fill my viewbox with some padding from borders. 
         //At first I normalize them, then multiply by width and height.
-
+        
         for (let i = 0; i < rawNodes.length; i++) {{
-
+            
           if (rawNodes[i].type == 'suit_node') {{
             //x, y >= 0
             rawNodes[i].x += -minX;
@@ -141,12 +141,12 @@ __TEMPLATE__ = """
             //x, y from [delta, 1 - delta]
             rawNodes[i].x += delta;
             rawNodes[i].y += delta;
-
+            
             //x, y from [(width | height) * delta, (width | height) * (1 - delta)]
 
             rawNodes[i].x *= width;
             rawNodes[i].y *= height;
-
+            
           }}
 
         }}
@@ -166,9 +166,9 @@ __TEMPLATE__ = """
             maxWeigth = mylinks[i].weight;
           }}
         }}
-
+        
       }}
-
+      
       makeCheckboxes();
       setLinkThreshold();
     }}
@@ -189,17 +189,17 @@ __TEMPLATE__ = """
       //I append all elemets to maingroup so zoom works properly
       var maingroup = svg.append('g');
 
-      function zoomed() {{
+      function zoomed() {{        
         maingroup.attr("transform", d3.event.transform);
       }}
-
+      
 
       function calcMarkers(d) {{
 
           let dist = Math.sqrt((nodes[whereEquals(d.target.index)].x - nodes[whereEquals(d.source.index)].x) ** 2 + (nodes[whereEquals(d.target.index)].y - nodes[whereEquals(d.source.index)].y) ** 2);
           if (dist > 0 && dist <= 200){{
               return - Math.sqrt((0.5 - (d.target.degree ) / 2 / dist)) * (d.target.degree) / 2;
-
+  
           }} else {{
               return 0;
           }}
@@ -221,7 +221,7 @@ __TEMPLATE__ = """
 
       textMarkersSelection.append("text")
           .style("dominant-baseline", "central")
-          .style("font-size", "13px")
+          .style("font-size", "20px")
           .append("textPath")
           .attr("xlink:href", function(d,i) {{ return "#link_"+i; }})
           .attr("startOffset", "35%")
@@ -230,7 +230,7 @@ __TEMPLATE__ = """
 
       textMarkersSelection.append("text")
           .style("dominant-baseline", "central")
-          .style("font-size", "13px")
+          .style("font-size", "20px")
           .append("textPath")
           .attr("xlink:href", function(d,i) {{ return "#link_"+i; }})
           .attr("startOffset", "65%")
@@ -316,7 +316,7 @@ __TEMPLATE__ = """
                 .on("drag", dragged)
                 .on("end", dragended));
 
-
+        
         var text = maingroup.append("g").selectAll("text")
           .data(nodes)
           .enter().append("text")
@@ -337,14 +337,8 @@ __TEMPLATE__ = """
             }} else {{
               dr /= 2
             }};
-            if (dr > 0) {{
-              return "M" + nodes[whereEquals(d.source.index)].x + "," + nodes[whereEquals(d.source.index)].y + "A" + (dr * 1.1) + "," + (dr * 1.1) + " 0 0,1 " + nodes[whereEquals(d.target.index)].x + "," + nodes[whereEquals(d.target.index)].y;
-            }}
-            else {{
-              minRadius = 24;
-              radius = Math.max(minRadius, nodes[whereEquals(d.source.index)].degree);
-              return "M" + nodes[whereEquals(d.source.index)].x + "," + nodes[whereEquals(d.source.index)].y + "A" + radius + "," + radius + " 0 1,0 " + (nodes[whereEquals(d.target.index)].x + 0.1) + "," + (nodes[whereEquals(d.target.index)].y + 0.1);
-            }}
+            if (dr > 0) {{return "M" + nodes[whereEquals(d.source.index)].x + "," + nodes[whereEquals(d.source.index)].y + "A" + (dr * 1.1) + "," + (dr * 1.1) + " 0 0,1 " + nodes[whereEquals(d.target.index)].x + "," + nodes[whereEquals(d.target.index)].y;}}
+            else {{return "M" + nodes[whereEquals(d.source.index)].x + "," + nodes[whereEquals(d.source.index)].y + "A" + 20 + "," + 20 + " 0 1,0 " + (nodes[whereEquals(d.target.index)].x + 0.1) + "," + (nodes[whereEquals(d.target.index)].y + 0.1);}}
         }}
 
         //synch with 'show names' and 'show weights' checkboxes
@@ -354,7 +348,7 @@ __TEMPLATE__ = """
 
 
 
-    function changeLabel(curinput) {{
+    function changeLabel(curinput) {{ 
       document.getElementById('label' + curinput.id.substring(4)).innerHTML = curinput.value;
       mynodes[whereEquals1(curinput.id.substring(4))].name = curinput.value;
       $(curinput).attr('size', curinput.value.length + 2)
@@ -369,7 +363,7 @@ __TEMPLATE__ = """
     }}
 
     function makeCheckboxes() {{
-
+      
       for (var i = 0; i < mynodes.length; i++) {{
 
         var newDiv = document.createElement('div');
@@ -391,12 +385,12 @@ __TEMPLATE__ = """
 
         $( newDiv ).append(newNameInput);
         $( newNameInput ).on('keypress', updateName);
-
+        
       }}
     }}
 
     function updateName() {{
-
+      
       document.getElementById('node-name' + this.id.substring(10)).innerHTML = this.value;
       mynodes[this.id.substring(10)].name = this.value;
       this.size = this.value.length + 3;
@@ -421,9 +415,9 @@ __TEMPLATE__ = """
     function changeNodes() {{
       var newNodes = [];
       var newIdx = [];
-
+      
       $( '.node-checkbox' ).each(function(i, obj) {{
-
+        
         if (this.checked) {{
           newNodes.push(mynodes[i]);
           newIdx.push(mynodes[i].index);
@@ -448,7 +442,7 @@ __TEMPLATE__ = """
       for (let i = 0; i < mylinks.length; i++) {{
         if (mylinks[i].target.type == 'nice_node' || mylinks[i].source.type == 'nice_node' || mylinks[i].target.type == 'bad_node' || mylinks[i].source.type == 'bad_node') {{
           if (blockDeleteTargets) {{
-
+          
             newLinks.push(mylinks[i]);
             idxInLinks[mylinks[i].target.index] = true;
             idxInLinks[mylinks[i].source.index] = true;
@@ -463,7 +457,7 @@ __TEMPLATE__ = """
           idxInLinks[mylinks[i].source.index] = true;
         }}
       }}
-
+      
       let newNodes = [];
       for (let i = 0; i < mynodes.length; i++) {{
         if (idxInLinks[i]) {{
@@ -722,7 +716,7 @@ __TEMPLATE__ = """
       }}
 
   </style>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous"> 
 </head>
 <body>
 
@@ -731,7 +725,7 @@ __TEMPLATE__ = """
   <main>
 
     <div class="container">
-
+        
         <div class="row">
           <div class="watermark" style="z-index: 1010; background-color: #FFF; width: 100%">
             <h3>Retentioneering</h3>
@@ -743,7 +737,7 @@ __TEMPLATE__ = """
             </div>
           </div>
           <div class="col-4" style="z-index: 1010; background-color: #FFF">
-            <form>
+            <form> 
               <div id="check-boxes">
 
               </div>
@@ -756,7 +750,7 @@ __TEMPLATE__ = """
             <br>
             <div style="z-index: 1010; background-color: #FFF">
               <h6>Nodes Threshold</h6>
-              <input id="threshold-node-range" name="threshold-node" type="range" min="0" max="1" step="0.01" value="0.05"
+              <input id="threshold-node-range" name="threshold-node" type="range" min="0" max="1" step="0.01" value="0.05" 
               oninput="updateNodeThresholdText(this.value)" onchange="updateNodeThresholdText(this.value)">
               <label id="threshold-node-text">0.05</label>
               <input type="button" value="Set threshold" onclick="setNodeThreshold()">
@@ -771,7 +765,7 @@ __TEMPLATE__ = """
             </div>
           </div>
 
-
+          
 
 
           <div class="col-12" style="z-index: 1010; background-color: #FFF">
@@ -792,14 +786,14 @@ __TEMPLATE__ = """
               <input type="checkbox" class="checkbox checkbox-class" checked id="block-targets"><label>Block targets deletion</label>
             </div>
             <div id="option">
-              <input name="downloadButton"
-              type="button"
-              value="download"
+              <input name="downloadButton" 
+              type="button" 
+              value="download" 
               onclick="downloadLayout()" />
             </div>
           </div>
       </div>
-
+      
 
 
 
@@ -860,11 +854,11 @@ __OLD_TEMPLATE__ = """
                 .link.source {{
                   stroke: #f3f310;
                 }}
-
+                
                 .link.positive {{
                   stroke: green;
                 }}
-
+                
                 .link.negative {{
                   stroke: red;
                 }}
@@ -892,9 +886,9 @@ __OLD_TEMPLATE__ = """
   <input type="checkbox" class="checkbox" value="weighted"><label> Show weights </label>
 </div>
 <div id="option">
-    <input name="downloadButton"
-           type="button"
-           value="download"
+    <input name="downloadButton" 
+           type="button" 
+           value="download" 
            onclick="downloadLayout()" />
 </div>
 <script>
@@ -913,7 +907,7 @@ let defs = svg.append("g").selectAll("marker")
     .attr("viewBox", "0 -5 10 10")
     .attr("refX", function(d) {{
         if (d.target.name !== d.source.name) {{
-            return 7 + d.target.degree;
+            return 7 + d.target.degree; 
         }} else {{
             return 0;
         }}
@@ -950,7 +944,7 @@ var edgetext = svg.append("g").selectAll("text")
     .style("text-anchor","middle")
     .attr("startOffset", "50%")
     ;
-
+    
 function update() {{
     d3.selectAll(".checkbox").each(function(d) {{
         cb = d3.select(this);
@@ -1059,16 +1053,16 @@ __SANDBOX_TEMPLATE__ = """
         circle.attr("transform", d => `translate(${transform.apply(d)})`);
       }
 
-
-
-
+      
+    
+    
 
     function func(){
       const randomX = d3.randomNormal(width / 2, 80);
       const randomY = d3.randomNormal(height / 2, 80);
       return Array.from({length: 2000}, () => [randomX(), randomY()]);
     }
-
+    
   </script>
 </body>
 </html>

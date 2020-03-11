@@ -18,7 +18,6 @@ from sklearn.linear_model import LogisticRegression
 from retentioneering.core.model import ModelDescriptor
 from retentioneering.core import node_metrics
 from retentioneering.core import preprocessing
-from operator import itemgetter
 
 def init_config(**config):
     """
@@ -2065,9 +2064,8 @@ class BaseDataset(BaseTrajectory):
         good_idx = np.random.choice(range(len(good_users)), int(len(good_users) * fraction), replace=False).astype(
             'int64')
         bad_idx = np.random.choice(range(len(bad_users)), len(good_users), replace=False).astype('int64')
-
-        return (self._obj[self._obj[self._index_col()].isin([x for x in itemgetter(*good_idx)(good_users)])], \
-                self._obj[self._obj[self._index_col()].isin([x for x in itemgetter(*bad_idx)(bad_users)])])
+        return (self._obj[self._obj[self._index_col()].isin([good_users[i] for i in good_idx])], \
+                self._obj[self._obj[self._index_col()].isin([bad_users[i] for i in bad_idx])])
 
 
 

@@ -696,28 +696,26 @@ class BaseDataset(BaseTrajectory):
         self._embedding_types = ['tfidf', 'counts', 'frequency']
         self._locals = None
 
-    def prepare_vocab(self, ngram_range=(1, 2), min_threshold=0, min_coeff=0, exclude_cycles=False,
+    def prepare_vocab(self, ngram_range=(1,2), min_threshold=0, min_coeff=0, exclude_cycles=False,
                       exclude_loops=False, exclude_repetitions=False):
         """
 
-        Parameters
-        ----------
-        ngram_range - set of two numbers for ngram range
-        min_threshold - lower bound of occurences number for ngram to pass
-        min_coeff - lower bound of how much the coefficient is far away from 1 for ngram to pass
-        exclude_cycles - should the cycles be excluded?
-        exclude_loops - should the loops be excluded?
-        exclude_repetitions - should the repetitions in ngrams be excluded? (main catalog catalog cart --> main catalog cart)
+           Parameters
+           ----------
+           ngram_range - set of two numbers for ngram range
+           min_threshold - lower bound of occurences number for ngram to pass
+           min_coeff - lower bound of how much the coefficient is far away from 1 for ngram to pass
+           exclude_cycles - should the cycles be excluded?
+           exclude_loops - should the loops be excluded?
+           exclude_repetitions - should the repetitions in ngrams be excluded? (main catalog catalog cart --> main catalog cart)
 
-        Returns dict with such sequences
-        -------
+           Returns dict with such sequences
+           -------
 
-        """
-        index_col = self._index_col()
-        event_col = self._event_col()
+       """
         if min_threshold < 0 or min_coeff < 0:
             raise ValueError("Threshold and coefficient shouldn't be negative!")
-        sequences = self.find_sequences(ngram_range, fraction=1, exclude_cycles=exclude_cycles,
+        sequences = self.find_sequences(ngram_range,fraction = 1, exclude_cycles=exclude_cycles,
                                         exclude_loops=exclude_loops, exclude_repetitions=exclude_repetitions)
         sequences = sequences[
             ((sequences.Lost + sequences.Good) >= min_threshold) & (abs(sequences.Coefficient - 1) >= min_coeff)]
@@ -779,7 +777,10 @@ class BaseDataset(BaseTrajectory):
             ].copy()
         else:
             tmp = self._obj
-        res = func(tmp, **kwargs)
+        vocab = None
+        if 'vocab_pars' in kwargs.keys():
+            vocab = self.prepare_vocab(**kwargs['vocab_pars'])
+        res = func(tmp, vocab=vocab, **kwargs)
         if metadata is not None:
             res = feature_extraction.merge_features(res, metadata, **kwargs)
         return res
@@ -815,7 +816,7 @@ class BaseDataset(BaseTrajectory):
         self._init_cols(locals())
         target = (self._obj
                   .groupby(self._index_col())
-                  .apply(lambda x: self.retention_config['positive_target_event'] in x[self._event_col()]))
+                  .apply(lambda x: self.retention_config['positive_target_event'] in x[self._event_col()].values))
         return target
 
     def get_clusters(self, plot_type=None, refit_cluster=False, method='simple_cluster', **kwargs):
@@ -894,7 +895,7 @@ class BaseDataset(BaseTrajectory):
             target = self.get_positive_users(**kwargs)
         target = features.index.isin(target)
         self._metrics['homogen'] = clustering.homogeneity_score(target, self.clusters)
-        if hasattr(self, '_tsne'):
+        if hasattr(self, '_tsne') and not refit_cluster:
             features.retention._tsne = self._tsne
         if plot_type:
             func = getattr(plot, plot_type)
@@ -902,7 +903,7 @@ class BaseDataset(BaseTrajectory):
                 features,
                 clustering.aggregate_cl(self.clusters, 7) if method == 'dbscan' else self.clusters,
                 target,
-                metrics=self._metrics,
+                metrics=self._metrics, refit = refit_cluster,
                 **kwargs
             )
             if res is not None:
@@ -1040,10 +1041,10 @@ class BaseDataset(BaseTrajectory):
                        [self._event_col()]
                        .value_counts().head(n) / clus.shape[0]).reset_index()
         cr0 = (
-            clus[
-                clus[self._event_col()] == self.retention_config['positive_target_event']
-            ][self._index_col()].nunique()
-        ) / clus[self._index_col()].nunique()
+                  clus[
+                      clus[self._event_col()] == self.retention_config['positive_target_event']
+                      ][self._index_col()].nunique()
+              ) / clus[self._index_col()].nunique()
         if cl2 is None:
             clus2 = self._obj
         else:
@@ -1054,10 +1055,10 @@ class BaseDataset(BaseTrajectory):
                    .loc[top_cluster['index']]
                    / clus2.shape[0]).reset_index()
         cr1 = (
-            clus2[
-                clus2[self._event_col()] == self.retention_config['positive_target_event']
-            ][self._index_col()].nunique()
-        ) / clus2[self._index_col()].nunique()
+                  clus2[
+                      clus2[self._event_col()] == self.retention_config['positive_target_event']
+                      ][self._index_col()].nunique()
+              ) / clus2[self._index_col()].nunique()
         top_all.columns = [self._event_col(), 'freq', ]
         top_cluster.columns = [self._event_col(), 'freq', ]
 
@@ -1071,7 +1072,7 @@ class BaseDataset(BaseTrajectory):
             [
                 clus[self._index_col()].nunique() / self._obj[self._index_col()].nunique(),
                 clus2[self._index_col()].nunique() / self._obj[self._index_col()].nunique(),
-             ],
+            ],
             [cr0, cr1],
             cl2
         )
@@ -1392,7 +1393,8 @@ class BaseDataset(BaseTrajectory):
         """
         self._init_cols(locals())
         pos_users = (
-            self._obj[self._obj[self._event_col()] == self.retention_config['positive_target_event']][self._index_col()]
+            self._obj[self._obj[self._event_col()] == self.retention_config['positive_target_event']][
+                self._index_col()].unique()
         )
         return pos_users.tolist()
 
@@ -1415,7 +1417,8 @@ class BaseDataset(BaseTrajectory):
         """
         self._init_cols(locals())
         neg_users = (
-            self._obj[self._obj[self._event_col()] == self.retention_config['negative_target_event']][self._index_col()]
+            self._obj[self._obj[self._event_col()] == self.retention_config['negative_target_event']][
+                self._index_col()].unique()
         )
         return neg_users.tolist()
 
@@ -1478,17 +1481,17 @@ class BaseDataset(BaseTrajectory):
         x['event_rank'] = 1
         x.event_rank = x.groupby(self._index_col()).event_rank.cumsum()
         res = x.groupby(self._index_col()).apply(self._pad_number,
-                                                   event_name=event_name,
-                                                   neighbor_range=neighbor_range,
-                                                   event_col=self._event_col())
+                                                 event_name=event_name,
+                                                 neighbor_range=neighbor_range,
+                                                 event_col=self._event_col())
         res = res.map(lambda y: ' '.join(y * ['sleep']))
         res = res.str.split(expand=True).reset_index().melt(self._index_col())
         res = res.drop('variable', 1)
         res = res[res.value.notnull()]
         tm = (x
               .groupby(self._index_col()).apply(self._pad_time,
-                                              event_name=event_name,
-                                              event_col=self._event_col()))
+                                                event_name=event_name,
+                                                event_col=self._event_col()))
         res = res.join(tm.rename('time'), on=self._index_col())
         res.columns = [
             self._index_col(),
@@ -1561,7 +1564,8 @@ class BaseDataset(BaseTrajectory):
         delays = np.log((self._obj['next_timestamp'] - self._obj[self._event_time_col()]) // pd.Timedelta('1s'))
 
         if plotting:
-            fig, ax = plot.sns.mpl.pyplot.subplots(figsize=kwargs.get('figsize', (15, 7)))  # control figsize for proper display on large bin numbers
+            fig, ax = plot.sns.mpl.pyplot.subplots(
+                figsize=kwargs.get('figsize', (15, 7)))  # control figsize for proper display on large bin numbers
             _, bins, _ = plt.hist(delays[~np.isnan(delays) & ~np.isinf(delays)], bins=bins, log=True)
             if not kwargs.get('logvals', False):  # test & compare with logarithmic and normal
                 plt.xticks(bins, np.around(np.exp(bins), 1))
@@ -1614,7 +1618,7 @@ class BaseDataset(BaseTrajectory):
                                               data['next_timestamp'])
         to_add.append(data)
         to_add = pd.concat(to_add)
-        return to_add.sort_values(self._event_col()).reset_index(drop=True)
+        return to_add.sort_values(self._event_time_col()).reset_index(drop=True)
 
     def remove_events(self, event_list, mode='equal'):
         """
@@ -1649,9 +1653,6 @@ class BaseDataset(BaseTrajectory):
     def learn_tsne(self, targets=None, plot_type=None, refit=False, regression_targets=None,
                    sample_size=None, sample_frac=None, proj_type=None, **kwargs):
         """
-        <<<REPLACED BY project() function>>>
-        <<< NO LONGER SUPPORTED AND WILL BE REMOVED IN THE FUTURE VERSIONS>>
-
         Learns TSNE projection for selected feature space (`feature_type` in kwargs) and visualizes it with chosen visualization type.
 
         Parameters
@@ -1701,88 +1702,6 @@ class BaseDataset(BaseTrajectory):
 
         if not (hasattr(self, '_tsne') and not refit):
             self._tsne = feature_extraction.learn_tsne(features, **kwargs)
-        if plot_type == 'clusters':
-            if kwargs.get('cmethod') is not None:
-                kwargs['method'] = kwargs.pop('cmethod')
-            old_targs = targets.copy()
-            targets = self.get_clusters(plot_type=None, **kwargs)
-        elif plot_type == 'targets':
-            targets = self._tsne_targets
-        else:
-            return self._tsne
-        if proj_type == '3d':
-            plot.tsne_3d(
-                self._obj,
-                clustering.aggregate_cl(targets, 7) if kwargs.get('method') == 'dbscan' else targets,
-                old_targs,
-                **kwargs
-            )
-        else:
-            plot.cluster_tsne(
-                self._obj,
-                clustering.aggregate_cl(targets, 7) if kwargs.get('method') == 'dbscan' else targets,
-                targets,
-                **kwargs
-            )
-        return self._tsne
-
-    def project(self, method='umap', targets=None, plot_type=None, refit=False, regression_targets=None,
-                   sample_size=None, sample_frac=None, proj_type=None, **kwargs):
-        """
-        Learns manifold projection using selected method for selected feature space (`feature_type` in kwargs) and visualizes it with chosen visualization type.
-
-        Parameters
-        --------
-        targets: np.array, optional
-            Vector of targets for users. if None, then calculates automatically based on ``positive_target_event`` and ``negative_target_event``.
-        method: 'umap' or 'tsne'
-        plot_type: str, optional
-            Type of projection visualization:
-                - ``clusters``: colors trajectories with different colors depending on cluster number.
-                - ``targets``: color trajectories based on target reach.
-            If ``None``, then only calculates TSNE without visualization. Default: ``None``
-        refit: bool, optional
-            If ``True``, then TSNE will be refitted, e.g. it is needed if you perform hyperparameters selection.
-        regression_targets: dict, optional
-            Mapping of ``index_col`` to regression target for custom coloring. For example, if you want to visually evaluate average LTV of user with trajectories clusterization. For more information refer to ``BaseDataset.retention.make_regression_targets()``.
-        cmethod: str, optional
-            Method of clustering if plot_type = 'clusters'. Refer to ``BaseDataset.retention.get_clusters()`` for more information.
-        kwargs: optional
-            Parameters for ``BaseDataset.retention.extract_features()``, ``sklearn.manifold.TSNE`` and ``BaseDataset.retention.get_clusters()``
-
-        Returns
-        --------
-        Dataframe with data in the low-dimensional space for user trajectories indexed by user IDs.
-
-        Return type
-        --------
-        pd.DataFrame
-        """
-        old_targs = None
-        if hasattr(self, 'datatype') and self.datatype == 'features':
-            features = self._obj.copy()
-        else:
-            features = self.extract_features(**kwargs)
-            if targets is None:
-                if regression_targets is not None:
-                    targets = self.make_regression_targets(features, regression_targets)
-                else:
-                    targets = features.index.isin(self.get_positive_users(**kwargs))
-                    targets = np.where(targets, self.retention_config['positive_target_event'],
-                                       self.retention_config['negative_target_event'])
-            self._tsne_targets = targets
-
-        if sample_frac is not None:
-            features = features.sample(frac=sample_frac, random_state=0)
-        elif sample_size is not None:
-            features = features.sample(n=sample_size, random_state=0)
-
-        if not (hasattr(self, '_tsne') and not refit):
-            if method == 'tsne':
-                self._tsne = feature_extraction.learn_tsne(features, **kwargs)
-            if method == 'umap':
-                self._tsne = feature_extraction.learn_umap(features, **kwargs)
-
         if plot_type == 'clusters':
             if kwargs.get('cmethod') is not None:
                 kwargs['method'] = kwargs.pop('cmethod')
@@ -1946,7 +1865,7 @@ class BaseDataset(BaseTrajectory):
         self._init_cols(locals())
         data = self._obj.copy()
         if spec_event is not None:
-            users = (data[data[self._event_col()]== spec_event][self._index_col()]).unique()
+            users = (data[data[self._event_col()] == spec_event][self._index_col()]).unique()
             f = data[self._index_col()].isin(users)
             data = data[f].copy()
             groups = groups[f].copy()
@@ -2134,8 +2053,8 @@ class BaseDataset(BaseTrajectory):
 
         s_cur.time_diff[s_cur.time_diff < limit].hist(alpha=0.5, log=True,
                                                       bins=bins, label='Others {:.2f}'.format(
-                                                          (s_cur.time_diff < limit).sum() / f_cur.sum()
-                                                      ))
+                (s_cur.time_diff < limit).sum() / f_cur.sum()
+            ))
         s_next.time_diff[s_next.time_diff < limit].hist(alpha=0.7, log=True,
                                                         bins=bins,
                                                         label='Selected event order {:.2f}'.format(
@@ -2248,12 +2167,12 @@ class BaseDataset(BaseTrajectory):
                             sequences[' '.join(ngram)] = [0, 0, 0]
                             sequences[' '.join(ngram)][is_bad] = 1
 
-    def remove_duplicates(self, data):
+    def remove_duplicates(self,data):
         t = data.split(' ')
         t = ' '.join([t[0]] + [' '.join(word for ind, word in enumerate(t[1:]) if t[ind] != t[ind + 1])])
         return t[:-1] if t[-1] == ' ' else t
 
-    def find_sequences(self, ngram_range=(1, 1), fraction=1, random_state=42, exclude_cycles=False, exclude_loops=False,
+    def find_sequences(self, ngram_range=(1,1), fraction=1, random_state=42, exclude_cycles=False, exclude_loops=False,
                        exclude_repetitions=False):
         """
             Finds all subsequences of length lying in interval
@@ -2276,9 +2195,8 @@ class BaseDataset(BaseTrajectory):
         self._init_cols(locals())
         sequences = dict()
         good, bad = self.get_fraction(fraction, random_state)
-        countvect = CountVectorizer(ngram_range=ngram_range)
-        good_corpus = good.groupby(self._index_col())[self._event_col()].apply(
-            lambda x: ' '.join([l.lower() for l in x]))
+        countvect = CountVectorizer(ngram_range = ngram_range)
+        good_corpus = good.groupby(self._index_col())[self._event_col()].apply(lambda x: ' '.join([l.lower() for l in x]))
         good_count = countvect.fit_transform(good_corpus.values)
         good_frame = pd.DataFrame(columns=countvect.get_feature_names(), data=good_count.todense())
         bad_corpus = bad.groupby(self._index_col())[self._event_col()].apply(lambda x: ' '.join([l.lower() for l in x]))
@@ -2286,7 +2204,8 @@ class BaseDataset(BaseTrajectory):
         bad_frame = pd.DataFrame(columns=countvect.get_feature_names(), data=bad_count.todense())
 
         res = pd.concat([good_frame.sum(), bad_frame.sum()], axis=1).fillna(0).reset_index()
-        res.columns = ['Sequence', 'Good', 'Lost']
+        res.columns = ['Sequence','Good', 'Lost']
+
 
         if exclude_cycles:
             res = res[~res.Sequence.apply(lambda x: self.is_cycle(x))]
@@ -2368,10 +2287,7 @@ class BaseDataset(BaseTrajectory):
                 self_loops[key][5] = val[4] / val[3]
 
         return pd.DataFrame(data=[[a[0]] + a[1] for a in self_loops.items()],
-                            columns=['Sequence', 'Good', 'Lost', 'Coefficient', 'Good_no_duplicates',
-                                     'Lost_no_duplicates', 'Coefficient_2']).sort_values('Lost',
-                                                                                         ascending=False).reset_index(
-            drop=True)
-
+                            columns=['Sequence', 'Good', 'Lost', 'Coefficient', 'Good_no_duplicates', 'Lost_no_duplicates', 'Coefficient_2']).sort_values('Lost',
+                                                                                         ascending=False).reset_index(drop=True)
 
 

@@ -436,7 +436,7 @@ def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
     PNG
     """
 
-    if hasattr(data.retention, '_tsne'):
+    if hasattr(data.retention, '_tsne') and  not kwargs['refit']:
         tsne2 = data.retention._tsne.copy()
     else:
         tsne2 = data.retention.learn_tsne(clusters, **kwargs)

@@ -11,6 +11,7 @@ from collections import Counter
 from sklearn.manifold import TSNE
 from sklearn import decomposition
 from sklearn import manifold
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 
 def _uni_counts_embedder(data, **kwargs):
@@ -151,9 +152,27 @@ def tfidf_embedder(data, ngram_range=(1, 1), **kwargs):
     -------
     pd.DataFrame
     """
-    tf = frequency_embedder(data, ngram_range, **kwargs)
-    idf = np.log((tf.shape[0]) / ((tf > 0).sum(0) + 1e-20)).values
-    tfidf = tf * idf
+    if 'index_col' not in kwargs:
+        index_col = data.trajectory.retention_config['index_col']
+    else:
+        index_col = kwargs['index_col']
+    if 'event_col' not in kwargs:
+        event_col = data.trajectory.retention_config['event_col']
+    else:
+        event_col = kwargs['event_col']
+
+    corpus = data.groupby(index_col)[event_col].apply(lambda x: ' '.join([el.lower() for el in x]))
+
+    if kwargs['vocab'] != None:
+        vectorizer = TfidfVectorizer(vocabulary=kwargs['vocab'],token_pattern = '[^~]+')
+
+        tfidf = pd.DataFrame(index=data[index_col].unique(), columns=kwargs['vocab'].keys(),
+                             data=vectorizer.fit_transform(corpus).todense())
+    else:
+        vectorizer = TfidfVectorizer(ngram_range=ngram_range,token_pattern = '[^~]+').fit(corpus)
+        cols = [dict_key[0] for dict_key in sorted(vectorizer.vocabulary_.items(), key=lambda x: x[1])]
+        tfidf = pd.DataFrame(index=data[index_col].unique(), columns=cols, data=vectorizer.transform(corpus).todense())
+
     setattr(tfidf.retention, 'datatype', 'features')
     return tfidf
 

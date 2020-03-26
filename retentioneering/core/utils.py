@@ -721,7 +721,7 @@ class BaseDataset(BaseTrajectory):
                                         exclude_loops=exclude_loops, exclude_repetitions=exclude_repetitions)
         sequences = sequences[
             ((sequences.Lost + sequences.Good) >= min_threshold) & (abs(sequences.Coefficient - 1) >= min_coeff)]
-        vocab = {ngram.lower(): ind for ind, ngram in enumerate(sequences.Sequence)}
+        vocab = {' '.join(ngram.lower().split('~~')): ind for ind, ngram in enumerate(sequences.Sequence)}
         return vocab
 
     def extract_features(self, feature_type='tfidf', drop_targets=True, metadata=None, **kwargs):
@@ -2229,29 +2229,10 @@ class BaseDataset(BaseTrajectory):
         return (self._obj[self._obj[self._index_col()].isin([good_users[i] for i in good_idx])], \
                 self._obj[self._obj[self._index_col()].isin([bad_users[i] for i in bad_idx])])
 
-    def sequence_search(self, data, sequences, interval, is_bad, exclude_repetitions=False):
-        """
-            Utilite for sequence search. Looking for sequences in data, grouped by _index_col
-        """
-        for length in interval:
-            if len(data) >= length:
-                start_ind = length
-                for ind in range(start_ind, len(data)):
-                    ngram = data[ind - length: ind]
-                    if exclude_repetitions:
-                        ngram = [ngram[0]] + [x for x_ind, x in enumerate(ngram[1:]) if
-                                              ngram[x_ind] != ngram[x_ind + 1]]
-                    if exclude_repetitions == False or exclude_repetitions == True and len(ngram) in interval:
-                        try:
-                            sequences[' '.join(ngram)][is_bad] += 1
-                        except:
-                            sequences[' '.join(ngram)] = [0, 0, 0]
-                            sequences[' '.join(ngram)][is_bad] = 1
-
     def remove_duplicates(self, data):
-        t = data.split(' ')
-        t = ' '.join([t[0]] + [' '.join(word for ind, word in enumerate(t[1:]) if t[ind] != t[ind + 1])])
-        return t[:-1] if t[-1] == ' ' else t
+        t = data.split('~~')
+        t = '~~'.join([t[0]] + ['~~'.join(word for ind, word in enumerate(t[1:]) if t[ind] != t[ind + 1])])
+        return t[:-2] if t[-1] == '~' else t
 
     def find_sequences(self, ngram_range=(1, 1), fraction=1, random_state=42, exclude_cycles=False, exclude_loops=False,
                        exclude_repetitions=False):
@@ -2276,14 +2257,15 @@ class BaseDataset(BaseTrajectory):
         self._init_cols(locals())
         sequences = dict()
         good, bad = self.get_fraction(fraction, random_state)
-        countvect = CountVectorizer(ngram_range=ngram_range)
+        countvect = CountVectorizer(ngram_range=ngram_range,token_pattern = '[^~]+')
         good_corpus = good.groupby(self._index_col())[self._event_col()].apply(
-            lambda x: ' '.join([l.lower() for l in x]))
+            lambda x: '~~'.join([l.lower() for l in x]))
         good_count = countvect.fit_transform(good_corpus.values)
-        good_frame = pd.DataFrame(columns=countvect.get_feature_names(), data=good_count.todense())
-        bad_corpus = bad.groupby(self._index_col())[self._event_col()].apply(lambda x: ' '.join([l.lower() for l in x]))
+        good_frame = pd.DataFrame(columns=['~~'.join(x.split(' ')) for x in countvect.get_feature_names()], data=good_count.todense())
+        bad_corpus = bad.groupby(self._index_col())[self._event_col()].apply(lambda x: '~~'.join([l.lower() for l in x]))
         bad_count = countvect.fit_transform(bad_corpus.values)
-        bad_frame = pd.DataFrame(columns=countvect.get_feature_names(), data=bad_count.todense())
+        bad_frame = pd.DataFrame(columns=['~~'.join(x.split(' ')) for x in countvect.get_feature_names()], data=bad_count.todense())
+
 
         res = pd.concat([good_frame.sum(), bad_frame.sum()], axis=1).fillna(0).reset_index()
         res.columns = ['Sequence', 'Good', 'Lost']

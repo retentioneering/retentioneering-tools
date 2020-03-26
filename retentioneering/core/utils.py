@@ -717,7 +717,7 @@ class BaseDataset(BaseTrajectory):
         event_col = self._event_col()
         if min_threshold < 0 or min_coeff < 0:
             raise ValueError("Threshold and coefficient shouldn't be negative!")
-        sequences = self.find_sequences(ngram_range, fraction=1, exclude_cycles=exclude_cycles,
+        sequences = self.find_sequences(ngram_range=ngram_range, fraction=1, exclude_cycles=exclude_cycles,
                                         exclude_loops=exclude_loops, exclude_repetitions=exclude_repetitions)
         sequences = sequences[
             ((sequences.Lost + sequences.Good) >= min_threshold) & (abs(sequences.Coefficient - 1) >= min_coeff)]
@@ -779,7 +779,13 @@ class BaseDataset(BaseTrajectory):
             ].copy()
         else:
             tmp = self._obj
-        res = func(tmp, **kwargs)
+        vocab = None
+        ngram_range = (1,1)
+        if 'vocab_pars' in kwargs.keys():
+            vocab = self.prepare_vocab(**kwargs['vocab_pars'])
+            if 'ngram_range' in kwargs['vocab_pars'].keys():
+                ngram_range = kwargs['vocab_pars']['ngram_range']
+        res = func(tmp, vocab=vocab, ngram_range=ngram_range, **kwargs)
         if metadata is not None:
             res = feature_extraction.merge_features(res, metadata, **kwargs)
         return res
@@ -901,7 +907,7 @@ class BaseDataset(BaseTrajectory):
             res = func(
                 features,
                 clustering.aggregate_cl(self.clusters, 7) if method == 'dbscan' else self.clusters,
-                target,
+                target, refit = refit_cluster,
                 metrics=self._metrics,
                 **kwargs
             )
@@ -2277,6 +2283,7 @@ class BaseDataset(BaseTrajectory):
         if exclude_repetitions:
             res.Sequence = res.Sequence.apply(lambda x: self.remove_duplicates(x))
             res = res.groupby(res.Sequence)[['Good', 'Lost']].sum().reset_index()
+            res = res[res.Sequence.apply(lambda x: len(x.split('~~')) in range(ngram_range[0],ngram_range[1] + 1))]
 
         res['Coefficient'] = res['Lost'] / res['Good']
         return res.sort_values('Lost', ascending=False).reset_index(drop=True)

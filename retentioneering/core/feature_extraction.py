@@ -152,6 +152,7 @@ def tfidf_embedder(data, ngram_range=(1, 1), **kwargs):
     -------
     pd.DataFrame
     """
+#     print('range',ngram_range)
     if 'index_col' not in kwargs:
         index_col = data.trajectory.retention_config['index_col']
     else:
@@ -161,10 +162,9 @@ def tfidf_embedder(data, ngram_range=(1, 1), **kwargs):
     else:
         event_col = kwargs['event_col']
 
-    corpus = data.groupby(index_col)[event_col].apply(lambda x: ' '.join([el.lower() for el in x]))
-
+    corpus = data.groupby(index_col)[event_col].apply(lambda x: '~~'.join([el.lower() for el in x]))
     if kwargs['vocab'] != None:
-        vectorizer = TfidfVectorizer(vocabulary=kwargs['vocab'],token_pattern = '[^~]+')
+        vectorizer = TfidfVectorizer(vocabulary=kwargs['vocab'],token_pattern = '[^~]+',ngram_range = ngram_range)
 
         tfidf = pd.DataFrame(index=data[index_col].unique(), columns=kwargs['vocab'].keys(),
                              data=vectorizer.fit_transform(corpus).todense())

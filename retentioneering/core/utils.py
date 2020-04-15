@@ -754,6 +754,9 @@ class BaseDataset(BaseTrajectory):
             Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
         event_col: str, optional
             Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
+        vocab_pars: dict, optional
+            dictionary of parameters for creating vocabulary of ngrams with prepare_vocab() function. This vocab will be used as a feature space for TF-EDF encoding
+
         kwargs: optional
             Keyword arguments for ``sklearn.decomposition`` and ``sklearn.manifold`` methods.
 
@@ -2235,13 +2238,24 @@ class BaseDataset(BaseTrajectory):
         return (self._obj[self._obj[self._index_col()].isin([good_users[i] for i in good_idx])], \
                 self._obj[self._obj[self._index_col()].isin([bad_users[i] for i in bad_idx])])
 
-    def remove_duplicates(self, data):
+    def _remove_duplicates(self, data):
+        """
+        Removing same events, that are going one after another ('ev1 -> ev1 -> ev2 -> ev1 -> ev3 -> ev3   --------> ev1 -> ev2 -> ev1 -> ev3'). This utilite is used in a
+        find_sequences function
+        Parameters
+        ----------
+        data
+
+        Returns
+        -------
+
+        """
         t = data.split('~~')
         t = '~~'.join([t[0]] + ['~~'.join(word for ind, word in enumerate(t[1:]) if t[ind] != t[ind + 1])])
         return t[:-2] if t[-1] == '~' else t
 
     def find_sequences(self, ngram_range=(1, 1), fraction=1, random_state=42, exclude_cycles=False, exclude_loops=False,
-                       exclude_repetitions=False):
+                       exclude_repetitions=False,threshold = 0, coefficient = 0):
         """
             Finds all subsequences of length lying in interval
 
@@ -2265,10 +2279,11 @@ class BaseDataset(BaseTrajectory):
         good, bad = self.get_fraction(fraction, random_state)
         countvect = CountVectorizer(ngram_range=ngram_range,token_pattern = '[^~]+')
         good_corpus = good.groupby(self._index_col())[self._event_col()].apply(
-            lambda x: '~~'.join([l.lower() for l in x]))
+            lambda x: '~~'.join([l.lower() for l in x if l != 'pass' and l != 'lost']))
         good_count = countvect.fit_transform(good_corpus.values)
         good_frame = pd.DataFrame(columns=['~~'.join(x.split(' ')) for x in countvect.get_feature_names()], data=good_count.todense())
-        bad_corpus = bad.groupby(self._index_col())[self._event_col()].apply(lambda x: '~~'.join([l.lower() for l in x]))
+        bad_corpus = bad.groupby(self._index_col())[self._event_col()].apply(
+            lambda x: '~~'.join([l.lower() for l in x if l != 'pass' and l != 'lost']))
         bad_count = countvect.fit_transform(bad_corpus.values)
         bad_frame = pd.DataFrame(columns=['~~'.join(x.split(' ')) for x in countvect.get_feature_names()], data=bad_count.todense())
 
@@ -2281,29 +2296,44 @@ class BaseDataset(BaseTrajectory):
         if exclude_loops:
             temp = res[~res.Sequence.apply(lambda x: self.is_loop(x))]
         if exclude_repetitions:
-            res.Sequence = res.Sequence.apply(lambda x: self.remove_duplicates(x))
+            res.Sequence = res.Sequence.apply(lambda x: self._remove_duplicates(x))
             res = res.groupby(res.Sequence)[['Good', 'Lost']].sum().reset_index()
             res = res[res.Sequence.apply(lambda x: len(x.split('~~')) in range(ngram_range[0],ngram_range[1] + 1))]
 
         res['Coefficient'] = res['Lost'] / res['Good']
-        return res.sort_values('Lost', ascending=False).reset_index(drop=True)
+        return res[(abs(res.Coefficient - 1) > coefficient) & (res.Good + res.Lost > threshold)].sort_values('Lost', ascending=False).reset_index(drop=True)
 
     def loop_search(self, data, self_loops, event_list, is_bad):
         """
-        Utilite for loop searching
+        Utilite for loop searching.
+
+        Parameters
+        ----------
+        data - user's trajectory
+        self_loops - dictionary, that contains six numbers for every entry - n_occur_good, n_occur_bad, coeff1, n_occur_good2, n_occur_bad2, coeff.
+        event_list - Event list is the dictionary for loops, that had already occured so that we don't increase their
+            type2_counters which are for counting erach loop only once in user's trajectory.
+        is_bad - boolean value. 1 is for lost user, 0 is for converted user. Used for increasing the right counters in dictionary.
+        ----------
+
+        Description
+        ----------
+        The process is going iteratively. If the loop is in the dictionary it's occurence counters are increasing. Event list is the dictionary for loops, that had occured,
+        If the loop is occuring at first time - we create new record in dictionary and update it's counters
+        ----------
         """
         # print(data)
         self._init_cols(locals())
+        #Creating event dictionary
         event_list = {k: 0 for k in event_list}
-        #     global self_loops
         for ind, url in enumerate(data[1:]):
             if data[ind] == data[ind + 1]:
-                try:
+                if url in self_loops.keys():
                     self_loops[url][is_bad] += 1
                     if event_list[url] == 0:
                         self_loops[url][is_bad + 3] += 1
                         event_list[url] = 1
-                except:
+                else:
                     self_loops[url] = [0, 0, 0, 0, 0, 0]
                     self_loops[url][is_bad] = 1
                     if event_list[url] == 0:

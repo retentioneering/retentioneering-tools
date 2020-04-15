@@ -2240,14 +2240,7 @@ class BaseDataset(BaseTrajectory):
 
     def _remove_duplicates(self, data):
         """
-        Removing same events, that are going one after another ('ev1 -> ev1 -> ev2 -> ev1 -> ev3 -> ev3   --------> ev1 -> ev2 -> ev1 -> ev3'). This utilite is used in a
-        find_sequences function
-        Parameters
-        ----------
-        data
-
-        Returns
-        -------
+        Removing same events, that are going one after another ('ev1 -> ev1 -> ev2 -> ev1 -> ev3 -> ev3   --------> ev1 -> ev2 -> ev1 -> ev3'). This utilite is used in a find_sequences function
 
         """
         t = data.split('~~')

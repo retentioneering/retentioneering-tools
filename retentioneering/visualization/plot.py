@@ -160,7 +160,6 @@ def __save_plot__(func):
         idx = 'id: ' + str(int(datetime.now().timestamp()))
         coords = vis_object.axis()
 
-
         if '_3d_' not in name:
             vis_object.text((coords[0] - (coords[1] - coords[0]) / 10),
                             (coords[3] + (coords[3] - coords[2]) / 10), idx, fontsize=8)
@@ -173,6 +172,7 @@ def __save_plot__(func):
             if '.html' in name:
                 ml.put(vis_object.get_raw(name), idx.split(' ')[1] + '_config')
         return res
+
     return save_plot_wrapper
 
 
@@ -223,6 +223,7 @@ def __altair_save_plot__(func):
             ml = MongoLoader(cfg.get('mongo_client'), collection=cfg.get('mongo_user'))
             ml.put(plot_name if '.' in plot_name else plot_name + '.svg', idx.split(' ')[1])
         return res
+
     return altair_save_plot_wrapper
 
 
@@ -389,7 +390,6 @@ def step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
 
 @__altair_save_plot__
 def altair_cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
-
     if hasattr(data.retention, '_tsne'):
         tsne = data.retention._tsne.copy()
     else:
@@ -436,7 +436,7 @@ def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
     PNG
     """
 
-    if hasattr(data.retention, '_tsne'):
+    if hasattr(data.retention, '_tsne') and not kwargs.get(['refit']):
         tsne2 = data.retention._tsne.copy()
     else:
         tsne2 = data.retention.learn_tsne(clusters, **kwargs)
@@ -447,10 +447,12 @@ def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
         f.colorbar(points)
         scatter = ___FigureWrapper__(f)
     else:
-        scatter = sns.scatterplot(tsne[:, 0], tsne[:, 1], hue=clusters, legend='full', palette= sns.color_palette("bright")[0:np.unique(clusters).shape[0]])
+        scatter = sns.scatterplot(tsne[:, 0], tsne[:, 1], hue=clusters, legend='full',
+                                  palette=sns.color_palette("bright")[0:np.unique(clusters).shape[0]])
     plot_name = plot_name or 'cluster_tsne_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
     return scatter, plot_name, tsne2, data.retention.retention_config
+
 
 @__altair_save_plot__
 def altair_cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=None, **kwargs):
@@ -477,10 +479,6 @@ def altair_cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, me
     )
 
     return bar, plot_name, None, data.retention.retention_config
-
-
-
-
 
 
 @__save_plot__
@@ -533,7 +531,7 @@ def cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
 @__save_plot__
 def cluster_event_dist(bars, event_col, cl1, sizes, crs, cl2=None, plot_name=None):
     bar = sns.barplot(x=event_col, y='freq', hue='hue',
-                      hue_order=[f'cluster {cl1}','all' if cl2 is None else f'cluster {cl2}'], data=bars)
+                      hue_order=[f'cluster {cl1}', 'all' if cl2 is None else f'cluster {cl2}'], data=bars)
     y_value = ['{:,.2f}'.format(x * 100) + '%' for x in bar.get_yticks()]
     bar.set_yticklabels(y_value)
     bar.set_xticklabels(bar.get_xticklabels(), rotation=30)
@@ -672,8 +670,10 @@ def permutation_importance(x, plot_name=None, **kwargs):
     sns.mpl.pyplot.xticks(rotation="vertical")
     sns.mpl.pyplot.title("Permutation importances")
     sns.mpl.pyplot.bar(x.feature.map(lambda x: " ".join(x)), x.importances_mean, yerr=x.importances_std)
-    plot_name = plot_name or 'permutation_importance_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
+    plot_name = plot_name or 'permutation_importance_{}'.format(datetime.now()).replace(':', '_').replace('.',
+                                                                                                          '_') + '.svg'
     return ___FigureWrapper__(fig), plot_name, None, x.retention.retention_config
+
 
 @__save_plot__
 def tsne_3d(data, clusters, target, plot_name=None, use_coloring=False, **kwargs):
@@ -716,7 +716,7 @@ class ___FigureWrapper__(object):
             x = self.fig.axes[1].axis()
         else:
             x = self.fig.axes[0].axis()
-        return (x[0]/ 64, x[0] + (x[1] - x[0]) / 50, x[2] / 1.5, x[3] / 1.5)
+        return (x[0] / 64, x[0] + (x[1] - x[0]) / 50, x[2] / 1.5, x[3] / 1.5)
 
     def text(self, *args, **kwargs):
         self.fig.text(*args, **kwargs)
@@ -730,7 +730,7 @@ class __SaveFigWrapper__(object):
         self.height = height
 
     def savefig(self, name, **kwargs):
-        with open(name, 'w', encoding="utf-8") as f:
+        with open(name, 'w') as f:
             f.write(self.data)
         if self.interactive:
             display(IFrame(name, width=self.width + 200, height=self.height + 200))

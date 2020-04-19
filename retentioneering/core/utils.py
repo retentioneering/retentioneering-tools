@@ -2191,22 +2191,21 @@ class BaseDataset(BaseTrajectory):
         f = self._obj[self._index_col()].isin(f[f].index.tolist())
         return self._obj[f].copy().reset_index(drop=True)
 
-    def is_cycle(self, data):
+    def _is_cycle(self, data):
         """
             Utilite for cycle search
         """
-        temp = data.split(' ')
+        temp = data.split('~~')
         return True if temp[0] == temp[-1] and len(set(temp)) > 1 else False
 
-    def is_loop(self, data):
+    def _is_loop(self, data):
         """
             Utilite for loop search
         """
-        temp = data.split(' ')
+        temp = data.split('~~')
         return True if len(set(temp)) == 1 else False
 
-    def get_fraction(self, fraction=1, random_state=42):
-        # print(self,fraction,random_state)
+    def get_equal_fraction(self, fraction=1, random_state=42):
         """
             Selects fraction of good users and the same number of bad users
 
@@ -2232,15 +2231,19 @@ class BaseDataset(BaseTrajectory):
         np.random.seed(random_state)
         good_users = self.get_positive_users()
         bad_users = self.get_negative_users()
-        good_idx = np.random.choice(range(len(good_users)), int(len(good_users) * fraction), replace=False).astype(
-            'int64')
-        bad_idx = np.random.choice(range(len(bad_users)), len(good_users), replace=False).astype('int64')
-        return (self._obj[self._obj[self._index_col()].isin([good_users[i] for i in good_idx])], \
-                self._obj[self._obj[self._index_col()].isin([bad_users[i] for i in bad_idx])])
+
+        sample_size = min(int(len(good_users) * fraction), len(bad_users))
+        good_users_sample = set(np.random.choice(good_users, sample_size, replace=False))
+        bad_users_sample = set(np.random.choice(bad_users, sample_size, replace=False))
+
+        return (self._obj[self._obj[self._index_col()].isin(good_users_sample)],
+                self._obj[self._obj[self._index_col()].isin(bad_users_sample)])
 
     def _remove_duplicates(self, data):
         """
-        Removing same events, that are going one after another ('ev1 -> ev1 -> ev2 -> ev1 -> ev3 -> ev3   --------> ev1 -> ev2 -> ev1 -> ev3'). This utilite is used in a find_sequences function
+        Removing same events, that are going one after another
+        ('ev1 -> ev1 -> ev2 -> ev1 -> ev3 -> ev3   --------> ev1 -> ev2 -> ev1 -> ev3').
+        This utilite is used in a find_sequences function
 
         """
         t = data.split('~~')
@@ -2269,69 +2272,34 @@ class BaseDataset(BaseTrajectory):
         """
         self._init_cols(locals())
         sequences = dict()
-        good, bad = self.get_fraction(fraction, random_state)
+        good, bad = self.get_equal_fraction(fraction, random_state)
         countvect = CountVectorizer(ngram_range=ngram_range,token_pattern = '[^~]+')
         good_corpus = good.groupby(self._index_col())[self._event_col()].apply(
             lambda x: '~~'.join([l.lower() for l in x if l != 'pass' and l != 'lost']))
         good_count = countvect.fit_transform(good_corpus.values)
-        good_frame = pd.DataFrame(columns=['~~'.join(x.split(' ')) for x in countvect.get_feature_names()], data=good_count.todense())
+        good_frame = pd.DataFrame(columns=['~~'.join(x.split(' ')) for x in countvect.get_feature_names()],
+                                  data=good_count.todense())
         bad_corpus = bad.groupby(self._index_col())[self._event_col()].apply(
             lambda x: '~~'.join([l.lower() for l in x if l != 'pass' and l != 'lost']))
         bad_count = countvect.fit_transform(bad_corpus.values)
-        bad_frame = pd.DataFrame(columns=['~~'.join(x.split(' ')) for x in countvect.get_feature_names()], data=bad_count.todense())
-
+        bad_frame = pd.DataFrame(columns=['~~'.join(x.split(' ')) for x in countvect.get_feature_names()],
+                                 data=bad_count.todense())
 
         res = pd.concat([good_frame.sum(), bad_frame.sum()], axis=1).fillna(0).reset_index()
         res.columns = ['Sequence', 'Good', 'Lost']
 
         if exclude_cycles:
-            res = res[~res.Sequence.apply(lambda x: self.is_cycle(x))]
+            res = res[~res.Sequence.apply(lambda x: self._is_cycle(x))]
         if exclude_loops:
-            temp = res[~res.Sequence.apply(lambda x: self.is_loop(x))]
+            temp = res[~res.Sequence.apply(lambda x: self._is_loop(x))]
         if exclude_repetitions:
             res.Sequence = res.Sequence.apply(lambda x: self._remove_duplicates(x))
             res = res.groupby(res.Sequence)[['Good', 'Lost']].sum().reset_index()
             res = res[res.Sequence.apply(lambda x: len(x.split('~~')) in range(ngram_range[0],ngram_range[1] + 1))]
 
-        res['Coefficient'] = res['Lost'] / res['Good']
-        return res[(abs(res.Coefficient - 1) > coefficient) & (res.Good + res.Lost > threshold)].sort_values('Lost', ascending=False).reset_index(drop=True)
-
-    def loop_search(self, data, self_loops, event_list, is_bad):
-        """
-        Utilite for loop searching.
-
-        Parameters
-        ----------
-        data - user's trajectory
-        self_loops - dictionary, that contains six numbers for every entry - n_occur_good, n_occur_bad, coeff1, n_occur_good2, n_occur_bad2, coeff.
-        event_list - Event list is the dictionary for loops, that had already occured so that we don't increase their
-            type2_counters which are for counting erach loop only once in user's trajectory.
-        is_bad - boolean value. 1 is for lost user, 0 is for converted user. Used for increasing the right counters in dictionary.
-        ----------
-
-        Description
-        ----------
-        The process is going iteratively. If the loop is in the dictionary it's occurence counters are increasing. Event list is the dictionary for loops, that had occured,
-        If the loop is occuring at first time - we create new record in dictionary and update it's counters
-        ----------
-        """
-        # print(data)
-        self._init_cols(locals())
-        #Creating event dictionary
-        event_list = {k: 0 for k in event_list}
-        for ind, url in enumerate(data[1:]):
-            if data[ind] == data[ind + 1]:
-                if url in self_loops.keys():
-                    self_loops[url][is_bad] += 1
-                    if event_list[url] == 0:
-                        self_loops[url][is_bad + 3] += 1
-                        event_list[url] = 1
-                else:
-                    self_loops[url] = [0, 0, 0, 0, 0, 0]
-                    self_loops[url][is_bad] = 1
-                    if event_list[url] == 0:
-                        self_loops[url][is_bad + 3] += 1
-                        event_list[url] = 1
+        res['Lost2Good'] = res['Lost'] / res['Good']
+        return res[(abs(res['Lost2Good'] - 1) > coefficient) & (res.Good + res.Lost > threshold)]\
+            .sort_values('Lost', ascending=False).reset_index(drop=True)
 
     def find_cycles(self, interval, fraction=1, random_state=42, exclude_loops=False, exclude_repetitions=False):
         """
@@ -2349,7 +2317,7 @@ class BaseDataset(BaseTrajectory):
         self._init_cols(locals())
         temp = self.find_sequences(interval, fraction, random_state, exclude_loops=exclude_loops,
                                    exclude_repetitions=exclude_repetitions).reset_index(drop=True)
-        return temp[temp['Sequence'].apply(lambda x: self.is_cycle(x))].reset_index(drop=True)
+        return temp[temp['Sequence'].apply(lambda x: self._is_cycle(x))].reset_index(drop=True)
 
     def find_loops(self, fraction=1, random_state=42):
         """
@@ -2359,19 +2327,37 @@ class BaseDataset(BaseTrajectory):
         fraction - fraction of good users. Any float in (0,1]
         random_state - random_state for numpy random seed
 
-        Returns pd.DataFrame with loops. Good, Lost columns are for all occurences, (Good/Lost)_no_duplicates are for counting each cycle only once for user in which they occur
+        Returns pd.DataFrame with loops. Good, Lost columns are for all occurences,
+        (Good/Lost)_no_duplicates are for counting each cycle only once for user in which they occur
         -------
 
         """
+        def loop_search(data, self_loops, event_list, is_bad):
+            self._init_cols(locals())
+            event_list = {k: 0 for k in event_list}
+            for ind, url in enumerate(data[1:]):
+                if data[ind] == data[ind + 1]:
+                    if url in self_loops.keys():
+                        self_loops[url][is_bad] += 1
+                        if event_list[url] == 0:
+                            self_loops[url][is_bad + 3] += 1
+                            event_list[url] = 1
+                    else:
+                        self_loops[url] = [0, 0, 0, 0, 0, 0]
+                        self_loops[url][is_bad] = 1
+                        if event_list[url] == 0:
+                            self_loops[url][is_bad + 3] += 1
+                            event_list[url] = 1
+
         self._init_cols(locals())
         self_loops = dict()
         event_list = self._obj[self._event_col()].unique()
-        good, bad = self.get_fraction(fraction, random_state)
+        good, bad = self.get_equal_fraction(fraction, random_state)
         for el in good.groupby(self._index_col()):
-            self.loop_search(el[1][self._event_col()].values, self_loops, event_list, 0)
+            loop_search(el[1][self._event_col()].values, self_loops, event_list, 0)
 
         for el in bad.groupby(self._index_col()):
-            self.loop_search(el[1][self._event_col()].values, self_loops, event_list, 1)
+            loop_search(el[1][self._event_col()].values, self_loops, event_list, 1)
 
         for key, val in self_loops.items():
             if val[0] != 0:
@@ -2380,10 +2366,9 @@ class BaseDataset(BaseTrajectory):
                 self_loops[key][5] = val[4] / val[3]
 
         return pd.DataFrame(data=[[a[0]] + a[1] for a in self_loops.items()],
-                            columns=['Sequence', 'Good', 'Lost', 'Coefficient', 'Good_no_duplicates',
-                                     'Lost_no_duplicates', 'Coefficient_2']).sort_values('Lost',
-                                                                                         ascending=False).reset_index(
-            drop=True)
+                            columns=['Sequence', 'Good', 'Lost', 'Good2Lost', 'GoodUnique',
+                                     'LostUnique', 'GoodUnique2LostUnique'])\
+            .sort_values('Lost', ascending=False).reset_index(drop=True)
 
 
 

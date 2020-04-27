@@ -163,7 +163,7 @@ def tfidf_embedder(data, ngram_range=(1, 1), **kwargs):
         event_col = kwargs['event_col']
 
     corpus = data.groupby(index_col)[event_col].apply(lambda x: '~~'.join([el.lower() for el in x]))
-    if kwargs['vocab'] != None:
+    if 'vocab' in kwargs and kwargs['vocab'] is not None:
         vectorizer = TfidfVectorizer(vocabulary=kwargs['vocab'],token_pattern = '[^~]+',ngram_range = ngram_range)
 
         tfidf = pd.DataFrame(index=data[index_col].unique(), columns=kwargs['vocab'].keys(),

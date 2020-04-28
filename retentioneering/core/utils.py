@@ -720,7 +720,7 @@ class BaseDataset(BaseTrajectory):
         sequences = self.find_sequences(ngram_range=ngram_range, fraction=1, exclude_cycles=exclude_cycles,
                                         exclude_loops=exclude_loops, exclude_repetitions=exclude_repetitions)
         sequences = sequences[
-            ((sequences.Lost + sequences.Good) >= min_threshold) & (abs(sequences.Coefficient - 1) >= min_coeff)]
+            ((sequences.Lost + sequences.Good) >= min_threshold) & (abs(sequences.Lost2Good - 1) >= min_coeff)]
         vocab = {' '.join(ngram.lower().split('~~')): ind for ind, ngram in enumerate(sequences.Sequence)}
         return vocab
 

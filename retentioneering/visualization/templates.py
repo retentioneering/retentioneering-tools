@@ -280,7 +280,8 @@ __TEMPLATE__ = """
                     //return Math.round(d['weight_text'] * 100) + "%";
                     return roundToSignificantFigures(d['weight_text'] * 100, 2) + "%";
                 }} else {{
-                    return Math.round(d['weight_text'] * 100) / 100;
+                    //return Math.round(d['weight_text'] * 100) / 100;
+                    return roundToSignificantFigures(d['weight_text'], 2);
                 }}
             }})
           }} else {{
@@ -798,7 +799,7 @@ __TEMPLATE__ = """
             </div>
 
             <div class="percent-checkbox bottom-checkbox">
-              <input type="checkbox" class="checkbox checkbox-class" id="show-percents"><label> Percents </label>
+              <input type="checkbox" class="checkbox checkbox-class" checked id="show-percents"><label> Percents </label>
             </div>
 
             <div class="bottom-checkbox">

@@ -255,13 +255,30 @@ __TEMPLATE__ = """
         }}
       }}
 
+
+        function roundToSignificantFigures(num, n) {{
+            if(num == 0) {{
+                return 0;
+            }}
+
+            d = Math.ceil(Math.log10(num < 0 ? -num: num));
+            power = n - d;
+
+            magnitude = Math.pow(10, power);
+            shifted = Math.round(num*magnitude);
+            return shifted/magnitude;
+        }};
+
+
+
       function displayingWeights() {{
         d3.selectAll("#show-weights").each(function(d) {{
           cb = d3.select(this);
           if (cb.property("checked")) {{
             edgetext = edgetext.text(function(d) {{
                 if ($('#show-percents')[0].checked) {{
-                    return Math.round(d['weight_text'] * 100) + "%";
+                    //return Math.round(d['weight_text'] * 100) + "%";
+                    return roundToSignificantFigures(d['weight_text'] * 100, 2) + "%";
                 }} else {{
                     return Math.round(d['weight_text'] * 100) / 100;
                 }}
@@ -285,8 +302,8 @@ __TEMPLATE__ = """
 
         function dragged(d) {{
           d3.select(this)
-          .attr("cx", d.x = Math.min(Math.max(d3.event.x, 0), width))
-          .attr("cy", d.y = Math.min(Math.max(d3.event.y, 0), height));
+          .attr("cx", d.x = d3.event.x)
+          .attr("cy", d.y = d3.event.y);
         }}
 
         function dragended(d) {{

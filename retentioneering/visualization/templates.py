@@ -803,11 +803,11 @@ __TEMPLATE__ = """
             </div>
 
             <div class="bottom-checkbox">
-              <input type="checkbox" class="checkbox checkbox-class" checked id="show-names" onchange="changeNamesVisibility(this.checked)"><label> Show names</label>
+              <input type="checkbox" class="checkbox checkbox-class" checked id="show-names" onchange="changeNamesVisibility(this.checked)"><label> Show nodes names</label>
             </div>
 
             <div class="bottom-checkbox">
-              <input type="checkbox" class="checkbox checkbox-class" checked id="block-targets"><label>Block targets deletion</label>
+              <input type="checkbox" class="checkbox checkbox-class" checked id="block-targets" onchange="setLinkThreshold ()"><label> Show all edges for targets </label>
             </div>
             <div id="option">
               <input name="downloadButton"

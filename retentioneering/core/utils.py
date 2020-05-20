@@ -2368,8 +2368,8 @@ class BaseDataset(BaseTrajectory):
                 self_loops[key][5] = val[4] / val[3]
 
         return pd.DataFrame(data=[[a[0]] + a[1] for a in self_loops.items()],
-                            columns=['Sequence', 'Good', 'Lost', 'Good2Lost', 'GoodUnique',
-                                     'LostUnique', 'GoodUnique2LostUnique'])\
+                            columns=['Sequence', 'Good', 'Lost', 'Lost2Good', 'GoodUnique',
+                                     'LostUnique', 'UniqueLost2Good'])\
             .sort_values('Lost', ascending=False).reset_index(drop=True)
 
 

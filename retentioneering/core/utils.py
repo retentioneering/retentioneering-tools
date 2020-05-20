@@ -783,12 +783,14 @@ class BaseDataset(BaseTrajectory):
         else:
             tmp = self._obj
         vocab = None
-        ngram_range = (1,1)
+        
         if 'vocab_pars' in kwargs.keys():
             vocab = self.prepare_vocab(**kwargs['vocab_pars'])
-            if 'ngram_range' in kwargs['vocab_pars'].keys():
-                ngram_range = kwargs.pop('ngram_range')
-        res = func(tmp, vocab=vocab, ngram_range=ngram_range, **kwargs)
+            if 'ngram_range' not in kwargs['vocab_pars'].keys():
+                ngram_range = (1,1)
+                kwargs['ngram_range']=ngram_range
+                vocab = self.prepare_vocab(**kwargs['vocab_pars'])
+        res = func(tmp, vocab=vocab, **kwargs)
         if metadata is not None:
             res = feature_extraction.merge_features(res, metadata, **kwargs)
         return res

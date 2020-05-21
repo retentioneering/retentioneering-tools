@@ -11,8 +11,11 @@
 
 ## What is it?
 
-Retentioneering is a Python framework to explore, grow and optimize your product based on deep analysis of user trajectories. Using Retentioneering you can vectorize clickstream logs and cluster user trajectories to automatically identify common successful or churn patterns. You can explore those patterns using our tools such as graph visualizer, step matrix, classifier and many others.
+Retentioneering Tools is a Python framework to explore, grow and optimize your product based on deep analysis of user trajectories. Using Retentioneering you can vectorize clickstream logs and cluster user trajectories to automatically identify common successful or churn patterns. You can explore those patterns using our tools such as graph visualizer, step matrix, multiple clustering and segmentation engines and many others.
 
+Retentioneering extends Pandas, NetworkX, Scikit-learn for in depth processing of event sequences data, specifically Retentioneering Tools provides powerfull environment to perform in-depth analysis of customer journey maps, bringing behavior-driven segmentation of users and machine learning pipelines to product analytics. Retentioneering is also developing customer journey map simulation engines that allow data scientist to explore the business impact of CJM mutations and optimize product and online marketing.
+
+This repository containes both python library with easy to use utils, but also we provide several demo Pyhton Notebooks and datasets to illustrate how to automate product analytics routines.
 
 ## How it works?
 
@@ -97,9 +100,14 @@ pip3 install .
 - [Analysis](https://retentioneering.github.io/retentioneering-tools/_build/html/mobile-app-case.html#analysis) Step matrix and clustering.
 - [Predict application remove](https://retentioneering.github.io/retentioneering-tools/_build/html/mobile-app-case.html#predict-app-remove)
 - [Packages and Subpackages](https://retentioneering.github.io/retentioneering-tools/_build/html/retentioneering.html)
+- [Utils and functions documentation](https://retentioneering.github.io/retentioneering-tools/)
 
 ## Contributing
 
 This is community-driven open source project in active development. Any contributions, new ideas, bug reports, bug fixes, documentation improvements are very welcome.
 
 Feel free to reach out to us: retentioneering[at]gmail.com
+
+Retentioneering now provides several opensource solutions for data-driven product analytics and web analytics. Please checkout this repository for JS library to track the mutations of the website elements: https://github.com/retentioneering/retentioneering-dom-observer
+
+Apps better with math!:)

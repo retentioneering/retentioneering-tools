@@ -11,11 +11,14 @@
 
 ## What is it?
 
-Retentioneering Tools is a Python framework to explore, grow and optimize your product based on deep analysis of user trajectories. Using Retentioneering you can vectorize clickstream logs and cluster user trajectories to automatically identify common successful or churn patterns. You can explore those patterns using our tools such as graph visualizer, step matrix, multiple clustering and segmentation engines and many others.
 
-Retentioneering extends Pandas, NetworkX, Scikit-learn for in depth processing of event sequences data, specifically Retentioneering Tools provides powerfull environment to perform in-depth analysis of customer journey maps, bringing behavior-driven segmentation of users and machine learning pipelines to product analytics. Retentioneering is also developing customer journey map simulation engines that allow data scientist to explore the business impact of CJM mutations and optimize product and online marketing.
+Retentioneering Tools is a Python framework to process and analyze clickstreams, event streams, trajectories, and event logs. You can segment users, clients (agents), build ML pipelines to predict agent category or probability of target event based on historical data. With a simulator tool you can resample the data based on fitted Markov model per each behavioral segment to explore scenarios and calculate the elasticity and sensitivity of your target KPIs to changes agent behavior at the event level.
 
-This repository containes both python library with easy to use utils, but also we provide several demo Pyhton Notebooks and datasets to illustrate how to automate product analytics routines.
+Retentioneering extends Pandas, NetworkX, Scikit-learn for in-depth processing of event sequences data, specifically Retentioneering Tools provides a powerful environment to perform an in-depth analysis of customer journey maps, bringing behavior-driven segmentation of users and machine learning pipelines to product analytics. Retentioneering is also developing customer journey map simulation engines that allow the data scientists to explore the business impact of CJM mutations and optimize product and online marketing.
+
+Product analysts can apply Retentioneering Tools as a Python framework to explore, grow, and optimize the product based on deep analysis of user trajectories. Using Retentioneering you can vectorize clickstream logs and cluster user trajectories to automatically identify common successful or churn patterns. You can explore those patterns using our tools such as graph visualizer, step matrix, multiple clustering, and segmentation engines, and many others.
+
+This repository contains both python library with easy to use utils, but also we provide several demos Python Notebooks and datasets to illustrate how to automate product analytics routines.
 
 ## How it works?
 

@@ -114,3 +114,4 @@ Feel free to reach out to us: retentioneering[at]gmail.com
 Retentioneering now provides several opensource solutions for data-driven product analytics and web analytics. Please checkout this repository for JS library to track the mutations of the website elements: https://github.com/retentioneering/retentioneering-dom-observer
 
 Apps better with math!:)
+Retentioneering is a research laboratory, analytics methodology and opensource tools founded by Maxim Godzi and Anatoly Zaytsev in 2015. Please feel free to contact us at retentioneeringATgmail.com if you have any questions regarding this rep, or to obtain more tools that we are not able to provide though the public rep.

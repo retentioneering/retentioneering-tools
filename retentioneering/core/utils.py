@@ -171,7 +171,7 @@ class BaseTrajectory(object):
 
 
 
-    def get_edgelist(self, cols=None, edge_col=None, edge_attributes='event_count', norm=True, **kwargs):
+    def get_edgelist(self, cols=None, edge_col=None, norm_type=None, **kwargs):
         """
         Creates frequency table of the transitions between events.
 
@@ -199,6 +199,7 @@ class BaseTrajectory(object):
         -------
         pd.DataFrame
         """
+        edge_attributes='event_count'
 
         if cols is None:
             cols = [
@@ -215,11 +216,25 @@ class BaseTrajectory(object):
 
         agg = (data
                .groupby(cols)[edge_col or self.retention_config['event_time_col']]
-               .agg(edge_attributes.split('_')[1])
+               .agg(lambda x: x.nunique())
                .reset_index())
+
         agg.columns = cols + [edge_attributes]
-        if norm:
-            agg[edge_attributes] /= self._obj[self.retention_config['index_col']].nunique()
+
+
+        if norm_type=='full':
+            if edge_col==None:
+                agg[edge_attributes] /= agg[edge_attributes].sum()
+            else:
+                agg[edge_attributes] = agg[edge_attributes]/data[edge_col].nunique()
+        if norm_type=='node':
+            if edge_col==None:
+                event_counter = self._obj[self._event_col()].value_counts().to_dict()
+                agg[edge_attributes] /= agg[cols[0]].map(event_counter)
+            else:
+                user_counter = self._obj.groupby(cols[0])[edge_col].nunique().to_dict()
+                agg[edge_attributes] /= agg[cols[0]].map(user_counter)
+
         return agg
 
     def get_adjacency(self, cols=None, edge_attributes='event_count', norm=True, **kwargs):
@@ -253,7 +268,9 @@ class BaseTrajectory(object):
         agg = self.get_edgelist(cols=cols, edge_attributes=edge_attributes, norm=norm, **kwargs)
         G = nx.DiGraph()
         G.add_weighted_edges_from(agg.values)
-        return nx.to_pandas_adjacency(G).round(2)
+        return nx.to_pandas_adjacency(G)
+
+
 
     def _add_event_rank(self, index_col=None, **kwargs):
         self._init_cols(locals())
@@ -584,7 +601,7 @@ class BaseTrajectory(object):
         mechs, mech_desc = preprocessing.weight_by_mechanics(self._obj, main_event_map, **kwargs)
         return mechs, mech_desc
 
-    def plot_graph(self, user_based=True, node_params=None, index_col=None, node_weights=None, norm=True, **kwargs):
+    def plot_graph(self, node_params=None, edge_col=None, index_col=None, node_weights=None, norm_type='full', **kwargs):
         """
         Create interactive graph visualization. Each node is a unique ``event_col`` value, edges are transitions between events and edge weights are calculated metrics. By default, it is a percentage of unique users that have passed though a particular edge visualized with the edge thickness. Node sizes are  Graph loop is a transition to the same node, which may happen if users encountered multiple errors or made any action at least twice.
         Graph nodes are movable on canvas which helps to visualize user trajectories but is also a cumbersome process to place all the nodes so it forms a story.
@@ -648,12 +665,12 @@ class BaseTrajectory(object):
         Renders IFrame object in case of ``interactive=True`` and saves graph visualization as HTML in ``experiments_folder`` of ``retention_config``.
         """
         self._init_cols(locals())
-        if user_based:
-            kwargs.update({
-                'edge_col': self._index_col(),
-                'edge_attributes': '_nunique',
-                'norm': norm,
-            })
+
+        kwargs.update({
+            'edge_col': edge_col,
+            'norm_type': norm_type,
+        })
+
         if node_params is None:
             _node_params = {
                 'positive_target_event': 'nice_target',
@@ -783,7 +800,7 @@ class BaseDataset(BaseTrajectory):
         else:
             tmp = self._obj
         vocab = None
-        
+
         if 'vocab_pars' in kwargs.keys():
             vocab = self.prepare_vocab(**kwargs['vocab_pars'])
             if 'ngram_range' not in kwargs['vocab_pars'].keys():
@@ -1372,6 +1389,16 @@ class BaseDataset(BaseTrajectory):
                 empty_definition.append(target)
                 continue
             data = self._process_target_config(data, tmp, target)
+
+        #add next event and next timestamp column
+        # cols = [
+        #     self.retention_config['event_col'],
+        #     'next_event'
+        # ]
+        #data._get_shift(event_col=cols[0], shift_name=cols[1])
+        #data = self._obj.copy()
+
+
         if len(empty_definition) == 2:
             return data
         for target in empty_definition:
@@ -1382,6 +1409,9 @@ class BaseDataset(BaseTrajectory):
                       if target.startswith('pos_')
                       else self.retention_config['negative_target_event'])
             data = self._process_empty(data, other, target)
+
+
+
         return data
 
     def get_positive_users(self, index_col=None, **kwargs):
@@ -2371,6 +2401,3 @@ class BaseDataset(BaseTrajectory):
                             columns=['Sequence', 'Good', 'Lost', 'Lost2Good', 'GoodUnique',
                                      'LostUnique', 'UniqueLost2Good'])\
             .sort_values('Lost', ascending=False).reset_index(drop=True)
-
-
-

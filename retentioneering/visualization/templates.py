@@ -277,11 +277,17 @@ __TEMPLATE__ = """
           if (cb.property("checked")) {{
             edgetext = edgetext.text(function(d) {{
                 if ($('#show-percents')[0].checked) {{
-                    //return Math.round(d['weight_text'] * 100) + "%";
-                    return roundToSignificantFigures(d['weight_text'] * 100, 2) + "%";
+                    if (d['weight_text'] > 1) {{
+                      return d['weight_text']
+                    }} else {{
+                      return roundToSignificantFigures(d['weight_text'] * 100, 2) + "%";
+                    }};
                 }} else {{
-                    //return Math.round(d['weight_text'] * 100) / 100;
-                    return roundToSignificantFigures(d['weight_text'], 2);
+                    if (d['weight_text'] > 1) {{
+                      return d['weight_text']
+                    }} else {{
+                      return roundToSignificantFigures(d['weight_text'], 2);
+                    }};
                 }}
             }})
           }} else {{

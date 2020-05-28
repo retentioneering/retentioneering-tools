@@ -157,58 +157,53 @@ class BaseTrajectory(object):
                     col = kwargs.get(col_name)
         return self.retention_config['event_time_col'] if col is None else col
 
-    def _get_shift(self, index_col=None, event_col=None, shift_name='next_event', **kwargs):
+    def get_shift(self, index_col=None, event_col=None, shift_name='next_event', **kwargs):
         self._init_cols(locals())
-        if 'next_event' not in self._obj.columns:
+
+        #copy dataframe for local modifications
+        data = self._obj.copy()
+
+        if 'next_event' not in data.columns:
             # TODO indexation when init
             colmap = self.retention_config['columns_map']
-            (self._obj
+            (data
              .sort_values([self._index_col(), self._event_time_col()], inplace=True))
-            shift = self._obj.groupby(self._index_col()).shift(-1)
-            if shift_name not in self._obj.columns:
-                self._obj[shift_name] = shift[self._event_col()]
-            self._obj['next_timestamp'] = shift[self._event_time_col()]
+            shift = data.groupby(self._index_col()).shift(-1)
+            if shift_name not in data.columns:
+                data[shift_name] = shift[self._event_col()]
+            data['next_timestamp'] = shift[self._event_time_col()]
+
+        return data
 
 
 
-    def get_edgelist(self, cols=None, edge_col=None, norm_type=None, **kwargs):
+    def get_edgelist(self, edge_col=None, norm_type=None, **kwargs):
         """
-        Creates frequency table of the transitions between events.
+        Creates weighted table of the transitions between events.
 
         Parameters
         -------
-        index_col: str, optional
-            Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
-        event_col: str, optional
-            Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
-        edge_col: str, optional
-            Aggregation column for edge weighting. For instance, you may set it to the same value as in ``index_col`` and define ``edge_attributes='users_unique'`` to calculate unique users passed through edge. Default: ``None``
-        edge_attributes: str, optional
-            Edge weighting function and the name of field is defined with this parameter. It is set with two parts and a dash inbetween: ``[this_column_name]_[aggregation_function]``. The first part is the custom name of this field. The second part after `_` should be a valid ``pandas.groupby.agg()`` parameter, e.g. ``count``, ``sum``, ``nunique``, etc. Default: ``event_count``.
-        cols: list, optional
-            List of source and target columns, e.g. ``event_name`` and ``next_event``. ``next_event`` column is created automatically during ``BaseTrajectory.retention.prepare()`` method execution. Default: ``None`` wich corresponds to ``event_col`` value from ``retention_config`` and 'next_event'.
-        norm: bool, optional
-            Normalize ``edge_col`` values over aggregation used in the second part of ``edge_attributes``. For example, if you set ``edge_col='user_id'`` and ``edge_attributes='users_nunique'``, then if ``norm=True``, edge values will be weighted by the unique number of users and will represent the percentage of unique users passed through a given edge. Default: ``True``.
-        shift_name: str, optional
-            Name of column that contains next event of user.
+        edge_col: str, optional, default=None
+            Aggregation column for transitions weighting. To calculate weights as number of transion events leave as ```None``. To calculate number of unique users passed through given transition ``edge_attributes='user_id'``. For any other aggreagtion, life number of sessions, pass the column name.
+
+        norm_type: {None, 'full', 'node'} str, optional, default=None
+            Type of normalization. If ``None`` return raw number of transtions or other selected aggregation column. If ``norm_type='full'`` normalization
+
         Returns
         -------
-        Dataframe with number of rows equal to all edges with weight non-zero weight (max is squared number of unique ``event_col`` values) and the following column structure: ``source_node``, ``target_node`` and ``edge_weight``.
+        Dataframe with number of rows equal to all transitions with weight non-zero weight (max is squared number of unique ``event_col`` values) and the following column structure: ``source_node``, ``target_node`` and ``edge_weight``.
 
         Return type
         -------
         pd.DataFrame
         """
-        edge_attributes='event_count'
 
-        if cols is None:
-            cols = [
-                self.retention_config['event_col'],
-                'next_event'
-            ]
+        cols = [
+            self.retention_config['event_col'],
+            'next_event'
+        ]
 
-        self._get_shift(event_col=cols[0], shift_name=cols[1], **kwargs)
-        data = self._obj.copy()
+        data = self.get_shift(event_col=cols[0], shift_name=cols[1], **kwargs).copy()
 
         if kwargs.get('reverse'):
             data = data[data['non-detriment'].fillna(False)]
@@ -219,21 +214,22 @@ class BaseTrajectory(object):
                .agg(lambda x: x.nunique())
                .reset_index())
 
-        agg.columns = cols + [edge_attributes]
+        agg.columns = cols + ['edge_weight']
 
-
+        #apply normalization
         if norm_type=='full':
             if edge_col==None:
-                agg[edge_attributes] /= agg[edge_attributes].sum()
+                agg['edge_weight'] /= agg['edge_weight'].sum()
             else:
-                agg[edge_attributes] = agg[edge_attributes]/data[edge_col].nunique()
+                agg['edge_weight'] /= data[edge_col].nunique()
+
         if norm_type=='node':
             if edge_col==None:
                 event_counter = self._obj[self._event_col()].value_counts().to_dict()
-                agg[edge_attributes] /= agg[cols[0]].map(event_counter)
+                agg['edge_weight'] /= agg[cols[0]].map(event_counter)
             else:
                 user_counter = self._obj.groupby(cols[0])[edge_col].nunique().to_dict()
-                agg[edge_attributes] /= agg[cols[0]].map(user_counter)
+                agg['edge_weight'] /= agg[cols[0]].map(user_counter)
 
         return agg
 
@@ -557,31 +553,42 @@ class BaseTrajectory(object):
                 desc_new[i] = np.where(desc_new.index.str.startswith('Accumulated'), desc_new[i - 1], 0)
         return desc_old, desc_new
 
-    def split_sessions(self, by_event=None, minimal_thresh=30):
+    def split_sessions(self, thresh=1800):
         """
-        Generates ``session`` column with session rank for each ``index_col`` based on time difference between events or on specific event.
+        Generates ``session`_id` column with session rank for each ``index_col`` based on time difference between events. Sessions are automatically defined with time diffrence between events.
 
         Parameters
         --------
-        by_event: str, optional
-             If ``None``, sessions are automatically defined with time diffrence between events, else splits sessions by specific event in ``event_col``. For instance, if you have a technical event in your dataset defining a new user session, you may specify it in ``by_event`` to split sessions based on this event. Default: ``None``
-        minimal_thresh: int, optional
-            Minimal threshold in seconds between two sessions. Default: ``30``
+        thresh: int
+            Minimal threshold in seconds between two sessions. Default: ``1800`` or 30 min
 
         Returns
         -------
-        Creates ``session`` column in dataset.
+        Original Dataframe with ``session_id`` column in dataset.
 
         Return type
         -------
         pd.DataFrame
         """
         self._init_cols(locals())
-        if by_event is None:
-            preprocessing.split_sessions(self._obj, minimal_thresh=minimal_thresh)
-        else:
-            self._obj['session'] = self._obj[self._event_col()] == by_event
-            self._obj['session'] = self._obj.groupby(self._index_col()).session.cumsum()
+
+        res = self._obj.copy()
+
+        time_col = self.retention_config['event_time_col']
+        if 'next_timestamp' not in self._obj.columns:
+            df = self.get_shift()
+        time_delta = pd.to_datetime(df['next_timestamp']) - pd.to_datetime(df[time_col])
+        time_delta = time_delta.dt.total_seconds()
+
+        res['session'] = time_delta > minimal_thresh
+        res['session'] = res.groupby(self.retention_config['index_col']).session.cumsum()
+        res['session'] = res.groupby(self.retention_config['index_col']).session.shift(1).fillna(0).map(int).map(str)
+
+        res['session_id'] = res[self.retention_config['index_col']].map(str) + '_' + res['session']
+        res.drop(columns=['session'], inplace=True)
+
+        return res
+
 
     def weight_by_mechanics(self, main_event_map, **kwargs):
         """
@@ -1390,14 +1397,6 @@ class BaseDataset(BaseTrajectory):
                 continue
             data = self._process_target_config(data, tmp, target)
 
-        #add next event and next timestamp column
-        # cols = [
-        #     self.retention_config['event_col'],
-        #     'next_event'
-        # ]
-        #data._get_shift(event_col=cols[0], shift_name=cols[1])
-        #data = self._obj.copy()
-
 
         if len(empty_definition) == 2:
             return data
@@ -1597,9 +1596,9 @@ class BaseDataset(BaseTrajectory):
         List
         """
         self._init_cols(locals())
-        self._get_shift(self._index_col(), self._event_col())
+        data = self.get_shift(self._index_col(), self._event_col()).copy()
 
-        delays = np.log((self._obj['next_timestamp'] - self._obj[self._event_time_col()]) // pd.Timedelta('1s'))
+        delays = np.log((data['next_timestamp'] - data[self._event_time_col()]) // pd.Timedelta('1s'))
 
         if plotting:
             fig, ax = plot.sns.mpl.pyplot.subplots(figsize=kwargs.get('figsize', (15, 7)))  # control figsize for proper display on large bin numbers
@@ -2165,13 +2164,13 @@ class BaseDataset(BaseTrajectory):
                                    event_col=None, bins=100, limit=180, topk=3):
         self._init_cols(locals())
         if 'next_event' not in self._obj.columns:
-            self._get_shift(index_col, event_col)
-        self._obj['time_diff'] = (self._obj['next_timestamp'] - self._obj[
+            data = self.get_shift(index_col, event_col).copy()
+        data['time_diff'] = (data['next_timestamp'] - data[
             time_col or self.retention_config['event_time_col']]).dt.total_seconds()
-        f_cur = self._obj[self._event_col()] == event_order[0]
-        f_next = self._obj['next_event'] == event_order[1]
-        s_next = self._obj[f_cur & f_next].copy()
-        s_cur = self._obj[f_cur & (~f_next)].copy()
+        f_cur = data[self._event_col()] == event_order[0]
+        f_next = data['next_event'] == event_order[1]
+        s_next = data[f_cur & f_next].copy()
+        s_cur = data[f_cur & (~f_next)].copy()
 
         s_cur.time_diff[s_cur.time_diff < limit].hist(alpha=0.5, log=True,
                                                       bins=bins, label='Others {:.2f}'.format(

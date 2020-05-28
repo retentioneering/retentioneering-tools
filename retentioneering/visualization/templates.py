@@ -813,7 +813,7 @@ __TEMPLATE__ = """
             </div>
 
             <div class="bottom-checkbox">
-              <input type="checkbox" class="checkbox checkbox-class" checked id="block-targets" onchange="setLinkThreshold ()"><label> Show all edges for targets </label>
+              <input type="checkbox" class="checkbox checkbox-class" id="block-targets" onchange="setLinkThreshold ()"><label> Show all edges for targets </label>
             </div>
             <div id="option">
               <input name="downloadButton"

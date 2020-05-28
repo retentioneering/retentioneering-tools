@@ -228,7 +228,7 @@ def __altair_save_plot__(func):
 
 
 @__save_plot__
-def graph(data, node_params=None, thresh=.0, width=800, height=500, interactive=True,
+def graph(data, node_params=None, thresh=0.05, width=800, height=500, interactive=True,
           layout_dump=None, show_percent=True, plot_name=None, node_weights=None, **kwargs):
     """
     Create interactive graph visualization. Each node is a unique ``event_col`` value, edges are transitions between events and edge weights are calculated metrics. By default, it is a percentage of unique users that have passed though a particular edge visualized with the edge thickness. Node sizes are  Graph loop is a transition to the same node, which may happen if users encountered multiple errors or made any action at least twice.

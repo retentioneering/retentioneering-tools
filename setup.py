@@ -46,5 +46,9 @@ setup(
 
     ],
     python_requires=">=3.6",
-    packages=find_packages()
+    packages=find_packages(),
+
+
+    package_data={'retentioneering': ['datasets/data/*']},
+    include_package_data=True
 )

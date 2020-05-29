@@ -157,6 +157,7 @@ class BaseTrajectory(object):
                     col = kwargs.get(col_name)
         return self.retention_config['event_time_col'] if col is None else col
 
+
     def get_shift(self, index_col=None, event_col=None, shift_name='next_event', **kwargs):
         self._init_cols(locals())
 
@@ -553,7 +554,7 @@ class BaseTrajectory(object):
                 desc_new[i] = np.where(desc_new.index.str.startswith('Accumulated'), desc_new[i - 1], 0)
         return desc_old, desc_new
 
-    def split_sessions(self, thresh=1800):
+    def split_sessions(self, thresh=1800, eos_event=None):
         """
         Generates ``session`_id` column with session rank for each ``index_col`` based on time difference between events. Sessions are automatically defined with time diffrence between events.
 
@@ -561,6 +562,9 @@ class BaseTrajectory(object):
         --------
         thresh: int
             Minimal threshold in seconds between two sessions. Default: ``1800`` or 30 min
+
+        eos_event:
+            If not ``None`` specified event name will be added at the and of each session
 
         Returns
         -------
@@ -572,6 +576,10 @@ class BaseTrajectory(object):
         """
         self._init_cols(locals())
 
+        #drop end_of_session events if already present:
+        if eos_event!=None:
+            self._obj = self._obj[self._obj[self.retention_config['event_col']]!=eos_event].copy()
+
         res = self._obj.copy()
 
         time_col = self.retention_config['event_time_col']
@@ -580,33 +588,27 @@ class BaseTrajectory(object):
         time_delta = pd.to_datetime(df['next_timestamp']) - pd.to_datetime(df[time_col])
         time_delta = time_delta.dt.total_seconds()
 
-        res['session'] = time_delta > minimal_thresh
+        #get boolean mapper for end_of_session occurences
+        f = time_delta > thresh
+
+        #add session column:
+        res['session'] = f
         res['session'] = res.groupby(self.retention_config['index_col']).session.cumsum()
         res['session'] = res.groupby(self.retention_config['index_col']).session.shift(1).fillna(0).map(int).map(str)
+
+        #add end_of_session event if specified:
+        if eos_event!=None:
+            tmp = res.loc[f].copy()
+            tmp[self._event_col()] = eos_event
+            tmp[time_col] += pd.Timedelta(seconds=1)
+
+            res = res.append(tmp, ignore_index=True, sort=False)
+            res = res.sort_values(self._event_time_col()).reset_index(drop=True)
 
         res['session_id'] = res[self.retention_config['index_col']].map(str) + '_' + res['session']
         res.drop(columns=['session'], inplace=True)
 
         return res
-
-
-    def weight_by_mechanics(self, main_event_map, **kwargs):
-        """
-        Calculates weights of mechanics over ``index_col``.
-
-        Parameters
-        --------
-        main_event_map:
-            Mapping of main events into mechanics.
-        kwargs:
-            ``sklearn.decomposition.LatentDirichletAllocation()`` and ``BaseDataset.retention.extract_features()`` parameters.
-
-        Returns
-        --------
-        Weights of mechanics for each ``index_col`` and mechanics description.
-        """
-        mechs, mech_desc = preprocessing.weight_by_mechanics(self._obj, main_event_map, **kwargs)
-        return mechs, mech_desc
 
     def plot_graph(self, node_params=None, edge_col=None, index_col=None, node_weights=None, norm_type='full', **kwargs):
         """
@@ -693,25 +695,7 @@ class BaseTrajectory(object):
         node_weights = node_weights or self._obj[self._event_col()].value_counts().to_dict()
         path = plot.graph(self._obj.trajectory.get_edgelist(**kwargs), node_params, node_weights=node_weights, **kwargs)
         return path
-
-    @staticmethod
-    def calculate_node_metrics(metric_type='centrality'):
-        """
-        Calculate metrics on graph
-
-        Parameters
-        -------
-        metric_type: str, optional
-            Type of metrics, e.g. node centrality.
-
-        Returns
-        -------
-        Nothing
-        """
-        raise NotImplementedError('Sorry! This function is not ready now')
-        func = getattr(node_metrics, metric_type)
-        return func
-
+        #return node_weights
 
 class BaseDataset(BaseTrajectory):
 
@@ -2185,19 +2169,7 @@ class BaseDataset(BaseTrajectory):
         plot.sns.mpl.pyplot.show()
         (s_cur.next_event.value_counts() / f_cur.sum()).iloc[:topk].plot.bar()
 
-    def add_eos(self, eos='lost', thresh=8 * 60 * 60, time_col=None, event_col=None, index_col=None):
-        self._init_cols(locals())
-        if 'next_event' not in self._obj.columns:
-            self._get_shift()
-        self._obj['time_diff'] = (self._obj['next_timestamp'] - self._obj[self._event_time_col()]).dt.total_seconds()
-        f = self._obj['time_diff'] > thresh
-        tmp = self._obj[f].copy()
-        self._obj['next_event'] = np.where(f, eos, self._obj['next_event'])
-        tmp[self._event_col()] = eos
-        tmp['next_event'] = None
-        res = self._obj.append(tmp, ignore_index=True, sort=False)
-        res = res.reset_index(drop=True).sort_values(self._event_time_col())
-        return res
+
 
     @staticmethod
     def _find_traj(x, event_list, event_col):

@@ -476,12 +476,12 @@ __TEMPLATE__ = """
             newLinks.push(mylinks[i]);
             idxInLinks[mylinks[i].target.index] = true;
             idxInLinks[mylinks[i].source.index] = true;
-          }} else if (mylinks[i].weight / maxWeigth >= thresholdValue) {{
+          }} else if (mylinks[i].weight * maxWeigth >= thresholdValue) {{
             newLinks.push(mylinks[i]);
             idxInLinks[mylinks[i].target.index] = true;
             idxInLinks[mylinks[i].source.index] = true;
           }}
-        }} else if (mylinks[i].weight / maxWeigth >= thresholdValue) {{
+        }} else if (mylinks[i].weight * maxWeigth >= thresholdValue) {{
           newLinks.push(mylinks[i]);
           idxInLinks[mylinks[i].target.index] = true;
           idxInLinks[mylinks[i].source.index] = true;

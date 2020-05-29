@@ -20,14 +20,21 @@ from retentioneering.visualization import templates
 
 def _calc_layout(data, node_params, width=500, height=500, **kwargs):
     G = nx.DiGraph()
+
     G.add_weighted_edges_from(data.loc[:, ['source', 'target', 'weight']].values)
-    if nx.algorithms.check_planarity(G)[0]:
-        pos_new = nx.layout.planar_layout(G)
-    else:
-        pos_new = nx.layout.spring_layout(G, k=kwargs.get('k', .1),
-                                          iterations=kwargs.get('iterations', 300),
-                                          threshold=kwargs.get('nx_threshold', 1e-4),
-                                          seed=0)
+
+    # if nx.algorithms.check_planarity(G)[0]:
+    #     pos_new = nx.layout.planar_layout(G)
+    # else:
+    #     pos_new = nx.layout.spring_layout(G, k=kwargs.get('k', .1),
+    #                                       iterations=kwargs.get('iterations', 300),
+    #                                       threshold=kwargs.get('nx_threshold', 1e-4),
+    #                                       seed=0)
+    pos_new = nx.layout.spring_layout(G, k=kwargs.get('k', .1),
+                                      iterations=kwargs.get('iterations', 300),
+                                      threshold=kwargs.get('nx_threshold', 1e-4),
+                                      seed=0)
+
     min_x = min([j[0] for i, j in pos_new.items()])
     min_y = min([j[1] for i, j in pos_new.items()])
     max_x = max([j[0] for i, j in pos_new.items()])
@@ -59,12 +66,15 @@ def _prepare_nodes(data, pos, node_params, degrees):
 
 def _prepare_edges(data, nodes):
     edges = []
+    #print(data)
+    #data['weight_norm'] = data.weight
     data['weight_norm'] = data.weight / data.weight.abs().max()
     for idx, row in data.iterrows():
         edges.append({
             "source": nodes.get(row.source),
             "target": nodes.get(row.target),
-            "weight": np.log1p(abs(row.weight_norm + 1e-100)) * 1.5,
+            #"weight": np.log1p(abs(row.weight_norm + 1e-100)) * 1.5,
+            "weight": row.weight_norm,
             "weight_text": row.weight,
             "type": row['type']
         })
@@ -228,7 +238,7 @@ def __altair_save_plot__(func):
 
 
 @__save_plot__
-def graph(data, node_params=None, thresh=0.05, width=800, height=500, interactive=True,
+def graph(data, node_params=None, thresh=0.0, width=800, height=500, interactive=True,
           layout_dump=None, show_percent=True, plot_name=None, node_weights=None, **kwargs):
     """
     Create interactive graph visualization. Each node is a unique ``event_col`` value, edges are transitions between events and edge weights are calculated metrics. By default, it is a percentage of unique users that have passed though a particular edge visualized with the edge thickness. Node sizes are  Graph loop is a transition to the same node, which may happen if users encountered multiple errors or made any action at least twice.
@@ -292,6 +302,7 @@ def graph(data, node_params=None, thresh=0.05, width=800, height=500, interactiv
         node_params = _prepare_node_params(node_params, data)
     res = _make_json_data(data, node_params, layout_dump, thresh=thresh,
                           width=width - width / 3, height=height - height / 3, node_weights=node_weights, **kwargs)
+
     res['node_params'] = node_params
     show = 0
     if show_percent:

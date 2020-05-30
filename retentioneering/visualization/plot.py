@@ -16,6 +16,7 @@ from retentioneering.visualization.cloud_logger import MongoLoader
 import altair as alt
 import os
 from retentioneering.visualization import templates
+import matplotlib.pyplot as plt
 
 
 def _calc_layout(data, node_params, width=500, height=500, **kwargs):
@@ -396,6 +397,13 @@ def step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
     heatmap.set_title(title)
     plot_name = plot_name or 'step_matrix_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = diff.retention.retention_config['experiments_folder'] + '/' + plot_name
+
+    # fix for mpl bug that cuts off top/bottom of seaborn viz
+    b, t = plt.ylim()
+    b += 0.5
+    t -= 0.5
+    plt.ylim(b, t)
+
     return heatmap, plot_name, None, diff.retention.retention_config
 
 

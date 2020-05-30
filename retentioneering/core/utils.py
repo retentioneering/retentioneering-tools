@@ -178,13 +178,13 @@ class BaseTrajectory(object):
 
 
 
-    def get_edgelist(self, edge_col=None, norm_type=None, **kwargs):
+    def get_edgelist(self, cols=None, weight_col=None, norm_type=None, **kwargs):
         """
         Creates weighted table of the transitions between events.
 
         Parameters
         -------
-        edge_col: str, optional, default=None
+        weight_col: str, optional, default=None
             Aggregation column for transitions weighting. To calculate weights as number of transion events leave as ```None``. To calculate number of unique users passed through given transition ``edge_attributes='user_id'``. For any other aggreagtion, life number of sessions, pass the column name.
 
         norm_type: {None, 'full', 'node'} str, optional, default=None
@@ -199,10 +199,11 @@ class BaseTrajectory(object):
         pd.DataFrame
         """
 
-        cols = [
-            self.retention_config['event_col'],
-            'next_event'
-        ]
+        if cols is None:
+            cols = [
+                self.retention_config['event_col'],
+                'next_event'
+            ]
 
         data = self.get_shift(event_col=cols[0], shift_name=cols[1], **kwargs).copy()
 
@@ -211,7 +212,7 @@ class BaseTrajectory(object):
             data.drop('non-detriment', axis=1, inplace=True)
 
         agg = (data
-               .groupby(cols)[edge_col or self.retention_config['event_time_col']]
+               .groupby(cols)[weight_col or self.retention_config['event_time_col']]
                .agg(lambda x: x.nunique())
                .reset_index())
 
@@ -219,24 +220,24 @@ class BaseTrajectory(object):
 
         #apply normalization
         if norm_type=='full':
-            if edge_col==None:
+            if weight_col==None:
                 agg['edge_weight'] /= agg['edge_weight'].sum()
             else:
-                agg['edge_weight'] /= data[edge_col].nunique()
+                agg['edge_weight'] /= data[weight_col].nunique()
 
         if norm_type=='node':
-            if edge_col==None:
+            if weight_col==None:
                 event_counter = self._obj[self._event_col()].value_counts().to_dict()
                 agg['edge_weight'] /= agg[cols[0]].map(event_counter)
             else:
-                user_counter = self._obj.groupby(cols[0])[edge_col].nunique().to_dict()
+                user_counter = self._obj.groupby(cols[0])[weight_col].nunique().to_dict()
                 agg['edge_weight'] /= agg[cols[0]].map(user_counter)
 
         return agg
 
     def get_adjacency(self, cols=None, edge_attributes='event_count', norm=True, **kwargs):
         """
-        Creates edge graph in the matrix format. Basically this method is similar to ``BaseTrajectory.retention.get_edgelist()`` but in different format. Row indeces are ``event_col`` values, from which the transition occured, while the row names are ``event_col`` values, to which the transition occured. The values are weights of the edges defined with ``edge_col``, ``edge_attributes`` and ``norm`` parameters.
+        Creates edge graph in the matrix format. Basically this method is similar to ``BaseTrajectory.retention.get_edgelist()`` but in different format. Row indeces are ``event_col`` values, from which the transition occured, while the row names are ``event_col`` values, to which the transition occured. The values are weights of the edges defined with ``weight_col``, ``edge_attributes`` and ``norm`` parameters.
 
         Parameters
         -------
@@ -244,14 +245,14 @@ class BaseTrajectory(object):
             Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
         event_col: str, optional
             Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
-        edge_col: str, optional
+        weight_col: str, optional
             Aggregation column for edge weighting. For instance, you may set it to the same value as in ``index_col`` and define ``edge_attributes='users_unique'`` to calculate unique users passed through edge. Default: ``None``
         edge_attributes: str, optional
             Edge weighting function and the name of field is defined with this parameter. It is set with two parts and a dash inbetween: ``[this_column_name]_[aggregation_function]``. The first part is the custom name of this field. The second part after `_` should be a valid ``pandas.groupby.agg()`` parameter, e.g. ``count``, ``sum``, ``nunique``, etc. Default: ``event_count``.
         cols: list, optional
             List of source and target columns, e.g. ``event_name`` and ``next_event``. ``next_event`` column is created automatically during ``BaseTrajectory.retention.prepare()`` method execution. Default: ``None`` wich corresponds to ``event_col`` value from ``retention_config`` and 'next_event'.
         norm: bool, optional
-            Normalize values over aggregation used in the second part of ``edge_attributes``. For example, if you set ``edge_col='user_id'`` and ``edge_attributes='users_nunique'``, then if ``norm=True``, edge values will be weighted by the unique number of users and will represent the percentage of unique users passed through a given edge. Default: ``True``.
+            Normalize values over aggregation used in the second part of ``edge_attributes``. For example, if you set ``weight_col='user_id'`` and ``edge_attributes='users_nunique'``, then if ``norm=True``, edge values will be weighted by the unique number of users and will represent the percentage of unique users passed through a given edge. Default: ``True``.
 
         Returns
         -------
@@ -269,10 +270,10 @@ class BaseTrajectory(object):
 
 
 
-    def _add_event_rank(self, index_col=None, **kwargs):
+    def _add_event_rank(self, weight_col=None, index_col=None, **kwargs):
         self._init_cols(locals())
         self._obj['event_rank'] = 1
-        self._obj['event_rank'] = self._obj.groupby(self._index_col())['event_rank'].cumsum()
+        self._obj['event_rank'] = self._obj.groupby(weight_col or self._index_col())['event_rank'].cumsum()
 
     @staticmethod
     def _add_accums(agg, name):
@@ -359,7 +360,7 @@ class BaseTrajectory(object):
         if not self._obj['non-detriment'].any():
             raise ValueError('There is not {} event in this group'.format(targets[0]))
 
-    def get_step_matrix(self, max_steps=30, plot_type=True, sorting=True, cols=None, **kwargs):
+    def get_step_matrix(self, max_steps=30, norm_type='node', weight_col=None, plot_type=True, sorting=True, cols=None, **kwargs):
         """
         Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names, columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at a particular number step x% of users encountered a specific event.
 
@@ -387,7 +388,7 @@ class BaseTrajectory(object):
             Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
         cols: list, optional
             List of source and target columns, e.g. ``event_name`` and ``next_event``. ``next_event`` column is created automatically during ``BaseTrajectory.retention.prepare()`` method execution. Default: ``None`` wich corresponds to ``event_col`` value from ``retention_config`` and 'next_event'.
-        edge_col: str, optional
+        weight_col: str, optional
             Aggregation column for edge weighting. For instance, you may set it to the same value as in ``index_col`` and define ``edge_attributes='users_unique'`` to calculate unique users passed through edge. Default: ``None``
         edge_attributes: str, optional
             Edge weighting function and the name of field is defined with this parameter. It is set with two parts and a dash inbetween: ``[this_column_name]_[aggregation_function]``. The first part is the custom name of this field. The second part after `_` should be a valid ``pandas.groupby.agg()`` parameter, e.g. ``count``, ``sum``, ``nunique``, etc. Default: ``event_count``.
@@ -409,15 +410,19 @@ class BaseTrajectory(object):
 
         target_event_list = self.retention_config['target_event_list']
         # TODO give filter, return to desc tables ???
-        self._add_event_rank(**kwargs)
+        self._add_event_rank(weight_col = weight_col, **kwargs)
         if kwargs.get('reverse'):
             self._add_reverse_rank(**kwargs)
-        agg = self.get_edgelist(cols=cols or ['event_rank', self._event_col()], norm=False, **kwargs)
+        agg = self.get_edgelist(cols=cols or ['event_rank', self._event_col()],  **kwargs)
         if max_steps:
             agg = agg[agg.event_rank <= max_steps]
         agg.columns = ['event_rank', 'event_name', 'freq']
-        tot_cnt = agg[agg['event_rank'] == 1].freq.sum()
-        agg['freq'] = agg['freq'] / tot_cnt
+
+        #normalize step matrix values
+        if norm_type!=None:
+            tot_cnt = agg[agg['event_rank'] == 1].freq.sum()
+            agg['freq'] = agg['freq'] / tot_cnt
+
         piv = agg.pivot(index='event_name', columns='event_rank', values='freq').fillna(0)
         piv.columns.name = None
         piv.index.name = None
@@ -610,7 +615,7 @@ class BaseTrajectory(object):
 
         return res
 
-    def plot_graph(self, node_params=None, edge_col=None, index_col=None, node_weights=None, norm_type='full', **kwargs):
+    def plot_graph(self, node_params=None, weight_col=None, index_col=None, node_weights=None, norm_type='full', **kwargs):
         """
         Create interactive graph visualization. Each node is a unique ``event_col`` value, edges are transitions between events and edge weights are calculated metrics. By default, it is a percentage of unique users that have passed though a particular edge visualized with the edge thickness. Node sizes are  Graph loop is a transition to the same node, which may happen if users encountered multiple errors or made any action at least twice.
         Graph nodes are movable on canvas which helps to visualize user trajectories but is also a cumbersome process to place all the nodes so it forms a story.
@@ -676,7 +681,7 @@ class BaseTrajectory(object):
         self._init_cols(locals())
 
         kwargs.update({
-            'edge_col': edge_col,
+            'weight_col': weight_col,
             'norm_type': norm_type,
         })
 
@@ -1178,7 +1183,7 @@ class BaseDataset(BaseTrajectory):
             Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
         cols: list or str
             List of source and target columns, e.g. ``event_name`` and ``next_event``. ``next_event`` column is created automatically during ``BaseTrajectory.retention.prepare()`` method execution. Default: ``None`` wich corresponds to ``event_col`` value from ``retention_config`` and 'next_event'.
-        edge_col: str, optional
+        weight_col: str, optional
             Aggregation column for edge weighting. For instance, you may set it to the same value as in ``index_col`` and define ``edge_attributes='users_unique'`` to calculate unique users passed through edge. Default: ``None``
         edge_attributes: str, optional
             Edge weighting function and the name of field is defined with this parameter. It is set with two parts and a dash inbetween: ``[this_column_name]_[aggregation_function]``. The first part is the custom name of this field. The second part after `_` should be a valid ``pandas.groupby.agg()`` parameter, e.g. ``count``, ``sum``, ``nunique``, etc. Default: ``event_count``.

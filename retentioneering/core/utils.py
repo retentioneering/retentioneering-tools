@@ -360,7 +360,8 @@ class BaseTrajectory(object):
         if not self._obj['non-detriment'].any():
             raise ValueError('There is not {} event in this group'.format(targets[0]))
 
-    def get_step_matrix(self, max_steps=30, norm_type='node', weight_col=None, plot_type=True, sorting=True, cols=None, **kwargs):
+
+    def get_step_matrix(self, max_steps=30, norm_type='node', weight_col=None, plot_type=True, sorting=True, cols=None,force_column_norm=True, **kwargs):
         """
         Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names, columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at a particular number step x% of users encountered a specific event.
 
@@ -396,6 +397,8 @@ class BaseTrajectory(object):
             If ``True``, adds mean time between events to step matrix. Default: ``False``
         title: str, optional
             Title for step matrix plot. Default: ``''``
+        force_column_norm: bool, optional, Default: ``True``
+            Forces to normalize each column by summ of column
 
         Returns
         -------
@@ -437,6 +440,9 @@ class BaseTrajectory(object):
         if not kwargs.get('for_diff'):
             if kwargs.get('reverse'):
                 piv.columns = ['n'] + ['n - {}'.format(i - 1) for i in piv.columns[1:]]
+        if force_column_norm:
+            for indices in piv.columns.values:
+                piv[indices] = piv[indices] / piv[indices].sum()
         if plot_type:
             plot.step_matrix(
                 piv.round(2),

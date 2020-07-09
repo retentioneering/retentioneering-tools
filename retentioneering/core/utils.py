@@ -213,7 +213,7 @@ class BaseTrajectory(object):
 
         agg = (data
                .groupby(cols)[weight_col or self.retention_config['event_time_col']]
-               .agg(lambda x: x.nunique())
+               .agg(lambda x: x.count())
                .reset_index())
 
         agg.columns = cols + ['edge_weight']

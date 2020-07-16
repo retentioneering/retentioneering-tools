@@ -1427,9 +1427,10 @@ class BaseDataset(BaseTrajectory):
         """
         self._init_cols(locals())
         pos_users = (
-            self._obj[self._obj[self._event_col()] == self.retention_config['positive_target_event']][self._index_col()]
+            self._obj[self._obj[self._event_col()] == self.retention_config['positive_target_event']][self._index_col()].unique()
         )
         return pos_users.tolist()
+
 
     def get_negative_users(self, index_col=None, **kwargs):
         """
@@ -1449,10 +1450,11 @@ class BaseDataset(BaseTrajectory):
         np.array
         """
         self._init_cols(locals())
-        neg_users = (
-            self._obj[self._obj[self._event_col()] == self.retention_config['negative_target_event']][self._index_col()]
+        good_users = (
+            self._obj[self._obj[self._event_col()] == self.retention_config['positive_target_event']][self._index_col()].unique()
         )
-        return neg_users.tolist()
+        return self._obj[~self._obj[self._index_col()].isin(good_users)][self._index_col()].unique().tolist()
+        # return neg_users.tolist()
 
     def filter_event_window(self, event_name, neighbor_range=3, direction="both",
                             event_col=None, index_col=None, use_padding=True):

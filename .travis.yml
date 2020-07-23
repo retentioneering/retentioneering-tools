@@ -1,1 +1,7 @@
 language: python
+
+branches:
+  only:
+  - unit_tests
+
+script: pytest

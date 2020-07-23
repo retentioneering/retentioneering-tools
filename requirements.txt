@@ -8,3 +8,4 @@ vega
 pymongo
 plotly
 umap-learn
+pytest

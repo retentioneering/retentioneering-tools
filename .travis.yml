@@ -1,0 +1,8 @@
+language: python
+
+branches:
+  only:
+  - unit_tests
+  - fix_normalization_funcs
+
+script: pytest

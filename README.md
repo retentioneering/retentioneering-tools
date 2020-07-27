@@ -7,6 +7,7 @@
 [![Reddit](https://img.shields.io/reddit/subreddit-subscribers/retentioneering?style=social)](https://www.reddit.com/r/retentioneering/)
 [![Python version](https://img.shields.io/pypi/pyversions/retentioneering)](https://pypi.org/project/retentioneering/)
 [![License](https://img.shields.io/pypi/l/retentioneering)](https://www.mozilla.org/en-US/MPL/)
+[![Travis Build Status](https://travis-ci.com/retentioneering/retentioneering-tools.svg?branch=unit_tests)](https://travis-ci.com/github/retentioneering/retentioneering-tools)
 
 
 ## What is it?

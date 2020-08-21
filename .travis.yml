@@ -8,6 +8,9 @@ python:
 before_install:
   - python --version
 
+install:
+  - pip install .
+
 branches:
   only:
   - unit_tests

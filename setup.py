@@ -29,6 +29,7 @@ setup(
         'vega',
         'pymongo',
         'plotly',
+        'tqdm',
         'umap-learn'
     ],
     classifiers=[

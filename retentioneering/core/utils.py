@@ -15,7 +15,6 @@ from retentioneering.core import clustering
 from retentioneering.visualization import plot, funnel
 from sklearn.linear_model import LogisticRegression
 from retentioneering.core.model import ModelDescriptor
-from retentioneering.core import node_metrics
 from retentioneering.core import preprocessing
 from sklearn.feature_extraction.text import CountVectorizer
 import matplotlib as plt
@@ -161,7 +160,7 @@ class BaseTrajectory(object):
     def get_shift(self, index_col=None, event_col=None, shift_name='next_event', **kwargs):
         self._init_cols(locals())
 
-        #copy dataframe for local modifications
+        # copy dataframe for local modifications
         data = self._obj.copy()
 
         if 'next_event' not in data.columns:
@@ -177,7 +176,7 @@ class BaseTrajectory(object):
         return data
 
 
-    def get_edgelist(self, cols=None, weight_col=None, norm_type=None, **kwargs):
+    def get_edgelist(self, *, cols=None, weight_col=None, norm_type=None, **kwargs):
         """
         Creates weighted table of the transitions between events.
 
@@ -202,6 +201,8 @@ class BaseTrajectory(object):
         -------
         pd.DataFrame
         """
+        if norm_type not in [None, 'full', 'node']:
+            raise ValueError(f'unknown normalization type: {norm_type}')
 
         if cols is None:
             cols = [
@@ -215,24 +216,30 @@ class BaseTrajectory(object):
             data = data[data['non-detriment'].fillna(False)]
             data.drop('non-detriment', axis=1, inplace=True)
 
-        agg = (data
-               .groupby(cols)[weight_col or self.retention_config['event_time_col']]
-               .agg(lambda x: x.count())
-               .reset_index())
-
-        agg.columns = cols + ['edge_weight']
+        if weight_col is None:
+            agg = (data
+                   .groupby(cols)[self.retention_config['event_time_col']]
+                   .count()
+                   .reset_index())
+            agg.rename(columns={self.retention_config['event_time_col']: 'edge_weight'}, inplace=True)
+        else:
+            agg = (data
+                   .groupby(cols)[weight_col]
+                   .nunique()
+                   .reset_index())
+            agg.rename(columns={weight_col: 'edge_weight'}, inplace=True)
 
         # apply normalization
-        if norm_type=='full':
-            if weight_col==None:
+        if norm_type == 'full':
+            if weight_col is None:
                 agg['edge_weight'] /= agg['edge_weight'].sum()
             else:
                 agg['edge_weight'] /= data[weight_col].nunique()
 
-        if norm_type=='node':
-            if weight_col==None:
-                event_transitions_counter = data.groupby(self._event_col())['next_event'].count()
-                agg['edge_weight'] /= event_transitions_counter.loc[agg[cols[0]]].values
+        if norm_type == 'node':
+            if weight_col is None:
+                event_transitions_counter = data.groupby(self._event_col())['next_event'].count().to_dict()
+                agg['edge_weight'] /= agg[cols[0]].map(event_transitions_counter)
             else:
                 user_counter = self._obj.groupby(cols[0])[weight_col].nunique().to_dict()
                 agg['edge_weight'] /= agg[cols[0]].map(user_counter)

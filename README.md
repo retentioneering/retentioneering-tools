@@ -4,10 +4,10 @@
 
 [![Pipi version](https://img.shields.io/pypi/v/retentioneering)](https://pypi.org/project/retentioneering/)
 [![Telegram](https://img.shields.io/badge/channel-on%20telegram-blue)](https://t.me/retentioneering_meetups)
-[![Reddit](https://img.shields.io/reddit/subreddit-subscribers/retentioneering?style=social)](https://www.reddit.com/r/retentioneering/)
 [![Python version](https://img.shields.io/pypi/pyversions/retentioneering)](https://pypi.org/project/retentioneering/)
 [![License](https://img.shields.io/pypi/l/retentioneering)](https://www.mozilla.org/en-US/MPL/)
 [![Travis Build Status](https://travis-ci.com/retentioneering/retentioneering-tools.svg?branch=unit_tests)](https://travis-ci.com/github/retentioneering/retentioneering-tools)
+[![Reddit](https://img.shields.io/reddit/subreddit-subscribers/retentioneering?style=social)](https://www.reddit.com/r/retentioneering/)
 
 
 ## What is it?
@@ -21,7 +21,7 @@ Product analysts can apply Retentioneering Tools as a Python framework to explor
 
 This repository contains both python library with easy to use utils, but also we provide several demos Python Notebooks and datasets to illustrate how to automate product analytics routines.
 
-## How it works?
+## How does it work?
 
 All you need to get started with Retentioneering is clickstream log of events from your web-site or app: {user_ID, event_ID, timestamp} (or use provided sample [datasets](https://github.com/retentioneering/retentioneering-tools/tree/master/examples/data) in .csv format). You can vectorize individual user trajectories in dataset and plot all your users logs on 2D map using TSNE or UMAP projection:
 

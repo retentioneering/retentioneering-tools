@@ -9,6 +9,7 @@ import json
 import pandas as pd
 import numpy as np
 import networkx as nx
+import matplotlib as plt
 from datetime import timedelta
 from retentioneering.core import feature_extraction
 from retentioneering.core import clustering
@@ -17,7 +18,7 @@ from sklearn.linear_model import LogisticRegression
 from retentioneering.core.model import ModelDescriptor
 from retentioneering.core import preprocessing
 from sklearn.feature_extraction.text import CountVectorizer
-import matplotlib as plt
+
 
 def init_config(**config):
     """
@@ -92,7 +93,6 @@ def init_config(**config):
             super(RetentioneeringDataset, self).__init__(pandas_obj)
             with open(os.path.join(config['experiments_folder'], "config.json")) as f:
                 self.retention_config = json.load(f)
-
 
 class BaseTrajectory(object):
     """
@@ -176,7 +176,7 @@ class BaseTrajectory(object):
         return data
 
 
-    def get_edgelist(self, *, cols=None, weight_col=None, norm_type=None, **kwargs):
+    def get_edgelist(self, *, weight_col=None, norm_type=None, **kwargs):
         """
         Creates weighted table of the transitions between events.
 
@@ -204,11 +204,10 @@ class BaseTrajectory(object):
         if norm_type not in [None, 'full', 'node']:
             raise ValueError(f'unknown normalization type: {norm_type}')
 
-        if cols is None:
-            cols = [
-                self.retention_config['event_col'],
-                'next_event'
-            ]
+        cols = [
+            self.retention_config['event_col'],
+            'next_event'
+        ]
 
         data = self.get_shift(event_col=cols[0], shift_name=cols[1], **kwargs).copy()
 
@@ -216,6 +215,7 @@ class BaseTrajectory(object):
             data = data[data['non-detriment'].fillna(False)]
             data.drop('non-detriment', axis=1, inplace=True)
 
+        # get aggregation:
         if weight_col is None:
             agg = (data
                    .groupby(cols)[self.retention_config['event_time_col']]
@@ -229,7 +229,7 @@ class BaseTrajectory(object):
                    .reset_index())
             agg.rename(columns={weight_col: 'edge_weight'}, inplace=True)
 
-        # apply normalization
+        # apply normalization:
         if norm_type == 'full':
             if weight_col is None:
                 agg['edge_weight'] /= agg['edge_weight'].sum()
@@ -246,24 +246,23 @@ class BaseTrajectory(object):
 
         return agg
 
-    def get_adjacency(self, cols=None, edge_attributes='event_count', norm=True, **kwargs):
+    def get_adjacency(self, *, weight_col=None, norm_type=None, **kwargs):
         """
         Creates edge graph in the matrix format. Basically this method is similar to ``BaseTrajectory.retention.get_edgelist()`` but in different format. Row indeces are ``event_col`` values, from which the transition occured, while the row names are ``event_col`` values, to which the transition occured. The values are weights of the edges defined with ``weight_col``, ``edge_attributes`` and ``norm`` parameters.
 
         Parameters
         -------
-        index_col: str, optional
-            Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
-        event_col: str, optional
-            Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
-        weight_col: str, optional
-            Aggregation column for edge weighting. For instance, you may set it to the same value as in ``index_col`` and define ``edge_attributes='users_unique'`` to calculate unique users passed through edge. Default: ``None``
-        edge_attributes: str, optional
-            Edge weighting function and the name of field is defined with this parameter. It is set with two parts and a dash inbetween: ``[this_column_name]_[aggregation_function]``. The first part is the custom name of this field. The second part after `_` should be a valid ``pandas.groupby.agg()`` parameter, e.g. ``count``, ``sum``, ``nunique``, etc. Default: ``event_count``.
+        weight_col: str, optional, default=None
+            Aggregation column for transitions weighting. To calculate weights as number of transion events leave as
+            ```None``. To calculate number of unique users passed through given transition
+            ``edge_attributes='user_id'``. For any other aggreagtion, life number of sessions, pass the column name.
+
+        norm_type: {None, 'full', 'node'} str, optional, default=None
+            Type of normalization. If ``None`` return raw number of transtions or other selected aggregation column.
+            If ``norm_type='full'`` normalization
+
         cols: list, optional
             List of source and target columns, e.g. ``event_name`` and ``next_event``. ``next_event`` column is created automatically during ``BaseTrajectory.retention.prepare()`` method execution. Default: ``None`` wich corresponds to ``event_col`` value from ``retention_config`` and 'next_event'.
-        norm: bool, optional
-            Normalize values over aggregation used in the second part of ``edge_attributes``. For example, if you set ``weight_col='user_id'`` and ``edge_attributes='users_nunique'``, then if ``norm=True``, edge values will be weighted by the unique number of users and will represent the percentage of unique users passed through a given edge. Default: ``True``.
 
         Returns
         -------
@@ -274,7 +273,9 @@ class BaseTrajectory(object):
         pd.DataFrame
         """
         self._init_cols(locals())
-        agg = self.get_edgelist(cols=cols, edge_attributes=edge_attributes, norm=norm, **kwargs)
+        agg = self.get_edgelist(weight_col = weight_col,
+                                norm_type = norm_type,
+                                **kwargs)
         G = nx.DiGraph()
         G.add_weighted_edges_from(agg.values)
         return nx.to_pandas_adjacency(G)

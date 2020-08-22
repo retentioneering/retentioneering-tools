@@ -19,23 +19,7 @@ init_config(
 )
 data = data.retention.prepare()
 
+
 # Test if sample dataset imported correctly
 def test_import():
     assert len(data) == 35357
-
-
-#test for retention.get_edgelist function:
-def test_get_edgelist():
-    #obtain edgelist sorted vector
-    test = data.retention.get_shift()
-    test['bi_gram'] = test['event'] + '~~~' + test['next_event']
-    res = test['bi_gram'].value_counts().values
-
-    #use RETE to obtain edgelist
-    edgelist = data.retention.get_edgelist(norm_type=None,
-                                           weight_col=None)
-    edgelist.sort_values('edge_weight', ascending=False, inplace=True)
-    edgelist['edge_weight'].values
-
-    #check equality
-    assert all(res == edgelist['edge_weight'].values)

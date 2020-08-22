@@ -177,7 +177,6 @@ class BaseTrajectory(object):
         return data
 
 
-
     def get_edgelist(self, cols=None, weight_col=None, norm_type=None, **kwargs):
         """
         Creates weighted table of the transitions between events.
@@ -185,14 +184,19 @@ class BaseTrajectory(object):
         Parameters
         -------
         weight_col: str, optional, default=None
-            Aggregation column for transitions weighting. To calculate weights as number of transion events leave as ```None``. To calculate number of unique users passed through given transition ``edge_attributes='user_id'``. For any other aggreagtion, life number of sessions, pass the column name.
+            Aggregation column for transitions weighting. To calculate weights as number of transion events leave as
+            ```None``. To calculate number of unique users passed through given transition
+            ``edge_attributes='user_id'``. For any other aggreagtion, life number of sessions, pass the column name.
 
         norm_type: {None, 'full', 'node'} str, optional, default=None
-            Type of normalization. If ``None`` return raw number of transtions or other selected aggregation column. If ``norm_type='full'`` normalization
+            Type of normalization. If ``None`` return raw number of transtions or other selected aggregation column.
+            If ``norm_type='full'`` normalization
 
         Returns
         -------
-        Dataframe with number of rows equal to all transitions with weight non-zero weight (max is squared number of unique ``event_col`` values) and the following column structure: ``source_node``, ``target_node`` and ``edge_weight``.
+        Dataframe with number of rows equal to all transitions with weight non-zero weight (max is squared number of
+         unique ``event_col`` values) and the following column structure: ``source_node``, ``target_node`` and
+         ``edge_weight``.
 
         Return type
         -------
@@ -218,7 +222,7 @@ class BaseTrajectory(object):
 
         agg.columns = cols + ['edge_weight']
 
-        #apply normalization
+        # apply normalization
         if norm_type=='full':
             if weight_col==None:
                 agg['edge_weight'] /= agg['edge_weight'].sum()
@@ -227,8 +231,8 @@ class BaseTrajectory(object):
 
         if norm_type=='node':
             if weight_col==None:
-                event_counter = self._obj[self._event_col()].value_counts().to_dict()
-                agg['edge_weight'] /= agg[cols[0]].map(event_counter)
+                event_transitions_counter = data.groupby(self._event_col())['next_event'].count()
+                agg['edge_weight'] /= event_transitions_counter.loc[agg[cols[0]]].values
             else:
                 user_counter = self._obj.groupby(cols[0])[weight_col].nunique().to_dict()
                 agg['edge_weight'] /= agg[cols[0]].map(user_counter)

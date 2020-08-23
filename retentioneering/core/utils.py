@@ -102,11 +102,13 @@ class BaseTrajectory(object):
         self._obj = pandas_obj
         self._accessor_type = 'trajectory'
         self.retention_config = {
-            'columns_map': {
-                'user_pseudo_id': 'user_pseudo_id',
-                'event_name': 'event_name',
-                'event_timestamp': 'event_timestamp',
-            }}
+                                'columns_map': {
+                                                'user_pseudo_id': 'user_pseudo_id',
+                                                'event_name': 'event_name',
+                                                'event_timestamp': 'event_timestamp',
+                                                }
+                                }
+        self._locals = None
 
     def update_config(self, config):
         """
@@ -157,44 +159,49 @@ class BaseTrajectory(object):
         return self.retention_config['event_time_col'] if col is None else col
 
 
-    def get_shift(self, *, index_col=None, event_col=None, shift_name='next_event', **kwargs):
+    def get_shift(self, *, index_col=None, event_col=None):
         """
 
         Parameters
         ----------
         index_col
         event_col
-        shift_name
-        kwargs
 
         Returns
         -------
 
         """
-        self._init_cols(locals())
+        index_col = index_col or self.retention_config['index_col']
+        event_col = event_col or self.retention_config['event_col']
+        event_time_col = self.retention_config['event_time_col']
 
         # copy dataframe for local modifications
         data = self._obj.copy()
 
-        if 'next_event' not in data.columns:
-            # TODO indexation when init
-            colmap = self.retention_config['columns_map']
-            (data
-             .sort_values([self._index_col(), self._event_time_col()], inplace=True))
-            shift = data.groupby(self._index_col()).shift(-1)
-            if shift_name not in data.columns:
-                data[shift_name] = shift[self._event_col()]
-            data['next_timestamp'] = shift[self._event_time_col()]
+        shift_col = 'next_'+event_col
+
+        if shift_col not in data.columns:
+
+            data.sort_values([index_col, event_time_col], inplace=True)
+
+            shift = data.groupby(index_col).shift(-1)
+            data[shift_col] = shift[event_col]
+
+            # add next timestamp column
+            data['next_'+event_time_col] = shift[event_time_col]
 
         return data
 
 
-    def get_edgelist(self, *, weight_col=None, norm_type=None, **kwargs):
+
+    def get_edgelist(self, *, cols=None, weight_col=None, norm_type=None, edge_attributes=None, **kwargs):
         """
         Creates weighted table of the transitions between events.
 
         Parameters
         -------
+        cols
+        edge_attributes
         weight_col: str, optional, default=None
             Aggregation column for transitions weighting. To calculate weights as number of transion events leave as
             ```None``. To calculate number of unique users passed through given transition
@@ -217,12 +224,12 @@ class BaseTrajectory(object):
         if norm_type not in [None, 'full', 'node']:
             raise ValueError(f'unknown normalization type: {norm_type}')
 
-        cols = [
-            self.retention_config['event_col'],
-            'next_event'
-        ]
+        edge_attributes = edge_attributes or 'edge_weight'
 
-        data = self.get_shift(event_col=cols[0], shift_name=cols[1], **kwargs).copy()
+        cols = cols or [self.retention_config['event_col'],
+                        'next_'+self.retention_config['event_col']]
+
+        data = self.get_shift().copy()
 
         if kwargs.get('reverse'):
             data = data[data['non-detriment'].fillna(False)]
@@ -234,32 +241,32 @@ class BaseTrajectory(object):
                    .groupby(cols)[self.retention_config['event_time_col']]
                    .count()
                    .reset_index())
-            agg.rename(columns={self.retention_config['event_time_col']: 'edge_weight'}, inplace=True)
+            agg.rename(columns={self.retention_config['event_time_col']: edge_attributes}, inplace=True)
         else:
             agg = (data
                    .groupby(cols)[weight_col]
                    .nunique()
                    .reset_index())
-            agg.rename(columns={weight_col: 'edge_weight'}, inplace=True)
+            agg.rename(columns={weight_col: edge_attributes}, inplace=True)
 
         # apply normalization:
         if norm_type == 'full':
             if weight_col is None:
-                agg['edge_weight'] /= agg['edge_weight'].sum()
+                agg[edge_attributes] /= agg[edge_attributes].sum()
             else:
-                agg['edge_weight'] /= data[weight_col].nunique()
+                agg[edge_attributes] /= data[weight_col].nunique()
 
         if norm_type == 'node':
             if weight_col is None:
-                event_transitions_counter = data.groupby(self._event_col())['next_event'].count().to_dict()
-                agg['edge_weight'] /= agg[cols[0]].map(event_transitions_counter)
+                event_transitions_counter = data.groupby(self._event_col())[cols[1]].count().to_dict()
+                agg[edge_attributes] /= agg[cols[0]].map(event_transitions_counter)
             else:
                 user_counter = self._obj.groupby(cols[0])[weight_col].nunique().to_dict()
-                agg['edge_weight'] /= agg[cols[0]].map(user_counter)
+                agg[edge_attributes] /= agg[cols[0]].map(user_counter)
 
         return agg
 
-    def get_adjacency(self, *, weight_col=None, norm_type=None, **kwargs):
+    def get_adjacency(self, *, cols=None, weight_col=None, norm_type=None, **kwargs):
         """
         Creates edge graph in the matrix format. Basically this method is similar to ``BaseTrajectory.retention.get_edgelist()`` but in different format. Row indeces are ``event_col`` values, from which the transition occured, while the row names are ``event_col`` values, to which the transition occured. The values are weights of the edges defined with ``weight_col``, ``edge_attributes`` and ``norm`` parameters.
 
@@ -274,9 +281,6 @@ class BaseTrajectory(object):
             Type of normalization. If ``None`` return raw number of transtions or other selected aggregation column.
             If ``norm_type='full'`` normalization
 
-        cols: list, optional
-            List of source and target columns, e.g. ``event_name`` and ``next_event``. ``next_event`` column is created automatically during ``BaseTrajectory.retention.prepare()`` method execution. Default: ``None`` wich corresponds to ``event_col`` value from ``retention_config`` and 'next_event'.
-
         Returns
         -------
         Dataframe with number of columns and rows equal to unique number of ``event_col`` values.
@@ -285,14 +289,13 @@ class BaseTrajectory(object):
         -------
         pd.DataFrame
         """
-        self._init_cols(locals())
-        agg = self.get_edgelist(weight_col = weight_col,
+        agg = self.get_edgelist(cols=cols,
+                                weight_col = weight_col,
                                 norm_type = norm_type,
                                 **kwargs)
         G = nx.DiGraph()
         G.add_weighted_edges_from(agg.values)
         return nx.to_pandas_adjacency(G)
-
 
 
     def _add_event_rank(self, weight_col=None, index_col=None, **kwargs):
@@ -386,12 +389,14 @@ class BaseTrajectory(object):
             raise ValueError('There is not {} event in this group'.format(targets[0]))
 
 
-    def get_step_matrix(self, max_steps=30, norm_type='node', weight_col=None, plot_type=True, sorting=True, cols=None,force_column_norm=True, **kwargs):
+    def get_step_matrix(self, *, max_steps=30, norm_type='node', weight_col=None, plot_type=True,
+                        sorting=True, cols=None, force_column_norm=True, **kwargs):
         """
         Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names, columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at a particular number step x% of users encountered a specific event.
 
         Parameters
         --------
+        norm_type
         max_steps: int, optional
             Maximum number of steps in trajectory to include. Depending on ``reverse`` parameter value, the steps are counted from the beginning of trajectories if ``reverse=False``, or from the end otherwise.
         plot_type: bool, optional
@@ -441,13 +446,15 @@ class BaseTrajectory(object):
         self._add_event_rank(weight_col = weight_col, **kwargs)
         if kwargs.get('reverse'):
             self._add_reverse_rank(**kwargs)
+
         agg = self.get_edgelist(cols=cols or ['event_rank', self._event_col()],  **kwargs)
+
         if max_steps:
-            agg = agg[agg.event_rank <= max_steps]
+            agg = agg[agg['event_rank'] <= max_steps]
         agg.columns = ['event_rank', 'event_name', 'freq']
 
         #normalize step matrix values
-        if norm_type!=None:
+        if norm_type is not None:
             tot_cnt = agg[agg['event_rank'] == 1].freq.sum()
             agg['freq'] = agg['freq'] / tot_cnt
 
@@ -633,7 +640,7 @@ class BaseTrajectory(object):
         res['session'] = res.groupby(self.retention_config['index_col']).session.shift(1).fillna(0).map(int).map(str)
 
         #add end_of_session event if specified:
-        if eos_event!=None:
+        if eos_event is not None:
             tmp = res.loc[f].copy()
             tmp[self._event_col()] = eos_event
             tmp[time_col] += pd.Timedelta(seconds=1)
@@ -654,6 +661,10 @@ class BaseTrajectory(object):
 
         Parameters
         --------
+        norm_type
+        node_weights
+        index_col
+        weight_col
         user_based: bool, optional
             If ``True``, then edge weights are calculated as unique rate of users who went through them.
             IMPORTANT: if you want to use edge weighting different to unique user number, you should turn this argument ``False``. Default: ``True``
@@ -1618,7 +1629,8 @@ class BaseDataset(BaseTrajectory):
         List
         """
         self._init_cols(locals())
-        data = self.get_shift(self._index_col(), self._event_col()).copy()
+        data = self.get_shift(index_col = self._index_col(),
+                              event_col = self._event_col()).copy()
 
         delays = np.log((data['next_timestamp'] - data[self._event_time_col()]) // pd.Timedelta('1s'))
 
@@ -2186,7 +2198,9 @@ class BaseDataset(BaseTrajectory):
                                    event_col=None, bins=100, limit=180, topk=3):
         self._init_cols(locals())
         if 'next_event' not in self._obj.columns:
-            data = self.get_shift(index_col, event_col).copy()
+            data = self.get_shift(index_col=index_col,
+                                  event_col=event_col).copy()
+
         data['time_diff'] = (data['next_timestamp'] - data[
             time_col or self.retention_config['event_time_col']]).dt.total_seconds()
         f_cur = data[self._event_col()] == event_order[0]

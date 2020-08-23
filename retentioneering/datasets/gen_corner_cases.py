@@ -1,5 +1,3 @@
-import pandas as pd
-
 __all__ = ['keep_one_user',
            'keep_one_event']
 

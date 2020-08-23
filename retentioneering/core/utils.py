@@ -157,7 +157,20 @@ class BaseTrajectory(object):
         return self.retention_config['event_time_col'] if col is None else col
 
 
-    def get_shift(self, index_col=None, event_col=None, shift_name='next_event', **kwargs):
+    def get_shift(self, *, index_col=None, event_col=None, shift_name='next_event', **kwargs):
+        """
+
+        Parameters
+        ----------
+        index_col
+        event_col
+        shift_name
+        kwargs
+
+        Returns
+        -------
+
+        """
         self._init_cols(locals())
 
         # copy dataframe for local modifications

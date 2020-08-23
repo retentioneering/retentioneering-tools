@@ -5,3 +5,4 @@ module_path = dirname(__file__)
 
 def load_simple_shop():
     return pd.read_csv(module_path+'/data/simple-onlineshop.csv')
+

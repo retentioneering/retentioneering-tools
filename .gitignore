@@ -23,7 +23,8 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-_temp.ipynb
+_temp*
+playground_*
 MANIFEST
 
 # PyInstaller

@@ -1,1 +1,1 @@
-from ._base import load_simple_shop
+from .base import load_simple_shop

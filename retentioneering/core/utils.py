@@ -173,25 +173,17 @@ class BaseTrajectory(object):
         """
         index_col = index_col or self.retention_config['index_col']
         event_col = event_col or self.retention_config['event_col']
-        event_time_col = self.retention_config['event_time_col']
+        time_col = self.retention_config['event_time_col']
 
-        # copy dataframe for local modifications
+
         data = self._obj.copy()
+        data.sort_values([index_col, time_col], inplace=True)
+        shift = data.groupby(index_col).shift(-1)
 
-        shift_col = 'next_'+event_col
-
-        if shift_col not in data.columns:
-
-            data.sort_values([index_col, event_time_col], inplace=True)
-
-            shift = data.groupby(index_col).shift(-1)
-            data[shift_col] = shift[event_col]
-
-            # add next timestamp column
-            data['next_'+event_time_col] = shift[event_time_col]
+        data['next_'+event_col] = shift[event_col]
+        data['next_'+time_col] = shift[time_col]
 
         return data
-
 
 
     def get_edgelist(self, *, cols=None, weight_col=None, norm_type=None, edge_attributes=None, **kwargs):
@@ -266,12 +258,13 @@ class BaseTrajectory(object):
 
         return agg
 
-    def get_adjacency(self, *, cols=None, weight_col=None, norm_type=None, **kwargs):
+    def get_adjacency(self, *, cols=None, weight_col=None, norm_type=None):
         """
         Creates edge graph in the matrix format. Basically this method is similar to ``BaseTrajectory.retention.get_edgelist()`` but in different format. Row indeces are ``event_col`` values, from which the transition occured, while the row names are ``event_col`` values, to which the transition occured. The values are weights of the edges defined with ``weight_col``, ``edge_attributes`` and ``norm`` parameters.
 
         Parameters
         -------
+        cols
         weight_col: str, optional, default=None
             Aggregation column for transitions weighting. To calculate weights as number of transion events leave as
             ```None``. To calculate number of unique users passed through given transition
@@ -291,8 +284,7 @@ class BaseTrajectory(object):
         """
         agg = self.get_edgelist(cols=cols,
                                 weight_col = weight_col,
-                                norm_type = norm_type,
-                                **kwargs)
+                                norm_type = norm_type)
         G = nx.DiGraph()
         G.add_weighted_edges_from(agg.values)
         return nx.to_pandas_adjacency(G)
@@ -390,7 +382,7 @@ class BaseTrajectory(object):
 
 
     def get_step_matrix(self, *, max_steps=30, norm_type='node', weight_col=None, plot_type=True,
-                        sorting=True, cols=None, force_column_norm=True, **kwargs):
+                        sorting=True, cols=None, force_column_norm=True, event_col=None, **kwargs):
         """
         Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names, columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at a particular number step x% of users encountered a specific event.
 
@@ -439,7 +431,12 @@ class BaseTrajectory(object):
         pd.DataFrame
         """
 
-        self._init_cols(locals())
+        #self._init_cols(locals())
+
+
+        event_col = event_col or self.retention_config['event_col']
+
+
 
         target_event_list = self.retention_config['target_event_list']
         # TODO give filter, return to desc tables ???
@@ -447,7 +444,7 @@ class BaseTrajectory(object):
         if kwargs.get('reverse'):
             self._add_reverse_rank(**kwargs)
 
-        agg = self.get_edgelist(cols=cols or ['event_rank', self._event_col()],  **kwargs)
+        agg = self.get_edgelist(cols=cols or ['event_rank', event_col],  **kwargs)
 
         if max_steps:
             agg = agg[agg['event_rank'] <= max_steps]
@@ -597,7 +594,7 @@ class BaseTrajectory(object):
                 desc_new[i] = np.where(desc_new.index.str.startswith('Accumulated'), desc_new[i - 1], 0)
         return desc_old, desc_new
 
-    def split_sessions(self, thresh=1800, eos_event=None):
+    def split_sessions(self, *, thresh=1800, eos_event=None):
         """
         Generates ``session`_id` column with session rank for each ``index_col`` based on time difference between events. Sessions are automatically defined with time diffrence between events.
 
@@ -617,38 +614,39 @@ class BaseTrajectory(object):
         -------
         pd.DataFrame
         """
-        self._init_cols(locals())
 
-        #drop end_of_session events if already present:
-        if eos_event!=None:
-            self._obj = self._obj[self._obj[self.retention_config['event_col']]!=eos_event].copy()
+        index_col = self.retention_config['index_col']
+        event_col = self.retention_config['event_col']
+        time_col = self.retention_config['event_time_col']
 
         res = self._obj.copy()
 
-        time_col = self.retention_config['event_time_col']
-        if 'next_timestamp' not in self._obj.columns:
-            df = self.get_shift()
-        time_delta = pd.to_datetime(df['next_timestamp']) - pd.to_datetime(df[time_col])
+        #drop end_of_session events if already present:
+        if eos_event is not None:
+            res = res[res[event_col]!=eos_event].copy()
+
+        df = self.get_shift()
+        time_delta = pd.to_datetime(df['next_'+time_col]) - pd.to_datetime(df[time_col])
         time_delta = time_delta.dt.total_seconds()
 
-        #get boolean mapper for end_of_session occurences
-        f = time_delta > thresh
+        #get boolean mapper for end_of_session occurrences
+        eos_mask = time_delta > thresh
 
         #add session column:
-        res['session'] = f
-        res['session'] = res.groupby(self.retention_config['index_col']).session.cumsum()
-        res['session'] = res.groupby(self.retention_config['index_col']).session.shift(1).fillna(0).map(int).map(str)
+        res['session'] = eos_mask
+        res['session'] = res.groupby(index_col).session.cumsum()
+        res['session'] = res.groupby(index_col).session.shift(1).fillna(0).map(int).map(str)
 
         #add end_of_session event if specified:
         if eos_event is not None:
-            tmp = res.loc[f].copy()
-            tmp[self._event_col()] = eos_event
+            tmp = res.loc[eos_mask].copy()
+            tmp[event_col] = eos_event
             tmp[time_col] += pd.Timedelta(seconds=1)
 
             res = res.append(tmp, ignore_index=True, sort=False)
-            res = res.sort_values(self._event_time_col()).reset_index(drop=True)
+            res = res.sort_values(time_col).reset_index(drop=True)
 
-        res['session_id'] = res[self.retention_config['index_col']].map(str) + '_' + res['session']
+        res['session_id'] = res[index_col].map(str) + '_' + res['session']
         res.drop(columns=['session'], inplace=True)
 
         return res

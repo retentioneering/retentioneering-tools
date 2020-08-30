@@ -12,12 +12,51 @@ from sklearn.feature_extraction.text import CountVectorizer
 
 from .base_trajectory import BaseTrajectory
 
+
 class BaseDataset(BaseTrajectory):
 
     def __init__(self, pandas_obj):
         super(BaseDataset, self).__init__(pandas_obj)
         self._embedding_types = ['tfidf', 'counts', 'frequency']
         self._locals = None
+
+    def _init_cols(self, caller_locals):
+        if caller_locals:
+            self._locals = caller_locals
+        return
+
+    def _event_col(self):
+        col_name = 'event_col'
+        col = None
+        if self._locals:
+            col = self._locals.get(col_name)
+            if col is None:
+                kwargs = self._locals.get('kwargs')
+                if kwargs:
+                    col = kwargs.get(col_name)
+        return self.retention_config[col_name] if col is None else col
+
+    def _index_col(self):
+        col_name = 'index_col'
+        col = None
+        if self._locals:
+            col = self._locals.get(col_name)
+            if col is None:
+                kwargs = self._locals.get('kwargs')
+                if kwargs:
+                    col = kwargs.get(col_name)
+        return self.retention_config[col_name] if col is None else col
+
+    def _event_time_col(self):
+        col_name = 'time_col'
+        col = None
+        if self._locals:
+            col = self._locals.get(col_name)
+            if col is None:
+                kwargs = self._locals.get('kwargs')
+                if kwargs:
+                    col = kwargs.get(col_name)
+        return self.retention_config['event_time_col'] if col is None else col
 
     def prepare_vocab(self, ngram_range=(1, 2), min_threshold=0, min_coeff=0, exclude_cycles=False,
                       exclude_loops=False, exclude_repetitions=False):
@@ -696,7 +735,6 @@ class BaseDataset(BaseTrajectory):
                 continue
             data = self._process_target_config(data, tmp, target)
 
-
         if len(empty_definition) == 2:
             return data
         for target in empty_definition:
@@ -707,8 +745,6 @@ class BaseDataset(BaseTrajectory):
                       if target.startswith('pos_')
                       else self.retention_config['negative_target_event'])
             data = self._process_empty(data, other, target)
-
-
 
         return data
 
@@ -819,17 +855,17 @@ class BaseDataset(BaseTrajectory):
         x['event_rank'] = 1
         x.event_rank = x.groupby(self._index_col()).event_rank.cumsum()
         res = x.groupby(self._index_col()).apply(self._pad_number,
-                                                   event_name=event_name,
-                                                   neighbor_range=neighbor_range,
-                                                   event_col=self._event_col())
+                                                 event_name=event_name,
+                                                 neighbor_range=neighbor_range,
+                                                 event_col=self._event_col())
         res = res.map(lambda y: ' '.join(y * ['sleep']))
         res = res.str.split(expand=True).reset_index().melt(self._index_col())
         res = res.drop('variable', 1)
         res = res[res.value.notnull()]
         tm = (x
               .groupby(self._index_col()).apply(self._pad_time,
-                                              event_name=event_name,
-                                              event_col=self._event_col()))
+                                                event_name=event_name,
+                                                event_col=self._event_col()))
         res = res.join(tm.rename('time'), on=self._index_col())
         res.columns = [
             self._index_col(),
@@ -861,15 +897,16 @@ class BaseDataset(BaseTrajectory):
         -------
         Boolean pd.Series
         """
-        self._init_cols(locals())
+        index_col = index_col or self.retention_config['index_col']
+
         if cluster_list is None:
-            pos_users = self.get_positive_users(self._index_col())
-            return self._obj[self._index_col()].isin(pos_users)
+            pos_users = self.get_positive_users(index_col)
+            return self._obj[index_col].isin(pos_users)
         else:
             ids = []
             for i in cluster_list:
                 ids.extend((cluster_mapping or self.cluster_mapping)[i])
-            return self._obj[self._index_col()].isin(ids)
+            return self._obj[index_col].isin(ids)
 
     def calculate_delays(self, plotting=True, time_col=None, index_col=None, event_col=None, bins=15, **kwargs):
         """
@@ -1692,3 +1729,31 @@ class BaseDataset(BaseTrajectory):
                             columns=['Sequence', 'Good', 'Lost', 'Lost2Good', 'GoodUnique',
                                      'LostUnique', 'UniqueLost2Good'])\
             .sort_values('Lost', ascending=False).reset_index(drop=True)
+
+    @staticmethod
+    def _create_diff_index(desc_old, desc_new):
+        old_id = set(desc_old.index)
+        new_id = set(desc_new.index)
+
+        if old_id != new_id:
+            for idx in new_id - old_id:
+                row = pd.Series([0] * desc_old.shape[1], name=idx)
+                row.index += 1
+                desc_old = desc_old.append(row, sort=True)
+            for idx in old_id - new_id:
+                row = pd.Series([0] * desc_new.shape[1], name=idx)
+                row.index += 1
+                desc_new = desc_new.append(row, sort=True)
+        return desc_old, desc_new
+
+    @staticmethod
+    def _diff_step_allign(desc_old, desc_new):
+        max_old = desc_old.shape[1]
+        max_new = desc_new.shape[1]
+        if max_old < max_new:
+            for i in range(max_old, max_new + 1):
+                desc_old[i] = np.where(desc_old.index.str.startswith('Accumulated'), desc_old[i - 1], 0)
+        elif max_old > max_new:
+            for i in range(max_new, max_old + 1):
+                desc_new[i] = np.where(desc_new.index.str.startswith('Accumulated'), desc_new[i - 1], 0)
+        return desc_old, desc_new

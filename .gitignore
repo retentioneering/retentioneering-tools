@@ -20,6 +20,7 @@ parts/
 sdist/
 var/
 wheels/
+drafts/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -108,3 +109,4 @@ venv.bak/
 *early_steps_mock.ipynb
 *netprint_case.ipynb
 .DS_Store
+*.DS_Store

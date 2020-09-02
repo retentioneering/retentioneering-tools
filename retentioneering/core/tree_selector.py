@@ -177,12 +177,12 @@ def use_tree_filter(data, path, **kwargs):
     with open(path) as f:
         tree_filter = json.load(f)
 
-    f = data[data.retention.retention_config['event_col']].isin(tree_filter['filter_names'])
+    f = data[data.rete.retention_config['event_col']].isin(tree_filter['filter_names'])
     data = data[f].reset_index(drop=True)
-    data['dump_event_col'] = data[data.retention.retention_config['event_col']]
+    data['dump_event_col'] = data[data.rete.retention_config['event_col']]
     for agg in tree_filter['agg_list']:
-        f = data[data.retention.retention_config['event_col']].str.startswith(agg)
-        data[data.retention.retention_config['event_col']] = np.where(f, agg,
-                                                                      data[data.retention.retention_config['event_col']]
+        f = data[data.rete.retention_config['event_col']].str.startswith(agg)
+        data[data.rete.retention_config['event_col']] = np.where(f, agg,
+                                                                      data[data.rete.retention_config['event_col']]
                                                                       )
     return data

@@ -31,7 +31,7 @@ class ModelDescriptor(object):
 
     def permutation_importance_raw(self, test, **kwargs):
         test_sample = self.prepare_test(test)
-        test_target = test.retention.get_positive_users()
+        test_target = test.rete.get_positive_users()
         test_target = test_sample.index.isin(test_target)
         return self.permutation_importance(test_sample, test_target, node_params=None, **kwargs)
 
@@ -84,7 +84,7 @@ class ModelDescriptor(object):
 
     def show_quality_raw(self, test):
         test_sample = self.prepare_test(test)
-        test_target = test.retention.get_positive_users()
+        test_target = test.rete.get_positive_users()
         test_target = test_sample.index.isin(test_target)
         return self.show_quality_metrics(test_sample, test_target, use_print=False)
 
@@ -214,7 +214,7 @@ class ModelDescriptor(object):
         -------
         pd.DataFrame
         """
-        test = test.retention.extract_features(**self.feature_extraction_kwargs)
+        test = test.rete.extract_features(**self.feature_extraction_kwargs)
         test = test.loc[:, self.data.columns.tolist()]
         return test.fillna(0)
 

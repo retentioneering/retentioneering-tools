@@ -125,7 +125,7 @@ def _prepare_node_params(node_params, data):
         }
         node_params = {}
         for key, val in _node_params.items():
-            name = data.retention.retention_config.get(key)
+            name = data.rete.retention_config.get(key)
             if name is None:
                 continue
             node_params.update({name: val})
@@ -172,9 +172,11 @@ def __save_plot__(func):
         coords = vis_object.axis()
 
         if '_3d_' not in name:
-            vis_object.text((coords[0] - (coords[1] - coords[0]) / 10),
-                            (coords[3] + (coords[3] - coords[2]) / 10), idx, fontsize=8)
-            vis_object.text(0.25, 0.05, 'Retentioneering', fontsize=50, color='gray', va='bottom', alpha=0.1)
+            pass
+            # watermarks:
+            # vis_object.text((coords[0] - (coords[1] - coords[0]) / 10),
+            #                 (coords[3] + (coords[3] - coords[2]) / 10), idx, fontsize=8)
+            # vis_object.text(0.25, 0.05, 'Retentioneering', fontsize=50, color='gray', va='bottom', alpha=0.1)
         vis_object.get_figure().savefig(name, bbox_inches="tight", dpi=cfg.get('save_dpi') or 200)
         if cfg.get('mongo_client') is not None:
             print(f'DB {idx}')
@@ -199,7 +201,7 @@ def __altair_save_plot__(func):
                                                                                                              '_').replace(
             ' ', '_') + '.html'
         if hasattr(pd.DataFrame, 'retention'):
-            plot_name = pd.DataFrame().retention.retention_config['experiments_folder'] + '/' + plot_name
+            plot_name = pd.DataFrame().rete.retention_config['experiments_folder'] + '/' + plot_name
         else:
             path = 'experiments'
             if not os.path.exists(path):
@@ -331,7 +333,7 @@ def graph(data, node_params=None, thresh=0.0, width=800, height=500, interactive
         ___DynamicFigureWrapper__(x, interactive, width, height, res),
         plot_name,
         plot_name,
-        data.retention.retention_config
+        data.rete.retention_config
     )
 
 
@@ -362,57 +364,80 @@ def altair_step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, fon
         width=3 * font_size * len(diff.columns),
         height=2 * font_size * diff.shape[0]
     )
-    return heatmap_object, plot_name, None, diff.retention.retention_config
-
+    return heatmap_object, plot_name, None, diff.rete.retention_config
 
 @__save_plot__
-def step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
-    """
-    Plots heatmap with distribution of users over events and trajectories steps ordered by timestamp. Rows are event names, columns are trajectory steps (in session or user story) and values are shares of users experiencing specific event on a specific step of trajectory. If used with `diff` filter, then shows users share difference between datasets.
+def step_matrix(data, targets=None, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
 
-    Parameters
-    --------
-    diff: pd.DataFrame
-        Table for heatmap visualization.
-    plot_name: str, optional
-        Name of the plot to save. Default: ``None``
-    title: str, optional
-        Title for step matrix plot.
-    kwargs: optional
-        ``sns.heatmap`` parameters.
 
-    Returns
-    --------
-    Dataframe with ``max_steps`` number of columns and ``len(event_col.unique)`` number of rows at max, or less if used ``thr`` > 0.
-    Saves heatmap to ``retention_config.experiments_folder``
+    if targets is None:
 
-    Return type
-    --------
-    pd.DataFrame
-    PNG
-    """
+        sns.mpl.pyplot.figure(figsize=(round(data.shape[1] * 0.6),
+                                       round(data.shape[0] * 0.8)
+                                       ))
+        heatmap = sns.heatmap(data, annot=True, cmap="BrBG", fmt='.2f',
+                              center=0, vmin=vmin, vmax=vmax, cbar=False)
+        heatmap.set_title(title)
 
-    sns.mpl.pyplot.figure(figsize=(20, 10))
-    heatmap = sns.heatmap(diff, annot=True, cmap="BrBG", center=0, vmin=vmin, vmax=vmax)
-    heatmap.set_title(title)
+        # fix for mpl bug that cuts off top/bottom of seaborn viz
+        # b, t = plt.ylim()
+        # b += 0.5
+        # t -= 0.5
+        # plt.ylim(b, t)
+
+    else:
+        n_rows = 1 + targets.shape[0]
+        n_cols = 1
+
+        f, axs = sns.mpl.pyplot.subplots(n_rows, n_cols, sharex=True,
+                                         figsize=(round(data.shape[1] * 0.6), round(data.shape[0] * 0.8)),
+                                         gridspec_kw={'wspace': 0.08, 'hspace': 0.02,
+                                                      'height_ratios': [data.shape[0], *[1] * targets.shape[0]]
+                                                      })
+
+        heatmap = sns.heatmap(data,
+                              yticklabels=data.index,
+                              #            xticklabels=[''],
+                              annot=True,
+                              fmt='.2f',
+                              ax=axs[0],
+                              cmap="BrBG",
+                              center=0,
+                              cbar=False)
+
+        for n, i in enumerate(targets.index):
+            sns.heatmap(targets.loc[[i]],
+                        yticklabels=targets.loc[[i]].index,
+                        #            xticklabels=[s],
+                        annot=True,
+                        fmt='.2f',
+                        ax=axs[1 + n],
+                        cmap="PuOr",
+                        center=0,
+                        cbar=False)
+
+        for ax in axs:
+            sns.mpl.pyplot.sca(ax)
+            sns.mpl.pyplot.yticks(rotation=0)
+
+        for _, spine in heatmap.spines.items():
+            spine.set_visible(True)
+
+        f.suptitle(title)
+
     plot_name = plot_name or 'step_matrix_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
-    plot_name = diff.retention.retention_config['experiments_folder'] + '/' + plot_name
+    plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
 
-    # fix for mpl bug that cuts off top/bottom of seaborn viz
-    b, t = plt.ylim()
-    b += 0.5
-    t -= 0.5
-    plt.ylim(b, t)
 
-    return heatmap, plot_name, None, diff.retention.retention_config
+    return heatmap, plot_name, None, data.rete.retention_config
 
 
 @__altair_save_plot__
 def altair_cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
     if hasattr(data.retention, '_tsne'):
-        tsne = data.retention._tsne.copy()
+        tsne = data.rete._tsne.copy()
     else:
-        tsne = data.retention.learn_tsne(clusters, **kwargs)
+        tsne = data.rete.learn_tsne(clusters, **kwargs)
     tsne['color'] = clusters
     tsne.columns = ['x', 'y', 'color']
 
@@ -427,7 +452,7 @@ def altair_cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
         width=800,
         height=600
     )
-    return scatter, plot_name, tsne, data.retention.retention_config
+    return scatter, plot_name, tsne, data.rete.retention_config
 
 
 @__save_plot__
@@ -456,9 +481,9 @@ def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
     """
 
     if hasattr(data.retention, '_tsne') and not kwargs.get('refit'):
-        tsne2 = data.retention._tsne.copy()
+        tsne2 = data.rete._tsne.copy()
     else:
-        tsne2 = data.retention.learn_tsne(clusters, **kwargs)
+        tsne2 = data.rete.learn_tsne(clusters, **kwargs)
     tsne = tsne2.values
     if np.unique(clusters).shape[0] > 10:
         f, ax = sns.mpl.pyplot.subplots()
@@ -469,8 +494,8 @@ def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
         scatter = sns.scatterplot(tsne[:, 0], tsne[:, 1], hue=clusters, legend='full',
                                   palette=sns.color_palette("bright")[0:np.unique(clusters).shape[0]])
     plot_name = plot_name or 'cluster_tsne_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
-    plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return scatter, plot_name, tsne2, data.retention.retention_config
+    plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
+    return scatter, plot_name, tsne2, data.rete.retention_config
 
 
 @__altair_save_plot__
@@ -497,7 +522,7 @@ def altair_cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, me
         height=200
     )
 
-    return bar, plot_name, None, data.retention.retention_config
+    return bar, plot_name, None, data.rete.retention_config
 
 
 @__save_plot__
@@ -543,8 +568,8 @@ def cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
     bar.set(ylabel=None)
 
     plot_name = plot_name or 'cluster_bar_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
-    plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return bar, plot_name, None, data.retention.retention_config
+    plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
+    return bar, plot_name, None, data.rete.retention_config
 
 
 @__save_plot__
@@ -560,8 +585,8 @@ def cluster_event_dist(bars, event_col, cl1, sizes, crs, cl2=None, plot_name=Non
     bar.set_title(tit)
 
     plot_name = plot_name or 'cluster_event_dist_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
-    plot_name = bars.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return bar, plot_name, None, bars.retention.retention_config
+    plot_name = bars.rete.retention_config['experiments_folder'] + '/' + plot_name
+    return bar, plot_name, None, bars.rete.retention_config
 
 
 @__save_plot__
@@ -591,8 +616,8 @@ def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
     PNG
     """
     cl = pd.DataFrame([clusters, target], index=['clusters', 'target']).T
-    cl.target = np.where(cl.target, data.retention.retention_config['positive_target_event'],
-                         data.retention.retention_config['negative_target_event'])
+    cl.target = np.where(cl.target, data.rete.retention_config['positive_target_event'],
+                         data.rete.retention_config['negative_target_event'])
     pie_data = cl.groupby(['clusters', 'target']).size().rename('target_dist').reset_index()
     targets = list(set(pie_data.target))
 
@@ -628,8 +653,8 @@ def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
         fig.delaxes(ax[plot_cnt // 2, 1])
 
     plot_name = plot_name or 'cluster_pie_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
-    plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return ___FigureWrapper__(fig), plot_name, None, data.retention.retention_config
+    plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
+    return ___FigureWrapper__(fig), plot_name, None, data.rete.retention_config
 
 
 @__save_plot__
@@ -667,8 +692,8 @@ def cluster_heatmap(data, clusters, target, plot_name=None, **kwargs):
     heatmap = heatmap.ax_heatmap
 
     plot_name = plot_name or 'cluster_heatmap_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
-    plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return heatmap, plot_name, None, data.retention.retention_config
+    plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
+    return heatmap, plot_name, None, data.rete.retention_config
 
 
 @__save_plot__
@@ -679,8 +704,8 @@ def core_event_dist(rates, thresh, plot_name=None, **kwargs):
 
     plot_name = plot_name or 'core_event_dist_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     rates = rates.reset_index()
-    plot_name = rates.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return hist, plot_name, None, rates.retention.retention_config
+    plot_name = rates.rete.retention_config['experiments_folder'] + '/' + plot_name
+    return hist, plot_name, None, rates.rete.retention_config
 
 
 @__save_plot__
@@ -691,15 +716,15 @@ def permutation_importance(x, plot_name=None, **kwargs):
     sns.mpl.pyplot.bar(x.feature.map(lambda x: " ".join(x)), x.importances_mean, yerr=x.importances_std)
     plot_name = plot_name or 'permutation_importance_{}'.format(datetime.now()).replace(':', '_').replace('.',
                                                                                                           '_') + '.svg'
-    return ___FigureWrapper__(fig), plot_name, None, x.retention.retention_config
+    return ___FigureWrapper__(fig), plot_name, None, x.rete.retention_config
 
 
 @__save_plot__
 def tsne_3d(data, clusters, target, plot_name=None, use_coloring=False, **kwargs):
     if hasattr(data.retention, '_tsne'):
-        tsne2 = data.retention._tsne.copy()
+        tsne2 = data.rete._tsne.copy()
     else:
-        tsne2 = data.retention.learn_tsne(clusters, **kwargs)
+        tsne2 = data.rete.learn_tsne(clusters, **kwargs)
     tsne = tsne2.values
     fig = sns.mpl.pyplot.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection='3d')
@@ -719,8 +744,8 @@ def tsne_3d(data, clusters, target, plot_name=None, use_coloring=False, **kwargs
 
     scatter = ___FigureWrapper__(fig)
     plot_name = plot_name or 'tsne_3d_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
-    plot_name = data.retention.retention_config['experiments_folder'] + '/' + plot_name
-    return scatter, plot_name, None, data.retention.retention_config
+    plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
+    return scatter, plot_name, None, data.rete.retention_config
 
 
 class ___FigureWrapper__(object):

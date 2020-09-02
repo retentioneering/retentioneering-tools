@@ -83,7 +83,7 @@ class Simulator:
         :param num_pops: list with the number of agents for each cluster or 100 for everyone
         :param means: a list of lists of dt_means for tables, if None then 0.8 for every step
         """
-        config = pd.DataFrame().retention.retention_config
+        config = pd.DataFrame().rete.retention_config
         self.prepare_restriction_graph(restriction_graph)
         self._population = self.create_population(path, config, tables, num_pops)
         self.clickstream = pd.DataFrame(
@@ -101,7 +101,7 @@ class Simulator:
         :param mat: step matrix with dt_means
         :return: prepared matrix
         """
-        config = mat.retention.retention_config
+        config = mat.rete.retention_config
         mat = mat.drop(index=['Accumulated {}'.format(config.get('negative_target_event')),
                               'Accumulated {}'.format(config.get('positive_target_event'))])
         mat.columns = mat.columns.astype(str)

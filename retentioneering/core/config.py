@@ -10,6 +10,24 @@ import pandas as pd
 from .base_classes.base_trajectory import BaseTrajectory
 from .base_classes.base_dataset import BaseDataset
 
+config = {'experiments_folder': 'experiments'}
+
+
+@pd.api.extensions.register_dataframe_accessor("trajectory")
+class RetentioneeringTrajectory(BaseTrajectory):
+
+    def __init__(self, pandas_obj):
+        super(RetentioneeringTrajectory, self).__init__(pandas_obj)
+        self.retention_config = config
+
+
+@pd.api.extensions.register_dataframe_accessor("rete")
+class RetentioneeringDataset(BaseDataset):
+
+    def __init__(self, pandas_obj):
+        super(RetentioneeringDataset, self).__init__(pandas_obj)
+        self.retention_config = config
+
 
 def init_config(**config):
     """
@@ -77,7 +95,7 @@ def init_config(**config):
             with open(os.path.join(config['experiments_folder'], "config.json")) as f:
                 self.retention_config = json.load(f)
 
-    @pd.api.extensions.register_dataframe_accessor("retention")
+    @pd.api.extensions.register_dataframe_accessor("rete")
     class RetentioneeringDataset(BaseDataset):
 
         def __init__(self, pandas_obj):

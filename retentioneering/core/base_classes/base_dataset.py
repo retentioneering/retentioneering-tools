@@ -168,7 +168,7 @@ class BaseDataset(BaseTrajectory):
         train: pd.DataFrame, optional
             Train subsample of clickstream
         kwargs:
-            ``BaseDataset.retention.extract_features()`` parameters.
+            ``BaseDataset.rete.extract_features()`` parameters.
 
         Returns
         -------
@@ -180,7 +180,7 @@ class BaseDataset(BaseTrajectory):
         """
         if train is None:
             train = self.extract_features(**kwargs)
-        test = test.retention.extract_features(**kwargs)
+        test = test.rete.extract_features(**kwargs)
         test = test.loc[:, train.columns.tolist()]
         return test.fillna(0)
 
@@ -268,7 +268,7 @@ class BaseDataset(BaseTrajectory):
         target = features.index.isin(target)
         self._metrics['homogen'] = clustering.homogeneity_score(target, self.clusters)
         if hasattr(self, '_tsne'):
-            features.retention._tsne = self._tsne
+            features.rete._tsne = self._tsne
         if plot_type:
             func = getattr(plot, plot_type)
             res = func(
@@ -531,7 +531,7 @@ class BaseDataset(BaseTrajectory):
         event_col: str, optional
             Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
         cols: list or str
-            List of source and target columns, e.g. ``event_name`` and ``next_event``. ``next_event`` column is created automatically during ``BaseTrajectory.retention.prepare()`` method execution. Default: ``None`` wich corresponds to ``event_col`` value from ``retention_config`` and 'next_event'.
+            List of source and target columns, e.g. ``event_name`` and ``next_event``. ``next_event`` column is created automatically during ``BaseTrajectory.rete.prepare()`` method execution. Default: ``None`` wich corresponds to ``event_col`` value from ``retention_config`` and 'next_event'.
         weight_col: str, optional
             Aggregation column for edge weighting. For instance, you may set it to the same value as in ``index_col`` and define ``edge_attributes='users_unique'`` to calculate unique users passed through edge. Default: ``None``
         edge_attributes: str, optional
@@ -887,7 +887,7 @@ class BaseDataset(BaseTrajectory):
         cluster_list: list, optional
             List of clusters from which others will be substract. Default: ``None``
         cluster_mapping: str, optional
-            Mapping from clusters to list of users. IMPORTANT: if you use cluster subsample of source data, then it will be necessary to set ``cluster_mapping=source_data.retention.cluster_mapping``.
+            Mapping from clusters to list of users. IMPORTANT: if you use cluster subsample of source data, then it will be necessary to set ``cluster_mapping=source_data.rete.cluster_mapping``.
 
         Returns
         -------
@@ -957,7 +957,7 @@ class BaseDataset(BaseTrajectory):
         events: dict
             Event name and log nanosecond ranges in the following structure: ``'event_name' : ['from_logtime', 'to_logtime']``. Keys of the dictionary are custom event names, while values are lists of two floats indicating start and end of time difference in lorarithm nanoseconds.
         delays: list
-            Timestamp differences of each event with the next one. If ``None``, then uses ``BaseDataset.retention.calculate_delays()``. Default: ``None``
+            Timestamp differences of each event with the next one. If ``None``, then uses ``BaseDataset.rete.calculate_delays()``. Default: ``None``
         time_col: str, optional
             Name of custom time column for more information refer to ``init_config``. For instance, if in config you have defined ``event_time_col`` as ``server_timestamp``, but want to use function over ``user_timestamp``. By default the column defined in ``init_config`` will be used as ``time_col``.
         index_col: str, optional
@@ -1045,11 +1045,11 @@ class BaseDataset(BaseTrajectory):
         refit: bool, optional
             If ``True``, then TSNE will be refitted, e.g. it is needed if you perform hyperparameters selection.
         regression_targets: dict, optional
-            Mapping of ``index_col`` to regression target for custom coloring. For example, if you want to visually evaluate average LTV of user with trajectories clusterization. For more information refer to ``BaseDataset.retention.make_regression_targets()``.
+            Mapping of ``index_col`` to regression target for custom coloring. For example, if you want to visually evaluate average LTV of user with trajectories clusterization. For more information refer to ``BaseDataset.rete.make_regression_targets()``.
         cmethod: str, optional
-            Method of clustering if plot_type = 'clusters'. Refer to ``BaseDataset.retention.get_clusters()`` for more information.
+            Method of clustering if plot_type = 'clusters'. Refer to ``BaseDataset.rete.get_clusters()`` for more information.
         kwargs: optional
-            Parameters for ``BaseDataset.retention.extract_features()``, ``sklearn.manifold.TSNE`` and ``BaseDataset.retention.get_clusters()``
+            Parameters for ``BaseDataset.rete.extract_features()``, ``sklearn.manifold.TSNE`` and ``BaseDataset.rete.get_clusters()``
 
         Returns
         --------
@@ -1123,11 +1123,11 @@ class BaseDataset(BaseTrajectory):
         refit: bool, optional
             If ``True``, then TSNE will be refitted, e.g. it is needed if you perform hyperparameters selection.
         regression_targets: dict, optional
-            Mapping of ``index_col`` to regression target for custom coloring. For example, if you want to visually evaluate average LTV of user with trajectories clusterization. For more information refer to ``BaseDataset.retention.make_regression_targets()``.
+            Mapping of ``index_col`` to regression target for custom coloring. For example, if you want to visually evaluate average LTV of user with trajectories clusterization. For more information refer to ``BaseDataset.rete.make_regression_targets()``.
         cmethod: str, optional
-            Method of clustering if plot_type = 'clusters'. Refer to ``BaseDataset.retention.get_clusters()`` for more information.
+            Method of clustering if plot_type = 'clusters'. Refer to ``BaseDataset.rete.get_clusters()`` for more information.
         kwargs: optional
-            Parameters for ``BaseDataset.retention.extract_features()``, ``sklearn.manifold.TSNE`` and ``BaseDataset.retention.get_clusters()``
+            Parameters for ``BaseDataset.rete.extract_features()``, ``sklearn.manifold.TSNE`` and ``BaseDataset.rete.get_clusters()``
 
         Returns
         --------
@@ -1221,14 +1221,14 @@ class BaseDataset(BaseTrajectory):
 
         filtered = self._obj[self._obj[self._index_col()].isin(f)]
         if plotting:
-            filtered.retention.plot_graph(**kwargs)
+            filtered.rete.plot_graph(**kwargs)
         return filtered.reset_index(drop=True)
 
     def show_tree_selector(self, **kwargs):
         """
         Shows tree selector for event filtering, based on values in ``event_col`` column. It uses `_` for event splitting and aggregation, so ideally the event name structure in the dataset should include underscores, e.g. ``[section]_[page]_[action]``. In this case event names are separated into levels, so that all the events with the same ``[section]`` will be placed under the same section, etc.
         There two kind of checkboxes in IFrame: large blue and small white. The former are used to include or exclude event from original dataset. The latter are used for event aggregation: toggle on a checkbox to aggregate all the underlying events to this level.
-        Tree filter has a download button in the end of event list, which downloads a JSON config file, which you then need to use to filter and aggregate events with ``BaseDataset.retention.use_tree_filter()`` method.
+        Tree filter has a download button in the end of event list, which downloads a JSON config file, which you then need to use to filter and aggregate events with ``BaseDataset.rete.use_tree_filter()`` method.
 
         Parameters
         --------
@@ -1427,7 +1427,7 @@ class BaseDataset(BaseTrajectory):
         random_state: int, optional
             Random state for sampling. Default: ``0``
         kwargs: optional
-            Arguments of ``BaseDataset.retention.get_step_matrix()``
+            Arguments of ``BaseDataset.rete.get_step_matrix()``
 
         Returns
         --------
@@ -1447,7 +1447,7 @@ class BaseDataset(BaseTrajectory):
         plot_type = kwargs.pop('plot_type', None)
         for i in range(n_samples):
             tmp = self._obj.sample(n=sample_size, frac=sample_rate, replace=True, random_state=random_state + i)
-            tmp = (tmp.retention.get_step_matrix(plot_type=False, **kwargs) + base).fillna(0)
+            tmp = (tmp.rete.get_step_matrix(plot_type=False, **kwargs) + base).fillna(0)
             tmp = tmp.loc[base.index.tolist()]
             res.append(tmp.values[:, :, np.newaxis])
         kwargs.update({'thr': thr})

@@ -5,6 +5,7 @@ from .prepare_test_datasets import test_datasets
 REL_TOL = 0.0001
 ABS_TOL = 0.0001
 
+
 # util function to cycle through parameters for each test
 def pytest_generate_tests(metafunc):
     # called once per each test function
@@ -13,6 +14,13 @@ def pytest_generate_tests(metafunc):
     metafunc.parametrize(
         argnames, [[funcargs[name] for name in argnames] for funcargs in funcarglist]
     )
+
+
+event_col = test_datasets[0]['test_dataset'].rete.retention_config['event_col']
+next_event_col = 'next_' + event_col
+time_col = test_datasets[0]['test_dataset'].rete.retention_config['event_time_col']
+index_col = test_datasets[0]['test_dataset'].rete.retention_config['index_col']
+
 
 # **********************
 # **** define tests ****
@@ -23,32 +31,37 @@ class TestNormalizationFuncs:
     params = {}.fromkeys(["test_no_norm_by_events",
                           "test_full_norm_by_events",
                           "test_node_norm_by_events",
+                          "test_node_norm_adj_matrix",
                           "test_no_norm_by_users",
                           "test_full_norm_by_users",
                           "test_node_norm_by_users"], test_datasets)
 
-    def test_no_norm_by_events(self, test_dataset, dataset_config):
-        assert no_norm_by_events(test_dataset, dataset_config)
+    def test_no_norm_by_events(self, test_dataset):
+        assert no_norm_by_events(test_dataset)
 
-    def test_full_norm_by_events(self, test_dataset, dataset_config):
-        assert full_norm_by_events(test_dataset, dataset_config)
+    def test_full_norm_by_events(self, test_dataset):
+        assert full_norm_by_events(test_dataset)
 
-    def test_node_norm_by_events(self, test_dataset, dataset_config):
-        assert node_norm_by_events(test_dataset, dataset_config)
+    def test_node_norm_by_events(self, test_dataset):
+        assert node_norm_by_events(test_dataset)
 
-    def test_no_norm_by_users(self, test_dataset, dataset_config):
-        assert no_norm_by_users(test_dataset, dataset_config)
+    def test_node_norm_adj_matrix(self, test_dataset):
+        assert node_norm_adj_matrix(test_dataset)
 
-    def test_full_norm_by_users(self, test_dataset, dataset_config):
-        assert full_norm_by_users(test_dataset, dataset_config)
+    def test_no_norm_by_users(self, test_dataset):
+        assert no_norm_by_users(test_dataset)
 
-    def test_node_norm_by_users(self, test_dataset, dataset_config):
-        assert node_norm_by_users(test_dataset, dataset_config)
+    def test_full_norm_by_users(self, test_dataset):
+        assert full_norm_by_users(test_dataset)
+
+    def test_node_norm_by_users(self, test_dataset):
+        assert node_norm_by_users(test_dataset)
 
 
-#*****************************
-#*** FUNCTIONS DEFINITIONS ***
-#*****************************
+# *****************************
+# *** FUNCTIONS DEFINITIONS ***
+# *****************************
+
 
 def dict_compare(d1, d2):
     """
@@ -75,48 +88,49 @@ def dict_compare(d1, d2):
 
 
 # represent result as dictionary for comparison with control dict
-def result_to_dict(result_dataframe, dataset_config):
+def result_to_dict(result_dataframe):
     result = result_dataframe.copy()
-    result[dataset_config.bigram] = result[dataset_config.event] + '~~~' + \
-                                     result[dataset_config.next_event]
-    return dict(zip(result[dataset_config.bigram], result['edge_weight']))
+    result['bi-gram'] = result[event_col] + '~~~' + \
+                        result[next_event_col]
+    return dict(zip(result['bi-gram'], result['edge_weight']))
 
 
-def no_norm_by_events(test_dataset, dataset_config):
+def no_norm_by_events(test_dataset):
     """
     norm_type=None,
     weight_col=None
     """
-    edgelist = test_dataset.retention.get_edgelist(norm_type=None,
-                                                   weight_col=None)
-    result_rete = result_to_dict(edgelist, dataset_config)
+
+    edgelist = test_dataset.rete.get_edgelist(norm_type=None,
+                                              weight_col=None)
+    result_rete = result_to_dict(edgelist)
 
     # obtain expected result using control dataset
-    control_dataset = test_dataset.retention.get_shift()
-    control_dataset[dataset_config.bigram] = control_dataset[dataset_config.event] + '~~~' + \
-                                             control_dataset[dataset_config.next_event]
+    control_dataset = test_dataset.rete.get_shift()
+    control_dataset['bi-gram'] = control_dataset[event_col] + '~~~' + \
+                                 control_dataset[next_event_col]
 
-    result_test = dict(control_dataset[dataset_config.bigram].value_counts())
+    result_test = dict(control_dataset['bi-gram'].value_counts())
 
     return dict_compare(result_rete, result_test)
 
 
-def full_norm_by_events(test_dataset, dataset_config):
+def full_norm_by_events(test_dataset):
     """
     norm_type='full',
     weight_col=None
     """
     # obtain expected result using rete lib
-    edgelist = test_dataset.retention.get_edgelist(norm_type='full',
-                                                   weight_col=None)
-    result_rete = result_to_dict(edgelist, dataset_config)
+    edgelist = test_dataset.rete.get_edgelist(norm_type='full',
+                                              weight_col=None)
+    result_rete = result_to_dict(edgelist)
 
     # obtain expected result using control dataset
-    control_dataset = test_dataset.retention.get_shift()
-    control_dataset[dataset_config.bigram] = control_dataset[dataset_config.event] + '~~~' + \
-                                             control_dataset[dataset_config.next_event]
+    control_dataset = test_dataset.rete.get_shift()
+    control_dataset['bi-gram'] = control_dataset[event_col] + '~~~' + \
+                                 control_dataset[next_event_col]
 
-    result_test = dict(control_dataset[dataset_config.bigram].value_counts(normalize=True))
+    result_test = dict(control_dataset['bi-gram'].value_counts(normalize=True))
 
     check_dictionaries = dict_compare(result_rete, result_test)
 
@@ -127,99 +141,109 @@ def full_norm_by_events(test_dataset, dataset_config):
     return all([check_dictionaries, check_control_sum])
 
 
-def node_norm_by_events(test_dataset, dataset_config):
+def node_norm_by_events(test_dataset):
     """
     norm_type='node',
     weight_col=None
     """
     # obtain expected result using rete lib
-    edgelist = test_dataset.retention.get_edgelist(norm_type='node',
-                                                   weight_col=None)
-    result_rete = result_to_dict(edgelist, dataset_config)
+    edgelist = test_dataset.rete.get_edgelist(norm_type='node',
+                                              weight_col=None)
+    result_rete = result_to_dict(edgelist)
 
     # obtain expected result using control dataset
-    control_dataset = test_dataset.retention.get_shift()
-    control_dataset[dataset_config.bigram] = control_dataset[dataset_config.event] + '~~~' + \
-                                             control_dataset[dataset_config.next_event]
+    control_dataset = test_dataset.rete.get_shift()
+    control_dataset['bi-gram'] = control_dataset[event_col] + '~~~' + \
+                                 control_dataset[next_event_col]
 
-    node_transitions_counts = control_dataset.groupby(dataset_config.event)[dataset_config.bigram].count()
-    grouped_control = control_dataset.groupby(dataset_config.bigram).agg({dataset_config.event: 'first',
-                                                    dataset_config.timestamp: 'count'}).reset_index()
+    node_transitions_counts = control_dataset.groupby(event_col)['bi-gram'].count()
+    grouped_control = control_dataset.groupby('bi-gram').agg({event_col: 'first',
+                                                              time_col: 'count'}).reset_index()
 
-    grouped_control['node_norm'] = grouped_control[dataset_config.timestamp]\
-                                   / node_transitions_counts.loc[grouped_control[dataset_config.event]].values
+    grouped_control['node_norm'] = grouped_control[time_col] \
+                                   / node_transitions_counts.loc[grouped_control[event_col]].values
 
-    result_test = dict(zip(grouped_control[dataset_config.bigram],grouped_control['node_norm']))
+    result_test = dict(zip(grouped_control['bi-gram'], grouped_control['node_norm']))
 
     # are the control and test dicts same?
     check_dictionaries = dict_compare(result_rete, result_test)
 
     # make sure sum of normalized weights for transitions
     # from each event is equal to 1 (total prob is 1)
-    control_sum = edgelist.groupby(dataset_config.event)['edge_weight'].sum()
+    control_sum = edgelist.groupby(event_col)['edge_weight'].sum()
     check_control_sum = all(isclose(x, 1, rel_tol=REL_TOL, abs_tol=ABS_TOL)
                             for x in control_sum)
 
     return all([check_dictionaries, check_control_sum])
 
 
-def no_norm_by_users(test_dataset, dataset_config):
+def node_norm_adj_matrix(test_dataset):
+    adj_matrix = test_dataset.rete.get_adjacency(norm_type='node',
+                                                 weight_col=None)
+
+    adj_matrix_sums = adj_matrix.sum(axis=1).values
+
+    return all(isclose(x, 1, rel_tol=REL_TOL, abs_tol=ABS_TOL)
+               for x in adj_matrix_sums)
+
+
+def no_norm_by_users(test_dataset):
     """
     norm_type=None,
     weight_col=INDEX_COL
     """
-    edgelist = test_dataset.retention.get_edgelist(norm_type=None,
-                                           weight_col=dataset_config.index_col)
-    result_rete = result_to_dict(edgelist, dataset_config)
+    edgelist = test_dataset.rete.get_edgelist(norm_type=None,
+                                              weight_col=index_col)
+    result_rete = result_to_dict(edgelist)
 
     # obtain expected result using control dataset
-    control_dataset = test_dataset.retention.get_shift()
-    control_dataset[dataset_config.bigram] = control_dataset[dataset_config.event] + '~~~' + \
-                                             control_dataset[dataset_config.next_event]
+    control_dataset = test_dataset.rete.get_shift()
+    control_dataset['bi-gram'] = control_dataset[event_col] + '~~~' + \
+                                 control_dataset[next_event_col]
 
-    result_test = dict(control_dataset.groupby([dataset_config.bigram])[dataset_config.index_col].nunique())
+    result_test = dict(control_dataset.groupby(['bi-gram'])[index_col].nunique())
 
     return dict_compare(result_rete, result_test)
 
 
-def full_norm_by_users(test_dataset, dataset_config):
+def full_norm_by_users(test_dataset):
     """
     norm_type='full',
     weight_col=INDEX_COL
     """
-    edgelist = test_dataset.retention.get_edgelist(norm_type='full',
-                                                   weight_col=dataset_config.index_col)
-    result_rete = result_to_dict(edgelist, dataset_config)
+    edgelist = test_dataset.rete.get_edgelist(norm_type='full',
+                                              weight_col=index_col)
+    result_rete = result_to_dict(edgelist)
 
     # obtain expected result using control dataset
-    control_dataset = test_dataset.retention.get_shift()
-    control_dataset[dataset_config.bigram] = control_dataset[dataset_config.event] + '~~~' + \
-                                             control_dataset[dataset_config.next_event]
+    control_dataset = test_dataset.rete.get_shift()
+    control_dataset['bi-gram'] = control_dataset[event_col] + '~~~' + \
+                                 control_dataset[next_event_col]
 
-    result_test = dict(control_dataset.groupby([dataset_config.bigram])[dataset_config.index_col].nunique()\
-                       /control_dataset[dataset_config.index_col].nunique())
+    result_test = dict(control_dataset.groupby(['bi-gram'])[index_col].nunique()
+                       / control_dataset[index_col].nunique())
 
     return dict_compare(result_rete, result_test)
 
 
-def node_norm_by_users(test_dataset, dataset_config):
+def node_norm_by_users(test_dataset):
     """
     norm_type='node',
     weight_col=INDEX_COL
     """
-    edgelist = test_dataset.retention.get_edgelist(norm_type='node',
-                                           weight_col=dataset_config.index_col)
-    result_rete = result_to_dict(edgelist, dataset_config)
+    edgelist = test_dataset.rete.get_edgelist(norm_type='node',
+                                              weight_col=index_col)
+    result_rete = result_to_dict(edgelist)
 
     # obtain expected result using control dataset
-    control_dataset = test_dataset.retention.get_shift()
-    control_dataset[dataset_config.bigram] = control_dataset[dataset_config.event] + '~~~' + \
-                                             control_dataset[dataset_config.next_event]
+    control_dataset = test_dataset.rete.get_shift()
+    control_dataset['bi-gram'] = control_dataset[event_col] + '~~~' + \
+                                 control_dataset[next_event_col]
 
-    node_counts = control_dataset.groupby(dataset_config.event)[dataset_config.index_col].nunique().to_dict()
-    g_test = control_dataset.groupby(dataset_config.bigram).agg({dataset_config.event: 'first',
-                                             dataset_config.index_col: lambda x: x.nunique()}).reset_index()
-    g_test['node_norm'] = g_test[dataset_config.index_col] / g_test[dataset_config.event].map(node_counts)
-    result_test = dict(zip(g_test[dataset_config.bigram], g_test['node_norm']))
+    node_counts = control_dataset.groupby(event_col)[index_col].nunique().to_dict()
+    g_test = control_dataset.groupby('bi-gram').agg({event_col: 'first',
+                                                     index_col: lambda x: x.nunique()}).reset_index()
+    g_test['node_norm'] = g_test[index_col] / g_test[event_col].map(node_counts)
+    result_test = dict(zip(g_test['bi-gram'], g_test['node_norm']))
 
     return dict_compare(result_rete, result_test)

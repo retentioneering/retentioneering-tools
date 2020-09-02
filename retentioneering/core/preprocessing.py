@@ -28,12 +28,12 @@ def _find_threshold(time_val):
 
 def _learn_lda(data, **kwargs):
     from sklearn.decomposition import LatentDirichletAllocation
-    if hasattr(data.retention, 'datatype') and data.retention.datatype == 'features':
+    if hasattr(data.retention, 'datatype') and data.rete.datatype == 'features':
         features = data.copy()
     else:
         if 'ngram_range' not in kwargs:
             kwargs.update({'ngram_range': (1, 2)})
-        features = data.retention.extract_features(**kwargs)
+        features = data.rete.extract_features(**kwargs)
     lda_filter = LatentDirichletAllocation.get_params(LatentDirichletAllocation)
     if 'random_state' not in kwargs:
         kwargs.update({'random_state': 0})
@@ -72,7 +72,7 @@ def weight_by_mechanics(data, main_event_map, **kwargs):
     main_event_map: dict
         Mapping of main events into mechanics.
     kwargs: optional
-        ``sklearn.decomposition.LatentDirichletAllocation()`` and ``BaseDataset.retention.extract_features()`` parameters.
+        ``sklearn.decomposition.LatentDirichletAllocation()`` and ``BaseDataset.rete.extract_features()`` parameters.
 
     Returns
     -------

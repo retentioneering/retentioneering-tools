@@ -14,13 +14,7 @@ class BaseTrajectory(object):
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
         self._accessor_type = 'trajectory'
-        self.retention_config = {
-                                'columns_map': {
-                                                'user_pseudo_id': 'user_pseudo_id',
-                                                'event_name': 'event_name',
-                                                'event_timestamp': 'event_timestamp',
-                                                }
-                                }
+        self.retention_config = {}
         self._locals = None
 
     def get_shift(self, *, index_col=None, event_col=None):
@@ -119,7 +113,7 @@ class BaseTrajectory(object):
     def get_adjacency(self, *, weight_col=None, norm_type=None):
         """
         Creates edge graph in the matrix format. Basically this method is similar to
-        ``BaseTrajectory.retention.get_edgelist()`` but in different format. Row indeces are ``event_col`` values, from
+        ``BaseTrajectory.rete.get_edgelist()`` but in different format. Row indeces are ``event_col`` values, from
          which the transition occured, while the row names are ``event_col`` values, to which the transition occured.
          The values are weights of the edges defined with ``weight_col``, ``edge_attributes`` and ``norm`` parameters.
 
@@ -296,11 +290,12 @@ class BaseTrajectory(object):
             piv[indices] = piv[indices] / piv[indices].sum()
 
         if plot_type:
-            plot.step_matrix(piv.round(2),
-                             title=kwargs.get('title',
+            plot.step_matrix(piv,None,
+                                 title=kwargs.get('title',
                                               'Step matrix {}'
                                               .format('reversed' if kwargs.get('reverse') else '')),
-                             **kwargs)
+                                 **kwargs)
+
 
         if kwargs.get('dt_means') is not None:
             means = np.array(data.groupby('event_rank').apply(
@@ -310,29 +305,27 @@ class BaseTrajectory(object):
 
         return piv
 
-    def split_sessions(self, *, by_event=None, thresh=1800, eos_event=None, session_col='session_id'):
+    def split_sessions(self, *, by_event=None, thresh, eos_event=None, session_col='session_id'):
         """
         Generates ``session`_id` column with session rank for each ``index_col`` based on time difference between
         events. Sessions are automatically defined with time diffrence between events.
-
         Parameters
         --------
         session_col
         by_event
         thresh: int
             Minimal threshold in seconds between two sessions. Default: ``1800`` or 30 min
-
         eos_event:
             If not ``None`` specified event name will be added at the and of each session
-
         Returns
         -------
         Original Dataframe with ``session_id`` column in dataset.
-
         Return type
         -------
         pd.DataFrame
         """
+
+        session_col_arg = session_col or 'session_id'
 
         index_col = self.retention_config['index_col']
         event_col = self.retention_config['event_col']
@@ -340,47 +333,58 @@ class BaseTrajectory(object):
 
         res = self._obj.copy()
 
-        if (by_event is None) and (thresh is None):
-            raise ValueError('Must specify at least one keyword argument: by_event or thresh')
-
         if by_event is None:
-            # split sessions by time thresh:
+            res[time_col] = pd.to_datetime(res[time_col])
+            if thresh is None:
+                # add end_of_session event at the end of each string
+                res.sort_values(by=time_col, inplace=True, ascending=False)
+                res[hash('session')] = res.groupby(index_col).cumcount()
+                res_session_ends = res[(res[hash('session')] == 0)].copy()
+                res_session_ends[event_col] = eos_event
+                res_session_ends[time_col] = res_session_ends[time_col] + pd.Timedelta(seconds=1)
 
-            # drop end_of_session events if already present:
-            if eos_event is not None:
-                res = res[res[event_col] != eos_event].copy()
+                res = pd.concat([res, res_session_ends])
 
-            df = self.get_shift()
-            time_delta = pd.to_datetime(df['next_'+time_col]) - pd.to_datetime(df[time_col])
-            time_delta = time_delta.dt.total_seconds()
+                res.sort_values(by=time_col, inplace=True)
 
-            # get boolean mapper for end_of_session occurrences
-            eos_mask = time_delta > thresh
+            else:
+                # split sessions by time thresh:
+                # drop end_of_session events if already present:
+                if eos_event is not None:
+                    res = res[res[event_col] != eos_event].copy()
 
-            # add session column:
-            res[hash('session')] = eos_mask
-            res[hash('session')] = res.groupby(index_col)[hash('session')].cumsum()
-            res[hash('session')] = res.groupby(index_col)[hash('session')].shift(1).fillna(0).map(int).map(str)
+                df = self.get_shift()
+                time_delta = pd.to_datetime(df['next_'+time_col]) - pd.to_datetime(df[time_col])
+                time_delta = time_delta.dt.total_seconds()
 
-            # add end_of_session event if specified:
-            if eos_event is not None:
-                tmp = res.loc[eos_mask].copy()
-                tmp[event_col] = eos_event
-                tmp[time_col] += pd.Timedelta(seconds=1)
+                # get boolean mapper for end_of_session occurrences
+                eos_mask = time_delta > thresh
 
-                res = res.append(tmp, ignore_index=True, sort=False)
-                res = res.sort_values(time_col).reset_index(drop=True)
+                # add session column:
+                res[hash('session')] = eos_mask
+                res[hash('session')] = res.groupby(index_col)[hash('session')].cumsum()
+                res[hash('session')] = res.groupby(index_col)[hash('session')].shift(1).fillna(0).map(int).map(str)
 
-            res[session_col] = res[index_col].map(str) + '_' + res[hash('session')]
-            res.drop(columns=[hash('session')], inplace=True)
+                # add end_of_session event if specified:
+                if eos_event is not None:
+                    tmp = res.loc[eos_mask].copy()
+                    tmp[event_col] = eos_event
+                    tmp[time_col] += pd.Timedelta(seconds=1)
+
+                    res = pd.concat([res, tmp], ignore_index=True)
+                    res = res.sort_values(time_col).reset_index(drop=True)
+
+                res[session_col_arg] = res[index_col].map(str) + '_' + res[hash('session')]
 
         else:
             # split sessions by event:
             res[hash('session')] = res[event_col] == by_event
             res[hash('session')] = res.groupby(index_col)[hash('session')].cumsum().fillna(0).map(int).map(str)
-            res[session_col] = res[index_col].map(str) + '_' + res[hash('session')]
-            res.drop(columns=[hash('session')], inplace=True)
+            res[session_col_arg] = res[index_col].map(str) + '_' + res[hash('session')]
 
+        res.drop(columns=[hash('session')], inplace=True)
+        if session_col is None and session_col_arg in res.columns:
+            res.drop(columns=[session_col_arg], inplace=True)
         return res
 
     def plot_graph(self, *, node_params=None, weight_col=None, event_col=None,
@@ -449,7 +453,7 @@ class BaseTrajectory(object):
         height: int, optional
             Height of plot in pixels. Default: ``500``
         kwargs: optional
-            Other parameters for ``BaseTrajectory.retention.get_edgelist()``
+            Other parameters for ``BaseTrajectory.rete.get_edgelist()``
 
         Returns
         --------
@@ -480,3 +484,139 @@ class BaseTrajectory(object):
                                                             norm_type=norm_type),
                           node_params, node_weights=node_weights, **kwargs)
         return path
+
+    def step_matrix(self, *, max_steps=30, weight_col=None,
+                    targets=None, accumulated=None, plot_type=True,
+                    sorting=True, thresh=0, **kwargs):
+        """
+        Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names,
+        columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at
+         a particular number step x% of users encountered a specific event.
+
+        Parameters
+        --------
+        accumulate_targets
+        targets
+        index_col
+        max_steps: int, optional
+            Maximum number of steps in trajectory to include. Depending on ``reverse`` parameter value, the steps are
+            counted from the beginning of trajectories if ``reverse=False``, or from the end otherwise.
+        plot_type: bool, optional
+            If ``True``, then plots step matrix in interactive session (Jupyter notebook). Default: ``True``
+        thr: float, optional
+            Used to prune matrix and display only the rows with at least one value >= ``thr``. Default: ``None``
+        reverse: str or list, optional
+            This parameter is used to display reversed matrix from target events towards the beginning of trajectories.
+            Range of possible values:
+                - ``None``: displays default step matrix from the start of trajectories. Uses all the user trajectories.
+                - ``'pos'``: displays reverse step matrix in such a way that the first column is the
+                ``positive_target_event`` share, which is always 1, and the following columns reflect the share of users
+                 on final steps before reaching the target. Uses only those trajectories, which ended up having at least
+                  one ``positive_target_event`` in trajectory.
+                - ``'neg'``: same as ``pos`` but for ``negative_target_event``. Uses only those trajectories, which
+                ended up having at least one ``negative_target_event`` in trajectory.
+                - ``['pos', 'neg']``: combination of ``pos`` and ``neg`` options, first column has only target events.
+                Uses all the trajectories with target events inside.
+            Default: ``None``
+        sorting: bool, optional
+            If ``True``, then automatically places elements with highest values in top. Rows are sorted in such a way
+            that the first one has highest first column value, second row has the highest second column value,besides
+            already used first value, etc. With this sorting you may see a dominant trajectory as a diagonal.
+            Default: ``True``
+        weight_col: str, optional
+            Aggregation column for edge weighting. For instance, you may set it to the same value as in ``index_col``
+            and define ``edge_attributes='users_unique'`` to calculate unique users passed through edge.
+            Default: ``None``
+
+        Returns
+        -------
+        Dataframe with ``max_steps`` number of columns and len(event_col.unique) number of rows at max, or less if used
+        ``thr`` > 0.
+
+        Return type
+        -------
+        pd.DataFrame
+        """
+
+        event_col = self.retention_config['event_col']
+        # target_event_list = self.retention_config['target_event_list']
+        weight_col = weight_col or self.retention_config['index_col']
+        time_col = self.retention_config['event_time_col']
+
+        data = self._obj.copy()
+
+        # add termination event to each history:
+        data = data.rete.split_sessions(thresh=None,
+                                        eos_event='ENDED',
+                                        session_col=None)
+
+
+        data['event_rank'] = 1
+        data['event_rank'] = data.groupby(weight_col)['event_rank'].cumsum()
+
+        # calculate step matrix elements:
+        agg = (data
+               .groupby(['event_rank', event_col])[weight_col]
+               .nunique()
+               .reset_index())
+        agg[weight_col] /= data[weight_col].nunique()
+
+        if max_steps:
+            agg = agg[agg['event_rank'] <= max_steps]
+        agg.columns = ['event_rank', 'event_name', 'freq']
+
+        piv = agg.pivot(index='event_name', columns='event_rank', values='freq').fillna(0)
+        piv.columns.name = None
+        piv.index.name = None
+
+        # MAKE TERMINATED STATE ACCUMULATED:
+        piv.loc['ENDED'] = piv.loc['ENDED'].cumsum().fillna(0)
+
+        if sorting:
+            piv = BaseTrajectory._sort_matrix(piv)
+            piv = piv.loc[[*(i for i in piv.index if i != 'ENDED'),'ENDED']]
+
+        if thresh != 0:
+            # 1 find if there are any rows to threshold:
+            thresholded = piv.loc[(piv < thresh).all(1)].copy()
+            if len(thresholded)>0:
+                piv = piv.loc[(piv >= thresh).any(1)].copy()
+                piv.loc[f'THRESHOLDED_{len(thresholded)}'] = thresholded.sum()
+
+        # ADD ROWS FOR TARGETS:
+        piv_targets = None
+        if targets:
+            if len(set(targets) & set(data[event_col])) == 0:
+                raise ValueError(f'{targets} events not found in the column: "{event_col}"')
+            else:
+                agg_targets = (data
+                               .groupby(['event_rank', event_col])[time_col]
+                               .count()
+                               .reset_index())
+                agg_targets[time_col] /= data[weight_col].nunique()
+                agg_targets.columns = ['event_rank', 'event_name', 'freq']
+
+                if max_steps:
+                    agg_targets = agg_targets[agg_targets['event_rank'] <= max_steps]
+
+                piv_targets = agg_targets.pivot(index='event_name', columns='event_rank', values='freq').fillna(0)
+                piv_targets = piv_targets.loc[targets].copy()
+                piv_targets.columns.name = None
+                piv_targets.index.name = None
+
+                if accumulated == 'only':
+                    piv_targets.index = map(lambda x: 'ACC_' + x, piv_targets.index)
+                    for i in piv_targets.index:
+                        piv_targets.loc[i] = piv_targets.loc[i].cumsum().fillna(0)
+                if accumulated == 'both':
+                    for i in piv_targets.index:
+                        piv_targets.loc['ACC_'+i] = piv_targets.loc[i].cumsum().fillna(0)
+
+        if plot_type:
+            plot.step_matrix(piv,piv_targets,
+                                 title=kwargs.get('title',
+                                              'Step matrix {}'
+                                              .format('reversed' if kwargs.get('reverse') else '')),
+                                 **kwargs)
+
+        return piv

@@ -309,7 +309,7 @@ def drop_equal_features(features, users, thres=0.1, **kwargs):
     Drop nonzero features with equal counts of negative and positive user's
 
     :param features: array of features
-    :param users: list of positive users (e.g. data.retention.get_positive_users())
+    :param users: list of positive users (e.g. data.rete.get_positive_users())
     :param thres: threshold of dropping (e.g 0.1 means area of drop equals [0.9,1.1]
     :return: dropped features: array of features
     """

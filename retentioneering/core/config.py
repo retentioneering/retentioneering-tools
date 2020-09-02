@@ -12,6 +12,8 @@ from .base_classes.base_dataset import BaseDataset
 
 config = {'experiments_folder': 'experiments'}
 
+if not os.path.exists(config['experiments_folder']):
+    os.mkdir(config['experiments_folder'])
 
 @pd.api.extensions.register_dataframe_accessor("trajectory")
 class RetentioneeringTrajectory(BaseTrajectory):

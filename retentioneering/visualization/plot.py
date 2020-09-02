@@ -370,15 +370,15 @@ def altair_step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, fon
 @__save_plot__
 def step_matrix(data, targets=None,*,targets_list=None, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
 
-    target_cmaps = itertools.cycle(['PuOr', 'seismic', 'PRGn', 'RdBu',  'RdGy',
-            'RdYlBu', 'RdYlGn', 'Spectral', 'bwr' ])
+    target_cmaps = itertools.cycle(['BrBG', 'PuOr', 'PRGn', 'RdBu'])
 
     if targets is None:
 
         sns.mpl.pyplot.figure(figsize=(round(data.shape[1] * 0.6),
                                        round(data.shape[0] * 0.5)
                                        ))
-        heatmap = sns.heatmap(data, annot=True, cmap="BrBG", fmt='.2f',
+        # "BrBG"
+        heatmap = sns.heatmap(data, annot=True, cmap="RdGy", fmt='.2f',
                               center=0, vmin=vmin, vmax=vmax, cbar=False)
         heatmap.set_title(title)
 
@@ -395,7 +395,7 @@ def step_matrix(data, targets=None,*,targets_list=None, plot_name=None, title=''
         f, axs = sns.mpl.pyplot.subplots(n_rows, n_cols, sharex=True,
                                          figsize=(round(data.shape[1] * 0.6),
                                                   round((len(data) + len(targets)) * 0.6)),
-                                         gridspec_kw={'wspace': 0.08, 'hspace': 0.03,
+                                         gridspec_kw={'wspace': 0.08, 'hspace': 0.04,
                                                       'height_ratios': [data.shape[0], *list(map(len, targets_list))]
                                                       })
 
@@ -404,7 +404,7 @@ def step_matrix(data, targets=None,*,targets_list=None, plot_name=None, title=''
                               annot=True,
                               fmt='.2f',
                               ax=axs[0],
-                              cmap="BrBG",
+                              cmap="RdGy",
                               center=0,
                               cbar=False)
 

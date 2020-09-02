@@ -368,7 +368,7 @@ def altair_step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, fon
     return heatmap_object, plot_name, None, diff.rete.retention_config
 
 @__save_plot__
-def step_matrix(data, targets=None, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
+def step_matrix(data, targets=None,*,targets_list=None, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
 
     target_cmaps = itertools.cycle(['PuOr', 'coolwarm', 'PRGn', 'RdBu','seismic',  'RdGy',
             'RdYlBu', 'RdYlGn', 'Spectral', 'bwr' ])
@@ -376,7 +376,7 @@ def step_matrix(data, targets=None, plot_name=None, title='', vmin=None, vmax=No
     if targets is None:
 
         sns.mpl.pyplot.figure(figsize=(round(data.shape[1] * 0.6),
-                                       round(data.shape[0] * 0.8)
+                                       round(data.shape[0] * 0.5)
                                        ))
         heatmap = sns.heatmap(data, annot=True, cmap="BrBG", fmt='.2f',
                               center=0, vmin=vmin, vmax=vmax, cbar=False)
@@ -389,18 +389,18 @@ def step_matrix(data, targets=None, plot_name=None, title='', vmin=None, vmax=No
         # plt.ylim(b, t)
 
     else:
-        n_rows = 1 + targets.shape[0]
+        n_rows = 1 + len(targets_list)
         n_cols = 1
 
         f, axs = sns.mpl.pyplot.subplots(n_rows, n_cols, sharex=True,
-                                         figsize=(round(data.shape[1] * 0.6), round(data.shape[0] * 0.8)),
-                                         gridspec_kw={'wspace': 0.08, 'hspace': 0.02,
-                                                      'height_ratios': [data.shape[0], *[1] * targets.shape[0]]
+                                         figsize=(round(data.shape[1] * 0.6),
+                                                  round((len(data) + len(targets)) * 0.6)),
+                                         gridspec_kw={'wspace': 0.08, 'hspace': 0.03,
+                                                      'height_ratios': [data.shape[0], *list(map(len, targets_list))]
                                                       })
 
         heatmap = sns.heatmap(data,
                               yticklabels=data.index,
-                              #            xticklabels=[''],
                               annot=True,
                               fmt='.2f',
                               ax=axs[0],
@@ -408,10 +408,9 @@ def step_matrix(data, targets=None, plot_name=None, title='', vmin=None, vmax=No
                               center=0,
                               cbar=False)
 
-        for n, i in enumerate(targets.index):
-            sns.heatmap(targets.loc[[i]],
-                        yticklabels=targets.loc[[i]].index,
-                        #            xticklabels=[s],
+        for n, i in enumerate(targets_list):
+            sns.heatmap(targets.loc[i],
+                        yticklabels=targets.loc[i].index,
                         annot=True,
                         fmt='.2f',
                         ax=axs[1 + n],

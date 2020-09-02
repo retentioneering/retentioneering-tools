@@ -537,6 +537,8 @@ class BaseTrajectory(object):
         -------
         pd.DataFrame
         """
+        from pandas.core.common import flatten
+        from copy import deepcopy
 
         event_col = self.retention_config['event_col']
         # target_event_list = self.retention_config['target_event_list']
@@ -574,7 +576,7 @@ class BaseTrajectory(object):
 
         if sorting:
             piv = BaseTrajectory._sort_matrix(piv)
-            piv = piv.loc[[*(i for i in piv.index if i != 'ENDED'),'ENDED']]
+            piv = piv.loc[[*(i for i in piv.index if i != 'ENDED'), 'ENDED']]
 
         if thresh != 0:
             # 1 find if there are any rows to threshold:
@@ -585,9 +587,18 @@ class BaseTrajectory(object):
 
         # ADD ROWS FOR TARGETS:
         piv_targets = None
+        targets_flatten = None
         if targets:
-            if len(set(targets) & set(data[event_col])) == 0:
-                raise ValueError(f'{targets} events not found in the column: "{event_col}"')
+            # obtain flatten list of targets:
+            targets_flatten = list(flatten(targets))
+
+            # format targets to list of lists:
+            for n ,i in enumerate(targets):
+                if type(i) != list:
+                    targets[n] = [i]
+
+            if len(set(targets_flatten) & set(data[event_col])) == 0:
+                raise ValueError(f'{targets_flatten} events not found in the column: "{event_col}"')
             else:
                 agg_targets = (data
                                .groupby(['event_rank', event_col])[time_col]
@@ -600,7 +611,7 @@ class BaseTrajectory(object):
                     agg_targets = agg_targets[agg_targets['event_rank'] <= max_steps]
 
                 piv_targets = agg_targets.pivot(index='event_name', columns='event_rank', values='freq').fillna(0)
-                piv_targets = piv_targets.loc[targets].copy()
+                piv_targets = piv_targets.loc[targets_flatten].copy()
                 piv_targets.columns.name = None
                 piv_targets.index.name = None
 
@@ -608,15 +619,32 @@ class BaseTrajectory(object):
                     piv_targets.index = map(lambda x: 'ACC_' + x, piv_targets.index)
                     for i in piv_targets.index:
                         piv_targets.loc[i] = piv_targets.loc[i].cumsum().fillna(0)
+
+                    # change names is targets list:
+                    for target in targets:
+                        for j, item in enumerate(target):
+                            target[j] = 'ACC_'+item
+
                 if accumulated == 'both':
                     for i in piv_targets.index:
                         piv_targets.loc['ACC_'+i] = piv_targets.loc[i].cumsum().fillna(0)
 
+                    # add accumulated targets to the list:
+                    targets_not_acc = deepcopy(targets)
+                    for target in targets:
+                        for j, item in enumerate(target):
+                            target[j] = 'ACC_'+item
+                    targets = targets_not_acc + targets
+
+
+                    targets_flatten.extend(list(map(lambda x: 'ACC_' + x, targets_flatten)))
+
         if plot_type:
-            plot.step_matrix(piv,piv_targets,
-                                 title=kwargs.get('title',
-                                              'Step matrix {}'
-                                              .format('reversed' if kwargs.get('reverse') else '')),
-                                 **kwargs)
+            plot.step_matrix(piv, piv_targets,
+                             targets_list=targets,
+                             title=kwargs.get('title',
+                                          'Step matrix {}'
+                                          .format('reversed' if kwargs.get('reverse') else '')),
+                             **kwargs)
 
         return piv

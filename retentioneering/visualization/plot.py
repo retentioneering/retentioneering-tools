@@ -4,6 +4,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 
+import itertools
 import networkx as nx
 import seaborn as sns
 from IPython.display import IFrame, display  # TODO understand how to use visualization without it
@@ -369,6 +370,8 @@ def altair_step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, fon
 @__save_plot__
 def step_matrix(data, targets=None, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
 
+    target_cmaps = itertools.cycle(['PuOr', 'coolwarm', 'PRGn', 'RdBu','seismic',  'RdGy',
+            'RdYlBu', 'RdYlGn', 'Spectral', 'bwr' ])
 
     if targets is None:
 
@@ -412,7 +415,7 @@ def step_matrix(data, targets=None, plot_name=None, title='', vmin=None, vmax=No
                         annot=True,
                         fmt='.2f',
                         ax=axs[1 + n],
-                        cmap="PuOr",
+                        cmap=next(target_cmaps),
                         center=0,
                         cbar=False)
 

@@ -143,12 +143,6 @@ class BaseTrajectory(object):
         return nx.to_pandas_adjacency(graph)
 
     @staticmethod
-    def _add_accums(agg, name):
-        if name not in agg.index:
-            return pd.Series([0] * agg.shape[1], index=agg.columns, name='Accumulated ' + name)
-        return agg.loc[name].cumsum().shift(1).fillna(0).rename('Accumulated ' + name)
-
-    @staticmethod
     def _sort_matrix(step_matrix):
         x = step_matrix.copy()
         order = []
@@ -164,6 +158,9 @@ class BaseTrajectory(object):
     def get_step_matrix(self, *, max_steps=30, weight_col=None, index_col=None, reverse=None,
                         plot_type=True, sorting=True,  thr=0, **kwargs):
         """
+        *** DEPRICATED ***
+        *** WILL BE REMOVED IN NEXT UPDATES ***
+
         Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names,
         columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at
          a particular number step x% of users encountered a specific event.
@@ -210,6 +207,12 @@ class BaseTrajectory(object):
         -------
         pd.DataFrame
         """
+
+        def _add_accums(agg, name):
+            if name not in agg.index:
+                return pd.Series([0] * agg.shape[1], index=agg.columns, name='Accumulated ' + name)
+            return agg.loc[name].cumsum().shift(1).fillna(0).rename('Accumulated ' + name)
+
 
         event_col = self.retention_config['event_col']
         target_event_list = self.retention_config['target_event_list']
@@ -269,7 +272,7 @@ class BaseTrajectory(object):
 
         if not reverse:
             for i in target_event_list:
-                piv = piv.append(BaseTrajectory._add_accums(piv, i))
+                piv = piv.append(_add_accums(piv, i))
 
         if thr != 0:
             keep = piv.index.str.startswith('Accumulated')
@@ -487,7 +490,7 @@ class BaseTrajectory(object):
 
     def step_matrix(self, *, max_steps=30, weight_col=None,
                     targets=None, accumulated=None, plot_type=True,
-                    sorting=True, thresh=0, **kwargs):
+                    sorting=True, thresh=0):
         """
         Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names,
         columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at
@@ -495,6 +498,8 @@ class BaseTrajectory(object):
 
         Parameters
         --------
+        accumulated
+        thresh
         accumulate_targets
         targets
         index_col
@@ -552,7 +557,6 @@ class BaseTrajectory(object):
                                         eos_event='ENDED',
                                         session_col=None)
 
-
         data['event_rank'] = 1
         data['event_rank'] = data.groupby(weight_col)['event_rank'].cumsum()
 
@@ -587,7 +591,6 @@ class BaseTrajectory(object):
 
         # ADD ROWS FOR TARGETS:
         piv_targets = None
-        targets_flatten = None
         if targets:
             # obtain flatten list of targets:
             targets_flatten = list(flatten(targets))
@@ -636,15 +639,9 @@ class BaseTrajectory(object):
                             target[j] = 'ACC_'+item
                     targets = targets_not_acc + targets
 
-
-                    targets_flatten.extend(list(map(lambda x: 'ACC_' + x, targets_flatten)))
-
         if plot_type:
             plot.step_matrix(piv, piv_targets,
                              targets_list=targets,
-                             title=kwargs.get('title',
-                                          'Step matrix {}'
-                                          .format('reversed' if kwargs.get('reverse') else '')),
-                             **kwargs)
+                             title='Step matrix')
 
         return piv

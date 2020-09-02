@@ -85,7 +85,7 @@ def _prepare_edges(data, nodes):
 
 def _filter_edgelist(data, thresh, node_params, targets=None, **kwargs):
     if targets is None:
-        x = pd.Series(node_params).str.contains('target')
+        x = pd.Series(node_params).astype(str).str.contains('target')
         targets = set(x[x].index)
     f = data.weight.abs() >= thresh
     nodes = set(data[f].source) | set(data[f].target)
@@ -368,7 +368,8 @@ def altair_step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, fon
     return heatmap_object, plot_name, None, diff.rete.retention_config
 
 @__save_plot__
-def step_matrix(data, targets=None,*,targets_list=None, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
+def step_matrix(data, targets=None, *,
+                targets_list=None, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
 
     target_cmaps = itertools.cycle(['BrBG', 'PuOr', 'PRGn', 'RdBu'])
 
@@ -377,16 +378,10 @@ def step_matrix(data, targets=None,*,targets_list=None, plot_name=None, title=''
         sns.mpl.pyplot.figure(figsize=(round(data.shape[1] * 0.6),
                                        round(data.shape[0] * 0.5)
                                        ))
-        # "BrBG"
-        heatmap = sns.heatmap(data, annot=True, cmap="RdGy", fmt='.2f',
-                              center=0, vmin=vmin, vmax=vmax, cbar=False)
-        heatmap.set_title(title)
 
-        # fix for mpl bug that cuts off top/bottom of seaborn viz
-        # b, t = plt.ylim()
-        # b += 0.5
-        # t -= 0.5
-        # plt.ylim(b, t)
+        heatmap = sns.heatmap(data, annot=True, cmap="RdGy", fmt='.2f',
+                              center=0, vmin=vmin, vmax=vmax, cbar=False, **kwargs)
+        heatmap.set_title(title)
 
     else:
         n_rows = 1 + len(targets_list)
@@ -406,7 +401,9 @@ def step_matrix(data, targets=None,*,targets_list=None, plot_name=None, title=''
                               ax=axs[0],
                               cmap="RdGy",
                               center=0,
-                              cbar=False)
+                              cbar=False,
+                              **kwargs
+                              )
 
         for n, i in enumerate(targets_list):
             sns.heatmap(targets.loc[i],
@@ -416,7 +413,9 @@ def step_matrix(data, targets=None,*,targets_list=None, plot_name=None, title=''
                         ax=axs[1 + n],
                         cmap=next(target_cmaps),
                         center=0,
-                        cbar=False)
+                        cbar=False,
+                        **kwargs
+                        )
 
         for ax in axs:
             sns.mpl.pyplot.sca(ax)

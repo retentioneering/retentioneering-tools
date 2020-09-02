@@ -370,7 +370,7 @@ def altair_step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, fon
 @__save_plot__
 def step_matrix(data, targets=None,*,targets_list=None, plot_name=None, title='', vmin=None, vmax=None, **kwargs):
 
-    target_cmaps = itertools.cycle(['PuOr', 'coolwarm', 'PRGn', 'RdBu','seismic',  'RdGy',
+    target_cmaps = itertools.cycle(['PuOr', 'seismic', 'PRGn', 'RdBu',  'RdGy',
             'RdYlBu', 'RdYlGn', 'Spectral', 'bwr' ])
 
     if targets is None:

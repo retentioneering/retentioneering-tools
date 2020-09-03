@@ -1,5 +1,3 @@
-import os
-import json
 import pandas as pd
 import numpy as np
 import networkx as nx
@@ -160,6 +158,7 @@ class BaseTrajectory(object):
         """
         *** DEPRICATED ***
         *** WILL BE REMOVED IN NEXT UPDATES ***
+        *** USE rete.step_matrix instead ***
 
         Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names,
         columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at
@@ -356,8 +355,10 @@ class BaseTrajectory(object):
                 if eos_event is not None:
                     res = res[res[event_col] != eos_event].copy()
 
-                df = self.get_shift()
-                time_delta = pd.to_datetime(df['next_'+time_col]) - pd.to_datetime(df[time_col])
+                res.sort_values(by=time_col, inplace=True)
+                shift_res = res.groupby(index_col).shift(-1)
+
+                time_delta = pd.to_datetime(shift_res[time_col]) - pd.to_datetime(res[time_col])
                 time_delta = time_delta.dt.total_seconds()
 
                 # get boolean mapper for end_of_session occurrences
@@ -392,6 +393,105 @@ class BaseTrajectory(object):
 
     def plot_graph(self, *, node_params=None, weight_col=None, event_col=None,
                    node_weights=None, norm_type='full', **kwargs):
+        """
+        *** DEPRICATED ***
+        *** WILL BE REMOVED IN NEXT UPDATES ***
+        *** USE rete.graph instead ***
+
+        Create interactive graph visualization. Each node is a unique ``event_col`` value, edges are transitions between
+         events and edge weights are calculated metrics. By default, it is a percentage of unique users that have passed
+          though a particular edge visualized with the edge thickness. Node sizes are  Graph loop is a transition to the
+           same node, which may happen if users encountered multiple errors or made any action at least twice.
+        Graph nodes are movable on canvas which helps to visualize user trajectories but is also a cumbersome process to
+         place all the nodes so it forms a story.
+        That is why IFrame object also has a download button. By pressing it, a JSON configuration file with all the
+        node parameters is downloaded. It contains node names, their positions, relative sizes and types. It it used as
+        ``layout_dump`` parameter for layout configuration. Finally, show weights toggle shows and hides edge weights.
+        Parameters
+        --------
+        event_col
+        norm_type
+        node_weights
+        weight_col
+        node_params: dict, optional
+            Event mapping describing which nodes or edges should be highlighted by different colors for better
+            visualisation. Dictionary keys are ``event_col`` values, while keys have the following possible values:
+                - ``bad_target``: highlights node and all incoming edges with red color;
+                - ``nice_target``: highlights node and all incoming edges with green color;
+                - ``bad_node``: highlights node with red color;
+                - ``nice_node``: highlights node with green color;
+                - ``source``: highlights node and all outgoing edges with yellow color.
+            Example ``node_params`` is shown below:
+            ```
+            {
+                'lost': 'bad_target',
+                'purchased': 'nice_target',
+                'onboarding_welcome_screen': 'source',
+                'choose_login_type': 'nice_node',
+                'accept_privacy_policy': 'bad_node',
+            }
+            ```
+            If ``node_params=None``, it will be constructed from ``retention_config`` variable, so that:
+            ```
+            {
+                'positive_target_event': 'nice_target',
+                'negative_target_event': 'bad_target',
+                'source_event': 'source',
+            }
+            ```
+            Default: ``None``
+        thresh: float, optional
+            Minimal edge weight value to be rendered on a graph. If a node has no edges of the weight >= ``thresh``,
+            then it is not shown on a graph. It is used to filter out rare event and not to clutter visualization. If
+            you want to preserve some of the nodes regardless of ``thresh`` value, please use ``targets`` parameter.
+            Default: ``0.05``
+        targets: list, optional
+            List of nodes which will ignore ``thresh`` parameter.
+        show_percent: bool, optional
+            If ``True``, then all edge weights are converted to percents by multiplying by 100 and adding percentage
+            sign. Default: ``True``
+        interactive: bool, optional
+            If ``True``, then plots graph visualization in interactive session (Jupyter notebook). Default: ``True``
+        layout_dump: str, optional
+            Path to layout configuration file relative to current directory. If defined, uses configuration file as a
+            graph layout. Default: ``None``
+        width: int, optional
+            Width of plot in pixels. Default: ``500``
+        height: int, optional
+            Height of plot in pixels. Default: ``500``
+        kwargs: optional
+            Other parameters for ``BaseTrajectory.rete.get_edgelist()``
+        Returns
+        --------
+        Plots IFrame graph of ``width`` and ``height`` size.
+        Saves webpage with JS graph visualization to ``retention_config.experiments_folder``.
+        Return type
+        -------
+        Renders IFrame object in case of ``interactive=True`` and saves graph visualization as HTML in
+        ``experiments_folder`` of ``retention_config``.
+        """
+        event_col = event_col or self.retention_config['event_col']
+
+        if node_params is None:
+            _node_params = {
+                'positive_target_event': 'nice_target',
+                'negative_target_event': 'bad_target',
+                'source_event': 'source',
+            }
+            node_params = {}
+            for key, val in _node_params.items():
+                name = self.retention_config.get(key)
+                if name is None:
+                    continue
+                node_params.update({name: val})
+        node_weights = node_weights or self._obj[event_col].value_counts().to_dict()
+        path = plot.graph(self._obj.trajectory.get_edgelist(weight_col=weight_col,
+                                                            norm_type=norm_type),
+                          node_params, node_weights=node_weights, **kwargs)
+        return path
+
+    def graph(self, *, targets=None, weight_col=None, event_col=None,
+                   node_weights=None, norm_type='full', thresh=0.01,  **kwargs):
         """
         Create interactive graph visualization. Each node is a unique ``event_col`` value, edges are transitions between
          events and edge weights are calculated metrics. By default, it is a percentage of unique users that have passed
@@ -470,26 +570,14 @@ class BaseTrajectory(object):
         """
         event_col = event_col or self.retention_config['event_col']
 
-        if node_params is None:
-            _node_params = {
-                'positive_target_event': 'nice_target',
-                'negative_target_event': 'bad_target',
-                'source_event': 'source',
-            }
-            node_params = {}
-            for key, val in _node_params.items():
-                name = self.retention_config.get(key)
-                if name is None:
-                    continue
-                node_params.update({name: val})
         node_weights = node_weights or self._obj[event_col].value_counts().to_dict()
         path = plot.graph(self._obj.trajectory.get_edgelist(weight_col=weight_col,
                                                             norm_type=norm_type),
-                          node_params, node_weights=node_weights, **kwargs)
+                          targets, node_weights=node_weights, thresh=thresh, **kwargs)
         return path
 
     def step_matrix(self, *, max_steps=30, weight_col=None,
-                    targets=None, accumulated=None, plot_type=True,
+                    targets=None, accumulated=None,
                     sorting=True, thresh=0):
         """
         Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names,
@@ -596,7 +684,7 @@ class BaseTrajectory(object):
             targets_flatten = list(flatten(targets))
 
             # format targets to list of lists:
-            for n ,i in enumerate(targets):
+            for n, i in enumerate(targets):
                 if type(i) != list:
                     targets[n] = [i]
 
@@ -639,9 +727,8 @@ class BaseTrajectory(object):
                             target[j] = 'ACC_'+item
                     targets = targets_not_acc + targets
 
-        if plot_type:
-            plot.step_matrix(piv, piv_targets,
-                             targets_list=targets,
-                             title='Step matrix')
+        plot.step_matrix(piv, piv_targets,
+                         targets_list=targets,
+                         title='Step matrix')
 
         return piv

@@ -31,7 +31,7 @@ def _uni_counts_embedder(data, **kwargs):
     cv.columns = cv.columns.levels[1]
     cv.columns.set_names(None, inplace=True)
     cv.index.set_names(None, inplace=True)
-    setattr(cv.retention, 'datatype', 'features')
+    setattr(cv.rete, 'datatype', 'features')
     return cv
 
 
@@ -125,7 +125,7 @@ def frequency_embedder(data, ngram_range=(1, 1), **kwargs):
         index=cv.index.values,
         columns=cv.columns.values,
     )
-    setattr(freq.retention, 'datatype', 'features')
+    setattr(freq.rete, 'datatype', 'features')
     return freq
 
 
@@ -173,7 +173,7 @@ def tfidf_embedder(data, ngram_range=(1, 1), **kwargs):
         cols = [dict_key[0] for dict_key in sorted(vectorizer.vocabulary_.items(), key=lambda x: x[1])]
         tfidf = pd.DataFrame(index=data[index_col].unique(), columns=cols, data=vectorizer.transform(corpus).todense())
 
-    setattr(tfidf.retention, 'datatype', 'features')
+    setattr(tfidf.rete, 'datatype', 'features')
     return tfidf
 
 

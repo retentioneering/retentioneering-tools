@@ -596,6 +596,16 @@ class BaseDataset(BaseTrajectory):
                                  )), **kwargs)
         return diff
 
+    def _process_thr(self, data, thr, max_steps=30, mod=lambda x: x, **kwargs):
+        f = data.index.str.startswith('Accumulated')
+        if kwargs.get('targets', True):
+            f |= data.index.isin(self.retention_config['target_event_list'])
+        print("""
+        Unused events on first {} steps:
+            {}
+        """.format(max_steps, '\n\t'.join(data[f].index.tolist())))
+        return data.loc[(mod(data) >= thr).any(1) | f]
+
     def _process_target_config(self, data, cfg, target):
         target = 'positive_target_event' if target.startswith('pos_') else 'negative_target_event'
         target = self.retention_config.get(target)

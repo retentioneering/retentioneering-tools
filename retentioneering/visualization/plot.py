@@ -442,7 +442,7 @@ def step_matrix(data, targets=None, *,
 
 @__altair_save_plot__
 def altair_cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
-    if hasattr(data.retention, '_tsne'):
+    if hasattr(data.rete, '_tsne'):
         tsne = data.rete._tsne.copy()
     else:
         tsne = data.rete.learn_tsne(clusters, **kwargs)
@@ -488,7 +488,7 @@ def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
     PNG
     """
 
-    if hasattr(data.retention, '_tsne') and not kwargs.get('refit'):
+    if hasattr(data.rete, '_tsne') and not kwargs.get('refit'):
         tsne2 = data.rete._tsne.copy()
     else:
         tsne2 = data.rete.learn_tsne(clusters, **kwargs)
@@ -729,7 +729,7 @@ def permutation_importance(x, plot_name=None, **kwargs):
 
 @__save_plot__
 def tsne_3d(data, clusters, target, plot_name=None, use_coloring=False, **kwargs):
-    if hasattr(data.retention, '_tsne'):
+    if hasattr(data.rete, '_tsne'):
         tsne2 = data.rete._tsne.copy()
     else:
         tsne2 = data.rete.learn_tsne(clusters, **kwargs)

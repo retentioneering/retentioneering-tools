@@ -20,7 +20,7 @@ setup(
     url='https://github.com/retentioneering/retentioneering-tools',
     keywords=['ANALYTICS', 'CLICKSTREAM', 'RETENTIONEERING', 'RETENTION', 'GRAPHS', 'TRAJECTORIES', 'PREDICTIVE-ANALYTICS', 'CUSTOMER-SEGMENTATION'],
     install_requires=[
-        'pandas>=0.24.2',
+        'pandas>=1.1.1',
         'numpy>=1.16.1',
         'networkx>=2.3',
         'seaborn>=0.9.0',

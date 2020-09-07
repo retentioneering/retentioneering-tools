@@ -24,6 +24,7 @@ setup(
         'numpy>=1.19.1',
         'networkx>=2.4',
         'seaborn>=0.10.1',
+        'matplotlib>=3.3.1',
         'scikit-learn>=0.23.2',
         'altair',
         'vega',

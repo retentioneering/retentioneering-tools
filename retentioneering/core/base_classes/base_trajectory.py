@@ -578,7 +578,8 @@ class BaseTrajectory(object):
 
     def step_matrix(self, *, max_steps=30, weight_col=None,
                     targets=None, accumulated=None,
-                    sorting=True, thresh=0):
+                    sorting=True, thresh=0,
+                    centered=None):
         """
         Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names,
         columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at
@@ -586,6 +587,7 @@ class BaseTrajectory(object):
 
         Parameters
         --------
+        centered
         accumulated
         thresh
         accumulate_targets
@@ -634,7 +636,6 @@ class BaseTrajectory(object):
         from copy import deepcopy
 
         event_col = self.retention_config['event_col']
-        # target_event_list = self.retention_config['target_event_list']
         weight_col = weight_col or self.retention_config['index_col']
         time_col = self.retention_config['event_time_col']
 
@@ -647,6 +648,46 @@ class BaseTrajectory(object):
 
         data['event_rank'] = 1
         data['event_rank'] = data.groupby(weight_col)['event_rank'].cumsum()
+
+        # ALIGN DATA IF CENTRAL
+        fraction_title = ''
+        if centered is not None:
+            # CHECKS
+            if (not isinstance(centered, dict) or
+                    ({'event', 'left_gap', 'occurrence'} - {*centered.keys()})):
+                raise ValueError("Parameter centered must be dict with following keys: 'event', 'left_gap', 'occurrence'")
+
+            center_event = centered.get('event')
+            window = centered.get('left_gap')
+            occurrence = centered.get('occurrence')
+            if occurrence < 1 or not isinstance(occurrence, int):
+                raise ValueError("key value 'occurrence' must be Int >=1")
+            if window < 0 or not isinstance(window, int):
+                raise ValueError("key value 'left_gap' must be Int >=0")
+            if center_event not in data[event_col].unique():
+                raise ValueError(f'Event "{center_event}" not found in the column: "{event_col}"')
+
+            # keep only users who have center_event at least N = occurrence times
+            data['occurrence'] = data[event_col] == center_event
+            data['occurance_counter'] = data.groupby(weight_col)['occurrence'].cumsum() * data['occurrence']
+            users_to_keep = data[data['occurance_counter'] == occurrence][weight_col].unique()
+
+            if len(users_to_keep)==0:
+                raise ValueError(f'no records found with event "{center_event}" occuring N={occurrence} times')
+
+            fraction_used = round(len(users_to_keep) / data[weight_col].nunique() * 100)
+            if fraction_used != 100:
+                fraction_title = f'({fraction_used}% of total records)'
+            data = data[data[weight_col].isin(users_to_keep)].copy()
+
+            def pad_to_center(x):
+                position = x.loc[(x[event_col] == center_event) &
+                                 (x['occurance_counter'] == occurrence)]['event_rank'].min()
+                shift = position - window - 1
+                x['event_rank'] = x['event_rank'] - shift
+                return x
+            data = data.groupby(weight_col).apply(pad_to_center)
+            data = data[data['event_rank'] > 0].copy()
 
         # calculate step matrix elements:
         agg = (data
@@ -664,16 +705,23 @@ class BaseTrajectory(object):
         piv.index.name = None
 
         # MAKE TERMINATED STATE ACCUMULATED:
-        piv.loc['ENDED'] = piv.loc['ENDED'].cumsum().fillna(0)
+        if 'ENDED' in piv.index:
+            piv.loc['ENDED'] = piv.loc['ENDED'].cumsum().fillna(0)
+
+        # add NOT_STARTED events for centered matrix
+        if centered:
+            piv.loc['NOT_STARTED'] = 1 - piv.sum()
 
         if sorting:
             piv = BaseTrajectory._sort_matrix(piv)
-            piv = piv.loc[[*(i for i in piv.index if i != 'ENDED'), 'ENDED']]
+            if 'ENDED' in piv.index:
+                keep_in_the_end = ['ENDED']
+                piv = piv.loc[[*(i for i in piv.index if i not in keep_in_the_end), *keep_in_the_end]]
 
         if thresh != 0:
-            # 1 find if there are any rows to threshold:
+            # find if there are any rows to threshold:
             thresholded = piv.loc[(piv < thresh).all(1)].copy()
-            if len(thresholded)>0:
+            if len(thresholded) > 0:
                 piv = piv.loc[(piv >= thresh).any(1)].copy()
                 piv.loc[f'THRESHOLDED_{len(thresholded)}'] = thresholded.sum()
 
@@ -688,8 +736,8 @@ class BaseTrajectory(object):
                 if type(i) != list:
                     targets[n] = [i]
 
-            if len(set(targets_flatten) & set(data[event_col])) == 0:
-                raise ValueError(f'{targets_flatten} events not found in the column: "{event_col}"')
+            if len(set(targets_flatten) - set(data[event_col])) != 0:
+                raise ValueError(f'Some of the events from "targets" are not found in the column: "{event_col}"')
             else:
                 agg_targets = (data
                                .groupby(['event_rank', event_col])[time_col]
@@ -727,8 +775,14 @@ class BaseTrajectory(object):
                             target[j] = 'ACC_'+item
                     targets = targets_not_acc + targets
 
+        if centered:
+            piv.columns = [f'{int(i)-window-1}' for i in piv.columns]
+            if targets:
+                piv_targets.columns = [f'{int(i) - window - 1}' for i in piv_targets.columns]
+
         plot.step_matrix(piv, piv_targets,
                          targets_list=targets,
-                         title='Step matrix')
+                         title=f'{"centered" if centered else ""} step matrix {fraction_title}',
+                         centered_position=(window if centered else None))
 
         return piv

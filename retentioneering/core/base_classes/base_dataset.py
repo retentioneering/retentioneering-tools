@@ -771,7 +771,6 @@ class BaseDataset(BaseTrajectory):
         )
         return pos_users.tolist()
 
-
     def get_negative_users(self, index_col=None, **kwargs):
         """
         Returns users who have ``negative_target_event`` in their trajectories.
@@ -795,86 +794,6 @@ class BaseDataset(BaseTrajectory):
         )
         return self._obj[~self._obj[self._index_col()].isin(good_users)][self._index_col()].unique().tolist()
         # return neg_users.tolist()
-
-    def filter_event_window(self, event_name, neighbor_range=3, direction="both",
-                            event_col=None, index_col=None, use_padding=True):
-        """
-        Filters clickstream data for specific event and its neighborhood.
-
-        Parameters
-        ---------
-        event_name: str
-            Event of interest.
-        neighbor_range:
-            Number of events to the left and right from event of interest. Default: ``3``
-        direction:
-            If "both" then takes all neighbours of specific event in both sides: before and after
-            If "before" then takes events only before specific event
-            If "after" then takes events only after specific event
-        index_col: str, optional
-            Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
-        event_col: str, optional
-            Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
-        use_padding: bool, optional
-            If ``True``, then all tracks are alligned with `sleep` event. After allignment all first `event_name` in a trajectory will be at a point `neighbor_range + 1`
-
-        Returns
-        -------
-        Filtered dataframe
-
-        Return type
-        -------
-        pd.DataFrame
-        """
-        self._init_cols(locals())
-        self._obj['flg'] = self._obj[self._event_col()] == event_name
-        f = pd.Series([False] * self._obj.shape[0], index=self._obj.index)
-        for i in range(-neighbor_range, neighbor_range + 1, 1):
-            if (direction == "after") and (i < 0):
-                continue
-            if (direction == "before") and (i > 0):
-                continue
-            f |= self._obj.groupby(self._index_col()).flg.shift(i).fillna(False)
-        x = self._obj[f].copy()
-        if use_padding and (direction != "after"):
-            x = self._pad_event_window(x, event_name, neighbor_range, event_col, index_col)
-        return x
-
-    def _pad_number(self, x, event_name, neighbor_range, event_col=None):
-        self._init_cols(locals())
-        minn = x[x[self._event_col()] == event_name].event_rank.min()
-        return neighbor_range - minn + 1
-
-    def _pad_time(self, x, event_name, event_col=None):
-        self._init_cols(locals())
-        minn = (x[x[self._event_col()] == event_name][self._event_time_col()].min())
-        return minn - pd.Timedelta(1, 's')
-
-    def _pad_event_window(self, x, event_name, neighbor_range=3, event_col=None, index_col=None):
-        self._init_cols(locals())
-        x['event_rank'] = 1
-        x.event_rank = x.groupby(self._index_col()).event_rank.cumsum()
-        res = x.groupby(self._index_col()).apply(self._pad_number,
-                                                 event_name=event_name,
-                                                 neighbor_range=neighbor_range,
-                                                 event_col=self._event_col())
-        res = res.map(lambda y: ' '.join(y * ['sleep']))
-        res = res.str.split(expand=True).reset_index().melt(self._index_col())
-        res = res.drop('variable', 1)
-        res = res[res.value.notnull()]
-        tm = (x
-              .groupby(self._index_col()).apply(self._pad_time,
-                                                event_name=event_name,
-                                                event_col=self._event_col()))
-        res = res.join(tm.rename('time'), on=self._index_col())
-        res.columns = [
-            self._index_col(),
-            self._event_col(),
-            self._event_time_col()
-        ]
-        res = res.reindex(x.columns, axis=1)
-        res = res.append(x, ignore_index=True, sort=False)
-        return res.reset_index(drop=True)
 
     def create_filter(self, index_col=None, cluster_list=None, cluster_mapping=None):
         """

@@ -5,19 +5,21 @@
 
 
 import itertools
+import json
+import os
+from datetime import datetime
+from functools import wraps
+
+import altair as alt
+import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
+import pandas as pd
 import seaborn as sns
 from IPython.display import IFrame, display  # TODO understand how to use visualization without it
-import numpy as np
-from datetime import datetime
-import pandas as pd
-import json
-from functools import wraps
-from retentioneering.visualization.cloud_logger import MongoLoader
-import altair as alt
-import os
+
 from retentioneering.visualization import templates
-import matplotlib.pyplot as plt
+from retentioneering.visualization.cloud_logger import MongoLoader
 
 
 def _calc_layout(data, node_params, width=500, height=500, **kwargs):
@@ -370,7 +372,7 @@ def altair_step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, fon
 @__save_plot__
 def step_matrix(data, targets=None, *,
                 targets_list=None, plot_name=None,
-                title='', centered_position=None):
+                title='', centered_position=None, precision=2):
 
     target_cmaps = itertools.cycle(['BrBG', 'PuOr', 'PRGn', 'RdBu'])
 
@@ -383,7 +385,7 @@ def step_matrix(data, targets=None, *,
 
     f, axs = sns.mpl.pyplot.subplots(n_rows, n_cols, sharex=True,
 
-                                     figsize=(round(data.shape[1] * 0.6),
+                                     figsize=(round(data.shape[1] * 0.7),
                                               round((len(data) +
                                                      (len(targets) if targets is not None else 0)) * 0.6)),
 
@@ -392,7 +394,7 @@ def step_matrix(data, targets=None, *,
     heatmap = sns.heatmap(data,
                           yticklabels=data.index,
                           annot=True,
-                          fmt='.2f',
+                          fmt=f'.{precision}f',
                           ax=axs[0] if targets is not None else axs,
                           cmap="RdGy",
                           center=0,
@@ -405,7 +407,7 @@ def step_matrix(data, targets=None, *,
             sns.heatmap(targets.loc[i],
                         yticklabels=targets.loc[i].index,
                         annot=True,
-                        fmt='.2f',
+                        fmt=f'.{precision}f',
                         ax=axs[1 + n],
                         cmap=next(target_cmaps),
                         center=0,
@@ -417,7 +419,7 @@ def step_matrix(data, targets=None, *,
 
             # add vertical lines for central step-matrix
             if centered_position is not None:
-                ax.vlines([centered_position-0.01, centered_position+0.98],
+                ax.vlines([centered_position-0.02, centered_position+0.98],
                           *ax.get_ylim(),
                           colors='Black',
                           linewidth=0.7)
@@ -427,7 +429,7 @@ def step_matrix(data, targets=None, *,
         sns.mpl.pyplot.yticks(rotation=0)
         # add vertical lines for central step-matrix
         if centered_position is not None:
-            axs.vlines([centered_position-0.01, centered_position+0.98],
+            axs.vlines([centered_position-0.02, centered_position+0.98],
                        *axs.get_ylim(),
                        colors='Black',
                        linewidth=0.7)

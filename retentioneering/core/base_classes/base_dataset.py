@@ -1,15 +1,16 @@
-import pandas as pd
-import numpy as np
-import matplotlib as plt
 from datetime import timedelta
-from retentioneering.core import feature_extraction
-from retentioneering.core import clustering
-from retentioneering.visualization import plot, funnel
-from sklearn.linear_model import LogisticRegression
-from retentioneering.core.model import ModelDescriptor
-from retentioneering.core import preprocessing
-from sklearn.feature_extraction.text import CountVectorizer
 
+import matplotlib as plt
+import numpy as np
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.linear_model import LogisticRegression
+
+from retentioneering.core import clustering
+from retentioneering.core import feature_extraction
+from retentioneering.core import preprocessing
+from retentioneering.core.model import ModelDescriptor
+from retentioneering.visualization import plot, funnel
 from .base_trajectory import BaseTrajectory
 
 

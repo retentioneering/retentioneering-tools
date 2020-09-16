@@ -1,6 +1,7 @@
-import pandas as pd
-import numpy as np
 import networkx as nx
+import numpy as np
+import pandas as pd
+
 from retentioneering.visualization import plot
 
 
@@ -292,7 +293,7 @@ class BaseTrajectory(object):
             piv[indices] = piv[indices] / piv[indices].sum()
 
         if plot_type:
-            plot.step_matrix(piv,None,
+            plot.step_matrix(piv, None,
                                  title=kwargs.get('title',
                                               'Step matrix {}'
                                               .format('reversed' if kwargs.get('reverse') else '')),
@@ -576,10 +577,17 @@ class BaseTrajectory(object):
                           targets, node_weights=node_weights, thresh=thresh, **kwargs)
         return path
 
-    def step_matrix(self, *, max_steps=30, weight_col=None,
-                    targets=None, accumulated=None,
-                    sorting=True, thresh=0,
-                    centered=None):
+    def step_matrix(self, *,
+                    max_steps=30,
+                    weight_col=None,
+                    targets=None,
+                    accumulated=None,
+                    sorting=True,
+                    thresh=0,
+                    centered=None,
+                    groups=None,
+                    show_plot=True,
+                    precision=2):
         """
         Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names,
         columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at
@@ -632,7 +640,6 @@ class BaseTrajectory(object):
         -------
         pd.DataFrame
         """
-        from pandas.core.common import flatten
         from copy import deepcopy
 
         event_col = self.retention_config['event_col']
@@ -675,9 +682,9 @@ class BaseTrajectory(object):
             if len(users_to_keep)==0:
                 raise ValueError(f'no records found with event "{center_event}" occuring N={occurrence} times')
 
-            fraction_used = round(len(users_to_keep) / data[weight_col].nunique() * 100)
-            if fraction_used != 100:
-                fraction_title = f'({fraction_used}% of total records)'
+            fraction_used = len(users_to_keep) / data[weight_col].nunique() * 100
+            if fraction_used < 100:
+                fraction_title = f'({fraction_used:.1f}% of total records)'
             data = data[data[weight_col].isin(users_to_keep)].copy()
 
             def pad_to_center(x):
@@ -712,24 +719,11 @@ class BaseTrajectory(object):
         if centered:
             piv.loc['NOT_STARTED'] = 1 - piv.sum()
 
-        if sorting:
-            piv = BaseTrajectory._sort_matrix(piv)
-            if 'ENDED' in piv.index:
-                keep_in_the_end = ['ENDED']
-                piv = piv.loc[[*(i for i in piv.index if i not in keep_in_the_end), *keep_in_the_end]]
-
-        if thresh != 0:
-            # find if there are any rows to threshold:
-            thresholded = piv.loc[(piv < thresh).all(1)].copy()
-            if len(thresholded) > 0:
-                piv = piv.loc[(piv >= thresh).any(1)].copy()
-                piv.loc[f'THRESHOLDED_{len(thresholded)}'] = thresholded.sum()
-
         # ADD ROWS FOR TARGETS:
         piv_targets = None
         if targets:
             # obtain flatten list of targets:
-            targets_flatten = list(flatten(targets))
+            targets_flatten = list(pd.core.common.flatten(targets))
 
             # format targets to list of lists:
             for n, i in enumerate(targets):
@@ -750,7 +744,11 @@ class BaseTrajectory(object):
                     agg_targets = agg_targets[agg_targets['event_rank'] <= max_steps]
 
                 piv_targets = agg_targets.pivot(index='event_name', columns='event_rank', values='freq').fillna(0)
+
+                # TODO: if target is not present in the dataset, then just add zeros row
+
                 piv_targets = piv_targets.loc[targets_flatten].copy()
+
                 piv_targets.columns.name = None
                 piv_targets.index.name = None
 
@@ -775,14 +773,32 @@ class BaseTrajectory(object):
                             target[j] = 'ACC_'+item
                     targets = targets_not_acc + targets
 
+        # BY HERE WE NEED TO OBTAIN FINAL DIFF piv and piv_targets:
+
+        if sorting:
+            piv = BaseTrajectory._sort_matrix(piv)
+            if 'ENDED' in piv.index:
+                keep_in_the_end = ['ENDED']
+                piv = piv.loc[[*(i for i in piv.index if i not in keep_in_the_end), *keep_in_the_end]]
+
+        if thresh != 0:
+            # find if there are any rows to threshold:
+            thresholded = piv.loc[(piv.abs() < thresh).all(1)].copy()
+            if len(thresholded) > 0:
+                piv = piv.loc[(piv.abs() >= thresh).any(1)].copy()
+                piv.loc[f'THRESHOLDED_{len(thresholded)}'] = thresholded.sum()
+
         if centered:
             piv.columns = [f'{int(i)-window-1}' for i in piv.columns]
             if targets:
                 piv_targets.columns = [f'{int(i) - window - 1}' for i in piv_targets.columns]
 
-        plot.step_matrix(piv, piv_targets,
-                         targets_list=targets,
-                         title=f'{"centered" if centered else ""} step matrix {fraction_title}',
-                         centered_position=(window if centered else None))
+        if groups is None and show_plot:
+            plot.step_matrix(piv, piv_targets,
+                             targets_list=targets,
+                             title=f'{"centered" if centered else ""} step matrix {fraction_title}',
+                             centered_position=(window if centered else None),
+                             precision=precision)
 
-        return piv
+        return piv, piv_targets
+

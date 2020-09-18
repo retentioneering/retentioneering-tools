@@ -411,6 +411,8 @@ def step_matrix(data, targets=None, *,
                         ax=axs[1 + n],
                         cmap=next(target_cmaps),
                         center=0,
+                        vmin=min(pd.core.common.flatten(targets.loc[i].values)),
+                        vmax=max(pd.core.common.flatten(targets.loc[i].values)) or 1,
                         cbar=False)
 
         for ax in axs:

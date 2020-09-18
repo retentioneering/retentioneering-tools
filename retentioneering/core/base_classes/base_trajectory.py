@@ -154,160 +154,6 @@ class BaseTrajectory(object):
         order.extend(list(set(step_matrix.index) - set(order)))
         return step_matrix.loc[order]
 
-    def get_step_matrix(self, *, max_steps=30, weight_col=None, index_col=None, reverse=None,
-                        plot_type=True, sorting=True,  thr=0, **kwargs):
-        """
-        *** DEPRICATED ***
-        *** WILL BE REMOVED IN NEXT UPDATES ***
-        *** USE rete.step_matrix instead ***
-
-        Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names,
-        columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at
-         a particular number step x% of users encountered a specific event.
-
-        Parameters
-        --------
-        index_col
-        max_steps: int, optional
-            Maximum number of steps in trajectory to include. Depending on ``reverse`` parameter value, the steps are
-            counted from the beginning of trajectories if ``reverse=False``, or from the end otherwise.
-        plot_type: bool, optional
-            If ``True``, then plots step matrix in interactive session (Jupyter notebook). Default: ``True``
-        thr: float, optional
-            Used to prune matrix and display only the rows with at least one value >= ``thr``. Default: ``None``
-        reverse: str or list, optional
-            This parameter is used to display reversed matrix from target events towards the beginning of trajectories.
-            Range of possible values:
-                - ``None``: displays default step matrix from the start of trajectories. Uses all the user trajectories.
-                - ``'pos'``: displays reverse step matrix in such a way that the first column is the
-                ``positive_target_event`` share, which is always 1, and the following columns reflect the share of users
-                 on final steps before reaching the target. Uses only those trajectories, which ended up having at least
-                  one ``positive_target_event`` in trajectory.
-                - ``'neg'``: same as ``pos`` but for ``negative_target_event``. Uses only those trajectories, which
-                ended up having at least one ``negative_target_event`` in trajectory.
-                - ``['pos', 'neg']``: combination of ``pos`` and ``neg`` options, first column has only target events.
-                Uses all the trajectories with target events inside.
-            Default: ``None``
-        sorting: bool, optional
-            If ``True``, then automatically places elements with highest values in top. Rows are sorted in such a way
-            that the first one has highest first column value, second row has the highest second column value,besides
-            already used first value, etc. With this sorting you may see a dominant trajectory as a diagonal.
-            Default: ``True``
-        weight_col: str, optional
-            Aggregation column for edge weighting. For instance, you may set it to the same value as in ``index_col``
-            and define ``edge_attributes='users_unique'`` to calculate unique users passed through edge.
-            Default: ``None``
-
-        Returns
-        -------
-        Dataframe with ``max_steps`` number of columns and len(event_col.unique) number of rows at max, or less if used
-        ``thr`` > 0.
-
-        Return type
-        -------
-        pd.DataFrame
-        """
-
-        def _add_accums(agg, name):
-            if name not in agg.index:
-                return pd.Series([0] * agg.shape[1], index=agg.columns, name='Accumulated ' + name)
-            return agg.loc[name].cumsum().shift(1).fillna(0).rename('Accumulated ' + name)
-
-
-        event_col = self.retention_config['event_col']
-        target_event_list = self.retention_config['target_event_list']
-        weight_col = weight_col or index_col or self.retention_config['index_col']
-
-        data = self._obj.copy()
-
-        data['event_rank'] = 1
-        data['event_rank'] = data.groupby(weight_col)['event_rank'].cumsum()
-
-        if reverse:
-            d = {
-                'pos': self.retention_config['positive_target_event'],
-                'neg': self.retention_config['negative_target_event']
-            }
-            if type(reverse) == list:
-                targets = [d[i] for i in reverse]
-            else:
-                targets = [d[reverse]]
-
-            data['convpoint'] = data[event_col].isin(targets).astype(int)
-            data['convpoint'] = (
-                    data
-                    .groupby(weight_col)['convpoint']
-                    .cumsum() - data['convpoint']
-            )
-            data['event_rank'] = (
-                    data
-                    .groupby([weight_col, 'convpoint'])['event_rank']
-                    .apply(lambda x: x.max() - x + 1)
-            )
-            data['non-detriment'] = (
-                    data
-                    .groupby([weight_col, 'convpoint'])[event_col]
-                    .apply(lambda x: pd.Series([x.iloc[-1] in targets] * x.shape[0], index=x.index))
-            )
-            if not data['non-detriment'].any():
-                raise ValueError('There is not {} event in this group'.format(targets[0]))
-
-            data = data[data['non-detriment'].fillna(False)]
-            data.drop('non-detriment', axis=1, inplace=True)
-
-        # calculate step matrix elements:
-        agg = (data
-               .groupby(['event_rank', event_col])[weight_col]
-               .nunique()
-               .reset_index())
-        agg[weight_col] /= data[weight_col].nunique()
-
-        if max_steps:
-            agg = agg[agg['event_rank'] <= max_steps]
-        agg.columns = ['event_rank', 'event_name', 'freq']
-
-        piv = agg.pivot(index='event_name', columns='event_rank', values='freq').fillna(0)
-        piv.columns.name = None
-        piv.index.name = None
-
-        if not reverse:
-            for i in target_event_list:
-                piv = piv.append(_add_accums(piv, i))
-
-        if thr != 0:
-            keep = piv.index.str.startswith('Accumulated')
-            keep |= piv.index.isin(target_event_list)
-            piv = piv.loc[(piv >= thr).any(1) | keep].copy()
-
-        if sorting:
-            piv = BaseTrajectory._sort_matrix(piv)
-
-        if not kwargs.get('for_diff'):
-            if reverse:
-                piv.columns = ['n'] + ['n - {}'.format(int(i) - 1) for i in piv.columns[1:]]
-
-        # TODO: need to remove forced normalization and implement one of the solutions:
-        # 1) accumulated counts only users after trajectory terminates (columns will be always normalize)
-        # 2) accumulated cumulatively counts all target events (no longer sums to 1)
-        for indices in piv.columns.values:
-            piv[indices] = piv[indices] / piv[indices].sum()
-
-        if plot_type:
-            plot.step_matrix(piv, None,
-                                 title=kwargs.get('title',
-                                              'Step matrix {}'
-                                              .format('reversed' if kwargs.get('reverse') else '')),
-                                 **kwargs)
-
-
-        if kwargs.get('dt_means') is not None:
-            means = np.array(data.groupby('event_rank').apply(
-                lambda x: (x.next_timestamp - x.event_timestamp).dt.total_seconds().mean()
-            ))
-            piv = pd.concat([piv, pd.DataFrame([means[:max_steps]], columns=piv.columns, index=['dt_mean'])])
-
-        return piv
-
     def split_sessions(self, *, by_event=None, thresh, eos_event=None, session_col='session_id'):
         """
         Generates ``session`_id` column with session rank for each ``index_col`` based on time difference between
@@ -582,11 +428,10 @@ class BaseTrajectory(object):
                     weight_col=None,
                     targets=None,
                     accumulated=None,
-                    sorting=True,
+                    sorting=None,
                     thresh=0,
                     centered=None,
                     groups=None,
-                    show_plot=True,
                     precision=2):
         """
         Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names,
@@ -640,7 +485,6 @@ class BaseTrajectory(object):
         -------
         pd.DataFrame
         """
-        from copy import deepcopy
 
         event_col = self.retention_config['event_col']
         weight_col = weight_col or self.retention_config['index_col']
@@ -656,8 +500,137 @@ class BaseTrajectory(object):
         data['event_rank'] = 1
         data['event_rank'] = data.groupby(weight_col)['event_rank'].cumsum()
 
+        # BY HERE WE NEED TO OBTAIN FINAL DIFF piv and piv_targets before sorting, thresholding and plotting:
+
+        if groups:
+            piv_pos, piv_targets_pos, fraction_title, window, targets_plot = \
+                BaseTrajectory.step_matrix_values(data=data[data[weight_col].isin(groups[0])].copy(),
+                                                  weight_col=weight_col,
+                                                  event_col=event_col,
+                                                  time_col=time_col,
+                                                  targets=targets,
+                                                  accumulated=accumulated,
+                                                  centered=centered,
+                                                  max_steps=max_steps)
+
+            piv_neg, piv_targets_neg, fraction_title, window, targets_plot = \
+                BaseTrajectory.step_matrix_values(data=data[data[weight_col].isin(groups[1])].copy(),
+                                                  weight_col=weight_col,
+                                                  event_col=event_col,
+                                                  time_col=time_col,
+                                                  targets=targets,
+                                                  accumulated=accumulated,
+                                                  centered=centered,
+                                                  max_steps=max_steps)
+
+            def join_index(df1, df2):
+                full_list = set(df1.index) | set(df2.index)
+                for i in full_list:
+                    if i not in df1.index:
+                        df1.loc[i] = 0
+                    if i not in df2.index:
+                        df2.loc[i] = 0
+
+            join_index(piv_pos, piv_neg)
+            piv = piv_pos - piv_neg
+
+            if targets:
+                join_index(piv_targets_pos, piv_targets_neg)
+                piv_targets = piv_targets_pos - piv_targets_neg
+            else:
+                piv_targets = None
+
+        else:
+            piv, piv_targets, fraction_title, window, targets_plot = \
+                BaseTrajectory.step_matrix_values(data=data,
+                                                  weight_col=weight_col,
+                                                  event_col=event_col,
+                                                  time_col=time_col,
+                                                  targets=targets,
+                                                  accumulated=accumulated,
+                                                  centered=centered,
+                                                  max_steps=max_steps)
+
+        thresh_index = 'THRESHOLDED_'
+        if thresh != 0:
+            # find if there are any rows to threshold:
+            thresholded = piv.loc[(piv.abs() < thresh).all(1)].copy()
+            if len(thresholded) > 0:
+                piv = piv.loc[(piv.abs() >= thresh).any(1)].copy()
+                thresh_index = f'THRESHOLDED_{len(thresholded)}'
+                piv.loc[thresh_index] = thresholded.sum()
+
+        if sorting is None:
+            piv = BaseTrajectory._sort_matrix(piv)
+
+            keep_in_the_end = []
+            keep_in_the_end.append('ENDED') if ('ENDED' in piv.index) else None
+            keep_in_the_end.append(thresh_index) if (thresh_index in piv.index) else None
+
+            events_order = [*(i for i in piv.index if i not in keep_in_the_end), *keep_in_the_end]
+            piv = piv.loc[events_order]
+
+            # add sorting list to config
+            self.retention_config['step_matrix'] = {'sorting': events_order}
+
+        else:
+            # if custom sorting was provided:
+            if not isinstance(sorting, list):
+                raise TypeError('parameter `sorting` must be a list of event')
+            if {*sorting} != {*piv.index}:
+                raise ValueError('provided sorting list does not match list of events. Run with `sorting` = None to get the actual list')
+
+            piv = piv.loc[sorting]
+
+        if centered:
+            piv.columns = [f'{int(i)-window-1}' for i in piv.columns]
+            if targets:
+                piv_targets.columns = [f'{int(i) - window - 1}' for i in piv_targets.columns]
+
+        plot.step_matrix(piv, piv_targets,
+                         targets_list=targets_plot,
+                         title=f'{"centered" if centered else ""} {"differential " if groups else ""}step matrix {fraction_title}',
+                         centered_position=window,
+                         precision=precision)
+
+        return piv, piv_targets
+
+    @staticmethod
+    def step_matrix_values(*, data, weight_col, event_col, time_col,
+                           targets, accumulated, centered, max_steps):
+
+        def pad_cols(df, max_steps):
+            """
+
+            Parameters
+            ----------
+            df - dataframe
+            max_steps - number of cols
+
+            Returns
+            -------
+            returns Dataframe with columns from 0 to max_steps
+
+            """
+            df = df.copy()
+            if max(df.columns) < max_steps:
+                for col in range(max(df.columns) + 1, max_steps + 1):
+                    df[col] = 0
+            # add missing cols if needed:
+            if min(df.columns) > 1:
+                for col in range(1, min(df.columns)):
+                    df[col] = 0
+            # sort cols
+            return df[list(range(1, max_steps + 1))]
+
+        from copy import deepcopy
+
+        data = data.copy()
+        targets = deepcopy(targets)
+
         # ALIGN DATA IF CENTRAL
         fraction_title = ''
+        window = None
         if centered is not None:
             # CHECKS
             if (not isinstance(centered, dict) or
@@ -679,7 +652,7 @@ class BaseTrajectory(object):
             data['occurance_counter'] = data.groupby(weight_col)['occurrence'].cumsum() * data['occurrence']
             users_to_keep = data[data['occurance_counter'] == occurrence][weight_col].unique()
 
-            if len(users_to_keep)==0:
+            if len(users_to_keep) == 0:
                 raise ValueError(f'no records found with event "{center_event}" occuring N={occurrence} times')
 
             fraction_used = len(users_to_keep) / data[weight_col].nunique() * 100
@@ -703,11 +676,14 @@ class BaseTrajectory(object):
                .reset_index())
         agg[weight_col] /= data[weight_col].nunique()
 
-        if max_steps:
-            agg = agg[agg['event_rank'] <= max_steps]
+        agg = agg[agg['event_rank'] <= max_steps]
         agg.columns = ['event_rank', 'event_name', 'freq']
 
         piv = agg.pivot(index='event_name', columns='event_rank', values='freq').fillna(0)
+
+        # add missing cols if number of events < max_steps:
+        piv = pad_cols(piv, max_steps)
+
         piv.columns.name = None
         piv.index.name = None
 
@@ -730,75 +706,47 @@ class BaseTrajectory(object):
                 if type(i) != list:
                     targets[n] = [i]
 
-            if len(set(targets_flatten) - set(data[event_col])) != 0:
-                raise ValueError(f'Some of the events from "targets" are not found in the column: "{event_col}"')
-            else:
-                agg_targets = (data
-                               .groupby(['event_rank', event_col])[time_col]
-                               .count()
-                               .reset_index())
-                agg_targets[time_col] /= data[weight_col].nunique()
-                agg_targets.columns = ['event_rank', 'event_name', 'freq']
+            agg_targets = (data
+                           .groupby(['event_rank', event_col])[time_col]
+                           .count()
+                           .reset_index())
+            agg_targets[time_col] /= data[weight_col].nunique()
+            agg_targets.columns = ['event_rank', 'event_name', 'freq']
 
-                if max_steps:
-                    agg_targets = agg_targets[agg_targets['event_rank'] <= max_steps]
+            agg_targets = agg_targets[agg_targets['event_rank'] <= max_steps]
 
-                piv_targets = agg_targets.pivot(index='event_name', columns='event_rank', values='freq').fillna(0)
+            piv_targets = agg_targets.pivot(index='event_name', columns='event_rank', values='freq').fillna(0)
+            piv_targets = pad_cols(piv_targets, max_steps)
 
-                # TODO: if target is not present in the dataset, then just add zeros row
+            # if target is not present in dataset add zeros:
+            for i in targets_flatten:
+                if i not in piv_targets.index:
+                    piv_targets.loc[i] = 0
 
-                piv_targets = piv_targets.loc[targets_flatten].copy()
+            piv_targets = piv_targets.loc[targets_flatten].copy()
 
-                piv_targets.columns.name = None
-                piv_targets.index.name = None
+            piv_targets.columns.name = None
+            piv_targets.index.name = None
 
-                if accumulated == 'only':
-                    piv_targets.index = map(lambda x: 'ACC_' + x, piv_targets.index)
-                    for i in piv_targets.index:
-                        piv_targets.loc[i] = piv_targets.loc[i].cumsum().fillna(0)
+            if accumulated == 'only':
+                piv_targets.index = map(lambda x: 'ACC_' + x, piv_targets.index)
+                for i in piv_targets.index:
+                    piv_targets.loc[i] = piv_targets.loc[i].cumsum().fillna(0)
 
-                    # change names is targets list:
-                    for target in targets:
-                        for j, item in enumerate(target):
-                            target[j] = 'ACC_'+item
+                # change names is targets list:
+                for target in targets:
+                    for j, item in enumerate(target):
+                        target[j] = 'ACC_'+item
 
-                if accumulated == 'both':
-                    for i in piv_targets.index:
-                        piv_targets.loc['ACC_'+i] = piv_targets.loc[i].cumsum().fillna(0)
+            if accumulated == 'both':
+                for i in piv_targets.index:
+                    piv_targets.loc['ACC_'+i] = piv_targets.loc[i].cumsum().fillna(0)
 
-                    # add accumulated targets to the list:
-                    targets_not_acc = deepcopy(targets)
-                    for target in targets:
-                        for j, item in enumerate(target):
-                            target[j] = 'ACC_'+item
-                    targets = targets_not_acc + targets
+                # add accumulated targets to the list:
+                targets_not_acc = deepcopy(targets)
+                for target in targets:
+                    for j, item in enumerate(target):
+                        target[j] = 'ACC_'+item
+                targets = targets_not_acc + targets
 
-        # BY HERE WE NEED TO OBTAIN FINAL DIFF piv and piv_targets:
-
-        if sorting:
-            piv = BaseTrajectory._sort_matrix(piv)
-            if 'ENDED' in piv.index:
-                keep_in_the_end = ['ENDED']
-                piv = piv.loc[[*(i for i in piv.index if i not in keep_in_the_end), *keep_in_the_end]]
-
-        if thresh != 0:
-            # find if there are any rows to threshold:
-            thresholded = piv.loc[(piv.abs() < thresh).all(1)].copy()
-            if len(thresholded) > 0:
-                piv = piv.loc[(piv.abs() >= thresh).any(1)].copy()
-                piv.loc[f'THRESHOLDED_{len(thresholded)}'] = thresholded.sum()
-
-        if centered:
-            piv.columns = [f'{int(i)-window-1}' for i in piv.columns]
-            if targets:
-                piv_targets.columns = [f'{int(i) - window - 1}' for i in piv_targets.columns]
-
-        if groups is None and show_plot:
-            plot.step_matrix(piv, piv_targets,
-                             targets_list=targets,
-                             title=f'{"centered" if centered else ""} step matrix {fraction_title}',
-                             centered_position=(window if centered else None),
-                             precision=precision)
-
-        return piv, piv_targets
-
+        return piv, piv_targets, fraction_title, window, targets

@@ -3,12 +3,6 @@ from retentioneering import datasets
 from retentioneering.datasets import gen_corner_cases
 import operator
 
-
-# global constants
-REL_TOL = 0.0001
-ABS_TOL = 0.0001
-
-
 # ******************************
 # **** INITIALIZE dataset 1 ****
 # ******************************
@@ -17,8 +11,8 @@ simple_shop_data = datasets.load_simple_shop()
 
 
 retentioneering.config.update({
-    'event_col':'event',
-    'event_time_col':'timestamp',
+    'event_col': 'event',
+    'event_time_col': 'timestamp',
     'index_col': 'client_id'
 })
 

@@ -432,12 +432,12 @@ class BaseTrajectory(object):
                     thresh=0,
                     centered=None,
                     groups=None,
-                    precision=2):
+                    precision=2,
+                    show_plot=True):
         """
         Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names,
         columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at
          a particular number step x% of users encountered a specific event.
-
         Parameters
         --------
         centered
@@ -475,12 +475,10 @@ class BaseTrajectory(object):
             Aggregation column for edge weighting. For instance, you may set it to the same value as in ``index_col``
             and define ``edge_attributes='users_unique'`` to calculate unique users passed through edge.
             Default: ``None``
-
         Returns
         -------
         Dataframe with ``max_steps`` number of columns and len(event_col.unique) number of rows at max, or less if used
         ``thr`` > 0.
-
         Return type
         -------
         pd.DataFrame
@@ -503,8 +501,11 @@ class BaseTrajectory(object):
         # BY HERE WE NEED TO OBTAIN FINAL DIFF piv and piv_targets before sorting, thresholding and plotting:
 
         if groups:
+            data_pos = data[data[weight_col].isin(groups[0])].copy()
+            if len(data_pos) == 0:
+                raise IndexError('Users from positive group are not present in dataset')
             piv_pos, piv_targets_pos, fraction_title, window, targets_plot = \
-                BaseTrajectory.step_matrix_values(data=data[data[weight_col].isin(groups[0])].copy(),
+                BaseTrajectory.step_matrix_values(data=data_pos,
                                                   weight_col=weight_col,
                                                   event_col=event_col,
                                                   time_col=time_col,
@@ -513,8 +514,11 @@ class BaseTrajectory(object):
                                                   centered=centered,
                                                   max_steps=max_steps)
 
+            data_neg = data[data[weight_col].isin(groups[1])].copy()
+            if len(data_pos) == 0:
+                raise IndexError('Users from negative group are not present in dataset')
             piv_neg, piv_targets_neg, fraction_title, window, targets_plot = \
-                BaseTrajectory.step_matrix_values(data=data[data[weight_col].isin(groups[1])].copy(),
+                BaseTrajectory.step_matrix_values(data=data_neg,
                                                   weight_col=weight_col,
                                                   event_col=event_col,
                                                   time_col=time_col,
@@ -587,13 +591,14 @@ class BaseTrajectory(object):
             if targets:
                 piv_targets.columns = [f'{int(i) - window - 1}' for i in piv_targets.columns]
 
-        plot.step_matrix(piv, piv_targets,
-                         targets_list=targets_plot,
-                         title=f'{"centered" if centered else ""} {"differential " if groups else ""}step matrix {fraction_title}',
-                         centered_position=window,
-                         precision=precision)
+        if show_plot:
+            plot.step_matrix(piv, piv_targets,
+                             targets_list=targets_plot,
+                             title=f'{"centered" if centered else ""} {"differential " if groups else ""}step matrix {fraction_title}',
+                             centered_position=window,
+                             precision=precision)
 
-        return piv, piv_targets
+        return piv
 
     @staticmethod
     def step_matrix_values(*, data, weight_col, event_col, time_col,
@@ -601,16 +606,13 @@ class BaseTrajectory(object):
 
         def pad_cols(df, max_steps):
             """
-
             Parameters
             ----------
             df - dataframe
             max_steps - number of cols
-
             Returns
             -------
             returns Dataframe with columns from 0 to max_steps
-
             """
             df = df.copy()
             if max(df.columns) < max_steps:

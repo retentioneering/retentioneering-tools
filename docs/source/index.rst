@@ -16,11 +16,9 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   Installation <installation.rst>
-   Introduction <early_steps.rst>
-   Mobile app case <mobile-app-case.rst>
+   Getting started <installation.rst>
+   Step_matrix <step_matrix.rst>
    Documentation <retentioneering.rst>
-
 
 
 Indices and tables

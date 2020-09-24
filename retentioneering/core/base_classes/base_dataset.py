@@ -712,38 +712,6 @@ class BaseDataset(BaseTrajectory):
         return self._obj[~self._obj[self._index_col()].isin(good_users)][self._index_col()].unique().tolist()
         # return neg_users.tolist()
 
-    def create_filter(self, index_col=None, cluster_list=None, cluster_mapping=None):
-        """
-        Creates filter for ``get_step_matrix_difference()`` method based on target classes or clusters.
-
-        Parameters
-        -------
-        index_col: str, optional
-            Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
-        cluster_list: list, optional
-            List of clusters from which others will be substract. Default: ``None``
-        cluster_mapping: str, optional
-            Mapping from clusters to list of users. IMPORTANT: if you use cluster subsample of source data, then it will be necessary to set ``cluster_mapping=source_data.rete.cluster_mapping``.
-
-        Returns
-        -------
-        Boolean array with filter
-
-        Return type
-        -------
-        Boolean pd.Series
-        """
-        index_col = index_col or self.retention_config['index_col']
-
-        if cluster_list is None:
-            pos_users = self.get_positive_users(index_col)
-            return self._obj[index_col].isin(pos_users)
-        else:
-            ids = []
-            for i in cluster_list:
-                ids.extend((cluster_mapping or self.cluster_mapping)[i])
-            return self._obj[index_col].isin(ids)
-
     def calculate_delays(self, plotting=True, time_col=None, index_col=None, event_col=None, bins=15, **kwargs):
         """
         Displays the logarithm of delay between ``time_col`` with the next value in nanoseconds as a histogram.
@@ -860,86 +828,6 @@ class BaseDataset(BaseTrajectory):
         for event in event_list:
             data = data.loc[func(data[self._event_col()], event)]
         return data.reset_index(drop=True)
-
-    def learn_tsne(self, targets=None, plot_type=None, refit=False, regression_targets=None,
-                   sample_size=None, sample_frac=None, proj_type=None, **kwargs):
-        """
-        <<<REPLACED BY project() function>>>
-        <<< NO LONGER SUPPORTED AND WILL BE REMOVED IN THE FUTURE VERSIONS>>
-
-        Learns TSNE projection for selected feature space (`feature_type` in kwargs) and visualizes it with chosen visualization type.
-
-        Parameters
-        --------
-        targets: np.array, optional
-            Vector of targets for users. if None, then calculates automatically based on ``positive_target_event`` and ``negative_target_event``.
-        plot_type: str, optional
-            Type of projection visualization:
-                - ``clusters``: colors trajectories with different colors depending on cluster number.
-                - ``targets``: color trajectories based on target reach.
-            If ``None``, then only calculates TSNE without visualization. Default: ``None``
-        refit: bool, optional
-            If ``True``, then TSNE will be refitted, e.g. it is needed if you perform hyperparameters selection.
-        regression_targets: dict, optional
-            Mapping of ``index_col`` to regression target for custom coloring. For example, if you want to visually evaluate average LTV of user with trajectories clusterization. For more information refer to ``BaseDataset.rete.make_regression_targets()``.
-        cmethod: str, optional
-            Method of clustering if plot_type = 'clusters'. Refer to ``BaseDataset.rete.get_clusters()`` for more information.
-        kwargs: optional
-            Parameters for ``BaseDataset.rete.extract_features()``, ``sklearn.manifold.TSNE`` and ``BaseDataset.rete.get_clusters()``
-
-        Returns
-        --------
-        Dataframe with TSNE transform for user trajectories indexed by user IDs.
-
-        Return type
-        --------
-        pd.DataFrame
-        """
-        old_targs = None
-        if hasattr(self, 'datatype') and self.datatype == 'features':
-            features = self._obj.copy()
-        else:
-            features = self.extract_features(**kwargs)
-            if targets is None:
-                if regression_targets is not None:
-                    targets = self.make_regression_targets(features, regression_targets)
-                else:
-                    targets = features.index.isin(self.get_positive_users(**kwargs))
-                    targets = np.where(targets, self.retention_config['positive_target_event'],
-                                       self.retention_config['negative_target_event'])
-            self._tsne_targets = targets
-
-        if sample_frac is not None:
-            features = features.sample(frac=sample_frac, random_state=0)
-        elif sample_size is not None:
-            features = features.sample(n=sample_size, random_state=0)
-
-        if not (hasattr(self, '_tsne') and not refit):
-            self._tsne = feature_extraction.learn_tsne(features, **kwargs)
-        if plot_type == 'clusters':
-            if kwargs.get('cmethod') is not None:
-                kwargs['method'] = kwargs.pop('cmethod')
-            old_targs = targets.copy()
-            targets = self.get_clusters(plot_type=None, **kwargs)
-        elif plot_type == 'targets':
-            targets = self._tsne_targets
-        else:
-            return self._tsne
-        if proj_type == '3d':
-            plot.tsne_3d(
-                self._obj,
-                clustering.aggregate_cl(targets, 7) if kwargs.get('method') == 'dbscan' else targets,
-                old_targs,
-                **kwargs
-            )
-        else:
-            plot.cluster_tsne(
-                self._obj,
-                clustering.aggregate_cl(targets, 7) if kwargs.get('method') == 'dbscan' else targets,
-                targets,
-                **kwargs
-            )
-        return self._tsne
 
     def project(self, method='umap', targets=None, plot_type=None, refit=False, regression_targets=None,
                    sample_size=None, sample_frac=None, proj_type=None, **kwargs):
@@ -1361,8 +1249,6 @@ class BaseDataset(BaseTrajectory):
         plot.sns.mpl.pyplot.legend()
         plot.sns.mpl.pyplot.show()
         (s_cur.next_event.value_counts() / f_cur.sum()).iloc[:topk].plot.bar()
-
-
 
     @staticmethod
     def _find_traj(x, event_list, event_col):

@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,31 +11,33 @@
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="retentioneering.core package" href="retentioneering.core.html" />
-    <link rel="prev" title="Mobile app case" href="mobile-app-case.html" /> 
+    <link rel="prev" title="Step_matrix function" href="step_matrix.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -50,7 +51,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Retentioneering Tools
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> Retentioneering Tools
           
 
           
@@ -73,6 +74,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -81,9 +83,8 @@
             
             
               <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="early_steps.html">Introduction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mobile-app-case.html">Mobile app case</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Step_matrix</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="retentioneering.core.html">retentioneering.core package</a></li>
@@ -98,6 +99,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -136,7 +138,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="index.html">Docs</a> &raquo;</li>
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>retentioneering package</li>
     
@@ -165,13 +167,14 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="retentioneering.core.html">retentioneering.core package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core.base_classes.base_trajectory">retentioneering.core.base_classes.base_trajectory module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core.clustering">retentioneering.core.clustering module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core.feature_extraction">retentioneering.core.feature_extraction module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core.model">retentioneering.core.model module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core.node_metrics">retentioneering.core.node_metrics module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#retentioneering-core-node-metrics-module">retentioneering.core.node_metrics module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core.preprocessing">retentioneering.core.preprocessing module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core.tree_selector">retentioneering.core.tree_selector module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core.utils">retentioneering.core.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#retentioneering-core-utils-module">retentioneering.core.utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core">Module contents</a></li>
 </ul>
 </li>
@@ -200,7 +203,7 @@
         <a href="retentioneering.core.html" class="btn btn-neutral float-right" title="retentioneering.core package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="mobile-app-case.html" class="btn btn-neutral float-left" title="Mobile app case" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="step_matrix.html" class="btn btn-neutral float-left" title="Step_matrix function" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -209,11 +212,19 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, Retentioneering User Trajectory Analysis Lab
+        
+        &copy; Copyright 2020, &#34;Data Driven Lab&#34; LLC
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
     <br><br>More information about our services at <a href="https://retentioneering.com/">Retentioneering.com</a>.
 
 
@@ -226,7 +237,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

@@ -1,0 +1,524 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>retentioneering.core.feature_extraction &mdash; Retentioneering Tools 1.0.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home" alt="Documentation Home"> Retentioneering Tools
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../step_matrix.html">Step_matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../retentioneering.html">Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Retentioneering Tools</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>retentioneering.core.feature_extraction</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for retentioneering.core.feature_extraction</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2019 Maxim Godzi, Anatoly Zaytsev, Dmitrii Kiselev</span>
+<span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
+<span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
+<span class="c1"># file, You can obtain one at https://mozilla.org/MPL/2.0/.</span>
+
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">umap.umap_</span> <span class="k">as</span> <span class="nn">umap</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
+<span class="kn">from</span> <span class="nn">sklearn.manifold</span> <span class="kn">import</span> <span class="n">TSNE</span>
+<span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">decomposition</span>
+<span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">manifold</span>
+<span class="kn">from</span> <span class="nn">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+
+
+<span class="k">def</span> <span class="nf">_uni_counts_embedder</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s1">&#39;index_col&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">index_col</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">trajectory</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;index_col&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">index_col</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;index_col&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="s1">&#39;event_col&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">event_col</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">trajectory</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;event_col&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">event_col</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;event_col&#39;</span><span class="p">]</span>
+    <span class="n">last_k</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;last_k&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">last_k</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">index_col</span><span class="p">)</span><span class="o">.</span><span class="n">tail</span><span class="p">(</span><span class="n">last_k</span><span class="p">)</span>
+    <span class="n">cv</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">index_col</span><span class="p">,</span> <span class="n">event_col</span><span class="p">])</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;event_count&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">cv</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">index_col</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">event_col</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">cv</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">levels</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">cv</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">set_names</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">cv</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">set_names</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">cv</span><span class="o">.</span><span class="n">rete</span><span class="p">,</span> <span class="s1">&#39;datatype&#39;</span><span class="p">,</span> <span class="s1">&#39;features&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cv</span>
+
+
+<span class="k">def</span> <span class="nf">_ngram_agg</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ngram_range</span><span class="p">):</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">shifts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ngram_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">ngram_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+        <span class="n">shifts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">shifts</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">Counter</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="counts_embedder"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.feature_extraction.counts_embedder">[docs]</a><span class="k">def</span> <span class="nf">counts_embedder</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate ``index_col`` embedding (continuous vector form) by counting ``event_col`` appearance for each ``index_col``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    --------</span>
+<span class="sd">    data: pd.DataFrame</span>
+<span class="sd">        Clickstream dataset.</span>
+<span class="sd">    ngram_range: tuple, optional</span>
+<span class="sd">        Range of ngrams to use in feature extraction. Default: ``(1, 1)``</span>
+<span class="sd">    index_col: str, optional</span>
+<span class="sd">        Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.</span>
+<span class="sd">    event_col: str, optional</span>
+<span class="sd">        Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.</span>
+<span class="sd">    last_k: int, optional</span>
+<span class="sd">        Include only the last ``last_k`` events for each ``index_col``.</span>
+<span class="sd">    wo_last: int, optional</span>
+<span class="sd">        Exclude ``last_k`` events for each ``index_col``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    --------</span>
+<span class="sd">    Vectorized dataframe with ``index_col`` as index and counts of ``event_col`` values as dataframe values.</span>
+
+<span class="sd">    Return type</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">max</span><span class="p">(</span><span class="n">ngram_range</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_uni_counts_embedder</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;index_col&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">index_col</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">trajectory</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;index_col&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">index_col</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;index_col&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="s1">&#39;event_col&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">event_col</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">trajectory</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;event_col&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">event_col</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;event_col&#39;</span><span class="p">]</span>
+    <span class="n">last_k</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;last_k&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">last_k</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">index_col</span><span class="p">)</span><span class="o">.</span><span class="n">tail</span><span class="p">(</span><span class="n">last_k</span><span class="p">)</span>
+    <span class="n">wo_last</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;wo_last_k&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">wo_last</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">bad_ids</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">index_col</span><span class="p">)</span><span class="o">.</span><span class="n">tail</span><span class="p">(</span><span class="n">wo_last</span><span class="p">)</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="o">~</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">bad_ids</span><span class="p">)]</span>
+    <span class="n">cv</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">index_col</span><span class="p">)[</span><span class="n">event_col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">_ngram_agg</span><span class="p">,</span> <span class="n">ngram_range</span><span class="o">=</span><span class="n">ngram_range</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">cv</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">index_col</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s1">&#39;level_1&#39;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="n">event_col</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">cv</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">cv</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">i</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]]]</span>
+    <span class="n">cv</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">set_names</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">cv</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">set_names</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cv</span></div>
+
+
+<div class="viewcode-block" id="frequency_embedder"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.feature_extraction.frequency_embedder">[docs]</a><span class="k">def</span> <span class="nf">frequency_embedder</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Similar to ``count_embedder()``, but normalizes events count over ``index_col``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    -------</span>
+<span class="sd">    data: pd.DataFrame</span>
+<span class="sd">        Clickstream dataset.</span>
+<span class="sd">    ngram_range: tuple, optional</span>
+<span class="sd">        Range of ngrams to use in feature extraction. Default: ``(1, 1)``</span>
+<span class="sd">    index_col: str, optional</span>
+<span class="sd">        Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.</span>
+<span class="sd">    event_col: str, optional</span>
+<span class="sd">        Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Dataframe with sessions vectorized by frequencies of events.</span>
+
+<span class="sd">    Return type</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cv</span> <span class="o">=</span> <span class="n">counts_embedder</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">ngram_range</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">freq</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="n">cv</span><span class="o">.</span><span class="n">values</span> <span class="o">/</span> <span class="n">cv</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="n">index</span><span class="o">=</span><span class="n">cv</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+        <span class="n">columns</span><span class="o">=</span><span class="n">cv</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">freq</span><span class="o">.</span><span class="n">rete</span><span class="p">,</span> <span class="s1">&#39;datatype&#39;</span><span class="p">,</span> <span class="s1">&#39;features&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">freq</span></div>
+
+
+<div class="viewcode-block" id="tfidf_embedder"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.feature_extraction.tfidf_embedder">[docs]</a><span class="k">def</span> <span class="nf">tfidf_embedder</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Similar to ``frequency_embedder()``, but normalizes event frequencies with inversed document frequency.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    --------</span>
+<span class="sd">    data: pd.DataFrame</span>
+<span class="sd">        Clickstream dataset.</span>
+<span class="sd">    ngram_range: tuple, optional</span>
+<span class="sd">        Range of ngrams to use in feature extraction. Default: ``(1, 1)``</span>
+<span class="sd">    index_col: str, optional</span>
+<span class="sd">        Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.</span>
+<span class="sd">    event_col: str, optional</span>
+<span class="sd">        Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    --------</span>
+<span class="sd">    Dataframe with ``index_col`` vectorized by TF-IDF of events.</span>
+
+<span class="sd">    Return type</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<span class="c1">#     print(&#39;range&#39;,ngram_range)</span>
+    <span class="k">if</span> <span class="s1">&#39;index_col&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">index_col</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">trajectory</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;index_col&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">index_col</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;index_col&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="s1">&#39;event_col&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">event_col</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">trajectory</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;event_col&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">event_col</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;event_col&#39;</span><span class="p">]</span>
+
+    <span class="n">corpus</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">index_col</span><span class="p">)[</span><span class="n">event_col</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s1">&#39;~~&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">el</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">x</span><span class="p">]))</span>
+    <span class="k">if</span> <span class="s1">&#39;vocab&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;vocab&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">vectorizer</span> <span class="o">=</span> <span class="n">TfidfVectorizer</span><span class="p">(</span><span class="n">vocabulary</span><span class="o">=</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;vocab&#39;</span><span class="p">],</span><span class="n">token_pattern</span> <span class="o">=</span> <span class="s1">&#39;[^~]+&#39;</span><span class="p">,</span><span class="n">ngram_range</span> <span class="o">=</span> <span class="n">ngram_range</span><span class="p">)</span>
+
+        <span class="n">tfidf</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="n">index_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">(),</span> <span class="n">columns</span><span class="o">=</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;vocab&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span>
+                             <span class="n">data</span><span class="o">=</span><span class="n">vectorizer</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">corpus</span><span class="p">)</span><span class="o">.</span><span class="n">todense</span><span class="p">())</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">vectorizer</span> <span class="o">=</span> <span class="n">TfidfVectorizer</span><span class="p">(</span><span class="n">ngram_range</span><span class="o">=</span><span class="n">ngram_range</span><span class="p">,</span><span class="n">token_pattern</span> <span class="o">=</span> <span class="s1">&#39;[^~]+&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">corpus</span><span class="p">)</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">dict_key</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">dict_key</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">vectorizer</span><span class="o">.</span><span class="n">vocabulary_</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+        <span class="n">tfidf</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="p">[</span><span class="n">index_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">(),</span> <span class="n">columns</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">vectorizer</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">corpus</span><span class="p">)</span><span class="o">.</span><span class="n">todense</span><span class="p">())</span>
+
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">tfidf</span><span class="o">.</span><span class="n">rete</span><span class="p">,</span> <span class="s1">&#39;datatype&#39;</span><span class="p">,</span> <span class="s1">&#39;features&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tfidf</span></div>
+
+
+<div class="viewcode-block" id="learn_tsne"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.feature_extraction.learn_tsne">[docs]</a><span class="k">def</span> <span class="nf">learn_tsne</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates TSNE transformation for given matrix features.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    --------</span>
+<span class="sd">    data: np.array</span>
+<span class="sd">        Array of features.</span>
+<span class="sd">    kwargs: optional</span>
+<span class="sd">        Parameters for ``sklearn.manifold.TSNE()``</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Calculated TSNE transform</span>
+
+<span class="sd">    Return type</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_tsne_filter</span> <span class="o">=</span> <span class="n">TSNE</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">TSNE</span><span class="p">)</span>
+    <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">j</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">_tsne_filter</span><span class="p">}</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">TSNE</span><span class="p">(</span><span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="learn_umap"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.feature_extraction.learn_umap">[docs]</a><span class="k">def</span> <span class="nf">learn_umap</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates UMAP transformation for given matrix features.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    --------</span>
+<span class="sd">    data: np.array</span>
+<span class="sd">        Array of features.</span>
+<span class="sd">    kwargs: optional</span>
+<span class="sd">        Parameters for ``umap.UMAP()``</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Calculated UMAP transform</span>
+
+<span class="sd">    Return type</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#_tsne_filter = TSNE.get_params(TSNE)</span>
+    <span class="c1">#kwargs = {i: j for i, j in kwargs.items() if i in _tsne_filter}</span>
+    <span class="c1">#res = TSNE(random_state=0, **kwargs).fit_transform(data.values)</span>
+    <span class="n">reducer</span> <span class="o">=</span> <span class="n">umap</span><span class="o">.</span><span class="n">UMAP</span><span class="p">()</span>
+    <span class="n">_umap_filter</span> <span class="o">=</span> <span class="n">reducer</span><span class="o">.</span><span class="n">get_params</span><span class="p">()</span>
+    <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">j</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">_umap_filter</span><span class="p">}</span>
+    <span class="n">embedding</span> <span class="o">=</span> <span class="n">umap</span><span class="o">.</span><span class="n">UMAP</span><span class="p">(</span><span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">min_dist</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">embedding</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">values</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_manifold"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.feature_extraction.get_manifold">[docs]</a><span class="k">def</span> <span class="nf">get_manifold</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">manifold_type</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reduces number of dimensions.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ---------</span>
+<span class="sd">    data: pd.DataFrame</span>
+<span class="sd">        Dataframe with features for clustering indexed as in ``retention_config.index_col``</span>
+<span class="sd">    manifold_type: str</span>
+<span class="sd">        Name dimensionality reduction method from ``sklearn.decomposition`` and ``sklearn.manifold``</span>
+<span class="sd">    kwargs: optional</span>
+<span class="sd">        Parameters for ``sklearn.decomposition`` and ``sklearn.manifold`` methods.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    --------</span>
+<span class="sd">    pd.DataFrame with reduced dimensions.</span>
+
+<span class="sd">    Return type</span>
+<span class="sd">    --------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">decomposition</span><span class="p">,</span> <span class="n">manifold_type</span><span class="p">):</span>
+        <span class="n">man</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">decomposition</span><span class="p">,</span> <span class="n">manifold_type</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">manifold</span><span class="p">,</span> <span class="n">manifold_type</span><span class="p">):</span>
+        <span class="n">man</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">manifold</span><span class="p">,</span> <span class="n">manifold_type</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;There is not such manifold </span><span class="si">{</span><span class="n">manifold_type</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">tsvd</span> <span class="o">=</span> <span class="n">man</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">j</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">man</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">man</span><span class="p">)})</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">tsvd</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="merge_features"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.feature_extraction.merge_features">[docs]</a><span class="k">def</span> <span class="nf">merge_features</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">meta_index_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">manifold_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fillna</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adds metadata to TFIDF of trajectories. Eeduced if ``manifold_type`` is not ``None``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    --------</span>
+<span class="sd">    features: pd.DataFrame</span>
+<span class="sd">        Dataframe with users` metadata.</span>
+<span class="sd">    metadata: pd.DataFrame</span>
+<span class="sd">        Dataframe with user or session properties or any other information you would like to extract as features (e.g. user properties, LTV values, etc.). Default: ``None``</span>
+<span class="sd">    meta_index_col: str, optional</span>
+<span class="sd">        Used when metadata is not ``None``. Name of column in ``metadata`` dataframe that contains the same ID as in ``index_col``, or if not defined, same as in retention_config (e.g ID of users or sessions). If ``None``, then index of metadata dataframe is used instead. Default: ``None``</span>
+<span class="sd">    manifold_type: str, optional</span>
+<span class="sd">        Name dimensionality reduction method from ``sklearn.decomposition`` and ``sklearn.manifold``. Default: ``None``</span>
+<span class="sd">    fillna: optional</span>
+<span class="sd">        Value for filling missing metadata for any ``index_col`` value. Default: ``None``</span>
+<span class="sd">    drop: bool, optional</span>
+<span class="sd">        If ``True``, then drops users which do not exist in ``metadata`` dataframe. Default: ``False``</span>
+<span class="sd">    kwargs: optional</span>
+<span class="sd">        Keyword arguments for ``sklearn.decomposition`` and ``sklearn.manifold`` methods.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Dataframe with trajectory features (possibly reduced) and users metadata.</span>
+
+<span class="sd">    Return type</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">manifold_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">get_manifold</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">manifold_type</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">meta_index_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">metadata</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="n">meta_index_col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">meta_index_col</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="n">rsuffix</span><span class="o">=</span><span class="s1">&#39;_meta&#39;</span><span class="p">,)</span>
+    <span class="k">if</span> <span class="n">drop</span> <span class="ow">and</span> <span class="p">(</span><span class="n">fillna</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="n">res</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">fillna</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">fillna</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">res</span></div>
+
+
+<div class="viewcode-block" id="drop_equal_features"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.feature_extraction.drop_equal_features">[docs]</a><span class="k">def</span> <span class="nf">drop_equal_features</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">users</span><span class="p">,</span> <span class="n">thres</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Drop nonzero features with equal counts of negative and positive user&#39;s</span>
+
+<span class="sd">    :param features: array of features</span>
+<span class="sd">    :param users: list of positive users (e.g. data.rete.get_positive_users())</span>
+<span class="sd">    :param thres: threshold of dropping (e.g 0.1 means area of drop equals [0.9,1.1]</span>
+<span class="sd">    :return: dropped features: array of features</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">feat_group</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">users</span><span class="p">))</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">feat_neg</span> <span class="o">=</span> <span class="n">feat_group</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">feat_pos</span> <span class="o">=</span> <span class="n">feat_group</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">feat_neg</span> <span class="o">+=</span> <span class="mi">10</span><span class="o">**-</span><span class="mi">6</span>
+    <span class="n">feat_div</span> <span class="o">=</span> <span class="n">feat_pos</span> <span class="o">/</span> <span class="n">feat_neg</span> <span class="o">-</span> <span class="mf">1.</span>
+
+    <span class="n">features_drop</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">feat_div</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">thres</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">features_drop</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, &#34;Data Driven Lab&#34; LLC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    <br><br>More information about our services at <a href="https://retentioneering.com/">Retentioneering.com</a>.
+
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

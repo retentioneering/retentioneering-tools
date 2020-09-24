@@ -1,0 +1,449 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>retentioneering.core.model &mdash; Retentioneering Tools 1.0.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home" alt="Documentation Home"> Retentioneering Tools
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../step_matrix.html">Step_matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../retentioneering.html">Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Retentioneering Tools</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>retentioneering.core.model</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for retentioneering.core.model</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright (C) 2019 Maxim Godzi, Anatoly Zaytsev, Dmitrii Kiselev</span>
+<span class="c1"># This Source Code Form is subject to the terms of the Mozilla Public</span>
+<span class="c1"># License, v. 2.0. If a copy of the MPL was not distributed with this</span>
+<span class="c1"># file, You can obtain one at https://mozilla.org/MPL/2.0/.</span>
+
+<span class="kn">from</span> <span class="nn">sklearn.inspection</span> <span class="kn">import</span> <span class="n">permutation_importance</span> <span class="k">as</span> <span class="n">perm_imp</span>
+<span class="kn">from</span> <span class="nn">retentioneering.visualization</span> <span class="kn">import</span> <span class="n">plot</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+
+<div class="viewcode-block" id="ModelDescriptor"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.model.ModelDescriptor">[docs]</a><span class="k">class</span> <span class="nc">ModelDescriptor</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target</span> <span class="o">=</span> <span class="n">target</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_extraction_kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_extraction_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;ngram_range&#39;</span><span class="p">:</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;feature_range&#39;</span><span class="p">)})</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;get_params&#39;</span><span class="p">):</span>
+            <span class="n">model_filter</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+            <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">j</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">model_filter</span><span class="p">}</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mod</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Please use only keyword arguments from your model&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fit_model</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+
+    <span class="k">def</span> <span class="nf">_fit_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mod</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ModelDescriptor.permutation_importance_raw"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.model.ModelDescriptor.permutation_importance_raw">[docs]</a>    <span class="k">def</span> <span class="nf">permutation_importance_raw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">test_sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_test</span><span class="p">(</span><span class="n">test</span><span class="p">)</span>
+        <span class="n">test_target</span> <span class="o">=</span> <span class="n">test</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">get_positive_users</span><span class="p">()</span>
+        <span class="n">test_target</span> <span class="o">=</span> <span class="n">test_sample</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">test_target</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">permutation_importance</span><span class="p">(</span><span class="n">test_sample</span><span class="p">,</span> <span class="n">test_target</span><span class="p">,</span> <span class="n">node_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ModelDescriptor.permutation_importance"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.model.ModelDescriptor.permutation_importance">[docs]</a>    <span class="k">def</span> <span class="nf">permutation_importance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_sample</span><span class="p">,</span> <span class="n">test_target</span><span class="p">,</span> <span class="n">node_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates permutation importance of features.</span>
+<span class="sd">        If ``node_params`` is not `None`, then plots graph weighted by permutation importance.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -------</span>
+<span class="sd">        test_sample: pd.DataFrame</span>
+<span class="sd">            Test feature subsample.</span>
+<span class="sd">        test_target: np.array</span>
+<span class="sd">            Vector of targets for test sample.</span>
+<span class="sd">        node_params: dict, optional</span>
+<span class="sd">            Event mapping describing which nodes or edges should be highlighted by different colors for better visualisation. Dictionary keys are ``event_col`` values, while keys have the following possible values:</span>
+<span class="sd">                - ``bad_target``: highlights node and all incoming edges with red color;</span>
+<span class="sd">                - ``nice_target``: highlights node and all incoming edges with green color;</span>
+<span class="sd">                - ``bad_node``: highlights node with red color;</span>
+<span class="sd">                - ``nice_node``: highlights node with green color;</span>
+<span class="sd">                - ``source``: highlights node and all outgoing edges with yellow color.</span>
+<span class="sd">            Example ``node_params`` is shown below:</span>
+<span class="sd">            ```</span>
+<span class="sd">            {</span>
+<span class="sd">                &#39;lost&#39;: &#39;bad_target&#39;,</span>
+<span class="sd">                &#39;purchased&#39;: &#39;nice_target&#39;,</span>
+<span class="sd">                &#39;onboarding_welcome_screen&#39;: &#39;source&#39;,</span>
+<span class="sd">                &#39;choose_login_type&#39;: &#39;nice_node&#39;,</span>
+<span class="sd">                &#39;accept_privacy_policy&#39;: &#39;bad_node&#39;,</span>
+<span class="sd">            }</span>
+<span class="sd">            ```</span>
+<span class="sd">            If ``node_params=None``, it will be constructed from ``retention_config`` variable, so that:</span>
+<span class="sd">            ```</span>
+<span class="sd">            {</span>
+<span class="sd">                &#39;positive_target_event&#39;: &#39;nice_target&#39;,</span>
+<span class="sd">                &#39;negative_target_event&#39;: &#39;bad_target&#39;,</span>
+<span class="sd">                &#39;source_event&#39;: &#39;source&#39;,</span>
+<span class="sd">            }</span>
+<span class="sd">            ```</span>
+<span class="sd">            Default: ``None``</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">show_quality_metrics</span><span class="p">(</span><span class="n">test_sample</span><span class="p">,</span> <span class="n">test_target</span><span class="p">)</span>
+        <span class="n">perm</span> <span class="o">=</span> <span class="n">perm_imp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mod</span><span class="p">,</span> <span class="n">test_sample</span><span class="p">,</span> <span class="n">test_target</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">perm</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;importances&#39;</span><span class="p">)</span>
+        <span class="n">perm</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">test_sample</span><span class="o">.</span><span class="n">columns</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">permutation_importance_table</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">perm</span><span class="p">)</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;importances_mean&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">plot</span><span class="o">.</span><span class="n">permutation_importance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">permutation_importance_table</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_plot_perm_imp</span><span class="p">(</span><span class="n">perm</span><span class="p">,</span> <span class="n">test_sample</span><span class="p">,</span> <span class="n">node_params</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">permutation_importance_table</span></div>
+
+<div class="viewcode-block" id="ModelDescriptor.show_quality_raw"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.model.ModelDescriptor.show_quality_raw">[docs]</a>    <span class="k">def</span> <span class="nf">show_quality_raw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test</span><span class="p">):</span>
+        <span class="n">test_sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_test</span><span class="p">(</span><span class="n">test</span><span class="p">)</span>
+        <span class="n">test_target</span> <span class="o">=</span> <span class="n">test</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">get_positive_users</span><span class="p">()</span>
+        <span class="n">test_target</span> <span class="o">=</span> <span class="n">test_sample</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">test_target</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">show_quality_metrics</span><span class="p">(</span><span class="n">test_sample</span><span class="p">,</span> <span class="n">test_target</span><span class="p">,</span> <span class="n">use_print</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ModelDescriptor.show_quality_metrics"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.model.ModelDescriptor.show_quality_metrics">[docs]</a>    <span class="k">def</span> <span class="nf">show_quality_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_sample</span><span class="p">,</span> <span class="n">test_target</span><span class="p">,</span> <span class="n">use_print</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate model quality metrics.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -------</span>
+<span class="sd">        test_sample: pd.DataFrame</span>
+<span class="sd">            Test feature subsample.</span>
+<span class="sd">        test_target: np.array</span>
+<span class="sd">            Vector of targets for test sample.</span>
+<span class="sd">        use_print: bool, optional</span>
+<span class="sd">            If ``True``, prints out ROC-AUC, PR-AUC and accuracy in prediction task and RMSE, MAE and R-Squared in regression task.</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ROC-AUC, PR-AUC and accuracy metrics in prediction task and RMSE, MAE and R-Squared in regression task.</span>
+
+<span class="sd">        Return type</span>
+<span class="sd">        -------</span>
+<span class="sd">        Int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mod</span><span class="p">,</span> <span class="s1">&#39;predict_proba&#39;</span><span class="p">):</span>
+            <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span>
+            <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">roc_auc_score</span>
+            <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">average_precision_score</span>
+            <span class="n">preds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mod</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">test_sample</span><span class="p">)[:,</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">split</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">):</span>
+                <span class="n">split</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">i</span><span class="p">:</span> <span class="n">accuracy_score</span><span class="p">(</span><span class="n">test_target</span><span class="p">,</span> <span class="n">preds</span> <span class="o">&gt;</span> <span class="p">(</span><span class="n">i</span> <span class="o">/</span> <span class="mi">100</span><span class="p">))})</span>
+            <span class="n">best_split</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">split</span><span class="p">)</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()</span> <span class="o">/</span> <span class="mi">100</span>
+            <span class="n">roc</span> <span class="o">=</span> <span class="n">roc_auc_score</span><span class="p">(</span><span class="n">test_target</span><span class="p">,</span> <span class="n">preds</span><span class="p">)</span>
+            <span class="n">aps</span> <span class="o">=</span> <span class="n">average_precision_score</span><span class="p">(</span><span class="n">test_target</span><span class="p">,</span> <span class="n">preds</span><span class="p">)</span>
+            <span class="n">ac</span> <span class="o">=</span> <span class="n">accuracy_score</span><span class="p">(</span><span class="n">test_target</span><span class="p">,</span> <span class="n">preds</span> <span class="o">&gt;</span> <span class="n">best_split</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">use_print</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                ROC-AUC: </span><span class="si">{</span><span class="n">roc</span><span class="si">}</span><span class="s2"></span>
+<span class="s2">                PR-AUC: </span><span class="si">{</span><span class="n">aps</span><span class="si">}</span><span class="s2"></span>
+<span class="s2">                Accuracy: </span><span class="si">{</span><span class="n">ac</span><span class="si">}</span><span class="s2"></span>
+<span class="s2">                &quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">roc</span><span class="p">,</span> <span class="n">aps</span><span class="p">,</span> <span class="n">ac</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">mean_squared_error</span>
+            <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">mean_absolute_error</span>
+            <span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">r2_score</span>
+            <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+            <span class="n">preds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mod</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">test_sample</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">use_print</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                RMSE: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">mean_squared_error</span><span class="p">(</span><span class="n">test_target</span><span class="p">,</span> <span class="n">preds</span><span class="p">))</span><span class="si">}</span><span class="s2"></span>
+<span class="s2">                MAE: </span><span class="si">{</span><span class="n">mean_absolute_error</span><span class="p">(</span><span class="n">test_target</span><span class="p">,</span> <span class="n">preds</span><span class="p">)</span><span class="si">}</span><span class="s2"></span>
+<span class="s2">                R-squared: </span><span class="si">{</span><span class="n">r2_score</span><span class="p">(</span><span class="n">test_target</span><span class="p">,</span> <span class="n">preds</span><span class="p">)</span><span class="si">}</span><span class="s2"></span>
+<span class="s2">                &quot;&quot;&quot;</span><span class="p">)</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_plot_perm_imp</span><span class="p">(</span><span class="n">perm</span><span class="p">,</span> <span class="n">test_sample</span><span class="p">,</span> <span class="n">node_params</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">test_sample</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">perm</span><span class="p">[</span><span class="s2">&quot;importances_mean&quot;</span><span class="p">]))</span>
+
+        <span class="k">if</span> <span class="n">node_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">node_params</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">node_flg</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">node_flg</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">node_weights</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">node</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">weights</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">node</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">node_flg</span><span class="p">:</span>
+                <span class="n">node_params</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+                    <span class="n">node</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="s1">&#39;nice_node&#39;</span> <span class="k">if</span> <span class="n">weights</span><span class="p">[</span><span class="n">node</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="s1">&#39;bad_node&#39;</span><span class="p">,</span>
+                <span class="p">})</span>
+            <span class="n">node_weights</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+                <span class="n">node</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">val</span>
+            <span class="p">})</span>
+
+        <span class="n">edge_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">test_sample</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">edge_cols</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Sorry, you use only unigrams, change ngram_range to (1, 2) or greater&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">edge_cols</span><span class="p">:</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">key</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">weights</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)])</span>
+
+        <span class="n">plot</span><span class="o">.</span><span class="n">graph</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">node_params</span><span class="p">,</span> <span class="n">node_weights</span><span class="o">=</span><span class="n">node_weights</span><span class="p">,</span> <span class="n">is_model</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ModelDescriptor.visualize_results"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.model.ModelDescriptor.visualize_results">[docs]</a>    <span class="k">def</span> <span class="nf">visualize_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;projections&#39;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;Sorry! This function is not ready now.&#39;</span><span class="p">)</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="ModelDescriptor.predict"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.model.ModelDescriptor.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Predicts probability of ``positive_target_event`` and ``negative_target_event`` in classifacation task or values of ``regeression_targets`` in regression task.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        -------</span>
+<span class="sd">        features: pd.DataFrame</span>
+<span class="sd">            Dataframe with test features. For more information refer to ``prepare_test()`` method.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dataframe with predictions.</span>
+
+<span class="sd">        Return type</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mod</span><span class="p">,</span> <span class="s1">&#39;predict_proba&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mod</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span><span class="n">features</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">features</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mod</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">features</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">features</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;prediction&#39;</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="ModelDescriptor.prepare_test"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.model.ModelDescriptor.prepare_test">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transforms test clickstream into train.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ---------</span>
+<span class="sd">        test: pd.DataFrame</span>
+<span class="sd">            Raw clickstream.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        --------</span>
+<span class="sd">        Dataframe with test features.</span>
+
+<span class="sd">        Return type</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">test</span> <span class="o">=</span> <span class="n">test</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_extraction_kwargs</span><span class="p">)</span>
+        <span class="n">test</span> <span class="o">=</span> <span class="n">test</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()]</span>
+        <span class="k">return</span> <span class="n">test</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ModelDescriptor.predict_raw"><a class="viewcode-back" href="../../../retentioneering.core.html#retentioneering.core.model.ModelDescriptor.predict_raw">[docs]</a>    <span class="k">def</span> <span class="nf">predict_raw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Predicts probability of ``positive_target_event`` and ``negative_target_event`` in classifacation task or values of ``regeression_targets`` in regression task.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        --------</span>
+<span class="sd">        data: pd.DataFrame</span>
+<span class="sd">            Raw clickstream.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        --------</span>
+<span class="sd">        Dataframe with predictions.</span>
+
+<span class="sd">        Return type</span>
+<span class="sd">        --------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_test</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">features</span><span class="p">)</span></div></div>
+
+
+<span class="k">class</span> <span class="nc">__LogRegWrapper__</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coef</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coef</span> <span class="o">=</span> <span class="n">coef</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">feature_importances_</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">coef</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, &#34;Data Driven Lab&#34; LLC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    <br><br>More information about our services at <a href="https://retentioneering.com/">Retentioneering.com</a>.
+
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

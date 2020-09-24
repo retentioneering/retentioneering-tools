@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,30 +11,32 @@
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Installation" href="installation.html" /> 
+    <link rel="next" title="Getting started" href="installation.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -49,7 +50,7 @@
           
 
           
-            <a href="#" class="icon icon-home"> Retentioneering Tools
+            <a href="#" class="icon icon-home" alt="Documentation Home"> Retentioneering Tools
           
 
           
@@ -72,6 +73,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -80,15 +82,15 @@
             
             
               <ul>
-<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="early_steps.html">Introduction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mobile-app-case.html">Mobile app case</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Step_matrix</a></li>
 <li class="toctree-l1"><a class="reference internal" href="retentioneering.html">Documentation</a></li>
 </ul>
 
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -127,7 +129,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="#">Docs</a> &raquo;</li>
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
         
       <li>Retentioneering Tools</li>
     
@@ -149,56 +151,152 @@
            <div itemprop="articleBody">
             
   <hr class="docutils" />
-<div class="section" id="installation">
-<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="getting-started">
+<h1>Getting started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="python-and-jupyter">
 <h2>Python and Jupyter<a class="headerlink" href="#python-and-jupyter" title="Permalink to this headline">¶</a></h2>
 <p>Firstly, you need to install python and Jupyter.
-We supports only python 3.
+We support only Python 3.
 For quick start better to install <a class="reference external" href="https://www.anaconda.com/">Anaconda</a>.</p>
 </div>
-<div class="section" id="python-package">
-<h2>Python package<a class="headerlink" href="#python-package" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="retentioneering-install">
+<h2>Retentioneering install<a class="headerlink" href="#retentioneering-install" title="Permalink to this headline">¶</a></h2>
 <ul>
-<li><p class="first">You can install our package using pip.</p>
+<li><p>You can install our package using pip</p>
 <blockquote>
-<div><div class="code bash highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip3</span> <span class="n">install</span> <span class="n">retentioneering</span>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3 install retentioneering
 </pre></div>
 </div>
 </div></blockquote>
 </li>
-<li><p class="first">Or directly from source</p>
+<li><p>Or directly from source</p>
 <blockquote>
-<div><div class="code bash highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">path</span><span class="o">-</span><span class="n">to</span><span class="o">-</span><span class="n">our</span><span class="o">-</span><span class="n">rep</span><span class="o">.</span><span class="n">git</span>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/retentioneering/retentioneering-tools
 
-<span class="n">cd</span> <span class="n">retentioneering</span><span class="o">-</span><span class="n">framework</span>
+<span class="nb">cd</span> retentioneering-tools
 
-<span class="n">python3</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span> <span class="o">--</span><span class="n">user</span>
+python3 setup.py install --user
 </pre></div>
 </div>
 </div></blockquote>
 </li>
 </ul>
+</div>
+<div class="section" id="id1">
+<h2>Getting started<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>Retentioneering works as Pandas Dataframe accessor, meaning that if you work with
+your users logs data using Pandas Dataframe you can apply retentioneering right after
+import! All you need is import retentioneering, import sample dataframe (or use you
+own!):</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">retentioneering</span>
+
+<span class="c1"># load sample data</span>
+<span class="kn">from</span> <span class="nn">retentioneering</span> <span class="kn">import</span> <span class="n">datasets</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Here <cite>data</cite> is a regular Pandas Dataframe:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>client_id</th>
+      <th>event</th>
+      <th>timestamp</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>219483890</td>
+      <td>catalog</td>
+      <td>2019-11-01 17:59:13.273932</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>219483890</td>
+      <td>product1</td>
+      <td>2019-11-01 17:59:28.459271</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>219483890</td>
+      <td>cart</td>
+      <td>2019-11-01 17:59:29.502214</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>219483890</td>
+      <td>catalog</td>
+      <td>2019-11-01 17:59:32.557029</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>964964743</td>
+      <td>catalog</td>
+      <td>2019-11-01 21:38:19.283663</td>
+    </tr>
+  </tbody>
+</table>
+</div><div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Last step is to simply specify columns names. Retentioneering module needs to know what columns
+in your dataset correspond to event names, timestamps, and user_ids. In our case it’s <cite>event</cite>,
+<cite>timestamp</cite> and <cite>client_id</cite> respectively:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># update config to specify column names</span>
+<span class="n">retentioneering</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+    <span class="s1">&#39;event_col&#39;</span><span class="p">:</span><span class="s1">&#39;event&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;event_time_col&#39;</span><span class="p">:</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;index_col&#39;</span><span class="p">:</span> <span class="s1">&#39;client_id&#39;</span>
+<span class="p">})</span>
+</pre></div>
+</div>
+<p>Congradulations! Now complete arsenal of retentioneering tools is ready for use. For example,
+you can plot <cite>step_matrix</cite>:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
+                      <span class="n">centered</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;left_gap&#39;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span>
+                                <span class="s1">&#39;occurrence&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">},</span>
+                      <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]);</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="contents">
 <h2>Contents<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Getting started</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#python-and-jupyter">Python and Jupyter</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#python-package">Python package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#retentioneering-install">Retentioneering install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#id1">Getting started</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="early_steps.html">Introduction</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="early_steps.html#first-steps">First steps</a></li>
-<li class="toctree-l2"><a class="reference internal" href="early_steps.html#temporal-funnel">Temporal funnel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="early_steps.html#clustering">Clustering</a></li>
-<li class="toctree-l2"><a class="reference internal" href="early_steps.html#supervised-classifier">Supervised classifier</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="mobile-app-case.html">Mobile app case</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="mobile-app-case.html#analysis">Analysis</a></li>
-<li class="toctree-l2"><a class="reference internal" href="mobile-app-case.html#predict-app-remove">Predict app remove</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Step_matrix</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="step_matrix.html#step-matrix-intro">Step matrix intro</a></li>
+<li class="toctree-l2"><a class="reference internal" href="step_matrix.html#basic-example">Basic example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="step_matrix.html#thresholding">Thresholding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="step_matrix.html#add-targets-analysis">Add targets analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="step_matrix.html#centered-step-matrix">Centered step matrix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="step_matrix.html#differential-step-matrix">Differential step matrix</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="retentioneering.html">Documentation</a><ul>
@@ -212,9 +310,9 @@ For quick start better to install <a class="reference external" href="https://ww
 <div class="section" id="indices-and-tables">
 <h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
-<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
-<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
 </ul>
 </div>
 </div>
@@ -227,7 +325,7 @@ For quick start better to install <a class="reference external" href="https://ww
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="installation.html" class="btn btn-neutral float-right" title="Getting started" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
     </div>
@@ -237,11 +335,19 @@ For quick start better to install <a class="reference external" href="https://ww
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, Retentioneering User Trajectory Analysis Lab
+        
+        &copy; Copyright 2020, &#34;Data Driven Lab&#34; LLC
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
     <br><br>More information about our services at <a href="https://retentioneering.com/">Retentioneering.com</a>.
 
 
@@ -254,7 +360,6 @@ For quick start better to install <a class="reference external" href="https://ww
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

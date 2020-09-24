@@ -1,0 +1,475 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Step_matrix function &mdash; Retentioneering Tools 1.0.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="retentioneering package" href="retentioneering.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> Retentioneering Tools
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Step_matrix</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#step-matrix-intro">Step matrix intro</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#basic-example">Basic example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#thresholding">Thresholding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#add-targets-analysis">Add targets analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#centered-step-matrix">Centered step matrix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#differential-step-matrix">Differential step matrix</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="retentioneering.html">Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Retentioneering Tools</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Step_matrix function</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/step_matrix.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="step-matrix-function">
+<h1>Step_matrix function<a class="headerlink" href="#step-matrix-function" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="step-matrix-intro">
+<h2>Step matrix intro<a class="headerlink" href="#step-matrix-intro" title="Permalink to this headline">¶</a></h2>
+<p>Step matrix is a very powerful tool in retentioneering arsenal. It allows quickly get high-level
+understing of user behaviour.</p>
+<p>To better understand how <cite>step_matrix</cite> works let’s first consider intuitive example. Let’s say we
+are analyzing web-store logs and have dataset with event logs from four user sessions with the following
+events in following order:</p>
+<img alt="_images/step_matrix_demo.svg" src="_images/step_matrix_demo.svg" /><p>We can visualize</p>
+<img alt="_images/step_matrix_demo_plot.svg" src="_images/step_matrix_demo_plot.svg" /></div>
+<div class="section" id="basic-example">
+<h2>Basic example<a class="headerlink" href="#basic-example" title="Permalink to this headline">¶</a></h2>
+<p>This notebook can be found <a class="reference external" href="https://github.com/retentioneering/retentioneering-tools/blob/master/examples/step_matrix.ipynb">here</a>.</p>
+<p>This document describes available functionality for step_matrix function.</p>
+<p>To run examples below we need to import retentioneering, import sample dataset and setup config:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">retentioneering</span>
+
+<span class="c1"># load sample data</span>
+<span class="kn">from</span> <span class="nn">retentioneering</span> <span class="kn">import</span> <span class="n">datasets</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>
+
+<span class="c1"># update config to specify column names</span>
+<span class="n">retentioneering</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+    <span class="s1">&#39;event_col&#39;</span><span class="p">:</span><span class="s1">&#39;event&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;event_time_col&#39;</span><span class="p">:</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;index_col&#39;</span><span class="p">:</span> <span class="s1">&#39;client_id&#39;</span>
+<span class="p">})</span>
+</pre></div>
+</div>
+<p>To understand intuitively what is step_matrix let us begin with plotting step_matrix
+for extremely simple dataset containg events for only one user:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">single_user</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;client_id&#39;</span><span class="p">]</span><span class="o">==</span><span class="mi">613604495</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">single_user</span>
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>client_id</th>
+      <th>event</th>
+      <th>timestamp</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>613604495</td>
+      <td>main</td>
+      <td>2019-11-02 23:25:03.672939</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>613604495</td>
+      <td>catalog</td>
+      <td>2019-11-02 23:25:07.390498</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>613604495</td>
+      <td>catalog</td>
+      <td>2019-11-02 23:25:48.043605</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>613604495</td>
+      <td>product2</td>
+      <td>2019-11-02 23:26:08.845033</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>613604495</td>
+      <td>cart</td>
+      <td>2019-11-02 23:26:37.007346</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>613604495</td>
+      <td>catalog</td>
+      <td>2019-11-02 23:26:38.406224</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>613604495</td>
+      <td>cart</td>
+      <td>2019-11-02 23:27:09.279245</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>613604495</td>
+      <td>catalog</td>
+      <td>2019-11-02 23:27:11.432713</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>613604495</td>
+      <td>product2</td>
+      <td>2019-11-02 23:27:43.193619</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>613604495</td>
+      <td>cart</td>
+      <td>2019-11-02 23:27:48.110186</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>613604495</td>
+      <td>delivery_choice</td>
+      <td>2019-11-02 23:27:48.292051</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>613604495</td>
+      <td>delivery_pickup</td>
+      <td>2019-11-02 23:27:59.789239</td>
+    </tr>
+  </tbody>
+</table>
+</div><div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Let’s plot a simple intuitive step_matrix for our single user dataset:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">single_user</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_su_0.svg" src="_images/step_matrix_su_0.svg" /><p>We can see since we have only one user in this example, <cite>step_matrix</cite> contains only 0’s and 1’s.
+At step 1 user had event <cite>main</cite> (100% of users have event main as first event in the trajecotry),
+then at step 2 user proceed to <cite>catalog</cite>, etc., etc., etc. By the step 13 user’s trajectory
+ended and there are no more events, therefore all subsequent events starting from step 13 are
+special events <cite>ENDED</cite> indicating no other events present.</p>
+<p>Let’s now plot <cite>step_matrix</cite> for the full dataset containing all users:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_0.svg" src="_images/step_matrix_0.svg" /><p>By looking at the first column we can immediately say that users in the analyzed cohort start
+their sessions from events <cite>catalog</cite> (72%) and <cite>main</cite> (28%). At step 2 12% of users already
+ended their sessions and have no other events (row <cite>ENDED</cite> at step 2 is 0.12). We can see, that
+52% of users finish their sessions with 6 or less events (row <cite>ENDED</cite> at step 7 is 0.52). Some
+convertions start happen after step 7 (row <cite>payment_done</cite> have 0.02 at step 7). And so on. Note,
+that at each step all values in every column always sum up to 1 (meaning that all users have some
+specific event or <cite>ENDED</cite> state). Below we will explore other options for <cite>step_matrix</cite> function to make the output much more
+informative and tailored for the goals of particular analysis.</p>
+</div>
+<div class="section" id="thresholding">
+<h2>Thresholding<a class="headerlink" href="#thresholding" title="Permalink to this headline">¶</a></h2>
+<p>When we plot <cite>step_matrix</cite> using full dataset sometimes we want first focus on bigger picture and
+avoid rows with event where insignificant fraction of users experienced. Such thresholding can be
+done using <cite>thresh</cite> parameter (float, default: 0). If the row has all values less than specified
+<cite>thresh</cite>, such row will not be shown.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span><span class="o">=</span><span class="mf">0.05</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_1.svg" src="_images/step_matrix_1.svg" /><p>All events cutted away by thresholding are grouped together in <cite>THRESHOLDED_X</cite> row, where X - is
+the total number of dropped events.</p>
+</div>
+<div class="section" id="add-targets-analysis">
+<h2>Add targets analysis<a class="headerlink" href="#add-targets-analysis" title="Permalink to this headline">¶</a></h2>
+<p>Very often there are specific events of particular importance for product analyst (for example
+such as <cite>cart</cite>, or <cite>order_confirmed</cite>, or <cite>subscribe</cite>, etc.). Often such events have much lower
+convertion rate comparing other events (like <cite>main page</cite> or <cite>catalog</cite>) and often ended up thresholded
+from <cite>step_matrix</cite> or shown with non-informative coloring. In this case we can isolate those events of
+particular importance (<cite>targets</cite>) to individual rows, each of which will have their individual color scale.
+This can be done with parameter <cite>targets</cite>:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                      <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]);</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_2.svg" src="_images/step_matrix_2.svg" /><p>Specified target events are always shown below regardless of selected threshold. Multiple targets can be
+included as a list:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                      <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]);</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_3.svg" src="_images/step_matrix_3.svg" /><p>If we want to compare some targets and plot them using same color scaling, we can combine
+them in sub-list inside the <cite>targets</cite> list:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                      <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,[</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]]);</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_4.svg" src="_images/step_matrix_4.svg" /><p>Now we can visually compare by color how mamy users reach <cite>cart</cite> vs <cite>payment_done</cite> at particular
+step in their trajectory.</p>
+<p>Targets can be presented as accumulated values (or both):</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                      <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,[</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]],</span>
+                      <span class="n">accumulated</span><span class="o">=</span><span class="s1">&#39;only&#39;</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_5.svg" src="_images/step_matrix_5.svg" /><div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                      <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,[</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]],</span>
+                      <span class="n">accumulated</span><span class="o">=</span><span class="s1">&#39;only&#39;</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_6.svg" src="_images/step_matrix_6.svg" /></div>
+<div class="section" id="centered-step-matrix">
+<h2>Centered step matrix<a class="headerlink" href="#centered-step-matrix" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes we are interested in flow of users through specific event: how do users reach
+specific event and what do they do after? This information can be visualized with step_marix
+using parameter centered:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
+                      <span class="n">centered</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;left_gap&#39;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span>
+                                <span class="s1">&#39;occurrence&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">});</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_7.svg" src="_images/step_matrix_7.svg" /><p>Note, that when plot step_matrix with parameter centered we only keep users who have reached
+specified event (the column 0 has value 1 at specified event)</p>
+<p>We can use all targets functionality with centered step_matrix, for example:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
+                      <span class="n">centered</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;left_gap&#39;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span>
+                                <span class="s1">&#39;occurrence&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">},</span>
+                      <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]);</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_8.svg" src="_images/step_matrix_8.svg" /></div>
+<div class="section" id="differential-step-matrix">
+<h2>Differential step matrix<a class="headerlink" href="#differential-step-matrix" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes we need to compare behavior of several groups of users. For example,</p>
+<p>In this case it is informative to plot a step_matrix as difference between step_matrix for
+group_A and step_matrix for group_B. This can be done using parameter</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">g1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;event&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;payment_done&#39;</span><span class="p">][</span><span class="s1">&#39;client_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+<span class="n">g2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;client_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span> <span class="o">-</span> <span class="n">g1</span>
+
+<span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+                      <span class="n">groups</span><span class="o">=</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">));</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_9.svg" src="_images/step_matrix_9.svg" /></div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="retentioneering.html" class="btn btn-neutral float-right" title="retentioneering package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, &#34;Data Driven Lab&#34; LLC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    <br><br>More information about our services at <a href="https://retentioneering.com/">Retentioneering.com</a>.
+
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

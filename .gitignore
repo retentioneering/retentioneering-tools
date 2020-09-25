@@ -25,6 +25,7 @@ drafts/
 .installed.cfg
 *.egg
 _temp*
+_temp/
 playground_*
 MANIFEST
 

@@ -110,7 +110,7 @@ class TestStepMatrix:
 
     def test_step_matrix_sorting(self, test_dataset):
         custom_order = ['catalog', 'cart', 'delivery_choice', 'delivery_courier', 'payment_card', 'payment_choice',
-                        'payment_done', 'ENDED', 'THRESHOLDED_6']
+                        'payment_done', 'lost', 'ENDED', 'THRESHOLDED_6']
         assert step_matrix_test(test_dataset, max_steps=20,
                                               thresh=0.5,
                                               centered={'event': 'payment_done',

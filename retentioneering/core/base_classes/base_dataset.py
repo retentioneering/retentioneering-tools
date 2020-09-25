@@ -738,8 +738,8 @@ class BaseDataset(BaseTrajectory):
         List
         """
         self._init_cols(locals())
-        data = self.get_shift(index_col = self._index_col(),
-                              event_col = self._event_col()).copy()
+        data = self._get_shift(index_col = self._index_col(),
+                               event_col = self._event_col()).copy()
 
         delays = np.log((data['next_timestamp'] - data[self._event_time_col()]) // pd.Timedelta('1s'))
 
@@ -1227,8 +1227,8 @@ class BaseDataset(BaseTrajectory):
                                    event_col=None, bins=100, limit=180, topk=3):
         self._init_cols(locals())
         if 'next_event' not in self._obj.columns:
-            data = self.get_shift(index_col=index_col,
-                                  event_col=event_col).copy()
+            data = self._get_shift(index_col=index_col,
+                                   event_col=event_col).copy()
 
         data['time_diff'] = (data['next_timestamp'] - data[
             time_col or self.retention_config['event_time_col']]).dt.total_seconds()

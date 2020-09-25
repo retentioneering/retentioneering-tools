@@ -13,7 +13,8 @@ events in following order:
 
 .. image:: _static/step_matrix/step_matrix_demo.svg
 
-We can visualize
+We can visualize this dataset as a heatmap indicating what fraction of users were at wich step in
+their trajectories:
 
 .. image:: _static/step_matrix/step_matrix_demo_plot.svg
 
@@ -155,6 +156,7 @@ for extremely simple dataset containg events for only one user:
 
 
 |
+
 Let's plot a simple intuitive step_matrix for our single user dataset:
 
 .. code:: ipython3
@@ -265,7 +267,7 @@ Targets can be presented as accumulated values (or both):
     data.rete.step_matrix(max_steps=16,
                           thresh=0.05,
                           targets=['product1',['cart','payment_done']],
-                          accumulated='only');
+                          accumulated='both');
 
 .. image:: _static/step_matrix/step_matrix_6.svg
 

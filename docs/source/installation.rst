@@ -22,10 +22,8 @@ Retentioneering install
     .. code:: bash
 
         git clone https://github.com/retentioneering/retentioneering-tools
-
         cd retentioneering-tools
-
-        python3 setup.py install --user
+        pip3 install .
 
 Getting started
 ===============
@@ -43,7 +41,7 @@ own!):
     from retentioneering import datasets
     data = datasets.load_simple_shop()
 
-Here `data` is a regular Pandas Dataframe:
+Here ``data`` is a regular Pandas Dataframe:
 
 .. code:: ipython3
 

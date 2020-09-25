@@ -14,11 +14,23 @@ Contents
 =====================================================
 
 .. toctree::
+   :caption: FIRST STEPS:
    :maxdepth: 2
 
    Getting started <installation.rst>
-   Step_matrix <step_matrix.rst>
-   Documentation <retentioneering.rst>
+
+.. toctree::
+   :caption: CORE FUNCTIONS GUIDES:
+   :maxdepth: 2
+
+   Plot graph <plot_graph.rst>
+   Step matrix <step_matrix.rst>
+
+.. toctree::
+   :caption: API REFERENCE:
+   :maxdepth: 2
+
+   Core functions <retentioneering.core.rst>
 
 
 Indices and tables

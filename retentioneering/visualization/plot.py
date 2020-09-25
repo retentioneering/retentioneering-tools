@@ -22,7 +22,11 @@ from retentioneering.visualization import templates
 from retentioneering.visualization.cloud_logger import MongoLoader
 
 
-def _calc_layout(data, node_params, width=500, height=500, **kwargs):
+def _calc_layout(data,
+                 node_params,
+                 width=500,
+                 height=500,
+                 **kwargs):
     G = nx.DiGraph()
 
     G.add_weighted_edges_from(data.loc[:, ['source', 'target', 'weight']].values)
@@ -71,8 +75,8 @@ def _prepare_nodes(data, pos, node_params, degrees):
 def _prepare_edges(data, nodes):
     edges = []
     #print(data)
-    #data['weight_norm'] = data.weight
-    data['weight_norm'] = data.weight / data.weight.abs().max()
+    # data['weight_norm'] = data.weight
+    data['weight_norm'] = data['weight'] / data['weight'].abs().max()
     for idx, row in data.iterrows():
         edges.append({
             "source": nodes.get(row.source),
@@ -85,7 +89,10 @@ def _prepare_edges(data, nodes):
     return edges, list(nodes.values())
 
 
-def _filter_edgelist(data, thresh, node_params, targets=None, **kwargs):
+def _filter_edgelist(data,
+                     thresh,
+                     node_params,
+                     targets=None):
     if targets is None:
         x = pd.Series(node_params).astype(str).str.contains('target')
         targets = set(x[x].index)
@@ -96,25 +103,31 @@ def _filter_edgelist(data, thresh, node_params, targets=None, **kwargs):
     return data[f].copy()
 
 
-def _make_json_data(data, node_params, layout_dump, thresh=.05, width=500, height=500, **kwargs):
+def _make_json_data(data,
+                    node_params,
+                    layout_dump,
+                    thresh=0.0,
+                    width=500,
+                    height=500,
+                    **kwargs):
     res = {}
     data.columns = ['source', 'target', 'weight']
-    data = _filter_edgelist(data, thresh, node_params, **kwargs)
-    if kwargs.get('mode') == 'importance':
-        data['type'] = np.where(data.weight >= 0, 'positive', 'negative')
-    else:
-        data["type"] = data.apply(
-            lambda x: node_params.get(x.source) if node_params.get(x.source) == 'source' else node_params.get(
-                x.target) or 'suit',
-            1
-        )
+    data = _filter_edgelist(data, thresh, node_params)
+
+    data["type"] = data.apply(
+        lambda x: node_params.get(x.source) if node_params.get(x.source) == 'source' else node_params.get(
+            x.target) or 'suit', 1)
+
     pos, degrees = _calc_layout(data, node_params, width=width, height=height, **kwargs)
+
     if kwargs.get('node_weights') is not None:
         degrees = kwargs.get('node_weights')
+
     if layout_dump is not None:
         nodes = _prepare_given_layout(layout_dump, node_params, degrees)
     else:
         nodes = _prepare_nodes(data, pos, node_params, degrees)
+
     res['links'], res['nodes'] = _prepare_edges(data, nodes)
     return res
 
@@ -150,12 +163,12 @@ def _prepare_given_layout(nodes_path, node_params, degrees):
         nodes = nodes_path
     if type(nodes) is list:
         nodes = _prepare_layout(nodes)
-    max_degree = max(degrees.values() or [1e-20])
-    for node, val in nodes.items():
-        val.update({
-            "type": (node_params.get(node) or "suit").split('_')[0] + '_node',
-            "degree": degrees.get(node, 0) / max_degree * 30
-        })
+    # max_degree = max(degrees.values() or [1e-20])
+    # for node, val in nodes.items():
+    #     val.update({
+    #         "type": (node_params.get(node) or "suit").split('_')[0] + '_node',
+    #         "degree": degrees.get(node, 0) / max_degree * 30
+    #     })
     return nodes
 
 
@@ -244,13 +257,21 @@ def __altair_save_plot__(func):
 
 
 @__save_plot__
-def graph(data, node_params=None, thresh=0.0, width=800, height=500, interactive=True,
-          layout_dump=None, show_percent=True, plot_name=None, node_weights=None, **kwargs):
+def graph(data, *,
+          node_params=None,
+          thresh=0.0,
+          width=800,
+          height=500,
+          interactive=True,
+          layout_dump=None,
+          show_percent=True,
+          plot_name=None,
+          node_weights=None,
+          **kwargs):
     """
     Create interactive graph visualization. Each node is a unique ``event_col`` value, edges are transitions between events and edge weights are calculated metrics. By default, it is a percentage of unique users that have passed though a particular edge visualized with the edge thickness. Node sizes are  Graph loop is a transition to the same node, which may happen if users encountered multiple errors or made any action at least twice.
     Graph nodes are movable on canvas which helps to visualize user trajectories but is also a cumbersome process to place all the nodes so it forms a story.
     That is why IFrame object also has a download button. By pressing it, a JSON configuration file with all the node parameters is downloaded. It contains node names, their positions, relative sizes and types. It it used as ``layout_dump`` parameter for layout configuration. Finally, show weights toggle shows and hides edge weights.
-
     Parameters
     ---------
     data: pd.DataFrame
@@ -292,46 +313,57 @@ def graph(data, node_params=None, thresh=0.0, width=800, height=500, interactive
         Path to layout configuration file relative to current directory. If defined, uses configuration file as a graph layout. Default: ``None``
     show_percent: bool, optional
         If ``True``, then all edge weights are converted to percents by multiplying by 100 and adding percentage sign. Default: ``True``
-
     Returns
     -------
     Saves webpage with JS graph visualization to ``retention_config.experiments_folder``.
-
     Return type
     -------
     HTML
     """
-    dump = 1
-    if layout_dump is None:
-        dump = 0
+    scale = data['edge_weight'].abs().max()
+
     if node_params is None:
         node_params = _prepare_node_params(node_params, data)
-    res = _make_json_data(data, node_params, layout_dump, thresh=thresh,
-                          width=width - width / 3, height=height - height / 3, node_weights=node_weights, **kwargs)
+    res = _make_json_data(data,
+                          node_params,
+                          layout_dump,
+                          thresh=thresh,
+                          width=round(width - width / 3),
+                          height=round(height - height / 3),
+                          node_weights=node_weights,
+                          **kwargs)
 
     res['node_params'] = node_params
+
     show = 0
     if show_percent:
         show = 1
+
     dump = 1 if (layout_dump is not None) or (kwargs.get('is_model', False)) else 0
+
     __TEMPLATE__ = templates.__OLD_TEMPLATE__ if kwargs.get('use_old', False) else templates.__TEMPLATE__
+
     x = __TEMPLATE__.format(
-        width=width,
-        height=height,
-        links=json.dumps(res.get('links')).encode('latin1').decode('utf-8'),
-        node_params=json.dumps(node_params).encode('latin1').decode('utf-8'),
-        nodes=json.dumps(res.get('nodes')).encode('latin1').decode('utf-8'),
-        show_percent=show,
-        layout_dump=dump,
-        thresh=thresh,
+            width=width,
+            height=height,
+            links=json.dumps(res.get('links')).encode('latin1').decode('utf-8'),
+            node_params=json.dumps(node_params).encode('latin1').decode('utf-8'),
+            nodes=json.dumps(res.get('nodes')).encode('latin1').decode('utf-8'),
+            show_percent=show,
+            layout_dump=dump,
+            thresh=thresh/scale,
+            scale=scale
     )
+
     if hasattr(data, 'trajectory'):
         if plot_name is None:
             plot_name = f'index_{datetime.now()}'
     else:
         if plot_name is None:
             plot_name = 'index'
+
     plot_name = f"{data.trajectory.retention_config['experiments_folder']}/{plot_name.replace(':', '_').replace('.', '_')}" + '.html'
+
     return (
         ___DynamicFigureWrapper__(x, interactive, width, height, res),
         plot_name,
@@ -471,7 +503,6 @@ def altair_cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
 def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
     """
     Plots TSNE projection of user stories colored by clusters. Each point represents a user session or whole user trajectory.
-
     Parameters
     --------
     data: pd.DataFrame
@@ -482,11 +513,9 @@ def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
         Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
     plot_name: str, optional
         Name of plot to save. Default: ``'clusters_tsne_{timestamp}.svg'``
-
     Returns
     -------
     Saves plot to ``retention_config.experiments_folder``
-
     Return type
     -------
     PNG
@@ -541,7 +570,6 @@ def altair_cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, me
 def cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=None, **kwargs):
     """
     Plots bar charts with cluster sizes and average target conversion rate.
-
     Parameters
     ----------
     data : pd.DataFrame
@@ -554,11 +582,9 @@ def cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
         Name of plot to save. Default: ``'clusters_bar_{timestamp}.svg'``
     kwargs: optional
         Width and height of plot.
-
     Returns
     -------
     Saves plot to ``retention_config.experiments_folder``
-
     Return type
     -------
     PNG
@@ -605,7 +631,6 @@ def cluster_event_dist(bars, event_col, cl1, sizes, crs, cl2=None, plot_name=Non
 def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, metrics=None, **kwargs):
     """
     Plots pie-charts of target distribution for different clusters.
-
     Parameters
     -------
     data: pd.DataFrame
@@ -618,11 +643,9 @@ def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
         Name of plot to save. Default: ``'clusters_pie_{timestamp}.svg'``
     kwargs: optional
         Width and height of plot.
-
     Returns
     -------
     Saves plot to ``retention_config.experiments_folder``
-
     Return type
     -------
     PNG
@@ -673,7 +696,6 @@ def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
 def cluster_heatmap(data, clusters, target, plot_name=None, **kwargs):
     """
     Visualizes feature usage with heatmap.
-
     Parameters
     --------
     data: pd.DataFrame
@@ -684,11 +706,9 @@ def cluster_heatmap(data, clusters, target, plot_name=None, **kwargs):
         Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
     plot_name: str, optional
         Name of plot to save. Default: ``'clusters_heatmap_{timestamp}.svg'``
-
     Returns
     -------
     Saves plot to ``retention_config.experiments_folder``
-
     Return type
     -------
     PNG

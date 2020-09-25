@@ -51,6 +51,7 @@ __TEMPLATE__ = """
       mylinks = initLinks;
 
       if (!{layout_dump}) {{
+        
         let rawNodes = [];
 
         let delta = 0.1;
@@ -92,6 +93,7 @@ __TEMPLATE__ = """
 
           rawNodes.push(newRawNode);
         }}
+        
         var layout = d3
           .forceSimulation(rawNodes)
           .tick(5)
@@ -119,7 +121,6 @@ __TEMPLATE__ = """
             }}
           }}
         }}
-
 
         let offsetMaxX = -minX + maxX;
         let offsetMaxY = -minY + maxY;
@@ -151,7 +152,6 @@ __TEMPLATE__ = """
 
         }}
 
-
         for (let i = 0; i < mynodes.length; i++) {{
           mynodes[i].x = rawNodes[i].x;
           mynodes[i].y = rawNodes[i].y;
@@ -166,11 +166,25 @@ __TEMPLATE__ = """
             maxWeigth = mylinks[i].weight;
           }}
         }}
-
+      }} else {{
+        for (i = 0; i < mynodes.length; i++) {{
+          if (mynodes[i].degree > maxDegree) {{
+            maxDegree = mynodes[i].degree;
+          }}
+        }}
+        for (let i = 0; i < mylinks.length;  i++) {{
+          if (mylinks[i].weight > maxWeigth) {{
+            maxWeigth = mylinks[i].weight;
+          }}
+        }} 
       }}
 
+      
+      
+      
       makeCheckboxes();
       setLinkThreshold();
+      displayingWeights();
     }}
 
     function drawGraph(nodes, links) {{
@@ -789,7 +803,7 @@ __TEMPLATE__ = """
             <div>
               <h6>Links Threshold</h6>
               <input id="threshold-link-range" name="threshold" type="range" min="0" max="1" step="0.01" value={thresh}
-              oninput="updateLinkThresholdText(this.value)" onchange="updateLinkThresholdText(this.value)">
+              oninput="updateLinkThresholdText(this.value*{scale})" onchange="updateLinkThresholdText(this.value*{scale})">
               <label id="threshold-link-text">{thresh}</label>
               <input type="button" value="Set threshold" onclick="setLinkThreshold()">
             </div>
@@ -801,7 +815,7 @@ __TEMPLATE__ = """
           <div class="col-12" style="z-index: 1010; background-color: #FFF">
 
             <div class="weight-checkbox bottom-checkbox">
-              <input type="checkbox" class="checkbox checkbox-class" value="weighted" id="show-weights"><label> Show weights </label>
+              <input type="checkbox" class="checkbox checkbox-class" checked value="weighted" id="show-weights"><label> Show weights </label>
             </div>
 
             <div class="percent-checkbox bottom-checkbox">
@@ -833,6 +847,7 @@ __TEMPLATE__ = """
 
   <script type="text/javascript">
 
+    updateLinkThresholdText({thresh}*{scale});
     initialize({nodes}, {node_params}, {links});
 
     if (!{show_percent}) {{

@@ -31,7 +31,6 @@ class TestNormalizationFuncs:
     params = {}.fromkeys(["test_no_norm_by_events",
                           "test_full_norm_by_events",
                           "test_node_norm_by_events",
-                          "test_node_norm_adj_matrix",
                           "test_no_norm_by_users",
                           "test_full_norm_by_users",
                           "test_node_norm_by_users"], test_datasets)
@@ -44,9 +43,6 @@ class TestNormalizationFuncs:
 
     def test_node_norm_by_events(self, test_dataset):
         assert node_norm_by_events(test_dataset)
-
-    def test_node_norm_adj_matrix(self, test_dataset):
-        assert node_norm_adj_matrix(test_dataset)
 
     def test_no_norm_by_users(self, test_dataset):
         assert no_norm_by_users(test_dataset)
@@ -106,7 +102,7 @@ def no_norm_by_events(test_dataset):
     result_rete = result_to_dict(edgelist)
 
     # obtain expected result using control dataset
-    control_dataset = test_dataset.rete.get_shift()
+    control_dataset = test_dataset.rete._get_shift()
     control_dataset['bi-gram'] = control_dataset[event_col] + '~~~' + \
                                  control_dataset[next_event_col]
 
@@ -126,7 +122,7 @@ def full_norm_by_events(test_dataset):
     result_rete = result_to_dict(edgelist)
 
     # obtain expected result using control dataset
-    control_dataset = test_dataset.rete.get_shift()
+    control_dataset = test_dataset.rete._get_shift()
     control_dataset['bi-gram'] = control_dataset[event_col] + '~~~' + \
                                  control_dataset[next_event_col]
 
@@ -152,7 +148,7 @@ def node_norm_by_events(test_dataset):
     result_rete = result_to_dict(edgelist)
 
     # obtain expected result using control dataset
-    control_dataset = test_dataset.rete.get_shift()
+    control_dataset = test_dataset.rete._get_shift()
     control_dataset['bi-gram'] = control_dataset[event_col] + '~~~' + \
                                  control_dataset[next_event_col]
 
@@ -177,16 +173,6 @@ def node_norm_by_events(test_dataset):
     return all([check_dictionaries, check_control_sum])
 
 
-def node_norm_adj_matrix(test_dataset):
-    adj_matrix = test_dataset.rete.get_adjacency(norm_type='node',
-                                                 weight_col=None)
-
-    adj_matrix_sums = adj_matrix.sum(axis=1).values
-
-    return all(isclose(x, 1, rel_tol=REL_TOL, abs_tol=ABS_TOL)
-               for x in adj_matrix_sums)
-
-
 def no_norm_by_users(test_dataset):
     """
     norm_type=None,
@@ -197,7 +183,7 @@ def no_norm_by_users(test_dataset):
     result_rete = result_to_dict(edgelist)
 
     # obtain expected result using control dataset
-    control_dataset = test_dataset.rete.get_shift()
+    control_dataset = test_dataset.rete._get_shift()
     control_dataset['bi-gram'] = control_dataset[event_col] + '~~~' + \
                                  control_dataset[next_event_col]
 
@@ -216,7 +202,7 @@ def full_norm_by_users(test_dataset):
     result_rete = result_to_dict(edgelist)
 
     # obtain expected result using control dataset
-    control_dataset = test_dataset.rete.get_shift()
+    control_dataset = test_dataset.rete._get_shift()
     control_dataset['bi-gram'] = control_dataset[event_col] + '~~~' + \
                                  control_dataset[next_event_col]
 
@@ -236,7 +222,7 @@ def node_norm_by_users(test_dataset):
     result_rete = result_to_dict(edgelist)
 
     # obtain expected result using control dataset
-    control_dataset = test_dataset.rete.get_shift()
+    control_dataset = test_dataset.rete._get_shift()
     control_dataset['bi-gram'] = control_dataset[event_col] + '~~~' + \
                                  control_dataset[next_event_col]
 

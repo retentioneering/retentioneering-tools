@@ -1,5 +1,4 @@
 import networkx as nx
-import numpy as np
 import pandas as pd
 
 from retentioneering.visualization import plot
@@ -7,27 +6,16 @@ from retentioneering.visualization import plot
 
 class BaseTrajectory(object):
     """
-    Trajectory is the basic object in Retentioneering. It is a dataframe consisting of at least three columns which
-    should be reflected in ``init_cofig``: index, event and timestamp.
+    Trajectory is the basic object in Retentioneering. It is a dataframe
+    consisting of at least three columns which should be reflected in
+    retentioneering.config: index, event and timestamp.
     """
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
         self._accessor_type = 'trajectory'
         self.retention_config = {}
-        self._locals = None
 
-    def get_shift(self, *, index_col=None, event_col=None):
-        """
-
-        Parameters
-        ----------
-        index_col
-        event_col
-
-        Returns
-        -------
-
-        """
+    def _get_shift(self, *, index_col=None, event_col=None):
         index_col = index_col or self.retention_config['index_col']
         event_col = event_col or self.retention_config['event_col']
         time_col = self.retention_config['event_time_col']
@@ -41,30 +29,34 @@ class BaseTrajectory(object):
 
         return data
 
-    def get_edgelist(self, *, weight_col=None, norm_type=None, edge_attributes=None):
+    def get_edgelist(self, *, weight_col=None, norm_type=None, edge_attributes='edge_weight'):
         """
         Creates weighted table of the transitions between events.
 
         Parameters
-        -------
-        edge_attributes
+        ----------
         weight_col: str, optional, default=None
-            Aggregation column for transitions weighting. To calculate weights as number of transion events leave as
-            ```None``. To calculate number of unique users passed through given transition
-            ``edge_attributes='user_id'``. For any other aggreagtion, life number of sessions, pass the column name.
+            Aggregation column for transitions weighting. To calculate weights
+            as number of transion events leave as ```None``. To calculate number
+            of unique users passed through given transition
+            ``edge_attributes='user_id'``. For any other aggreagtion, life
+            number of sessions, pass the column name.
 
         norm_type: {None, 'full', 'node'} str, optional, default=None
-            Type of normalization. If ``None`` return raw number of transtions or other selected aggregation column.
-            If ``norm_type='full'`` normalization
+            Type of normalization. If ``None`` return raw number of transtions
+            or other selected aggregation column.
+
+        edge_attributes: str (optional, default 'edge_weight')
 
         Returns
         -------
-        Dataframe with number of rows equal to all transitions with weight non-zero weight (max is squared number of
-         unique ``event_col`` values) and the following column structure: ``source_node``, ``target_node`` and
-         ``edge_weight``.
+        Dataframe with number of rows equal to all transitions with weight
+        non-zero weight (max is squared number of  unique ``event_col`` values)
+        and the following column structure: ``source_node``, ``target_node`` and
+        ``edge_weight``.
 
         Return type
-        -------
+        -----------
         pd.DataFrame
         """
         if norm_type not in [None, 'full', 'node']:
@@ -72,11 +64,10 @@ class BaseTrajectory(object):
 
         event_col = self.retention_config['event_col']
         time_col = self.retention_config['event_time_col']
-        edge_attributes = edge_attributes or 'edge_weight'
 
         cols = [event_col, 'next_'+str(event_col)]
 
-        data = self.get_shift().copy()
+        data = self._get_shift().copy()
 
         # get aggregation:
         if weight_col is None:
@@ -111,28 +102,33 @@ class BaseTrajectory(object):
 
     def get_adjacency(self, *, weight_col=None, norm_type=None):
         """
-        Creates edge graph in the matrix format. Basically this method is similar to
-        ``BaseTrajectory.rete.get_edgelist()`` but in different format. Row indeces are ``event_col`` values, from
-         which the transition occured, while the row names are ``event_col`` values, to which the transition occured.
-         The values are weights of the edges defined with ``weight_col``, ``edge_attributes`` and ``norm`` parameters.
+        Creates edge graph in the matrix format. Basically this method
+        is similar to ``BaseTrajectory.rete.get_edgelist()`` but in different
+        format. Row indeces are ``event_col`` values, from which the
+        transition occured, while the row names are ``event_col`` values, to
+        which the transition occured. The values are weights of the edges defined
+        with ``weight_col``, ``edge_attributes`` and ``norm`` parameters.
 
         Parameters
-        -------
+        ----------
         weight_col: str, optional, default=None
-            Aggregation column for transitions weighting. To calculate weights as number of transion events leave as
-            ```None``. To calculate number of unique users passed through given transition
-            ``edge_attributes='user_id'``. For any other aggreagtion, life number of sessions, pass the column name.
+            Aggregation column for transitions weighting. To calculate weights
+            as number of transion events leave as ```None``. To calculate number
+            of unique users passed through given transition
+            ``edge_attributes='user_id'``. For any other aggreagtion, life
+            number of sessions, pass the column name.
 
         norm_type: {None, 'full', 'node'} str, optional, default=None
-            Type of normalization. If ``None`` return raw number of transtions or other selected aggregation column.
-            If ``norm_type='full'`` normalization
+            Type of normalization. If ``None`` return raw number of transtions
+            or other selected aggregation column. If ``norm_type='full'`` normalization
 
         Returns
         -------
-        Dataframe with number of columns and rows equal to unique number of ``event_col`` values.
+        Dataframe with number of columns and rows equal to unique number of
+        ``event_col`` values.
 
         Return type
-        -------
+        -----------
         pd.DataFrame
         """
         agg = self.get_edgelist(weight_col=weight_col,
@@ -141,36 +137,31 @@ class BaseTrajectory(object):
         graph.add_weighted_edges_from(agg.values)
         return nx.to_pandas_adjacency(graph)
 
-    @staticmethod
-    def _sort_matrix(step_matrix):
-        x = step_matrix.copy()
-        order = []
-        for i in x.columns:
-            new_r = x[i].idxmax()
-            order.append(new_r)
-            x = x.drop(new_r)
-            if x.shape[0] == 0:
-                break
-        order.extend(list(set(step_matrix.index) - set(order)))
-        return step_matrix.loc[order]
-
-    def split_sessions(self, *, by_event=None, thresh, eos_event=None, session_col='session_id'):
+    def split_sessions(self, *,
+                       by_event=None,
+                       thresh,
+                       eos_event=None,
+                       session_col='session_id'):
         """
-        Generates ``session`_id` column with session rank for each ``index_col`` based on time difference between
-        events. Sessions are automatically defined with time diffrence between events.
+        Generates ``session`_id` column with session rank for each ``index_col``
+        based on time difference between events. Sessions are automatically defined
+        with time diffrence between events.
+
         Parameters
-        --------
+        ----------
         session_col
         by_event
         thresh: int
             Minimal threshold in seconds between two sessions. Default: ``1800`` or 30 min
         eos_event:
             If not ``None`` specified event name will be added at the and of each session
+
         Returns
         -------
         Original Dataframe with ``session_id`` column in dataset.
+
         Return type
-        -------
+        -----------
         pd.DataFrame
         """
 
@@ -238,13 +229,108 @@ class BaseTrajectory(object):
             res.drop(columns=[session_col_arg], inplace=True)
         return res
 
-    def plot_graph(self, *, node_params=None, weight_col=None, event_col=None,
-                   node_weights=None, norm_type='full', **kwargs):
+    # def plot_graph(self, *,
+    #                targets=None,
+    #                node_params=None,
+    #                weight_col=None,
+    #                norm_type='full',
+    #                thresh=0.01,
+    #                layout_dump=None,
+    #                width=800,
+    #                height=500):
+    #     """
+    #     Create interactive graph visualization. Each node is a unique event_col
+    #     value, edges are transitions between events and edge weights are calculated
+    #     metrics. By default, it is a percentage of unique users that have passed
+    #     though a particular edge visualized with the edge thickness. Node sizes are
+    #     Graph loop is a transition to the same node, which may happen if users
+    #     encountered multiple errors or made any action at least twice. Graph nodes
+    #     are movable on canvas which helps to visualize user trajectories but is also
+    #     a cumbersome process to place all the nodes so it forms a story.
+    #
+    #     That is why IFrame object also has a download button. By pressing it, a JSON
+    #     configuration file with all the node parameters is downloaded. It contains
+    #     node names, their positions, relative sizes and types. It it used as
+    #     layout_dump parameter for layout configuration. Finally, show weights
+    #     toggle shows and hides edge weights.
+    #
+    #     Parameters
+    #     ----------
+    #     norm_type: str (optional, default 'full')
+    #         Type of normalization used to calculate weights for graph edges. Possible
+    #         values are:
+    #             * None
+    #             * 'full'
+    #             * 'node'
+    #
+    #     weight_col: str (optional, default None)
+    #         Aggregation column for edge weighting. If None, number of events will be
+    #         calculated. For example, can be specified as `client_id` or `session_id`
+    #         if dataframe has such columns.
+    #
+    #     targets: dict (optional, default None)
+    #         Event mapping describing which nodes or edges should be highlighted by
+    #         different colors for better visualisation. Dictionary keys are event_col
+    #         values, while keys have the following possible values:
+    #         Example: {'lost': 'red', 'purchased': 'green', 'main': 'source'}
+    #
+    #     thresh: float (optional, default 0.01)
+    #         Minimal edge weight value to be rendered on a graph. If a node has no
+    #         edges of the weight >= thresh, then it is not shown on a graph. It
+    #         is used to filter out rare event and not to clutter visualization. Nodes
+    #         specified in targets parameter will be always shown regardless selected
+    #         threshold.
+    #
+    #     layout_dump: str (optional, default None)
+    #         Path to layout configuration file relative to current directory. If
+    #         defined, uses configuration file as a graph layout.
+    #
+    #     width: int (optional, default 800)
+    #         Width of plot in pixels.
+    #
+    #     height: int (optional, default 500)
+    #         Height of plot in pixels.
+    #
+    #     Returns
+    #     -------
+    #     Plots IFrame graph of width and height size.
+    #     Saves webpage with JS graph visualization to
+    #     retention_config.experiments_folder.
+    #
+    #     Return type
+    #     -----------
+    #     Renders IFrame object in case of interactive=True and saves graph
+    #     visualization as HTML in experiments_folder of retention_config.
+    #     """
+    #
+    #     ### NEW
+    #     event_col = self.retention_config['event_col']
+    #
+
+    #
+    #     node_weights = self._obj[event_col].value_counts().to_dict()
+    #     path = plot.graph(self._obj.trajectory.get_edgelist(weight_col=weight_col,
+    #                                                         norm_type=norm_type),
+    #                       node_params=targets,
+    #                       node_weights=node_weights,
+    #                       thresh=thresh,
+    #                       layout_dump=layout_dump,
+    #                       width=width,
+    #                       height=height)
+    #     return path
+
+    def plot_graph(self, *,
+                   targets={},
+                   weight_col=None,
+                   norm_type='full',
+                   layout_dump=None,
+                   width=800,
+                   height=500,
+                   **kwargs):
         """
         *** DEPRICATED ***
         *** WILL BE REMOVED IN NEXT UPDATES ***
         *** USE rete.graph instead ***
-
         Create interactive graph visualization. Each node is a unique ``event_col`` value, edges are transitions between
          events and edge weights are calculated metrics. By default, it is a percentage of unique users that have passed
           though a particular edge visualized with the edge thickness. Node sizes are  Graph loop is a transition to the
@@ -317,170 +403,113 @@ class BaseTrajectory(object):
         Renders IFrame object in case of ``interactive=True`` and saves graph visualization as HTML in
         ``experiments_folder`` of ``retention_config``.
         """
-        event_col = event_col or self.retention_config['event_col']
+        event_col = self.retention_config['event_col']
 
-        if node_params is None:
-            _node_params = {
-                'positive_target_event': 'nice_target',
-                'negative_target_event': 'bad_target',
-                'source_event': 'source',
-            }
-            node_params = {}
-            for key, val in _node_params.items():
-                name = self.retention_config.get(key)
-                if name is None:
-                    continue
-                node_params.update({name: val})
-        node_weights = node_weights or self._obj[event_col].value_counts().to_dict()
+        # TODO: change downstream processing
+        if targets is not None:
+            for k, v in targets.items():
+                if v == 'red':
+                    v = 'bad_target'
+                if v == 'green':
+                    v = 'nice_target'
+                targets[k] = v
+
+        node_weights = self._obj[event_col].value_counts().to_dict()
         path = plot.graph(self._obj.trajectory.get_edgelist(weight_col=weight_col,
                                                             norm_type=norm_type),
-                          node_params, node_weights=node_weights, **kwargs)
-        return path
-
-    def graph(self, *, targets=None, weight_col=None, event_col=None,
-                   node_weights=None, norm_type='full', thresh=0.01,  **kwargs):
-        """
-        Create interactive graph visualization. Each node is a unique ``event_col`` value, edges are transitions between
-         events and edge weights are calculated metrics. By default, it is a percentage of unique users that have passed
-          though a particular edge visualized with the edge thickness. Node sizes are  Graph loop is a transition to the
-           same node, which may happen if users encountered multiple errors or made any action at least twice.
-        Graph nodes are movable on canvas which helps to visualize user trajectories but is also a cumbersome process to
-         place all the nodes so it forms a story.
-        That is why IFrame object also has a download button. By pressing it, a JSON configuration file with all the
-        node parameters is downloaded. It contains node names, their positions, relative sizes and types. It it used as
-        ``layout_dump`` parameter for layout configuration. Finally, show weights toggle shows and hides edge weights.
-
-        Parameters
-        --------
-        event_col
-        norm_type
-        node_weights
-        weight_col
-        node_params: dict, optional
-            Event mapping describing which nodes or edges should be highlighted by different colors for better
-            visualisation. Dictionary keys are ``event_col`` values, while keys have the following possible values:
-                - ``bad_target``: highlights node and all incoming edges with red color;
-                - ``nice_target``: highlights node and all incoming edges with green color;
-                - ``bad_node``: highlights node with red color;
-                - ``nice_node``: highlights node with green color;
-                - ``source``: highlights node and all outgoing edges with yellow color.
-            Example ``node_params`` is shown below:
-            ```
-            {
-                'lost': 'bad_target',
-                'purchased': 'nice_target',
-                'onboarding_welcome_screen': 'source',
-                'choose_login_type': 'nice_node',
-                'accept_privacy_policy': 'bad_node',
-            }
-            ```
-            If ``node_params=None``, it will be constructed from ``retention_config`` variable, so that:
-            ```
-            {
-                'positive_target_event': 'nice_target',
-                'negative_target_event': 'bad_target',
-                'source_event': 'source',
-            }
-            ```
-            Default: ``None``
-        thresh: float, optional
-            Minimal edge weight value to be rendered on a graph. If a node has no edges of the weight >= ``thresh``,
-            then it is not shown on a graph. It is used to filter out rare event and not to clutter visualization. If
-            you want to preserve some of the nodes regardless of ``thresh`` value, please use ``targets`` parameter.
-            Default: ``0.05``
-        targets: list, optional
-            List of nodes which will ignore ``thresh`` parameter.
-        show_percent: bool, optional
-            If ``True``, then all edge weights are converted to percents by multiplying by 100 and adding percentage
-            sign. Default: ``True``
-        interactive: bool, optional
-            If ``True``, then plots graph visualization in interactive session (Jupyter notebook). Default: ``True``
-        layout_dump: str, optional
-            Path to layout configuration file relative to current directory. If defined, uses configuration file as a
-            graph layout. Default: ``None``
-        width: int, optional
-            Width of plot in pixels. Default: ``500``
-        height: int, optional
-            Height of plot in pixels. Default: ``500``
-        kwargs: optional
-            Other parameters for ``BaseTrajectory.rete.get_edgelist()``
-
-        Returns
-        --------
-        Plots IFrame graph of ``width`` and ``height`` size.
-        Saves webpage with JS graph visualization to ``retention_config.experiments_folder``.
-
-        Return type
-        -------
-        Renders IFrame object in case of ``interactive=True`` and saves graph visualization as HTML in
-        ``experiments_folder`` of ``retention_config``.
-        """
-        event_col = event_col or self.retention_config['event_col']
-
-        node_weights = node_weights or self._obj[event_col].value_counts().to_dict()
-        path = plot.graph(self._obj.trajectory.get_edgelist(weight_col=weight_col,
-                                                            norm_type=norm_type),
-                          targets, node_weights=node_weights, thresh=thresh, **kwargs)
+                          node_params=targets,
+                          node_weights=node_weights,
+                          layout_dump=layout_dump,
+                          width=width,
+                          height=height,
+                          **kwargs)
         return path
 
     def step_matrix(self, *,
-                    max_steps=30,
+                    max_steps=20,
                     weight_col=None,
+                    precision=2,
                     targets=None,
                     accumulated=None,
                     sorting=None,
                     thresh=0,
                     centered=None,
                     groups=None,
-                    precision=2,
                     show_plot=True):
         """
-        Plots heatmap with distribution of users over session steps ordered by event name. Matrix rows are event names,
-        columns are aligned user trajectory step numbers and the values are shares of users. A given entry means that at
-         a particular number step x% of users encountered a specific event.
+        Plots heatmap with distribution of users over trajectory steps ordered by
+        event name. Matrix rows are event names, columns are aligned user trajectory
+        step numbers and the values are shares of users. A given entry X at column i
+        and event j means at i'th step fraction of users X  have specific event j.
+
         Parameters
-        --------
-        centered
-        accumulated
-        thresh
-        accumulate_targets
-        targets
-        index_col
-        max_steps: int, optional
-            Maximum number of steps in trajectory to include. Depending on ``reverse`` parameter value, the steps are
-            counted from the beginning of trajectories if ``reverse=False``, or from the end otherwise.
-        plot_type: bool, optional
-            If ``True``, then plots step matrix in interactive session (Jupyter notebook). Default: ``True``
-        thr: float, optional
-            Used to prune matrix and display only the rows with at least one value >= ``thr``. Default: ``None``
-        reverse: str or list, optional
-            This parameter is used to display reversed matrix from target events towards the beginning of trajectories.
-            Range of possible values:
-                - ``None``: displays default step matrix from the start of trajectories. Uses all the user trajectories.
-                - ``'pos'``: displays reverse step matrix in such a way that the first column is the
-                ``positive_target_event`` share, which is always 1, and the following columns reflect the share of users
-                 on final steps before reaching the target. Uses only those trajectories, which ended up having at least
-                  one ``positive_target_event`` in trajectory.
-                - ``'neg'``: same as ``pos`` but for ``negative_target_event``. Uses only those trajectories, which
-                ended up having at least one ``negative_target_event`` in trajectory.
-                - ``['pos', 'neg']``: combination of ``pos`` and ``neg`` options, first column has only target events.
-                Uses all the trajectories with target events inside.
-            Default: ``None``
-        sorting: bool, optional
-            If ``True``, then automatically places elements with highest values in top. Rows are sorted in such a way
-            that the first one has highest first column value, second row has the highest second column value,besides
-            already used first value, etc. With this sorting you may see a dominant trajectory as a diagonal.
-            Default: ``True``
-        weight_col: str, optional
-            Aggregation column for edge weighting. For instance, you may set it to the same value as in ``index_col``
-            and define ``edge_attributes='users_unique'`` to calculate unique users passed through edge.
-            Default: ``None``
+        ----------
+        max_steps: int (optional, default 20)
+            Maximum number of steps in trajectory to include.
+
+        weight_col: str (optional, default None)
+            Aggregation column for edge weighting. If None, specified index_col
+            from retentioneering.config will be used as column name. For example,
+            can be specified as `session_id` if dataframe has such column.
+
+        precision: int (optional, default 2)
+            Number of decimal digits after 0 to show as fractions in the heatmap.
+
+        thresh: float (optional, default 0)
+            Used to remove rare events. Aggregates all rows where all values are
+            less then specified threshold.
+
+        targets: list (optional, default None)
+            List of events names (as str) to include in the bottom of
+            step_matrix as individual rows. Each specified target will have
+            separate color-coding space for clear visualization. Example:
+            ['product_page', 'cart', 'payment']. If multiple targets need to
+            be compared and plotted using same color-coding scale, such targets
+            must be combined in sub-list.
+            Examples: ['product_page', ['cart', 'payment']]
+
+        accumulated: string (optional, default None)
+            Option to include accumulated values for targets. Valid values are
+            None (do not show accumulated tartes), 'both' (show step values and
+            accumulated values), 'only' (show targets only as accumulated).
+
+        centered: dict (optional, default None)
+            Parameter used to align user trajectories at specific event at specific
+            step. Has to contain three keys:
+                'event': str, name of event to align
+                'left_gap': int, number of events to include before specified event
+                'occurrence': int which occurance of event to align (typical 1)
+            When this parameter is not None only users which have specified i'th
+            'occurance' of selected event preset in their trajectories will
+            be included. Fraction of such remaining users is specified in the title of
+            centered step_matrix. Example:
+            {'event': 'cart', 'left_gap': 8, 'occurrence': 1}
+
+        sorting: list (optional, default None)
+            List of events_names (as string) can be passed to plot step_matrix with
+            specified ordering of events. If None rows will be ordered according
+            to i`th value (first row, where 1st element is max, second row, where
+            second element is max, etc)
+
+        groups: tuple (optional, default None)
+            Can be specified to plot step differential step_matrix. Must contain
+            tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
+            of user_id`s (list, tuple or set). Two separate step_matrixes M1 and M2
+            will be calculated for users from g_1 and g_2, respectively. Resulting
+            matrix will be the matrix M = M1-M2. Note, that values in each column
+            in differential step matrix will sum up to 0 (since columns in both M1
+            and M2 always sum up to 1).
+
+        show_plot: bool (optional, default True)
+            whether to show resulting heatmap or not.
+
         Returns
         -------
-        Dataframe with ``max_steps`` number of columns and len(event_col.unique) number of rows at max, or less if used
-        ``thr`` > 0.
+        Dataframe with max_steps number of columns and len(event_col.unique)
+        number of rows at max, or less if used thr > 0.
+
         Return type
-        -------
+        -----------
         pd.DataFrame
         """
 
@@ -505,27 +534,27 @@ class BaseTrajectory(object):
             if len(data_pos) == 0:
                 raise IndexError('Users from positive group are not present in dataset')
             piv_pos, piv_targets_pos, fraction_title, window, targets_plot = \
-                BaseTrajectory.step_matrix_values(data=data_pos,
-                                                  weight_col=weight_col,
-                                                  event_col=event_col,
-                                                  time_col=time_col,
-                                                  targets=targets,
-                                                  accumulated=accumulated,
-                                                  centered=centered,
-                                                  max_steps=max_steps)
+                BaseTrajectory._step_matrix_values(data=data_pos,
+                                                   weight_col=weight_col,
+                                                   event_col=event_col,
+                                                   time_col=time_col,
+                                                   targets=targets,
+                                                   accumulated=accumulated,
+                                                   centered=centered,
+                                                   max_steps=max_steps)
 
             data_neg = data[data[weight_col].isin(groups[1])].copy()
             if len(data_pos) == 0:
                 raise IndexError('Users from negative group are not present in dataset')
             piv_neg, piv_targets_neg, fraction_title, window, targets_plot = \
-                BaseTrajectory.step_matrix_values(data=data_neg,
-                                                  weight_col=weight_col,
-                                                  event_col=event_col,
-                                                  time_col=time_col,
-                                                  targets=targets,
-                                                  accumulated=accumulated,
-                                                  centered=centered,
-                                                  max_steps=max_steps)
+                BaseTrajectory._step_matrix_values(data=data_neg,
+                                                   weight_col=weight_col,
+                                                   event_col=event_col,
+                                                   time_col=time_col,
+                                                   targets=targets,
+                                                   accumulated=accumulated,
+                                                   centered=centered,
+                                                   max_steps=max_steps)
 
             def join_index(df1, df2):
                 full_list = set(df1.index) | set(df2.index)
@@ -546,14 +575,14 @@ class BaseTrajectory(object):
 
         else:
             piv, piv_targets, fraction_title, window, targets_plot = \
-                BaseTrajectory.step_matrix_values(data=data,
-                                                  weight_col=weight_col,
-                                                  event_col=event_col,
-                                                  time_col=time_col,
-                                                  targets=targets,
-                                                  accumulated=accumulated,
-                                                  centered=centered,
-                                                  max_steps=max_steps)
+                BaseTrajectory._step_matrix_values(data=data,
+                                                   weight_col=weight_col,
+                                                   event_col=event_col,
+                                                   time_col=time_col,
+                                                   targets=targets,
+                                                   accumulated=accumulated,
+                                                   centered=centered,
+                                                   max_steps=max_steps)
 
         thresh_index = 'THRESHOLDED_'
         if thresh != 0:
@@ -601,8 +630,30 @@ class BaseTrajectory(object):
         return piv
 
     @staticmethod
-    def step_matrix_values(*, data, weight_col, event_col, time_col,
+    def _step_matrix_values(*, data, weight_col, event_col, time_col,
                            targets, accumulated, centered, max_steps):
+        """
+        Supplemental function to calculate values for step_matrix
+
+        Parameters same as in step_matrix
+
+        Parameters
+        ----------
+        data
+        weight_col
+        event_col
+        time_col
+        targets
+        accumulated
+        centered
+        max_steps
+
+        Returns
+        -------
+
+        pandas Dataframe
+
+        """
 
         def pad_cols(df, max_steps):
             """
@@ -752,3 +803,16 @@ class BaseTrajectory(object):
                 targets = targets_not_acc + targets
 
         return piv, piv_targets, fraction_title, window, targets
+
+    @staticmethod
+    def _sort_matrix(step_matrix):
+        x = step_matrix.copy()
+        order = []
+        for i in x.columns:
+            new_r = x[i].idxmax()
+            order.append(new_r)
+            x = x.drop(new_r)
+            if x.shape[0] == 0:
+                break
+        order.extend(list(set(step_matrix.index) - set(order)))
+        return step_matrix.loc[order]

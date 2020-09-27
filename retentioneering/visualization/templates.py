@@ -167,6 +167,7 @@ __TEMPLATE__ = """
           }}
         }}
       }} else {{
+        // if layout_dump was used:
         for (i = 0; i < mynodes.length; i++) {{
           if (mynodes[i].degree > maxDegree) {{
             maxDegree = mynodes[i].degree;

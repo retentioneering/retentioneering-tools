@@ -6,20 +6,18 @@
 
 import itertools
 import json
-import os
 from datetime import datetime
 from functools import wraps
 
-import altair as alt
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
 import networkx as nx
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from IPython.display import IFrame, display  # TODO understand how to use visualization without it
+from IPython.display import IFrame, display
 
 from retentioneering.visualization import templates
-from retentioneering.visualization.cloud_logger import MongoLoader
 
 
 def _calc_layout(data,
@@ -31,13 +29,6 @@ def _calc_layout(data,
 
     G.add_weighted_edges_from(data.loc[:, ['source', 'target', 'weight']].values)
 
-    # if nx.algorithms.check_planarity(G)[0]:
-    #     pos_new = nx.layout.planar_layout(G)
-    # else:
-    #     pos_new = nx.layout.spring_layout(G, k=kwargs.get('k', .1),
-    #                                       iterations=kwargs.get('iterations', 300),
-    #                                       threshold=kwargs.get('nx_threshold', 1e-4),
-    #                                       seed=0)
     pos_new = nx.layout.spring_layout(G, k=kwargs.get('k', .1),
                                       iterations=kwargs.get('iterations', 300),
                                       threshold=kwargs.get('nx_threshold', 1e-4),
@@ -74,14 +65,11 @@ def _prepare_nodes(data, pos, node_params, degrees):
 
 def _prepare_edges(data, nodes):
     edges = []
-    #print(data)
-    # data['weight_norm'] = data.weight
     data['weight_norm'] = data['weight'] / data['weight'].abs().max()
     for idx, row in data.iterrows():
         edges.append({
             "source": nodes.get(row.source),
             "target": nodes.get(row.target),
-            #"weight": np.log1p(abs(row.weight_norm + 1e-100)) * 1.5,
             "weight": row.weight_norm,
             "weight_text": row.weight,
             "type": row['type']
@@ -163,12 +151,6 @@ def _prepare_given_layout(nodes_path, node_params, degrees):
         nodes = nodes_path
     if type(nodes) is list:
         nodes = _prepare_layout(nodes)
-    # max_degree = max(degrees.values() or [1e-20])
-    # for node, val in nodes.items():
-    #     val.update({
-    #         "type": (node_params.get(node) or "suit").split('_')[0] + '_node',
-    #         "degree": degrees.get(node, 0) / max_degree * 30
-    #     })
     return nodes
 
 
@@ -187,73 +169,10 @@ def __save_plot__(func):
         idx = 'id: ' + str(int(datetime.now().timestamp()))
         coords = vis_object.axis()
 
-        if '_3d_' not in name:
-            pass
-            # watermarks:
-            # vis_object.text((coords[0] - (coords[1] - coords[0]) / 10),
-            #                 (coords[3] + (coords[3] - coords[2]) / 10), idx, fontsize=8)
-            # vis_object.text(0.25, 0.05, 'Retentioneering', fontsize=50, color='gray', va='bottom', alpha=0.1)
         vis_object.get_figure().savefig(name, bbox_inches="tight", dpi=cfg.get('save_dpi') or 200)
-        if cfg.get('mongo_client') is not None:
-            print(f'DB {idx}')
-            ml = MongoLoader(cfg.get('mongo_client'), collection=cfg.get('mongo_user'))
-            ml.put(name if '.' in name else name + '.png', idx.split(' ')[1])
-            if '.html' in name:
-                ml.put(vis_object.get_raw(name), idx.split(' ')[1] + '_config')
         return res
 
     return save_plot_wrapper
-
-
-def __altair_save_plot__(func):
-    @wraps(func)
-    def altair_save_plot_wrapper(*args, **kwargs):
-        res = func(*args, **kwargs)
-        vis_object, plot_name, res, cfg = res
-        idx = 'id: ' + str(int(datetime.now().timestamp())) + ", Retentioneering Copyright"
-        plot_name_preffix = func.__name__
-
-        plot_name = '{}_{}'.format(plot_name_preffix, plot_name or datetime.now()).replace(':', '_').replace('.',
-                                                                                                             '_').replace(
-            ' ', '_') + '.html'
-        if hasattr(pd.DataFrame, 'retention'):
-            plot_name = pd.DataFrame().rete.retention_config['experiments_folder'] + '/' + plot_name
-        else:
-            path = 'experiments'
-            if not os.path.exists(path):
-                os.mkdir(path)
-            plot_name = path + '/' + plot_name
-        vis_object.title = idx
-
-        print("You can save plot as SVG or PNG by open three-dotted button at right =>")
-        watermark = alt.Chart().mark_text(
-            align='center', baseline='top', dy=vis_object.height // 2 + 30, fontSize=32, fontWeight=200,
-            color='#d3d3d3', text='Retentioneering'
-        )
-        vis_object.save(plot_name)
-
-        render_in_template = True
-
-        if render_in_template and kwargs.get('interactive', True):
-            html_object = templates.__VEGA_TEMPLATE__.format(
-                visual_object=json.dumps(vis_object.to_dict()),
-                func_name=func.__name__
-            )
-            fig = ___DynamicFigureWrapper__(html_object, True, vis_object.width, vis_object.height, res)
-            fig.get_figure().savefig(plot_name, bbox_inches="tight", dpi=cfg.get('save_dpi') or 200)
-
-        elif kwargs.get('interactive', True):
-            print("You can save plot as SVG or PNG by open three-dotted button at right =>")
-            alt.renderers.enable('notebook')
-            display(vis_object)
-
-        if cfg.get('mongo_client') is not None:
-            print(f'DB {idx}')
-            ml = MongoLoader(cfg.get('mongo_client'), collection=cfg.get('mongo_user'))
-            ml.put(plot_name if '.' in plot_name else plot_name + '.svg', idx.split(' ')[1])
-        return res
-
-    return altair_save_plot_wrapper
 
 
 @__save_plot__
@@ -362,7 +281,7 @@ def graph(data, *,
         if plot_name is None:
             plot_name = 'index'
 
-    plot_name = f"{data.trajectory.retention_config['experiments_folder']}/{plot_name.replace(':', '_').replace('.', '_')}" + '.html'
+    plot_name = f"{data.rete.retention_config['experiments_folder']}/{plot_name.replace(':', '_').replace('.', '_')}" + '.html'
 
     return (
         ___DynamicFigureWrapper__(x, interactive, width, height, res),
@@ -371,35 +290,6 @@ def graph(data, *,
         data.rete.retention_config
     )
 
-
-@__altair_save_plot__
-def altair_step_matrix(diff, plot_name=None, title='', vmin=None, vmax=None, font_size=12, **kwargs):
-    heatmap_data = diff.reset_index().melt('index')
-    heatmap_data.columns = ['y', 'x', 'z']
-    table = alt.Chart(heatmap_data).encode(
-        x=alt.X('x:O', sort=None),
-        y=alt.Y('y:O', sort=None)
-    )
-    heatmap = table.mark_rect().encode(
-        color=alt.Color(
-            'z:Q',
-            scale=alt.Scale(scheme='blues'),
-        )
-    )
-    text = table.mark_text(
-        align='center', fontSize=font_size
-    ).encode(
-        text='z',
-        color=alt.condition(
-            abs(alt.datum.z) < 0.8,
-            alt.value('black'),
-            alt.value('white'))
-    )
-    heatmap_object = (heatmap + text).properties(
-        width=3 * font_size * len(diff.columns),
-        height=2 * font_size * diff.shape[0]
-    )
-    return heatmap_object, plot_name, None, diff.rete.retention_config
 
 @__save_plot__
 def step_matrix(data, targets=None, *,
@@ -468,39 +358,17 @@ def step_matrix(data, targets=None, *,
                        colors='Black',
                        linewidth=0.7)
 
-
     plot_name = plot_name or 'step_matrix_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
 
-
     return heatmap, plot_name, None, data.rete.retention_config
 
-
-@__altair_save_plot__
-def altair_cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
-    if hasattr(data.rete, '_tsne'):
-        tsne = data.rete._tsne.copy()
-    else:
-        tsne = data.rete.learn_tsne(clusters, **kwargs)
-    tsne['color'] = clusters
-    tsne.columns = ['x', 'y', 'color']
-
-    scatter = alt.Chart(tsne).mark_point().encode(
-        x='x',
-        y='y',
-        color=alt.Color(
-            'color',
-            scale=alt.Scale(scheme='plasma')
-        )
-    ).properties(
-        width=800,
-        height=600
-    )
-    return scatter, plot_name, tsne, data.rete.retention_config
-
-
 @__save_plot__
-def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
+def cluster_tsne(data, *,
+                 clusters,
+                 target,
+                 plot_name=None,
+                 **kwargs):
     """
     Plots TSNE projection of user stories colored by clusters. Each point represents a user session or whole user trajectory.
     Parameters
@@ -539,35 +407,13 @@ def cluster_tsne(data, clusters, target, plot_name=None, **kwargs):
     return scatter, plot_name, tsne2, data.rete.retention_config
 
 
-@__altair_save_plot__
-def altair_cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=None, **kwargs):
-    cl = pd.DataFrame([clusters, target], index=['clusters', 'target']).T
-    cl['cnt'] = 1
-    cl.target = cl.target.astype(int)
-    bars = cl.groupby('clusters').agg({
-        'cnt': 'sum',
-        'target': 'mean'
-    }).reset_index()
-    bars.cnt /= bars.cnt.sum()
-    bars = bars.loc[:, ['clusters', 'cnt']].append(bars.loc[:, ['clusters', 'target']], ignore_index=True, sort=False)
-    bars['target'] = np.where(bars.target.isnull(), bars.cnt, bars.target)
-    bars['Metric'] = np.where(bars['cnt'].isnull(), 'Average CR', 'Cluster size')
-    # print(bars, type(bars))
-    bar = alt.Chart(bars).mark_bar().encode(
-        x='Metric:O',
-        y='target:Q',
-        color='Metric:N',
-        column='clusters:N'
-    ).properties(
-        width=60,
-        height=200
-    )
-
-    return bar, plot_name, None, data.rete.retention_config
-
-
 @__save_plot__
-def cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=None, **kwargs):
+def cluster_bar(data, *,
+                clusters,
+                target,
+                target_names,
+                plot_name=None,
+                **kwargs):
     """
     Plots bar charts with cluster sizes and average target conversion rate.
     Parameters
@@ -578,6 +424,11 @@ def cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
         Array of cluster IDs.
     target: np.array
         Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
+
+    target: list of np.arrays
+        Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
+
+
     plot_name : str, optional
         Name of plot to save. Default: ``'clusters_bar_{timestamp}.svg'``
     kwargs: optional
@@ -589,21 +440,38 @@ def cluster_bar(data, clusters, target, plot_name=None, plot_cnt=None, metrics=N
     -------
     PNG
     """
-    cl = pd.DataFrame([clusters, target], index=['clusters', 'target']).T
-    cl['cnt'] = 1
-    cl.target = cl.target.astype(int)
+    cl = pd.DataFrame([clusters, *target], index=['clusters', *target_names]).T
+    cl['cluster size'] = 1
+    for t_n in target_names:
+        cl[t_n] = cl[t_n].astype(int)
+
     bars = cl.groupby('clusters').agg({
-        'cnt': 'sum',
-        'target': 'mean'
+        'cluster size': 'sum',
+        **{t_n: 'mean' for t_n in target_names}
     }).reset_index()
-    bars.cnt /= bars.cnt.sum()
-    bars = bars.loc[:, ['clusters', 'cnt']].append(bars.loc[:, ['clusters', 'target']], ignore_index=True, sort=False)
-    bars['target'] = np.where(bars.target.isnull(), bars.cnt, bars.target)
-    bars['Metric'] = np.where(bars['cnt'].isnull(), 'Average CR', 'Cluster size')
-    bar = sns.barplot(x='clusters', y='target', hue='Metric', hue_order=['Cluster size', 'Average CR'], data=bars)
+    bars['cluster size'] /= bars['cluster size'].sum()
+
+    bars = bars.melt('clusters', var_name='type', value_name='value')
+    bars = bars[bars['type'] != ' '].copy()
+
+    fig_x_size = round((1 + bars['clusters'].nunique()**0.7 * bars['type'].nunique()**0.7))
+    rcParams['figure.figsize'] = fig_x_size, 6
+
+    bar = sns.barplot(x='clusters', y='value', hue='type', data=bars)
+
+    # move legend outside the box
+    bar.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+
     y_value = ['{:,.2f}'.format(x * 100) + '%' for x in bar.get_yticks()]
+
+    bar.set_yticks(bar.get_yticks().tolist())
     bar.set_yticklabels(y_value)
     bar.set(ylabel=None)
+
+    # adjust the limits
+    ymin, ymax = bar.get_ylim()
+    if ymax > 1:
+        bar.set_ylim(ymin, 1)
 
     plot_name = plot_name or 'cluster_bar_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
@@ -628,107 +496,6 @@ def cluster_event_dist(bars, event_col, cl1, sizes, crs, cl2=None, plot_name=Non
 
 
 @__save_plot__
-def cluster_pie(data, clusters, target, plot_name=None, plot_cnt=None, metrics=None, **kwargs):
-    """
-    Plots pie-charts of target distribution for different clusters.
-    Parameters
-    -------
-    data: pd.DataFrame
-        Feature matrix
-    clusters: np.array
-        Array of cluster IDs.
-    target: np.array
-        Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
-    plot_name: str, optional
-        Name of plot to save. Default: ``'clusters_pie_{timestamp}.svg'``
-    kwargs: optional
-        Width and height of plot.
-    Returns
-    -------
-    Saves plot to ``retention_config.experiments_folder``
-    Return type
-    -------
-    PNG
-    """
-    cl = pd.DataFrame([clusters, target], index=['clusters', 'target']).T
-    cl.target = np.where(cl.target, data.rete.retention_config['positive_target_event'],
-                         data.rete.retention_config['negative_target_event'])
-    pie_data = cl.groupby(['clusters', 'target']).size().rename('target_dist').reset_index()
-    targets = list(set(pie_data.target))
-
-    if plot_cnt is None:
-        plot_cnt = len(set(clusters))
-
-    if kwargs.get('vol', True):  # vol = False in kwargs in case you want to disable
-        _, counts = np.unique(clusters, return_counts=True)
-        volumes = 100 * (counts / sum(counts))
-    else:
-        volumes = [None] * plot_cnt
-
-    fig, ax = sns.mpl.pyplot.subplots(1 if plot_cnt <= 2 else (plot_cnt // 2 + plot_cnt % 2), 2)
-    fig.suptitle(
-        'Distribution of targets in clusters. Silhouette: {:.2f}, Homogeneity: {:.2f}, Cluster stability: {:.2f}'.format(
-            metrics.get('silhouette') if (metrics or {}).get('silhouette') is not None else 0,
-            metrics.get('homogen') if metrics is not None else 0,
-            metrics.get('csi') if (metrics or {}).get('csi') is not None else 0
-        ))
-    fig.set_size_inches(kwargs.get('width', 20), kwargs.get('height', 10))
-    for i, j in enumerate(pie_data.clusters.unique()):
-        tmp = pie_data[pie_data.clusters == j]
-        tmp.index = tmp.target
-        if plot_cnt <= 2:
-            ax[i].pie(tmp.target_dist.reindex(targets).fillna(0).values, labels=targets, autopct='%1.1f%%')
-            ax[i].set_title('Class {}\nCluster volume {}%\nMean dist from center {:.2f}'.format(
-                i, round(volumes[i], 1), metrics['mean_fc'][j] if (metrics or {}).get('mean_fc') is not None else 0))
-        else:
-            ax[i // 2][i % 2].pie(tmp.target_dist.reindex(targets).fillna(0).values, labels=targets, autopct='%1.1f%%')
-            ax[i // 2][i % 2].set_title('Class {}\nCluster volume {}%\nMean dist from center {:.2f}'.format(
-                i, round(volumes[i], 1), metrics['mean_fc'][j] if (metrics or {}).get('mean_fc') is not None else 0))
-    if plot_cnt % 2 == 1:
-        fig.delaxes(ax[plot_cnt // 2, 1])
-
-    plot_name = plot_name or 'cluster_pie_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
-    plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
-    return ___FigureWrapper__(fig), plot_name, None, data.rete.retention_config
-
-
-@__save_plot__
-def cluster_heatmap(data, clusters, target, plot_name=None, **kwargs):
-    """
-    Visualizes feature usage with heatmap.
-    Parameters
-    --------
-    data: pd.DataFrame
-        Feature matrix.
-    clusters: np.array
-        Array of cluster IDs.
-    target: np.array
-        Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
-    plot_name: str, optional
-        Name of plot to save. Default: ``'clusters_heatmap_{timestamp}.svg'``
-    Returns
-    -------
-    Saves plot to ``retention_config.experiments_folder``
-    Return type
-    -------
-    PNG
-    """
-    heatmap = sns.clustermap(data.values,
-                             cmap="BrBG",
-                             xticklabels=data.columns,
-                             yticklabels=False,
-                             row_cluster=True,
-                             col_cluster=False)
-
-    heatmap.ax_row_dendrogram.set_visible(False)
-    heatmap = heatmap.ax_heatmap
-
-    plot_name = plot_name or 'cluster_heatmap_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
-    plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
-    return heatmap, plot_name, None, data.rete.retention_config
-
-
-@__save_plot__
 def core_event_dist(rates, thresh, plot_name=None, **kwargs):
     hist = sns.distplot(rates.values, hist=True, bins=kwargs.get('bins'), kde=kwargs.get('kde'))
     if thresh is not None:
@@ -749,35 +516,6 @@ def permutation_importance(x, plot_name=None, **kwargs):
     plot_name = plot_name or 'permutation_importance_{}'.format(datetime.now()).replace(':', '_').replace('.',
                                                                                                           '_') + '.svg'
     return ___FigureWrapper__(fig), plot_name, None, x.rete.retention_config
-
-
-@__save_plot__
-def tsne_3d(data, clusters, target, plot_name=None, use_coloring=False, **kwargs):
-    if hasattr(data.rete, '_tsne'):
-        tsne2 = data.rete._tsne.copy()
-    else:
-        tsne2 = data.rete.learn_tsne(clusters, **kwargs)
-    tsne = tsne2.values
-    fig = sns.mpl.pyplot.figure(figsize=(10, 10))
-    ax = fig.add_subplot(111, projection='3d')
-
-    if target is not None:
-        scatter = ax.scatter(tsne[:, 0], tsne[:, 1], target, c=['C{}'.format(i) for i in clusters])
-        lgs = []
-        for i in set(clusters):
-            lgs.append(sns.mpl.lines.Line2D([0], [0], linestyle="none", c='C{}'.format(i), marker='o'))
-        ax.legend(lgs, set(clusters), numpoints=1)
-    else:
-        scatter = ax.scatter(tsne[:, 0], tsne[:, 1], clusters)
-
-    ax.set_xlabel('TSNE 0')
-    ax.set_ylabel('TSNE 1')
-    ax.set_zlabel('Target')
-
-    scatter = ___FigureWrapper__(fig)
-    plot_name = plot_name or 'tsne_3d_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
-    plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
-    return scatter, plot_name, None, data.rete.retention_config
 
 
 class ___FigureWrapper__(object):

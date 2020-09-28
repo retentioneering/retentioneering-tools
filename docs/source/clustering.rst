@@ -9,7 +9,7 @@ Basic example
 =============
 
 This notebook can be found
-`here <https://github.com/retentioneering/retentioneering-tools/blob/master/examples/step_matrix.ipynb>`__.
+`here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/clusters_tutorial.ipynb>`__.
 
 We will use sample user dataset to illustrate how behavior clustering works. Let's first
 import retentioneering, import sample dataset and update config:

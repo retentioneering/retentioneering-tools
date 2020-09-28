@@ -5,6 +5,10 @@ Plot_graph function
 No normalization
 ================
 
+
+This notebook can be found
+`here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/graph_tutorial.ipynb>`__.
+
 To understand better how different normalization type works and how to use plot_graph function
 let's use sample dataset:
 

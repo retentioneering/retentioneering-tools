@@ -14,10 +14,11 @@ Contents
 =====================================================
 
 .. toctree::
-   :caption: FIRST STEPS:
+   :caption: TUTORIAL:
    :maxdepth: 2
 
-   Getting started <installation.rst>
+   Installation <installation.rst>
+   Getting started <getting_started.rst>
 
 .. toctree::
    :caption: CORE FUNCTIONS GUIDES:
@@ -25,6 +26,7 @@ Contents
 
    Plot graph <plot_graph.rst>
    Step matrix <step_matrix.rst>
+   Users clustering <clustering.rst>
 
 .. toctree::
    :caption: API REFERENCE:

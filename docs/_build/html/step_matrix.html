@@ -36,8 +36,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="retentioneering package" href="retentioneering.html" />
-    <link rel="prev" title="Installation" href="installation.html" /> 
+    <link rel="next" title="Users behavior clustering" href="clustering.html" />
+    <link rel="prev" title="Plot_graph function" href="plot_graph.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -82,18 +82,29 @@
               
             
             
-              <ul class="current">
+              <p class="caption"><span class="caption-text">TUTORIAL:</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Step_matrix</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">CORE FUNCTIONS GUIDES:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Plot graph</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Step matrix</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#step-matrix-intro">Step matrix intro</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#basic-example">Basic example</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#thresholding">Thresholding</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#add-targets-analysis">Add targets analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#targets-analysis">Targets analysis</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#centered-step-matrix">Centered step matrix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-events-sorting">Custom events sorting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#differential-step-matrix">Differential step matrix</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="retentioneering.html">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clustering.html">Users clustering</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API REFERENCE:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="retentioneering.core.html">Core functions</a></li>
 </ul>
 
             
@@ -168,7 +179,8 @@ understing of user behaviour.</p>
 <p>To better understand how <cite>step_matrix</cite> works let’s first consider intuitive example. Let’s say we
 are analyzing web-store logs and have dataset with event logs from four user sessions with the following
 events in following order:</p>
-<img alt="_images/step_matrix_demo.svg" src="_images/step_matrix_demo.svg" /><p>We can visualize</p>
+<img alt="_images/step_matrix_demo.svg" src="_images/step_matrix_demo.svg" /><p>We can visualize this dataset as a heatmap indicating what fraction of users were at wich step in
+their trajectories:</p>
 <img alt="_images/step_matrix_demo_plot.svg" src="_images/step_matrix_demo_plot.svg" /></div>
 <div class="section" id="basic-example">
 <h2>Basic example<a class="headerlink" href="#basic-example" title="Permalink to this headline">¶</a></h2>
@@ -331,8 +343,8 @@ done using <cite>thresh</cite> parameter (float, default: 0). If the row has all
 <img alt="_images/step_matrix_1.svg" src="_images/step_matrix_1.svg" /><p>All events cutted away by thresholding are grouped together in <cite>THRESHOLDED_X</cite> row, where X - is
 the total number of dropped events.</p>
 </div>
-<div class="section" id="add-targets-analysis">
-<h2>Add targets analysis<a class="headerlink" href="#add-targets-analysis" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="targets-analysis">
+<h2>Targets analysis<a class="headerlink" href="#targets-analysis" title="Permalink to this headline">¶</a></h2>
 <p>Very often there are specific events of particular importance for product analyst (for example
 such as <cite>cart</cite>, or <cite>order_confirmed</cite>, or <cite>subscribe</cite>, etc.). Often such events have much lower
 convertion rate comparing other events (like <cite>main page</cite> or <cite>catalog</cite>) and often ended up thresholded
@@ -370,7 +382,7 @@ step in their trajectory.</p>
 <img alt="_images/step_matrix_5.svg" src="_images/step_matrix_5.svg" /><div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
                       <span class="n">thresh</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
                       <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,[</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]],</span>
-                      <span class="n">accumulated</span><span class="o">=</span><span class="s1">&#39;only&#39;</span><span class="p">);</span>
+                      <span class="n">accumulated</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">);</span>
 </pre></div>
 </div>
 <img alt="_images/step_matrix_6.svg" src="_images/step_matrix_6.svg" /></div>
@@ -398,20 +410,99 @@ specified event (the column 0 has value 1 at specified event)</p>
 </pre></div>
 </div>
 <img alt="_images/step_matrix_8.svg" src="_images/step_matrix_8.svg" /></div>
+<div class="section" id="custom-events-sorting">
+<h2>Custom events sorting<a class="headerlink" href="#custom-events-sorting" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes it is needed to obtain step_matrix with events listed in the specific order
+(for example, to compare two step_matrixes). This can be done with parameter sorting which accepts
+list of event names in the required order to show up in the step matrix. For convenience, to obtain
+list of event names from the most recent step_matrix output you can always refer to
+retentioneering.config[‘step_matrix’][‘sorting’] after each step_matrix run. Let’s consider an example:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span><span class="o">=</span><span class="mf">0.07</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_sorting_0.svg" src="_images/step_matrix_sorting_0.svg" /><p>Let’s say we would like to change the order of the events in the resulted step_matrix. First, we
+can obtain list of event names from the last step_matrix output using congif:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">retentioneering</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;step_matrix&#39;</span><span class="p">][</span><span class="s1">&#39;sorting&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>output:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;main&#39;</span><span class="p">,</span> <span class="s1">&#39;lost&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;product2&#39;</span><span class="p">,</span> <span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;ENDED&#39;</span><span class="p">,</span> <span class="s1">&#39;THRESHOLDED_7&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Now we can conveniently copy the list of events, reorganize it in the required order and pass
+to spet_matrix function as sorting parameter:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">custom_order</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;main&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;catalog&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;product1&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;product2&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;cart&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;lost&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;ENDED&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;THRESHOLDED_7&#39;</span><span class="p">]</span>
+
+<span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span><span class="o">=</span><span class="mf">0.07</span><span class="p">,</span>
+                      <span class="n">sorting</span><span class="o">=</span><span class="n">custom_order</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_sorting_1.svg" src="_images/step_matrix_sorting_1.svg" /><p>Note, that ordering only affects non-target events. Target events will always be in
+the same order as they are specified in the parameter targets.</p>
+</div>
 <div class="section" id="differential-step-matrix">
 <h2>Differential step matrix<a class="headerlink" href="#differential-step-matrix" title="Permalink to this headline">¶</a></h2>
-<p>Sometimes we need to compare behavior of several groups of users. For example,</p>
+<p>Sometimes we need to compare behavior of several groups of users. For example, when we would like
+to compare behavior of users who had convertion to target vs. who had not, or compare behavior of
+test and control groups in A/B test, or compare behavior between specific segments of users.</p>
 <p>In this case it is informative to plot a step_matrix as difference between step_matrix for
-group_A and step_matrix for group_B. This can be done using parameter</p>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">g1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;event&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;payment_done&#39;</span><span class="p">][</span><span class="s1">&#39;client_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
-<span class="n">g2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;client_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span> <span class="o">-</span> <span class="n">g1</span>
+group_A and step_matrix for group_B. This can be done using parameter groups, which requires a
+tuple of two elements (g1 and g2): where g_1 and g_2 are collections
+of user_id`s (list, tuple or set). Two separate step_matrixes M1 and M2
+will be calculated for users from g_1 and g_2, respectively. Resulting
+matrix will be the matrix M = M1-M2. Note, that values in each column
+in differential step matrix will sum up to 0 (since columns in both M1
+and M2 always sum up to 1).</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">g1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;event&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;payment_done&#39;</span><span class="p">][</span><span class="s1">&#39;client_id&#39;</span><span class="p">])</span>
+<span class="n">g2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;client_id&#39;</span><span class="p">])</span> <span class="o">-</span> <span class="n">g1</span>
 
 <span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
                       <span class="n">thresh</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+                      <span class="n">centered</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;left_gap&#39;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span>
+                                <span class="s1">&#39;occurrence&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">},</span>
                       <span class="n">groups</span><span class="o">=</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">));</span>
 </pre></div>
 </div>
-<img alt="_images/step_matrix_9.svg" src="_images/step_matrix_9.svg" /></div>
+<img alt="_images/step_matrix_9.svg" src="_images/step_matrix_9.svg" /><p>Let’s consider another example of differential step matrix use, where we will compare behavior
+of two user clusters. First, let’s obtain behavioural segments and visualize the results of
+segmentation using convertion to ‘payment_done’ and event ‘cart’ (to learn more about
+user behavior clustering read here):</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;cluster_bar&#39;</span><span class="p">,</span>
+                       <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">],</span>
+                       <span class="n">refit_cluster</span><span class="o">=</span><span class="kc">True</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/cluster_bar_0.svg" src="_images/cluster_bar_0.svg" /><p>We can see 8 clusters with the corresponding convertion rates to specified events (% of users in
+the given cluster who had at least one specified event). Let’s say we would like to compare
+behavior segments 3 and 7. Both have relatively high convertion rate and cart visit rate. Let’s
+find out how they are differ using differential step_matrix. All we need is to get user_id’s
+collections from cluster_mapping attribute and pass it to groups parameter of step_matrix:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">g1</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">cluster_mapping</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+<span class="n">g2</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">cluster_mapping</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span>
+
+<span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+                      <span class="n">centered</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;left_gap&#39;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span>
+                                <span class="s1">&#39;occurrence&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">},</span>
+                      <span class="n">groups</span><span class="o">=</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">));</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_10.svg" src="_images/step_matrix_10.svg" /><p>We can clearly see that these two behavioural segments are quire similar to each other with
+the only strong difference at the second step after ‘cart’ event: users of segment 3 prefer to
+select ‘delivery_courier’ (large positive value), and users of segment 7 prefer to select
+‘delivery_pickup’ (large negative value).</p>
+</div>
 </div>
 
 
@@ -422,10 +513,10 @@ group_A and step_matrix for group_B. This can be done using parameter</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="retentioneering.html" class="btn btn-neutral float-right" title="retentioneering package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="clustering.html" class="btn btn-neutral float-right" title="Users behavior clustering" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="plot_graph.html" class="btn btn-neutral float-left" title="Plot_graph function" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

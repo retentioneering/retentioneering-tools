@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Getting started &mdash; Retentioneering Tools 1.0.0 documentation</title>
+  <title>Installation &mdash; Retentioneering Tools 1.0.0 documentation</title>
   
 
   
@@ -36,8 +36,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Step_matrix function" href="step_matrix.html" />
-    <link rel="prev" title="Getting started" href="index.html" /> 
+    <link rel="next" title="Getting started" href="getting_started.html" />
+    <link rel="prev" title="Installation" href="index.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -82,15 +82,24 @@
               
             
             
-              <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting started</a><ul>
+              <p class="caption"><span class="caption-text">TUTORIAL:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#python-and-jupyter">Python and Jupyter</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#retentioneering-install">Retentioneering install</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id1">Getting started</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Step_matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="retentioneering.html">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+</ul>
+<p class="caption"><span class="caption-text">CORE FUNCTIONS GUIDES:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Plot graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Step matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clustering.html">Users clustering</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API REFERENCE:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="retentioneering.core.html">Core functions</a></li>
 </ul>
 
             
@@ -137,7 +146,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Getting started</li>
+      <li>Installation</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -156,8 +165,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="getting-started">
-<h1>Getting started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="python-and-jupyter">
 <h2>Python and Jupyter<a class="headerlink" href="#python-and-jupyter" title="Permalink to this headline">¶</a></h2>
 <p>Firstly, you need to install python and Jupyter.
@@ -177,113 +186,13 @@ For quick start better to install <a class="reference external" href="https://ww
 <li><p>Or directly from source</p>
 <blockquote>
 <div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/retentioneering/retentioneering-tools
-
 <span class="nb">cd</span> retentioneering-tools
-
-python3 setup.py install --user
+pip3 install .
 </pre></div>
 </div>
 </div></blockquote>
 </li>
 </ul>
-</div>
-<div class="section" id="id1">
-<h2>Getting started<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>Retentioneering works as Pandas Dataframe accessor, meaning that if you work with
-your users logs data using Pandas Dataframe you can apply retentioneering right after
-import! All you need is import retentioneering, import sample dataframe (or use you
-own!):</p>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">retentioneering</span>
-
-<span class="c1"># load sample data</span>
-<span class="kn">from</span> <span class="nn">retentioneering</span> <span class="kn">import</span> <span class="n">datasets</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>Here <cite>data</cite> is a regular Pandas Dataframe:</p>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
-</pre></div>
-</div>
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>client_id</th>
-      <th>event</th>
-      <th>timestamp</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>219483890</td>
-      <td>catalog</td>
-      <td>2019-11-01 17:59:13.273932</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>219483890</td>
-      <td>product1</td>
-      <td>2019-11-01 17:59:28.459271</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>219483890</td>
-      <td>cart</td>
-      <td>2019-11-01 17:59:29.502214</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>219483890</td>
-      <td>catalog</td>
-      <td>2019-11-01 17:59:32.557029</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>964964743</td>
-      <td>catalog</td>
-      <td>2019-11-01 21:38:19.283663</td>
-    </tr>
-  </tbody>
-</table>
-</div><div class="line-block">
-<div class="line"><br /></div>
-</div>
-<p>Last step is to simply specify columns names. Retentioneering module needs to know what columns
-in your dataset correspond to event names, timestamps, and user_ids. In our case it’s <cite>event</cite>,
-<cite>timestamp</cite> and <cite>client_id</cite> respectively:</p>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># update config to specify column names</span>
-<span class="n">retentioneering</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
-    <span class="s1">&#39;event_col&#39;</span><span class="p">:</span><span class="s1">&#39;event&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;event_time_col&#39;</span><span class="p">:</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;index_col&#39;</span><span class="p">:</span> <span class="s1">&#39;client_id&#39;</span>
-<span class="p">})</span>
-</pre></div>
-</div>
-<p>Congradulations! Now complete arsenal of retentioneering tools is ready for use. For example,
-you can plot <cite>step_matrix</cite>:</p>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
-                      <span class="n">thresh</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
-                      <span class="n">centered</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span>
-                                <span class="s1">&#39;left_gap&#39;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span>
-                                <span class="s1">&#39;occurrence&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">},</span>
-                      <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]);</span>
-</pre></div>
-</div>
 </div>
 </div>
 
@@ -295,10 +204,10 @@ you can plot <cite>step_matrix</cite>:</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="step_matrix.html" class="btn btn-neutral float-right" title="Step_matrix function" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="getting_started.html" class="btn btn-neutral float-right" title="Getting started" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="index.html" class="btn btn-neutral float-left" title="Getting started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

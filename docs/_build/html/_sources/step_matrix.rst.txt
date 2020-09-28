@@ -13,7 +13,8 @@ events in following order:
 
 .. image:: _static/step_matrix/step_matrix_demo.svg
 
-We can visualize
+We can visualize this dataset as a heatmap indicating what fraction of users were at wich step in
+their trajectories:
 
 .. image:: _static/step_matrix/step_matrix_demo_plot.svg
 
@@ -155,6 +156,7 @@ for extremely simple dataset containg events for only one user:
 
 
 |
+
 Let's plot a simple intuitive step_matrix for our single user dataset:
 
 .. code:: ipython3
@@ -206,8 +208,8 @@ done using `thresh` parameter (float, default: 0). If the row has all values les
 All events cutted away by thresholding are grouped together in `THRESHOLDED_X` row, where X - is
 the total number of dropped events.
 
-Add targets analysis
-====================
+Targets analysis
+================
 
 Very often there are specific events of particular importance for product analyst (for example
 such as `cart`, or `order_confirmed`, or `subscribe`, etc.). Often such events have much lower
@@ -265,10 +267,9 @@ Targets can be presented as accumulated values (or both):
     data.rete.step_matrix(max_steps=16,
                           thresh=0.05,
                           targets=['product1',['cart','payment_done']],
-                          accumulated='only');
+                          accumulated='both');
 
 .. image:: _static/step_matrix/step_matrix_6.svg
-
 
 Centered step matrix
 ====================
@@ -303,23 +304,126 @@ We can use all targets functionality with centered step_matrix, for example:
 
 .. image:: _static/step_matrix/step_matrix_8.svg
 
-Differential step matrix
-========================
+Custom events sorting
+=====================
 
-Sometimes we need to compare behavior of several groups of users. For example,
-
-In this case it is informative to plot a step_matrix as difference between step_matrix for
-group_A and step_matrix for group_B. This can be done using parameter
+Sometimes it is needed to obtain step_matrix with events listed in the specific order
+(for example, to compare two step_matrixes). This can be done with parameter sorting which accepts
+list of event names in the required order to show up in the step matrix. For convenience, to obtain
+list of event names from the most recent step_matrix output you can always refer to
+retentioneering.config['step_matrix']['sorting'] after each step_matrix run. Let's consider an example:
 
 .. code:: ipython3
 
-    g1 = set(data[data['event']=='payment_done']['client_id'].unique())
-    g2 = set(data['client_id'].unique()) - g1
+    data.rete.step_matrix(max_steps=16,
+                          thresh=0.07);
+
+.. image:: _static/step_matrix/step_matrix_sorting_0.svg
+
+Let's say we would like to change the order of the events in the resulted step_matrix. First, we
+can obtain list of event names from the last step_matrix output using congif:
+
+.. code:: ipython3
+
+    print(retentioneering.config['step_matrix']['sorting'])
+
+output:
+
+.. parsed-literal::
+
+    ['catalog', 'main', 'lost', 'cart', 'product2', 'product1', 'ENDED', 'THRESHOLDED_7']
+
+Now we can conveniently copy the list of events, reorganize it in the required order and pass
+to spet_matrix function as sorting parameter:
+
+.. code:: ipython3
+
+    custom_order = ['main',
+                    'catalog',
+                    'product1',
+                    'product2',
+                    'cart',
+                    'lost',
+                    'ENDED',
+                    'THRESHOLDED_7']
+
+    data.rete.step_matrix(max_steps=16,
+                          thresh=0.07,
+                          sorting=custom_order);
+
+.. image:: _static/step_matrix/step_matrix_sorting_1.svg
+
+
+Note, that ordering only affects non-target events. Target events will always be in
+the same order as they are specified in the parameter targets.
+
+
+Differential step matrix
+========================
+
+Sometimes we need to compare behavior of several groups of users. For example, when we would like
+to compare behavior of users who had convertion to target vs. who had not, or compare behavior of
+test and control groups in A/B test, or compare behavior between specific segments of users.
+
+In this case it is informative to plot a step_matrix as difference between step_matrix for
+group_A and step_matrix for group_B. This can be done using parameter groups, which requires a
+tuple of two elements (g1 and g2): where g_1 and g_2 are collections
+of user_id`s (list, tuple or set). Two separate step_matrixes M1 and M2
+will be calculated for users from g_1 and g_2, respectively. Resulting
+matrix will be the matrix M = M1-M2. Note, that values in each column
+in differential step matrix will sum up to 0 (since columns in both M1
+and M2 always sum up to 1).
+
+.. code:: ipython3
+
+    g1 = set(data[data['event']=='payment_done']['client_id'])
+    g2 = set(data['client_id']) - g1
 
     data.rete.step_matrix(max_steps=16,
                           thresh = 0.05,
+                          centered={'event':'cart',
+                                    'left_gap':5,
+                                    'occurrence':1},
                           groups=(g1, g2));
 
 
 
 .. image:: _static/step_matrix/step_matrix_9.svg
+
+Let's consider another example of differential step matrix use, where we will compare behavior
+of two user clusters. First, let's obtain behavioural segments and visualize the results of
+segmentation using convertion to 'payment_done' and event 'cart' (to learn more about
+user behavior clustering read here):
+
+.. code:: ipython3
+
+    data.rete.get_clusters(plot_type='cluster_bar',
+                           targets=['payment_done', 'cart'],
+                           refit_cluster=True);
+
+.. image:: _static/step_matrix/cluster_bar_0.svg
+
+We can see 8 clusters with the corresponding convertion rates to specified events (% of users in
+the given cluster who had at least one specified event). Let's say we would like to compare
+behavior segments 3 and 7. Both have relatively high convertion rate and cart visit rate. Let's
+find out how they are differ using differential step_matrix. All we need is to get user_id's
+collections from cluster_mapping attribute and pass it to groups parameter of step_matrix:
+
+.. code:: ipython3
+
+    g1 = data.rete.cluster_mapping[3]
+    g2 = data.rete.cluster_mapping[7]
+
+    data.rete.step_matrix(max_steps=16,
+                          thresh = 0.05,
+                          centered={'event':'cart',
+                                    'left_gap':5,
+                                    'occurrence':1},
+                          groups=(g1, g2));
+
+.. image:: _static/step_matrix/step_matrix_10.svg
+
+We can clearly see that these two behavioural segments are quire similar to each other with
+the only strong difference at the second step after 'cart' event: users of segment 3 prefer to
+select 'delivery_courier' (large positive value), and users of segment 7 prefer to select
+'delivery_pickup' (large negative value).

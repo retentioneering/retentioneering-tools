@@ -12,74 +12,50 @@ from sklearn.mixture import GaussianMixture
 
 
 def get_clusters(self, *,
-                 plot_type=None,
-                 refit_cluster=False,
-                 method='kmeans',
                  feature_type='tfidf',
                  ngram_range=(1, 1),
                  n_clusters=8,
+                 method='kmeans',
+                 plot_type=None,
+                 refit_cluster=True,
                  targets=None,
                  **kwargs):
     """
-    Finds clusters of users in data.
+    Cluster users in the dataset according to their behavior.
 
     Parameters
     --------
-    plot_type: str, optional
-        Type of clustering visualization. Available methods are
-        ``cluster_heatmap``,
-         ``cluster_tsne``,
-          ``cluster_pie``,
-           ``cluster_bar``.
-    Please, see examples to understand different visualization methods. Default: ``None``
-    refit_cluster: bool, optional
-        If ``False``, then cached results of clustering are used. Default: ``False``
-    method: str, optional
-        Method of clustering. Available methods:
-            - ``simple_cluster``;
-            - ``dbscan``;
-            - ``GMM``.
-        Default: ``simple_cluster``
-    use_csi: bool, optional
-        If ``True``, then cluster stability index will be calculated. IMPORTANT: it may take a lot of time. Default: ``True``
-    epsq: float, optional
-        Quantile of nearest neighbor positive distance between dots, its value will be an eps. If ``None``, then eps from keywords will be used. Default: ``None``
-    max_cl_number: int, optional
-        Maximal number of clusters for aggregation of small clusters. Default: ``None``
-    max_n_clusters: int, optional
-        Maximal number of clusters for automatic selection for number of clusters. If ``None``, then uses n_clusters from arguments. Default: `None```
-    random_state: int, optional
-        Random state for KMeans and GMM clusterers.
-    feature_type: str, optional
-        Type of vectorizer. Available vectorization methods:
-        - TFIDF (``feature_type='tfidf'``). For more information refer to ``retentioneering.core.feature_extraction.tfidf_embedder``.
-        - Event frequencies (``feature_type='frequency'``). For more information refer to ``retentioneering.core.feature_extraction.frequency_embedder``.
-        - Event counts (``feature_type='counts'``). For more information refer to ``counts_embedder``.
-        Default: ``tfidf``
-    drop_targets: bool, optional
-        If ``True``, then targets will be removed from feature generation. Default: ``True``
-    metadata: pd.DataFrame, optional
-        Dataframe with user or session properties or any other information you would like to extract as features (e.g. user properties, LTV values, etc.). Default: ``None``
-    meta_index_col: str, optional
-        Used when metadata is not ``None``. Name of column in ``metadata`` dataframe that contains the same ID as in ``index_col``, or if not defined, same as in retention_config (e.g ID of users or sessions). If ``None``, then index of metadata dataframe is used instead. Default: ``None``
-    manifold_type: str, optional
-        Name dimensionality reduction method from ``sklearn.decomposition`` and ``sklearn.manifold``. Default: ``None``
-    fillna: optional
-        Value for filling missing metadata for any ``index_col`` value. Default: ``None``
-    drop: bool, optional
-        If ``True``, then drops users which do not exist in ``metadata`` dataframe. Default: ``False``
-    ngram_range: tuple, optional
-        Range of ngrams to use in feature extraction. Default: ``(1, 1)``
-    index_col:
-        Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
-    event_col:
-        Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
-    kwargs:
-        Parameters for ``sklearn.decomposition()`` and ``sklearn.manifold()`` methods. Keyword arguments for clusterers. For more information, please, see ``sklearn.cluster.KMeans()``, ``sklearn.cluster.DBSCAN()``, ``sklearn.mixture.GaussianMixture()`` docs.
+    feature_type: str (optional, default 'tfidf')
+        Type of vectorizer to user to convert sequences of events to numerical vectors.
+        Currently supports: 'tfidf'.
+
+    ngram_range: tuple (optional, default (1, 1))
+        The lower and upper boundary of the range of n-values for different
+        n-grams to be extracted. All values of n such that min_n <= n <= max_n will
+        be used. For example an ngram_range of (1, 1) means only unigrams, (1, 2)
+        means unigrams and bigrams, and (2, 2) means only bigrams.
+
+    n_clusters: int (optional, default 8)
+        Number of clusters to be identified.
+
+    method: str (optional, default 'kmeans')
+        Clustering method to use. Currently supports: 'kmeans' and 'gmm'.
+
+    plot_type: str (optional, default None)
+        Type of cluster statistics overview graph to plot after clustering.
+        Currently supports: 'cluster_bar'
+
+    targets: list (optional, default None)
+        List of target events to be
+        Only applies if plot_type = 'cluster_bar'
+
+    refit_cluster: bool (optional, default True)
+        If False, then cached results of previous clustering are used.
+        (from .cluster_mapping attribute). If True recalculates clustering.
 
     Returns
     -------
-    Array of clusters
+    Array of clusters as .cluster_mapping attribute
 
     Return type
     -------
@@ -96,7 +72,7 @@ def get_clusters(self, *,
 
     # obtain clusters
     if self.clusters is None or refit_cluster:
-        clusterer = globals()[method]
+        clusterer = globals()['_'+method]
         self.clusters = clusterer(features,
                                   n_clusters=n_clusters,
                                   **kwargs)
@@ -140,7 +116,7 @@ def get_clusters(self, *,
     return self.clusters
 
 
-def filter_cluster(self, cluster_name, index_col=None):
+def filter_cluster(self, cluster_name):
     """
     Filters dataset against one or several clusters.
 
@@ -148,22 +124,16 @@ def filter_cluster(self, cluster_name, index_col=None):
     --------
     cluster_name: int or list
         Cluster ID or list of cluster IDs for filtering.
-    index_col: str, optional
-        Name of custom index column, for more information refer
-        to ``init_config``. For instance, if in config you have defined
-         ``index_col`` as ``user_id``, but want to use function over
-         sessions. If ``None``, the column defined in ``init_config``
-         will be used as ``index_col``. Default: ``None``
 
     Returns
     --------
-    Filtered dataset
+    Filtered dataset as pandas dataframe
 
     Return type
     --------
     pd.Dataframe
     """
-    index_col = index_col or self.retention_config['index_col']
+    index_col = self.retention_config['index_col']
     ids = []
     if type(cluster_name) is list:
         for i in cluster_name:
@@ -179,7 +149,7 @@ def _create_cluster_mapping(self, ids):
         self.cluster_mapping[cluster] = ids[self.clusters == cluster].tolist()
 
 
-def kmeans(data, *,
+def _kmeans(data, *,
            n_clusters=8,
            random_state=0,
            **kwargs):
@@ -216,7 +186,7 @@ def kmeans(data, *,
     return cl
 
 
-def gmm(data, *,
+def _gmm(data, *,
         n_clusters=8,
         random_state=0,
         **kwargs):

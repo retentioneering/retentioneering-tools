@@ -21,7 +21,7 @@ their trajectories:
 Basic example
 =============
 
-This notebook can be found `here <https://github.com/retentioneering/retentioneering-tools/blob/master/examples/step_matrix.ipynb>`__.
+This notebook can be found `here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/step_matrix_tutorial.ipynb>`__.
 
 This document describes available functionality for step_matrix function.
 

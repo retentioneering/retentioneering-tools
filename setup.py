@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='retentioneering',
-    version='1.0.8.17.n',
+    version='1.0.8.18.n',
     license='Mozilla Public License',
     description='Product analytics and marketing optimization framework based on deep user trajectories analysis',
     long_description="""

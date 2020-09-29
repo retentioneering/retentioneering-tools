@@ -1,4 +1,4 @@
-from retentioneering.visualization import plot
+from retentioneering.visualization import draw_graph
 
 
 def plot_graph(self, *,
@@ -89,11 +89,11 @@ def plot_graph(self, *,
     data = self.get_edgelist(weight_col=weight_col,
                              norm_type=norm_type)
 
-    path = plot.graph(data,
-                      node_params=targets,
-                      node_weights=node_weights,
-                      layout_dump=layout_dump,
-                      width=width,
-                      height=height,
-                      thresh=thresh)
+    path = draw_graph.graph(data,
+                            node_params=targets,
+                            node_weights=node_weights,
+                            layout_dump=layout_dump,
+                            width=width,
+                            height=height,
+                            thresh=thresh)
     return path

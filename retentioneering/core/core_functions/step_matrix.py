@@ -1,6 +1,6 @@
 import pandas as pd
 
-from retentioneering.visualization import plot
+from retentioneering.visualization import plot_step_matrix
 
 
 def step_matrix(self, *,
@@ -200,11 +200,11 @@ def step_matrix(self, *,
             piv_targets.columns = [f'{int(i) - window - 1}' for i in piv_targets.columns]
 
     if show_plot:
-        plot.step_matrix(piv, piv_targets,
-                         targets_list=targets_plot,
-                         title=f'{"centered" if centered else ""} {"differential " if groups else ""}step matrix {fraction_title}',
-                         centered_position=window,
-                         precision=precision)
+        plot_step_matrix.step_matrix(piv, piv_targets,
+                                     targets_list=targets_plot,
+                                     title=f'{"centered" if centered else ""} {"differential " if groups else ""}step matrix {fraction_title}',
+                                     centered_position=window,
+                                     precision=precision)
 
     return piv
 

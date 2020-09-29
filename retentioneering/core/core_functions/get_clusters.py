@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from retentioneering.visualization import plot
+from retentioneering.visualization import plot_clusters
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 
@@ -103,7 +103,7 @@ def get_clusters(self, *,
                                  .values))
 
     if plot_type:
-        func = getattr(plot, plot_type)
+        func = getattr(plot_clusters, plot_type)
         func(
             features,
             clusters=self.clusters,

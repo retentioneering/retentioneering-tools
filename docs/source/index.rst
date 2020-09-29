@@ -26,7 +26,7 @@ Contents
 
    Plot graph <plot_graph.rst>
    Step matrix <step_matrix.rst>
-   Users clustering <clustering.rst>
+   Behavioral clustering <clustering.rst>
 
 .. toctree::
    :caption: API REFERENCE:

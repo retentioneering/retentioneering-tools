@@ -28,7 +28,7 @@ Contents
    Plot graph <plot_graph.rst>
    Step matrix <step_matrix.rst>
    Behavioral clustering <clustering.rst>
-   Compare <compare.rst>
+   Compare segments <compare.rst>
 
 .. toctree::
    :caption: API REFERENCE:

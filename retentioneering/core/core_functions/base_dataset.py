@@ -1,9 +1,3 @@
-# Copyright (C) 2019 Maxim Godzi, Anatoly Zaytsev, Dmitrii Kiselev
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-
 import networkx as nx
 import pandas as pd
 
@@ -11,9 +5,10 @@ from .step_matrix import step_matrix
 from .get_clusters import get_clusters, filter_cluster
 from .plot_graph import plot_graph
 from .extract_features import extract_features
+from .compare import compare
+
 
 class BaseDataset(object):
-
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
         self.retention_config = {}
@@ -248,3 +243,5 @@ BaseDataset.get_clusters = get_clusters
 BaseDataset.filter_cluster = filter_cluster
 BaseDataset.plot_graph = plot_graph
 BaseDataset.extract_features = extract_features
+BaseDataset.compare = compare
+

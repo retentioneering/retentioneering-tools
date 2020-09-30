@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='retentioneering',
-    version='1.0.8.18.n',
+    version='1.0.8.19.n',
     license='Mozilla Public License',
     description='Product analytics and marketing optimization framework based on deep user trajectories analysis',
     long_description="""
@@ -23,9 +23,10 @@ setup(
         'pandas>=1.1.1',
         'numpy>=1.19.1',
         'networkx>=2.4',
-        'seaborn>=0.10.1',
+        'seaborn>=0.11.0',
         'matplotlib>=3.3.1',
         'scikit-learn>=0.23.2',
+        'scipy',
         'altair',
         'vega',
         'pymongo',

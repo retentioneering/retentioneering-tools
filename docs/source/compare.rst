@@ -1,0 +1,328 @@
+Compare groups
+~~~~~~~~~~~~~~
+
+Statistical comparison
+======================
+
+Very often we need to compare two groups of users suing some metrics.
+It can be during A/B test results analysis, or comparison two user segments from
+different channels, or comparing cohorts of users and etc.
+
+
+Basic example
+=============
+
+For this tutorial we will use simple dataset consist of user activity logs in app or
+web-site during hypothetical A/B test. It has raw behavior logs as well as additional
+information, specifying was particular use in the test, control or not in the test, as
+some transaction information.
+
+Let's import retentioneering and sample datasets:
+
+.. code:: ipython3
+
+    import retentioneering
+
+    # load sample data
+    from retentioneering import datasets
+    data = datasets.load_simple_ab_test()
+
+    data.head()
+
+.. raw:: html
+
+    <div>
+    <style scoped>
+        .dataframe tbody tr th:only-of-type {
+            vertical-align: middle;
+        }
+
+        .dataframe tbody tr th {
+            vertical-align: top;
+        }
+
+        .dataframe thead th {
+            text-align: right;
+        }
+    </style>
+    <table border="1" class="dataframe">
+      <thead>
+        <tr style="text-align: right;">
+          <th></th>
+          <th>client_id</th>
+          <th>event</th>
+          <th>timestamp</th>
+          <th>user_backet</th>
+          <th>transaction_value</th>
+          <th>transaction_ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>0</th>
+          <td>219483890</td>
+          <td>catalog</td>
+          <td>2019-11-01 17:59:13.273932</td>
+          <td>test</td>
+          <td>NaN</td>
+          <td>None</td>
+        </tr>
+        <tr>
+          <th>1</th>
+          <td>219483890</td>
+          <td>product</td>
+          <td>2019-11-01 17:59:28.459271</td>
+          <td>test</td>
+          <td>NaN</td>
+          <td>None</td>
+        </tr>
+        <tr>
+          <th>2</th>
+          <td>219483890</td>
+          <td>cart</td>
+          <td>2019-11-01 17:59:29.502214</td>
+          <td>test</td>
+          <td>NaN</td>
+          <td>None</td>
+        </tr>
+        <tr>
+          <th>3</th>
+          <td>219483890</td>
+          <td>catalog</td>
+          <td>2019-11-01 17:59:32.557029</td>
+          <td>test</td>
+          <td>NaN</td>
+          <td>None</td>
+        </tr>
+        <tr>
+          <th>4</th>
+          <td>964964743</td>
+          <td>catalog</td>
+          <td>2019-11-01 21:38:19.283663</td>
+          <td>test</td>
+          <td>NaN</td>
+          <td>None</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+|
+
+We can see regular columns with information about user actions ('client_id', 'event',
+'timestamp') as well as column regarding A/B test: 'user_backet', and columns regarding information
+about transactions (events 'payment_done'): 'transaction_value' and 'transaction_ID'.
+
+Next, as usually we need to update retentioneering.config to specify columns names for user_id's,
+event_name and time:
+
+.. code:: ipython3
+
+    retentioneering.config.update({
+        'event_col':'event',
+        'event_time_col':'timestamp',
+        'index_col': 'client_id'
+    })
+
+Let's explore column 'user_backet':
+
+.. code:: ipython3
+
+    (data
+     .drop_duplicates(subset=['client_id'])['user_backet']
+     .value_counts())
+
+.. parsed-literal::
+
+    not_in_test    2624
+    control         573
+    test            554
+    Name: user_backet, dtype: int64
+
+
+We can see that our dataset has 554 and 573 unique users in test and control
+groups, correspondingly. Let's same those client_id's in separate variables 'test'
+and 'control':
+
+.. code:: ipython3
+
+    test = data[data['user_backet']=='test']['client_id'].unique()
+    control = data[data['user_backet']=='control']['client_id'].unique()
+
+Now everything is ready to start comparing these two groups using rete.compare() function.
+
+Let's say we would like first to compare convertion rate in the test-vs-compare.
+
+For this we would need to specify function that given one user trajectory will return
+a numerical value, 1 (converted) or 0 (not converted) in our case. Importantly, functiuon
+must take as an argument a dataframe of one user trajectory, performs any type of
+calculation and return a single numerical value.
+
+In our case user is considered converted is they have
+'payment_done' event, so the function definition is very straight forward:
+
+.. code:: ipython3
+
+    convertion = lambda x: int(['payment_done'] in x['event'].unique())
+
+    data.rete.compare(groups=(test, control),
+                      group_names=('test','control'),
+                      function=convertion)
+
+.. parsed-literal::
+
+    test (mean ± SD): 0.227 ± 0.419, n = 554
+    control (mean ± SD): 0.148 ± 0.355, n = 573
+    'test' is greater than 'control' with P-value: 0.02724
+
+.. image:: _static/compare/compare_1.png
+
+We can see that test group performed statistically significantly better than
+control group (given P-value threshold for significance 0.05), threfore change
+must be implemented.
+
+Histogram just illustrates how the metric is distributed between groups (in the example
+above metrics can only be 0 or 1).
+
+To illustrate better how to define custom metrics and pass it as an argument to
+rete.compare() function let's compare couple more metrics.
+
+Suppose we would like to compare average check between test and control groups. Again, it's
+very easy:
+
+.. code:: ipython3
+
+    average_check = lambda x: x['transaction_value'].mean()
+
+    data.rete.compare(groups=(test, control),
+                      group_names=('test','control'),
+                      function=average_check)
+
+.. parsed-literal::
+
+    test (mean ± SD): 736.026 ± 149.001, n = 126
+    control (mean ± SD): 732.980 ± 139.960, n = 85
+    'test' is less than 'control' with P-value: 0.55199
+
+.. image:: _static/compare/compare_2.png
+
+In this case we can see that there is no statistically significant difference
+between two groups (P-value is 0.55 and > selected threshold 0.05). So we while we can
+conclude that users in the test group converted to purchase more often than in control
+group, there was no effect on the average check.
+
+More complex metrics
+====================
+
+Just to illustrate that metrics function can be more complex, let's consider another
+example. Suppose we have separare file which has all transaction_id's and their status
+(whether transaction was already confirmed or not).
+
+For the demonstration purpose let's just create such dataframe with randomized data:
+
+.. code:: ipython3
+
+    import pandas as pd
+    import random
+
+    all_ids = data['transaction_ID'].dropna().unique()
+    status = pd.DataFrame({'transaction_ID': all_ids,
+                           'confirmed': [random.random() > 0.2
+                                         for _ in all_ids]})
+
+    status.head()
+
+.. raw:: html
+
+    <div>
+    <style scoped>
+        .dataframe tbody tr th:only-of-type {
+            vertical-align: middle;
+        }
+
+        .dataframe tbody tr th {
+            vertical-align: top;
+        }
+
+        .dataframe thead th {
+            text-align: right;
+        }
+    </style>
+    <table border="1" class="dataframe">
+      <thead>
+        <tr style="text-align: right;">
+          <th></th>
+          <th>transaction_ID</th>
+          <th>confirmed</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>0</th>
+          <td>7121884</td>
+          <td>True</td>
+        </tr>
+        <tr>
+          <th>1</th>
+          <td>9641982</td>
+          <td>False</td>
+        </tr>
+        <tr>
+          <th>2</th>
+          <td>9826287</td>
+          <td>True</td>
+        </tr>
+        <tr>
+          <th>3</th>
+          <td>9647603</td>
+          <td>True</td>
+        </tr>
+        <tr>
+          <th>4</th>
+          <td>8125650</td>
+          <td>True</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+Now, let's write metrics function confirmed_conv: which will return 1 if user
+has confirmed transactions or 0 if has not:
+
+.. code:: ipython3
+
+    def confirmed_purch(x):
+
+        # get list of transactions for user x
+        trans_list = x['transaction_ID'].unique()
+
+        # get all status records for transactions from user x
+        trans_status = status[status['transaction_ID'].isin(trans_list)]
+
+        # True / False if user has conf transactions
+        has_conf_trans = trans_status['confirmed'].sum() > 0
+
+        # convert bool to int:
+        return int(has_conf_trans)
+
+As you can see, it's very straight-forward and again, function confirmed_purch takes
+single user trajecotry as an arguament (as pandas dataframe) and returns a single numerical
+value. Let's compare our groups using confirmed_purch metric:
+
+.. code:: ipython3
+
+    data.rete.compare(groups=(test, control),
+                      group_names=('test','control'),
+                      function=confirmed_purch)
+
+.. parsed-literal::
+
+    test (mean ± SD): 0.199 ± 0.399, n = 554
+    control (mean ± SD): 0.117 ± 0.321, n = 573
+    'test' is greater than 'control' with P-value: 0.02161
+
+.. image:: _static/compare/compare_3.png
+
+As we can see, statistically significant difference still holds with selected significance
+level 0.05.
+

@@ -230,8 +230,8 @@ __TEMPLATE__ = """
           .enter();
 
       textMarkersSelection.append("text")
-          .style("dominant-baseline", "central")
           .style("font-size", "13px")
+          .attr("dy", "4.2px")
           .append("textPath")
           .attr("xlink:href", function(d,i) {{ return "#link_"+i; }})
           .attr("startOffset", "35%")
@@ -239,8 +239,8 @@ __TEMPLATE__ = """
           ;
 
       textMarkersSelection.append("text")
-          .style("dominant-baseline", "central")
           .style("font-size", "13px")
+          .attr("dy", "4.2px")
           .append("textPath")
           .attr("xlink:href", function(d,i) {{ return "#link_"+i; }})
           .attr("startOffset", "65%")
@@ -659,7 +659,6 @@ __TEMPLATE__ = """
       text {{
         font: 12px sans-serif;
         pointer-events: none;
-        text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
       }}
 
       main li {{
@@ -695,8 +694,6 @@ __TEMPLATE__ = """
         font-size: 12px;
         border: none;
         background-color: rgba(1,1,1,0);
-        text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
-
       }}
 
       .node-edit:focus {{
@@ -918,7 +915,6 @@ __OLD_TEMPLATE__ = """
                 text {{
                   font: 12px sans-serif;
                   pointer-events: none;
-                  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
                 }}
 </style>
 <body>

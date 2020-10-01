@@ -6,7 +6,7 @@
 [![Telegram](https://img.shields.io/badge/channel-on%20telegram-blue)](https://t.me/retentioneering_meetups)
 [![Python version](https://img.shields.io/pypi/pyversions/retentioneering)](https://pypi.org/project/retentioneering/)
 [![License](https://img.shields.io/pypi/l/retentioneering)](https://www.mozilla.org/en-US/MPL/)
-[![Travis Build Status](https://travis-ci.com/retentioneering/retentioneering-tools.svg?branch=unit_tests)](https://travis-ci.com/github/retentioneering/retentioneering-tools)
+[![Travis Build Status](https://travis-ci.com/retentioneering/retentioneering-tools.svg)](https://travis-ci.com/github/retentioneering/retentioneering-tools)
 [![Downloads](https://pepy.tech/badge/retentioneering)](https://pepy.tech/project/retentioneering)
 
 
@@ -109,7 +109,7 @@ To explore more features please see the [documentation](https://retentioneering.
 
 ## Documentation
 
-#### Explore [these step-by-step tutorials](https://github.com/retentioneering/retentioneering-tools/tree/master/examples) to learn more:
+Explore [these step-by-step tutorials](https://github.com/retentioneering/retentioneering-tools/tree/master/examples) to learn more:
 
 - [Plot graph](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#first-steps) 
 - [Step Matrix](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#temporal-funnel)
@@ -125,5 +125,5 @@ Feel free to reach out to us: retentioneering[at]gmail.com
 
 Retentioneering now provides several opensource solutions for data-driven product analytics and web analytics. Please checkout this repository for JS library to track the mutations of the website elements: https://github.com/retentioneering/retentioneering-dom-observer
 
-Apps better with math!:)
+Apps are better with math!:)
 Retentioneering is a research laboratory, analytics methodology and opensource tools founded by [Maxim Godzi](https://www.linkedin.com/in/godsie/) and [Anatoly Zaytsev](https://www.linkedin.com/in/anatoly-zaytsev/) in 2015. Please feel free to contact us at retentioneeringATgmail.com if you have any questions regarding this rep, or to obtain more tools that we are not able to provide though the public rep.

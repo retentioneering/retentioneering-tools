@@ -24,3 +24,11 @@ get_clusters
     :members:
     :undoc-members:
     :show-inheritance:
+
+compare
+-------
+
+.. automodule:: retentioneering.core.core_functions.compare
+    :members:
+    :undoc-members:
+    :show-inheritance:

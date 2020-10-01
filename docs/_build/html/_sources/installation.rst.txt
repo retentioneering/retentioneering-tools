@@ -5,7 +5,7 @@ Python and Jupyter
 ==================
 
 Firstly, you need to install python and Jupyter.
-We support only Python 3.
+We support only Python 3.6 and above.
 For quick start better to install `Anaconda <https://www.anaconda.com/>`__.
 
 Retentioneering install

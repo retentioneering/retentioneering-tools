@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath('../..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Retentioneering Tools'
+project = 'Retentioneering'
 copyright = '2020, "Data Driven Lab" LLC'
 author = '"Data Driven Lab" LLC'
 
@@ -91,6 +91,13 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+html_logo = "rete_logo.png"
+html_theme_options = {
+    'analytics_id': 'UA-143266385-2',
+    'logo_only': True,
+    'display_version': False,
+}
 
 # Custom sidebar _templates, must be a dictionary that maps document names
 # to template names.

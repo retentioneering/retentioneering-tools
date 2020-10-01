@@ -8,7 +8,7 @@
 
 ---------------------------------------------------------------------
 
-.. include:: installation.rst
+.. include:: what_is_rete.rst
 
 Contents
 =====================================================
@@ -17,6 +17,7 @@ Contents
    :caption: TUTORIAL:
    :maxdepth: 2
 
+   What is Retentioneering? <what_is_rete.rst>
    Installation <installation.rst>
    Getting started <getting_started.rst>
 
@@ -26,7 +27,8 @@ Contents
 
    Plot graph <plot_graph.rst>
    Step matrix <step_matrix.rst>
-   Users clustering <clustering.rst>
+   Behavioral clustering <clustering.rst>
+   Compare segments <compare.rst>
 
 .. toctree::
    :caption: API REFERENCE:

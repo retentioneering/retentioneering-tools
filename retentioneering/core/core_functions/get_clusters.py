@@ -86,7 +86,6 @@ def get_clusters(self, *,
         for n, i in enumerate(targets):
             if type(i) != list:
                 targets[n] = [i]
-
         for t in targets:
             # get name
             target_names.append('CR: ' + ' '.join(t))
@@ -95,7 +94,7 @@ def get_clusters(self, *,
                                  .groupby(index_col)[event_col]
                                  .apply(lambda x: bool(set(t) & set(x)))
                                  .to_frame()
-                                 .sort_index()['event']
+                                 .sort_index()[event_col]
                                  .values))
 
     if plot_type:

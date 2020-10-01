@@ -166,37 +166,43 @@ In our case user is considered converted is they have
     convertion = lambda x: int(['payment_done'] in x['event'].unique())
 
     data.rete.compare(groups=(test, control),
-                      group_names=('test','control'),
-                      function=convertion)
+                      function=convertion,
+                      test='mannwhitneyu',
+                      group_names=('test','control'))
 
 .. parsed-literal::
 
-    test (mean ± SD): 0.227 ± 0.419, n = 554
-    control (mean ± SD): 0.148 ± 0.355, n = 573
-    'test' is greater than 'control' with P-value: 0.02724
+    group_1 (mean ± SD): 0.227 ± 0.419, n = 554
+    group_2 (mean ± SD): 0.148 ± 0.355, n = 573
+    'group_1' is greater than 'group_2' with P-value: 0.00034
+
 
 .. image:: _static/compare/compare_1.png
 
-We can see that test group performed statistically significantly better than
-control group (given P-value threshold for significance 0.05), threfore change
-must be implemented.
+Parameters for function rete.compare():
+    * groups: tuple (g1, g2), where g1 and g2 are collections of user_id`s (list, tuple or set) of two groups for comparison.
+    * function(x): function that takes single user dataset as an argument and returns a single numerical value (see below for more examples).
+    * test: {'ks_2samp', 'mannwhitneyu'}, selected statistical test to test the null hypothesis that 2 independent samples are drawn from the same distribution. One-sided tests are used, meaning that distributions are compared 'less' or 'greater'. For discrete variables (like convertions or number of purchase) use `Mann-Whitney test <https://en.wikipedia.org/wiki/Mann–Whitney_U_test>`__ (‘mannwhitneyu’). For continious variables (like average_check) use `Kolmogorov-Smirnov test <https://en.wikipedia.org/wiki/Kolmogorov–Smirnov_test>`__ ('ks_2samp').
+    * group_names - optional parameter to set group names for the output.
 
-Histogram just illustrates how the metric is distributed between groups (in the example
+
+We can see that in the example above test group performed statistically significantly
+better than control group (given P-value threshold for significance 0.05), threfore change
+must be implemented. Histogram just illustrates how the metric is distributed between groups (in the example
 above metrics can only be 0 or 1).
 
 To illustrate better how to define custom metrics and pass it as an argument to
-rete.compare() function let's compare couple more metrics.
-
-Suppose we would like to compare average check between test and control groups. Again, it's
-very easy:
+rete.compare() function let's compare couple more metrics. Suppose we would like to compare
+average check between test and control groups. Again, it's very easy:
 
 .. code:: ipython3
 
     average_check = lambda x: x['transaction_value'].mean()
 
     data.rete.compare(groups=(test, control),
-                      group_names=('test','control'),
-                      function=average_check)
+                      function=average_check,
+                      test='ks_2samp',
+                      group_names=('test','control'))
 
 .. parsed-literal::
 
@@ -207,7 +213,8 @@ very easy:
 .. image:: _static/compare/compare_2.png
 
 In this case we can see that there is no statistically significant difference
-between two groups (P-value is 0.55 and > selected threshold 0.05). So we while we can
+between two groups (P-value is 0.55 and > selected threshold 0.05). Note, that for
+continious variable like average check we used Kolmogorov-Smirnov test. While we can
 conclude that users in the test group converted to purchase more often than in control
 group, there was no effect on the average check.
 
@@ -312,14 +319,15 @@ value. Let's compare our groups using confirmed_purch metric:
 .. code:: ipython3
 
     data.rete.compare(groups=(test, control),
-                      group_names=('test','control'),
-                      function=confirmed_purch)
+                      function=confirmed_purch,
+                      test='mannwhitneyu',
+                      group_names=('test','control'))
 
 .. parsed-literal::
 
-    test (mean ± SD): 0.199 ± 0.399, n = 554
-    control (mean ± SD): 0.117 ± 0.321, n = 573
-    'test' is greater than 'control' with P-value: 0.02161
+    test (mean ± SD): 0.184 ± 0.388, n = 554
+    control (mean ± SD): 0.122 ± 0.327, n = 573
+    'test' is greater than 'control' with P-value: 0.00193
 
 .. image:: _static/compare/compare_3.png
 

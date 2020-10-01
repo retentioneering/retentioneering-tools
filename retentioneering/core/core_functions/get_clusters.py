@@ -56,6 +56,7 @@ def get_clusters(self, *,
     np.array
     """
     index_col = self.retention_config['index_col']
+    event_col = self.retention_config['event_col']
 
     # obtain vectorized features
     if hasattr(self, 'datatype') and self.datatype == 'features':
@@ -91,7 +92,7 @@ def get_clusters(self, *,
             target_names.append('CR: ' + ' '.join(t))
             # get bool vector
             targets_bool.append((self._obj
-                                 .groupby(index_col)['event']
+                                 .groupby(index_col)[event_col]
                                  .apply(lambda x: bool(set(t) & set(x)))
                                  .to_frame()
                                  .sort_index()['event']

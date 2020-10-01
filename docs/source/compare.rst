@@ -316,7 +316,7 @@ has confirmed transactions or 0 if has not:
         # convert bool to int:
         return int(has_conf_trans)
 
-It's very straight-forward. Again, function confirmed_purch takes
+It's very straightforward. Again, function confirmed_purch() takes
 single user trajecotry as an argument (as pandas dataframe) and returns a single numerical
 value. Let's compare our groups using confirmed_purch metric:
 

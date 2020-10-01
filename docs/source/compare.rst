@@ -4,7 +4,7 @@ Compare groups
 Statistical comparison
 ======================
 
-Very often we need to compare two groups of users suing some metrics.
+Very often we need to compare two groups of users using some metrics.
 It can be during A/B test results analysis, or comparison two user segments from
 different channels, or comparing cohorts of users and etc.
 
@@ -12,12 +12,16 @@ different channels, or comparing cohorts of users and etc.
 Basic example
 =============
 
-For this tutorial we will use simple dataset consist of user activity logs in app or
-web-site during hypothetical A/B test. It has raw behavior logs as well as additional
-information, specifying was particular use in the test, control or not in the test, as
-some transaction information.
 
-Let's import retentioneering and sample datasets:
+This notebook can be found
+`here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/compare_tutorial.ipynb>`__.
+
+
+In this tutorial we will use simple dataset of user activity logs in app or
+web-site during hypothetical A/B test. It has raw behavior event-level logs as well as additional
+information, specifying was particular user in the test or control and some transaction information.
+
+We start from importing retentioneering and sample datasets:
 
 .. code:: ipython3
 
@@ -110,11 +114,11 @@ Let's import retentioneering and sample datasets:
 |
 
 We can see regular columns with information about user actions ('client_id', 'event',
-'timestamp') as well as column regarding A/B test: 'user_backet', and columns regarding information
-about transactions (events 'payment_done'): 'transaction_value' and 'transaction_ID'.
+'timestamp') as well as column regarding A/B test: 'user_backet', and columns with
+transactions information (events 'payment_done'): 'transaction_value' and 'transaction_ID'.
 
-Next, as usually we need to update retentioneering.config to specify columns names for user_id's,
-event_name and time:
+Next, as usually we need to update retentioneering.config to specify column names for
+events, user_ids and time:
 
 .. code:: ipython3
 
@@ -141,7 +145,7 @@ Let's explore column 'user_backet':
 
 
 We can see that our dataset has 554 and 573 unique users in test and control
-groups, correspondingly. Let's same those client_id's in separate variables 'test'
+groups, correspondingly. Let's put those client_id's in separate variables 'test'
 and 'control':
 
 .. code:: ipython3
@@ -151,15 +155,15 @@ and 'control':
 
 Now everything is ready to start comparing these two groups using rete.compare() function.
 
-Let's say we would like first to compare convertion rate in the test-vs-compare.
+Let's say we would like to compare convertion rate in the test vs control groups.
 
-For this we would need to specify function that given one user trajectory will return
-a numerical value, 1 (converted) or 0 (not converted) in our case. Importantly, functiuon
-must take as an argument a dataframe of one user trajectory, performs any type of
-calculation and return a single numerical value.
+For this we would need to specify function that given one user trajectory (in form of
+dataframe) will return a numerical value, 1 (converted) or 0 (not converted) in our case.
+Importantly, functiuon must take as an argument a dataframe of one user trajectory,
+performs any type of calculation and return a single numerical value.
 
 In our case user is considered converted is they have
-'payment_done' event, so the function definition is very straight forward:
+'payment_done' event, so the function definition is very straightforward:
 
 .. code:: ipython3
 
@@ -182,14 +186,14 @@ In our case user is considered converted is they have
 Parameters for function rete.compare():
     * groups: tuple (g1, g2), where g1 and g2 are collections of user_id`s (list, tuple or set) of two groups for comparison.
     * function(x): function that takes single user dataset as an argument and returns a single numerical value (see below for more examples).
-    * test: {'ks_2samp', 'mannwhitneyu'}, selected statistical test to test the null hypothesis that 2 independent samples are drawn from the same distribution. One-sided tests are used, meaning that distributions are compared 'less' or 'greater'. For discrete variables (like convertions or number of purchase) use `Mann-Whitney test <https://en.wikipedia.org/wiki/Mann–Whitney_U_test>`__ (‘mannwhitneyu’). For continious variables (like average_check) use `Kolmogorov-Smirnov test <https://en.wikipedia.org/wiki/Kolmogorov–Smirnov_test>`__ ('ks_2samp').
+    * test: {'ks_2samp', 'mannwhitneyu'}, selected statistical test to test the null hypothesis that 2 independent samples are drawn from the same distribution. One-sided tests are used, meaning that distributions are compared for 'less' or 'greater'. For discrete variables (like convertions, number of purchases) use `Mann-Whitney test <https://en.wikipedia.org/wiki/Mann–Whitney_U_test>`__ (‘mannwhitneyu’). For continious variables (like average_check) use `Kolmogorov-Smirnov test <https://en.wikipedia.org/wiki/Kolmogorov–Smirnov_test>`__ ('ks_2samp').
     * group_names - optional parameter to set group names for the output.
 
 
-We can see that in the example above test group performed statistically significantly
-better than control group (given P-value threshold for significance 0.05), threfore change
-must be implemented. Histogram just illustrates how the metric is distributed between groups (in the example
-above metrics can only be 0 or 1).
+We can see that in the example above test group have statistically significantly higher
+convertion rate than control group (given P-value threshold for significance 0.05), threfore change
+must be implemented. Histogram just illustrates how the selected metric is distributed between groups
+(in the example above metrics can only be 0 or 1).
 
 To illustrate better how to define custom metrics and pass it as an argument to
 rete.compare() function let's compare couple more metrics. Suppose we would like to compare
@@ -212,8 +216,8 @@ average check between test and control groups. Again, it's very easy:
 
 .. image:: _static/compare/compare_2.png
 
-In this case we can see that there is no statistically significant difference
-between two groups (P-value is 0.55 and > selected threshold 0.05). Note, that for
+In this case we can see that there is no statistically significant difference in average
+checks between two groups (P-value is 0.55, selected threshold is 0.05). Note, that for
 continious variable like average check we used Kolmogorov-Smirnov test. While we can
 conclude that users in the test group converted to purchase more often than in control
 group, there was no effect on the average check.
@@ -221,9 +225,9 @@ group, there was no effect on the average check.
 More complex metrics
 ====================
 
-Just to illustrate that metrics function can be more complex, let's consider another
-example. Suppose we have separare file which has all transaction_id's and their status
-(whether transaction was already confirmed or not).
+Just to illustrate that metrics function can be any complex, let's consider another
+example. Suppose we have separate file, which has all transaction_id's and their statuses
+(whether transaction was already confirmed by bank or not).
 
 For the demonstration purpose let's just create such dataframe with randomized data:
 
@@ -293,7 +297,7 @@ For the demonstration purpose let's just create such dataframe with randomized d
     </table>
     </div>
 
-Now, let's write metrics function confirmed_conv: which will return 1 if user
+Now, let's write metrics function confirmed_purch, which will return 1 if user
 has confirmed transactions or 0 if has not:
 
 .. code:: ipython3
@@ -312,8 +316,8 @@ has confirmed transactions or 0 if has not:
         # convert bool to int:
         return int(has_conf_trans)
 
-As you can see, it's very straight-forward and again, function confirmed_purch takes
-single user trajecotry as an arguament (as pandas dataframe) and returns a single numerical
+It's very straight-forward. Again, function confirmed_purch takes
+single user trajecotry as an argument (as pandas dataframe) and returns a single numerical
 value. Let's compare our groups using confirmed_purch metric:
 
 .. code:: ipython3
@@ -331,6 +335,6 @@ value. Let's compare our groups using confirmed_purch metric:
 
 .. image:: _static/compare/compare_3.png
 
-As we can see, statistically significant difference still holds with selected significance
-level 0.05.
+As we can see, statistically significant difference in the convertion to confirmed purchases
+still holds with selected significance level 0.05.
 

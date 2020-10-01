@@ -11,8 +11,8 @@ Basic example
 This notebook can be found
 `here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/clusters_tutorial.ipynb>`__.
 
-We will use sample user dataset to illustrate how behavior clustering works. Let's first
-import retentioneering, import sample dataset and update config:
+We will use sample user activity dataset to illustrate how behavior clustering works. Let's first
+import retentioneering, import sample dataset and update config to set used column names:
 
 .. code:: ipython3
 
@@ -42,10 +42,10 @@ In the example above we used 'ftidf' vectorization (default vectorizer), where
 vocaburary is sequences of events from 1 to 2 (parameter ngram_range), meaning that we count
 individual events up to sequnces of 2 (bi-grams).
 
-Parameter n_clusters corresponds to the number of desired clusters. Parameter method - type of clusterization
-algorithm to use (currently support 'kmeans' and 'gmm').
+Parameter n_clusters corresponds to the number of desired clusters. Parameter method -
+type of clusterization algorithm to use (currently support 'kmeans' and 'gmm').
 
-Result of the running method above is assigned to a new attribute cluster_mapping, which is a
+Result of the method above is assigned to a new rete attribute: cluster_mapping, which is a
 dictionary containing user_id's for each cluster:
 
 .. code:: ipython3
@@ -92,7 +92,7 @@ clusterization by including plot_type parameter:
 
 .. image:: _static/clustering/clustering_0.svg
 
-By default it shows the size of each cluster. We can add convertion to any specified event
+By default it shows the relative size of each cluster. We can add convertion to any specified event
 to the clusters statistics using parameter targets, where we can specify target events.
 High-level overview bar plot will now include convertion rate (% of users within the cluster
 who have specified event at least once) for specified target:
@@ -125,14 +125,14 @@ In example above we can see that clusters 0 and 7 have relatively high convertio
 comparing to other clusters (CR: 'payment_done'). Interestingly, cluster 4 has very high convertion
 to visit 'cart' (same as clusters 0 and 7) but don't have any convertions to 'payment_done'. This
 must be cluster of users who reach the cart but get lost somewhere between cart and payment_done.
-This way wwe can immediately start buiding our intuition about resulting clusters.
+This way we can immediately start buiding our intuition about resulting clusters.
 
 Exploring individual clusters
 =============================
 
 After clusterization is done we can explore individual clusters using full arsenal of
 retentioneering tools. Function filter_cluster can be used to isolate individual dataset
-for a given cluster number:
+for a given cluster number or list of clusters:
 
 .. code:: ipython3
 
@@ -161,6 +161,7 @@ explore it:
             ></iframe>
 
 |
+
 We can see that this cluster #4 consists of users who explore catalog, products 1 and 2, then
 reach the 'cart', but lost after the cart. To see how users in cluster 4 get to the cart we can
 plot step_matrix centered around cart:

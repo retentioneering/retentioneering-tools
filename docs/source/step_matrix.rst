@@ -4,8 +4,9 @@ Step_matrix function
 Step matrix intro
 =================
 
-Step matrix is a very powerful tool in retentioneering arsenal. It allows quickly get high-level
-understing of user behaviour.
+Step matrix is a very powerful tool in retentioneering arsenal. It allows to get quickly
+high-level understing of user behaviour. Step matrix has powerful customization options
+to tailor the output depending the goal of the analysis.
 
 To better understand how `step_matrix` works let's first consider intuitive example. Let's say we
 are analyzing web-store logs and have dataset with event logs from four user sessions with the following
@@ -18,14 +19,20 @@ their trajectories:
 
 .. image:: _static/step_matrix/step_matrix_demo_plot.svg
 
+This is the simplest step matrix. It has individual unique events as a rows, columns corresponds
+to the positional number of event in user log and the value in the matrix shows what percentage
+users have given event at a given step. Note, that total value in each column is always 1 (all
+users must be at specific state at each step or have ENDED their trajectory).
+
+Below we will explore how to plot and customize step matrix.
+
 Basic example
 =============
 
 This notebook can be found `here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/step_matrix_tutorial.ipynb>`__.
 
-This document describes available functionality for step_matrix function.
-
-To run examples below we need to import retentioneering, import sample dataset and setup config:
+To run examples below we need to import retentioneering, import sample dataset and update config
+to set names for the columns:
 
 .. code:: ipython3
 
@@ -166,7 +173,7 @@ Let's plot a simple intuitive step_matrix for our single user dataset:
 .. image:: _static/step_matrix/step_matrix_su_0.svg
 
 
-We can see since we have only one user in this example, `step_matrix` contains only 0's and 1's.
+We can see, since we have only one user in this example, `step_matrix` contains only 0's and 1's.
 At step 1 user had event `main` (100% of users have event main as first event in the trajecotry),
 then at step 2 user proceed to `catalog`, etc., etc., etc. By the step 13 user's trajectory
 ended and there are no more events, therefore all subsequent events starting from step 13 are
@@ -186,15 +193,15 @@ ended their sessions and have no other events (row `ENDED` at step 2 is 0.12). W
 52% of users finish their sessions with 6 or less events (row `ENDED` at step 7 is 0.52). Some
 convertions start happen after step 7 (row `payment_done` have 0.02 at step 7). And so on. Note,
 that at each step all values in every column always sum up to 1 (meaning that all users have some
-specific event or `ENDED` state). Below we will explore other options for `step_matrix` function to make the output much more
-informative and tailored for the goals of particular analysis.
+specific event or `ENDED` state). Below we will explore other options for `step_matrix` function
+to make the output much more informative and tailored for the goals of particular analysis.
 
 
 Thresholding
 ============
 
 When we plot `step_matrix` using full dataset sometimes we want first focus on bigger picture and
-avoid rows with event where insignificant fraction of users experienced. Such thresholding can be
+avoid rows with event where insignificant fraction of users was present. Such thresholding can be
 done using `thresh` parameter (float, default: 0). If the row has all values less than specified
 `thresh`, such row will not be shown.
 
@@ -213,10 +220,10 @@ Targets analysis
 
 Very often there are specific events of particular importance for product analyst (for example
 such as `cart`, or `order_confirmed`, or `subscribe`, etc.). Often such events have much lower
-convertion rate comparing other events (like `main page` or `catalog`) and often ended up thresholded
-from `step_matrix` or shown with non-informative coloring. In this case we can isolate those events of
-particular importance (`targets`) to individual rows, each of which will have their individual color scale.
-This can be done with parameter `targets`:
+occurrence rate comparing other events (like `main page` or `catalog`) and often ended up
+thresholded from `step_matrix` or shown with non-informative coloring. In this case we can
+isolate those events of particular importance (`targets`) to individual rows, each of which
+will have their individual color scale. This can be done with parameter `targets`:
 
 .. code:: ipython3
 
@@ -226,8 +233,8 @@ This can be done with parameter `targets`:
 
 .. image:: _static/step_matrix/step_matrix_2.svg
 
-Specified target events are always shown below regardless of selected threshold. Multiple targets can be
-included as a list:
+Specified target events are always shown in the bottom of step matrix regardless
+of selected threshold. Multiple targets can be included as a list:
 
 .. code:: ipython3
 
@@ -289,7 +296,17 @@ using parameter centered:
 .. image:: _static/step_matrix/step_matrix_7.svg
 
 Note, that when plot step_matrix with parameter centered we only keep users who have reached
-specified event (the column 0 has value 1 at specified event)
+specified event (the column 0 has value 1 at specified event). Parameter centered is a dictionary
+wich requires three keys:
+    * 'event' - name of the event we are interested. This event will be taken as 0. Negative step numbers will corresponds to events before selected event and positive step numbers will correspond to steps after selected event.
+    * 'left_gap' - integer number which indicates how much steps before centered event we want to show on step matrix
+    * 'occurrence' - which occurrence number of target event we are interested in. For example, if in the example above, all trajectories will be aligned to have first 'cart' occurrence as step 0.
+
+Importantly, when centered step matrix is used, only users who have selected event in
+their trajectories present (or it's n`th occurrence) will be shown. Therefore, the column
+with step index 0 will always have 1 at selected event and zero at all other events. Fraction
+of users kept for centered step matrix shown in the title. In the example above, 51.3% of users
+have reach event 'cart' at least once.
 
 We can use all targets functionality with centered step_matrix, for example:
 
@@ -311,7 +328,8 @@ Sometimes it is needed to obtain step_matrix with events listed in the specific 
 (for example, to compare two step_matrixes). This can be done with parameter sorting which accepts
 list of event names in the required order to show up in the step matrix. For convenience, to obtain
 list of event names from the most recent step_matrix output you can always refer to
-retentioneering.config['step_matrix']['sorting'] after each step_matrix run. Let's consider an example:
+retentioneering.config['step_matrix']['sorting'] after each step_matrix run.
+Let's consider an example:
 
 .. code:: ipython3
 
@@ -321,7 +339,7 @@ retentioneering.config['step_matrix']['sorting'] after each step_matrix run. Let
 .. image:: _static/step_matrix/step_matrix_sorting_0.svg
 
 Let's say we would like to change the order of the events in the resulted step_matrix. First, we
-can obtain list of event names from the last step_matrix output using congif:
+can obtain list of event names from the last step_matrix output using retentioneering.config:
 
 .. code:: ipython3
 
@@ -334,7 +352,7 @@ output:
     ['catalog', 'main', 'lost', 'cart', 'product2', 'product1', 'ENDED', 'THRESHOLDED_7']
 
 Now we can conveniently copy the list of events, reorganize it in the required order and pass
-to spet_matrix function as sorting parameter:
+to step_matrix function as sorting parameter:
 
 .. code:: ipython3
 
@@ -371,7 +389,7 @@ tuple of two elements (g1 and g2): where g_1 and g_2 are collections
 of user_id`s (list, tuple or set). Two separate step_matrixes M1 and M2
 will be calculated for users from g_1 and g_2, respectively. Resulting
 matrix will be the matrix M = M1-M2. Note, that values in each column
-in differential step matrix will sum up to 0 (since columns in both M1
+in differential step matrix will always sum up to 0 (since columns in both M1
 and M2 always sum up to 1).
 
 .. code:: ipython3
@@ -423,7 +441,7 @@ collections from cluster_mapping attribute and pass it to groups parameter of st
 
 .. image:: _static/step_matrix/step_matrix_10.svg
 
-We can clearly see that these two behavioural segments are quire similar to each other with
+We can clearly see that these two behavioural segments are quite similar to each other with
 the only strong difference at the second step after 'cart' event: users of segment 3 prefer to
 select 'delivery_courier' (large positive value), and users of segment 7 prefer to select
 'delivery_pickup' (large negative value).

@@ -9,7 +9,7 @@ No normalization
 This notebook can be found
 `here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/graph_tutorial.ipynb>`__.
 
-To understand better how different normalization type works and how to use plot_graph function
+To understand better how different normalization types work and how to use plot_graph function
 let's use sample dataset:
 
 .. code:: ipython3
@@ -48,13 +48,14 @@ Let's visualize our dataset using plot_graph function:
             ></iframe>
 
 |
+
 Here, numbers for each edge correspond to total number of given transition in the dataset
-(for example, total number of 'cart'->'delivery_choice' transitions is 1686).
+(for example, total number of 'cart'->'delivery_choice' transitions in example above is 1686).
 Parameter 'thresh' sets a limit, below which edge stop showing on a graph to avoid cluttering.
 
 Some of the events might be particular importance to visualize. To highlight those events with
 red or green colors (and all inbound edges) use parameter targets to provide a dictionary with
-required colors:
+required colors ('green' or 'red'):
 
 .. code:: ipython3
 
@@ -107,10 +108,11 @@ intuitively how to interpret results let's consider an example:
 |
 
 In this case percents on graph edges indicates the percentage of given transition from
-all transitions. For example, transtion 'catalog'->'catalog' represents 15% of all transtions
+all transitions. For example, transition 'catalog'->'catalog' represents 15% of all transtions
 in the dataset.
 
-Very often we are interested in what percentage of users have given transition from all users.
+Very often we are interested not in the fraction given transition represents from all
+transitions, but in what percentage of users have given transition from all users.
 This can be obtained using weight_col='client_id' parameter:
 
 .. code:: ipython3
@@ -144,7 +146,7 @@ Sometimes we would like to know, from all users, who reach 'cart' what percent t
 'delivery_choice', or from all users who reach 'payment_card' what percent completed the purchase
 (transitioned to 'payment_done').
 
-These type of questions can be addressed with norm_type = 'node'. Let's consider an example:
+These type of questions can be addressed with norm_type = 'node'. Let's consider another example:
 
 .. code:: ipython3
 

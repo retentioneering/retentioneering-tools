@@ -155,7 +155,7 @@ and 'control':
 
 Now everything is ready to start comparing these two groups using rete.compare() function.
 
-Let's say we would like to compare convertion rate in the test vs control groups.
+Let's say we would like to compare conversion rate in the test vs control groups.
 
 For this we would need to specify function that given one user trajectory (in form of
 dataframe) will return a numerical value, 1 (converted) or 0 (not converted) in our case.
@@ -167,10 +167,10 @@ In our case user is considered converted is they have
 
 .. code:: ipython3
 
-    convertion = lambda x: int(['payment_done'] in x['event'].unique())
+    conversion = lambda x: int(['payment_done'] in x['event'].unique())
 
     data.rete.compare(groups=(test, control),
-                      function=convertion,
+                      function=conversion,
                       test='mannwhitneyu',
                       group_names=('test','control'))
 
@@ -186,12 +186,12 @@ In our case user is considered converted is they have
 Parameters for function rete.compare():
     * groups: tuple (g1, g2), where g1 and g2 are collections of user_id`s (list, tuple or set) of two groups for comparison.
     * function(x): function that takes single user dataset as an argument and returns a single numerical value (see below for more examples).
-    * test: {'ks_2samp', 'mannwhitneyu'}, selected statistical test to test the null hypothesis that 2 independent samples are drawn from the same distribution. One-sided tests are used, meaning that distributions are compared for 'less' or 'greater'. For discrete variables (like convertions, number of purchases) use `Mann-Whitney test <https://en.wikipedia.org/wiki/Mann–Whitney_U_test>`__ (‘mannwhitneyu’). For continious variables (like average_check) use `Kolmogorov-Smirnov test <https://en.wikipedia.org/wiki/Kolmogorov–Smirnov_test>`__ ('ks_2samp').
+    * test: {'ks_2samp', 'mannwhitneyu'}, selected statistical test to test the null hypothesis that 2 independent samples are drawn from the same distribution. One-sided tests are used, meaning that distributions are compared for 'less' or 'greater'. For discrete variables (like conversions, number of purchases) use `Mann-Whitney test <https://en.wikipedia.org/wiki/Mann–Whitney_U_test>`__ (‘mannwhitneyu’). For continious variables (like average_check) use `Kolmogorov-Smirnov test <https://en.wikipedia.org/wiki/Kolmogorov–Smirnov_test>`__ ('ks_2samp').
     * group_names - optional parameter to set group names for the output.
 
 
 We can see that in the example above test group have statistically significantly higher
-convertion rate than control group (given P-value threshold for significance 0.05), threfore change
+conversion rate than control group (given P-value threshold for significance 0.05), threfore change
 must be implemented. Histogram just illustrates how the selected metric is distributed between groups
 (in the example above metrics can only be 0 or 1).
 
@@ -335,6 +335,6 @@ value. Let's compare our groups using confirmed_purch metric:
 
 .. image:: _static/compare/compare_3.png
 
-As we can see, statistically significant difference in the convertion to confirmed purchases
+As we can see, statistically significant difference in the conversion to confirmed purchases
 still holds with selected significance level 0.05.
 

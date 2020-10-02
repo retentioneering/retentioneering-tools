@@ -191,7 +191,7 @@ By looking at the first column we can immediately say that users in the analyzed
 their sessions from events `catalog` (72%) and `main` (28%). At step 2 12% of users already
 ended their sessions and have no other events (row `ENDED` at step 2 is 0.12). We can see, that
 52% of users finish their sessions with 6 or less events (row `ENDED` at step 7 is 0.52). Some
-convertions start happen after step 7 (row `payment_done` have 0.02 at step 7). And so on. Note,
+conversions start happen after step 7 (row `payment_done` have 0.02 at step 7). And so on. Note,
 that at each step all values in every column always sum up to 1 (meaning that all users have some
 specific event or `ENDED` state). Below we will explore other options for `step_matrix` function
 to make the output much more informative and tailored for the goals of particular analysis.
@@ -380,7 +380,7 @@ Differential step matrix
 ========================
 
 Sometimes we need to compare behavior of several groups of users. For example, when we would like
-to compare behavior of users who had convertion to target vs. who had not, or compare behavior of
+to compare behavior of users who had conversion to target vs. who had not, or compare behavior of
 test and control groups in A/B test, or compare behavior between specific segments of users.
 
 In this case it is informative to plot a step_matrix as difference between step_matrix for
@@ -410,7 +410,7 @@ and M2 always sum up to 1).
 
 Let's consider another example of differential step matrix use, where we will compare behavior
 of two user clusters. First, let's obtain behavioural segments and visualize the results of
-segmentation using convertion to 'payment_done' and event 'cart' (to learn more about
+segmentation using conversion to 'payment_done' and event 'cart' (to learn more about
 user behavior clustering read here):
 
 .. code:: ipython3
@@ -421,9 +421,9 @@ user behavior clustering read here):
 
 .. image:: _static/step_matrix/cluster_bar_0.svg
 
-We can see 8 clusters with the corresponding convertion rates to specified events (% of users in
+We can see 8 clusters with the corresponding conversion rates to specified events (% of users in
 the given cluster who had at least one specified event). Let's say we would like to compare
-behavior segments 3 and 7. Both have relatively high convertion rate and cart visit rate. Let's
+behavior segments 3 and 7. Both have relatively high conversion rate and cart visit rate. Let's
 find out how they are differ using differential step_matrix. All we need is to get user_id's
 collections from cluster_mapping attribute and pass it to groups parameter of step_matrix:
 

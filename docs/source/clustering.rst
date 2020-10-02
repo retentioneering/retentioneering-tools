@@ -4,10 +4,6 @@ Users behavior clustering
 Behavior clustering intro
 =========================
 
-
-Trajectories vectorization
-==========================
-
 This notebook can be found
 `here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/clusters_tutorial.ipynb>`__.
 
@@ -29,6 +25,9 @@ import retentioneering, import sample dataset and update config to set used colu
         'index_col': 'client_id'
     })
 
+Trajectories vectorization
+==========================
+
 Each user trajectory is represented as a sequence of events.
 
 Before we apply any ML algorithms to users dataset we need a way how to
@@ -44,11 +43,14 @@ and tfidf. Let's work through some examples.
 Function rete.extract_features() returns a dataframe of vectorized user trajectories:
 
 .. code:: ipython3
+
     vec = data.rete.extract_features(feature_type='count',
                                      ngram_range=(1, 1))
 
 In obtained dataframe each row corresponds to vector
 
+Clusterization
+==============
 
 We can now use get_clusters method to split users on groups based on how similar is their behavior:
 
@@ -113,9 +115,9 @@ clusterization by including plot_type parameter:
 
 .. image:: _static/clustering/clustering_0.svg
 
-By default it shows the relative size of each cluster. We can add convertion to any specified event
+By default it shows the relative size of each cluster. We can add conversion to any specified event
 to the clusters statistics using parameter targets, where we can specify target events.
-High-level overview bar plot will now include convertion rate (% of users within the cluster
+High-level overview bar plot will now include conversion rate (% of users within the cluster
 who have specified event at least once) for specified target:
 
 .. code:: ipython3
@@ -129,7 +131,7 @@ who have specified event at least once) for specified target:
 .. image:: _static/clustering/clustering_1.svg
 
 Parameter targets can contain any number of events. For each added event, corresponding
-convertion rate will be included to cluster overview bar plot. This is very useful when
+conversion rate will be included to cluster overview bar plot. This is very useful when
 you need to get a quick intuition about the resulting clusters:
 
 .. code:: ipython3
@@ -142,9 +144,9 @@ you need to get a quick intuition about the resulting clusters:
 
 .. image:: _static/clustering/clustering_2.svg
 
-In example above we can see that clusters 0 and 7 have relatively high convertion rates to purchase
-comparing to other clusters (CR: 'payment_done'). Interestingly, cluster 4 has very high convertion
-to visit 'cart' (same as clusters 0 and 7) but don't have any convertions to 'payment_done'. This
+In example above we can see that clusters 4 and 5 have relatively high conversion rates to purchase
+comparing to other clusters (CR: 'payment_done'). Interestingly, cluster 0 has very high conversion
+to visit 'cart' (same as clusters 4 and 5) but don't have any conversions to 'payment_done'. This
 must be cluster of users who reach the cart but get lost somewhere between cart and payment_done.
 This way we can immediately start buiding our intuition about resulting clusters.
 
@@ -157,15 +159,15 @@ for a given cluster number or list of clusters:
 
 .. code:: ipython3
 
-    clus_4 = data.rete.filter_cluster(4)
+    clus_0 = data.rete.filter_cluster(0)
 
-now, clus_4 is regular pandas dataframe containig only users from cluster 4. Since it is
+now, clus_0 is regular pandas dataframe containig only users from cluster 0. Since it is
 regular pandas dataframe we can directly apply rete tools such as plot_graph or step_matrix to
 explore it:
 
 .. code:: ipython3
 
-    clus_4.rete.plot_graph(thresh=0.1,
+    clus_0.rete.plot_graph(thresh=0.1,
                            weight_col='client_id',
                            targets = {'lost':'red',
                                       'payment_done':'green'})
@@ -183,13 +185,13 @@ explore it:
 
 |
 
-We can see that this cluster #4 consists of users who explore catalog, products 1 and 2, then
-reach the 'cart', but lost after the cart. To see how users in cluster 4 get to the cart we can
+We can see that this cluster #0 consists of users who explore catalog, products 1 and 2, then
+reach the 'cart', but lost after the cart. To see how users in cluster 0 get to the cart we can
 plot step_matrix centered around cart:
 
 .. code:: ipython3
 
-    clus_4.rete.step_matrix(max_steps=12,
+    clus_0.rete.step_matrix(max_steps=12,
                             centered={'event': 'cart',
                                       'left_gap': 4,
                                       'occurrence': 1});
@@ -198,12 +200,12 @@ plot step_matrix centered around cart:
 
 Other clusters can be explored in a similar way. Note, that dataframe containing multiple
 clusters can be extracted by passing a list of cluster numbers to filter_cluster() function.
-For example, if we would like to obtain dataset only containing users from clusters 0 and 7
+For example, if we would like to obtain dataset only containing users from clusters 4 and 5
 for subsequent analysis, we can simply do:
 
 .. code:: ipython3
 
-    clus_0_7 = data.rete.filter_cluster([0,7])
+    clus_4_5 = data.rete.filter_cluster([4,5])
 
 Compare clusters
 ================
@@ -211,7 +213,7 @@ Compare clusters
 Function rete.cluster_event_dist() helps to quickly understand at a high
 level behavior pattern within a given cluster by comparing the distribution of top_n
 events within selected cluster vs all dataset or with another cluster. Let's see
-an example. Suppose we would like to explore cluster 2, which has low convertion rate
+an example. Suppose we would like to explore cluster 2, which has low conversion rate
 to 'payment_done' event.
 
 .. code:: ipython3
@@ -236,7 +238,7 @@ arguments corresponding to cluster numbers.
 .. image:: _static/clustering/cluster_event_dist_1.svg
 
 Here we can see comparison of top 8 frequent events in cluster 2 vs cluster 7. We can see
-that cluster 7 is similar to cluster 2. Both clusters have low convertion rate, but users from
+that cluster 7 is similar to cluster 2. Both clusters have low conversion rate, but users from
 cluster 7 more frequently interact with product 1 whereas users from cluster 2 interact with
 product 2.
 
@@ -255,7 +257,7 @@ user_id's: weight_col='client_id' (default None):
 
 Now in the histogram above we can see that actually 100% of users from cluster 2 have
 interacted with product 2 and 100% of users from cluster 7 have interacted with product 1.
-It gives. All users from both clusters have interacted with catalog and were lost (no convertion).
+It gives. All users from both clusters have interacted with catalog and were lost (no conversion).
 Interestingly, non-converted users who interacted with product 2 (from cluster 2) are
 more likely visit cart (35% of users) before they are lost, than lost users who interacted
 with product 1 (20% of users from cluster 7). This effect was difficult to notice when we

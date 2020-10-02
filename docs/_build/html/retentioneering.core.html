@@ -302,6 +302,32 @@ visualization as HTML in experiments_folder of retention_config.</p>
 <div class="section" id="module-retentioneering.core.core_functions.get_clusters">
 <span id="get-clusters"></span><h2>get_clusters<a class="headerlink" href="#module-retentioneering.core.core_functions.get_clusters" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
+<dt id="retentioneering.core.core_functions.get_clusters.cluster_event_dist">
+<code class="sig-prename descclassname">retentioneering.core.core_functions.get_clusters.</code><code class="sig-name descname">cluster_event_dist</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">cl1</span></em>, <em class="sig-param"><span class="n">cl2</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">top_n</span><span class="o">=</span><span class="default_value">8</span></em>, <em class="sig-param"><span class="n">weight_col</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">targets</span><span class="o">=</span><span class="default_value">[]</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/retentioneering/core/core_functions/get_clusters.html#cluster_event_dist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#retentioneering.core.core_functions.get_clusters.cluster_event_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots distribution of top_n events in cluster cl1 compared vs
+entire dataset or in cluster cl2.</p>
+<dl class="simple">
+<dt>cl1: int</dt><dd><p>ID of the cluster to compare.</p>
+</dd>
+<dt>cl2: int, (optional, default None)</dt><dd><p>ID of the second cluster to compare with top events from first
+cluster. If None, then compares with entire dataset.</p>
+</dd>
+<dt>top_n: int, (optional, default 8)</dt><dd><p>Number of top events.</p>
+</dd>
+<dt>weight_col: str (optional, default None)</dt><dd><p>If None distribution will be compared based on events occurrences in
+datasets. If weight_col is specified, percentages of users
+(column name specified by parameter weight_col) who have particular
+events will be plotted.</p>
+</dd>
+<dt>targets: list of str (optional, default [])</dt><dd><p>List of event names always to include for comparison regardless
+of the parameter top_n value. Target events will appear in the same
+order as specified</p>
+</dd>
+</dl>
+<p>Plots distribution barchart</p>
+</dd></dl>
+
+<dl class="py function">
 <dt id="retentioneering.core.core_functions.get_clusters.filter_cluster">
 <code class="sig-prename descclassname">retentioneering.core.core_functions.get_clusters.</code><code class="sig-name descname">filter_cluster</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="n">cluster_name</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/retentioneering/core/core_functions/get_clusters.html#filter_cluster"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#retentioneering.core.core_functions.get_clusters.filter_cluster" title="Permalink to this definition">¶</a></dt>
 <dd><p>Filters dataset against one or several clusters.</p>
@@ -439,7 +465,19 @@ use Kolmogorov-Smirnov test (‘ks_2samp’).</p>
     </script>
 
     
-   
+    
+
+  <style>
+    /* Sidebar header (and topbar for mobile) */
+    .wy-side-nav-search, .wy-nav-top {
+      background: #373736;
+    }
+    /* Sidebar */
+    .wy-nav-side {
+      background: #373736;
+    }
+  </style>
+
 
 </body>
 </html>

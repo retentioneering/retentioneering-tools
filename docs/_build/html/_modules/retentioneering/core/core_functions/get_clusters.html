@@ -301,6 +301,107 @@
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="n">index_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">ids</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="cluster_event_dist"><a class="viewcode-back" href="../../../../retentioneering.core.html#retentioneering.core.core_functions.get_clusters.cluster_event_dist">[docs]</a><span class="k">def</span> <span class="nf">cluster_event_dist</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                       <span class="n">cl1</span><span class="p">,</span>
+                       <span class="n">cl2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+                       <span class="n">top_n</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                       <span class="n">weight_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                       <span class="n">targets</span><span class="o">=</span><span class="p">[]):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plots distribution of top_n events in cluster cl1 compared vs</span>
+<span class="sd">    entire dataset or in cluster cl2.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ---------</span>
+<span class="sd">    cl1: int</span>
+<span class="sd">        ID of the cluster to compare.</span>
+<span class="sd">    cl2: int, (optional, default None)</span>
+<span class="sd">        ID of the second cluster to compare with top events from first</span>
+<span class="sd">        cluster. If None, then compares with entire dataset.</span>
+<span class="sd">    top_n: int, (optional, default 8)</span>
+<span class="sd">        Number of top events.</span>
+<span class="sd">    weight_col: str (optional, default None)</span>
+<span class="sd">        If None distribution will be compared based on events occurrences in</span>
+<span class="sd">        datasets. If weight_col is specified, percentages of users</span>
+<span class="sd">        (column name specified by parameter weight_col) who have particular</span>
+<span class="sd">        events will be plotted.</span>
+<span class="sd">    targets: list of str (optional, default [])</span>
+<span class="sd">        List of event names always to include for comparison regardless</span>
+<span class="sd">        of the parameter top_n value. Target events will appear in the same</span>
+<span class="sd">        order as specified</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    ---------</span>
+<span class="sd">    Plots distribution barchart</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">event_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;event_col&#39;</span><span class="p">]</span>
+    <span class="n">index_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;index_col&#39;</span><span class="p">]</span>
+
+    <span class="n">clus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter_cluster</span><span class="p">(</span><span class="n">cl1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">weight_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">clus</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">event_col</span><span class="p">,</span> <span class="n">weight_col</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">top_cluster</span> <span class="o">=</span> <span class="p">(</span><span class="n">clus</span><span class="p">[</span><span class="n">event_col</span><span class="p">]</span>
+                       <span class="o">.</span><span class="n">value_counts</span><span class="p">()</span> <span class="o">/</span> <span class="n">clus</span><span class="p">[</span><span class="n">weight_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">top_cluster</span> <span class="o">=</span> <span class="p">(</span><span class="n">clus</span><span class="p">[</span><span class="n">event_col</span><span class="p">]</span>
+                       <span class="o">.</span><span class="n">value_counts</span><span class="p">(</span><span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+    <span class="c1"># add zero events for missing targets</span>
+    <span class="k">for</span> <span class="n">evnt</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">top_cluster</span><span class="o">.</span><span class="n">index</span><span class="p">):</span>
+        <span class="n">top_cluster</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">evnt</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1"># create events order: top_n non-target events + targets:</span>
+    <span class="n">evnts_to_keep</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">,</span> <span class="n">top_cluster</span><span class="o">.</span><span class="n">index</span><span class="p">))[:</span><span class="n">top_n</span><span class="p">]</span>
+    <span class="n">target_separator_position</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">evnts_to_keep</span><span class="p">)</span>
+    <span class="n">evnts_to_keep</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span>
+    <span class="n">top_cluster</span> <span class="o">=</span> <span class="n">top_cluster</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">evnts_to_keep</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">cl2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">clus2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">clus2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter_cluster</span><span class="p">(</span><span class="n">cl2</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">weight_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">clus2</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">event_col</span><span class="p">,</span> <span class="n">weight_col</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># get events distribution from cluster 2:</span>
+        <span class="n">top_all</span> <span class="o">=</span> <span class="p">(</span><span class="n">clus2</span><span class="p">[</span><span class="n">event_col</span><span class="p">]</span>
+                   <span class="o">.</span><span class="n">value_counts</span><span class="p">()</span><span class="o">/</span><span class="n">clus2</span><span class="p">[</span><span class="n">weight_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">())</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># get events distribution from cluster 2:</span>
+        <span class="n">top_all</span> <span class="o">=</span> <span class="p">(</span><span class="n">clus2</span><span class="p">[</span><span class="n">event_col</span><span class="p">]</span>
+                   <span class="o">.</span><span class="n">value_counts</span><span class="p">(</span><span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+    <span class="c1"># make sure top_all has all events from cluster 1</span>
+    <span class="k">for</span> <span class="n">evnt</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">top_cluster</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">])</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">top_all</span><span class="o">.</span><span class="n">index</span><span class="p">):</span>
+        <span class="n">top_all</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">evnt</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1"># keep only top_n events from cluster1</span>
+    <span class="n">top_all</span> <span class="o">=</span> <span class="n">top_all</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">top_cluster</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="n">top_all</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">event_col</span><span class="p">,</span> <span class="s1">&#39;freq&#39;</span><span class="p">,</span> <span class="p">]</span>
+    <span class="n">top_cluster</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">event_col</span><span class="p">,</span> <span class="s1">&#39;freq&#39;</span><span class="p">,</span> <span class="p">]</span>
+
+    <span class="n">top_all</span><span class="p">[</span><span class="s1">&#39;hue&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;all&#39;</span> <span class="k">if</span> <span class="n">cl2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="sa">f</span><span class="s1">&#39;cluster </span><span class="si">{</span><span class="n">cl2</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="n">top_cluster</span><span class="p">[</span><span class="s1">&#39;hue&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;cluster </span><span class="si">{</span><span class="n">cl1</span><span class="si">}</span><span class="s1">&#39;</span>
+
+    <span class="n">plot_clusters</span><span class="o">.</span><span class="n">cluster_event_dist</span><span class="p">(</span>
+        <span class="n">top_all</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">top_cluster</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+        <span class="n">event_col</span><span class="o">=</span><span class="n">event_col</span><span class="p">,</span>
+        <span class="n">cl1</span><span class="o">=</span><span class="n">cl1</span><span class="p">,</span>
+        <span class="n">sizes</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">clus</span><span class="p">[</span><span class="n">index_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="n">index_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">(),</span>
+            <span class="n">clus2</span><span class="p">[</span><span class="n">index_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="n">index_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">(),</span>
+        <span class="p">],</span>
+        <span class="n">cl2</span><span class="o">=</span><span class="n">cl2</span><span class="p">,</span>
+        <span class="n">weight_col</span><span class="o">=</span><span class="n">weight_col</span><span class="p">,</span>
+        <span class="n">target_pos</span><span class="o">=</span><span class="n">target_separator_position</span><span class="p">,</span>
+        <span class="n">targets</span><span class="o">=</span><span class="n">targets</span>
+    <span class="p">)</span></div>
+
+
 <span class="k">def</span> <span class="nf">_create_cluster_mapping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ids</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">cluster_mapping</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">cluster</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clusters</span><span class="p">):</span>
@@ -439,7 +540,19 @@
     </script>
 
     
-   
+    
+
+  <style>
+    /* Sidebar header (and topbar for mobile) */
+    .wy-side-nav-search, .wy-nav-top {
+      background: #373736;
+    }
+    /* Sidebar */
+    .wy-nav-side {
+      background: #373736;
+    }
+  </style>
+
 
 </body>
 </html>

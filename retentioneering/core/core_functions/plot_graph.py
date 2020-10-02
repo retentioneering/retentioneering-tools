@@ -2,6 +2,14 @@ from retentioneering.visualization import draw_graph
 import IPython
 
 
+def iphython_wrapper(func):
+    def wrapped(*args, **kwargs):
+        IPython.display.HTML(func(*args, **kwargs))
+
+    return wrapped
+
+
+@iphython_wrapper
 def plot_graph(self, *,
                targets={},
                weight_col=None,
@@ -98,7 +106,7 @@ def plot_graph(self, *,
                             height=height,
                             thresh=thresh)
 
-    if 'google.colab' in str(globals()['get_ipython']):
-        path = IPython.display.HTML(path)
+    # if 'google.colab' in str(globals()['get_ipython']):
+    #     path = IPython.display.HTML(path)
 
     return path

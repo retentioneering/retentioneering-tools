@@ -1,15 +1,6 @@
 from retentioneering.visualization import draw_graph
-import IPython
 
 
-def iphython_wrapper(func):
-    def wrapped(*args, **kwargs):
-        IPython.display.HTML(func(*args, **kwargs))
-
-    return wrapped
-
-
-@iphython_wrapper
 def plot_graph(self, *,
                targets={},
                weight_col=None,

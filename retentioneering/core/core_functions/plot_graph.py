@@ -1,4 +1,5 @@
 from retentioneering.visualization import draw_graph
+import IPython
 
 
 def plot_graph(self, *,
@@ -70,8 +71,8 @@ def plot_graph(self, *,
 
     Return type
     -----------
-    Renders IFrame object in case of interactive=True and saves graph
-    visualization as HTML in experiments_folder of retention_config.
+    Renders IFrame object and saves graph visualization as HTML in
+    experiments_folder of retention_config.
     """
 
     event_col = self.retention_config['event_col']
@@ -99,5 +100,7 @@ def plot_graph(self, *,
 
     # if 'google.colab' in str(globals()['get_ipython']):
     #     path = IPython.display.HTML(path)
+
+    IPython.display.HTML(path)
 
     return path

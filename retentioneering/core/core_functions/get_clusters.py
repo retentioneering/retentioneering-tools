@@ -138,6 +138,91 @@ def filter_cluster(self, cluster_name):
     return self._obj[self._obj[index_col].isin(ids)].copy().reset_index(drop=True)
 
 
+def cluster_event_dist(self,
+                       cl1,
+                       cl2=None, *,
+                       top_n=8,
+                       weight_col=None):
+    """
+    Plots distribution of top_n events in cluster cl1 compared vs
+    entire dataset or in cluster cl2.
+
+    Parameters
+    ---------
+    cl1: int
+        ID of the cluster to compare.
+    cl2: int, (optional, default None)
+        ID of the second cluster to compare with top events from first
+        cluster. If None, then compares with entire dataset.
+    top_n: int, (optional, default 8)
+        Number of top events.
+    weight_col: str (optional, default None)
+        If None distribution will be compared based on events occurrences in
+        datasets. If weight_col is specified, percentages of users
+        (column name specified by parameter weight_col) who have particular
+        events will be plotted.
+
+    Returns
+    ---------
+    Plots distribution barchart
+    """
+    event_col = self.retention_config['event_col']
+    index_col = self.retention_config['index_col']
+
+    clus = self.filter_cluster(cl1)
+
+    if weight_col is not None:
+        clus.drop_duplicates(subset=[event_col, weight_col], inplace=True)
+
+        top_cluster = (clus[event_col]
+                       .value_counts()
+                       .head(top_n) / clus[weight_col].nunique()).reset_index()
+    else:
+        top_cluster = (clus[event_col]
+                       .value_counts(normalize=True)
+                       .head(top_n)).reset_index()
+
+    if cl2 is None:
+        clus2 = self._obj.copy()
+    else:
+        clus2 = self.filter_cluster(cl2)
+
+    if weight_col is not None:
+        clus2.drop_duplicates(subset=[event_col, weight_col], inplace=True)
+        # get events distribution from cluster 2:
+        top_all = (clus2[event_col]
+                   .value_counts()/clus2[weight_col].nunique())
+    else:
+        # get events distribution from cluster 2:
+        top_all = (clus2[event_col]
+                   .value_counts(normalize=True))
+
+    # make sure top_all has all events from cluster 1
+    for evnt in set(top_cluster['index']) - set(top_all.index):
+        top_all.loc[evnt] = 0
+
+    # keep only top_n events from cluster1
+    top_all = top_all.loc[top_cluster['index']].reset_index()
+
+    top_all.columns = [event_col, 'freq', ]
+    top_cluster.columns = [event_col, 'freq', ]
+
+    top_all['hue'] = 'all' if cl2 is None else f'cluster {cl2}'
+    top_cluster['hue'] = f'cluster {cl1}'
+
+    plot_clusters.cluster_event_dist(
+        top_all.append(top_cluster, ignore_index=True, sort=False),
+        event_col=event_col,
+        cl1=cl1,
+        sizes=[
+            clus[index_col].nunique() / self._obj[index_col].nunique(),
+            clus2[index_col].nunique() / self._obj[index_col].nunique(),
+        ],
+        cl2=cl2,
+        weight_col=weight_col
+    )
+
+
 def _create_cluster_mapping(self, ids):
     self.cluster_mapping = {}
     for cluster in set(self.clusters):

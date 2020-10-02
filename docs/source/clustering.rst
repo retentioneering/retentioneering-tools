@@ -184,4 +184,55 @@ for subsequent analysis, we can simply do:
 
     clus_0_7 = data.rete.filter_cluster([0,7])
 
+Function rete.cluster_event_dist() helps to quickly understand at a high
+level behavior pattern within a given cluster. It compares the distribution of top_n
+events within selected cluster vs all dataset or with another cluster. Let's see
+an example. Suppose we would like to explore cluster 2, which has low convertion rate
+to 'payment_done' event.
 
+.. code:: ipython3
+
+    data.rete.cluster_event_dist(2)
+
+.. image:: _static/clustering/cluster_event_dist_0.svg
+
+We can immediately see the distribution of events (by default top_n = 8)
+within selected cluster 2 compared with the distribution from the whole dataset. Percents
+on Y axis correspond to how frequent given event is present in the given cluster.
+On the histogram above we can see that users from cluster 2 are much more often interact with
+product 2 compared with the entire dataset.
+
+We can also compare two clusters between each other. For this we need to pass two positional
+arguments corresponding to cluster numbers.
+
+.. code:: ipython3
+
+    data.rete.cluster_event_dist(2, 7)
+
+.. image:: _static/clustering/cluster_event_dist_1.svg
+
+Here we can see comparison of top 8 frequent events in cluster 2 vs cluster 7. We can see
+that cluster 7 is similar to cluster 2. Both clusters have low convertion rate, but users from
+cluster 7 more frequently interact with product 1 whereas users from cluster 2 interact with
+product 2.
+
+Note, that in the above example Y-axis values were showing percentage that given event
+represent from selected cluster. Very often we are actually more interested to compare
+percentages of users who have particular events between two groups. This type of normalization
+can be used by passing the name of index column we would like to normalize by. In our case it's
+user_id's: weight_col='client_id' (default None):
+
+.. code:: ipython3
+
+    data.rete.cluster_event_dist(2, 7,
+                                 weight_col='client_id')
+
+.. image:: _static/clustering/cluster_event_dist_2.svg
+
+Now in the histogram above we can see that actually 100% of users from cluster 2 have
+interacted with product 2 and 100% of users from cluster 7 have interacted with product 1.
+It gives. All users from both clusters have interacted with catalog and were lost (no convertion).
+Interestingly, non-converted users who interacted with product 2 (from cluster 2) are
+more likely visit cart (35% of users) before they are lost, than lost users who interacted
+with product 1 (20% of users from cluster 7). This effect was difficult to notice when we
+compared cluster 2 and 7 without weight_col='client_id' normalization.

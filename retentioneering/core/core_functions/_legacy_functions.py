@@ -71,68 +71,7 @@ def cluster_top_events(self, n=3):
         }, axis=1))
 
 
-def cluster_event_dist(self, cl1, cl2=None, n=3, event_col=None, index_col=None, **kwargs):
-    """
-    Plots frequency of top events in cluster ``cl1`` in comparison with frequency of such events in whole data or in cluster ``cl2``.
 
-    Parameters
-    ---------
-    cl1: int
-        ID of the first cluster to search top events from it.
-    cl2: int, optional
-        ID of the second cluster to compare with top events from first cluster. If ``None``, then compares with all data. Default: ``None``
-    n: int, optional
-        Number of top events. Default: ``3``
-    index_col: str, optional
-        Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
-    event_col: str, optional
-        Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
-
-    Returns
-    ---------
-    Plots distribution barchart
-    """
-    self._init_cols(locals())
-    clus = self.filter_cluster(cl1, index_col=index_col)
-    top_cluster = (clus
-                   [self._event_col()]
-                   .value_counts().head(n) / clus.shape[0]).reset_index()
-    cr0 = (
-              clus[
-                  clus[self._event_col()] == self.retention_config['positive_target_event']
-                  ][self._index_col()].nunique()
-          ) / clus[self._index_col()].nunique()
-    if cl2 is None:
-        clus2 = self._obj
-    else:
-        clus2 = self.filter_cluster(cl2, index_col=index_col)
-    top_all = (clus2
-               [self._event_col()]
-               .value_counts()
-               .loc[top_cluster['index']]
-               / clus2.shape[0]).reset_index()
-    cr1 = (
-              clus2[
-                  clus2[self._event_col()] == self.retention_config['positive_target_event']
-                  ][self._index_col()].nunique()
-          ) / clus2[self._index_col()].nunique()
-    top_all.columns = [self._event_col(), 'freq', ]
-    top_cluster.columns = [self._event_col(), 'freq', ]
-
-    top_all['hue'] = 'all' if cl2 is None else f'cluster {cl2}'
-    top_cluster['hue'] = f'cluster {cl1}'
-
-    plot.cluster_event_dist(
-        top_all.append(top_cluster, ignore_index=True, sort=False),
-        self._event_col(),
-        cl1,
-        [
-            clus[self._index_col()].nunique() / self._obj[self._index_col()].nunique(),
-            clus2[self._index_col()].nunique() / self._obj[self._index_col()].nunique(),
-        ],
-        [cr0, cr1],
-        cl2
-    )
 
 
 def create_model(self, model_type=LogisticRegression, regression_targets=None, **kwargs):

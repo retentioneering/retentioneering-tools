@@ -13,24 +13,33 @@
 ## What is Retentioneering?
 
 
-Retentioneering is a Python framework to process and analyze clickstreams, event streams, trajectories, and event logs. You can segment users, clients (agents), build ML pipelines to predict agent category or probability of target event based on historical data.
+Retentioneering is a Python framework to process and analyze clickstreams, 
+event streams, trajectories, and event logs. You can segment users, clients (agents),
+ build ML pipelines to predict agent category or probability of target event based 
+ on historical data.
 
-Retentioneering extends Pandas, NetworkX, Scikit-learn for in-depth processing of event sequences data, specifically Retentioneering provides a powerful environment to perform an in-depth analysis of customer journey maps, bringing behavior-driven segmentation of users and machine learning pipelines to product analytics. Retentioneering is also developing customer journey map simulation engines that allow the data scientists to explore the business impact of CJM mutations and optimize product and online marketing.
+Retentioneering extends Pandas, NetworkX, Scikit-learn for in-depth processing of 
+event sequences data, specifically Retentioneering provides a powerful environment 
+to perform an in-depth analysis of customer journey maps, bringing behavior-driven 
+segmentation of users and machine learning pipelines to product analytics. 
+Retentioneering is also developing customer journey map simulation engines that 
+allow the data scientists to explore the business impact of CJM mutations and
+optimize product and online marketing.
 
-Product analysts can apply Retentioneering Tools as a Python framework to explore, grow, and optimize the product based on deep analysis of user trajectories. Using Retentioneering you can vectorize clickstream logs and cluster user trajectories to automatically identify common successful or churn patterns. You can explore those patterns using our tools such as graph visualizer, step matrix, multiple clustering, and segmentation engines, and many others.
+Product analysts can apply Retentioneering Tools as a Python framework to explore, 
+grow, and optimize the product based on deep analysis of user trajectories. 
+Using Retentioneering you can vectorize clickstream logs and cluster user trajectories 
+to automatically identify common successful or churn patterns. You can explore those 
+patterns using our tools such as graph visualizer, step matrix, multiple clustering, 
+and segmentation engines, and many others.
 
-This repository contains both python library with easy to use utils, but also we provide several demos Python Notebooks and datasets to illustrate how to automate product analytics routines.
+## Getting started
 
-## Installation
-
-- You can install our package using pip:
+Retentioneering is currently installable from PyPI:
 
 ```bash
 pip3 install retentioneering
 ```
-
-
-## Getting started
 
 If you use Pandas dataframes to work with user behaviour data you can try Retentioneering with just a few lines of code!
 
@@ -119,11 +128,17 @@ Explore [these step-by-step tutorials](https://github.com/retentioneering/retent
 
 ## Contributing
 
-This is community-driven open source project in active development. Any contributions, new ideas, bug reports, bug fixes, documentation improvements are very welcome.
+This is community-driven open source project in active development. Any contributions, 
+new ideas, bug reports, bug fixes, documentation improvements are very welcome.
 
-Feel free to reach out to us: retentioneering[at]gmail.com
-
-Retentioneering now provides several opensource solutions for data-driven product analytics and web analytics. Please checkout this repository for JS library to track the mutations of the website elements: https://github.com/retentioneering/retentioneering-dom-observer
+Retentioneering now provides several opensource solutions for data-driven product 
+analytics and web analytics. Please checkout this repository for JS library to track 
+the mutations of the website elements: https://github.com/retentioneering/retentioneering-dom-observer
 
 Apps are better with math!:)
-Retentioneering is a research laboratory, analytics methodology and opensource tools founded by [Maxim Godzi](https://www.linkedin.com/in/godsie/) and [Anatoly Zaytsev](https://www.linkedin.com/in/anatoly-zaytsev/) in 2015. Please feel free to contact us at retentioneeringATgmail.com if you have any questions regarding this rep, or to obtain more tools that we are not able to provide though the public rep.
+Retentioneering is a research laboratory, analytics methodology and opensource 
+tools founded by [Maxim Godzi](https://www.linkedin.com/in/godsie/) and 
+[Anatoly Zaytsev](https://www.linkedin.com/in/anatoly-zaytsev/) in 2015. 
+Please feel free to contact us at retentioneering@gmail.com if you have any 
+questions regarding this repo, or to obtain more tools that we are not able to 
+provide though the public rep.

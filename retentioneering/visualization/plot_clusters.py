@@ -118,7 +118,7 @@ def cluster_bar(data, *,
     # adjust the limits
     ymin, ymax = bar.get_ylim()
     if ymax > 1:
-        bar.set_ylim(ymin, 1)
+        bar.set_ylim(ymin, 1.05)
 
     plot_name = plot_name or 'cluster_bar_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
@@ -126,18 +126,43 @@ def cluster_bar(data, *,
 
 
 @__save_plot__
-def cluster_event_dist(bars, event_col, cl1, sizes, crs, cl2=None, plot_name=None):
+def cluster_event_dist(bars, *,
+                       event_col,
+                       cl1,
+                       sizes,
+                       cl2=None,
+                       weight_col):
+    fig_x_size = round(2 + (bars.shape[0] // 2) ** 0.8)
+    rcParams['figure.figsize'] = fig_x_size, 6
+
     bar = sns.barplot(x=event_col, y='freq', hue='hue',
                       hue_order=[f'cluster {cl1}', 'all' if cl2 is None else f'cluster {cl2}'], data=bars)
+
+    # move legend outside the box
+    bar.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+
     y_value = ['{:,.2f}'.format(x * 100) + '%' for x in bar.get_yticks()]
+
+    bar.set_yticks(bar.get_yticks().tolist())
     bar.set_yticklabels(y_value)
-    bar.set_xticklabels(bar.get_xticklabels(), rotation=30)
-    bar.set(ylabel=None)
-    tit = f'Distribution of top {bars.shape[0] // 2} events in cluster {cl1} (size: {round(sizes[0] * 100, 2)}%, CR: {round(crs[0] * 100, 2)}% ) '
-    tit += f'vs. all data (CR: {round(crs[1] * 100, 2)}%)' if cl2 is None else f'vs. cluster {cl2} (size: {round(sizes[1] * 100, 2)}%, CR: {round(crs[1] * 100, 2)}%)'
+    bar.set_xticklabels(bar.get_xticklabels(), rotation=90)
+
+    if weight_col is None:
+        bar.set(ylabel='% from total events')
+    else:
+        bar.set(ylabel=f"% of '{weight_col}' with given event")
+    bar.set(xlabel=None)
+
+    # adjust the limits
+    ymin, ymax = bar.get_ylim()
+    if ymax > 1:
+        bar.set_ylim(ymin, 1.05)
+
+    tit = f'top {bars.shape[0] // 2} events in cluster {cl1} (size: {round(sizes[0] * 100, 2)}%) \n'
+    tit += f'vs. all data (100%)' if cl2 is None else f'vs. cluster {cl2} (size: {round(sizes[1] * 100, 2)}%)'
     bar.set_title(tit)
 
-    plot_name = plot_name or 'cluster_event_dist_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
+    plot_name = 'cluster_event_dist_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
     plot_name = bars.rete.retention_config['experiments_folder'] + '/' + plot_name
     return bar, plot_name, None, bars.rete.retention_config
 

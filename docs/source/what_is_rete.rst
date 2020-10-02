@@ -4,38 +4,38 @@
 What is Retentioneering?
 ========================
 
-Retentioneering Tools is a Python framework to process and analyze clickstreams,
-event streams, trajectories, and event logs. You can segment users, clients (agents),
-build ML pipelines to predict agent category or probability of target event based
-on historical data.
+Retentioneering is a Python framework and library to assist product
+analysts and marketing analysts as it makes it easier to process and
+analyze clickstreams, event streams, trajectories, and event logs.
+You can segment users, clients (agents), build ML pipelines to predict
+agent category or probability of target event based on historical data.
 
-Retentioneering extends Pandas, NetworkX, Scikit-learn for in-depth processing
-of event sequences data, specifically Retentioneering provides a powerful
-environment to perform an in-depth analysis of customer journey maps, bringing
-behavior-driven segmentation of users and machine learning pipelines to product analytics.
+In a common scenario you can use raw data from Google Analytics BigQuery
+stream or any other silimal streams in form of events and their timestamps
+for users, and Retentioneering is all you need to explore the user behavior
+from that data, it can reveal much more isights than funnel analytics, as
+it will automatically build the behavioral segments and their patterns,
+highlighting what events and pattern impact your conversion rates, retention
+and revenue.
+
+Retentioneering extends Pandas, NetworkX, Scikit-learn for in-depth
+processing of event sequences data, specifically Retentioneering provides
+a powerful environment to perform an in-depth analysis of customer
+journey maps, bringing behavior-driven segmentation of users and machine
+learning pipelines to product analytics.
+
+You don't need to be Pandas expert, all the functions are specifically
+designed for analytics tasks, reduce data wrangling and simplify data
+cleaning and visualization.
 
 Product analysts can apply Retentioneering Tools as a Python framework
 to explore, grow, and optimize the product based on deep analysis of user
-trajectories. Using Retentioneering you can vectorize clickstream logs and cluster
-user trajectories to automatically identify common successful or churn patterns.
-You can explore those patterns using our tools such as graph visualizer,
-step matrix, multiple clustering, and segmentation engines, and many others.
+trajectories. Using Retentioneering you can vectorize clickstream logs
+and cluster user trajectories to automatically identify common successful
+or churn patterns. You can explore those patterns using our tools such
+as graph visualizer, step matrix, multiple clustering, and segmentation
+engines, and many others.
 
-If you use Pandas dataframes to work with user behaviour data you can try
-Retentioneering with a few lines of code.
-
-
-
-TEST
-----
-
-.. raw:: html
-
-
-            <iframe
-                width="700"
-                height="600"
-                src="_static/index.html"
-                frameborder="0"
-                allowfullscreen
-            ></iframe>
+If you have csv datasets you can start with user behaviour data and try
+Retentioneering with "pip install retentioneering" and a few lines of
+code. Sample datasets are included in package for quick start.

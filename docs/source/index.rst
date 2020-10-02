@@ -22,7 +22,7 @@ Contents
    Getting started <getting_started.rst>
 
 .. toctree::
-   :caption: CORE FUNCTIONS GUIDES:
+   :caption: TOOLS DESCRIPTION:
    :maxdepth: 2
 
    Plot graph <plot_graph.rst>

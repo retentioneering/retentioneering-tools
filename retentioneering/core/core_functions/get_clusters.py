@@ -18,10 +18,10 @@ def get_clusters(self, *,
     Cluster users in the dataset according to their behavior.
 
     Parameters
-    --------
+    ----------
     feature_type: str (optional, default 'tfidf')
         Type of vectorizer to user to convert sequences of events to numerical vectors.
-        Currently supports: 'tfidf'.
+        Currently supports: {'tfidf', 'count', 'frequency', 'binary'}.
 
     ngram_range: tuple (optional, default (1, 1))
         The lower and upper boundary of the range of n-values for different
@@ -52,7 +52,7 @@ def get_clusters(self, *,
     Array of clusters as .cluster_mapping attribute
 
     Return type
-    -------
+    -----------
     np.array
     """
     index_col = self.retention_config['index_col']
@@ -116,16 +116,16 @@ def filter_cluster(self, cluster_name):
     Filters dataset against one or several clusters.
 
     Parameters
-    --------
+    ----------
     cluster_name: int or list
         Cluster ID or list of cluster IDs for filtering.
 
     Returns
-    --------
+    -------
     Filtered dataset as pandas dataframe
 
     Return type
-    --------
+    -----------
     pd.Dataframe
     """
     index_col = self.retention_config['index_col']
@@ -149,7 +149,7 @@ def cluster_event_dist(self,
     entire dataset or in cluster cl2.
 
     Parameters
-    ---------
+    ----------
     cl1: int
         ID of the cluster to compare.
     cl2: int, (optional, default None)
@@ -168,7 +168,7 @@ def cluster_event_dist(self,
         order as specified
 
     Returns
-    ---------
+    -------
     Plots distribution barchart
     """
     event_col = self.retention_config['event_col']

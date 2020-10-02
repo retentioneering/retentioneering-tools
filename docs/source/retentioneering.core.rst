@@ -25,6 +25,14 @@ get_clusters
     :undoc-members:
     :show-inheritance:
 
+extract_features
+----------------
+
+.. automodule:: retentioneering.core.core_functions.extract_features
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 compare
 -------
 

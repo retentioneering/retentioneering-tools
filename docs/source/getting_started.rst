@@ -121,8 +121,8 @@ you can plot graph (read more about plot_graph here):
             ></iframe>
 |
 
-Note, that you can move graph nodes by clicking on it and interactively
-zoom-in / zoom-out the graph layout.
+Note, that graph is interactive and you can move graph nodes by
+clicking on it and interactively zoom-in / zoom-out the graph layout.
 
 You can also plot step_matrix (read more about step_matrix here):
 

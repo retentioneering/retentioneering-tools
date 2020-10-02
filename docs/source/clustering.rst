@@ -1,8 +1,8 @@
 Users behavior clustering
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Behavior clustering intro
-=========================
+Basic example
+=============
 
 This notebook can be found
 `here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/clusters_tutorial.ipynb>`__.
@@ -28,17 +28,15 @@ import retentioneering, import sample dataset and update config to set used colu
 Trajectories vectorization
 ==========================
 
-Each user trajectory is represented as a sequence of events.
-
-Before we apply any ML algorithms to users dataset we need a way how to
+Each user trajectory is represented as a sequence of events. Before we apply
+any ML algorithms to users dataset we need a way how to
 convert each user trajectory from a sequence of events to a numerical vector.
-This field of ML learning very actively was developed in applications for
-text processing. This is actually similar to analysis of discrete user
-trajectories of behavioural logs. In text processing task each text
+This field of ML learning extensively was developed in applications for
+text processing. Text analysis in some sense is similar to analysis of discrete user
+trajectories of behavioural logs. In text processing each text
 document (in our case - user trajectory) consist of descrete words
 (in our case - event names) and we need to convert text to numerial values.
-In Retentioneering we support three popular vectorizers: count, frequency
-and tfidf. Let's work through some examples.
+Let's work through some examples.
 
 Function rete.extract_features() returns a dataframe of vectorized user trajectories:
 
@@ -47,17 +45,32 @@ Function rete.extract_features() returns a dataframe of vectorized user trajecto
     vec = data.rete.extract_features(feature_type='count',
                                      ngram_range=(1, 1))
 
-In obtained dataframe each row corresponds to vector
+In obtained dataframe each row corresponds to a vector representing each user from
+the original dataset. Each column (or vector dimension) corresponds to unique events
+in the dataset and the values are how many time particular event was present in this
+user's trajectory. These are supported types of vectorization (parameter feature_type):
+
+    * 'count' : number of occurrences of given event
+    * 'binary' : 1 if user had given event at least once and 0 otherwise
+    * 'frequency' : same as count but normalized to total number of events in user trajectory
+    * 'tfidf' : term frequency–inverse document frequency, frequency of event in user trajectory but weighted to overall frequency of event in the dataset.
+
+Second important parameter for extract_features is ngram_range, which set the lower and upper limit
+for event sequences to be extracted. For example an ngram_range of (1, 1) means
+only individual events, (1, 2) means unigrams and bigrams of events, and (2, 2) means only bigrams
+of events.
 
 Clusterization
 ==============
 
-We can now use get_clusters method to split users on groups based on how similar is their behavior:
+After we know general idea about user trajectories vectorization we can now use get_clusters
+method to split users on groups based on how similar is their behavior:
 
 .. code:: ipython3
 
     data.rete.get_clusters(method='kmeans',
                            n_clusters=8,
+                           feature_type='tfidf',
                            ngram_range=(1,2));
 
 Under the hood each user trajectory (sequence of event names) got transformed to numeric vector.

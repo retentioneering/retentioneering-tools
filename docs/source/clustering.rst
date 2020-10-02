@@ -205,8 +205,11 @@ for subsequent analysis, we can simply do:
 
     clus_0_7 = data.rete.filter_cluster([0,7])
 
+Compare clusters
+================
+
 Function rete.cluster_event_dist() helps to quickly understand at a high
-level behavior pattern within a given cluster. It compares the distribution of top_n
+level behavior pattern within a given cluster by comparing the distribution of top_n
 events within selected cluster vs all dataset or with another cluster. Let's see
 an example. Suppose we would like to explore cluster 2, which has low convertion rate
 to 'payment_done' event.

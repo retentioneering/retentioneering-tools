@@ -142,7 +142,8 @@ def cluster_event_dist(self,
                        cl1,
                        cl2=None, *,
                        top_n=8,
-                       weight_col=None):
+                       weight_col=None,
+                       targets=[]):
     """
     Plots distribution of top_n events in cluster cl1 compared vs
     entire dataset or in cluster cl2.
@@ -161,6 +162,10 @@ def cluster_event_dist(self,
         datasets. If weight_col is specified, percentages of users
         (column name specified by parameter weight_col) who have particular
         events will be plotted.
+    targets: list of str (optional, default [])
+        List of event names always to include for comparison regardless
+        of the parameter top_n value. Target events will appear in the same
+        order as specified
 
     Returns
     ---------
@@ -175,12 +180,21 @@ def cluster_event_dist(self,
         clus.drop_duplicates(subset=[event_col, weight_col], inplace=True)
 
         top_cluster = (clus[event_col]
-                       .value_counts()
-                       .head(top_n) / clus[weight_col].nunique()).reset_index()
+                       .value_counts() / clus[weight_col].nunique())
+
     else:
         top_cluster = (clus[event_col]
-                       .value_counts(normalize=True)
-                       .head(top_n)).reset_index()
+                       .value_counts(normalize=True))
+
+    # add zero events for missing targets
+    for evnt in set(targets) - set(top_cluster.index):
+        top_cluster.loc[evnt] = 0
+
+    # create events order: top_n non-target events + targets:
+    evnts_to_keep = list(filter(lambda x: x not in targets, top_cluster.index))[:top_n]
+    target_separator_position = len(evnts_to_keep)
+    evnts_to_keep += list(targets)
+    top_cluster = top_cluster.loc[evnts_to_keep].reset_index()
 
     if cl2 is None:
         clus2 = self._obj.copy()
@@ -219,7 +233,9 @@ def cluster_event_dist(self,
             clus2[index_col].nunique() / self._obj[index_col].nunique(),
         ],
         cl2=cl2,
-        weight_col=weight_col
+        weight_col=weight_col,
+        target_pos=target_separator_position,
+        targets=targets
     )
 
 

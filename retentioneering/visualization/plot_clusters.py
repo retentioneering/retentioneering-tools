@@ -131,7 +131,9 @@ def cluster_event_dist(bars, *,
                        cl1,
                        sizes,
                        cl2=None,
-                       weight_col):
+                       weight_col,
+                       target_pos,
+                       targets):
     fig_x_size = round(2 + (bars.shape[0] // 2) ** 0.8)
     rcParams['figure.figsize'] = fig_x_size, 6
 
@@ -153,12 +155,20 @@ def cluster_event_dist(bars, *,
         bar.set(ylabel=f"% of '{weight_col}' with given event")
     bar.set(xlabel=None)
 
+    # add vertical lines for central step-matrix
+    if targets:
+        bar.vlines([target_pos-0.52],
+                  *bar.get_ylim(),
+                  colors='Black',
+                  linewidth=0.7,
+                  linestyles='dashed')
+
     # adjust the limits
     ymin, ymax = bar.get_ylim()
     if ymax > 1:
         bar.set_ylim(ymin, 1.05)
 
-    tit = f'top {bars.shape[0] // 2} events in cluster {cl1} (size: {round(sizes[0] * 100, 2)}%) \n'
+    tit = f'top {bars.shape[0] // 2 - len(targets)} events in cluster {cl1} (size: {round(sizes[0] * 100, 2)}%) \n'
     tit += f'vs. all data (100%)' if cl2 is None else f'vs. cluster {cl2} (size: {round(sizes[1] * 100, 2)}%)'
     bar.set_title(tit)
 

@@ -12,7 +12,6 @@ class BaseDataset(object):
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
         self.retention_config = {}
-        self._embedding_types = ['tfidf']
         self._locals = None
         self.clusters = None
 

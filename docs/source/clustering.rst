@@ -5,8 +5,8 @@ Behavior clustering intro
 =========================
 
 
-Basic example
-=============
+Trajectories vectorization
+==========================
 
 This notebook can be found
 `here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/clusters_tutorial.ipynb>`__.
@@ -28,6 +28,27 @@ import retentioneering, import sample dataset and update config to set used colu
         'event_time_col':'timestamp',
         'index_col': 'client_id'
     })
+
+Each user trajectory is represented as a sequence of events.
+
+Before we apply any ML algorithms to users dataset we need a way how to
+convert each user trajectory from a sequence of events to a numerical vector.
+This field of ML learning very actively was developed in applications for
+text processing. This is actually similar to analysis of discrete user
+trajectories of behavioural logs. In text processing task each text
+document (in our case - user trajectory) consist of descrete words
+(in our case - event names) and we need to convert text to numerial values.
+In Retentioneering we support three popular vectorizers: count, frequency
+and tfidf. Let's work through some examples.
+
+Function rete.extract_features() returns a dataframe of vectorized user trajectories:
+
+.. code:: ipython3
+    vec = data.rete.extract_features(feature_type='count',
+                                     ngram_range=(1, 1))
+
+In obtained dataframe each row corresponds to vector
+
 
 We can now use get_clusters method to split users on groups based on how similar is their behavior:
 
@@ -236,3 +257,16 @@ Interestingly, non-converted users who interacted with product 2 (from cluster 2
 more likely visit cart (35% of users) before they are lost, than lost users who interacted
 with product 1 (20% of users from cluster 7). This effect was difficult to notice when we
 compared cluster 2 and 7 without weight_col='client_id' normalization.
+
+If there are some events of particular importance which you always want to
+include in comparison (regardless of selected top_n parameter) you can pass those
+events as a list as targets parameter. Those events will always appear in comparison
+histogram on the right after the dashed line (in the same order as specified):
+
+.. code:: ipython3
+
+    data.rete.cluster_event_dist(2,
+                                 weight_col='client_id',
+                                 targets=['cart','payment_done'])
+
+.. image:: _static/clustering/cluster_event_dist_3.svg

@@ -1,51 +1,30 @@
 import pandas as pd
 import numpy as np
 import umap.umap_ as umap
-from collections import Counter
 from sklearn.manifold import TSNE
 from sklearn import decomposition
 from sklearn import manifold
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 
 
 def extract_features(self, *,
                      feature_type='tfidf',
-                     ngram_range=(1, 1),
-                     **kwargs):
+                     ngram_range=(1, 1)):
     """
     User trajectories vectorizer.
 
     Parameters
     --------
-    feature_type: str, optional
+    feature_type: {'ftidf'}, optional
         Type of vectorizer. Available vectorization methods:
-        - TFIDF (``feature_type='tfidf'``). For more information refer to ``retentioneering.core.feature_extraction.tfidf_embedder``.
-        - Event frequencies (``feature_type='frequency'``). For more information refer to ``retentioneering.core.feature_extraction.frequency_embedder``.
+        - TFIDF (``feature_type='tfidf'``). For more information refer to
+        ``retentioneering.core.feature_extraction.tfidf_embedder``.
+        - Event frequencies (``feature_type='frequency'``). For more information
+        refer to ``retentioneering.core.feature_extraction.frequency_embedder``.
         - Event counts (``feature_type='counts'``). For more information refer to ``counts_embedder``.
         Default: ``tfidf``
-    drop_targets: bool, optional
-        If ``True``, then targets will be removed from feature generation. Default: ``True``
-    metadata: pd.DataFrame, optional
-        Dataframe with user or session properties or any other information you would like to extract as features (e.g. user properties, LTV values, etc.). Default: ``None``
-    meta_index_col: str, optional
-        Used when metadata is not ``None``. Name of column in ``metadata`` dataframe that contains the same ID as in ``index_col``, or if not defined, same as in retention_config (e.g ID of users or sessions). If ``None``, then index of metadata dataframe is used instead. Default: ``None``
-    manifold_type: str, optional
-        Name dimensionality reduction method from ``sklearn.decomposition`` and ``sklearn.manifold``. Default: ``None``
-    fillna: optional
-        Value for filling missing metadata for any ``index_col`` value. Default: ``None``
-    drop: bool, optional
-        If ``True``, then drops users which do not exist in ``metadata`` dataframe. Default: ``False``
     ngram_range: tuple, optional
         Range of ngrams to use in feature extraction. Default: ``(1, 1)``
-    index_col: str, optional
-        Name of custom index column, for more information refer to ``init_config``. For instance, if in config you have defined ``index_col`` as ``user_id``, but want to use function over sessions. By default the column defined in ``init_config`` will be used as ``index_col``.
-    event_col: str, optional
-        Name of custom event column, for more information refer to ``init_config``. For instance, you may want to aggregate some events or rename and use it as new event column. By default the column defined in ``init_config`` will be used as ``event_col``.
-    vocab_pars: dict, optional
-        dictionary of parameters for creating vocabulary of ngrams with prepare_vocab() function. This vocab will be used as a feature space for TF-EDF encoding
-
-    kwargs: optional
-        Keyword arguments for ``sklearn.decomposition`` and ``sklearn.manifold`` methods.
 
     Returns
     -------
@@ -55,22 +34,24 @@ def extract_features(self, *,
     -------
     pd.DataFrame of (number of users, number of unique events | event n-grams)
     """
-    if feature_type not in self._embedding_types:
+    if feature_type not in {'tfidf', 'count'}:
         raise ValueError("Unknown feature type: {}.\nPlease choose one from {}".format(
             feature_type,
             ' '.join(self._embedding_types)
         ))
-    # func = getattr(feature_extraction, feature_type + '_embedder')
-    func = globals()[feature_type + '_embedder']
 
     tmp = self._obj.copy()
 
-    res = func(tmp, ngram_range=ngram_range, **kwargs)
+    res = _embedder(tmp,
+                    feature_type=feature_type,
+                    ngram_range=ngram_range)
 
     return res
 
 
-def tfidf_embedder(data, ngram_range=(1, 1), **kwargs):
+def _embedder(data, *,
+              feature_type,
+              ngram_range=(1, 1)):
     """
     Similar to ``frequency_embedder()``, but normalizes event frequencies with inversed document frequency.
 
@@ -100,15 +81,18 @@ def tfidf_embedder(data, ngram_range=(1, 1), **kwargs):
         lambda x: '~~'.join([el.lower() for el in x])
     )
 
-    vectorizer = TfidfVectorizer(ngram_range=ngram_range, token_pattern = '[^~]+').fit(corpus)
+    if feature_type == 'tfidf':
+        vectorizer = TfidfVectorizer(ngram_range=ngram_range, token_pattern = '[^~]+').fit(corpus)
+    elif feature_type == 'count':
+        vectorizer = CountVectorizer(ngram_range=ngram_range, token_pattern='[^~]+').fit(corpus)
 
     cols = [dict_key[0] for dict_key in sorted(vectorizer.vocabulary_.items(), key=lambda x: x[1])]
-    tfidf = pd.DataFrame(index=sorted(data[index_col].unique()),
-                         columns=cols,
-                         data=vectorizer.transform(corpus).todense())
+    vec_data = pd.DataFrame(index=sorted(data[index_col].unique()),
+                            columns=cols,
+                            data=vectorizer.transform(corpus).todense())
 
-    setattr(tfidf.rete, 'datatype', 'features')
-    return tfidf
+    setattr(vec_data.rete, 'datatype', 'features')
+    return vec_data
 
 
 def learn_tsne(data, **kwargs):

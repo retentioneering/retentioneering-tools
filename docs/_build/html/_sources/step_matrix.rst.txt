@@ -29,7 +29,7 @@ Below we will explore how to plot and customize step matrix.
 Basic example
 =============
 
-This notebook can be found `here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/step_matrix_tutorial.ipynb>`__.
+This notebook can be found :download:`here <_static/examples/step_matrix_tutorial.ipynb>` .
 
 To run examples below we need to import retentioneering, import sample dataset and update config
 to set names for the columns:

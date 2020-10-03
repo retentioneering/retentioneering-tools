@@ -6,8 +6,7 @@ No normalization
 ================
 
 
-This notebook can be found
-`here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/graph_tutorial.ipynb>`__.
+This notebook can be found :download:`here <_static/examples/graph_tutorial.ipynb>` .
 
 To understand better how different normalization types work and how to use plot_graph function
 let's use sample dataset:

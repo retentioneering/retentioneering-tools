@@ -13,8 +13,7 @@ Basic example
 =============
 
 
-This notebook can be found
-`here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/compare_tutorial.ipynb>`__.
+This notebook can be found :download:`here <_static/examples/compare_tutorial.ipynb>` .
 
 
 In this tutorial we will use simple dataset of user activity logs in app or

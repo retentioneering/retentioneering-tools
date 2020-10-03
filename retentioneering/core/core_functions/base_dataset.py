@@ -6,6 +6,7 @@ from .get_clusters import get_clusters, filter_cluster, cluster_event_dist
 from .plot_graph import plot_graph
 from .extract_features import extract_features
 from .compare import compare
+from .funnel import funnel
 
 
 class BaseDataset(object):
@@ -244,4 +245,6 @@ BaseDataset.plot_graph = plot_graph
 BaseDataset.extract_features = extract_features
 BaseDataset.compare = compare
 BaseDataset.cluster_event_dist = cluster_event_dist
+BaseDataset.funnel = funnel
+
 

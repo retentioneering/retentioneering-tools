@@ -38,11 +38,10 @@ to set names for the columns:
 
     import retentioneering
 
-    # load sample data
-    from retentioneering import datasets
-    data = datasets.load_simple_shop()
+    # load sample user behavior data as a pandas dataframe:
+    data = retentioneering.datasets.load_simple_shop()
 
-    # update config to specify column names
+    # update config to pass columns names:
     retentioneering.config.update({
         'event_col':'event',
         'event_time_col':'timestamp',

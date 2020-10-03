@@ -47,8 +47,7 @@ Retentioneering with just a few lines of code:
 import retentioneering
 
 # load sample user behavior data as a pandas dataframe: 
-from retentioneering import datasets
-data = datasets.load_simple_shop()
+data = retentioneering.datasets.load_simple_shop()
 
 # update config to pass columns names:
 retentioneering.config.update({

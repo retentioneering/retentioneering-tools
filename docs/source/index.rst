@@ -27,6 +27,7 @@ Contents
 
    Plot graph <plot_graph.rst>
    Step matrix <step_matrix.rst>
+   Funnel <funnel.rst>
    Behavioral clustering <clustering.rst>
    Compare segments <compare.rst>
 
@@ -35,11 +36,3 @@ Contents
    :maxdepth: 2
 
    Core functions <retentioneering.core.rst>
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

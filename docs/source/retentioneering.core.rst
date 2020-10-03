@@ -40,3 +40,11 @@ compare
     :members:
     :undoc-members:
     :show-inheritance:
+
+funnel
+------
+
+.. automodule:: retentioneering.core.core_functions.funnel
+    :members:
+    :undoc-members:
+    :show-inheritance:

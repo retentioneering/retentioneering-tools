@@ -28,8 +28,7 @@ We start from importing retentioneering and sample datasets:
     import retentioneering
 
     # load sample data
-    from retentioneering import datasets
-    data = datasets.load_simple_ab_test()
+    data = retentioneering.datasets.load_simple_ab_test()
 
     data.head()
 

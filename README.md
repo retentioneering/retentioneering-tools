@@ -34,6 +34,8 @@ and segmentation engines, and many others.
 
 ## Getting started
 
+Complete documentation is available [here](https://retentioneering.github.io/retentioneering-tools/).
+
 Retentioneering is currently installable from PyPI:
 
 ```bash
@@ -117,14 +119,15 @@ clus_4.rete.plot_graph(thresh=0.1,
 
 To explore more features please see the [documentation](https://retentioneering.github.io/retentioneering-tools/)
 
-## Documentation
+## Step-by-step guides
 
-Explore [these step-by-step tutorials](https://github.com/retentioneering/retentioneering-tools/tree/master/examples) to learn more:
+Explore these step-by-step tutorials to learn more:
 
-- [Plot graph](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#first-steps) 
-- [Step Matrix](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#temporal-funnel)
-- [Users behavioral clustering](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#supervised-classifier) 
-- [Compare user segments](https://retentioneering.github.io/retentioneering-tools/_build/html/mobile-app-case.html#analysis)
+- [Plot graph](https://retentioneering.github.io/retentioneering-tools/_build/html/plot_graph.html) 
+- [Step Matrix](https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html)
+- [Users behavioral clustering](https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html) 
+- [Compare user segments](https://retentioneering.github.io/retentioneering-tools/_build/html/compare.html)
+- [Conversion funnels](https://retentioneering.github.io/retentioneering-tools/_build/html/funnel.html)
 
 
 ## Contributing

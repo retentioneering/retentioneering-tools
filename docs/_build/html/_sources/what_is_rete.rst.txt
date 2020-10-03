@@ -4,7 +4,9 @@
 What is Retentioneering?
 ========================
 
-Retentioneering is a Python framework and library to assist product
+Retentioneering is a Python framework and library
+(`github link <https://github.com/retentioneering/retentioneering-tools>`__)
+to assist product
 analysts and marketing analysts as it makes it easier to process and
 analyze clickstreams, event streams, trajectories, and event logs.
 You can segment users, clients (agents), build ML pipelines to predict

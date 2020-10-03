@@ -21,7 +21,7 @@ To start you can pick from any of two options:
     import retentioneering
 
     # load sample user behavior data as a pandas dataframe:
-    data = datasets.load_simple_shop()
+    data = retentioneering.datasets.load_simple_shop()
 
 Here ``data`` is a regular Pandas Dataframe with clickstream example:
 

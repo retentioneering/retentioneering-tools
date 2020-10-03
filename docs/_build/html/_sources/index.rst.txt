@@ -15,7 +15,7 @@ Contents
 
 .. toctree::
    :caption: TUTORIAL:
-   :maxdepth: 2
+   :maxdepth: 1
 
    What is Retentioneering? <what_is_rete.rst>
    Installation <installation.rst>

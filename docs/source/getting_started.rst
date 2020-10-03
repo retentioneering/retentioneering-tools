@@ -1,23 +1,29 @@
-Getting started
-~~~~~~~~~~~~~~~
+Quick start with Retentioneering
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Basic rete run
-==============
+Retentioneering makes product analytics very easy once you have the raw data.
 
-Retentioneering works as Pandas Dataframe accessor, meaning that if you work with
-your users logs data using Pandas Dataframe you can apply retentioneering right after
-import! All you need is import retentioneering, import sample dataframe (or use you
-own!):
+Every user action and every visited page or screen from your website or app,
+all these interactions we call events. To understand deeply how different types
+of user behavior in your product affects your business metrics, you need to
+analyze the sequences of events for each user.
+
+1. Load data
+============
+
+To start you can pick from any of two options:
+
+**Option 1. To start with our dummy online shop dataset sample.**
+
 
 .. code:: ipython3
 
     import retentioneering
 
-    # load sample data
-    from retentioneering import datasets
+    # load sample user behavior data as a pandas dataframe:
     data = datasets.load_simple_shop()
 
-Here ``data`` is a regular Pandas Dataframe:
+Here ``data`` is a regular Pandas Dataframe with clickstream example:
 
 .. code:: ipython3
 
@@ -84,22 +90,54 @@ Here ``data`` is a regular Pandas Dataframe:
     </div>
 
 |
-Last step is to simply specify columns names. Retentioneering module needs to know what columns
-in your dataset correspond to event names, timestamps, and user_ids. In our case it's `event`,
-`timestamp` and `user_id` respectively:
+
+As you can see in this fragment of example dataset, user with id 219483890 has 4 events
+on the website with specific timestamps on 2019-11-01. This is all you need to try out
+what Retentioneering is about. You are ready to go with this dataset and proceed to step 2.
+
+**Option 2. Alternatively, you can start with your dataset.**
+
+If you have your raw data of user behavior for example in csv format simply import
+it as pandas dataframe:
 
 .. code:: ipython3
 
-    # update config to specify column names
+    import retentioneering
+    import pandas as pd
+
+    # load your own csv
+    data = pd.read_csv('yourowndatafile.csv')
+
+
+How to get csv file with data? Raw data in form of {user,event,timestamp} can
+be streamed via Google Analytics 360 or free Google Analytics App+Web into BigQuery.
+From BigQuery console you can run SQL query and export data into csv file,
+alternatively you can use Python BigQuery connector to get directly into the dataframe.
+If you have big datasets, we suggest you take fraction of users in SQL query,
+filtering by the user id (just add this condition to SQL WHERE statement to get 10%
+of your users : “and ABS(MOD(FARM_FINGERPRINT(fullVisitorId), 10)) = 0)”.
+
+
+2. Explore the data
+===================
+
+Next step is to simply specify columns names, so that Rete will know how your
+own data matches the conventional dataset of user_ids, event names, timestamps.
+This is defined by this global config dictionary which will be used by Rete functions:
+
+.. code:: ipython3
+
+    # update config to pass columns names:
     retentioneering.config.update({
+        'index_col': 'user_id'
         'event_col':'event',
         'event_time_col':'timestamp',
-        'index_col': 'user_id'
     })
 
 
-Congradulations! Now complete arsenal of retentioneering tools is ready for use. For example,
-you can plot graph (read more about plot_graph here):
+Now we are ready to explore the user behavior in our data. For example,
+you can plot graph (read more about plot_graph function
+`here <https://retentioneering.github.io/retentioneering-tools/_build/html/plot_graph.html>`__):
 
 .. code:: ipython3
 
@@ -124,7 +162,8 @@ you can plot graph (read more about plot_graph here):
 Note, that graph is interactive and you can move graph nodes by
 clicking on it and interactively zoom-in / zoom-out the graph layout.
 
-You can also plot step_matrix (read more about step_matrix here):
+You can also plot step_matrix (read more about step_matrix function
+`here <https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html>`__):
 
 .. code:: ipython3
 
@@ -137,8 +176,9 @@ You can also plot step_matrix (read more about step_matrix here):
 
 .. image:: _static/step_matrix/step_matrix_8.svg
 
-or you can explore what type of behavior cluster are present in your dataset
-(read more about exploring behavior clusters here):
+or you can explore what types of behavior clusters are present in your dataset
+(read more about exploring behavior clusters
+`here <https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html>`__):
 
 .. code:: ipython3
 
@@ -150,4 +190,8 @@ or you can explore what type of behavior cluster are present in your dataset
 
 .. image:: _static/clustering/clustering_2.svg
 
-
+Users with similar behavior grouped in the same cluster. Clusters with low conversion
+rate can represent systematic problem in the product: specific behavior pattern which
+does not lead to product goals. Obtained user segments can be explored deeper to
+understand problematic behavior pattern. In the example above for instance,
+cluster 4 has low conversion rate to purchase but high conversion rate to cart visit.

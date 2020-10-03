@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Getting started &mdash; Retentioneering 2.0.0 documentation</title>
+  <title>Quick start with Retentioneering &mdash; Retentioneering 2.0.0 documentation</title>
   
 
   
@@ -87,7 +87,8 @@
 <li class="toctree-l1"><a class="reference internal" href="what_is_rete.html">What is Retentioneering?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Getting started</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#basic-rete-run">Basic rete run</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#load-data">1. Load data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#explore-the-data">2. Explore the data</a></li>
 </ul>
 </li>
 </ul>
@@ -148,7 +149,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Getting started</li>
+      <li>Quick start with Retentioneering</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -167,22 +168,24 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="getting-started">
-<h1>Getting started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="basic-rete-run">
-<h2>Basic rete run<a class="headerlink" href="#basic-rete-run" title="Permalink to this headline">¶</a></h2>
-<p>Retentioneering works as Pandas Dataframe accessor, meaning that if you work with
-your users logs data using Pandas Dataframe you can apply retentioneering right after
-import! All you need is import retentioneering, import sample dataframe (or use you
-own!):</p>
+  <div class="section" id="quick-start-with-retentioneering">
+<h1>Quick start with Retentioneering<a class="headerlink" href="#quick-start-with-retentioneering" title="Permalink to this headline">¶</a></h1>
+<p>Retentioneering makes product analytics very easy once you have the raw data.</p>
+<p>Every user action and every visited page or screen from your website or app,
+all these interactions we call events. To understand deeply how different types
+of user behavior in your product affects your business metrics, you need to
+analyze the sequences of events for each user.</p>
+<div class="section" id="load-data">
+<h2>1. Load data<a class="headerlink" href="#load-data" title="Permalink to this headline">¶</a></h2>
+<p>To start you can pick from any of two options:</p>
+<p><strong>Option 1. To start with our dummy online shop dataset sample.</strong></p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">retentioneering</span>
 
-<span class="c1"># load sample data</span>
-<span class="kn">from</span> <span class="nn">retentioneering</span> <span class="kn">import</span> <span class="n">datasets</span>
+<span class="c1"># load sample user behavior data as a pandas dataframe:</span>
 <span class="n">data</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Here <code class="docutils literal notranslate"><span class="pre">data</span></code> is a regular Pandas Dataframe:</p>
+<p>Here <code class="docutils literal notranslate"><span class="pre">data</span></code> is a regular Pandas Dataframe with clickstream example:</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -245,19 +248,43 @@ own!):</p>
 </div><div class="line-block">
 <div class="line"><br /></div>
 </div>
-<p>Last step is to simply specify columns names. Retentioneering module needs to know what columns
-in your dataset correspond to event names, timestamps, and user_ids. In our case it’s <cite>event</cite>,
-<cite>timestamp</cite> and <cite>user_id</cite> respectively:</p>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># update config to specify column names</span>
+<p>As you can see in this fragment of example dataset, user with id 219483890 has 4 events
+on the website with specific timestamps on 2019-11-01. This is all you need to try out
+what Retentioneering is about. You are ready to go with this dataset and proceed to step 2.</p>
+<p><strong>Option 2. Alternatively, you can start with your dataset.</strong></p>
+<p>If you have your raw data of user behavior for example in csv format simply import
+it as pandas dataframe:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">retentioneering</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="c1"># load your own csv</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;yourowndatafile.csv&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>How to get csv file with data? Raw data in form of {user,event,timestamp} can
+be streamed via Google Analytics 360 or free Google Analytics App+Web into BigQuery.
+From BigQuery console you can run SQL query and export data into csv file,
+alternatively you can use Python BigQuery connector to get directly into the dataframe.
+If you have big datasets, we suggest you take fraction of users in SQL query,
+filtering by the user id (just add this condition to SQL WHERE statement to get 10%
+of your users : “and ABS(MOD(FARM_FINGERPRINT(fullVisitorId), 10)) = 0)”.</p>
+</div>
+<div class="section" id="explore-the-data">
+<h2>2. Explore the data<a class="headerlink" href="#explore-the-data" title="Permalink to this headline">¶</a></h2>
+<p>Next step is to simply specify columns names, so that Rete will know how your
+own data matches the conventional dataset of user_ids, event names, timestamps.
+This is defined by this global config dictionary which will be used by Rete functions:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># update config to pass columns names:</span>
 <span class="n">retentioneering</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+    <span class="s1">&#39;index_col&#39;</span><span class="p">:</span> <span class="s1">&#39;user_id&#39;</span>
     <span class="s1">&#39;event_col&#39;</span><span class="p">:</span><span class="s1">&#39;event&#39;</span><span class="p">,</span>
     <span class="s1">&#39;event_time_col&#39;</span><span class="p">:</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;index_col&#39;</span><span class="p">:</span> <span class="s1">&#39;user_id&#39;</span>
 <span class="p">})</span>
 </pre></div>
 </div>
-<p>Congradulations! Now complete arsenal of retentioneering tools is ready for use. For example,
-you can plot graph (read more about plot_graph here):</p>
+<p>Now we are ready to explore the user behavior in our data. For example,
+you can plot graph (read more about plot_graph function
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/plot_graph.html">here</a>):</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">norm_type</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">,</span>
                      <span class="n">weight_col</span><span class="o">=</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
                      <span class="n">thresh</span><span class="o">=</span><span class="mf">0.06</span><span class="p">,</span>
@@ -276,7 +303,8 @@ you can plot graph (read more about plot_graph here):</p>
 </div>
 <p>Note, that graph is interactive and you can move graph nodes by
 clicking on it and interactively zoom-in / zoom-out the graph layout.</p>
-<p>You can also plot step_matrix (read more about step_matrix here):</p>
+<p>You can also plot step_matrix (read more about step_matrix function
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html">here</a>):</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
                       <span class="n">thresh</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
                       <span class="n">centered</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span>
@@ -285,8 +313,9 @@ clicking on it and interactively zoom-in / zoom-out the graph layout.</p>
                       <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]);</span>
 </pre></div>
 </div>
-<img alt="_images/step_matrix_8.svg" src="_images/step_matrix_8.svg" /><p>or you can explore what type of behavior cluster are present in your dataset
-(read more about exploring behavior clusters here):</p>
+<img alt="_images/step_matrix_8.svg" src="_images/step_matrix_8.svg" /><p>or you can explore what types of behavior clusters are present in your dataset
+(read more about exploring behavior clusters
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html">here</a>):</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;kmeans&#39;</span><span class="p">,</span>
                        <span class="n">n_clusters</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
                        <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span>
@@ -294,7 +323,12 @@ clicking on it and interactively zoom-in / zoom-out the graph layout.</p>
                        <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">,</span><span class="s1">&#39;cart&#39;</span><span class="p">]);</span>
 </pre></div>
 </div>
-<img alt="_images/clustering_2.svg" src="_images/clustering_2.svg" /></div>
+<img alt="_images/clustering_2.svg" src="_images/clustering_2.svg" /><p>Users with similar behavior grouped in the same cluster. Clusters with low conversion
+rate can represent systematic problem in the product: specific behavior pattern which
+does not lead to product goals. Obtained user segments can be explored deeper to
+understand problematic behavior pattern. In the example above for instance,
+cluster 4 has low conversion rate to purchase but high conversion rate to cart visit.</p>
+</div>
 </div>
 
 

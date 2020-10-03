@@ -4,8 +4,7 @@ Funnels
 Basic example
 =============
 
-This notebook can be found
-`here <https://github.com/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/examples/compare_tutorial.ipynb>`__.
+This notebook can be found :download:`here <_static/examples/funnel_tutorial.ipynb>` .
 
 Conversion funnel is the basic first step in almost all product analytics workflow.
 To learn how to plot basic funnels in Retentioneering framework let's work through a

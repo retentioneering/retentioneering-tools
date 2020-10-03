@@ -1,4 +1,4 @@
-client_id,event,timestamp,user_backet,transaction_value,transaction_ID
+user_id,event,timestamp,user_backet,transaction_value,transaction_ID
 219483890,catalog,2019-11-01 17:59:13.273932,test,,
 219483890,product,2019-11-01 17:59:28.459271,test,,
 219483890,cart,2019-11-01 17:59:29.502214,test,,

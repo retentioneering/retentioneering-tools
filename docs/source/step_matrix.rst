@@ -46,7 +46,7 @@ to set names for the columns:
     retentioneering.config.update({
         'event_col':'event',
         'event_time_col':'timestamp',
-        'index_col': 'client_id'
+        'index_col': 'user_id'
     })
 
 
@@ -56,7 +56,7 @@ for extremely simple dataset containg events for only one user:
 
 .. code:: ipython3
 
-    single_user = data[data['client_id']==613604495].reset_index(drop=True)
+    single_user = data[data['user_id']==613604495].reset_index(drop=True)
     single_user
 
 .. raw:: html
@@ -79,7 +79,7 @@ for extremely simple dataset containg events for only one user:
       <thead>
         <tr style="text-align: right;">
           <th></th>
-          <th>client_id</th>
+          <th>user_id</th>
           <th>event</th>
           <th>timestamp</th>
         </tr>
@@ -394,8 +394,8 @@ and M2 always sum up to 1).
 
 .. code:: ipython3
 
-    g1 = set(data[data['event']=='payment_done']['client_id'])
-    g2 = set(data['client_id']) - g1
+    g1 = set(data[data['event']=='payment_done']['user_id'])
+    g2 = set(data['user_id']) - g1
 
     data.rete.step_matrix(max_steps=16,
                           thresh = 0.05,

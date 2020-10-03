@@ -53,7 +53,7 @@ We start from importing retentioneering and sample datasets:
       <thead>
         <tr style="text-align: right;">
           <th></th>
-          <th>client_id</th>
+          <th>user_id</th>
           <th>event</th>
           <th>timestamp</th>
           <th>user_backet</th>
@@ -113,7 +113,7 @@ We start from importing retentioneering and sample datasets:
 
 |
 
-We can see regular columns with information about user actions ('client_id', 'event',
+We can see regular columns with information about user actions ('user_id', 'event',
 'timestamp') as well as column regarding A/B test: 'user_backet', and columns with
 transactions information (events 'payment_done'): 'transaction_value' and 'transaction_ID'.
 
@@ -125,7 +125,7 @@ events, user_ids and time:
     retentioneering.config.update({
         'event_col':'event',
         'event_time_col':'timestamp',
-        'index_col': 'client_id'
+        'index_col': 'user_id'
     })
 
 Let's explore column 'user_backet':
@@ -133,7 +133,7 @@ Let's explore column 'user_backet':
 .. code:: ipython3
 
     (data
-     .drop_duplicates(subset=['client_id'])['user_backet']
+     .drop_duplicates(subset=['user_id'])['user_backet']
      .value_counts())
 
 .. parsed-literal::
@@ -145,13 +145,13 @@ Let's explore column 'user_backet':
 
 
 We can see that our dataset has 554 and 573 unique users in test and control
-groups, correspondingly. Let's put those client_id's in separate variables 'test'
+groups, correspondingly. Let's put those user_id's in separate variables 'test'
 and 'control':
 
 .. code:: ipython3
 
-    test = data[data['user_backet']=='test']['client_id'].unique()
-    control = data[data['user_backet']=='control']['client_id'].unique()
+    test = data[data['user_backet']=='test']['user_id'].unique()
+    control = data[data['user_backet']=='control']['user_id'].unique()
 
 Now everything is ready to start comparing these two groups using rete.compare() function.
 

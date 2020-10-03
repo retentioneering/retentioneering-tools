@@ -98,11 +98,11 @@ def plot_graph(self, *,
                             height=height,
                             thresh=thresh)
 
+    # if work from google colab user HTML display:
     try:
         import google.colab
-        print('in colab')
         display(HTML(path))
     except:
-        print('not in colab')
+        pass
 
     return path

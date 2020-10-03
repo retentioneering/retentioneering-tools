@@ -1,4 +1,4 @@
-client_id,event,timestamp
+user_id,event,timestamp
 219483890,catalog,2019-11-01 17:59:13.273932
 219483890,product1,2019-11-01 17:59:28.459271
 219483890,cart,2019-11-01 17:59:29.502214

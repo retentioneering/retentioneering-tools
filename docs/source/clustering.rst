@@ -22,7 +22,7 @@ import retentioneering, import sample dataset and update config to set used colu
     retentioneering.config.update({
         'event_col':'event',
         'event_time_col':'timestamp',
-        'index_col': 'client_id'
+        'index_col': 'user_id'
     })
 
 Trajectories vectorization
@@ -181,7 +181,7 @@ explore it:
 .. code:: ipython3
 
     clus_0.rete.plot_graph(thresh=0.1,
-                           weight_col='client_id',
+                           weight_col='user_id',
                            targets = {'lost':'red',
                                       'payment_done':'green'})
 
@@ -259,12 +259,12 @@ Note, that in the above example Y-axis values were showing percentage that given
 represent from selected cluster. Very often we are actually more interested to compare
 percentages of users who have particular events between two groups. This type of normalization
 can be used by passing the name of index column we would like to normalize by. In our case it's
-user_id's: weight_col='client_id' (default None):
+user_id's: weight_col='user_id' (default None):
 
 .. code:: ipython3
 
     data.rete.cluster_event_dist(2, 7,
-                                 weight_col='client_id')
+                                 weight_col='user_id')
 
 .. image:: _static/clustering/cluster_event_dist_2.svg
 
@@ -274,7 +274,7 @@ It gives. All users from both clusters have interacted with catalog and were los
 Interestingly, non-converted users who interacted with product 2 (from cluster 2) are
 more likely visit cart (35% of users) before they are lost, than lost users who interacted
 with product 1 (20% of users from cluster 7). This effect was difficult to notice when we
-compared cluster 2 and 7 without weight_col='client_id' normalization.
+compared cluster 2 and 7 without weight_col='user_id' normalization.
 
 If there are some events of particular importance which you always want to
 include in comparison (regardless of selected top_n parameter) you can pass those
@@ -284,7 +284,7 @@ histogram on the right after the dashed line (in the same order as specified):
 .. code:: ipython3
 
     data.rete.cluster_event_dist(2,
-                                 weight_col='client_id',
+                                 weight_col='user_id',
                                  targets=['cart','payment_done'])
 
 .. image:: _static/clustering/cluster_event_dist_3.svg

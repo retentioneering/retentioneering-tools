@@ -43,7 +43,7 @@ Here ``data`` is a regular Pandas Dataframe:
       <thead>
         <tr style="text-align: right;">
           <th></th>
-          <th>client_id</th>
+          <th>user_id</th>
           <th>event</th>
           <th>timestamp</th>
         </tr>
@@ -86,7 +86,7 @@ Here ``data`` is a regular Pandas Dataframe:
 |
 Last step is to simply specify columns names. Retentioneering module needs to know what columns
 in your dataset correspond to event names, timestamps, and user_ids. In our case it's `event`,
-`timestamp` and `client_id` respectively:
+`timestamp` and `user_id` respectively:
 
 .. code:: ipython3
 
@@ -94,7 +94,7 @@ in your dataset correspond to event names, timestamps, and user_ids. In our case
     retentioneering.config.update({
         'event_col':'event',
         'event_time_col':'timestamp',
-        'index_col': 'client_id'
+        'index_col': 'user_id'
     })
 
 
@@ -104,7 +104,7 @@ you can plot graph (read more about plot_graph here):
 .. code:: ipython3
 
     data.rete.plot_graph(norm_type='full',
-                         weight_col='client_id',
+                         weight_col='user_id',
                          thresh=0.06,
                          targets = {'payment_done':'green',
                                     'lost':'red'})

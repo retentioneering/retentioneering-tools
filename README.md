@@ -54,7 +54,7 @@ data = datasets.load_simple_shop()
 retentioneering.config.update({
     'event_col':'event',
     'event_time_col':'timestamp',
-    'index_col': 'client_id'
+    'index_col': 'user_id'
 })
 ```
 
@@ -68,7 +68,7 @@ Now, let's plot the graph to visualize user behaviour from the dataset
 
  ```python
 data.rete.plot_graph(norm_type='node',
-                      weight_col='client_id',
+                      weight_col='user_id',
                       thresh=0.2,
                       targets = {'payment_done':'green',
                                  'lost':'red'})
@@ -107,7 +107,7 @@ conversion rate to purchase but high conversion rate to cart visit.
 ```python
 clus_4 = data.rete.filter_cluster(4)
 clus_4.rete.plot_graph(thresh=0.1,
-                        weight_col='client_id',
+                        weight_col='user_id',
                         targets = {'lost':'red',
                                    'payment_done':'green'})
 ```

@@ -23,7 +23,7 @@ let's use sample dataset:
     retentioneering.config.update({
         'event_col':'event',
         'event_time_col':'timestamp',
-        'index_col': 'client_id'
+        'index_col': 'user_id'
     })
 
 We will start from simplest case: norm_type=None, weight_col=None.
@@ -113,12 +113,12 @@ in the dataset.
 
 Very often we are interested not in the fraction given transition represents from all
 transitions, but in what percentage of users have given transition from all users.
-This can be obtained using weight_col='client_id' parameter:
+This can be obtained using weight_col='user_id' parameter:
 
 .. code:: ipython3
 
     data.rete.plot_graph(norm_type='full',
-                         weight_col='client_id',
+                         weight_col='user_id',
                          thresh=0.06,
                          targets = {'payment_done':'green',
                                     'lost':'red'})
@@ -151,7 +151,7 @@ These type of questions can be addressed with norm_type = 'node'. Let's consider
 .. code:: ipython3
 
     data.rete.plot_graph(norm_type='node',
-                         weight_col='client_id',
+                         weight_col='user_id',
                          thresh=0.2,
                          targets = {'payment_done':'green',
                                     'lost':'red'})

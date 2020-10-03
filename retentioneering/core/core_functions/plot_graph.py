@@ -98,8 +98,14 @@ def plot_graph(self, *,
                             height=height,
                             thresh=thresh)
 
-    if 'google.colab' in str(globals()['get_ipython']):
-        print('disp')
-        display(HTML(path))
+    # if 'google.colab' in str(globals()['get_ipython']):
+    #
+    #     display(HTML(path))
+
+    try:
+        import google.colab
+        print('in colab')
+    except:
+        print('not in colab')
 
     return path

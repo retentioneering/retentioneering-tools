@@ -123,7 +123,8 @@ from the catalog, without visiting product page (for converted users more unique
 visited cart page than product page).
 
 Let's consider another example when we compare funnels between multiple users groups
-segmented according to their behavior (read more about behavioral segmentation here).
+segmented according to their behavior (read more about behavioral clustering
+`here <https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html>`__).
 
 First, let's cluster users with respect to their behavior:
 
@@ -166,5 +167,6 @@ cluster 2 - users who reach product level, but have lower conversion to cart, cl
 those are highly motivated users with most of the convertions, cluster 6 - users who reach
 cart level but mostly churned somewhere between cart and payment_done events
 
-To understand deeper what are the common behavioral patterns for each graph we can user
-graph or step matrix analysis.
+To understand deeper what are the common behavioral patterns for each graph we can
+`plot graphs <https://retentioneering.github.io/retentioneering-tools/_build/html/plot_graph.html>`__ or
+`step matrix <https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html>`__.

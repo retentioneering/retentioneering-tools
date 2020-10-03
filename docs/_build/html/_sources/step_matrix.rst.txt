@@ -410,7 +410,8 @@ and M2 always sum up to 1).
 Let's consider another example of differential step matrix use, where we will compare behavior
 of two user clusters. First, let's obtain behavioural segments and visualize the results of
 segmentation using conversion to 'payment_done' and event 'cart' (to learn more about
-user behavior clustering read here):
+user behavior clustering read
+`here <https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html>`__):
 
 .. code:: ipython3
 

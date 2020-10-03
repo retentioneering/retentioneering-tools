@@ -498,7 +498,8 @@ and M2 always sum up to 1).</p>
 <img alt="_images/step_matrix_9.svg" src="_images/step_matrix_9.svg" /><p>Let’s consider another example of differential step matrix use, where we will compare behavior
 of two user clusters. First, let’s obtain behavioural segments and visualize the results of
 segmentation using conversion to ‘payment_done’ and event ‘cart’ (to learn more about
-user behavior clustering read here):</p>
+user behavior clustering read
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html">here</a>):</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;cluster_bar&#39;</span><span class="p">,</span>
                        <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">],</span>
                        <span class="n">refit_cluster</span><span class="o">=</span><span class="kc">True</span><span class="p">);</span>

@@ -260,7 +260,8 @@ for converted users we can see that some users add product to cart directly
 from the catalog, without visiting product page (for converted users more unique users
 visited cart page than product page).</p>
 <p>Let’s consider another example when we compare funnels between multiple users groups
-segmented according to their behavior (read more about behavioral segmentation here).</p>
+segmented according to their behavior (read more about behavioral clustering
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html">here</a>).</p>
 <p>First, let’s cluster users with respect to their behavior:</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;kmeans&#39;</span><span class="p">,</span>
                        <span class="n">n_clusters</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
@@ -293,8 +294,9 @@ Cluster 1 - very low motivated traffic which doesn’t go deeper than catalog le
 cluster 2 - users who reach product level, but have lower conversion to cart, cluster 3 -
 those are highly motivated users with most of the convertions, cluster 6 - users who reach
 cart level but mostly churned somewhere between cart and payment_done events</p>
-<p>To understand deeper what are the common behavioral patterns for each graph we can user
-graph or step matrix analysis.</p>
+<p>To understand deeper what are the common behavioral patterns for each graph we can
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/plot_graph.html">plot graphs</a> or
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html">step matrix</a>.</p>
 </div>
 </div>
 

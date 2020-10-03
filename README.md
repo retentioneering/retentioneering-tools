@@ -63,7 +63,7 @@ Above we imported sample dataset, which is regular pandas dataframe containing r
 behavior data from hypothetical web-site or app in form of sequence of records
 {'client_id', 'event', 'timestamp'}, and pass those column names to retentioneering.config.
 Now, let's plot the graph to visualize user behaviour from the dataset 
-(read more about graphs here):
+(read more about graphs [here](https://retentioneering.github.io/retentioneering-tools/_build/html/plot_graph.html)):
 
 <div align="left">
 
@@ -83,7 +83,7 @@ all users reached event A (note, edges with small weighs are
 thresholded to avoid visual clutter, read more in the documentation)
 
 To automatically find distinct behavioral patterns we can cluster users from the
-dataset based on their behavior:
+dataset based on their behavior (read more about behavioral clustering [here](https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html)):
 
 <div align="left">
 

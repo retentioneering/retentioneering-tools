@@ -1,5 +1,5 @@
 from retentioneering.visualization import draw_graph
-import IPython
+from IPython.display import display, HTML
 
 
 def plot_graph(self, *,
@@ -98,9 +98,8 @@ def plot_graph(self, *,
                             height=height,
                             thresh=thresh)
 
-    # if 'google.colab' in str(globals()['get_ipython']):
-    #     path = IPython.display.HTML(path)
-
-    IPython.display.HTML(path)
+    if 'google.colab' in str(globals()['get_ipython']):
+        print('disp')
+        display(HTML(path))
 
     return path

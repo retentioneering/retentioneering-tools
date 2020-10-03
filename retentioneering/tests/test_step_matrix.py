@@ -11,7 +11,7 @@ ABS_TOL = 0.0001
 retentioneering.config.update({
     'event_col': 'event',
     'event_time_col': 'timestamp',
-    'index_col': 'client_id'
+    'index_col': 'user_id'
 })
 data = datasets.load_simple_shop()
 test_datasets = [dict(test_dataset=data)]
@@ -126,8 +126,8 @@ class TestStepMatrix:
                                                    groups=({3744822}, {736567298}),
                                                    show_plot=False)
 
-        g1 = set(test_dataset[test_dataset['event'] == 'payment_done']['client_id'].unique())
-        g2 = set(test_dataset['client_id'].unique()) - g1
+        g1 = set(test_dataset[test_dataset['event'] == 'payment_done']['user_id'].unique())
+        g2 = set(test_dataset['user_id'].unique()) - g1
         assert step_matrix_diff_test(test_dataset, max_steps=20,
                                                    thresh=0.,
                                                    groups=(g1, g2),

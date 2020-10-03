@@ -423,14 +423,14 @@ user behavior clustering read
 
 We can see 8 clusters with the corresponding conversion rates to specified events (% of users in
 the given cluster who had at least one specified event). Let's say we would like to compare
-behavior segments 3 and 7. Both have relatively high conversion rate and cart visit rate. Let's
+behavior segments 0 and 3. Both have relatively high conversion rate and cart visit rate. Let's
 find out how they are differ using differential step_matrix. All we need is to get user_id's
 collections from cluster_mapping attribute and pass it to groups parameter of step_matrix:
 
 .. code:: ipython3
 
-    g1 = data.rete.cluster_mapping[3]
-    g2 = data.rete.cluster_mapping[7]
+    g1 = data.rete.cluster_mapping[0]
+    g2 = data.rete.cluster_mapping[3]
 
     data.rete.step_matrix(max_steps=16,
                           thresh = 0.05,
@@ -443,5 +443,5 @@ collections from cluster_mapping attribute and pass it to groups parameter of st
 
 We can clearly see that these two behavioural segments are quite similar to each other with
 the only strong difference at the second step after 'cart' event: users of segment 3 prefer to
-select 'delivery_courier' (large positive value), and users of segment 7 prefer to select
+select 'delivery_courier' (large positive value), and users of segment 0 prefer to select
 'delivery_pickup' (large negative value).

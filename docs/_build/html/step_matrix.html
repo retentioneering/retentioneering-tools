@@ -507,11 +507,11 @@ user behavior clustering read
 </div>
 <img alt="_images/cluster_bar_0.svg" src="_images/cluster_bar_0.svg" /><p>We can see 8 clusters with the corresponding conversion rates to specified events (% of users in
 the given cluster who had at least one specified event). Let’s say we would like to compare
-behavior segments 3 and 7. Both have relatively high conversion rate and cart visit rate. Let’s
+behavior segments 0 and 3. Both have relatively high conversion rate and cart visit rate. Let’s
 find out how they are differ using differential step_matrix. All we need is to get user_id’s
 collections from cluster_mapping attribute and pass it to groups parameter of step_matrix:</p>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">g1</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">cluster_mapping</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
-<span class="n">g2</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">cluster_mapping</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">g1</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">cluster_mapping</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">g2</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">cluster_mapping</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
 
 <span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
                       <span class="n">thresh</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
@@ -523,7 +523,7 @@ collections from cluster_mapping attribute and pass it to groups parameter of st
 </div>
 <img alt="_images/step_matrix_10.svg" src="_images/step_matrix_10.svg" /><p>We can clearly see that these two behavioural segments are quite similar to each other with
 the only strong difference at the second step after ‘cart’ event: users of segment 3 prefer to
-select ‘delivery_courier’ (large positive value), and users of segment 7 prefer to select
+select ‘delivery_courier’ (large positive value), and users of segment 0 prefer to select
 ‘delivery_pickup’ (large negative value).</p>
 </div>
 </div>

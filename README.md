@@ -12,40 +12,70 @@
 ## What is Retentioneering?
 
 
-Retentioneering is a Python framework to process and analyze clickstreams, 
-event streams, trajectories, and event logs. You can segment users, clients (agents),
-explore user behavior patterns, build ML pipelines to predict agent category or 
-probability of target event based on historical data.
+Retentioneering is a Python framework and library to assist product analysts and 
+marketing analysts as it makes it easier to process and analyze clickstreams, 
+event streams, trajectories, and event logs. You can segment users, clients 
+(agents), build ML pipelines to predict agent category or probability of
+ target event based on historical data.
 
-Retentioneering extends Pandas, NetworkX, Scikit-learn for in-depth processing of 
-event sequences data, specifically Retentioneering provides a powerful environment 
+In a common scenario you can use raw data from Google Analytics BigQuery stream 
+or any other silimal streams in form of events and their timestamps for users, 
+and Retentioneering is all you need to explore the user behavior from that data, 
+it can reveal much more isights than funnel analytics, as it will automatically 
+build the behavioral segments and their patterns, highlighting what events and 
+pattern impact your conversion rates, retention and revenue.
+
+Retentioneering extends Pandas, NetworkX, Scikit-learn for in-depth processing 
+of event sequences data, specifically Retentioneering provides a powerful environment 
 to perform an in-depth analysis of customer journey maps, bringing behavior-driven 
-segmentation of users and machine learning pipelines to product analytics. 
-Retentioneering is also developing customer journey map simulation engines that 
-allow the data scientists to explore the business impact of CJM mutations and
-optimize product and online marketing.
+segmentation of users and machine learning pipelines to product analytics.
 
-Product analysts can apply Retentioneering Tools as a Python framework to explore, 
-grow, and optimize the product based on deep analysis of user trajectories. 
-Using Retentioneering you can vectorize clickstream logs and cluster user trajectories 
-to automatically identify common successful or churn patterns. You can explore those 
-patterns using our tools such as graph visualizer, step matrix, multiple clustering, 
-and segmentation engines, and many others.
+Most recent is Retentioneering 2.0.0, this version has major updates from 1.0.x 
+and it is not reverse compatible with previous releases due to major syntax changes.
+With significant improvements we now provided architecture and the solid ground for 
+farther updates and rapid development of analytical tools. Please update, leave your
+feedback and stay tuned.
 
 [![intro 0](https://github.com/retentioneering/pics/blob/master/pics/rete20/intro_0.png)](https://github.com/retentioneering/retentioneering-tools)
 
-## Getting started
+## Changelog
+
+This is new major release Retentioneering 2.0. Change log is available [here](https://retentioneering.github.io/retentioneering-tools/_build/html/release_notes.html).
 
 Complete documentation is available [here](https://retentioneering.github.io/retentioneering-tools/).
 
-Retentioneering is currently installable from PyPI:
+
+## Installation
+
+Option 1. Run directly from google.colab. Open google.colab and click File-> “new notebook”. 
+In the code cell run following to install Retentioneering (same command will install directly 
+from Jupyter notebook):
+
+```bash
+!pip3 install retentioneering
+```
+
+Option 2. Install Retentioneering from PyPI:
 
 ```bash
 pip3 install retentioneering
 ```
 
-If you use Pandas dataframes to work with user behaviour data you can start using
-Retentioneering with just a few lines of code:
+Option 3. Install Retentioneering directly from the source:
+
+```bash
+git clone https://github.com/retentioneering/retentioneering-tools
+cd retentioneering-tools
+python3 setup.py install
+```
+
+## Quick start
+
+[Start using Retentioneering for clickstream analysis](https://retentioneering.github.io/retentioneering-tools/_build/html/getting_started.html)
+
+Or directly open this notebook in [Google Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/examples/graph_tutorial.ipynb) to run with sample data.
+
+Suggested first steps:
 
 ```python
 import retentioneering
@@ -63,7 +93,7 @@ retentioneering.config.update({
 
 Above we imported sample dataset, which is regular pandas dataframe containing raw user
 behavior data from hypothetical web-site or app in form of sequence of records
-{'client_id', 'event', 'timestamp'}, and pass those column names to retentioneering.config.
+{'user_id', 'event', 'timestamp'}, and pass those column names to retentioneering.config.
 Now, let's plot the graph to visualize user behaviour from the dataset 
 (read more about graphs [here](https://retentioneering.github.io/retentioneering-tools/_build/html/plot_graph.html)):
 

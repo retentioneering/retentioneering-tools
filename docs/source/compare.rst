@@ -14,7 +14,7 @@ Basic example
 
 
 This notebook can be found :download:`here <_static/examples/compare_tutorial.ipynb>`
-or open directly in `google colab <https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/docs/source/_static/examples/compare_tutorial.ipynb>`__.
+or open directly in `google colab <https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/examples/compare_tutorial.ipynb>`__.
 
 
 In this tutorial we will use simple dataset of user activity logs in app or

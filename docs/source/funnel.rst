@@ -5,7 +5,7 @@ Basic example
 =============
 
 This notebook can be found :download:`here <_static/examples/funnel_tutorial.ipynb>`
-or open directly in `google colab <https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/docs/source/_static/examples/funnel_tutorial.ipynb>`__.
+or open directly in `google colab <https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/examples/funnel_tutorial.ipynb>`__.
 
 Conversion funnel is the basic first step in almost all product analytics workflow.
 To learn how to plot basic funnels in Retentioneering framework let's work through a

@@ -30,7 +30,7 @@ Basic example
 =============
 
 This notebook can be found :download:`here <_static/examples/step_matrix_tutorial.ipynb>`
-or open directly in `google colab <https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/docs/source/_static/examples/step_matrix_tutorial.ipynb>`__.
+or open directly in `google colab <https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/examples/step_matrix_tutorial.ipynb>`__.
 
 To run examples below we need to import retentioneering, import sample dataset and update config
 to set names for the columns:

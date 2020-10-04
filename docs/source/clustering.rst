@@ -4,7 +4,8 @@ Users behavior clustering
 Basic example
 =============
 
-This notebook can be found :download:`here <_static/examples/clusters_tutorial.ipynb>`.
+This notebook can be found :download:`here <_static/examples/clusters_tutorial.ipynb>`
+or open directly in `google colab <https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/docs/source/_static/examples/clusters_tutorial.ipynb>`__.
 
 We will use sample user activity dataset to illustrate how behavior clustering works. Let's first
 import retentioneering, import sample dataset and update config to set used column names:

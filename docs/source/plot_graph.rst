@@ -12,7 +12,8 @@ To start with these tools, you need to upload your own .csv with clickstream
 data (as described in `Getting started <https://retentioneering.github.io/retentioneering-tools/_build/html/getting_started.html>`__)
 or you can use the retentioneering.datasets.load_simple_shop() for our sample dataset.
 
-This notebook can be found :download:`here <_static/examples/graph_tutorial.ipynb>`.
+This notebook can be found :download:`here <_static/examples/graph_tutorial.ipynb>` or
+open directly in `google colab <https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/docs/source/_static/examples/graph_tutorial.ipynb>`__.
 
 So for the first step please make sure you have Retentioneering imported and dataframe
 with your clickstream is created, and by calling retentioneering.config.update you

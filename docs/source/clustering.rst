@@ -120,6 +120,7 @@ clusterization by including plot_type parameter:
 .. code:: ipython3
 
     data.rete.get_clusters(method='kmeans',
+                           feature_type='tfidf',
                            n_clusters=8,
                            ngram_range=(1,2),
                            plot_type='cluster_bar');
@@ -134,6 +135,7 @@ who have specified event at least once) for specified target:
 .. code:: ipython3
 
     data.rete.get_clusters(method='kmeans',
+                           feature_type='tfidf',
                            n_clusters=8,
                            ngram_range=(1,2),
                            plot_type='cluster_bar',
@@ -148,6 +150,7 @@ you need to get a quick intuition about the resulting clusters:
 .. code:: ipython3
 
     data.rete.get_clusters(method='kmeans',
+                           feature_type='tfidf',
                            n_clusters=8,
                            ngram_range=(1,2),
                            plot_type='cluster_bar',

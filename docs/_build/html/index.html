@@ -89,11 +89,12 @@
 </ul>
 <p class="caption"><span class="caption-text">TOOLS DESCRIPTION:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Plot graph</a></li>
-<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Step matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clustering.html">Behavioral clustering</a></li>
-<li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Visualize user behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">User flow and step matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="explore_user_behavior.html">Explore user behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clustering.html">Behavioral segmentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments and AB tests</a></li>
 </ul>
 <p class="caption"><span class="caption-text">API REFERENCE:</span></p>
 <ul>
@@ -213,14 +214,12 @@ code. Sample datasets are included in package for quick start.</p>
 <div class="toctree-wrapper compound">
 <p class="caption"><span class="caption-text">TOOLS DESCRIPTION:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Plot graph</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="plot_graph.html#no-normalization">No normalization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="plot_graph.html#norm-type-full">norm_type = ‘full’</a></li>
-<li class="toctree-l2"><a class="reference internal" href="plot_graph.html#norm-type-node">norm_type = ‘node’</a></li>
-<li class="toctree-l2"><a class="reference internal" href="plot_graph.html#normalization-cheat-sheet">Normalization cheat-sheet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Visualize user behavior</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="plot_graph.html#before-you-start">Before you start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_graph.html#edge-weighting-options">Edge weighting options</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Step matrix</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">User flow and step matrix</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="step_matrix.html#step-matrix-intro">Step matrix intro</a></li>
 <li class="toctree-l2"><a class="reference internal" href="step_matrix.html#basic-example">Basic example</a></li>
 <li class="toctree-l2"><a class="reference internal" href="step_matrix.html#thresholding">Thresholding</a></li>
@@ -230,13 +229,18 @@ code. Sample datasets are included in package for quick start.</p>
 <li class="toctree-l2"><a class="reference internal" href="step_matrix.html#differential-step-matrix">Differential step matrix</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="explore_user_behavior.html">Explore user behavior</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="explore_user_behavior.html#get-edge-list">Get edge list</a></li>
+<li class="toctree-l2"><a class="reference internal" href="explore_user_behavior.html#get-adjacency-matrix">Get adjacency matrix</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel analysis</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="funnel.html#basic-example">Basic example</a></li>
 <li class="toctree-l2"><a class="reference internal" href="funnel.html#targets-grouping">Targets grouping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="funnel.html#users-grouping">Users grouping</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="clustering.html">Behavioral clustering</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="clustering.html">Behavioral segmentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="clustering.html#basic-example">Basic example</a></li>
 <li class="toctree-l2"><a class="reference internal" href="clustering.html#trajectories-vectorization">Trajectories vectorization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="clustering.html#clusterization">Clusterization</a></li>
@@ -245,7 +249,7 @@ code. Sample datasets are included in package for quick start.</p>
 <li class="toctree-l2"><a class="reference internal" href="clustering.html#compare-clusters">Compare clusters</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments and AB tests</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="compare.html#statistical-comparison">Statistical comparison</a></li>
 <li class="toctree-l2"><a class="reference internal" href="compare.html#basic-example">Basic example</a></li>
 <li class="toctree-l2"><a class="reference internal" href="compare.html#more-complex-metrics">More complex metrics</a></li>
@@ -263,6 +267,7 @@ code. Sample datasets are included in package for quick start.</p>
 <li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core.core_functions.extract_features">extract_features</a></li>
 <li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core.core_functions.compare">compare</a></li>
 <li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core.core_functions.funnel">funnel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="retentioneering.core.html#module-retentioneering.core.core_functions.base_dataset">get_edgelist</a></li>
 </ul>
 </li>
 </ul>

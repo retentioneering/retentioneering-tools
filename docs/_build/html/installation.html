@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Installation &mdash; Retentioneering 2.0.0 documentation</title>
+  <title>Retentioneering installation &mdash; Retentioneering 2.0.0 documentation</title>
   
 
   
@@ -85,20 +85,17 @@
               <p class="caption"><span class="caption-text">TUTORIAL:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="what_is_rete.html">What is Retentioneering?</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#python-and-jupyter">Python and Jupyter</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#retentioneering-install">Retentioneering install</a></li>
-</ul>
-</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
 </ul>
 <p class="caption"><span class="caption-text">TOOLS DESCRIPTION:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Plot graph</a></li>
-<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Step matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clustering.html">Behavioral clustering</a></li>
-<li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Visualize user behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">User flow and step matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="explore_user_behavior.html">Explore user behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clustering.html">Behavioral segmentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments and AB tests</a></li>
 </ul>
 <p class="caption"><span class="caption-text">API REFERENCE:</span></p>
 <ul>
@@ -149,7 +146,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Installation</li>
+      <li>Retentioneering installation</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -168,31 +165,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="installation">
-<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="python-and-jupyter">
-<h2>Python and Jupyter<a class="headerlink" href="#python-and-jupyter" title="Permalink to this headline">¶</a></h2>
-<p>Firstly, you need to install python and Jupyter.
-We support only Python 3.6 and above.
-For quick start better to install <a class="reference external" href="https://www.anaconda.com/">Anaconda</a>.</p>
-</div>
-<div class="section" id="retentioneering-install">
-<h2>Retentioneering install<a class="headerlink" href="#retentioneering-install" title="Permalink to this headline">¶</a></h2>
-<p><strong>Option 1. Install Retentioneering from PyPI:</strong></p>
-<blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3 install retentioneering
-</pre></div>
-</div>
-</div></blockquote>
-<p><strong>Option 2. Directly from the source</strong></p>
-<blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/retentioneering/retentioneering-tools
-<span class="nb">cd</span> retentioneering-tools
-python3 setup.py install
-</pre></div>
-</div>
-</div></blockquote>
-<p><strong>Option 3. Run directly from google.colab:</strong></p>
+  <div class="section" id="retentioneering-installation">
+<h1>Retentioneering installation<a class="headerlink" href="#retentioneering-installation" title="Permalink to this headline">¶</a></h1>
+<p><strong>Option 1. Run directly from google.colab:</strong></p>
 <p>Open <a class="reference external" href="https://colab.research.google.com/">google.colab</a>  and click File-&gt;
 “new notebook”. In the code cell run following to install Retentioneering:</p>
 <blockquote>
@@ -200,7 +175,26 @@ python3 setup.py install
 </pre></div>
 </div>
 </div></blockquote>
+<p><strong>Option 2. Install Retentioneering from Jupyter notebook:</strong></p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>!pip3 install retentioneering
+</pre></div>
 </div>
+</div></blockquote>
+<p><strong>Option 3. Install Retentioneering from termianl using PyPI:</strong></p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip3 install retentioneering
+</pre></div>
+</div>
+</div></blockquote>
+<p><strong>Option 4. Directly from the source</strong></p>
+<blockquote>
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/retentioneering/retentioneering-tools
+<span class="nb">cd</span> retentioneering-tools
+python3 setup.py install
+</pre></div>
+</div>
+</div></blockquote>
 </div>
 
 

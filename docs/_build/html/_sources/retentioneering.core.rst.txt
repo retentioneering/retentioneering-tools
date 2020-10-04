@@ -48,3 +48,11 @@ funnel
     :members:
     :undoc-members:
     :show-inheritance:
+
+get_edgelist
+------------
+
+.. automodule:: retentioneering.core.core_functions.base_dataset
+    :members:
+    :undoc-members:
+    :show-inheritance:

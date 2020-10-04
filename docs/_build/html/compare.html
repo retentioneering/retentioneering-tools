@@ -90,11 +90,12 @@
 </ul>
 <p class="caption"><span class="caption-text">TOOLS DESCRIPTION:</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Plot graph</a></li>
-<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Step matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel</a></li>
-<li class="toctree-l1"><a class="reference internal" href="clustering.html">Behavioral clustering</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Compare segments</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Visualize user behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">User flow and step matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="explore_user_behavior.html">Explore user behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clustering.html">Behavioral segmentation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Compare segments and AB tests</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#statistical-comparison">Statistical comparison</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#basic-example">Basic example</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#more-complex-metrics">More complex metrics</a></li>
@@ -275,9 +276,9 @@ transactions information (events ‘payment_done’): ‘transaction_value’ an
 <p>Next, as usually we need to update retentioneering.config to specify column names for
 events, user_ids and time:</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">retentioneering</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+    <span class="s1">&#39;user_col&#39;</span><span class="p">:</span> <span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
     <span class="s1">&#39;event_col&#39;</span><span class="p">:</span><span class="s1">&#39;event&#39;</span><span class="p">,</span>
     <span class="s1">&#39;event_time_col&#39;</span><span class="p">:</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;index_col&#39;</span><span class="p">:</span> <span class="s1">&#39;user_id&#39;</span>
 <span class="p">})</span>
 </pre></div>
 </div>
@@ -459,6 +460,8 @@ control (mean ± SD): 0.122 ± 0.327, n = 573
 <img alt="_images/compare_3.png" src="_images/compare_3.png" />
 <p>As we can see, statistically significant difference in the conversion to confirmed purchases
 still holds with selected significance level 0.05.</p>
+<p>Also you can compare users flow from test and control groups using
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html#differential-step-matrix">differential step matrix</a></p>
 </div>
 </div>
 

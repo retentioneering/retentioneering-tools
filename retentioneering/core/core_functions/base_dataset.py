@@ -41,25 +41,25 @@ class BaseDataset(object):
 
         Parameters
         ----------
-        weight_col: str, optional, default=None
+        weight_col: str (optional, default=None)
             Aggregation column for transitions weighting. To calculate weights
-            as number of transion events leave as ```None``. To calculate number
-            of unique users passed through given transition
-            ``edge_attributes='user_id'``. For any other aggreagtion, life
-            number of sessions, pass the column name.
+            as number of transion events use None. To calculate number
+            of unique users passed through given transition 'user_id'.
+             For any other aggreagtion, like number of sessions, pass the column name.
 
-        norm_type: {None, 'full', 'node'} str, optional, default=None
-            Type of normalization. If ``None`` return raw number of transtions
-            or other selected aggregation column.
+        norm_type: {None, 'full', 'node'} (optional, default=None)
+            Type of normalization. If None return raw number of transtions
+            or other selected aggregation column. 'full' - normalized over
+            entire dataset. 'node' weight for edge A --> B normalized over
+            user in A
 
         edge_attributes: str (optional, default 'edge_weight')
+            Name for edge_weight columns
 
         Returns
         -------
         Dataframe with number of rows equal to all transitions with weight
-        non-zero weight (max is squared number of  unique ``event_col`` values)
-        and the following column structure: ``source_node``, ``target_node`` and
-        ``edge_weight``.
+        non-zero weight
 
         Return type
         -----------
@@ -110,30 +110,29 @@ class BaseDataset(object):
                       weight_col=None,
                       norm_type=None):
         """
-        Creates edge graph in the matrix format. Basically this method
-        is similar to ``BaseTrajectory.rete.get_edgelist()`` but in different
-        format. Row indeces are ``event_col`` values, from which the
-        transition occured, while the row names are ``event_col`` values, to
+        Creates edge graph in the matrix format. Row indeces are event_col values,
+         from which the transition occured, and columns are events, to
         which the transition occured. The values are weights of the edges defined
-        with ``weight_col``, ``edge_attributes`` and ``norm`` parameters.
+        with weight_col and norm_type parameters.
 
         Parameters
         ----------
-        weight_col: str, optional, default=None
+        weight_col: str (optional, default=None)
             Aggregation column for transitions weighting. To calculate weights
-            as number of transion events leave as ```None``. To calculate number
-            of unique users passed through given transition
-            ``edge_attributes='user_id'``. For any other aggreagtion, life
-            number of sessions, pass the column name.
+            as number of transion events use None. To calculate number
+            of unique users passed through given transition 'user_id'.
+             For any other aggreagtion, like number of sessions, pass the column name.
 
-        norm_type: {None, 'full', 'node'} str, optional, default=None
-            Type of normalization. If ``None`` return raw number of transtions
-            or other selected aggregation column. If ``norm_type='full'`` normalization
+        norm_type: {None, 'full', 'node'} (optional, default=None)
+            Type of normalization. If None return raw number of transtions
+            or other selected aggregation column. 'full' - normalized over
+            entire dataset. 'node' weight for edge A --> B normalized over
+            user in A
 
         Returns
         -------
         Dataframe with number of columns and rows equal to unique number of
-        ``event_col`` values.
+        event_col values.
 
         Return type
         -----------
@@ -150,28 +149,6 @@ class BaseDataset(object):
                        thresh,
                        eos_event=None,
                        session_col='session_id'):
-        """
-        Generates ``session`_id` column with session rank for each ``index_col``
-        based on time difference between events. Sessions are automatically defined
-        with time diffrence between events.
-
-        Parameters
-        ----------
-        session_col
-        by_event
-        thresh: int
-            Minimal threshold in seconds between two sessions. Default: ``1800`` or 30 min
-        eos_event:
-            If not ``None`` specified event name will be added at the and of each session
-
-        Returns
-        -------
-        Original Dataframe with ``session_id`` column in dataset.
-
-        Return type
-        -----------
-        pd.DataFrame
-        """
 
         session_col_arg = session_col or 'session_id'
 

@@ -43,9 +43,9 @@ to set names for the columns:
 
     # update config to pass columns names:
     retentioneering.config.update({
+        'user_col': 'user_id',
         'event_col':'event',
         'event_time_col':'timestamp',
-        'user_col': 'user_id'
     })
 
 

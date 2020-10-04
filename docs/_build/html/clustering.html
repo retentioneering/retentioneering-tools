@@ -90,10 +90,11 @@
 </ul>
 <p class="caption"><span class="caption-text">TOOLS DESCRIPTION:</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Plot graph</a></li>
-<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Step matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Behavioral clustering</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Visualize user behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">User flow and step matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="explore_user_behavior.html">Explore user behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel analysis</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Behavioral segmentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#basic-example">Basic example</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#trajectories-vectorization">Trajectories vectorization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#clusterization">Clusterization</a></li>
@@ -102,7 +103,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#compare-clusters">Compare clusters</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments and AB tests</a></li>
 </ul>
 <p class="caption"><span class="caption-text">API REFERENCE:</span></p>
 <ul>
@@ -186,9 +187,9 @@ import retentioneering, import sample dataset and update config to set used colu
 
 <span class="c1"># update config to pass columns names:</span>
 <span class="n">retentioneering</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+    <span class="s1">&#39;user_col&#39;</span><span class="p">:</span> <span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
     <span class="s1">&#39;event_col&#39;</span><span class="p">:</span><span class="s1">&#39;event&#39;</span><span class="p">,</span>
     <span class="s1">&#39;event_time_col&#39;</span><span class="p">:</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;index_col&#39;</span><span class="p">:</span> <span class="s1">&#39;user_id&#39;</span>
 <span class="p">})</span>
 </pre></div>
 </div>
@@ -398,7 +399,9 @@ histogram on the right after the dashed line (in the same order as specified):</
                              <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span><span class="s1">&#39;payment_done&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
-<img alt="_images/cluster_event_dist_3.svg" src="_images/cluster_event_dist_3.svg" /></div>
+<img alt="_images/cluster_event_dist_3.svg" src="_images/cluster_event_dist_3.svg" /><p>Also you can compare users flow from different segments using
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html#differential-step-matrix">differential step matrix</a></p>
+</div>
 </div>
 
 

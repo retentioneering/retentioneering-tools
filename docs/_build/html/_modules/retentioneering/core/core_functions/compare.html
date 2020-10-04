@@ -88,11 +88,12 @@
 </ul>
 <p class="caption"><span class="caption-text">TOOLS DESCRIPTION:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../../plot_graph.html">Plot graph</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../step_matrix.html">Step matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../funnel.html">Funnel</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../clustering.html">Behavioral clustering</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../compare.html">Compare segments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../plot_graph.html">Visualize user behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../step_matrix.html">User flow and step matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../explore_user_behavior.html">Explore user behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../funnel.html">Funnel analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../clustering.html">Behavioral segmentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../compare.html">Compare segments and AB tests</a></li>
 </ul>
 <p class="caption"><span class="caption-text">API REFERENCE:</span></p>
 <ul>
@@ -200,7 +201,7 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># obtain two populations for each group</span>
-    <span class="n">index_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;index_col&#39;</span><span class="p">]</span>
+    <span class="n">index_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;user_col&#39;</span><span class="p">]</span>
     <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span>
     <span class="n">g1</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="n">index_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">groups</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">g2</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="n">index_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">groups</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>

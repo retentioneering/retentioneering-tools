@@ -8,6 +8,9 @@ from retentioneering.visualization import templates
 from .plot_utils import __save_plot__, ___DynamicFigureWrapper__
 
 
+_ = pd.DataFrame()
+
+
 def _calc_layout(data,
                  node_params,
                  width=500,
@@ -241,14 +244,8 @@ def graph(data, *,
             scale=scale
     )
 
-    if hasattr(data, 'trajectory'):
-        if plot_name is None:
-            plot_name = f'index_{datetime.now()}'
-    else:
-        if plot_name is None:
-            plot_name = 'index'
-
-    plot_name = f"{data.rete.retention_config['experiments_folder']}/{plot_name.replace(':', '_').replace('.', '_')}" + '.html'
+    plot_name = 'graph_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.html'
+    plot_name = _.rete.retention_config['experiments_folder'] + '/' + plot_name
 
     return (
         ___DynamicFigureWrapper__(x, interactive, width, height, res),

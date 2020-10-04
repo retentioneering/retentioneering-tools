@@ -336,3 +336,7 @@ value. Let's compare our groups using confirmed_purch metric:
 As we can see, statistically significant difference in the conversion to confirmed purchases
 still holds with selected significance level 0.05.
 
+Also you can compare users flow from test and control groups using
+`differential step matrix <https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html#differential-step-matrix>`__
+
+

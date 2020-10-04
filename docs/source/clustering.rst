@@ -286,3 +286,7 @@ histogram on the right after the dashed line (in the same order as specified):
                                  targets=['cart','payment_done'])
 
 .. image:: _static/clustering/cluster_event_dist_3.svg
+
+Also you can compare users flow from different segments using
+`differential step matrix <https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html#differential-step-matrix>`__
+

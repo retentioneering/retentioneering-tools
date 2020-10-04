@@ -20,9 +20,9 @@ update config:
 
     # update config to pass columns names:
     retentioneering.config.update({
+        'user_col': 'user_id',
         'event_col':'event',
         'event_time_col':'timestamp',
-        'user_col': 'user_id'
     })
 
 Function rete.funnel() plot simple conversion funnel:

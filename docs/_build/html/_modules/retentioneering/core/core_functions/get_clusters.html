@@ -88,11 +88,12 @@
 </ul>
 <p class="caption"><span class="caption-text">TOOLS DESCRIPTION:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../../plot_graph.html">Plot graph</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../step_matrix.html">Step matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../funnel.html">Funnel</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../clustering.html">Behavioral clustering</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../compare.html">Compare segments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../plot_graph.html">Visualize user behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../step_matrix.html">User flow and step matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../explore_user_behavior.html">Explore user behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../funnel.html">Funnel analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../clustering.html">Behavioral segmentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../compare.html">Compare segments and AB tests</a></li>
 </ul>
 <p class="caption"><span class="caption-text">API REFERENCE:</span></p>
 <ul>
@@ -218,7 +219,7 @@
 <span class="sd">    -----------</span>
 <span class="sd">    np.array</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">index_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;index_col&#39;</span><span class="p">]</span>
+    <span class="n">index_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;user_col&#39;</span><span class="p">]</span>
     <span class="n">event_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;event_col&#39;</span><span class="p">]</span>
 
     <span class="c1"># obtain vectorized features</span>
@@ -291,7 +292,7 @@
 <span class="sd">    -----------</span>
 <span class="sd">    pd.Dataframe</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">index_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;index_col&#39;</span><span class="p">]</span>
+    <span class="n">index_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;user_col&#39;</span><span class="p">]</span>
     <span class="n">ids</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">cluster_name</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">list</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">cluster_name</span><span class="p">:</span>
@@ -335,7 +336,7 @@
 <span class="sd">    Plots distribution barchart</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">event_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;event_col&#39;</span><span class="p">]</span>
-    <span class="n">index_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;index_col&#39;</span><span class="p">]</span>
+    <span class="n">index_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retention_config</span><span class="p">[</span><span class="s1">&#39;user_col&#39;</span><span class="p">]</span>
 
     <span class="n">clus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter_cluster</span><span class="p">(</span><span class="n">cl1</span><span class="p">)</span>
 

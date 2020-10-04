@@ -18,9 +18,9 @@ import retentioneering, import sample dataset and update config to set used colu
 
     # update config to pass columns names:
     retentioneering.config.update({
+        'user_col': 'user_id',
         'event_col':'event',
         'event_time_col':'timestamp',
-        'index_col': 'user_id'
     })
 
 Trajectories vectorization

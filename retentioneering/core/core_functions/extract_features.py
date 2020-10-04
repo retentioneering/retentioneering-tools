@@ -74,7 +74,7 @@ def _embedder(data, *,
     -------
     pd.DataFrame
     """
-    index_col = data.rete.retention_config['index_col']
+    index_col = data.rete.retention_config['user_col']
     event_col = data.rete.retention_config['event_col']
 
     corpus = data.groupby(index_col)[event_col].apply(

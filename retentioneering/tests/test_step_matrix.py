@@ -11,7 +11,7 @@ ABS_TOL = 0.0001
 retentioneering.config.update({
     'event_col': 'event',
     'event_time_col': 'timestamp',
-    'index_col': 'user_id'
+    'user_col': 'user_id'
 })
 data = datasets.load_simple_shop()
 test_datasets = [dict(test_dataset=data)]

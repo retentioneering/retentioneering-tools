@@ -53,9 +53,9 @@ data = retentioneering.datasets.load_simple_shop()
 
 # update config to pass columns names:
 retentioneering.config.update({
+    'user_col': 'user_id',
     'event_col':'event',
     'event_time_col':'timestamp',
-    'index_col': 'user_id'
 })
 ```
 

@@ -6,7 +6,7 @@ No normalization
 ================
 
 
-This notebook can be found :download:`here <_static/examples/graph_tutorial.ipynb>` .
+This notebook can be found :download:`here <_static/examples/graph_tutorial.ipynb>`.
 
 To understand better how different normalization types work and how to use plot_graph function
 let's use sample dataset:
@@ -20,9 +20,9 @@ let's use sample dataset:
 
     # update config to pass columns names:
     retentioneering.config.update({
+        'user_col': 'user_id',
         'event_col':'event',
         'event_time_col':'timestamp',
-        'index_col': 'user_id'
     })
 
 We will start from simplest case: norm_type=None, weight_col=None.

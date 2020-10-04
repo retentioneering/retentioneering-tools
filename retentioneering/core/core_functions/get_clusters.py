@@ -55,7 +55,7 @@ def get_clusters(self, *,
     -----------
     np.array
     """
-    index_col = self.retention_config['index_col']
+    index_col = self.retention_config['user_col']
     event_col = self.retention_config['event_col']
 
     # obtain vectorized features
@@ -128,7 +128,7 @@ def filter_cluster(self, cluster_name):
     -----------
     pd.Dataframe
     """
-    index_col = self.retention_config['index_col']
+    index_col = self.retention_config['user_col']
     ids = []
     if type(cluster_name) is list:
         for i in cluster_name:
@@ -172,7 +172,7 @@ def cluster_event_dist(self,
     Plots distribution barchart
     """
     event_col = self.retention_config['event_col']
-    index_col = self.retention_config['index_col']
+    index_col = self.retention_config['user_col']
 
     clus = self.filter_cluster(cl1)
 

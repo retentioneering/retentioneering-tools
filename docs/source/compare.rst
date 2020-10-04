@@ -121,9 +121,9 @@ events, user_ids and time:
 .. code:: ipython3
 
     retentioneering.config.update({
+        'user_col': 'user_id',
         'event_col':'event',
         'event_time_col':'timestamp',
-        'index_col': 'user_id'
     })
 
 Let's explore column 'user_backet':

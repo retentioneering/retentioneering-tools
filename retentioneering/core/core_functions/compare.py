@@ -37,7 +37,7 @@ def compare(self, *,
 
     """
     # obtain two populations for each group
-    index_col = self.retention_config['index_col']
+    index_col = self.retention_config['user_col']
     data = self._obj
     g1 = data[data[index_col].isin(groups[0])].copy()
     g2 = data[data[index_col].isin(groups[1])].copy()

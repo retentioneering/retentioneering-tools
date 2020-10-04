@@ -3,7 +3,7 @@ __all__ = ['keep_one_user',
 
 
 def keep_one_user(dataset):
-    index_col = dataset.rete.retention_config['index_col']
+    index_col = dataset.rete.retention_config['user_col']
 
     df = dataset.copy()
 

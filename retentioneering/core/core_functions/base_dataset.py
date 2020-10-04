@@ -19,7 +19,7 @@ class BaseDataset(object):
     def _get_shift(self, *,
                    index_col=None,
                    event_col=None):
-        index_col = index_col or self.retention_config['index_col']
+        index_col = index_col or self.retention_config['user_col']
         event_col = event_col or self.retention_config['event_col']
         time_col = self.retention_config['event_time_col']
 
@@ -175,7 +175,7 @@ class BaseDataset(object):
 
         session_col_arg = session_col or 'session_id'
 
-        index_col = self.retention_config['index_col']
+        index_col = self.retention_config['user_col']
         event_col = self.retention_config['event_col']
         time_col = self.retention_config['event_time_col']
 

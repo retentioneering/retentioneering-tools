@@ -19,7 +19,7 @@ def pytest_generate_tests(metafunc):
 event_col = test_datasets[0]['test_dataset'].rete.retention_config['event_col']
 next_event_col = 'next_' + event_col
 time_col = test_datasets[0]['test_dataset'].rete.retention_config['event_time_col']
-index_col = test_datasets[0]['test_dataset'].rete.retention_config['index_col']
+index_col = test_datasets[0]['test_dataset'].rete.retention_config['user_col']
 
 
 # **********************

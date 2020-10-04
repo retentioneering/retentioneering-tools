@@ -92,7 +92,7 @@ def step_matrix(self, *,
     """
 
     event_col = self.retention_config['event_col']
-    weight_col = weight_col or self.retention_config['index_col']
+    weight_col = weight_col or self.retention_config['user_col']
     time_col = self.retention_config['event_time_col']
 
     data = self._obj.copy()

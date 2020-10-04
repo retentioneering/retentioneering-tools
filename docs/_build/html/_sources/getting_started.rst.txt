@@ -129,7 +129,7 @@ This is defined by this global config dictionary which will be used by Rete func
 
     # update config to pass columns names:
     retentioneering.config.update({
-        'index_col': 'user_id',
+        'user_col': 'user_id',
         'event_col':'event',
         'event_time_col':'timestamp',
     })

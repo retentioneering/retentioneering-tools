@@ -13,7 +13,7 @@ simple_shop_data = datasets.load_simple_shop()
 retentioneering.config.update({
     'event_col': 'event',
     'event_time_col': 'timestamp',
-    'index_col': 'user_id'
+    'user_col': 'user_id'
 })
 
 

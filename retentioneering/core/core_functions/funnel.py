@@ -30,7 +30,7 @@ def funnel(self, *,
 
     data = self._obj
     event_col = self.retention_config['event_col']
-    index_col = self.retention_config['index_col']
+    index_col = self.retention_config['user_col']
 
     # if group not specified select all users
     if groups is None:

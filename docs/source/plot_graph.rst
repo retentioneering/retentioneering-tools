@@ -35,8 +35,8 @@ located in your loaded dataframe:
 
 We suggest you have a quick exploration of your dataframe data before moving forward.
 
-Introduction to rete.plot_graph
-===============================
+Introduction to rete.plot_graph()
+=================================
 
 **1. Visualize trajectories of many users as interactive graph network**
 
@@ -127,7 +127,22 @@ To answer this question run data.rete.plot_graph(norm_type=None, weight_col='use
 
     data.rete.plot_graph(norm_type=None,
                          weight_col='user_id',
-                         thresh=250)
+                         thresh=250,
+                         targets = {'payment_done':'green',
+                                    'lost':'red'})
+
+.. raw:: html
+
+
+            <iframe
+                width="700"
+                height="600"
+                src="_static/plot_graph/index_1b.html"
+                frameborder="0"
+                allowfullscreen
+            ></iframe>
+
+|
 
 As you can see weight_col argument of rete.plot_graph() defines which
 column of your dataset will be used to count and attribute as edge weight value.

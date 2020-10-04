@@ -27,7 +27,6 @@ Contents
 
    Visualize user behavior <plot_graph.rst>
    User flow and step matrix <step_matrix.rst>
-   Explore user behavior <explore_user_behavior.rst>
    Funnel analysis <funnel.rst>
    Behavioral segmentation <clustering.rst>
    Compare segments and AB tests <compare.rst>

@@ -32,6 +32,8 @@ to automatically identify common successful or churn patterns. You can explore t
 patterns using our tools such as graph visualizer, step matrix, multiple clustering, 
 and segmentation engines, and many others.
 
+[![intro 0](https://github.com/retentioneering/pics/blob/master/pics/rete20/intro_0.png)](https://github.com/retentioneering/retentioneering-tools)
+
 ## Getting started
 
 Complete documentation is available [here](https://retentioneering.github.io/retentioneering-tools/).

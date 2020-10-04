@@ -92,13 +92,12 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Visualize user behavior</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#before-you-start">Before you start</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#introduction-to-rete-plot-graph">Introduction to rete.plot_graph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#introduction-to-rete-plot-graph">Introduction to rete.plot_graph()</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#rete-plot-graph-parameters">rete.plot_graph() parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#edge-weighting-options">Edge weighting options</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="step_matrix.html">User flow and step matrix</a></li>
-<li class="toctree-l1"><a class="reference internal" href="explore_user_behavior.html">Explore user behavior</a></li>
 <li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="clustering.html">Behavioral segmentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments and AB tests</a></li>
@@ -202,7 +201,7 @@ located in your loaded dataframe:</p>
 <p>We suggest you have a quick exploration of your dataframe data before moving forward.</p>
 </div>
 <div class="section" id="introduction-to-rete-plot-graph">
-<h2>Introduction to rete.plot_graph<a class="headerlink" href="#introduction-to-rete-plot-graph" title="Permalink to this headline">¶</a></h2>
+<h2>Introduction to rete.plot_graph()<a class="headerlink" href="#introduction-to-rete-plot-graph" title="Permalink to this headline">¶</a></h2>
 <p><strong>1. Visualize trajectories of many users as interactive graph network</strong></p>
 <p>As your data have transitions of many users, they have both individual and
 common patterns in the way they make transitions between events. rete.plot_graph() combines
@@ -269,8 +268,19 @@ To answer this question run data.rete.plot_graph(norm_type=None, weight_col=None
 To answer this question run data.rete.plot_graph(norm_type=None, weight_col=’user_id’):</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">norm_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                      <span class="n">weight_col</span><span class="o">=</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
-                     <span class="n">thresh</span><span class="o">=</span><span class="mi">250</span><span class="p">)</span>
+                     <span class="n">thresh</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span>
+                     <span class="n">targets</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;payment_done&#39;</span><span class="p">:</span><span class="s1">&#39;green&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;lost&#39;</span><span class="p">:</span><span class="s1">&#39;red&#39;</span><span class="p">})</span>
 </pre></div>
+</div>
+<iframe
+    width="700"
+    height="600"
+    src="_static/plot_graph/index_1b.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><div class="line-block">
+<div class="line"><br /></div>
 </div>
 <p>As you can see weight_col argument of rete.plot_graph() defines which
 column of your dataset will be used to count and attribute as edge weight value.

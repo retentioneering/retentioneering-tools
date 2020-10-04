@@ -1,0 +1,417 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Quick start with Retentioneering &mdash; Retentioneering 2.0.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Release notes" href="release_notes.html" />
+    <link rel="prev" title="Retentioneering installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html">
+          
+
+          
+            
+            <img src="_static/rete_logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">TUTORIAL:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="what_is_rete.html">What is Retentioneering?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#load-data">1. Load data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#explore-the-data">2. Explore the data</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="release_notes.html">Release notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">TOOLS DESCRIPTION:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Visualize users behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Users flow and step matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clustering.html">Behavioral segmentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments and AB tests</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API REFERENCE:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="retentioneering.core.html">Core functions</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Retentioneering</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Quick start with Retentioneering</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/getting_started.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="quick-start-with-retentioneering">
+<h1>Quick start with Retentioneering<a class="headerlink" href="#quick-start-with-retentioneering" title="Permalink to this headline">¶</a></h1>
+<p>Retentioneering makes product analytics very easy once you have the raw data.</p>
+<p>Every user action and every visited page or screen from your website or app,
+all these interactions we call events. To understand deeply how different types
+of user behavior in your product affects your business metrics, you need to
+analyze the sequences of events for each user.</p>
+<div class="section" id="load-data">
+<h2>1. Load data<a class="headerlink" href="#load-data" title="Permalink to this headline">¶</a></h2>
+<p>To start you can pick from any of two options:</p>
+<p><strong>Option 1. To start with our dummy online shop dataset sample.</strong></p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">retentioneering</span>
+
+<span class="c1"># load sample user behavior data as a pandas dataframe:</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">retentioneering</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Here <code class="docutils literal notranslate"><span class="pre">data</span></code> is a regular Pandas Dataframe with clickstream example:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>user_id</th>
+      <th>event</th>
+      <th>timestamp</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>219483890</td>
+      <td>catalog</td>
+      <td>2019-11-01 17:59:13.273932</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>219483890</td>
+      <td>product1</td>
+      <td>2019-11-01 17:59:28.459271</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>219483890</td>
+      <td>cart</td>
+      <td>2019-11-01 17:59:29.502214</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>219483890</td>
+      <td>catalog</td>
+      <td>2019-11-01 17:59:32.557029</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>964964743</td>
+      <td>catalog</td>
+      <td>2019-11-01 21:38:19.283663</td>
+    </tr>
+  </tbody>
+</table>
+</div><div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>As you can see in this fragment of example dataset, user with id 219483890 has 4 events
+on the website with specific timestamps on 2019-11-01. This is all you need to try out
+what Retentioneering is about. You are ready to go with this dataset and proceed to step 2.</p>
+<p><strong>Option 2. Alternatively, you can start with your dataset.</strong></p>
+<p>If you have your raw data of user behavior for example in csv format simply import
+it as pandas dataframe:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">retentioneering</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="c1"># load your own csv</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;yourowndatafile.csv&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>How to get csv file with data? Raw data in form of {user,event,timestamp} can
+be streamed via Google Analytics 360 or free Google Analytics App+Web into BigQuery.
+From BigQuery console you can run SQL query and export data into csv file,
+alternatively you can use Python BigQuery connector to get directly into the dataframe.
+If you have big datasets, we suggest you take fraction of users in SQL query,
+filtering by the user id (just add this condition to SQL WHERE statement to get 10%
+of your users : “and ABS(MOD(FARM_FINGERPRINT(fullVisitorId), 10)) = 0)”.</p>
+</div>
+<div class="section" id="explore-the-data">
+<h2>2. Explore the data<a class="headerlink" href="#explore-the-data" title="Permalink to this headline">¶</a></h2>
+<p>Next step is to simply specify columns names, so that Rete will know how your
+own data matches the conventional dataset of user_ids, event names, timestamps.
+This is defined by this global config dictionary which will be used by Rete functions:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># update config to pass columns names:</span>
+<span class="n">retentioneering</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+    <span class="s1">&#39;user_col&#39;</span><span class="p">:</span> <span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;event_col&#39;</span><span class="p">:</span><span class="s1">&#39;event&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;event_time_col&#39;</span><span class="p">:</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span>
+<span class="p">})</span>
+</pre></div>
+</div>
+<p>Now we are ready to explore the user behavior in our data. For example,
+you can plot graph (read more about plot_graph function
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/plot_graph.html">here</a>):</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">norm_type</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">,</span>
+                     <span class="n">weight_col</span><span class="o">=</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
+                     <span class="n">thresh</span><span class="o">=</span><span class="mf">0.06</span><span class="p">,</span>
+                     <span class="n">targets</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;payment_done&#39;</span><span class="p">:</span><span class="s1">&#39;green&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;lost&#39;</span><span class="p">:</span><span class="s1">&#39;red&#39;</span><span class="p">})</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="600"
+    src="_static/plot_graph/index_3.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Note, that graph is interactive and you can move graph nodes by
+clicking on it and interactively zoom-in / zoom-out the graph layout.</p>
+<p>You can also plot step_matrix (read more about step_matrix function
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html">here</a>):</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                      <span class="n">thresh</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
+                      <span class="n">centered</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;left_gap&#39;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span>
+                                <span class="s1">&#39;occurrence&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">},</span>
+                      <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]);</span>
+</pre></div>
+</div>
+<img alt="_images/step_matrix_8.svg" src="_images/step_matrix_8.svg" /><p>or you can explore what types of behavior clusters are present in your dataset
+(read more about exploring behavior clusters
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html">here</a>):</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;kmeans&#39;</span><span class="p">,</span>
+                       <span class="n">n_clusters</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                       <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span>
+                       <span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;cluster_bar&#39;</span><span class="p">,</span>
+                       <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">,</span><span class="s1">&#39;cart&#39;</span><span class="p">]);</span>
+</pre></div>
+</div>
+<img alt="_images/clustering_2.svg" src="_images/clustering_2.svg" /><p>Users with similar behavior grouped in the same cluster. Clusters with low conversion
+rate can represent systematic problem in the product: specific behavior pattern which
+does not lead to product goals. Obtained user segments can be explored deeper to
+understand problematic behavior pattern. In the example above for instance,
+cluster 4 has low conversion rate to purchase but high conversion rate to cart visit.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="release_notes.html" class="btn btn-neutral float-right" title="Release notes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="installation.html" class="btn btn-neutral float-left" title="Retentioneering installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, &#34;Data Driven Lab&#34; LLC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    <br><br><a href="https://www.linkedin.com/in/godsie/">Maxim Godzi</a> and <a href="https://www.linkedin.com/in/anatoly-zaytsev/">Anatoly Zaytsev</a>. More information at <a href="https://retentioneering.com/">Retentioneering.com</a>.
+
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+    <!-- Theme Analytics -->
+    <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-143266385-2', 'auto');
+    ga('send', 'pageview');
+    </script>
+
+    
+    
+
+  <style>
+    /* Sidebar header (and topbar for mobile) */
+    .wy-side-nav-search, .wy-nav-top {
+      background: #373736;
+    }
+    /* Sidebar */
+    .wy-nav-side {
+      background: #373736;
+    }
+  </style>
+
+
+</body>
+</html>

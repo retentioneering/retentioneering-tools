@@ -1,0 +1,493 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Users behavior clustering &mdash; Retentioneering 2.0.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Compare groups" href="compare.html" />
+    <link rel="prev" title="Funnels" href="funnel.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html">
+          
+
+          
+            
+            <img src="_static/rete_logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">TUTORIAL:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="what_is_rete.html">What is Retentioneering?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="release_notes.html">Release notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">TOOLS DESCRIPTION:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Visualize users behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Users flow and step matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel analysis</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Behavioral segmentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-example">Basic example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#trajectories-vectorization">Trajectories vectorization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#clusterization">Clusterization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#visualizing-results">Visualizing results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#exploring-individual-clusters">Exploring individual clusters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compare-clusters">Compare clusters</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments and AB tests</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API REFERENCE:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="retentioneering.core.html">Core functions</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Retentioneering</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Users behavior clustering</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/clustering.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="users-behavior-clustering">
+<h1>Users behavior clustering<a class="headerlink" href="#users-behavior-clustering" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="basic-example">
+<h2>Basic example<a class="headerlink" href="#basic-example" title="Permalink to this headline">¶</a></h2>
+<p>This notebook can be found <a class="reference download internal" download="" href="_downloads/7c74af4c8401ca7f9bf1ca9b1919702d/clusters_tutorial.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">here</span></code></a>
+or open directly in <a class="reference external" href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/docs/source/_static/examples/clusters_tutorial.ipynb">google colab</a>.</p>
+<p>We will use sample user activity dataset to illustrate how behavior clustering works. Let’s first
+import retentioneering, import sample dataset and update config to set used column names:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">retentioneering</span>
+
+<span class="c1"># load sample user behavior data as a pandas dataframe:</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">retentioneering</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>
+
+<span class="c1"># update config to pass columns names:</span>
+<span class="n">retentioneering</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+    <span class="s1">&#39;user_col&#39;</span><span class="p">:</span> <span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;event_col&#39;</span><span class="p">:</span><span class="s1">&#39;event&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;event_time_col&#39;</span><span class="p">:</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span>
+<span class="p">})</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="trajectories-vectorization">
+<h2>Trajectories vectorization<a class="headerlink" href="#trajectories-vectorization" title="Permalink to this headline">¶</a></h2>
+<p>Each user trajectory is represented as a sequence of events. Before we apply
+any ML algorithms to users dataset we need a way how to
+convert each user trajectory from a sequence of events to a numerical vector.
+This field of ML learning extensively was developed in applications for
+text processing. Text analysis in some sense is similar to analysis of discrete user
+trajectories of behavioural logs. In text processing each text
+document (in our case - user trajectory) consist of descrete words
+(in our case - event names) and we need to convert text to numerial values.
+Let’s work through some examples.</p>
+<p>Function rete.extract_features() returns a dataframe of vectorized user trajectories:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">vec</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">feature_type</span><span class="o">=</span><span class="s1">&#39;count&#39;</span><span class="p">,</span>
+                                 <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>In obtained dataframe each row corresponds to a vector representing each user from
+the original dataset. Each column (or vector dimension) corresponds to unique events
+in the dataset and the values are how many time particular event was present in this
+user’s trajectory. These are supported types of vectorization (parameter feature_type):</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>‘count’ : number of occurrences of given event</p></li>
+<li><p>‘binary’ : 1 if user had given event at least once and 0 otherwise</p></li>
+<li><p>‘frequency’ : same as count but normalized to total number of events in user trajectory</p></li>
+<li><p>‘tfidf’ : term frequency–inverse document frequency, frequency of event in user trajectory but weighted to overall frequency of event in the dataset.</p></li>
+</ul>
+</div></blockquote>
+<p>Second important parameter for extract_features is ngram_range, which set the lower and upper limit
+for event sequences to be extracted. For example an ngram_range of (1, 1) means
+only individual events, (1, 2) means unigrams and bigrams of events, and (2, 2) means only bigrams
+of events.</p>
+</div>
+<div class="section" id="clusterization">
+<h2>Clusterization<a class="headerlink" href="#clusterization" title="Permalink to this headline">¶</a></h2>
+<p>After we know general idea about user trajectories vectorization we can now use get_clusters
+method to split users on groups based on how similar is their behavior:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;kmeans&#39;</span><span class="p">,</span>
+                       <span class="n">n_clusters</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                       <span class="n">feature_type</span><span class="o">=</span><span class="s1">&#39;tfidf&#39;</span><span class="p">,</span>
+                       <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">));</span>
+</pre></div>
+</div>
+<p>Under the hood each user trajectory (sequence of event names) got transformed to numeric vector.
+In the example above we used ‘ftidf’ vectorization (default vectorizer), where
+vocaburary is sequences of events from 1 to 2 (parameter ngram_range), meaning that we count
+individual events up to sequnces of 2 (bi-grams).</p>
+<p>Parameter n_clusters corresponds to the number of desired clusters. Parameter method -
+type of clusterization algorithm to use (currently support ‘kmeans’ and ‘gmm’).</p>
+<p>Result of the method above is assigned to a new rete attribute: cluster_mapping, which is a
+dictionary containing user_id’s for each cluster:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">cluster_mapping</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="p">[</span><span class="mi">7584012</span><span class="p">,</span>
+  <span class="mi">7901023</span><span class="p">,</span>
+  <span class="mi">10847418</span><span class="p">,</span>
+  <span class="mi">12133064</span><span class="p">,</span>
+  <span class="mi">15882438</span><span class="p">,</span>
+  <span class="mi">20104222</span><span class="p">,</span>
+<span class="o">...</span><span class="p">,</span>
+<span class="mi">1</span><span class="p">:</span> <span class="p">[</span><span class="mi">463458</span><span class="p">,</span>
+  <span class="mi">1475907</span><span class="p">,</span>
+  <span class="mi">10007545</span><span class="p">,</span>
+  <span class="mi">10768877</span><span class="p">,</span>
+  <span class="mi">10769994</span><span class="p">,</span>
+</pre></div>
+</div>
+<p>Now, if we need to obtain all user_id’s from a specific cluster, it can be done very easily using
+cluster_mapping dictionary. For example:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">clus_2</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">cluster_mapping</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>here, clus_2 will contain all user_id’s of users from cluster 2.</p>
+</div>
+<div class="section" id="visualizing-results">
+<h2>Visualizing results<a class="headerlink" href="#visualizing-results" title="Permalink to this headline">¶</a></h2>
+<p>Very often it is useful to have a high-level overview of the results of clusterization
+immediately after clusterization was done. Clusters statistics can be shown with the
+clusterization by including plot_type parameter:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;kmeans&#39;</span><span class="p">,</span>
+                       <span class="n">feature_type</span><span class="o">=</span><span class="s1">&#39;tfidf&#39;</span><span class="p">,</span>
+                       <span class="n">n_clusters</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                       <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span>
+                       <span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;cluster_bar&#39;</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/clustering_0.svg" src="_images/clustering_0.svg" /><p>By default it shows the relative size of each cluster. We can add conversion to any specified event
+to the clusters statistics using parameter targets, where we can specify target events.
+High-level overview bar plot will now include conversion rate (% of users within the cluster
+who have specified event at least once) for specified target:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;kmeans&#39;</span><span class="p">,</span>
+                       <span class="n">feature_type</span><span class="o">=</span><span class="s1">&#39;tfidf&#39;</span><span class="p">,</span>
+                       <span class="n">n_clusters</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                       <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span>
+                       <span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;cluster_bar&#39;</span><span class="p">,</span>
+                       <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]);</span>
+</pre></div>
+</div>
+<img alt="_images/clustering_1.svg" src="_images/clustering_1.svg" /><p>Parameter targets can contain any number of events. For each added event, corresponding
+conversion rate will be included to cluster overview bar plot. This is very useful when
+you need to get a quick intuition about the resulting clusters:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">get_clusters</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;kmeans&#39;</span><span class="p">,</span>
+                       <span class="n">feature_type</span><span class="o">=</span><span class="s1">&#39;tfidf&#39;</span><span class="p">,</span>
+                       <span class="n">n_clusters</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                       <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span>
+                       <span class="n">plot_type</span><span class="o">=</span><span class="s1">&#39;cluster_bar&#39;</span><span class="p">,</span>
+                       <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">,</span><span class="s1">&#39;cart&#39;</span><span class="p">]);</span>
+</pre></div>
+</div>
+<img alt="_images/clustering_2.svg" src="_images/clustering_2.svg" /><p>In example above we can see that clusters 4 and 5 have relatively high conversion rates to purchase
+comparing to other clusters (CR: ‘payment_done’). Interestingly, cluster 0 has very high conversion
+to visit ‘cart’ (same as clusters 4 and 5) but don’t have any conversions to ‘payment_done’. This
+must be cluster of users who reach the cart but get lost somewhere between cart and payment_done.
+This way we can immediately start buiding our intuition about resulting clusters.</p>
+</div>
+<div class="section" id="exploring-individual-clusters">
+<h2>Exploring individual clusters<a class="headerlink" href="#exploring-individual-clusters" title="Permalink to this headline">¶</a></h2>
+<p>After clusterization is done we can explore individual clusters using full arsenal of
+retentioneering tools. Function filter_cluster can be used to isolate individual dataset
+for a given cluster number or list of clusters:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">clus_0</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">filter_cluster</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>now, clus_0 is regular pandas dataframe containig only users from cluster 0. Since it is
+regular pandas dataframe we can directly apply rete tools such as plot_graph or step_matrix to
+explore it:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">clus_0</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">thresh</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+                       <span class="n">weight_col</span><span class="o">=</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
+                       <span class="n">targets</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;lost&#39;</span><span class="p">:</span><span class="s1">&#39;red&#39;</span><span class="p">,</span>
+                                  <span class="s1">&#39;payment_done&#39;</span><span class="p">:</span><span class="s1">&#39;green&#39;</span><span class="p">})</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="600"
+    src="_static/clustering/index_0.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>We can see that this cluster #0 consists of users who explore catalog, products 1 and 2, then
+reach the ‘cart’, but lost after the cart. To see how users in cluster 0 get to the cart we can
+plot step_matrix centered around cart:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">clus_0</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+                        <span class="n">centered</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span>
+                                  <span class="s1">&#39;left_gap&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+                                  <span class="s1">&#39;occurrence&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">});</span>
+</pre></div>
+</div>
+<img alt="_images/clustering_3.svg" src="_images/clustering_3.svg" /><p>Other clusters can be explored in a similar way. Note, that dataframe containing multiple
+clusters can be extracted by passing a list of cluster numbers to filter_cluster() function.
+For example, if we would like to obtain dataset only containing users from clusters 4 and 5
+for subsequent analysis, we can simply do:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">clus_4_5</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">filter_cluster</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="compare-clusters">
+<h2>Compare clusters<a class="headerlink" href="#compare-clusters" title="Permalink to this headline">¶</a></h2>
+<p>Function rete.cluster_event_dist() helps to quickly understand at a high
+level behavior pattern within a given cluster by comparing the distribution of top_n
+events within selected cluster vs all dataset or with another cluster. Let’s see
+an example. Suppose we would like to explore cluster 2, which has low conversion rate
+to ‘payment_done’ event.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">cluster_event_dist</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="_images/cluster_event_dist_0.svg" src="_images/cluster_event_dist_0.svg" /><p>We can immediately see the distribution of events (by default top_n = 8)
+within selected cluster 2 compared with the distribution from the whole dataset. Percents
+on Y axis correspond to how frequent given event is present in the given cluster.
+On the histogram above we can see that users from cluster 2 are much more often interact with
+product 2 compared with the entire dataset.</p>
+<p>We can also compare two clusters between each other. For this we need to pass two positional
+arguments corresponding to cluster numbers.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">cluster_event_dist</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="_images/cluster_event_dist_1.svg" src="_images/cluster_event_dist_1.svg" /><p>Here we can see comparison of top 8 frequent events in cluster 2 vs cluster 7. We can see
+that cluster 7 is similar to cluster 2. Both clusters have low conversion rate, but users from
+cluster 7 more frequently interact with product 1 whereas users from cluster 2 interact with
+product 2.</p>
+<p>Note, that in the above example Y-axis values were showing percentage that given event
+represent from selected cluster. Very often we are actually more interested to compare
+percentages of users who have particular events between two groups. This type of normalization
+can be used by passing the name of index column we would like to normalize by. In our case it’s
+user_id’s: weight_col=’user_id’ (default None):</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">cluster_event_dist</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span>
+                             <span class="n">weight_col</span><span class="o">=</span><span class="s1">&#39;user_id&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="_images/cluster_event_dist_2.svg" src="_images/cluster_event_dist_2.svg" /><p>Now in the histogram above we can see that actually 100% of users from cluster 2 have
+interacted with product 2 and 100% of users from cluster 7 have interacted with product 1.
+It gives. All users from both clusters have interacted with catalog and were lost (no conversion).
+Interestingly, non-converted users who interacted with product 2 (from cluster 2) are
+more likely visit cart (35% of users) before they are lost, than lost users who interacted
+with product 1 (20% of users from cluster 7). This effect was difficult to notice when we
+compared cluster 2 and 7 without weight_col=’user_id’ normalization.</p>
+<p>If there are some events of particular importance which you always want to
+include in comparison (regardless of selected top_n parameter) you can pass those
+events as a list as targets parameter. Those events will always appear in comparison
+histogram on the right after the dashed line (in the same order as specified):</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">cluster_event_dist</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span>
+                             <span class="n">weight_col</span><span class="o">=</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
+                             <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span><span class="s1">&#39;payment_done&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<img alt="_images/cluster_event_dist_3.svg" src="_images/cluster_event_dist_3.svg" /><p>Also you can compare users flow from different segments using
+<a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html#differential-step-matrix">differential step matrix</a></p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="compare.html" class="btn btn-neutral float-right" title="Compare groups" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="funnel.html" class="btn btn-neutral float-left" title="Funnels" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, &#34;Data Driven Lab&#34; LLC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    <br><br><a href="https://www.linkedin.com/in/godsie/">Maxim Godzi</a> and <a href="https://www.linkedin.com/in/anatoly-zaytsev/">Anatoly Zaytsev</a>. More information at <a href="https://retentioneering.com/">Retentioneering.com</a>.
+
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+    <!-- Theme Analytics -->
+    <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-143266385-2', 'auto');
+    ga('send', 'pageview');
+    </script>
+
+    
+    
+
+  <style>
+    /* Sidebar header (and topbar for mobile) */
+    .wy-side-nav-search, .wy-nav-top {
+      background: #373736;
+    }
+    /* Sidebar */
+    .wy-nav-side {
+      background: #373736;
+    }
+  </style>
+
+
+</body>
+</html>

@@ -1,0 +1,476 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Visualize users behavior &mdash; Retentioneering 2.0.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Users flow and step matrix" href="step_matrix.html" />
+    <link rel="prev" title="Release notes" href="release_notes.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html">
+          
+
+          
+            
+            <img src="_static/rete_logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">TUTORIAL:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="what_is_rete.html">What is Retentioneering?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="release_notes.html">Release notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">TOOLS DESCRIPTION:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Visualize users behavior</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#before-you-start">Before you start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#introduction-to-rete-plot-graph">Introduction to rete.plot_graph()</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rete-plot-graph-parameters">rete.plot_graph() parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#edge-weighting-options">Edge weighting options</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Users flow and step matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clustering.html">Behavioral segmentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments and AB tests</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API REFERENCE:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="retentioneering.core.html">Core functions</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Retentioneering</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Visualize users behavior</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/plot_graph.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="visualize-users-behavior">
+<h1>Visualize users behavior<a class="headerlink" href="#visualize-users-behavior" title="Permalink to this headline">¶</a></h1>
+<p>This guide describes set of Retentioneering methods intended for visual analysis
+of complex user behaviors in app or website. We will discuss rete.plot_graph()
+function and its parameters to visualize your dataset and obtain insights.</p>
+<div class="section" id="before-you-start">
+<h2>Before you start<a class="headerlink" href="#before-you-start" title="Permalink to this headline">¶</a></h2>
+<p>To start with these tools, you need to upload your own .csv with clickstream
+data (as described in <a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/getting_started.html">Getting started</a>)
+or you can use the retentioneering.datasets.load_simple_shop() for our sample dataset.</p>
+<p>This notebook can be found <a class="reference download internal" download="" href="_downloads/b2d493b099b6c62ce4ebf1cfb97d2b03/graph_tutorial.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">here</span></code></a> or
+open directly in <a class="reference external" href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/fix_normalization_funcs/docs/source/_static/examples/graph_tutorial.ipynb">google colab</a>.</p>
+<p>So for the first step please make sure you have Retentioneering imported and dataframe
+with your clickstream is created, and by calling retentioneering.config.update you
+defined for the library where the essential user_col, event_col, event_time_col are
+located in your loaded dataframe:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">retentioneering</span>
+
+<span class="c1"># load sample user behavior data as a pandas dataframe:</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">retentioneering</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>
+
+<span class="c1"># update config to pass columns names:</span>
+<span class="n">retentioneering</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+    <span class="s1">&#39;user_col&#39;</span><span class="p">:</span> <span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;event_col&#39;</span><span class="p">:</span><span class="s1">&#39;event&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;event_time_col&#39;</span><span class="p">:</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span>
+<span class="p">})</span>
+</pre></div>
+</div>
+<p>We suggest you have a quick exploration of your dataframe data before moving forward.</p>
+</div>
+<div class="section" id="introduction-to-rete-plot-graph">
+<h2>Introduction to rete.plot_graph()<a class="headerlink" href="#introduction-to-rete-plot-graph" title="Permalink to this headline">¶</a></h2>
+<p><strong>1. Visualize trajectories of many users as interactive graph network</strong></p>
+<p>As your data have transitions of many users, they have both individual and
+common patterns in the way they make transitions between events. rete.plot_graph() combines
+all the paths together to show you how user was navigating through your digital product:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">norm_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">weight_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">thresh</span><span class="o">=</span><span class="mi">250</span><span class="p">)</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="600"
+    src="_static/plot_graph/index_0.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>The beauty of the graph representation is that you can clearly see the what pages, screens
+and other types of events actually were connected by direct user transitions. on top of that,
+graph can have weights attributed to its edges, which can be very helpful to understand how
+many users’ transitions or unique users with this edge was found in your data.</p>
+<p>Here, numbers for each edge (edge weights) correspond to total number of given transitions
+in the dataset (for example, total number of ‘cart’-&gt;’delivery_choice’ transitions in
+example above is 1686). Parameter ‘thresh’ sets a limit, below which edge stop showing
+on a graph to avoid cluttering. The thickness of each edge strictly corresponds to its
+weight value, while the size of the nodes by default is given by the relative occurrence
+of the event to the total amount of all events occurrences.</p>
+<p>Some of the events might be particular importance to visualize. To highlight those events with
+red or green colors (and all inbound edges) use parameter targets to provide a dictionary with
+required colors (‘green’ or ‘red’):</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">norm_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">weight_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">thresh</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span>
+                     <span class="n">targets</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;payment_done&#39;</span><span class="p">:</span><span class="s1">&#39;green&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;lost&#39;</span><span class="p">:</span><span class="s1">&#39;red&#39;</span><span class="p">})</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="600"
+    src="_static/plot_graph/index_1.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>In this first example above we have just visualized number of transitions
+attributed to edge, regardless how many users, but depending on you task you
+may want to visualize not amount of transitions, but the number unique users or
+sessions having that kind of transition. Alternatively, you may want to use
+percentage instead of absolute quantities. In the chapters below we explore
+the options for that.</p>
+</div>
+<div class="section" id="rete-plot-graph-parameters">
+<h2>rete.plot_graph() parameters<a class="headerlink" href="#rete-plot-graph-parameters" title="Permalink to this headline">¶</a></h2>
+<p><strong>2. Edge weights: Quantify trajectories to understand the most and least common patterns of user flow.</strong></p>
+<p>Here we introduce weight_col argument of plot_graph.</p>
+<p>When you look at the graph and observe edges, which are transitions between event nodes,
+you may ask the following questions:</p>
+<p>A.      How many transitions with this edge actually happened in my dataset?
+To answer this question run data.rete.plot_graph(norm_type=None, weight_col=None):</p>
+<p>B.      How many unique users actually made transitions with this edge in my dataset?
+To answer this question run data.rete.plot_graph(norm_type=None, weight_col=’user_id’):</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">norm_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">weight_col</span><span class="o">=</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
+                     <span class="n">thresh</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span>
+                     <span class="n">targets</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;payment_done&#39;</span><span class="p">:</span><span class="s1">&#39;green&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;lost&#39;</span><span class="p">:</span><span class="s1">&#39;red&#39;</span><span class="p">})</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="600"
+    src="_static/plot_graph/index_1b.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>As you can see weight_col argument of rete.plot_graph() defines which
+column of your dataset will be used to count and attribute as edge weight value.
+Following this logic you can introduce dataset with session or segment column,
+then running data.rete.plot_graph with (norm_type=None, weight_col=’session’)
+or (norm_type=None, weight_col=’segment’) you will obtain the graph with weights
+for how many sessions had the transition with that edge or how many segments had
+such transition. This is example of Retentioneering logic, as we provide the tool,
+but it is up to your vision how you can make more sense with your data.</p>
+<p><strong>3. Relative weights for edge. Options to normalize your transitions data</strong></p>
+<p>Here we introduce norm_type argument of plot_graph. Above questions like A and B
+provide absolute numbers attributed for each edge. But some questions require
+ratios or percentage values:</p>
+<p>C. Is this transition popular? What is the fraction of the transitions
+like that across all transitions in dataset? To answer this question run
+data.rete.plot_graph(norm_type=’full’, weight_col=None)</p>
+<p>This type of normalization provides normalization by entire dataset.
+To understand intuitively how to interpret results let’s consider an example:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">norm_type</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">,</span>
+                     <span class="n">weight_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">thresh</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+                     <span class="n">targets</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;payment_done&#39;</span><span class="p">:</span><span class="s1">&#39;green&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;lost&#39;</span><span class="p">:</span><span class="s1">&#39;red&#39;</span><span class="p">})</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="600"
+    src="_static/plot_graph/index_2.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>In this case percentage values shown on the graph edges indicates the percentage
+of given transition from all transitions. For example, transition ‘catalog’-&gt;’catalog’
+represents 15% of all transitions in the dataset.</p>
+<p>Question C needs special care and attention. If some user makes 100 transitions at
+the specific edge does not mean that another user also finds this transition important
+for their flow in the app and would go for even 1 transition like that. Therefore,
+to justify transitions number specific to different users and obtain conversion rates
+for user transitions between nodes you should explore question:</p>
+<p>D. Is this transition popular across different users? What percentage of users make
+this transition? To answer this question run data.rete.plot_graph(norm_type= ‘full’, weight_col=’user_id’)</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">norm_type</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">,</span>
+                     <span class="n">weight_col</span><span class="o">=</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
+                     <span class="n">thresh</span><span class="o">=</span><span class="mf">0.06</span><span class="p">,</span>
+                     <span class="n">targets</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;payment_done&#39;</span><span class="p">:</span><span class="s1">&#39;green&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;lost&#39;</span><span class="p">:</span><span class="s1">&#39;red&#39;</span><span class="p">})</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="600"
+    src="_static/plot_graph/index_3.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>In this case, % on graph edges corresponds to % of users from the dataset who have given
+transition. For example, 36% of all users made a transition from ‘cart’ to ‘delivery_choice’.</p>
+<p>When you look at the whole graph and the conversion rates to your target events is low,
+it is hard to explore the user behavior nearby the targets, as the edges under norm_type=’full’
+normalization may appear small and even thresholded. But it is clear that as long as target
+events are important you may need to pay special attention around that nodes and find the
+pivot points. This search for pivot points may be formulated as the question:</p>
+<p>E. What were the farther choices for the user who had reached the given event? How popular were that choices among the users (sessions, segments)?
+To answer this question run data.rete.plot_graph(norm_type=’node’, weight_col=’user_id’).</p>
+<p>For example, sometimes we would like to know, from all users, who reach ‘cart’ what
+percent transitioned to ‘delivery_choice’, or from all users who reach ‘payment_card’
+what percent completed the purchase (transitioned to ‘payment_done’).</p>
+<p>Literally norm_type=’node’ would get your edge weights normalized across all edges
+that are outbound edges within the same node.</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span><span class="n">norm_type</span><span class="o">=</span><span class="s1">&#39;node&#39;</span><span class="p">,</span>
+                     <span class="n">weight_col</span><span class="o">=</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
+                     <span class="n">thresh</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+                     <span class="n">targets</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;payment_done&#39;</span><span class="p">:</span><span class="s1">&#39;green&#39;</span><span class="p">,</span>
+                                <span class="s1">&#39;lost&#39;</span><span class="p">:</span><span class="s1">&#39;red&#39;</span><span class="p">})</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="600"
+    src="_static/plot_graph/index_4.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Here, percent on edge A –&gt; B correspond to percent of users who transtioned to state B
+out all users who got to state A. For example, we can tell that 70% of users who got to ‘cart’
+transitioned to ‘delivery_choice’. Or 91% of users who select ‘payment_card’ transitioned to
+‘payment_done’ and only 54% of users who selected ‘payment_cash’ transitioned to ‘payment_done’.</p>
+<p>It is important to notice, that norm_type=’node’ combined with weight_col=None provides
+the edge normalization so that the sum of edge weights that are outbound from the same
+node would always sum to 1 (before threshold is applied). This property makes this kind
+of edge weighting perfect for Markov-Chain modelling, as the resulting edge weights may
+represent transition probabilities at node defined by your input dataset.</p>
+<p>Related topics to read next:
+-       <a class="reference external" href="https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html">User flow and step matrix</a></p>
+</div>
+<div class="section" id="edge-weighting-options">
+<h2>Edge weighting options<a class="headerlink" href="#edge-weighting-options" title="Permalink to this headline">¶</a></h2>
+<p>Summary table of all normalization types:</p>
+<img alt="_images/norm_types.svg" src="_images/norm_types.svg" /></div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="step_matrix.html" class="btn btn-neutral float-right" title="Users flow and step matrix" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="release_notes.html" class="btn btn-neutral float-left" title="Release notes" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, &#34;Data Driven Lab&#34; LLC
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    <br><br><a href="https://www.linkedin.com/in/godsie/">Maxim Godzi</a> and <a href="https://www.linkedin.com/in/anatoly-zaytsev/">Anatoly Zaytsev</a>. More information at <a href="https://retentioneering.com/">Retentioneering.com</a>.
+
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+    <!-- Theme Analytics -->
+    <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-143266385-2', 'auto');
+    ga('send', 'pageview');
+    </script>
+
+    
+    
+
+  <style>
+    /* Sidebar header (and topbar for mobile) */
+    .wy-side-nav-search, .wy-nav-top {
+      background: #373736;
+    }
+    /* Sidebar */
+    .wy-nav-side {
+      background: #373736;
+    }
+  </style>
+
+
+</body>
+</html>

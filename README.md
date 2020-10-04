@@ -34,15 +34,34 @@ and segmentation engines, and many others.
 
 [![intro 0](https://github.com/retentioneering/pics/blob/master/pics/rete20/intro_0.png)](https://github.com/retentioneering/retentioneering-tools)
 
-## Getting started
+## Installation
 
-Complete documentation is available [here](https://retentioneering.github.io/retentioneering-tools/).
+Option 1. Run directly from google.colab. Open google.colab and click File-> “new notebook”. 
+In the code cell run following to install Retentioneering:
 
-Retentioneering is currently installable from PyPI:
+```bash
+!pip3 install retentioneering
+```
+
+Option 2. Install Retentioneering from PyPI:
 
 ```bash
 pip3 install retentioneering
 ```
+
+Option 3. Install Retentioneering directly from the source:
+
+```bash
+git clone https://github.com/retentioneering/retentioneering-tools
+cd retentioneering-tools
+python3 setup.py install
+```
+
+## Getting started
+
+This is new major release Retentioneering 2.0. Change log is available [here](https://retentioneering.github.io/retentioneering-tools/_build/html/release_notes.html).
+
+Complete documentation is available [here](https://retentioneering.github.io/retentioneering-tools/).
 
 If you use Pandas dataframes to work with user behaviour data you can start using
 Retentioneering with just a few lines of code:

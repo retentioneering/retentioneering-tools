@@ -36,3 +36,4 @@ Contents
    :maxdepth: 2
 
    Core functions <retentioneering.core.rst>
+   Release Notes <retentioneering.core.rst>

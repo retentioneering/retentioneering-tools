@@ -1,7 +1,8 @@
-# Copyright (C) 2019 Maxim Godzi, Anatoly Zaytsev, Dmitrii Kiselev
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# * Copyright (C) 2020 Maxim Godzi, Anatoly Zaytsev, Retentioneering Team
+# * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive, Non-Commercial Use License (License)
+# * By using, sharing or editing this code you agree with the License terms and conditions.
+# * You can obtain License text at https://github.com/retentioneering/retentioneering-tools/blob/master/LICENSE.md
+
 
 __VEGA_TEMPLATE__ = """
 <html>
@@ -51,6 +52,7 @@ __TEMPLATE__ = """
       mylinks = initLinks;
 
       if (!{layout_dump}) {{
+        
         let rawNodes = [];
 
         let delta = 0.1;
@@ -92,6 +94,7 @@ __TEMPLATE__ = """
 
           rawNodes.push(newRawNode);
         }}
+        
         var layout = d3
           .forceSimulation(rawNodes)
           .tick(5)
@@ -119,7 +122,6 @@ __TEMPLATE__ = """
             }}
           }}
         }}
-
 
         let offsetMaxX = -minX + maxX;
         let offsetMaxY = -minY + maxY;
@@ -151,7 +153,6 @@ __TEMPLATE__ = """
 
         }}
 
-
         for (let i = 0; i < mynodes.length; i++) {{
           mynodes[i].x = rawNodes[i].x;
           mynodes[i].y = rawNodes[i].y;
@@ -166,11 +167,26 @@ __TEMPLATE__ = """
             maxWeigth = mylinks[i].weight;
           }}
         }}
-
+      }} else {{
+        // if layout_dump was used:
+        for (i = 0; i < mynodes.length; i++) {{
+          if (mynodes[i].degree > maxDegree) {{
+            maxDegree = mynodes[i].degree;
+          }}
+        }}
+        for (let i = 0; i < mylinks.length;  i++) {{
+          if (mylinks[i].weight > maxWeigth) {{
+            maxWeigth = mylinks[i].weight;
+          }}
+        }} 
       }}
 
+      
+      
+      
       makeCheckboxes();
       setLinkThreshold();
+      displayingWeights();
     }}
 
     function drawGraph(nodes, links) {{
@@ -220,8 +236,8 @@ __TEMPLATE__ = """
           .enter();
 
       textMarkersSelection.append("text")
-          .style("dominant-baseline", "central")
           .style("font-size", "13px")
+          .attr("dy", "4.2px")
           .append("textPath")
           .attr("xlink:href", function(d,i) {{ return "#link_"+i; }})
           .attr("startOffset", "35%")
@@ -229,8 +245,8 @@ __TEMPLATE__ = """
           ;
 
       textMarkersSelection.append("text")
-          .style("dominant-baseline", "central")
           .style("font-size", "13px")
+          .attr("dy", "4.2px")
           .append("textPath")
           .attr("xlink:href", function(d,i) {{ return "#link_"+i; }})
           .attr("startOffset", "65%")
@@ -277,11 +293,17 @@ __TEMPLATE__ = """
           if (cb.property("checked")) {{
             edgetext = edgetext.text(function(d) {{
                 if ($('#show-percents')[0].checked) {{
-                    //return Math.round(d['weight_text'] * 100) + "%";
-                    return roundToSignificantFigures(d['weight_text'] * 100, 2) + "%";
+                    if (d['weight_text'] > 1) {{
+                      return d['weight_text']
+                    }} else {{
+                      return roundToSignificantFigures(d['weight_text'] * 100, 2) + "%";
+                    }};
                 }} else {{
-                    //return Math.round(d['weight_text'] * 100) / 100;
-                    return roundToSignificantFigures(d['weight_text'], 2);
+                    if (d['weight_text'] > 1) {{
+                      return d['weight_text']
+                    }} else {{
+                      return roundToSignificantFigures(d['weight_text'], 2);
+                    }};
                 }}
             }})
           }} else {{
@@ -470,12 +492,12 @@ __TEMPLATE__ = """
             newLinks.push(mylinks[i]);
             idxInLinks[mylinks[i].target.index] = true;
             idxInLinks[mylinks[i].source.index] = true;
-          }} else if (mylinks[i].weight / maxWeigth >= thresholdValue) {{
+          }} else if (mylinks[i].weight * maxWeigth >= thresholdValue) {{
             newLinks.push(mylinks[i]);
             idxInLinks[mylinks[i].target.index] = true;
             idxInLinks[mylinks[i].source.index] = true;
           }}
-        }} else if (mylinks[i].weight / maxWeigth >= thresholdValue) {{
+        }} else if (mylinks[i].weight * maxWeigth >= thresholdValue) {{
           newLinks.push(mylinks[i]);
           idxInLinks[mylinks[i].target.index] = true;
           idxInLinks[mylinks[i].source.index] = true;
@@ -643,7 +665,6 @@ __TEMPLATE__ = """
       text {{
         font: 12px sans-serif;
         pointer-events: none;
-        text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
       }}
 
       main li {{
@@ -679,8 +700,6 @@ __TEMPLATE__ = """
         font-size: 12px;
         border: none;
         background-color: rgba(1,1,1,0);
-        text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
-
       }}
 
       .node-edit:focus {{
@@ -783,7 +802,7 @@ __TEMPLATE__ = """
             <div>
               <h6>Links Threshold</h6>
               <input id="threshold-link-range" name="threshold" type="range" min="0" max="1" step="0.01" value={thresh}
-              oninput="updateLinkThresholdText(this.value)" onchange="updateLinkThresholdText(this.value)">
+              oninput="updateLinkThresholdText(this.value*{scale})" onchange="updateLinkThresholdText(this.value*{scale})">
               <label id="threshold-link-text">{thresh}</label>
               <input type="button" value="Set threshold" onclick="setLinkThreshold()">
             </div>
@@ -795,7 +814,7 @@ __TEMPLATE__ = """
           <div class="col-12" style="z-index: 1010; background-color: #FFF">
 
             <div class="weight-checkbox bottom-checkbox">
-              <input type="checkbox" class="checkbox checkbox-class" value="weighted" id="show-weights"><label> Show weights </label>
+              <input type="checkbox" class="checkbox checkbox-class" checked value="weighted" id="show-weights"><label> Show weights </label>
             </div>
 
             <div class="percent-checkbox bottom-checkbox">
@@ -807,7 +826,7 @@ __TEMPLATE__ = """
             </div>
 
             <div class="bottom-checkbox">
-              <input type="checkbox" class="checkbox checkbox-class" checked id="block-targets" onchange="setLinkThreshold ()"><label> Show all edges for targets </label>
+              <input type="checkbox" class="checkbox checkbox-class" id="block-targets" onchange="setLinkThreshold ()"><label> Show all edges for targets </label>
             </div>
             <div id="option">
               <input name="downloadButton"
@@ -827,6 +846,7 @@ __TEMPLATE__ = """
 
   <script type="text/javascript">
 
+    updateLinkThresholdText({thresh}*{scale});
     initialize({nodes}, {node_params}, {links});
 
     if (!{show_percent}) {{
@@ -901,7 +921,6 @@ __OLD_TEMPLATE__ = """
                 text {{
                   font: 12px sans-serif;
                   pointer-events: none;
-                  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
                 }}
 </style>
 <body>

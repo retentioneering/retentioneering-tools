@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name='retentioneering',
-    version='1.0.8.4',
-    license='Mozilla Public License',
+    version='2.0.0',
+    license='Retentioneering Software Non-Exclusive, Non-Commercial Use License (License)',
     description='Product analytics and marketing optimization framework based on deep user trajectories analysis',
     long_description="""
     Retentioneering is the framework to explore, grow and optimize your product based on deep analysis of user trajectories. Retentioneering provides systematic and quantitative approach to search for insights, continuous KPI optimization, product improvement and marketing optimization.
@@ -20,15 +20,19 @@ setup(
     url='https://github.com/retentioneering/retentioneering-tools',
     keywords=['ANALYTICS', 'CLICKSTREAM', 'RETENTIONEERING', 'RETENTION', 'GRAPHS', 'TRAJECTORIES', 'PREDICTIVE-ANALYTICS', 'CUSTOMER-SEGMENTATION'],
     install_requires=[
-        'pandas>=0.24.2',
-        'numpy>=1.16.1',
-        'networkx>=2.3',
-        'seaborn>=0.9.0',
-        'scikit-learn>=0.22.1',
+        'pandas>=1.1.1',
+        'numpy>=1.19.1',
+        'networkx>=2.4',
+        'seaborn>=0.11.0',
+        'matplotlib>=3.3.1',
+        'scikit-learn>=0.23.2',
+        'scipy',
         'altair',
         'vega',
         'pymongo',
         'plotly',
+        'tqdm',
+        'matplotlib',
         'umap-learn'
     ],
     classifiers=[
@@ -41,10 +45,13 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Operating System :: Microsoft :: Windows',
         'Operating System :: Unix',
-        'Operating System :: MacOS',
-        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
+        'Operating System :: MacOS'
 
     ],
     python_requires=">=3.6",
-    packages=find_packages()
+    packages=find_packages(),
+
+
+    package_data={'retentioneering': ['datasets/data/*']},
+    include_package_data=True
 )

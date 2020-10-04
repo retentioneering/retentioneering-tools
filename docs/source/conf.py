@@ -12,21 +12,21 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../..'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'Retentioneering Tools'
-copyright = '2019, Retentioneering User Trajectory Analysis Lab'
-author = 'Retentioneering User Trajectory Analysis Lab'
+project = 'Retentioneering'
+copyright = '2020, "Data Driven Lab" LLC'
+author = '"Data Driven Lab" LLC'
 
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '1.0.0'
+release = '2.0.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -43,7 +43,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
-    'sphinx.ext.githubpages',
+    'sphinx.ext.githubpages'
 ]
 
 # Add any paths that contain _templates here, relative to this directory.
@@ -91,6 +91,13 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+html_logo = "rete_logo.png"
+html_theme_options = {
+    'analytics_id': 'UA-143266385-2',
+    'logo_only': True,
+    'display_version': False,
+}
 
 # Custom sidebar _templates, must be a dictionary that maps document names
 # to template names.

@@ -1,7 +1,8 @@
-# Copyright (C) 2019 Maxim Godzi, Anatoly Zaytsev, Dmitrii Kiselev
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# * Copyright (C) 2020 Maxim Godzi, Anatoly Zaytsev, Retentioneering Team
+# * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive, Non-Commercial Use License (License)
+# * By using, sharing or editing this code you agree with the License terms and conditions.
+# * You can obtain License text at https://github.com/retentioneering/retentioneering-tools/blob/master/LICENSE.md
+
 
 from sklearn.inspection import permutation_importance as perm_imp
 from retentioneering.visualization import plot
@@ -31,7 +32,7 @@ class ModelDescriptor(object):
 
     def permutation_importance_raw(self, test, **kwargs):
         test_sample = self.prepare_test(test)
-        test_target = test.retention.get_positive_users()
+        test_target = test.rete.get_positive_users()
         test_target = test_sample.index.isin(test_target)
         return self.permutation_importance(test_sample, test_target, node_params=None, **kwargs)
 
@@ -84,7 +85,7 @@ class ModelDescriptor(object):
 
     def show_quality_raw(self, test):
         test_sample = self.prepare_test(test)
-        test_target = test.retention.get_positive_users()
+        test_target = test.rete.get_positive_users()
         test_target = test_sample.index.isin(test_target)
         return self.show_quality_metrics(test_sample, test_target, use_print=False)
 
@@ -214,7 +215,7 @@ class ModelDescriptor(object):
         -------
         pd.DataFrame
         """
-        test = test.retention.extract_features(**self.feature_extraction_kwargs)
+        test = test.rete.extract_features(**self.feature_extraction_kwargs)
         test = test.loc[:, self.data.columns.tolist()]
         return test.fillna(0)
 

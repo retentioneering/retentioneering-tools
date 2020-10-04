@@ -4,114 +4,145 @@
 
 [![Pipi version](https://img.shields.io/pypi/v/retentioneering)](https://pypi.org/project/retentioneering/)
 [![Telegram](https://img.shields.io/badge/channel-on%20telegram-blue)](https://t.me/retentioneering_meetups)
-[![Reddit](https://img.shields.io/reddit/subreddit-subscribers/retentioneering?style=social)](https://www.reddit.com/r/retentioneering/)
 [![Python version](https://img.shields.io/pypi/pyversions/retentioneering)](https://pypi.org/project/retentioneering/)
-[![License](https://img.shields.io/pypi/l/retentioneering)](https://www.mozilla.org/en-US/MPL/)
+[![Downloads](https://pepy.tech/badge/retentioneering)](https://pepy.tech/project/retentioneering)
+[![Travis Build Status](https://travis-ci.com/retentioneering/retentioneering-tools.svg)](https://travis-ci.com/github/retentioneering/retentioneering-tools)
 
 
-## What is it?
+## What is Retentioneering?
 
 
-Retentioneering Tools is a Python framework to process and analyze clickstreams, event streams, trajectories, and event logs. You can segment users, clients (agents), build ML pipelines to predict agent category or probability of target event based on historical data. With a simulator tool you can resample the data based on fitted Markov model per each behavioral segment to explore scenarios and calculate the elasticity and sensitivity of your target KPIs to changes agent behavior at the event level.
+Retentioneering is a Python framework to process and analyze clickstreams, 
+event streams, trajectories, and event logs. You can segment users, clients (agents),
+explore user behavior patterns, build ML pipelines to predict agent category or 
+probability of target event based on historical data.
 
-Retentioneering extends Pandas, NetworkX, Scikit-learn for in-depth processing of event sequences data, specifically Retentioneering Tools provides a powerful environment to perform an in-depth analysis of customer journey maps, bringing behavior-driven segmentation of users and machine learning pipelines to product analytics. Retentioneering is also developing customer journey map simulation engines that allow the data scientists to explore the business impact of CJM mutations and optimize product and online marketing.
+Retentioneering extends Pandas, NetworkX, Scikit-learn for in-depth processing of 
+event sequences data, specifically Retentioneering provides a powerful environment 
+to perform an in-depth analysis of customer journey maps, bringing behavior-driven 
+segmentation of users and machine learning pipelines to product analytics. 
+Retentioneering is also developing customer journey map simulation engines that 
+allow the data scientists to explore the business impact of CJM mutations and
+optimize product and online marketing.
 
-Product analysts can apply Retentioneering Tools as a Python framework to explore, grow, and optimize the product based on deep analysis of user trajectories. Using Retentioneering you can vectorize clickstream logs and cluster user trajectories to automatically identify common successful or churn patterns. You can explore those patterns using our tools such as graph visualizer, step matrix, multiple clustering, and segmentation engines, and many others.
+Product analysts can apply Retentioneering Tools as a Python framework to explore, 
+grow, and optimize the product based on deep analysis of user trajectories. 
+Using Retentioneering you can vectorize clickstream logs and cluster user trajectories 
+to automatically identify common successful or churn patterns. You can explore those 
+patterns using our tools such as graph visualizer, step matrix, multiple clustering, 
+and segmentation engines, and many others.
 
-This repository contains both python library with easy to use utils, but also we provide several demos Python Notebooks and datasets to illustrate how to automate product analytics routines.
+[![intro 0](https://github.com/retentioneering/pics/blob/master/pics/rete20/intro_0.png)](https://github.com/retentioneering/retentioneering-tools)
 
-## How it works?
+## Getting started
 
-All you need to get started with Retentioneering is clickstream log of events from your web-site or app: {user_ID, event_ID, timestamp} (or use provided sample [datasets](https://github.com/retentioneering/retentioneering-tools/tree/master/examples/data) in .csv format). You can vectorize individual user trajectories in dataset and plot all your users logs on 2D map using TSNE or UMAP projection:
+Complete documentation is available [here](https://retentioneering.github.io/retentioneering-tools/).
 
-```python
-data.retention.learn_tsne(plot_type='targets');
-```
-<div align="center">
-
-
-[![intro 1](https://github.com/retentioneering/pics/blob/master/pics/intro_1.png)](https://github.com/retentioneering/retentioneering-tools)
-
-
-<div align="left">
-
-Users with similar patterns will appear as close dots at such map. Group of users who do not reach specified target event represent some systematic problem: usage pattern which systematically does not lead to product goals. Next you can segment users based on their behavior in the product.
-
-<div align="center">
-
-[![intro 2](https://github.com/retentioneering/pics/blob/master/pics/intro_2.png)](https://github.com/retentioneering/retentioneering-tools)
-
-
-<div align="left">
-
-
-Obtained user segments can be explored with graph visualizer or step matrixes or clustered again:
-
-```python
-(data.retention.filter_cluster(4)
- .retention.plot_graph(thresh = 0.05))
-```
-<div align="left">
-
-<img src="https://github.com/retentioneering/pics/blob/master/pics/graph_0.png" width="600px">
-
-
-Plot reverse step matrix where rows correspond to events and columns show event position in the trajectory. Numbers show fraction of users having corresponding event at corresponding step:
-
-```python
-(data.retention.filter_cluster(4)
-.retention.get_step_matrix(reverse='neg'))
-```
-<div align="left">
-
-<img src="https://github.com/retentioneering/pics/blob/master/pics/matrix_0.png" width="500px">
-
-
-To explore more features please see the [documentation](https://retentioneering.github.io/retentioneering-tools/)
-
-## Installation
-
-### Python and Jupyter
-
-Firstly, you need to install python and Jupyter.
-We support only python 3.6 or higher versions.
-For quick start better to install [Anaconda](https://www.anaconda.com/).
-
-### Python package
-
-- You can install our package using pip:
+Retentioneering is currently installable from PyPI:
 
 ```bash
 pip3 install retentioneering
 ```
 
-- Or directly from the source:
+If you use Pandas dataframes to work with user behaviour data you can start using
+Retentioneering with just a few lines of code:
 
-```bash
-git clone https://github.com/retentioneering/retentioneering-tools
-cd retentioneering-tools
-pip3 install .
+```python
+import retentioneering
+
+# load sample user behavior data as a pandas dataframe: 
+data = retentioneering.datasets.load_simple_shop()
+
+# update config to pass columns names:
+retentioneering.config.update({
+    'user_col': 'user_id',
+    'event_col':'event',
+    'event_time_col':'timestamp',
+})
 ```
 
-## Documentation
+Above we imported sample dataset, which is regular pandas dataframe containing raw user
+behavior data from hypothetical web-site or app in form of sequence of records
+{'client_id', 'event', 'timestamp'}, and pass those column names to retentioneering.config.
+Now, let's plot the graph to visualize user behaviour from the dataset 
+(read more about graphs [here](https://retentioneering.github.io/retentioneering-tools/_build/html/plot_graph.html)):
 
-#### Explore [example notebooks](https://github.com/retentioneering/retentioneering-tools/tree/master/examples) to get started or go through documentation pages:
+<div align="left">
 
-- [First steps](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#first-steps) Configuration, preparing your data graph basics.
-- [Step Matrix](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#temporal-funnel), [Clustering](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#clustering) Clustermap, TSNE projections, target events in clustering, cluster graphs.
-- [Supervised classifier](https://retentioneering.github.io/retentioneering-tools/_build/html/early_steps.html#supervised-classifier) Supervised learning, sklearn-api.
-- [Analysis](https://retentioneering.github.io/retentioneering-tools/_build/html/mobile-app-case.html#analysis) Step matrix and clustering.
-- [Predict application remove](https://retentioneering.github.io/retentioneering-tools/_build/html/mobile-app-case.html#predict-app-remove)
-- [Packages and Subpackages](https://retentioneering.github.io/retentioneering-tools/_build/html/retentioneering.html)
-- [Utils and functions documentation](https://retentioneering.github.io/retentioneering-tools/)
+ ```python
+data.rete.plot_graph(norm_type='node',
+                      weight_col='user_id',
+                      thresh=0.2,
+                      targets = {'payment_done':'green',
+                                 'lost':'red'})
+```
+
+[![intro 1](https://github.com/retentioneering/pics/blob/master/pics/rete20/graph_0.png)](https://github.com/retentioneering/retentioneering-tools)
+
+Here we obtain the high-level graph of user activity where 
+edge A --> B weight shows percent of users transitioning to event B from 
+all users reached event A (note, edges with small weighs are 
+thresholded to avoid visual clutter, read more in the documentation)
+
+To automatically find distinct behavioral patterns we can cluster users from the
+dataset based on their behavior (read more about behavioral clustering [here](https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html)):
+
+<div align="left">
+
+```pyhton
+data.rete.get_clusters(method='kmeans',
+                       n_clusters=8,
+                       ngram_range=(1,2),
+                       plot_type='cluster_bar',
+                       targets=['payment_done','cart']);
+```
+
+[![intro 1](https://github.com/retentioneering/pics/blob/master/pics/rete20/clustering_2.svg)](https://github.com/retentioneering/retentioneering-tools)
+
+<div align="left">
+
+Users with similar behavior grouped in the same cluster. Clusters with low conversion rate
+can represent systematic problem in the product: specific behavior pattern which does not 
+lead to product goals. Obtained user segments can be explored deeper to understand 
+problematic behavior pattern. In the example above for instance, cluster 4 has low 
+conversion rate to purchase but high conversion rate to cart visit.
+
+```python
+clus_4 = data.rete.filter_cluster(4)
+clus_4.rete.plot_graph(thresh=0.1,
+                        weight_col='user_id',
+                        targets = {'lost':'red',
+                                   'payment_done':'green'})
+```
+<div align="left">
+
+[![intro 1](https://github.com/retentioneering/pics/blob/master/pics/rete20/graph_1.png)](https://github.com/retentioneering/retentioneering-tools)
+
+
+To explore more features please see the [documentation](https://retentioneering.github.io/retentioneering-tools/)
+
+## Step-by-step guides
+
+- [Visualize users behavior](https://retentioneering.github.io/retentioneering-tools/_build/html/plot_graph.html) 
+- [Users flow and step matrix](https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html)
+- [Users behavioral segmentation](https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html) 
+- [Compare segments and AB tests](https://retentioneering.github.io/retentioneering-tools/_build/html/compare.html)
+- [Funnel analysis](https://retentioneering.github.io/retentioneering-tools/_build/html/funnel.html)
+
 
 ## Contributing
 
-This is community-driven open source project in active development. Any contributions, new ideas, bug reports, bug fixes, documentation improvements are very welcome.
+This is community-driven open source project in active development. Any contributions, 
+new ideas, bug reports, bug fixes, documentation improvements are very welcome.
 
-Feel free to reach out to us: retentioneering[at]gmail.com
+Retentioneering now provides several opensource solutions for data-driven product 
+analytics and web analytics. Please checkout this repository for JS library to track 
+the mutations of the website elements: https://github.com/retentioneering/retentioneering-dom-observer
 
-Retentioneering now provides several opensource solutions for data-driven product analytics and web analytics. Please checkout this repository for JS library to track the mutations of the website elements: https://github.com/retentioneering/retentioneering-dom-observer
-
-Apps better with math!:)
-Retentioneering is a research laboratory, analytics methodology and opensource tools founded by Maxim Godzi and Anatoly Zaytsev in 2015. Please feel free to contact us at retentioneeringATgmail.com if you have any questions regarding this rep, or to obtain more tools that we are not able to provide though the public rep.
+Apps are better with math!:)
+Retentioneering is a research laboratory, analytics methodology and opensource 
+tools founded by [Maxim Godzi](https://www.linkedin.com/in/godsie/) and 
+[Anatoly Zaytsev](https://www.linkedin.com/in/anatoly-zaytsev/) in 2015. 
+Please feel free to contact us at retentioneering@gmail.com if you have any 
+questions regarding this repo, or to obtain more tools that we are not able to 
+provide though the public rep.

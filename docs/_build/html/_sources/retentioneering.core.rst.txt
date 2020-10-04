@@ -1,70 +1,66 @@
 retentioneering.core package
 ============================
 
-Submodules
+step_matrix
+-----------
+
+.. automodule:: retentioneering.core.core_functions.step_matrix
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+plot_graph
 ----------
 
-retentioneering.core.clustering module
---------------------------------------
-
-.. automodule:: retentioneering.core.clustering
+.. automodule:: retentioneering.core.core_functions.plot_graph
     :members:
     :undoc-members:
     :show-inheritance:
 
-retentioneering.core.feature\_extraction module
------------------------------------------------
+get_clusters
+------------
 
-.. automodule:: retentioneering.core.feature_extraction
+.. automodule:: retentioneering.core.core_functions.get_clusters
     :members:
     :undoc-members:
     :show-inheritance:
 
-retentioneering.core.model module
----------------------------------
+extract_features
+----------------
 
-.. automodule:: retentioneering.core.model
+.. automodule:: retentioneering.core.core_functions.extract_features
     :members:
     :undoc-members:
     :show-inheritance:
 
-retentioneering.core.node\_metrics module
------------------------------------------
+compare
+-------
 
-.. automodule:: retentioneering.core.node_metrics
+.. automodule:: retentioneering.core.core_functions.compare
     :members:
     :undoc-members:
     :show-inheritance:
 
-retentioneering.core.preprocessing module
------------------------------------------
+funnel
+------
 
-.. automodule:: retentioneering.core.preprocessing
+.. automodule:: retentioneering.core.core_functions.funnel
     :members:
     :undoc-members:
     :show-inheritance:
 
-retentioneering.core.tree\_selector module
-------------------------------------------
+get_edgelist
+------------
 
-.. automodule:: retentioneering.core.tree_selector
+.. automodule:: retentioneering.core.core_functions.get_edgelist
     :members:
     :undoc-members:
     :show-inheritance:
 
-retentioneering.core.utils module
----------------------------------
+get_adjacency
+-------------
 
-.. automodule:: retentioneering.core.utils
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: retentioneering.core
+.. automodule:: retentioneering.core.core_functions.get_adjacency
     :members:
     :undoc-members:
     :show-inheritance:

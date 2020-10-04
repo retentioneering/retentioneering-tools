@@ -1,39 +1,41 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Search &mdash; Retentioneering Tools 1.0.0 documentation</title>
+  <title>Search &mdash; Retentioneering 2.0.0 documentation</title>
   
-
-  
-  
-  
-  
-
-  
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/searchtools.js"></script>
-    
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-
-    
 
   
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+    
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <script type="text/javascript" src="_static/searchtools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="#" /> 
 </head>
@@ -49,15 +51,15 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Retentioneering Tools
+            <a href="index.html">
           
 
+          
+            
+            <img src="_static/rete_logo.png" class="logo" alt="Logo"/>
           
           </a>
 
-          
-            
-            
           
 
           
@@ -72,6 +74,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -79,16 +82,31 @@
               
             
             
-              <ul>
+              <p class="caption"><span class="caption-text">TUTORIAL:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="what_is_rete.html">What is Retentioneering?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="early_steps.html">Introduction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mobile-app-case.html">Mobile app case</a></li>
-<li class="toctree-l1"><a class="reference internal" href="retentioneering.html">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="release_notes.html">Release notes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">TOOLS DESCRIPTION:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="plot_graph.html">Visualize users behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html">Users flow and step matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="transition_matrix.html">Explore users behavior with transition matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html">Funnel analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clustering.html">Behavioral segmentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compare.html">Compare segments and AB tests</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API REFERENCE:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="retentioneering.core.html">Core functions</a></li>
 </ul>
 
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -98,7 +116,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Retentioneering Tools</a>
+          <a href="index.html">Retentioneering</a>
         
       </nav>
 
@@ -127,7 +145,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="index.html">Docs</a> &raquo;</li>
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Search</li>
     
@@ -149,8 +167,7 @@
   <noscript>
   <div id="fallback" class="admonition warning">
     <p class="last">
-      Please activate JavaScript to enable the search
-      functionality.
+      Please activate JavaScript to enable the search functionality.
     </p>
   </div>
   </noscript>
@@ -170,12 +187,20 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, Retentioneering User Trajectory Analysis Lab
+        
+        &copy; Copyright 2020, &#34;Data Driven Lab&#34; LLC
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
-    <br><br>More information about our services at <a href="https://retentioneering.com/">Retentioneering.com</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    <br><br><a href="https://www.linkedin.com/in/godsie/">Maxim Godzi</a> and <a href="https://www.linkedin.com/in/anatoly-zaytsev/">Anatoly Zaytsev</a>. More information at <a href="https://retentioneering.com/">Retentioneering.com</a>.
 
 
 </footer>
@@ -188,7 +213,6 @@
   </div>
   
 
-
   <script type="text/javascript">
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
@@ -198,13 +222,37 @@
   
   
     
+    <!-- Theme Analytics -->
+    <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-143266385-2', 'auto');
+    ga('send', 'pageview');
+    </script>
+
+    
   
   <script type="text/javascript">
     jQuery(function() { Search.loadIndex("searchindex.js"); });
   </script>
   
   <script type="text/javascript" id="searchindexloader"></script>
-   
+    
+
+  <style>
+    /* Sidebar header (and topbar for mobile) */
+    .wy-side-nav-search, .wy-nav-top {
+      background: #373736;
+    }
+    /* Sidebar */
+    .wy-nav-side {
+      background: #373736;
+    }
+  </style>
+
 
 
 </body>

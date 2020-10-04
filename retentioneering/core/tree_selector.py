@@ -1,7 +1,7 @@
-# Copyright (C) 2019 Maxim Godzi, Anatoly Zaytsev, Dmitrii Kiselev
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# * Copyright (C) 2020 Maxim Godzi, Anatoly Zaytsev, Retentioneering Team
+# * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive, Non-Commercial Use License (License)
+# * By using, sharing or editing this code you agree with the License terms and conditions.
+# * You can obtain License text at https://github.com/retentioneering/retentioneering-tools/blob/master/LICENSE.md
 
 
 import pandas as pd
@@ -177,12 +177,12 @@ def use_tree_filter(data, path, **kwargs):
     with open(path) as f:
         tree_filter = json.load(f)
 
-    f = data[data.retention.retention_config['event_col']].isin(tree_filter['filter_names'])
+    f = data[data.rete.retention_config['event_col']].isin(tree_filter['filter_names'])
     data = data[f].reset_index(drop=True)
-    data['dump_event_col'] = data[data.retention.retention_config['event_col']]
+    data['dump_event_col'] = data[data.rete.retention_config['event_col']]
     for agg in tree_filter['agg_list']:
-        f = data[data.retention.retention_config['event_col']].str.startswith(agg)
-        data[data.retention.retention_config['event_col']] = np.where(f, agg,
-                                                                      data[data.retention.retention_config['event_col']]
+        f = data[data.rete.retention_config['event_col']].str.startswith(agg)
+        data[data.rete.retention_config['event_col']] = np.where(f, agg,
+                                                                      data[data.rete.retention_config['event_col']]
                                                                       )
     return data

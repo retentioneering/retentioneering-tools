@@ -8,24 +8,34 @@
 
 ---------------------------------------------------------------------
 
-.. include:: installation.rst
+.. include:: what_is_rete.rst
 
 Contents
 =====================================================
 
 .. toctree::
+   :caption: TUTORIAL:
+   :maxdepth: 1
+
+   What is Retentioneering? <what_is_rete.rst>
+   Installation <installation.rst>
+   Getting started <getting_started.rst>
+   Release notes <release_notes.rst>
+
+.. toctree::
+   :caption: TOOLS DESCRIPTION:
    :maxdepth: 2
 
-   Installation <installation.rst>
-   Introduction <early_steps.rst>
-   Mobile app case <mobile-app-case.rst>
-   Documentation <retentioneering.rst>
+   Visualize users behavior <plot_graph.rst>
+   Users flow and step matrix <step_matrix.rst>
+   Explore users behavior with transition matrix <transition_matrix.rst>
+   Funnel analysis <funnel.rst>
+   Behavioral segmentation <clustering.rst>
+   Compare segments and AB tests <compare.rst>
 
+.. toctree::
+   :caption: API REFERENCE:
+   :maxdepth: 2
 
+   Core functions <retentioneering.core.rst>
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

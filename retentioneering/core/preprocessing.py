@@ -1,7 +1,7 @@
-# Copyright (C) 2019 Maxim Godzi, Anatoly Zaytsev, Dmitrii Kiselev
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# * Copyright (C) 2020 Maxim Godzi, Anatoly Zaytsev, Retentioneering Team
+# * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive, Non-Commercial Use License (License)
+# * By using, sharing or editing this code you agree with the License terms and conditions.
+# * You can obtain License text at https://github.com/retentioneering/retentioneering-tools/blob/master/LICENSE.md
 
 
 import numpy as np
@@ -24,45 +24,6 @@ def _find_threshold(time_val):
     cnt, thresh = np.histogram(np.log(time_val), bins=100)  # TODO parametrize + visualization
     idx = _find_last_min(cnt)
     return np.exp(thresh[idx])
-
-
-def split_sessions(data, minimal_thresh=30, lower_filter=1, upper_filter=99):
-    """
-    Creates ``session`` column with session rank in given dataset.
-
-    Parameters
-    --------
-    data: pd.DataFrame
-        Clickstream data.
-    minimal_thresh: int, optional
-        Minimal time difference in seconds between two sessions. If  threshold value of time difference between sessions is lower that ``minimal_thresh``, then sessions are split based on this parameter. Default: ``30``
-    lower_filter: float, optional
-        Minimal percentile of time distribution between events to be considered as different sessions. For instance, equal to 1 would mean that cutoff time diffrecence between events (time difference between pseudosessions) should not be less than 1st percentile of time distribution between events. Range of possible values: [0, 100]. Default: ``1``
-    upper_filter: float, optional
-        Same as ``lower_filter`` but as an upper limit. Range of possible values: [0, 100]. Default: ``99``
-
-    Returns
-    -------
-    Creates session column in dataset.
-
-    Return type
-    -------
-    pd.DataFrame
-    """
-    time_col = data.retention.retention_config['event_time_col']
-    if 'next_timestamp' not in data.columns:
-        data.retention._get_shift()
-    time_delta = pd.to_datetime(data['next_timestamp']) - pd.to_datetime(data[time_col])
-    time_delta = time_delta.dt.total_seconds()
-    time_val = time_delta[time_delta.notnull()].values
-    time_val = time_val[(time_val > np.percentile(time_val, lower_filter)) &
-                        (time_val < np.percentile(time_val, upper_filter))]
-    thresh = _find_threshold(time_val)
-    if thresh < minimal_thresh:
-        thresh = minimal_thresh
-    data['session'] = time_delta > thresh
-    data['session'] = data.groupby(data.retention.retention_config['index_col']).session.cumsum()
-    data['session'] = data.groupby(data.retention.retention_config['index_col']).session.shift(1).fillna(0)
 
 
 def _learn_lda(data, **kwargs):

@@ -1,28 +1,32 @@
-Installation
-~~~~~~~~~~~~
+Retentioneering installation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Python and Jupyter
-==================
+**Option 1. Run directly from google.colab:**
 
-Firstly, you need to install python and Jupyter.
-We supports only python 3.
-For quick start better to install `Anaconda <https://www.anaconda.com/>`__.
+Open `google.colab <https://colab.research.google.com/>`__  and click File->
+"new notebook". In the code cell run following to install Retentioneering:
 
-Python package
-==============
+    .. code:: bash
 
-- You can install our package using pip.
+        !pip3 install retentioneering
+
+
+**Option 2. Install Retentioneering from Jupyter notebook:**
+
+    .. code:: bash
+
+        !pip3 install retentioneering
+
+**Option 3. Install Retentioneering from termianl using PyPI:**
 
     .. code:: bash
 
         pip3 install retentioneering
 
-- Or directly from source
+**Option 4. Directly from the source**
 
     .. code:: bash
 
-        git clone path-to-our-rep.git
-
-        cd retentioneering-framework
-
-        python3 setup.py install --user
+        git clone https://github.com/retentioneering/retentioneering-tools
+        cd retentioneering-tools
+        python3 setup.py install

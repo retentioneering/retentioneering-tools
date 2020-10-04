@@ -92,6 +92,8 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Visualize user behavior</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#before-you-start">Before you start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#introduction-to-rete-plot-graph">Introduction to rete.plot_graph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rete-plot-graph-parameters">rete.plot_graph() parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#edge-weighting-options">Edge weighting options</a></li>
 </ul>
 </li>
@@ -198,7 +200,10 @@ located in your loaded dataframe:</p>
 </pre></div>
 </div>
 <p>We suggest you have a quick exploration of your dataframe data before moving forward.</p>
-<p><strong>1. Introduction to rete.plot_graph(): Visualize trajectories of many users as interactive graph network</strong></p>
+</div>
+<div class="section" id="introduction-to-rete-plot-graph">
+<h2>Introduction to rete.plot_graph<a class="headerlink" href="#introduction-to-rete-plot-graph" title="Permalink to this headline">¶</a></h2>
+<p><strong>1. Visualize trajectories of many users as interactive graph network</strong></p>
 <p>As your data have transitions of many users, they have both individual and
 common patterns in the way they make transitions between events. rete.plot_graph() combines
 all the paths together to show you how user was navigating through your digital product:</p>
@@ -251,6 +256,9 @@ may want to visualize not amount of transitions, but the number unique users or
 sessions having that kind of transition. Alternatively, you may want to use
 percentage instead of absolute quantities. In the chapters below we explore
 the options for that.</p>
+</div>
+<div class="section" id="rete-plot-graph-parameters">
+<h2>rete.plot_graph() parameters<a class="headerlink" href="#rete-plot-graph-parameters" title="Permalink to this headline">¶</a></h2>
 <p><strong>2. Edge weights: Quantify trajectories to understand the most and least common patterns of user flow.</strong></p>
 <p>Here we introduce weight_col argument of plot_graph.</p>
 <p>When you look at the graph and observe edges, which are transitions between event nodes,

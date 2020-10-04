@@ -52,7 +52,7 @@ funnel
 get_edgelist
 ------------
 
-.. automodule:: retentioneering.core.core_functions.base_dataset
+.. automodule:: retentioneering.core.core_functions.get_edgelist
     :members:
     :undoc-members:
     :show-inheritance:

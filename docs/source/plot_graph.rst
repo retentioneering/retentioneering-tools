@@ -35,7 +35,10 @@ located in your loaded dataframe:
 
 We suggest you have a quick exploration of your dataframe data before moving forward.
 
-**1. Introduction to rete.plot_graph(): Visualize trajectories of many users as interactive graph network**
+Introduction to rete.plot_graph
+===============================
+
+**1. Visualize trajectories of many users as interactive graph network**
 
 As your data have transitions of many users, they have both individual and
 common patterns in the way they make transitions between events. rete.plot_graph() combines
@@ -103,6 +106,9 @@ may want to visualize not amount of transitions, but the number unique users or
 sessions having that kind of transition. Alternatively, you may want to use
 percentage instead of absolute quantities. In the chapters below we explore
 the options for that.
+
+rete.plot_graph() parameters
+============================
 
 **2. Edge weights: Quantify trajectories to understand the most and least common patterns of user flow.**
 

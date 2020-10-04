@@ -5,7 +5,8 @@
 
 from .base_dataset import BaseDataset
 
-from .get_edgelist import get_edgelist, get_adjacency
+from .get_edgelist import get_edgelist
+from .get_adjacency import get_adjacency
 from .step_matrix import step_matrix
 from .get_clusters import get_clusters, filter_cluster, cluster_event_dist
 from .plot_graph import plot_graph

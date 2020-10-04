@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='retentioneering',
     version='2.0.0',
-    license='Mozilla Public License',
+    license='Retentioneering Software Non-Exclusive, Non-Commercial Use License (License)',
     description='Product analytics and marketing optimization framework based on deep user trajectories analysis',
     long_description="""
     Retentioneering is the framework to explore, grow and optimize your product based on deep analysis of user trajectories. Retentioneering provides systematic and quantitative approach to search for insights, continuous KPI optimization, product improvement and marketing optimization.
@@ -45,8 +45,7 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Operating System :: Microsoft :: Windows',
         'Operating System :: Unix',
-        'Operating System :: MacOS',
-        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
+        'Operating System :: MacOS'
 
     ],
     python_requires=">=3.6",

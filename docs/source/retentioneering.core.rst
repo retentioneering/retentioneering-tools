@@ -56,3 +56,11 @@ get_edgelist
     :members:
     :undoc-members:
     :show-inheritance:
+
+get_adjacency
+-------------
+
+.. automodule:: retentioneering.core.core_functions.get_adjacency
+    :members:
+    :undoc-members:
+    :show-inheritance:

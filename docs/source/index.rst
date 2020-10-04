@@ -39,3 +39,4 @@ Contents
 
    Core functions <retentioneering.core.rst>
 
+back to github: `back to github <https://github.com/retentioneering/retentioneering-tools>`_.

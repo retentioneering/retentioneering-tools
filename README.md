@@ -38,6 +38,8 @@ feedback and stay tuned.
 
 [![intro 0](https://github.com/retentioneering/pics/blob/master/pics/rete20/intro_0.png)](https://github.com/retentioneering/retentioneering-tools)
 
+## Changelog
+
 This is new major release Retentioneering 2.0. Change log is available [here](https://retentioneering.github.io/retentioneering-tools/_build/html/release_notes.html).
 
 Complete documentation is available [here](https://retentioneering.github.io/retentioneering-tools/).

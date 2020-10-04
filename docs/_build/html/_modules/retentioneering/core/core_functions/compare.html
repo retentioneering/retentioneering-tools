@@ -85,11 +85,12 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../what_is_rete.html">What is Retentioneering?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../release_notes.html">Release notes</a></li>
 </ul>
 <p class="caption"><span class="caption-text">TOOLS DESCRIPTION:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../../plot_graph.html">Visualize user behavior</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../step_matrix.html">User flow and step matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../plot_graph.html">Visualize users behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../step_matrix.html">Users flow and step matrix</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../funnel.html">Funnel analysis</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../clustering.html">Behavioral segmentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../compare.html">Compare segments and AB tests</a></li>
@@ -161,7 +162,12 @@
            <div itemprop="articleBody">
             
   <h1>Source code for retentioneering.core.core_functions.compare</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">ks_2samp</span><span class="p">,</span> <span class="n">mannwhitneyu</span>
+<span></span><span class="c1"># * Copyright (C) 2020 Maxim Godzi, Anatoly Zaytsev, Retentioneering Team</span>
+<span class="c1"># * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive, Non-Commercial Use License (License)</span>
+<span class="c1"># * By using, sharing or editing this code you agree with the License terms and conditions.</span>
+<span class="c1"># * You can obtain License text at https://github.com/retentioneering/retentioneering-tools/blob/master/LICENSE.md</span>
+
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">ks_2samp</span><span class="p">,</span> <span class="n">mannwhitneyu</span>
 
 <span class="kn">from</span> <span class="nn">...visualization</span> <span class="kn">import</span> <span class="n">plot_compare</span>
 

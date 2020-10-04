@@ -20,6 +20,7 @@ Contents
    What is Retentioneering? <what_is_rete.rst>
    Installation <installation.rst>
    Getting started <getting_started.rst>
+   Release notes <release_notes.rst>
 
 .. toctree::
    :caption: TOOLS DESCRIPTION:
@@ -36,4 +37,4 @@ Contents
    :maxdepth: 2
 
    Core functions <retentioneering.core.rst>
-   Release Notes <retentioneering.core.rst>
+

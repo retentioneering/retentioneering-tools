@@ -20,13 +20,14 @@ Contents
    What is Retentioneering? <what_is_rete.rst>
    Installation <installation.rst>
    Getting started <getting_started.rst>
+   Release notes <release_notes.rst>
 
 .. toctree::
    :caption: TOOLS DESCRIPTION:
    :maxdepth: 2
 
-   Visualize user behavior <plot_graph.rst>
-   User flow and step matrix <step_matrix.rst>
+   Visualize users behavior <plot_graph.rst>
+   Users flow and step matrix <step_matrix.rst>
    Funnel analysis <funnel.rst>
    Behavioral segmentation <clustering.rst>
    Compare segments and AB tests <compare.rst>
@@ -36,3 +37,4 @@ Contents
    :maxdepth: 2
 
    Core functions <retentioneering.core.rst>
+

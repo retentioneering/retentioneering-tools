@@ -25,8 +25,8 @@ Contents
    :caption: TOOLS DESCRIPTION:
    :maxdepth: 2
 
-   Visualize user behavior <plot_graph.rst>
-   User flow and step matrix <step_matrix.rst>
+   Visualize users behavior <plot_graph.rst>
+   Users flow and step matrix <step_matrix.rst>
    Funnel analysis <funnel.rst>
    Behavioral segmentation <clustering.rst>
    Compare segments and AB tests <compare.rst>

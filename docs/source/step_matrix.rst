@@ -1,5 +1,5 @@
-Step_matrix function
-~~~~~~~~~~~~~~~~~~~~
+Users flow and step matrix
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Step matrix intro
 =================

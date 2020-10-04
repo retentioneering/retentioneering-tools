@@ -123,13 +123,11 @@ To explore more features please see the [documentation](https://retentioneering.
 
 ## Step-by-step guides
 
-Explore these step-by-step tutorials to learn more:
-
-- [Plot graph](https://retentioneering.github.io/retentioneering-tools/_build/html/plot_graph.html) 
-- [Step Matrix](https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html)
-- [Users behavioral clustering](https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html) 
-- [Compare user segments](https://retentioneering.github.io/retentioneering-tools/_build/html/compare.html)
-- [Conversion funnels](https://retentioneering.github.io/retentioneering-tools/_build/html/funnel.html)
+- [Visualize users behavior](https://retentioneering.github.io/retentioneering-tools/_build/html/plot_graph.html) 
+- [Users flow and step matrix](https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html)
+- [Users behavioral segmentation](https://retentioneering.github.io/retentioneering-tools/_build/html/clustering.html) 
+- [Compare segments and AB tests](https://retentioneering.github.io/retentioneering-tools/_build/html/compare.html)
+- [Funnel analysis](https://retentioneering.github.io/retentioneering-tools/_build/html/funnel.html)
 
 
 ## Contributing

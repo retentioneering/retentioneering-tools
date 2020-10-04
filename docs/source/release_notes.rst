@@ -4,7 +4,7 @@ Release notes
 Version 2.0
 -----------
 
-- Completely reworked retentioneering workflow: functions init_config() and retention.prepare() are removed. In 2.0 it is not required to initialize "positive" and "negative" events before the analysis. You can start exploring your user behavior data first and define targets when needed as an optional parameters. To access all retentioneering functionality attribute ".retention" was renamed to ".rete". To get started with updated workflow refer to `this guide <https://retentioneering.github.io/retentioneering-tools/_build/html/getting_started.html>`__.
+- Completely reworked retentioneering workflow: functions init_config() and retention.prepare() are removed. In 2.0 it is not required to initialize "positive" and "negative" events before the analysis. You can start exploring your user behavior data first and define targets when needed as optional parameters. To access all retentioneering functionality attribute ".retention" was renamed to ".rete". To get started with updated workflow refer to `this guide <https://retentioneering.github.io/retentioneering-tools/_build/html/getting_started.html>`__.
 
 - plot_step_matrix() function was significantly reworked and renamed to step_matrix(). To read more about new step_matrix() functionality refer to `this description <https://retentioneering.github.io/retentioneering-tools/_build/html/step_matrix.html>`__
 

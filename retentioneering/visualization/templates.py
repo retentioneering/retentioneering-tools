@@ -35,11 +35,12 @@ __TEMPLATE__ = """
   <script src="https://d3js.org/d3.v5.min.js"></script>
   <script type="text/javascript">
 
+    const MOBILE_SCREEN_BREAKPOINT_PX = 1200
+
     var node_params;
     var mynodes = [];
     var mylinks = [];
 
-    let screenWidth = window.screen.width;
     let maxDegree = 0;
     let maxWeigth = 0;
     let width = 800;
@@ -190,6 +191,8 @@ __TEMPLATE__ = """
     }}
 
     function drawGraph(nodes, links) {{
+      var screenWidth = window.screen.width;
+
       zoom = d3.zoom()
           .scaleExtent([0.5, 8])
           .translateExtent([[0, 0], [width, height]])
@@ -201,7 +204,7 @@ __TEMPLATE__ = """
         .attr("viewBox", [0, 0, width, height])
         ;
 
-      screenWidth >= 1280 ? svg.call(zoom) : null
+      screenWidth >= MOBILE_SCREEN_BREAKPOINT_PX ? svg.call(zoom) : null
 
       //I append all elemets to maingroup so zoom works properly
       var maingroup = svg.append('g');

@@ -174,5 +174,4 @@ Retentioneering is a research laboratory, analytics methodology and opensource
 tools founded by [Maxim Godzi](https://www.linkedin.com/in/godsie/) and 
 [Anatoly Zaytsev](https://www.linkedin.com/in/anatoly-zaytsev/) in 2015. 
 Please feel free to contact us at retentioneering@gmail.com if you have any 
-questions regarding this repo, or to obtain more tools that we are not able to 
-provide though the public rep.
+questions regarding this repo.

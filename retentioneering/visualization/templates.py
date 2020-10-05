@@ -39,7 +39,7 @@ __TEMPLATE__ = """
     var mynodes = [];
     var mylinks = [];
 
-
+    let screenWidth = window.screen.width;
     let maxDegree = 0;
     let maxWeigth = 0;
     let width = 800;
@@ -199,8 +199,9 @@ __TEMPLATE__ = """
 
       var svg = d3.select("#freakingGraph").append("svg")
         .attr("viewBox", [0, 0, width, height])
-        .call(zoom)
         ;
+
+      screenWidth >= 1280 ? svg.call(zoom) : null
 
       //I append all elemets to maingroup so zoom works properly
       var maingroup = svg.append('g');

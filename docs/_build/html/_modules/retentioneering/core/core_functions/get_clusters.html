@@ -164,7 +164,7 @@
             
   <h1>Source code for retentioneering.core.core_functions.get_clusters</h1><div class="highlight"><pre>
 <span></span><span class="c1"># * Copyright (C) 2020 Maxim Godzi, Anatoly Zaytsev, Retentioneering Team</span>
-<span class="c1"># * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive, Non-Commercial Use License (License)</span>
+<span class="c1"># * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive License (License)</span>
 <span class="c1"># * By using, sharing or editing this code you agree with the License terms and conditions.</span>
 <span class="c1"># * You can obtain License text at https://github.com/retentioneering/retentioneering-tools/blob/master/LICENSE.md</span>
 
@@ -233,11 +233,10 @@
         <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">feature_type</span><span class="o">=</span><span class="n">feature_type</span><span class="p">,</span>
-                                         <span class="n">ngram_range</span><span class="o">=</span><span class="n">ngram_range</span><span class="p">,</span>
-                                         <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                                         <span class="n">ngram_range</span><span class="o">=</span><span class="n">ngram_range</span><span class="p">)</span>
 
     <span class="c1"># obtain clusters</span>
-    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">clusters</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">refit_cluster</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;clusters&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">refit_cluster</span><span class="p">:</span>
         <span class="n">clusterer</span> <span class="o">=</span> <span class="nb">globals</span><span class="p">()[</span><span class="s1">&#39;_&#39;</span><span class="o">+</span><span class="n">method</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">clusters</span> <span class="o">=</span> <span class="n">clusterer</span><span class="p">(</span><span class="n">features</span><span class="p">,</span>
                                   <span class="n">n_clusters</span><span class="o">=</span><span class="n">n_clusters</span><span class="p">,</span>

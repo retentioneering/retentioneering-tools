@@ -1,5 +1,5 @@
 # * Copyright (C) 2020 Maxim Godzi, Anatoly Zaytsev, Retentioneering Team
-# * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive, Non-Commercial Use License (License)
+# * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive License (License)
 # * By using, sharing or editing this code you agree with the License terms and conditions.
 # * You can obtain License text at https://github.com/retentioneering/retentioneering-tools/blob/master/LICENSE.md
 
@@ -125,8 +125,12 @@ def _learn_tsne(data, **kwargs):
     -------
     np.ndarray
     """
-    _tsne_filter = TSNE.get_params(TSNE)
-    kwargs = {i: j for i, j in kwargs.items() if i in _tsne_filter}
+
+    TSNE_PARAMS = ['angle', 'early_exaggeration', 'init', 'learning_rate', 'method', 'metric',
+            'min_grad_norm', 'n_components', 'n_iter', 'n_iter_without_progress', 'n_jobs',
+            'perplexity', 'verbose']
+
+    kwargs = {k: v for k, v in kwargs.items() if k in TSNE_PARAMS}
     res = TSNE(random_state=0, **kwargs).fit_transform(data.values)
     return pd.DataFrame(res, index=data.index.values)
 
@@ -152,7 +156,7 @@ def _learn_umap(data, **kwargs):
     """
     reducer = umap.UMAP()
     _umap_filter = reducer.get_params()
-    kwargs = {i: j for i, j in kwargs.items() if i in _umap_filter}
-    embedding = umap.UMAP(random_state=0, min_dist = 1, **kwargs).fit_transform(data.values)
+    kwargs = {k: v for k, v in kwargs.items() if k in _umap_filter}
+    embedding = umap.UMAP(random_state=0, **kwargs).fit_transform(data.values)
     return pd.DataFrame(embedding, index=data.index.values)
 

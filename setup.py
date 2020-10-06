@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name='retentioneering',
-    version='2.0.0',
-    license='Retentioneering Software Non-Exclusive, Non-Commercial Use License (License)',
+    version='2.0.1',
+    license='Retentioneering Software Non-Exclusive License (License)',
     description='Product analytics and marketing optimization framework based on deep user trajectories analysis',
     long_description="""
     Retentioneering is the framework to explore, grow and optimize your product based on deep analysis of user trajectories. Retentioneering provides systematic and quantitative approach to search for insights, continuous KPI optimization, product improvement and marketing optimization.

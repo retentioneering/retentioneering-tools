@@ -1,6 +1,5 @@
 Maxim Godzi, Anatoly Zaytsev, LLC Data Driven Lab
-Retentioneering Tools Software
-Non-Exclusive, Non-Commercial Use License
+Retentioneering Tools Software Non-Exclusive License
 
 Upon execution of this Agreement by the party identified below ("Licensee"), 
 Maxim Godzi, Anatoly Zaytsev, LLC Data Driven Lab ("Retentioneering Team")
@@ -13,8 +12,8 @@ program commands that may be interpreted by Python and/or Javascript.
 title and interest, including copyright, remain with Retentioneering Team.  Retentioneering Team 
 grants, and Licensee hereby accepts, a restricted, non-exclusive, 
 non-transferable license to use the Software for academic, research and 
-internal business purposes only, e.g. not for commercial use (see Clause 7 
-below), without a fee.
+internal business purposes only, but not for commercial use for third parties (see Clause 7 
+below), without contacting Retentioneering Team.
 
 2. Licensee may, at its own expense, create and freely distribute 
 complimentary works that interoperate with the Software, directing others to 
@@ -88,9 +87,10 @@ Any published work which utilizes Software shall include the following reference
 
 Electronic documents will include a direct link to the Retentioneering Tools Gitghub page: https://github.com/retentioneering/retentioneering-tools
 
-7. Commercial use of the Software, or derivative works based thereon,  
-REQUIRES A COMMERCIAL LICENSE.  Should Licensee wish to make commercial 
-use of the Software, Licensee will contact Retentioneering Team (retentioneering@gmail.com) to 
+7. Retentioneering Team grants non-exclusive non-transferable license to use the 
+Software for internal business purposes only. Commercial use of the Software 
+in a services provided to third parties REQUIRES A COMMERCIAL LICENSE.
+Should Licensee wish to make commercial  use of the Software, Licensee will contact Retentioneering Team (retentioneering@gmail.com) to 
 negotiate an appropriate license for such use. Commercial use includes: 
 (1) integration of all or part of the Software into a product for sale, 
 lease or license by or on behalf of Licensee to third parties, or 
@@ -114,4 +114,3 @@ Contact Information:
 
 The best contact path for licensing issues is by e-mail to  
 retentioneering@gmail.com 
-

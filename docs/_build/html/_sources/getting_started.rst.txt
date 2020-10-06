@@ -109,10 +109,10 @@ it as pandas dataframe:
     data = pd.read_csv('yourowndatafile.csv')
 
 
-How to get csv file with data? Raw data in form of {user,event,timestamp} can
+How to get a csv file with data? Raw data in the form of {user,event,timestamp} can
 be streamed via Google Analytics 360 or free Google Analytics App+Web into BigQuery.
-From BigQuery console you can run SQL query and export data into csv file,
-alternatively you can use Python BigQuery connector to get directly into the dataframe.
+From the BigQuery console you can run SQL query and export data into csv file,
+alternatively you can use the Python BigQuery connector to get directly into the dataframe.
 If you have big datasets, we suggest you take fraction of users in SQL query,
 filtering by the user id (just add this condition to SQL WHERE statement to get 10%
 of your users : “and ABS(MOD(FARM_FINGERPRINT(fullVisitorId), 10)) = 0)”.

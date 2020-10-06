@@ -25,6 +25,14 @@ get_clusters
     :undoc-members:
     :show-inheritance:
 
+project
+-------
+
+.. automodule:: retentioneering.core.core_functions.project
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 extract_features
 ----------------
 

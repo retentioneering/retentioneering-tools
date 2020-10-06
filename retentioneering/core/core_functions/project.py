@@ -29,7 +29,7 @@ def project(self, *,
             IMPORTANT: must do .rete.get_clusters() before to obtain cluster mapping.
             - 'targets': color trajectories based on reach to any event provided in 'targets' parameter.
             Must provide 'targets' parameter in this case.
-        If ``None``, then only calculates TSNE without visualization. Default: ``None``
+        If None, then only calculates TSNE without visualization.
 
     targets: list or tuple of str (optional, default  ())
         Vector of event_names as str. If user reach any of the specified events, the dot corresponding

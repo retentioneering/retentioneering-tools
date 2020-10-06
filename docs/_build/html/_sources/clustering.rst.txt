@@ -294,3 +294,5 @@ Parameter targets (list of event names) used to highlight users who reach any ta
 
 .. image:: _static/clustering/project_3.svg
 
+Unlike other 2D plots the coordinates of these TSNE and UMAP projections does not have actual units - the ticks and the mesh is provided only to assist exploration with clear metric for distance beetween users and to locate particular user on the plot. The best interpretation of the plots is that we can see the geographical map of user locations corresponding to their behavioral similarities within each other.
+

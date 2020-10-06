@@ -236,6 +236,20 @@ Also you can compare users flow from different segments using
 Visualize cluster using project()
 =================================
 
+You can also visualize clusterization results using rete.project() function (read below how it works). After you run clustering as in this notebook above, you can pass plot_type ='clusters':
+
+.. code:: ipython3
+
+    data.rete.project(plot_type ='clusters',
+                      method='tsne',
+                      perplexity=128);
+
+.. image:: _static/clustering/project_4.svg
+
+You can see from this high-level map, for example, that cluster 4 contains most of the highly engaged users, whereas cluster 1 represents users with very distinct low-engagement behavior.
+
+Below if additional information about rete.project() function:
+
 Sometimes it is useful to have a high-level overview of your users trajectories. This can be done by dimension reduction techniques where multidimensional vectorized user trajectories are transformed to two dimensional vectors. After such transformation we can visualize all users on a single plane where each user will be represented with a single dot. This dimension-reduction transformation is done in a way that approximately conserves the distances from high-dimension meaning that users with similar behavior will end up as close dots on a plane. Retentioneering library provides tools for two popular transformation methods: `tsne <https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html>`__ and `umap <https://umap-learn.readthedocs.io/en/latest/index.html>`__. Let's see an example:
 
 .. code:: ipython3
@@ -279,14 +293,3 @@ Parameter targets (list of event names) used to highlight users who reach any ta
 
 .. image:: _static/clustering/project_3.svg
 
-Another option for plot_type is visualization of clustering results. After you run clustering as in this notebook above, you can pass plot_type ='clusters':
-
-.. code:: ipython3
-
-    data.rete.project(plot_type ='clusters',
-                      method='tsne',
-                      perplexity=128);
-
-.. image:: _static/clustering/project_4.svg
-
-You can see from this high-level map, for example, that cluster 4 contains most of the highly engaged users, whereas cluster 1 represents users with very distinct low-engagement behavior.

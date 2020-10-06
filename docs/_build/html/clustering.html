@@ -345,6 +345,14 @@ or open directly in
 </div>
 <div class="section" id="visualize-cluster-using-project">
 <h2>Visualize cluster using project()<a class="headerlink" href="#visualize-cluster-using-project" title="Permalink to this headline">¶</a></h2>
+<p>You can also visualize clusterization results using rete.project() function (read below how it works). After you run clustering as in this notebook above, you can pass plot_type =’clusters’:</p>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">plot_type</span> <span class="o">=</span><span class="s1">&#39;clusters&#39;</span><span class="p">,</span>
+                  <span class="n">method</span><span class="o">=</span><span class="s1">&#39;tsne&#39;</span><span class="p">,</span>
+                  <span class="n">perplexity</span><span class="o">=</span><span class="mi">128</span><span class="p">);</span>
+</pre></div>
+</div>
+<img alt="_images/project_4.svg" src="_images/project_4.svg" /><p>You can see from this high-level map, for example, that cluster 4 contains most of the highly engaged users, whereas cluster 1 represents users with very distinct low-engagement behavior.</p>
+<p>Below if additional information about rete.project() function:</p>
 <p>Sometimes it is useful to have a high-level overview of your users trajectories. This can be done by dimension reduction techniques where multidimensional vectorized user trajectories are transformed to two dimensional vectors. After such transformation we can visualize all users on a single plane where each user will be represented with a single dot. This dimension-reduction transformation is done in a way that approximately conserves the distances from high-dimension meaning that users with similar behavior will end up as close dots on a plane. Retentioneering library provides tools for two popular transformation methods: <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html">tsne</a> and <a class="reference external" href="https://umap-learn.readthedocs.io/en/latest/index.html">umap</a>. Let’s see an example:</p>
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">plot_type</span> <span class="o">=</span><span class="s1">&#39;targets&#39;</span><span class="p">,</span>
                   <span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;cart&#39;</span><span class="p">],</span>
@@ -372,14 +380,7 @@ or open directly in
                   <span class="n">perplexity</span> <span class="o">=</span> <span class="mi">128</span><span class="p">);</span>
 </pre></div>
 </div>
-<img alt="_images/project_3.svg" src="_images/project_3.svg" /><p>Another option for plot_type is visualization of clustering results. After you run clustering as in this notebook above, you can pass plot_type =’clusters’:</p>
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span><span class="o">.</span><span class="n">rete</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">plot_type</span> <span class="o">=</span><span class="s1">&#39;clusters&#39;</span><span class="p">,</span>
-                  <span class="n">method</span><span class="o">=</span><span class="s1">&#39;tsne&#39;</span><span class="p">,</span>
-                  <span class="n">perplexity</span><span class="o">=</span><span class="mi">128</span><span class="p">);</span>
-</pre></div>
-</div>
-<img alt="_images/project_4.svg" src="_images/project_4.svg" /><p>You can see from this high-level map, for example, that cluster 4 contains most of the highly engaged users, whereas cluster 1 represents users with very distinct low-engagement behavior.</p>
-</div>
+<img alt="_images/project_3.svg" src="_images/project_3.svg" /></div>
 </div>
 
 

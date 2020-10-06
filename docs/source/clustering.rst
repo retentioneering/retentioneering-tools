@@ -236,6 +236,11 @@ Also you can compare users flow from different segments using
 Visualize cluster using project()
 =================================
 
+Sometimes it is useful to have a high-level overview of your users trajectories to have a clear visual control over the final separation of your clusters. This can be performed by dimension reduction techniques, when multidimensional vectorization is applied to user trajectories, transforming them into 2D vectors. After such transformation we can visualize every behavior of every user on a single plane where each user will be represented with a single dot. 
+This dimension-reduction transformation is performed in a way that approximately conserves the original distances between user points of high-dimensional space, where the cluster search algorithm was applied. Therefore, users with similar behavior will get transformed into very close dots on a plane, while the users with differences in their behavioral patterns would appear as very separated points on the plane. Due to limitations of 2D dimensions sometimes transformation may introduce distortions, so that originally well separated clusters may appear overlapping. This might be the case when you try to process data overloaded with different types of events, building original high dimensional space as a very sparse structure. Keep in mind that UMAP and TSNE are not deterministic algorithms, so different runs of procedure may lead to different results of transformation, keeping the overall pair distance structure in an approximate manner. 
+Retentioneering library provides tools for two popular transformation methods: `TSNE <https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html>`__ and `UMAP <https://umap-learn.readthedocs.io/en/latest/index.html>`__. Let’s explore some examples:
+
+
 You can also visualize clusterization results using rete.project() function (read below how it works). After you run clustering as in this notebook above, you can pass plot_type ='clusters':
 
 .. code:: ipython3
@@ -246,11 +251,7 @@ You can also visualize clusterization results using rete.project() function (rea
 
 .. image:: _static/clustering/project_4.svg
 
-You can see from this high-level map, for example, that cluster 4 contains most of the highly engaged users, whereas cluster 1 represents users with very distinct low-engagement behavior.
-
-Below if additional information about rete.project() function:
-
-Sometimes it is useful to have a high-level overview of your users trajectories. This can be done by dimension reduction techniques where multidimensional vectorized user trajectories are transformed to two dimensional vectors. After such transformation we can visualize all users on a single plane where each user will be represented with a single dot. This dimension-reduction transformation is done in a way that approximately conserves the distances from high-dimension meaning that users with similar behavior will end up as close dots on a plane. Retentioneering library provides tools for two popular transformation methods: `tsne <https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html>`__ and `umap <https://umap-learn.readthedocs.io/en/latest/index.html>`__. Let's see an example:
+The distances on this 2D map are a good indicator of behavioral proximity between users. Please take a note of clusters' locations and let's try to plot this map by visualizing whether users of these clusters were converted into the target events. We can define our targets with targets argument, for example in case we want to explore conversions into the 'cart' event: targets = ['cart'] and providing the option plot_type ='targets'. Now we can see, that cluster 4 contains most of the 'cart' visitors, whereas cluster 1 represents users with very distinct and clear low cart conversion behavior:
 
 .. code:: ipython3
 
@@ -260,9 +261,7 @@ Sometimes it is useful to have a high-level overview of your users trajectories.
 
 .. image:: _static/clustering/project_0.svg
 
-Here each dot on the plane above represents each user.
-
-As keyword arguments to project() function you can pass any parameters supported by scikit-learn tsne implementation. For example:
+As keyword arguments to project() function you can pass any parameters supported by `scikit-learn tsne <https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html>`__ implementation. For example:
 
 .. code:: ipython3
 
@@ -272,6 +271,8 @@ As keyword arguments to project() function you can pass any parameters supported
                       perplexity = 128);
 
 .. image:: _static/clustering/project_1.svg
+
+Analagously, if you use method='umap', you can pass any additional `umap parameters <https://umap-learn.readthedocs.io/en/latest/api.html>`__ to project() function.
 
 Parameter targets (list of event names) used to highlight users who reach any target event vs those who have not. For example, we can highlight users on the projection map who reach the product page (product1 or product2):
 

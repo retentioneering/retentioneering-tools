@@ -1,63 +1,17 @@
 # * Copyright (C) 2020 Maxim Godzi, Anatoly Zaytsev, Retentioneering Team
-# * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive, Non-Commercial Use License (License)
+# * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive License (License)
 # * By using, sharing or editing this code you agree with the License terms and conditions.
 # * You can obtain License text at https://github.com/retentioneering/retentioneering-tools/blob/master/LICENSE.md
 
 
 from datetime import datetime
 
-
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
-import numpy as np
 import pandas as pd
 import seaborn as sns
 
 from .plot_utils import __save_plot__, ___FigureWrapper__
-
-
-@__save_plot__
-def cluster_tsne(data, *,
-                 clusters,
-                 target,
-                 plot_name=None,
-                 **kwargs):
-    """
-    Plots TSNE projection of user stories colored by clusters. Each point represents a user session or whole user trajectory.
-    Parameters
-    --------
-    data: pd.DataFrame
-        Feature matrix.
-    clusters: np.array
-        Array of cluster IDs.
-    target: np.array
-        Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
-    plot_name: str, optional
-        Name of plot to save. Default: ``'clusters_tsne_{timestamp}.svg'``
-    Returns
-    -------
-    Saves plot to ``retention_config.experiments_folder``
-    Return type
-    -------
-    PNG
-    """
-
-    if hasattr(data.rete, '_tsne') and not kwargs.get('refit'):
-        tsne2 = data.rete._tsne.copy()
-    else:
-        tsne2 = data.rete.learn_tsne(clusters, **kwargs)
-    tsne = tsne2.values
-    if np.unique(clusters).shape[0] > 10:
-        f, ax = sns.mpl.pyplot.subplots()
-        points = ax.scatter(tsne[:, 0], tsne[:, 1], c=clusters, cmap="BrBG")
-        f.colorbar(points)
-        scatter = ___FigureWrapper__(f)
-    else:
-        scatter = sns.scatterplot(tsne[:, 0], tsne[:, 1], hue=clusters, legend='full',
-                                  palette=sns.color_palette("bright")[0:np.unique(clusters).shape[0]])
-    plot_name = plot_name or 'cluster_tsne_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.svg'
-    plot_name = data.rete.retention_config['experiments_folder'] + '/' + plot_name
-    return scatter, plot_name, tsne2, data.rete.retention_config
 
 
 @__save_plot__

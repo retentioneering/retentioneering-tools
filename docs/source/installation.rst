@@ -17,7 +17,7 @@ Open `google.colab <https://colab.research.google.com/>`__  and click File->
 
         !pip3 install retentioneering
 
-**Option 3. Install Retentioneering from termianl using PyPI:**
+**Option 3. Install Retentioneering from terminal using PyPI:**
 
     .. code:: bash
 

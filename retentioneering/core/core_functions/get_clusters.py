@@ -1,5 +1,5 @@
 # * Copyright (C) 2020 Maxim Godzi, Anatoly Zaytsev, Retentioneering Team
-# * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive, Non-Commercial Use License (License)
+# * This Source Code Form is subject to the terms of the Retentioneering Software Non-Exclusive License (License)
 # * By using, sharing or editing this code you agree with the License terms and conditions.
 # * You can obtain License text at https://github.com/retentioneering/retentioneering-tools/blob/master/LICENSE.md
 
@@ -68,11 +68,10 @@ def get_clusters(self, *,
         features = self._obj.copy()
     else:
         features = self.extract_features(feature_type=feature_type,
-                                         ngram_range=ngram_range,
-                                         **kwargs)
+                                         ngram_range=ngram_range)
 
     # obtain clusters
-    if self.clusters is None or refit_cluster:
+    if not hasattr(self, 'clusters') or refit_cluster:
         clusterer = globals()['_'+method]
         self.clusters = clusterer(features,
                                   n_clusters=n_clusters,

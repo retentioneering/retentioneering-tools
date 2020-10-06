@@ -103,6 +103,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#module-retentioneering.core.core_functions.step_matrix">step_matrix</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-retentioneering.core.core_functions.plot_graph">plot_graph</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-retentioneering.core.core_functions.get_clusters">get_clusters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-retentioneering.core.core_functions.project">project</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-retentioneering.core.core_functions.extract_features">extract_features</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-retentioneering.core.core_functions.compare">compare</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-retentioneering.core.core_functions.funnel">funnel</a></li>
@@ -374,6 +375,43 @@ Only applies if plot_type = ‘cluster_bar’</p>
 </dl>
 <p>Array of clusters as .cluster_mapping attribute</p>
 <p>np.array</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-retentioneering.core.core_functions.project">
+<span id="project"></span><h2>project<a class="headerlink" href="#module-retentioneering.core.core_functions.project" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="retentioneering.core.core_functions.project.project">
+<code class="sig-prename descclassname">retentioneering.core.core_functions.project.</code><code class="sig-name descname">project</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">method</span><span class="o">=</span><span class="default_value">'tsne'</span></em>, <em class="sig-param"><span class="n">targets</span><span class="o">=</span><span class="default_value">()</span></em>, <em class="sig-param"><span class="n">ngram_range</span><span class="o">=</span><span class="default_value">1, 1</span></em>, <em class="sig-param"><span class="n">feature_type</span><span class="o">=</span><span class="default_value">'tfidf'</span></em>, <em class="sig-param"><span class="n">plot_type</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/retentioneering/core/core_functions/project.html#project"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#retentioneering.core.core_functions.project.project" title="Permalink to this definition">¶</a></dt>
+<dd><p>Does dimention reduction of user trajectories and draws projection plane.</p>
+<dl>
+<dt>method: {‘umap’, ‘tsne’} (optional, default ‘tsne’)</dt><dd><p>Type of manifold transformation.</p>
+</dd>
+<dt>plot_type: {‘targets’, ‘clusters’, None} (optional, default None)</dt><dd><dl>
+<dt>Type of color-coding used for projection visualization:</dt><dd><ul class="simple">
+<li><p>‘clusters’: colors trajectories with different colors depending on cluster number.</p></li>
+</ul>
+<p>IMPORTANT: must do .rete.get_clusters() before to obtain cluster mapping.
+- ‘targets’: color trajectories based on reach to any event provided in ‘targets’ parameter.
+Must provide ‘targets’ parameter in this case.</p>
+</dd>
+</dl>
+<p>If None, then only calculates TSNE without visualization.</p>
+</dd>
+<dt>targets: list or tuple of str (optional, default  ())</dt><dd><p>Vector of event_names as str. If user reach any of the specified events, the dot corresponding
+to this user will be highlighted as converted on the resulting projection plot</p>
+</dd>
+<dt>feature_type: str, (optional, default ‘tfidf’)</dt><dd><p>Type of vectorizer to use before dimension-reduction. Available vectorization methods:
+{‘tfidf’, ‘count’, ‘binary’, ‘frequency’}</p>
+</dd>
+<dt>ngram_range: tuple, (optional, default (1,1))</dt><dd><p>The lower and upper boundary of the range of n-values for different
+word n-grams or char n-grams to be extracted before dimension-reduction.
+For example ngram_range=(1, 1) means only single events, (1, 2) means single events
+and bigrams.</p>
+</dd>
+</dl>
+<p>Dataframe with data in the low-dimensional space for user trajectories indexed by user IDs.</p>
+<p>pd.DataFrame</p>
 </dd></dl>
 
 </div>

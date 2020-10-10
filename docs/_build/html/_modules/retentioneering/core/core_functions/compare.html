@@ -75,6 +75,7 @@
         
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
+    
             
             
               
@@ -103,6 +104,8 @@
 
             
           
+    <a href="https://github.com/retentioneering/retentioneering-tools">GitHub link</a>
+
         </div>
         
       </div>
@@ -171,14 +174,20 @@
 <span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">ks_2samp</span><span class="p">,</span> <span class="n">mannwhitneyu</span>
 
 <span class="kn">from</span> <span class="nn">...visualization</span> <span class="kn">import</span> <span class="n">plot_compare</span>
+<span class="kn">from</span> <span class="nn">statsmodels.stats.power</span> <span class="kn">import</span> <span class="n">TTestIndPower</span>
+<span class="kn">from</span> <span class="nn">statsmodels.stats.weightstats</span> <span class="kn">import</span> <span class="n">ttest_ind</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">math</span>
 
 <span class="n">TESTS_LIST</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ks_2samp&#39;</span><span class="p">,</span> <span class="s1">&#39;mannwhitneyu&#39;</span><span class="p">]</span>
+
 
 <div class="viewcode-block" id="compare"><a class="viewcode-back" href="../../../../retentioneering.core.html#retentioneering.core.core_functions.compare.compare">[docs]</a><span class="k">def</span> <span class="nf">compare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
             <span class="n">groups</span><span class="p">,</span>
             <span class="n">function</span><span class="p">,</span>
             <span class="n">test</span><span class="p">,</span>
-            <span class="n">group_names</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;group_1&#39;</span><span class="p">,</span> <span class="s1">&#39;group_2&#39;</span><span class="p">)):</span>
+            <span class="n">group_names</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;group_1&#39;</span><span class="p">,</span> <span class="s1">&#39;group_2&#39;</span><span class="p">),</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.05</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Tests selected metric between two groups of users.</span>
 
@@ -192,12 +201,14 @@
 <span class="sd">        single user trajectory and returns a single numerical value.</span>
 <span class="sd">    group_names: tuple (optional, default: (&#39;group_1&#39;, &#39;group_2&#39;))</span>
 <span class="sd">        Names for selected groups g_1 and g_2.</span>
-<span class="sd">    test: {‘ks_2samp’, ‘mannwhitneyu’}</span>
+<span class="sd">    test: {‘mannwhitneyu’, &#39;ttest&#39;, ‘ks_2samp’}</span>
 <span class="sd">        Test the null hypothesis that 2 independent samples are drawn from the same</span>
 <span class="sd">        distribution. One-sided tests are used, meaning that distributions are compared</span>
-<span class="sd">        &#39;less&#39; or &#39;greater&#39;. For discrete variables (like convertions or number of purchase)</span>
-<span class="sd">        use Mann-Whitney test (‘mannwhitneyu’). For continious variables (like average_check)</span>
-<span class="sd">        use Kolmogorov-Smirnov test (&#39;ks_2samp&#39;).</span>
+<span class="sd">        &#39;less&#39; or &#39;greater&#39;. Rule of thumbs is: for discrete variables (like convertions</span>
+<span class="sd">        or number of purchase) use Mann-Whitney (‘mannwhitneyu’) test or t-test (‘ttest’).</span>
+<span class="sd">         For continious variables (like average_check) use Kolmogorov-Smirnov test (&#39;ks_2samp&#39;).</span>
+<span class="sd">    alpha: float (optional, default 0.05)</span>
+<span class="sd">        Selected level of significance.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -222,21 +233,69 @@
 
     <span class="c1"># calculate test statistics</span>
     <span class="k">if</span> <span class="n">test</span><span class="p">:</span>
-        <span class="n">test_func</span> <span class="o">=</span> <span class="nb">globals</span><span class="p">()[</span><span class="n">test</span><span class="p">]</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">group_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> (mean </span><span class="se">\u00B1</span><span class="s2"> SD): </span><span class="si">{</span><span class="n">g1_data</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> </span><span class="se">\u00B1</span><span class="s2"> </span><span class="si">{</span><span class="n">g1_data</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, n = </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">g1_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">group_names</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> (mean </span><span class="se">\u00B1</span><span class="s2"> SD): </span><span class="si">{</span><span class="n">g2_data</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> </span><span class="se">\u00B1</span><span class="s2"> </span><span class="si">{</span><span class="n">g2_data</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, n = </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">g2_data</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">test</span> <span class="o">==</span> <span class="s1">&#39;ks_2samp&#39;</span><span class="p">:</span>
-            <span class="n">p_less</span> <span class="o">=</span> <span class="p">(</span><span class="n">test_func</span><span class="p">(</span><span class="n">g1_data</span><span class="p">,</span> <span class="n">g2_data</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;less&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
-            <span class="n">p_greater</span> <span class="o">=</span> <span class="p">(</span><span class="n">test_func</span><span class="p">(</span><span class="n">g1_data</span><span class="p">,</span> <span class="n">g2_data</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;greater&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
-        <span class="k">elif</span> <span class="n">test</span> <span class="o">==</span> <span class="s1">&#39;mannwhitneyu&#39;</span><span class="p">:</span>
-            <span class="n">p_greater</span> <span class="o">=</span> <span class="p">(</span><span class="n">test_func</span><span class="p">(</span><span class="n">g1_data</span><span class="p">,</span> <span class="n">g2_data</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;less&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
-            <span class="n">p_less</span> <span class="o">=</span> <span class="p">(</span><span class="n">test_func</span><span class="p">(</span><span class="n">g1_data</span><span class="p">,</span> <span class="n">g2_data</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;greater&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">p_val_norm</span><span class="p">,</span> <span class="n">power_norm</span> <span class="o">=</span> <span class="n">_stat_test</span><span class="p">(</span><span class="n">g1_data</span><span class="p">,</span> <span class="n">g2_data</span><span class="p">,</span> <span class="n">test</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+        <span class="n">p_val_rev</span><span class="p">,</span> <span class="n">power_rev</span> <span class="o">=</span> <span class="n">_stat_test</span><span class="p">(</span><span class="n">g2_data</span><span class="p">,</span> <span class="n">g1_data</span><span class="p">,</span> <span class="n">test</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">p_less</span> <span class="o">&lt;</span> <span class="n">p_greater</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">group_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39; is greater than &#39;</span><span class="si">{</span><span class="n">group_names</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39; with P-value: </span><span class="si">{</span><span class="n">p_less</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">p_val_norm</span> <span class="o">&lt;</span> <span class="n">p_val_rev</span><span class="p">:</span>
+            <span class="n">p_val</span> <span class="o">=</span> <span class="n">p_val_norm</span>
+            <span class="n">power</span> <span class="o">=</span> <span class="n">power_norm</span>
+            <span class="n">label_max</span> <span class="o">=</span> <span class="n">group_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">label_min</span> <span class="o">=</span> <span class="n">group_names</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">group_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39; is less than &#39;</span><span class="si">{</span><span class="n">group_names</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39; with P-value: </span><span class="si">{</span><span class="n">p_greater</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+            <span class="n">p_val</span> <span class="o">=</span> <span class="n">p_val_rev</span>
+            <span class="n">power</span> <span class="o">=</span> <span class="n">power_rev</span>
+            <span class="n">label_max</span> <span class="o">=</span> <span class="n">group_names</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">label_min</span> <span class="o">=</span> <span class="n">group_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">label_max</span><span class="si">}</span><span class="s2">&#39; is greater than &#39;</span><span class="si">{</span><span class="n">label_min</span><span class="si">}</span><span class="s2">&#39; with P-value: </span><span class="si">{</span><span class="n">p_val</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;power of the test: </span><span class="si">{</span><span class="mi">100</span><span class="o">*</span><span class="n">power</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_stat_test</span><span class="p">(</span><span class="n">data_max</span><span class="p">,</span> <span class="n">data_min</span><span class="p">,</span> <span class="n">test</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+    <span class="c1"># calculate effect size</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">data_max</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="ow">and</span>
+            <span class="nb">min</span><span class="p">(</span><span class="n">data_max</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span>
+            <span class="nb">max</span><span class="p">(</span><span class="n">data_min</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="ow">and</span>
+            <span class="nb">min</span><span class="p">(</span><span class="n">data_min</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="c1"># if analyze proportions use Cohen&#39;s h:</span>
+        <span class="n">effect_size</span> <span class="o">=</span> <span class="n">_cohenh</span><span class="p">(</span><span class="n">data_max</span><span class="p">,</span> <span class="n">data_min</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># for other variables use Cohen&#39;s d:</span>
+        <span class="n">effect_size</span> <span class="o">=</span> <span class="n">_cohend</span><span class="p">(</span><span class="n">data_max</span><span class="p">,</span> <span class="n">data_min</span><span class="p">)</span>
+
+    <span class="c1"># calculate power</span>
+    <span class="n">power</span> <span class="o">=</span> <span class="n">TTestIndPower</span><span class="p">()</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">effect_size</span><span class="o">=</span><span class="n">effect_size</span><span class="p">,</span>
+                                  <span class="n">nobs1</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">data_max</span><span class="p">),</span>
+                                  <span class="n">ratio</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">data_min</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_max</span><span class="p">),</span>
+                                  <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+                                  <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;larger&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">test</span> <span class="o">==</span> <span class="s1">&#39;ks_2samp&#39;</span><span class="p">:</span>
+        <span class="n">p_val</span> <span class="o">=</span> <span class="n">ks_2samp</span><span class="p">(</span><span class="n">data_max</span><span class="p">,</span> <span class="n">data_min</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;less&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">test</span> <span class="o">==</span> <span class="s1">&#39;mannwhitneyu&#39;</span><span class="p">:</span>
+        <span class="n">p_val</span> <span class="o">=</span> <span class="n">mannwhitneyu</span><span class="p">(</span><span class="n">data_max</span><span class="p">,</span> <span class="n">data_min</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;greater&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">test</span> <span class="o">==</span> <span class="s1">&#39;ttest&#39;</span><span class="p">:</span>
+        <span class="n">p_val</span> <span class="o">=</span> <span class="n">ttest_ind</span><span class="p">(</span><span class="n">data_max</span><span class="p">,</span> <span class="n">data_min</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s1">&#39;larger&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">p_val</span><span class="p">,</span> <span class="n">power</span>
+
+
+<span class="c1"># function to calculate Cohen&#39;s d:</span>
+<span class="k">def</span> <span class="nf">_cohend</span><span class="p">(</span><span class="n">d1</span><span class="p">,</span> <span class="n">d2</span><span class="p">):</span>
+    <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">d1</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">d2</span><span class="p">)</span>
+    <span class="n">s1</span><span class="p">,</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">d1</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">d2</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(((</span><span class="n">n1</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">s1</span> <span class="o">+</span> <span class="p">(</span><span class="n">n2</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">s2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n1</span> <span class="o">+</span> <span class="n">n2</span> <span class="o">-</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="n">u1</span><span class="p">,</span> <span class="n">u2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">d1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">d2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">u1</span> <span class="o">-</span> <span class="n">u2</span><span class="p">)</span> <span class="o">/</span> <span class="n">s</span>
+
+
+<span class="c1"># function to calculate Cohen&#39;s h:</span>
+<span class="k">def</span> <span class="nf">_cohenh</span><span class="p">(</span><span class="n">d1</span><span class="p">,</span> <span class="n">d2</span><span class="p">):</span>
+    <span class="n">u1</span><span class="p">,</span> <span class="n">u2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">d1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">d2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">asin</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">u1</span><span class="p">))</span> <span class="o">-</span>
+              <span class="n">math</span><span class="o">.</span><span class="n">asin</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">u2</span><span class="p">)))</span>
 </pre></div>
 
            </div>

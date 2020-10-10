@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='retentioneering',
-    version='2.0.1',
+    version='2.0.2',
     license='Retentioneering Software Non-Exclusive License (License)',
     description='Product analytics and marketing optimization framework based on deep user trajectories analysis',
     long_description="""
@@ -26,6 +26,7 @@ setup(
         'seaborn>=0.11.0',
         'matplotlib>=3.3.1',
         'scikit-learn>=0.23.2',
+        'statsmodels>=0.12.0',
         'scipy',
         'altair',
         'vega',

@@ -20,3 +20,12 @@ class RetentioneeringDataset(BaseDataset):
     def __init__(self, pandas_obj):
         super(RetentioneeringDataset, self).__init__(pandas_obj)
         self.retention_config = config
+
+
+# inform user to update their old notebooks from v1.0.x:
+def init_config(*args, **kwargs):
+    class VersionError(Exception):
+        pass
+
+    raise VersionError('this function was depricated from v2.0.0. ' +
+                       'Please refer to documentaion at https://github.com/retentioneering/retentioneering-tools')

@@ -38,5 +38,6 @@ Contents
    :maxdepth: 2
 
    Core functions <retentioneering.core.rst>
+   Github <>
 
 back to github: `back to github <https://github.com/retentioneering/retentioneering-tools>`_.

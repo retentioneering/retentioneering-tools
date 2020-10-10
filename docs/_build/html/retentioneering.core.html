@@ -76,6 +76,7 @@
         
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
+    
             
             
               
@@ -115,6 +116,8 @@
 
             
           
+    <a href="https://github.com/retentioneering/retentioneering-tools">GitHub link</a>
+
         </div>
         
       </div>
@@ -440,9 +443,9 @@ and bigrams.</p>
 <span id="compare"></span><h2>compare<a class="headerlink" href="#module-retentioneering.core.core_functions.compare" title="Permalink to this headline">¶</a></h2>
 <dl class="py function">
 <dt id="retentioneering.core.core_functions.compare.compare">
-<code class="sig-prename descclassname">retentioneering.core.core_functions.compare.</code><code class="sig-name descname">compare</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">groups</span></em>, <em class="sig-param"><span class="n">function</span></em>, <em class="sig-param"><span class="n">test</span></em>, <em class="sig-param"><span class="n">group_names</span><span class="o">=</span><span class="default_value">'group_1', 'group_2'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/retentioneering/core/core_functions/compare.html#compare"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#retentioneering.core.core_functions.compare.compare" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">retentioneering.core.core_functions.compare.</code><code class="sig-name descname">compare</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">self</span></em>, <em class="sig-param"><span class="o">*</span></em>, <em class="sig-param"><span class="n">groups</span></em>, <em class="sig-param"><span class="n">function</span></em>, <em class="sig-param"><span class="n">test</span></em>, <em class="sig-param"><span class="n">group_names</span><span class="o">=</span><span class="default_value">'group_1', 'group_2'</span></em>, <em class="sig-param"><span class="n">alpha</span><span class="o">=</span><span class="default_value">0.05</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/retentioneering/core/core_functions/compare.html#compare"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#retentioneering.core.core_functions.compare.compare" title="Permalink to this definition">¶</a></dt>
 <dd><p>Tests selected metric between two groups of users.</p>
-<dl class="simple">
+<dl>
 <dt>groups: tuple (optional, default None)</dt><dd><p>Must contain tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
 of user_id`s (list, tuple or set).</p>
 </dd>
@@ -451,11 +454,15 @@ single user trajectory and returns a single numerical value.</p>
 </dd>
 <dt>group_names: tuple (optional, default: (‘group_1’, ‘group_2’))</dt><dd><p>Names for selected groups g_1 and g_2.</p>
 </dd>
-<dt>test: {‘ks_2samp’, ‘mannwhitneyu’}</dt><dd><p>Test the null hypothesis that 2 independent samples are drawn from the same
+<dt>test: {‘mannwhitneyu’, ‘ttest’, ‘ks_2samp’}</dt><dd><p>Test the null hypothesis that 2 independent samples are drawn from the same
 distribution. One-sided tests are used, meaning that distributions are compared
-‘less’ or ‘greater’. For discrete variables (like convertions or number of purchase)
-use Mann-Whitney test (‘mannwhitneyu’). For continious variables (like average_check)
-use Kolmogorov-Smirnov test (‘ks_2samp’).</p>
+‘less’ or ‘greater’. Rule of thumbs is: for discrete variables (like convertions
+or number of purchase) use Mann-Whitney (‘mannwhitneyu’) test or t-test (‘ttest’).</p>
+<blockquote>
+<div><p>For continious variables (like average_check) use Kolmogorov-Smirnov test (‘ks_2samp’).</p>
+</div></blockquote>
+</dd>
+<dt>alpha: float (optional, default 0.05)</dt><dd><p>Selected level of significance.</p>
 </dd>
 </dl>
 <p>Prints statistical comparison between two groups over selected metric and test</p>

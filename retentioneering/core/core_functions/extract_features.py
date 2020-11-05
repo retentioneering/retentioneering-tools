@@ -45,16 +45,16 @@ def extract_features(self, *,
             ' '.join(_embedding_types)
         ))
 
+    index_col = self.retention_config['user_col']
+    event_col = self.retention_config['event_col']
     tmp = self._obj.copy()
-
-    res = _embedder(tmp,
-                    feature_type=feature_type,
+    res = _embedder(tmp,index_col,event_col,feature_type=feature_type,
                     ngram_range=ngram_range)
 
     return res
 
 
-def _embedder(data, *,
+def _embedder(data, index_col,event_col,*,
               feature_type,
               ngram_range=(1, 1)):
     """
@@ -79,9 +79,10 @@ def _embedder(data, *,
     -------
     pd.DataFrame
     """
-    index_col = data.rete.retention_config['user_col']
-    event_col = data.rete.retention_config['event_col']
+    
 
+    
+    
     corpus = data.groupby(index_col)[event_col].apply(
         lambda x: '~~'.join([el.lower() for el in x])
     )

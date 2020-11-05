@@ -4,11 +4,11 @@
 # * You can obtain License text at https://github.com/retentioneering/retentioneering-tools/blob/master/LICENSE.md
 
 import numpy as np
-
+import pandas as pd
 from retentioneering.visualization import plot_clusters
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
-
+import json
 
 def get_clusters(self, *,
                  feature_type='tfidf',
@@ -18,6 +18,7 @@ def get_clusters(self, *,
                  plot_type=None,
                  refit_cluster=True,
                  targets=None,
+                 export_segments=None,
                  **kwargs):
     """
     Cluster users in the dataset according to their behavior.
@@ -76,7 +77,7 @@ def get_clusters(self, *,
         self.clusters = clusterer(features,
                                   n_clusters=n_clusters,
                                   **kwargs)
-        _create_cluster_mapping(self, features.index.values)
+        _create_cluster_mapping(self, features.index.values,export_segments)
 
     # init and obtain bool vector for targets:
     targets_bool = [np.array([False] * len(self.clusters))]
@@ -243,10 +244,26 @@ def cluster_event_dist(self,
     )
 
 
-def _create_cluster_mapping(self, ids):
+def _create_cluster_mapping(self, ids,export_segments):
+    if export_segments!=None:
+        segment_name=str(export_segments)
+        users=self.segments.get_users()
+        len_users = len(users)
+
+        #dfn = pd.DataFrame(0, index=np.arange(len_users), columns=set(self.clusters))
+        #dfn.columns = pd.MultiIndex.from_product([[segment_name], set(self.clusters)])
+        
+        dfn = pd.DataFrame(0, index=np.arange(len_users), columns=(lambda x,y: [x +'.'+ str(sub1) for sub1 in y])(segment_name,set(self.clusters)))
+        
+        dfn['user_col']=users
+        for cluster in set(self.clusters):
+            dfn.loc[dfn['user_col'].isin(ids[self.clusters == cluster].tolist()), (segment_name+'.'+str(cluster))] = 1
+        self.segments.add_segment_from_df(dfn)
+    
     self.cluster_mapping = {}
     for cluster in set(self.clusters):
         self.cluster_mapping[cluster] = ids[self.clusters == cluster].tolist()
+
 
 
 def _kmeans(data, *,

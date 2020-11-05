@@ -7,6 +7,7 @@
 import os
 import pandas as pd
 from .core_functions.base_dataset import BaseDataset
+from .segments import Segments
 
 config = {'experiments_folder': 'experiments'}
 
@@ -29,3 +30,6 @@ def init_config(*args, **kwargs):
 
     raise VersionError('this function was depricated from v2.0.0. ' +
                        'Please refer to documentaion at https://github.com/retentioneering/retentioneering-tools')
+
+
+

@@ -4,12 +4,22 @@
 # * You can obtain License text at https://github.com/retentioneering/retentioneering-tools/blob/master/LICENSE.md
 
 import pandas as pd
+from ..segments import Segments
 
 
 class BaseDataset(object):
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
         self.retention_config = {}
+        
+        self.segments = {}
+    def set_config(self,newconfig):
+        self.retention_config = newconfig
+        self._initial_fill_segments()
+        
+    def _initial_fill_segments(self):
+        users=(self._obj)[self.retention_config['user_col']].unique().copy()
+        self.segments = Segments(users)
 
     def _get_shift(self, *,
                    index_col=None,

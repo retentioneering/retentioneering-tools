@@ -10,7 +10,7 @@ from sklearn.manifold import TSNE
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 
 
-_embedding_types = {'tfidf', 'count', 'binary', 'frequency'}
+_embedding_types = {'tfidf', 'count', 'binary', 'frequency', 'time', 'time_fraction'}
 
 
 def extract_features(self, *,
@@ -40,21 +40,24 @@ def extract_features(self, *,
     pd.DataFrame of (number of users, number of unique events | event n-grams)
     """
     if feature_type not in _embedding_types:
-        raise ValueError("Unknown feature type: {}.\nPlease choose one from {}".format(
+        raise ValueError("Unknown feature type: {}.\nPlease choose one from: {}".format(
             feature_type,
-            ' '.join(_embedding_types)
+            ', '.join(_embedding_types)
         ))
 
     index_col = self.retention_config['user_col']
     event_col = self.retention_config['event_col']
+    time_col = self.retention_config['event_time_col']
     tmp = self._obj.copy()
-    res = _embedder(tmp,index_col,event_col,feature_type=feature_type,
+
+    res = _embedder(tmp, index_col, event_col, time_col,
+                    feature_type=feature_type,
                     ngram_range=ngram_range)
 
     return res
 
 
-def _embedder(data, index_col,event_col,*,
+def _embedder(data, index_col, event_col, time_col, *,
               feature_type,
               ngram_range=(1, 1)):
     """
@@ -79,29 +82,47 @@ def _embedder(data, index_col,event_col,*,
     -------
     pd.DataFrame
     """
-    
-
-    
-    
     corpus = data.groupby(index_col)[event_col].apply(
         lambda x: '~~'.join([el.lower() for el in x])
     )
 
-    if feature_type == 'tfidf':
-        vectorizer = TfidfVectorizer(ngram_range=ngram_range, token_pattern = '[^~]+').fit(corpus)
-    elif feature_type in {'count', 'frequency'}:
-        vectorizer = CountVectorizer(ngram_range=ngram_range, token_pattern='[^~]+').fit(corpus)
-    elif feature_type == 'binary':
-        vectorizer = CountVectorizer(ngram_range=ngram_range, token_pattern='[^~]+', binary=True).fit(corpus)
+    if feature_type in {'count', 'frequency', 'tfidf', 'binary'}:
+        if feature_type == 'tfidf':
+            vectorizer = TfidfVectorizer(ngram_range=ngram_range, token_pattern = '[^~]+').fit(corpus)
+        elif feature_type in {'count', 'frequency'}:
+            vectorizer = CountVectorizer(ngram_range=ngram_range, token_pattern='[^~]+').fit(corpus)
+        elif feature_type == 'binary':
+            vectorizer = CountVectorizer(ngram_range=ngram_range, token_pattern='[^~]+', binary=True).fit(corpus)
 
-    cols = [dict_key[0] for dict_key in sorted(vectorizer.vocabulary_.items(), key=lambda x: x[1])]
-    vec_data = pd.DataFrame(index=sorted(data[index_col].unique()),
-                            columns=cols,
-                            data=vectorizer.transform(corpus).todense())
+        cols = [dict_key[0] for dict_key in sorted(vectorizer.vocabulary_.items(), key=lambda x: x[1])]
+        vec_data = pd.DataFrame(index=sorted(data[index_col].unique()),
+                                columns=cols,
+                                data=vectorizer.transform(corpus).todense())
+        vec_data.index.rename(index_col, inplace=True)
 
     # normalize if frequency:
     if feature_type == 'frequency':
         vec_data = vec_data.div(vec_data.sum(axis=1), axis=0).fillna(0)
+
+    # compute time features
+    if feature_type in {'time', 'time_fraction'}:
+        df = data.copy()
+        df[time_col] = pd.to_datetime(df[time_col])
+        df.sort_values(by=[index_col, time_col], inplace=True)
+        df.reset_index(inplace=True)
+        df['time_diff'] = df.groupby(index_col)[time_col].diff().dt.total_seconds()
+        df['time_length'] = df['time_diff'].shift(-1)
+        if feature_type == 'time_fraction':
+            vec_data = df.groupby([index_col])\
+                        .apply(lambda x: x.groupby(event_col)['time_length'].sum()/x['time_length'].sum())\
+                        .unstack(fill_value=0)
+        elif feature_type == 'time':
+            vec_data = df.groupby([index_col])\
+                        .apply(lambda x: x.groupby(event_col)['time_length'].sum())\
+                        .unstack(fill_value=0)
+
+    # rename columns to add feature information
+    vec_data.columns = [col + '_' + feature_type for col in vec_data.columns]
 
     setattr(vec_data.rete, 'datatype', 'features')
     return vec_data
@@ -160,4 +181,5 @@ def _learn_umap(data, **kwargs):
     kwargs = {k: v for k, v in kwargs.items() if k in _umap_filter}
     embedding = umap.UMAP(random_state=0, **kwargs).fit_transform(data.values)
     return pd.DataFrame(embedding, index=data.index.values)
+
 

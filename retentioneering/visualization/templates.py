@@ -33,12 +33,13 @@ __TEMPLATE__ = """
   <title>Graph Editor</title>
   <script src="https://code.jquery.com/jquery-3.4.1.js"></script>
   <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
   <script type="text/javascript">
-
     var node_params;
     var mynodes = [];
     var mylinks = [];
-
 
     let maxDegree = 0;
     let maxWeigth = 0;
@@ -204,6 +205,12 @@ __TEMPLATE__ = """
 
       //I append all elemets to maingroup so zoom works properly
       var maingroup = svg.append('g');
+
+      svg.append('text')
+        .attr("x", 130)
+        .attr("y", 380)
+        .attr("class", "svg-watermark")
+        .text("Retentioneering")
 
       function zoomed() {{
         maingroup.attr("transform", d3.event.transform);
@@ -582,19 +589,139 @@ __TEMPLATE__ = """
         a.download = "node_params.json";
         console.log(1);
         a.click();
-
     }}
 
+    /* Download svg */
+    function getStyles() {{
+      let styles = ""
+      const styleSheets = document.styleSheets
+
+      function processStyleSheet(ss) {{
+        if (ss.cssRules) {{
+          for (let i = 0; i < ss.cssRules.length; i++) {{
+            const rule = ss.cssRules[i]
+            if (rule.type === 3) {{
+              // Import Rule
+              processStyleSheet(rule.styleSheet)
+            }} else {{
+              // hack for illustrator crashing on descendent selectors
+              if (rule.selectorText) {{
+                if (rule.selectorText.indexOf(">") === -1) {{
+                  styles += "\\n" + rule.cssText
+                }}
+              }}
+            }}
+          }}
+        }}
+      }}
+
+
+      if (styleSheets) {{
+        for (let i = 0; i < styleSheets.length; i++) {{
+          processStyleSheet(styleSheets[i])
+        }}
+      }}
+      return styles
+    }}
+
+    function getSource(svg, styles) {{
+      const doctype = '<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">';
+      const prefix = {{
+        xmlns: "http://www.w3.org/2000/xmlns/",
+        xlink: "http://www.w3.org/1999/xlink",
+        svg: "http://www.w3.org/2000/svg"
+      }}
+
+      svg.setAttribute("version", "1.1")
+
+      const defsEl = document.createElement("defs")
+      svg.insertBefore(defsEl, svg.firstChild)
+
+      const styleEl = document.createElement("style")
+      defsEl.appendChild(styleEl)
+      styleEl.setAttribute("type", "text/css")
+
+      svg.removeAttribute("xmlns")
+      svg.removeAttribute("xlink")
+
+      if (!svg.hasAttributeNS(prefix.xmlns, "xmlns")) {{
+        svg.setAttributeNS(prefix.xmlns, "xmlns", prefix.svg)
+      }}
+
+      if (!svg.hasAttributeNS(prefix.xmlns, "xmlns:xlink")) {{
+        svg.setAttributeNS(prefix.xmlns, "xmlns:xlink", prefix.xlink)
+      }}
+
+      const source = (new XMLSerializer()).serializeToString(svg).replace('</style>', '<![CDATA[' + styles + ']]></style>')
+      const rect = svg.getBoundingClientRect()
+
+      return {{
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        class: svg.getAttribute("class"),
+        id: svg.getAttribute("id"),
+        childElementCount: svg.childElementCount,
+        source: [doctype + source]
+      }}
+    }}
+
+    function downloadSVG(sourceSelectorOrEl, filename) {{
+      const svg = typeof sourceSelectorOrEl === "string" ?
+        document.querySelector(sourceSelectorOrEl)
+        : sourceSelectorOrEl
+      const styles = getStyles() || ""
+      const source = getSource(svg, styles)
+      const body = document.body
+
+      const url = window.URL.createObjectURL(new Blob(source.source, {{ "type" : "text\/xml" }}))
+
+      const a = document.createElement("a")
+      body.appendChild(a)
+      a.setAttribute("class", "svg-crowbar")
+      a.setAttribute("download", filename + ".svg")
+      a.setAttribute("href", url)
+      a.style["display"] = "none"
+      a.click()
+
+      setTimeout(function() {{
+        window.URL.revokeObjectURL(url)
+      }}, 10)
+
+    }}
   </script>
 
   <style type="text/css">
-      watermark {{
+      .download {{
+        display: flex;
+        align-items: center;
+      }}
+
+      .download__btn {{
+        margin-right: 16px;
+      }}
+
+      .download__link {{
+        color: inherit !important;
+      }}
+
+
+      .watermark {{
         width: 100%;
       }}
-      watermark h3 {{
+      .watermark h3 {{
         width: 100%;
         text-align: center;
       }}
+
+      .svg-watermark {{
+        width: 100%;
+        font-size: 80px;
+        fill: #c2c2c2;
+        opacity: 0.6;
+      }}
+
       html {{
         font-size: 10px;
       }}
@@ -759,7 +886,6 @@ __TEMPLATE__ = """
       }}
 
   </style>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 </head>
 <body>
 
@@ -828,11 +954,18 @@ __TEMPLATE__ = """
             <div class="bottom-checkbox">
               <input type="checkbox" class="checkbox checkbox-class" id="block-targets" onchange="setLinkThreshold ()"><label> Show all edges for targets </label>
             </div>
-            <div id="option">
-              <input name="downloadButton"
-              type="button"
-              value="download"
-              onclick="downloadLayout()" />
+            <div class="download">
+              <div id="option" class="download__btn">
+                <input name="downloadButton"
+                type="button"
+                value="download"
+                onclick="downloadLayout()" />
+              </div>
+              <div class="download__btn">
+                <button type="button" onclick="downloadSVG('svg', 'graph')">
+                  download SVG
+                </button>
+              </div>
             </div>
           </div>
       </div>
@@ -841,24 +974,14 @@ __TEMPLATE__ = """
 
 
   </main>
-
-  <script src="https://api.retentioneering.com/files/d3.v4.min.js"></script>
-
   <script type="text/javascript">
-
     updateLinkThresholdText({thresh}*{scale});
     initialize({nodes}, {node_params}, {links});
 
     if (!{show_percent}) {{
       $('.percent-checkbox').hide();
     }}
-
   </script>
-
-  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-  <script src="https://code.jquery.com/jquery-3.4.1.js"></script>
 </body>
 </html>
 """

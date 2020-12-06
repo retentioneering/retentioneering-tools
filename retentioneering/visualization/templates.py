@@ -690,6 +690,63 @@ __TEMPLATE__ = """
       }}, 10)
 
     }}
+
+    function downloadPNG(sourceSelectorOrEl, filename) {{
+      const svg = typeof sourceSelectorOrEl === "string" ?
+        document.querySelector(sourceSelectorOrEl)
+        : sourceSelectorOrEl
+      const styles = getStyles() || ""
+      const source = getSource(svg, styles)
+
+
+      const div = document.createElement("div")
+      div.innerHTML = source.source[0]
+      const targetSvg = div.querySelector('svg')
+    
+      document.body.appendChild(targetSvg)
+
+      let {{ width, height }} = targetSvg.getBBox()
+
+      targetSvg.setAttribute("width", width)
+      targetSvg.setAttribute("height", height)
+
+      const clonedSvgElement = targetSvg.cloneNode(true)
+      const outerHTML = clonedSvgElement.outerHTML
+
+      targetSvg.remove()
+
+      function base64encode(str) {{
+        let clear = str.replace("—&nbsp;", " ")
+        let encode = encodeURIComponent(clear).replace(/%([a-f0-9]{{2}})/gi, (m, $1) => String.fromCharCode(parseInt($1, 16)))
+        return btoa(encode)
+      }}
+
+      const blobURL = 'data:image/svg+xml;base64,' + base64encode(outerHTML)
+
+      function download(href, name) {{
+        const a = document.createElement("a")
+        document.body.appendChild(a)
+        a.setAttribute("download", name)
+        a.setAttribute("href", href)
+        a.style["display"] = "none"
+        a.click()
+      }}
+
+      const image = new Image()
+      image.width = width
+      image.height = height
+      image.onload = () => {{
+        let canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        let context = canvas.getContext('2d')
+        context.drawImage(image, 0, 0)
+
+        const png = canvas.toDataURL()
+        download(png, filename + ".png")
+      }}
+      image.src = blobURL
+    }}
   </script>
 
   <style type="text/css">
@@ -964,6 +1021,11 @@ __TEMPLATE__ = """
               <div class="download__btn">
                 <button type="button" onclick="downloadSVG('svg', 'graph')">
                   download SVG
+                </button>
+              </div>
+              <div class="download__btn">
+                <button type="button" onclick="downloadPNG('svg', 'graph')">
+                  download PNG
                 </button>
               </div>
             </div>

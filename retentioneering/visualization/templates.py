@@ -207,6 +207,7 @@ __TEMPLATE__ = """
       var maingroup = svg.append('g');
 
       svg.append('text')
+        .lower()
         .attr("x", 130)
         .attr("y", 380)
         .attr("class", "svg-watermark")
@@ -776,7 +777,8 @@ __TEMPLATE__ = """
         width: 100%;
         font-size: 80px;
         fill: #c2c2c2;
-        opacity: 0.6;
+        opacity: 0.3;
+        font-family: Arial;
       }}
 
       html {{

@@ -208,8 +208,8 @@ __TEMPLATE__ = """
 
       svg.append('text')
         .lower()
-        .attr("x", 130)
-        .attr("y", 380)
+        .attr("x", 120)
+        .attr("y", 360)
         .attr("class", "svg-watermark")
         .text("Retentioneering")
 

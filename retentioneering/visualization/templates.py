@@ -268,7 +268,6 @@ __TEMPLATE__ = """
               <input id="threshold-node-range" name="threshold-node" type="range" min="0" max="1" step="0.01" value="0.05"
               oninput="updateNodeThresholdText(this.value)" onchange="updateNodeThresholdText(this.value)">
               <label id="threshold-node-text">0.05</label>
-              <input type="button" value="Set threshold" onclick="setNodeThreshold()">
             </div>
             <br>
             <div>
@@ -276,7 +275,9 @@ __TEMPLATE__ = """
               <input id="threshold-link-range" name="threshold" type="range" min="0" max="1" step="0.01" value={thresh}
               oninput="updateLinkThresholdText(this.value*{scale})" onchange="updateLinkThresholdText(this.value*{scale})">
               <label id="threshold-link-text">{thresh}</label>
-              <input type="button" value="Set threshold" onclick="setLinkThreshold()">
+            </div>
+            <div>
+              <input type="button" value="Set thresholds" onclick="setThresholds()">
             </div>
           </div>
 

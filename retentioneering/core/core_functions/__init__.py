@@ -14,7 +14,7 @@ from .project import project
 from .extract_features import extract_features
 from .compare import compare
 from .funnel import funnel
-
+from .sequences import find_sequences, find_cycles,find_loops
 
 BaseDataset.get_edgelist = get_edgelist
 BaseDataset.get_adjacency = get_adjacency
@@ -27,3 +27,6 @@ BaseDataset.extract_features = extract_features
 BaseDataset.compare = compare
 BaseDataset.cluster_event_dist = cluster_event_dist
 BaseDataset.funnel = funnel
+BaseDataset.find_sequences = find_sequences
+BaseDataset.find_cycles = find_cycles
+BaseDataset.find_loops = find_loops

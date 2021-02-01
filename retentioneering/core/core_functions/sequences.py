@@ -130,6 +130,8 @@ def find_sequences(self, target_list, ngram_range=(1, 1), fraction=1, random_sta
     sequences = dict()
     #Get equal num of good and bad users and all of their history
     good, bad = get_equal_fraction(self,target_list,fraction, random_state)
+    if good.shape[0] == 0 or bad.shape[0] == 0:
+        raise ValueError('There is no target events from your list in data!')
     #Replace ' ' for '_' in event_names
     good[self.retention_config['event_col']] = good[self.retention_config['event_col']].apply(lambda x: x.replace(' ','_'))
     bad[self.retention_config['event_col']] = bad[self.retention_config['event_col']].apply(lambda x: x.replace(' ','_'))

@@ -84,7 +84,7 @@ def get_equal_fraction(self, target_list,fraction=1, random_state=42):
             self._obj[self._obj[index_col].isin(bad_users_sample)].copy())
 
 
-def _remove_duplicates(self, data):
+def _remove_duplicates(data):
     """
     Removing same events, that are going one after another
     ('ev1 -> ev1 -> ev2 -> ev1 -> ev3 -> ev3   --------> ev1 -> ev2 -> ev1 -> ev3').

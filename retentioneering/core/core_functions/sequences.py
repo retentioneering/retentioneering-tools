@@ -66,8 +66,6 @@ def get_equal_fraction(self, target_list,fraction=1, random_state=42):
         --------
         tuple of pd.DataFrame
     """
-    if fraction <= 0 or fraction > 1:
-        raise ValueError('The fraction is <= 0 or > 1')
     #Getting all the columns needed
     index_col = self.retention_config['user_col']
     event_col = self.retention_config['event_col']
@@ -97,7 +95,7 @@ def _remove_duplicates(data):
 
 
 def find_sequences(self, target_list, ngram_range=(1, 1), fraction=1, random_state=42, exclude_cycles=False, exclude_loops=False,
-                   exclude_repetitions=False, threshold=0, coefficient=0):
+                   exclude_repetitions=False, threshold=0, coefficient=0.):
     """
         Finds all subsequences of length lying in interval
 
@@ -116,7 +114,7 @@ def find_sequences(self, target_list, ngram_range=(1, 1), fraction=1, random_sta
             flag for exluding repetitions from output DF
         threshold: int, optional
             Filter for output: Good+Lost should be bigger than threshold
-        coefficient: int, optional
+        coefficient: float, optional
             Filter for output: abs(res['Lost2Good'] - 1) should be bigger than coefficient
         Returns
         --------
@@ -126,12 +124,21 @@ def find_sequences(self, target_list, ngram_range=(1, 1), fraction=1, random_sta
         --------
         tuple of pd.DataFrame
     """
+    if fraction <= 0 or fraction > 1:
+        raise ValueError('The fraction is <= 0 or > 1')
+    if min(ngram_range) <= 0 or ngram_range[0] > ngram_range[1] or len(ngram_range) != 2 or \
+        not all(isinstance(item, int) for item in ngram_range) or not isinstance(ngram_range,tuple):
+        raise ValueError('Wrong ngram range! It should be a tuple like (1,2) with int numbers bigger than zero and first number is not bigger than second!')
+    if not np.any(np.isin(target_list,self._obj[self.retention_config['event_col']].unique())):
+        raise ValueError('There is no events from target list in data or it is empty!')
+    if not np.all([isinstance(threshold, int), isinstance(coefficient, float)]):
+        raise ValueError('Threshold must be int and coefficient must be float!')
     #Creating dict for sequences
     sequences = dict()
     #Get equal num of good and bad users and all of their history
     good, bad = get_equal_fraction(self,target_list,fraction, random_state)
     if good.shape[0] == 0 or bad.shape[0] == 0:
-        raise ValueError('There is no target events from your list in data!')
+        raise ValueError('There are only good/bad users in your data!')
     #Replace ' ' for '_' in event_names
     good[self.retention_config['event_col']] = good[self.retention_config['event_col']].apply(lambda x: x.replace(' ','_'))
     bad[self.retention_config['event_col']] = bad[self.retention_config['event_col']].apply(lambda x: x.replace(' ','_'))
@@ -186,7 +193,7 @@ def find_cycles(self, ngram_range, target_list, fraction=1, random_state=42, exc
         flag for exluding repetitions from output DF
     threshold: int, optional
         Filter for output: Good+Lost should be bigger than threshold
-    coefficient: int, optional
+    coefficient: float, optional
         Filter for output: abs(res['Lost2Good'] - 1) should be bigger than coefficient
 
     Returns pd.DataFrame with cycles
@@ -231,10 +238,16 @@ def find_loops(self, target_list, fraction=1, random_state=42):
                         self_loops[url][is_bad + 3] += 1
                         event_list[url] = 1
     #Preparing variables
+    if fraction <= 0 or fraction > 1:
+        raise ValueError('The fraction is <= 0 or > 1')
+    if not np.any(np.isin(target_list,self._obj[self.retention_config['event_col']].unique())):
+        raise ValueError('There is no events from target list in data or it is empty!')
     self_loops = dict()
     event_list = self._obj[self.retention_config['event_col']].unique()
     #Get equal num of good and bad users
     good, bad = get_equal_fraction(self,target_list,fraction, random_state)
+    if good.shape[0] == 0 or bad.shape[0] == 0:
+        raise ValueError('There are only good/bad users in your data!')
     #Perform loop search for every good user separately
     for el in good.groupby(self.retention_config['user_col']):
         loop_search(el[1][self.retention_config['event_col']].values, self_loops, event_list, 0)

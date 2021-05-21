@@ -32,569 +32,42 @@ __TEMPLATE__ = """
   <meta charset="UTF-8">
   <title>Graph Editor</title>
   <script src="https://code.jquery.com/jquery-3.4.1.js"></script>
-  <script src="https://d3js.org/d3.v5.min.js"></script>
-  <script type="text/javascript">
-
-    var node_params;
-    var mynodes = [];
-    var mylinks = [];
-
-
-    let maxDegree = 0;
-    let maxWeigth = 0;
-    let width = 800;
-    let height = 800;
-
-
-    function initialize(initNodes, initNodeParams, initLinks) {{
-      mynodes = initNodes;
-      node_params = initNodeParams;
-      mylinks = initLinks;
-
-      if (!{layout_dump}) {{
-        
-        let rawNodes = [];
-
-        let delta = 0.1;
-        for (i = 0; i < mynodes.length; i++) {{
-          let newRawNode = null;
-
-          //fixing correct positions for target nodes
-          if (mynodes[i].type == 'bad_node') {{
-            newRawNode = {{
-              'index': mynodes[i].index,
-              'name': mynodes[i].name,
-              'type': mynodes[i].type,
-              'degree': mynodes[i].degree,
-              'fx': width * (1 - delta),
-              'fy': height / 2
-            }};
-          }} else if (mynodes[i].type == 'nice_node') {{
-            newRawNode = {{
-              'index': mynodes[i].index,
-              'name': mynodes[i].name,
-              'type': mynodes[i].type,
-              'degree': mynodes[i].degree,
-              'fx': width * delta,
-              'fy': height / 2
-            }};
-          }} else {{
-            //for non-target nodes there x-s and y-s will be added after forceSimulation
-            newRawNode = {{
-              'index': mynodes[i].index,
-              'name': mynodes[i].name,
-              'type': mynodes[i].type,
-              'degree': mynodes[i].degree
-            }};
-          }}
-          //needed for normalization later
-          if (mynodes[i].degree > maxDegree) {{
-            maxDegree = mynodes[i].degree;
-          }}
-
-          rawNodes.push(newRawNode);
-        }}
-        
-        var layout = d3
-          .forceSimulation(rawNodes)
-          .tick(5)
-          ;
-
-
-        let maxX = 0,
-            maxY = 0,
-            minX = 0,
-            minY = 0;
-
-        for (let i = 0; i < rawNodes.length; i++) {{
-          if (rawNodes[i].type == 'suit_node') {{
-            if (rawNodes[i].x > maxX) {{
-              maxX = rawNodes[i].x;
-            }}
-            if (rawNodes[i].x < minX) {{
-              minX = rawNodes[i].x;
-            }}
-            if (rawNodes[i].y > maxY) {{
-              maxY = rawNodes[i].y;
-            }}
-            if (rawNodes[i].y < minY) {{
-              minY = rawNodes[i].y;
-            }}
-          }}
-        }}
-
-        let offsetMaxX = -minX + maxX;
-        let offsetMaxY = -minY + maxY;
-
-        //Coordinates now have some unpredicted values. I set them so they fill my viewbox with some padding from borders.
-        //At first I normalize them, then multiply by width and height.
-
-        for (let i = 0; i < rawNodes.length; i++) {{
-
-          if (rawNodes[i].type == 'suit_node') {{
-            //x, y >= 0
-            rawNodes[i].x += -minX;
-            rawNodes[i].y += -minY;
-
-            //x, y from [0, 1 - 2 * delta]
-            rawNodes[i].x = rawNodes[i].x / offsetMaxX * (1 - 2 * delta);
-            rawNodes[i].y = rawNodes[i].y / offsetMaxY * (1 - 2 * delta);
-
-            //x, y from [delta, 1 - delta]
-            rawNodes[i].x += delta;
-            rawNodes[i].y += delta;
-
-            //x, y from [(width | height) * delta, (width | height) * (1 - delta)]
-
-            rawNodes[i].x *= width;
-            rawNodes[i].y *= height;
-
-          }}
-
-        }}
-
-        for (let i = 0; i < mynodes.length; i++) {{
-          mynodes[i].x = rawNodes[i].x;
-          mynodes[i].y = rawNodes[i].y;
-        }}
-
-        for (let i = 0; i < mylinks.length;  i++) {{
-          mylinks[i].source.x = rawNodes[mylinks[i].source.index].x;
-          mylinks[i].source.y = rawNodes[mylinks[i].source.index].y;
-          mylinks[i].target.x = rawNodes[mylinks[i].target.index].x;
-          mylinks[i].target.y = rawNodes[mylinks[i].target.index].y;
-          if (mylinks[i].weight > maxWeigth) {{
-            maxWeigth = mylinks[i].weight;
-          }}
-        }}
-      }} else {{
-        // if layout_dump was used:
-        for (i = 0; i < mynodes.length; i++) {{
-          if (mynodes[i].degree > maxDegree) {{
-            maxDegree = mynodes[i].degree;
-          }}
-        }}
-        for (let i = 0; i < mylinks.length;  i++) {{
-          if (mylinks[i].weight > maxWeigth) {{
-            maxWeigth = mylinks[i].weight;
-          }}
-        }} 
-      }}
-
-      
-      
-      
-      makeCheckboxes();
-      setLinkThreshold();
-      displayingWeights();
-    }}
-
-    function drawGraph(nodes, links) {{
-      zoom = d3.zoom()
-          .scaleExtent([0.5, 8])
-          .translateExtent([[0, 0], [width, height]])
-          .extent([[0, 0], [width, height]])
-          .on("zoom", zoomed)
-          ;
-
-      var svg = d3.select("#freakingGraph").append("svg")
-        .attr("viewBox", [0, 0, width, height])
-        .call(zoom)
-        ;
-
-      //I append all elemets to maingroup so zoom works properly
-      var maingroup = svg.append('g');
-
-      function zoomed() {{
-        maingroup.attr("transform", d3.event.transform);
-      }}
-
-
-      function calcMarkers(d) {{
-
-          let dist = Math.sqrt((nodes[whereEquals(d.target.index)].x - nodes[whereEquals(d.source.index)].x) ** 2 + (nodes[whereEquals(d.target.index)].y - nodes[whereEquals(d.source.index)].y) ** 2);
-          if (dist > 0 && dist <= 200){{
-              return - Math.sqrt((0.5 - (d.target.degree ) / 2 / dist)) * (d.target.degree) / 2;
-
-          }} else {{
-              return 0;
-          }}
-      }}
-
-      var path = maingroup.append("g").selectAll("path")
-          .data(links)
-          .enter()
-          .append("path")
-          .attr("class", function(d) {{ return "link " + d.type; }})
-          .attr("stroke-width", function(d) {{ return Math.max(d.weight * 20, 1); }})
-          .attr("id", function(d,i) {{ return "link_"+i; }})
-          .attr("d", linkArc)
-          ;
-
-      let textMarkersSelection = maingroup.append("g").selectAll("text")
-          .data(links)
-          .enter();
-
-      textMarkersSelection.append("text")
-          .style("font-size", "13px")
-          .attr("dy", "4.2px")
-          .append("textPath")
-          .attr("xlink:href", function(d,i) {{ return "#link_"+i; }})
-          .attr("startOffset", "35%")
-          .text("➤")
-          ;
-
-      textMarkersSelection.append("text")
-          .style("font-size", "13px")
-          .attr("dy", "4.2px")
-          .append("textPath")
-          .attr("xlink:href", function(d,i) {{ return "#link_"+i; }})
-          .attr("startOffset", "65%")
-          .text("➤")
-          ;
-
-      var edgetext = maingroup.append("g").selectAll("text")
-          .data(links)
-          .enter().append("text")
-          .append("textPath")
-          .attr("xlink:href",function(d,i){{return "#link_"+i;}})
-          .style("text-anchor","middle")
-          .attr("startOffset", "50%")
-          .attr("id", function(d,i) {{ return "node_text"+i; }})
-          ;
-
-      function whereEquals(index) {{
-        for (var i = 0; i < nodes.length; i++) {{
-          if (index == nodes[i].index) {{
-            return i;
-          }}
-        }}
-      }}
-
-
-        function roundToSignificantFigures(num, n) {{
-            if(num == 0) {{
-                return 0;
-            }}
-
-            d = Math.ceil(Math.log10(num < 0 ? -num: num));
-            power = n - d;
-
-            magnitude = Math.pow(10, power);
-            shifted = Math.round(num*magnitude);
-            return shifted/magnitude;
-        }};
-
-
-
-      function displayingWeights() {{
-        d3.selectAll("#show-weights").each(function(d) {{
-          cb = d3.select(this);
-          if (cb.property("checked")) {{
-            edgetext = edgetext.text(function(d) {{
-                if ($('#show-percents')[0].checked) {{
-                    if (d['weight_text'] > 1) {{
-                      return d['weight_text']
-                    }} else {{
-                      return roundToSignificantFigures(d['weight_text'] * 100, 2) + "%";
-                    }};
-                }} else {{
-                    if (d['weight_text'] > 1) {{
-                      return d['weight_text']
-                    }} else {{
-                      return roundToSignificantFigures(d['weight_text'], 2);
-                    }};
-                }}
-            }})
-          }} else {{
-            edgetext = edgetext.text(function(d) {{ return ; }})
-          }}
-
-
-        }})
-      }};
-
-
-
-        d3.selectAll("#show-weights").on("change", displayingWeights);
-        d3.selectAll("#show-percents").on("change", displayingWeights);
-
-        function dragstarted(d) {{
-          d3.select(this).raise().classed("active", true);
-        }}
-
-        function dragged(d) {{
-          d3.select(this)
-          .attr("cx", d.x = d3.event.x)
-          .attr("cy", d.y = d3.event.y);
-        }}
-
-        function dragended(d) {{
-
-          d3.select(this).classed("active", false);
-          path = path.attr("d", linkArc);
-
-          text = text
-            .attr('x', function(d) {{ return d.x; }})
-            .attr('y', function(d) {{ return d.y; }})
-            ;
-          defs.attr("refY", function(d) {{ return calcMarkers(d); }});
-          defs.append("path")
-            .attr("d", "M0,-5L10,0L0,5");
-        }};
-
-        var circle = maingroup.append("g").selectAll("circle")
-            .data(nodes)
-            .enter().append("circle")
-            .attr("class", function(d) {{ return "circle " + d.type; }})
-            .attr("r", function(d) {{ return d.degree; }})
-            .attr('cx', function(d) {{ return d.x; }})
-            .attr('cy', function(d) {{ return d.y; }})
-            .style("cursor", "default")
-            .call(d3.drag()
-                .on("start", dragstarted)
-                .on("drag", dragged)
-                .on("end", dragended));
-
-
-        var text = maingroup.append("g").selectAll("text")
-          .data(nodes)
-          .enter().append("text")
-          .attr('x', function(d) {{ return d.x; }})
-          .attr('y', function(d) {{ return d.y; }})
-          .attr('id', function(d) {{ return "node-name" + d.index }})
-          .attr('class', 'node-name')
-          .text(function(d) {{ return d.name; }})
-          ;
-
-        function linkArc(d) {{
-          var dx = nodes[whereEquals(d.target.index)].x - nodes[whereEquals(d.source.index)].x,
-              dy = nodes[whereEquals(d.target.index)].y - nodes[whereEquals(d.source.index)].y,
-              dr = dx * dx + dy * dy;
-              dr = Math.sqrt(dr);
-            if (dr > 200) {{
-              dr *= 5
-            }} else {{
-              dr /= 2
-            }};
-            if (dr > 0) {{
-              return "M" + nodes[whereEquals(d.source.index)].x + "," + nodes[whereEquals(d.source.index)].y + "A" + (dr * 1.1) + "," + (dr * 1.1) + " 0 0,1 " + nodes[whereEquals(d.target.index)].x + "," + nodes[whereEquals(d.target.index)].y;
-            }}
-            else {{
-              minRadius = 24;
-              radius = Math.max(minRadius, nodes[whereEquals(d.source.index)].degree);
-              return "M" + nodes[whereEquals(d.source.index)].x + "," + nodes[whereEquals(d.source.index)].y + "A" + radius + "," + radius + " 0 1,0 " + (nodes[whereEquals(d.target.index)].x + 0.1) + "," + (nodes[whereEquals(d.target.index)].y + 0.1);
-            }}
-        }}
-
-        //synch with 'show names' and 'show weights' checkboxes
-        displayingWeights();
-        changeNamesVisibility(document.getElementById("show-names").checked)
-    }}
-
-
-
-    function changeLabel(curinput) {{
-      document.getElementById('label' + curinput.id.substring(4)).innerHTML = curinput.value;
-      mynodes[whereEquals1(curinput.id.substring(4))].name = curinput.value;
-      $(curinput).attr('size', curinput.value.length + 2)
-    }};
-
-    function whereEquals1(index) {{
-      for (var i = 0; i < mynodes.length; i++) {{
-        if (index == mynodes[i].index) {{
-          return i;
-        }}
-      }}
-    }}
-
-    function makeCheckboxes() {{
-
-      for (var i = 0; i < mynodes.length; i++) {{
-
-        var newDiv = document.createElement('div');
-        newDiv.id = '#checkdiv' + mynodes[i].index;
-        $( '#check-boxes' ).append(newDiv);
-
-        var newCheckbox = document.createElement('input');
-        newCheckbox.type = 'checkbox';
-        newCheckbox.id = 'checkbox' + mynodes[i].index;
-        newCheckbox.checked = true;
-        newCheckbox.className = 'checkbox-class node-checkbox';
-        $( newDiv ).append(newCheckbox);
-
-        var newNameInput = document.createElement('input');
-        newNameInput.id = 'name-input' + mynodes[i].index;
-        newNameInput.type = 'text';
-        newNameInput.value = mynodes[i].name;
-        $( newNameInput ).attr('size', newNameInput.value.length + 3);
-
-        $( newDiv ).append(newNameInput);
-        $( newNameInput ).on('keypress', updateName);
-
-      }}
-    }}
-
-    function updateName() {{
-
-      document.getElementById('node-name' + this.id.substring(10)).innerHTML = this.value;
-      mynodes[this.id.substring(10)].name = this.value;
-      this.size = this.value.length + 3;
-
-    }}
-
-    function getCorrectLinks(newIdx) {{
-      var newLinks = [];
-      for (var i = 0; i < mylinks.length; i++) {{
-        if (newIdx.includes(mylinks[i].source.index) && newIdx.includes(mylinks[i].target.index)) {{
-          newLinks.push(mylinks[i]);
-        }}
-      }}
-      return newLinks;
-    }}
-    function clearSVG() {{
-      $( 'svg' ).remove();
-      $( '.node-edit' ).each(function() {{
-        this.remove();
-      }});
-    }}
-    function changeNodes() {{
-      var newNodes = [];
-      var newIdx = [];
-
-      $( '.node-checkbox' ).each(function(i, obj) {{
-
-        if (this.checked) {{
-          newNodes.push(mynodes[i]);
-          newIdx.push(mynodes[i].index);
-        }}
-
-      }});
-
-      var newLinks = getCorrectLinks(newIdx)
-
-
-      clearSVG();
-      drawGraph(newNodes, newLinks);
-    }}
-
-    function setLinkThreshold () {{
-      let idxInLinks = new Array(mynodes.length).fill(false);
-      let newLinks = [];
-
-      let thresholdValue = $('#threshold-link-range').val();
-      let blockDeleteTargets = $('#block-targets')[0].checked;
-
-      for (let i = 0; i < mylinks.length; i++) {{
-        if (mylinks[i].target.type == 'nice_node' || mylinks[i].source.type == 'nice_node' || mylinks[i].target.type == 'bad_node' || mylinks[i].source.type == 'bad_node') {{
-          if (blockDeleteTargets) {{
-
-            newLinks.push(mylinks[i]);
-            idxInLinks[mylinks[i].target.index] = true;
-            idxInLinks[mylinks[i].source.index] = true;
-          }} else if (mylinks[i].weight * maxWeigth >= thresholdValue) {{
-            newLinks.push(mylinks[i]);
-            idxInLinks[mylinks[i].target.index] = true;
-            idxInLinks[mylinks[i].source.index] = true;
-          }}
-        }} else if (mylinks[i].weight * maxWeigth >= thresholdValue) {{
-          newLinks.push(mylinks[i]);
-          idxInLinks[mylinks[i].target.index] = true;
-          idxInLinks[mylinks[i].source.index] = true;
-        }}
-      }}
-
-      let newNodes = [];
-      for (let i = 0; i < mynodes.length; i++) {{
-        if (idxInLinks[i]) {{
-          newNodes.push(mynodes[i]);
-          $('#checkbox' + mynodes[i].index).prop('checked', true);
-        }} else {{
-          $('#checkbox' + mynodes[i].index).prop('checked', false);
-        }}
-      }}
-      clearSVG();
-      drawGraph(newNodes, newLinks);
-    }}
-
-    function updateLinkThresholdText(val) {{
-      document.getElementById('threshold-link-text').innerHTML = val;
-    }}
-
-    function setNodeThreshold() {{
-      var newNodes = [];
-      var newIdx = [];
-
-      let thresholdValue = $('#threshold-node-range').val();
-      let blockDeleteTargets = $('#block-targets')[0].checked;
-
-      for (let i = 0; i < mynodes.length; i++) {{
-        if (mynodes[i].type == 'bad_node' || mynodes[i].type == 'nice_node') {{
-          if (blockDeleteTargets) {{
-            newNodes.push(mynodes[i]);
-            newIdx.push(mynodes[i].index);
-            $('#checkbox' + mynodes[i].index).prop('checked', true);
-          }} else if (mynodes[i].degree >= $('#threshold-node-range').val() * maxDegree) {{
-            newNodes.push(mynodes[i]);
-            newIdx.push(mynodes[i].index);
-            $('#checkbox' + mynodes[i].index).prop('checked', true);
-          }} else {{
-            $('#checkbox' + mynodes[i].index).prop('checked', false);
-          }}
-        }} else if (mynodes[i].degree >= $('#threshold-node-range').val() * maxDegree) {{
-          newNodes.push(mynodes[i]);
-          newIdx.push(mynodes[i].index);
-          $('#checkbox' + mynodes[i].index).prop('checked', true);
-        }} else {{
-          $('#checkbox' + mynodes[i].index).prop('checked', false);
-        }}
-      }}
-      var newLinks = getCorrectLinks(newIdx);
-
-      clearSVG();
-      drawGraph(newNodes, newLinks);
-    }}
-
-    function updateNodeThresholdText(val) {{
-      document.getElementById('threshold-node-text').innerHTML = val;
-    }}
-
-
-    function changeNamesVisibility(isHidden) {{
-
-      if (isHidden) {{
-        $('.node-name').each(
-          function() {{
-            $(this).show();
-          }});
-      }} else {{
-        $('.node-name').each(
-          function() {{
-            $(this).hide();
-          }});
-      }}
-    }}
-
-    function downloadLayout() {{
-        var a = document.createElement("a");
-        var file = new Blob([JSON.stringify(mynodes)], {{type: "text/json;charset=utf-8"}});
-        a.href = URL.createObjectURL(file);
-        a.download = "node_params.json";
-        console.log(1);
-        a.click();
-
-    }}
-
-  </script>
-
+  <script src="https://api.retentioneering.com/files/d3.v4.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <script src="https://static.server.retentioneering.com/viztools/draw-graph.min.js" type="text/javascript"></script>
   <style type="text/css">
-      watermark {{
+      .download {{
+        display: flex;
+        align-items: center;
+      }}
+
+      .download__btn {{
+        margin-right: 16px;
+      }}
+
+      .download__link {{
+        color: inherit !important;
+      }}
+
+
+      .watermark {{
         width: 100%;
       }}
-      watermark h3 {{
+      .watermark h3 {{
         width: 100%;
         text-align: center;
       }}
+
+      .svg-watermark {{
+        width: 100%;
+        font-size: 80px;
+        fill: #c2c2c2;
+        opacity: 0.3;
+        font-family: Arial;
+      }}
+
       html {{
         font-size: 10px;
       }}
@@ -759,7 +232,6 @@ __TEMPLATE__ = """
       }}
 
   </style>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 </head>
 <body>
 
@@ -796,7 +268,6 @@ __TEMPLATE__ = """
               <input id="threshold-node-range" name="threshold-node" type="range" min="0" max="1" step="0.01" value="0.05"
               oninput="updateNodeThresholdText(this.value)" onchange="updateNodeThresholdText(this.value)">
               <label id="threshold-node-text">0.05</label>
-              <input type="button" value="Set threshold" onclick="setNodeThreshold()">
             </div>
             <br>
             <div>
@@ -804,7 +275,9 @@ __TEMPLATE__ = """
               <input id="threshold-link-range" name="threshold" type="range" min="0" max="1" step="0.01" value={thresh}
               oninput="updateLinkThresholdText(this.value*{scale})" onchange="updateLinkThresholdText(this.value*{scale})">
               <label id="threshold-link-text">{thresh}</label>
-              <input type="button" value="Set threshold" onclick="setLinkThreshold()">
+            </div>
+            <div>
+              <input type="button" value="Set thresholds" onclick="setThresholds()">
             </div>
           </div>
 
@@ -828,11 +301,23 @@ __TEMPLATE__ = """
             <div class="bottom-checkbox">
               <input type="checkbox" class="checkbox checkbox-class" id="block-targets" onchange="setLinkThreshold ()"><label> Show all edges for targets </label>
             </div>
-            <div id="option">
-              <input name="downloadButton"
-              type="button"
-              value="download"
-              onclick="downloadLayout()" />
+            <div class="download">
+              <div id="option" class="download__btn">
+                <input name="downloadButton"
+                type="button"
+                value="download"
+                onclick="downloadLayout()" />
+              </div>
+              <div class="download__btn">
+                <button type="button" onclick="downloadSVG('svg', 'graph')">
+                  download SVG
+                </button>
+              </div>
+              <div class="download__btn">
+                <button type="button" onclick="downloadPNG('svg', 'graph')">
+                  download PNG
+                </button>
+              </div>
             </div>
           </div>
       </div>
@@ -841,24 +326,14 @@ __TEMPLATE__ = """
 
 
   </main>
-
-  <script src="https://api.retentioneering.com/files/d3.v4.min.js"></script>
-
   <script type="text/javascript">
-
     updateLinkThresholdText({thresh}*{scale});
     initialize({nodes}, {node_params}, {links});
 
     if (!{show_percent}) {{
       $('.percent-checkbox').hide();
     }}
-
   </script>
-
-  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-  <script src="https://code.jquery.com/jquery-3.4.1.js"></script>
 </body>
 </html>
 """

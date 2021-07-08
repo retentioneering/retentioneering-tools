@@ -20,6 +20,7 @@ def plot_graph(self, *,
     value, edges are transitions between events and edge weights are calculated
     metrics. By default, it is a percentage of unique users that have passed
     though a particular edge visualized with the edge thickness. Node sizes are
+    given by the relative occurrence of the event to the total amount of all events occurrences.
     Graph loop is a transition to the same node, which may happen if users
     encountered multiple errors or made any action at least twice. Graph nodes
     are movable on canvas which helps to visualize user trajectories but is also

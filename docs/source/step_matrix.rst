@@ -443,6 +443,6 @@ collections from cluster_mapping attribute and pass it to groups parameter of st
 .. image:: _static/step_matrix/step_matrix_10.svg
 
 We can clearly see that these two behavioural segments are quite similar to each other with
-the only strong difference at the second step after 'cart' event: users of segment 3 prefer to
-select 'delivery_courier' (large positive value), and users of segment 0 prefer to select
+the only strong difference at the second step after 'cart' event: users of segment 0 prefer to
+select 'delivery_courier' (large positive value), and users of segment 3 prefer to select
 'delivery_pickup' (large negative value).

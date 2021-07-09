@@ -314,7 +314,7 @@ __TEMPLATE__ = """
                 </button>
               </div>
               <div class="download__btn">
-                <button type="button" onclick="downloadPNG('svg', 'graph')">
+                <button type="button" onclick="downloadPNG('svg', 'graph', 4)">
                   download PNG
                 </button>
               </div>

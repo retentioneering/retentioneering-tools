@@ -97,7 +97,7 @@ def _make_json_data(data,
                     **kwargs):
     res = {}
     data.columns = ['source', 'target', 'weight']
-    data = _filter_edgelist(data, thresh, node_params)
+    # data = _filter_edgelist(data, thresh, node_params)
 
     data["type"] = data.apply(
         lambda x: node_params.get(x.source) if node_params.get(x.source) == 'source' else node_params.get(

@@ -6,8 +6,7 @@
 [![Telegram](https://img.shields.io/badge/channel-on%20telegram-blue)](https://t.me/retentioneering_meetups)
 [![Python version](https://img.shields.io/pypi/pyversions/retentioneering)](https://pypi.org/project/retentioneering/)
 [![Downloads](https://pepy.tech/badge/retentioneering)](https://pepy.tech/project/retentioneering)
-[![Travis Build Status](https://travis-ci.com/retentioneering/retentioneering-tools.svg)](https://travis-ci.com/github/retentioneering/retentioneering-tools)
-
+[![Travis Build Status](https://travis-ci.com/retentioneering/retentioneering-tools.svg?branch=master)](https://travis-ci.com/github/retentioneering/retentioneering-tools)
 
 ## What is Retentioneering?
 

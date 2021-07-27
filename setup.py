@@ -1,8 +1,10 @@
 from setuptools import setup, find_packages
 
+exec(open('retentioneering/version.py').read())
+
 setup(
     name='retentioneering',
-    version='2.0.2.21a',
+    version=__version__,
     license='Retentioneering Software Non-Exclusive License (License)',
     description='Product analytics and marketing optimization framework based on deep user trajectories analysis',
     long_description="""

@@ -23,7 +23,8 @@ setup(
     install_requires=[
         'pandas>=1.1.1',
         'numpy>=1.19.1',
-        'networkx==2.6.1',
+        'networkx>=2.6.1',
+        'decorator>=4.3',
         'seaborn>=0.11.0',
         'matplotlib>=3.2.2',
         'scikit-learn>=0.23.2',

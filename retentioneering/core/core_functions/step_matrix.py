@@ -99,7 +99,6 @@ def step_matrix(self, *,
     -----------
     pd.DataFrame
     """
-
     event_col = self.retention_config['event_col']
     weight_col = weight_col or self.retention_config['user_col']
     time_col = self.retention_config['event_time_col']
@@ -243,7 +242,6 @@ def _step_matrix_values(self,*, data, weight_col, event_col, time_col,
     pandas Dataframe
 
     """
-
     def pad_cols(df, max_steps):
         """
         Parameters

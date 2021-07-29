@@ -22,6 +22,7 @@ setup(
     url='https://github.com/retentioneering/retentioneering-tools',
     keywords=['ANALYTICS', 'CLICKSTREAM', 'RETENTIONEERING', 'RETENTION',
               'GRAPHS', 'TRAJECTORIES', 'PREDICTIVE-ANALYTICS', 'CUSTOMER-SEGMENTATION'],
+    python_requires='>=3.7',
     install_requires=[
         'pandas>=1.1.1',
         'numpy>=1.19.1',
@@ -53,7 +54,6 @@ setup(
         'Operating System :: MacOS'
 
     ],
-    python_requires=">=3.7",
     packages=find_packages(),
 
 

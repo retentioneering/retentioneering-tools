@@ -24,7 +24,7 @@ setup(
               'GRAPHS', 'TRAJECTORIES', 'PREDICTIVE-ANALYTICS', 'CUSTOMER-SEGMENTATION'],
     python_requires='>=3.7',
     install_requires=[
-        'pandas>=1.2.5',
+        'pandas==1.3.0',
         'numpy>=1.19.1',
         'networkx>=2.6.2',
         'decorator>=4.3',

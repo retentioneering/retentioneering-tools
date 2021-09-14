@@ -25,7 +25,7 @@ setup(
     python_requires='>=3.7',
     install_requires=[
         'pandas>=1.1.5,<=1.3.0', 
-        'numpy<1.20',
+        'numpy>=1.19.5,<1.20',
         'numba==0.53',
         'networkx>=2.6.2',
         'decorator>=4.3',

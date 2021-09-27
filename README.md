@@ -8,6 +8,11 @@
 [![Downloads](https://pepy.tech/badge/retentioneering)](https://pepy.tech/project/retentioneering)
 [![Travis Build Status](https://travis-ci.com/retentioneering/retentioneering-tools.svg?branch=master)](https://travis-ci.com/github/retentioneering/retentioneering-tools)
 
+[![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/retentioneering/retentioneering-tools.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/retentioneering/retentioneering-tools/context:javascript)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/retentioneering/retentioneering-tools.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/retentioneering/retentioneering-tools/context:python)
+
+
+
 ## What is Retentioneering?
 
 

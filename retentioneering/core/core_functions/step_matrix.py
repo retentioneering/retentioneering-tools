@@ -19,6 +19,7 @@ def step_matrix(self, *,
                 thresh=0,
                 centered=None,
                 groups=None,
+                export_segments=None,
                 show_plot=True):
     """
     Plots heatmap with distribution of users over trajectory steps ordered by
@@ -83,9 +84,11 @@ def step_matrix(self, *,
         matrix will be the matrix M = M1-M2. Note, that values in each column
         in differential step matrix will sum up to 0 (since columns in both M1
         and M2 always sum up to 1).
+    export_segments: None or segment name, option only for centered stepmatrix. If centered step matrix is created, then users selected can be exported as a segment
 
     show_plot: bool (optional, default True)
         whether to show resulting heatmap or not.
+        
 
     Returns
     -------
@@ -101,10 +104,10 @@ def step_matrix(self, *,
     weight_col = weight_col or self.retention_config['user_col']
     time_col = self.retention_config['event_time_col']
 
-    data = self._obj.copy()
-
+    #data = self._obj.copy()
+    #data.rete.set_config(self.retention_config)
     # add termination event to each history:
-    data = data.rete.split_sessions(thresh=None,
+    data = self.split_sessions(thresh=None,
                                     eos_event='ENDED',
                                     session_col=None)
 
@@ -118,27 +121,27 @@ def step_matrix(self, *,
         if len(data_pos) == 0:
             raise IndexError('Users from positive group are not present in dataset')
         piv_pos, piv_targets_pos, fraction_title, window, targets_plot = \
-            _step_matrix_values(data=data_pos,
+            _step_matrix_values(self, data=data_pos,
                                 weight_col=weight_col,
                                 event_col=event_col,
                                 time_col=time_col,
                                 targets=targets,
                                 accumulated=accumulated,
                                 centered=centered,
-                                max_steps=max_steps)
+                                max_steps=max_steps,export_segments=export_segments)
 
         data_neg = data[data[weight_col].isin(groups[1])].copy()
         if len(data_pos) == 0:
             raise IndexError('Users from negative group are not present in dataset')
         piv_neg, piv_targets_neg, fraction_title, window, targets_plot = \
-            _step_matrix_values(data=data_neg,
+            _step_matrix_values(self, data=data_neg,
                                 weight_col=weight_col,
                                 event_col=event_col,
                                 time_col=time_col,
                                 targets=targets,
                                 accumulated=accumulated,
                                 centered=centered,
-                                max_steps=max_steps)
+                                max_steps=max_steps,export_segments=export_segments)
 
         def join_index(df1, df2):
             full_list = set(df1.index) | set(df2.index)
@@ -159,14 +162,14 @@ def step_matrix(self, *,
 
     else:
         piv, piv_targets, fraction_title, window, targets_plot = \
-            _step_matrix_values(data=data,
+            _step_matrix_values(self, data=data,
                                 weight_col=weight_col,
                                 event_col=event_col,
                                 time_col=time_col,
                                 targets=targets,
                                 accumulated=accumulated,
                                 centered=centered,
-                                max_steps=max_steps)
+                                max_steps=max_steps,export_segments=export_segments)
 
     thresh_index = 'THRESHOLDED_'
     if thresh != 0:
@@ -215,8 +218,8 @@ def step_matrix(self, *,
     return piv
 
 
-def _step_matrix_values(*, data, weight_col, event_col, time_col,
-                       targets, accumulated, centered, max_steps):
+def _step_matrix_values(self,*, data, weight_col, event_col, time_col,
+                       targets, accumulated, centered, max_steps, export_segments):
     """
     Supplemental function to calculate values for step_matrix
 
@@ -232,6 +235,7 @@ def _step_matrix_values(*, data, weight_col, event_col, time_col,
     accumulated
     centered
     max_steps
+    export_segments
 
     Returns
     -------
@@ -289,10 +293,14 @@ def _step_matrix_values(*, data, weight_col, event_col, time_col,
         data['occurrence'] = data[event_col] == center_event
         data['occurance_counter'] = data.groupby(weight_col)['occurrence'].cumsum() * data['occurrence']
         users_to_keep = data[data['occurance_counter'] == occurrence][weight_col].unique()
-
+        
         if len(users_to_keep) == 0:
             raise ValueError(f'no records found with event "{center_event}" occuring N={occurrence} times')
-
+        else:
+            if export_segments is not None:
+                #exporting users segment
+                #self.segments.add_segment(export_segments,users_to_keep)
+                pass
         fraction_used = len(users_to_keep) / data[weight_col].nunique() * 100
         if fraction_used < 100:
             fraction_title = f'({fraction_used:.1f}% of total records)'

@@ -253,12 +253,12 @@ def _create_cluster_mapping(self, ids,export_segments):
         #dfn = pd.DataFrame(0, index=np.arange(len_users), columns=set(self.clusters))
         #dfn.columns = pd.MultiIndex.from_product([[segment_name], set(self.clusters)])
         
-        dfn = pd.DataFrame(0, index=np.arange(len_users), columns=(lambda x,y: [x +'.'+ str(sub1) for sub1 in y])(segment_name,set(self.clusters)))
+        #dfn = pd.DataFrame(0, index=np.arange(len_users), columns=(lambda x,y: [x +'.'+ str(sub1) for sub1 in y])(segment_name,set(self.clusters)))
         
-        dfn['user_col']=users
-        for cluster in set(self.clusters):
-            dfn.loc[dfn['user_col'].isin(ids[self.clusters == cluster].tolist()), (segment_name+'.'+str(cluster))] = 1
-        self.segments.add_segment_from_df(dfn)
+        #dfn['user_col']=users
+        #for cluster in set(self.clusters):
+        #    dfn.loc[dfn['user_col'].isin(ids[self.clusters == cluster].tolist()), (segment_name+'.'+str(cluster))] = 1
+        #self.segments.add_segment_from_df(dfn)
     
     self.cluster_mapping = {}
     for cluster in set(self.clusters):

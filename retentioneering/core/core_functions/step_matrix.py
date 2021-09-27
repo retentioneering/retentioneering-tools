@@ -300,6 +300,7 @@ def _step_matrix_values(self,*, data, weight_col, event_col, time_col,
             if export_segments is not None:
                 #exporting users segment
                 #self.segments.add_segment(export_segments,users_to_keep)
+                pass
         fraction_used = len(users_to_keep) / data[weight_col].nunique() * 100
         if fraction_used < 100:
             fraction_title = f'({fraction_used:.1f}% of total records)'

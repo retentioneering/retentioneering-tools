@@ -1,7 +1,7 @@
 '''Verify the Python Interpreter version is in range required by this package'''
 
 min_python = (3, 7)
-max_python = (3, 8)
+max_python = (3, 10)
 
 import sys
 

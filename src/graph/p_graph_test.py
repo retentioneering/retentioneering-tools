@@ -47,16 +47,14 @@ class EventstreamTest(unittest.TestCase):
     graph = self.create_graph()
 
     added_nodes = []
-    added_nodes_with_weights = []
 
     for i in range(5):
       new_node = self.mock_events_node()
       added_nodes.append(new_node)
-      added_nodes_with_weights.append((new_node, i))
 
       graph.add_node(
         node=new_node,
-        parents=[(graph.root, None)]
+        parents=[graph.root]
       )
       new_node_parents = graph.get_parents(new_node)
       
@@ -67,18 +65,14 @@ class EventstreamTest(unittest.TestCase):
 
     graph.add_node(
       node=merge_node,
-      parents=added_nodes_with_weights,
+      parents=added_nodes,
     )
 
-    parents_with_weights = graph.get_merge_node_parents(merge_node)
-    self.assertEqual(len(parents_with_weights), len(added_nodes))
+    merge_node_parents = graph.get_merge_node_parents(merge_node)
+    self.assertEqual(len(merge_node_parents), len(added_nodes))
 
-    weights: List[int] = []
-    for node, weight in parents_with_weights:
+    for node in merge_node_parents:
       self.assertTrue(node in added_nodes)
-      weights.append(weight)
-
-    self.assertEqual(weights, [4, 3, 2, 1, 0])
 
     merge_node_parents = graph.get_parents(merge_node)
     
@@ -113,7 +107,7 @@ class EventstreamTest(unittest.TestCase):
     graph = PGraph(source)
     graph.add_node(
       node=cart_events,
-      parents=[(graph.root, 0)]
+      parents=[graph.root]
     )
     result = graph.combine(cart_events)
     result_df = result.to_dataframe()
@@ -169,22 +163,22 @@ class EventstreamTest(unittest.TestCase):
     graph = PGraph(source)
     graph.add_node(
       node=cart_events,
-      parents=[(graph.root, 0)]
+      parents=[graph.root]
     )
     graph.add_node(
       node=logout_events,
-      parents=[(graph.root, 0)]
+      parents=[graph.root]
     )
     graph.add_node(
       node=trash_events,
-      parents=[(graph.root, 0)]
+      parents=[graph.root]
     )
     graph.add_node(
       node=merge,
       parents=[
-        (cart_events, 0),
-        (logout_events, 1),
-        (trash_events, 2)
+        cart_events,
+        logout_events,
+        trash_events,
       ]
     )
 

@@ -3,6 +3,7 @@ from pyclbr import Function
 from typing import Callable, List, Optional, Tuple, cast
 import networkx
 from eventstream.eventstream import Eventstream
+from .factory_lib import EventsFactory
 
 class Node():
   type: str
@@ -19,8 +20,6 @@ SOURCE_NODE = "source"
 EVENTS_NODE = "events"
 MERGE_NODE = "merge"
 
-WEIGHT = "weight"
-
 NODES_TYPES = [SOURCE_NODE, EVENTS_NODE, MERGE_NODE]
 
 class SourceNode(Node):
@@ -29,8 +28,6 @@ class SourceNode(Node):
   def __init__(self, source: Eventstream):
       super().__init__(type=SOURCE_NODE)
       self.events = source
-
-EventsFactory = Callable[[Eventstream], Eventstream]
 
 class EventsNode(Node):
   factory: EventsFactory
@@ -57,9 +54,9 @@ class PGraph():
     self.__ngraph = networkx.DiGraph()
     self.__ngraph.add_node(self.root)
 
-  def add_node(self, node: Node, parents: List[Tuple[Node, Optional[int]]]):
+  def add_node(self, node: Node, parents: List[Node]):
     self.__valiate_already_exists([node])
-    self.__validate_not_found([node for node, w in parents])
+    self.__validate_not_found(parents)
 
     if node.events is not None:
       self.__validate_schema(node.events)
@@ -69,11 +66,8 @@ class PGraph():
 
     self.__ngraph.add_node(node)
 
-    for parent, weight in parents:
-      if (node.type == MERGE_NODE and weight is None):
-        raise ValueError("skipped weight for merge node!")
-
-      self.__ngraph.add_edge(parent, node, weight=weight)
+    for parent in parents:
+      self.__ngraph.add_edge(parent, node)
 
   def combine(self, node: Node) -> Eventstream:
     self.__validate_not_found([node])
@@ -100,7 +94,7 @@ class PGraph():
   def combine_merge_node(self, node: MergeNode):
     parents = self.get_merge_node_parents(node)
     curr_eventstream: Optional[Eventstream] = None
-    for parent_node, weight in parents:
+    for parent_node in parents:
       if curr_eventstream is None:
         curr_eventstream = self.combine(parent_node)
       else:
@@ -121,18 +115,7 @@ class PGraph():
     if (len(parents) == 0):
       raise ValueError("orphan merge node!")
 
-    parents_with_weights: List[Tuple[Node, int]] = []
-
-    for parent in parents:
-      edge_attrs = self.__ngraph.get_edge_data(parent, node)
-      if (edge_attrs is None or WEIGHT not in edge_attrs):
-        raise ValueError("no weight!")
-      parents_with_weights.append((parent, edge_attrs[WEIGHT]))
-
-    # parents_with_weights.sort(reverse=True, key=lambda p : p[1])
-
-    return parents_with_weights
-
+    return parents
 
   def get_events_node_parent(self, node: EventsNode):
     parents = self.get_parents(node)

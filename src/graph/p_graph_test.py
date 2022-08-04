@@ -1,224 +1,252 @@
 
-from typing import List, cast
+from typing import List, Literal, TypedDict, Union
 import unittest
 import pandas as pd
 from eventstream.eventstream import EventstreamSchema, Eventstream
 from eventstream.schema import RawDataSchema
-from .p_graph import MergeNode, PGraph, SourceNode, EventsNode, SOURCE_NODE
-from factories.simple_factories import simple_group, delete_events
+from .p_graph import SourceNode, MergeNode, PGraph, EventsNode, Node
+from data_processors_lib.simple_processors import SimpleGroup, DeleteEvents
+from data_processor.data_processor import DataProcessor
+from data_processor.params_model import ParamsModel, Enum
+
+
+class StubProcessorParams(TypedDict):
+    a: Union[Literal["a"], Literal["b"]]
+
+
+class StubProcessor(DataProcessor[StubProcessorParams]):
+    def __init__(self, params: StubProcessorParams):
+        self.params = ParamsModel(
+            fields=params,
+            fields_schema={
+                "a": Enum(["a", "b"]),
+            }
+        )
+
+    def apply(self, eventstream: Eventstream) -> Eventstream:
+        return eventstream.copy()
+
 
 class EventstreamTest(unittest.TestCase):
-  __raw_data: pd.DataFrame
-  __raw_data_schema: RawDataSchema
-  
-  def setUp(self):
-      self.__raw_data = pd.DataFrame([
-        { "name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1" },
-        { "name": "click_1", "event_timestamp": "2021-10-26 12:02", "user_id": "1" },
-        { "name": "click_2", "event_timestamp": "2021-10-26 12:03", "user_id": "1" },
-      ])
-      self.__raw_data_schema = RawDataSchema(event_name="name", event_timestamp="event_timestamp", user_id="user_id")
+    __raw_data: pd.DataFrame
+    __raw_data_schema: RawDataSchema
 
-  def mock_events_node(self):
-    return EventsNode(factory=lambda e: e.copy())
+    def setUp(self):
+        self.__raw_data = pd.DataFrame([
+            {"name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
+            {"name": "click_1", "event_timestamp": "2021-10-26 12:02", "user_id": "1"},
+            {"name": "click_2", "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
+        ])
+        self.__raw_data_schema = RawDataSchema(
+            event_name="name", event_timestamp="event_timestamp", user_id="user_id")
 
-  def create_graph(self):
-    source = Eventstream(
-      raw_data=self.__raw_data,
-      raw_data_schema=self.__raw_data_schema,
-      schema=EventstreamSchema()
-    )
+    def mock_events_node(self):
+        return EventsNode(processor=StubProcessor(params={
+            "a": "a"
+        }))
 
-    return PGraph(source_stream=source)
+    def create_graph(self):
+        source = Eventstream(
+            raw_data=self.__raw_data,
+            raw_data_schema=self.__raw_data_schema,
+            schema=EventstreamSchema()
+        )
 
-  def test_create_graph(self):
-    source = Eventstream(
-      raw_data=self.__raw_data,
-      raw_data_schema=self.__raw_data_schema,
-      schema=EventstreamSchema()
-    )
+        return PGraph(source_stream=source)
 
-    graph =  PGraph(source_stream=source)
+    def test_create_graph(self):
+        source = Eventstream(
+            raw_data=self.__raw_data,
+            raw_data_schema=self.__raw_data_schema,
+            schema=EventstreamSchema()
+        )
 
-    self.assertEqual(graph.root.type, SOURCE_NODE)
-    self.assertEqual(graph.root.events, source)
+        graph = PGraph(source_stream=source)
 
-  def test_get_parents(self):
-    graph = self.create_graph()
+        self.assertIsInstance(graph.root, SourceNode)
+        self.assertEqual(graph.root.events, source)
 
-    added_nodes = []
+    def test_get_parents(self):
+        graph = self.create_graph()
 
-    for i in range(5):
-      new_node = self.mock_events_node()
-      added_nodes.append(new_node)
+        added_nodes: List[Node] = []
 
-      graph.add_node(
-        node=new_node,
-        parents=[graph.root]
-      )
-      new_node_parents = graph.get_parents(new_node)
-      
-      self.assertEqual(len(new_node_parents), 1)
-      self.assertEqual(new_node_parents[0], graph.root)
+        for _ in range(5):
+            new_node = self.mock_events_node()
+            added_nodes.append(new_node)
 
-    merge_node = MergeNode()
+            graph.add_node(
+                node=new_node,
+                parents=[graph.root]
+            )
+            new_node_parents = graph.get_parents(new_node)
 
-    graph.add_node(
-      node=merge_node,
-      parents=added_nodes,
-    )
+            self.assertEqual(len(new_node_parents), 1)
+            self.assertEqual(new_node_parents[0], graph.root)
 
-    merge_node_parents = graph.get_merge_node_parents(merge_node)
-    self.assertEqual(len(merge_node_parents), len(added_nodes))
+        merge_node = MergeNode()
 
-    for node in merge_node_parents:
-      self.assertTrue(node in added_nodes)
+        graph.add_node(
+            node=merge_node,
+            parents=added_nodes,
+        )
 
-    merge_node_parents = graph.get_parents(merge_node)
-    
-    self.assertEqual(len(merge_node_parents), len(added_nodes))
-    for merge_node_parent in merge_node_parents:
-      self.assertTrue(merge_node_parent in added_nodes)
+        merge_node_parents = graph.get_merge_node_parents(merge_node)
+        self.assertEqual(len(merge_node_parents), len(added_nodes))
 
-  def test_combine_events_node(self):
-    source_df = pd.DataFrame([
-      { "event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1" },
-      { "event_name": "cart_btn_click",  "event_timestamp": "2021-10-26 12:02", "user_id": "1" },
-      { "event_name": "pageview",  "event_timestamp": "2021-10-26 12:03", "user_id": "1" },
-      { "event_name": "plus_icon_click",  "event_timestamp": "2021-10-26 12:05", "user_id": "1" },
-    ])
+        for node in merge_node_parents:
+            self.assertTrue(node in added_nodes)
 
-    source = Eventstream(
-      raw_data=source_df,
-      raw_data_schema=RawDataSchema(
-        event_name="event_name",
-        event_timestamp="event_timestamp",
-        user_id="user_id"
-      )
-    )
+        merge_node_parents = graph.get_parents(merge_node)
 
-    cart_events = EventsNode(
-      simple_group(
-        event_name="add_to_cart",
-        filter=lambda df, schema : df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
-      )
-    )
+        self.assertEqual(len(merge_node_parents), len(added_nodes))
+        for merge_node_parent in merge_node_parents:
+            self.assertTrue(merge_node_parent in added_nodes)
 
-    graph = PGraph(source)
-    graph.add_node(
-      node=cart_events,
-      parents=[graph.root]
-    )
-    result = graph.combine(cart_events)
-    result_df = result.to_dataframe()
-    event_names = result_df[source.schema.event_name].to_list()
-    event_types = result_df[source.schema.event_type].to_list()
+    def test_combine_events_node(self):
+        source_df = pd.DataFrame([
+            {"event_name": "pageview",
+                "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
+            {"event_name": "cart_btn_click",
+                "event_timestamp": "2021-10-26 12:02", "user_id": "1"},
+            {"event_name": "pageview",
+                "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
+            {"event_name": "plus_icon_click",
+                "event_timestamp": "2021-10-26 12:05", "user_id": "1"},
+        ])
 
-    self.assertEqual(event_names, [
-      "pageview", "add_to_cart", "pageview", "add_to_cart"
-    ])
-    self.assertEqual(event_types, [
-      "raw", "group_alias", "raw", "group_alias"
-    ])
+        source = Eventstream(
+            raw_data=source_df,
+            raw_data_schema=RawDataSchema(
+                event_name="event_name",
+                event_timestamp="event_timestamp",
+                user_id="user_id"
+            )
+        )
 
+        cart_events = EventsNode(
+            SimpleGroup({
+                "event_name": "add_to_cart",
+                "filter": lambda df, schema: df[schema.event_name].isin(
+                    ["cart_btn_click", "plus_icon_click"]),
+            })
+        )
 
-  def test_combine_merge_node(self):
-    source_df = pd.DataFrame([
-      { "event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1" },
-      { "event_name": "cart_btn_click",  "event_timestamp": "2021-10-26 12:02", "user_id": "1" },
-      { "event_name": "pageview",  "event_timestamp": "2021-10-26 12:03", "user_id": "1" },
-      { "event_name": "trash_event",  "event_timestamp": "2021-10-26 12:03", "user_id": "1" },
-      { "event_name": "exit_btn_click",  "event_timestamp": "2021-10-26 12:04", "user_id": "2" },
-      { "event_name": "plus_icon_click",  "event_timestamp": "2021-10-26 12:05", "user_id": "1" },
-    ])
+        graph = PGraph(source)
+        graph.add_node(
+            node=cart_events,
+            parents=[graph.root]
+        )
+        result = graph.combine(cart_events)
+        result_df = result.to_dataframe()
 
-    source = Eventstream(
-      raw_data=source_df,
-      raw_data_schema=RawDataSchema(
-        event_name="event_name",
-        event_timestamp="event_timestamp",
-        user_id="user_id"
-      )
-    )
+        event_names = result_df[source.schema.event_name].to_list()
+        event_types = result_df[source.schema.event_type].to_list()
 
-    cart_events = EventsNode(
-      simple_group(
-        event_name="add_to_cart",
-        filter=lambda df, schema : df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
-      )
-    )
-    logout_events = EventsNode(
-      simple_group(
-        event_name="logout",
-        filter=lambda df, schema : df[schema.event_name] == "exit_btn_click"
-      )
-    )
-    trash_events = EventsNode(
-      delete_events(
-        filter=lambda df, schema : df[schema.event_name] == "trash_event"
-      )
-    )
-    merge = MergeNode()
+        self.assertEqual(event_names, [
+            "pageview", "add_to_cart", "pageview", "add_to_cart"
+        ])
+        self.assertEqual(event_types, [
+            "raw", "group_alias", "raw", "group_alias"
+        ])
 
-    graph = PGraph(source)
-    graph.add_node(
-      node=cart_events,
-      parents=[graph.root]
-    )
-    graph.add_node(
-      node=logout_events,
-      parents=[graph.root]
-    )
-    graph.add_node(
-      node=trash_events,
-      parents=[graph.root]
-    )
-    graph.add_node(
-      node=merge,
-      parents=[
-        cart_events,
-        logout_events,
-        trash_events,
-      ]
-    )
+    def test_combine_merge_node(self):
+        source_df = pd.DataFrame([
+            {"event_name": "pageview",
+                "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
+            {"event_name": "cart_btn_click",
+                "event_timestamp": "2021-10-26 12:02", "user_id": "1"},
+            {"event_name": "pageview",
+                "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
+            {"event_name": "trash_event",
+                "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
+            {"event_name": "exit_btn_click",
+                "event_timestamp": "2021-10-26 12:04", "user_id": "2"},
+            {"event_name": "plus_icon_click",
+                "event_timestamp": "2021-10-26 12:05", "user_id": "1"},
+        ])
 
-    result = graph.combine(merge)
-    result_df = result.to_dataframe()
+        source = Eventstream(
+            raw_data=source_df,
+            raw_data_schema=RawDataSchema(
+                event_name="event_name",
+                event_timestamp="event_timestamp",
+                user_id="user_id"
+            )
+        )
 
-    event_names = result_df[source.schema.event_name].to_list()
-    event_types = result_df[source.schema.event_type].to_list()
-    user_ids = result_df[source.schema.user_id].to_list()
+        cart_events = EventsNode(
+            SimpleGroup({
+                "event_name": "add_to_cart",
+                "filter": lambda df, schema: df[schema.event_name].isin(
+                    ["cart_btn_click", "plus_icon_click"])
+            })
+        )
+        logout_events = EventsNode(
+            SimpleGroup({
+                "event_name": "logout",
+                "filter": lambda df, schema: df[schema.event_name] == "exit_btn_click"
+            })
+        )
+        trash_events = EventsNode(
+            DeleteEvents({
+                "filter": lambda df, schema: df[schema.event_name] == "trash_event"
+            })
+        )
+        merge = MergeNode()
 
-    self.assertEqual(
-      event_names,
-      [
-        "pageview",
-        "add_to_cart",
-        "pageview",
-        "logout",
-        "add_to_cart",
-      ]
-    )
+        graph = PGraph(source)
+        graph.add_node(
+            node=cart_events,
+            parents=[graph.root]
+        )
+        graph.add_node(
+            node=logout_events,
+            parents=[graph.root]
+        )
+        graph.add_node(
+            node=trash_events,
+            parents=[graph.root]
+        )
+        graph.add_node(
+            node=merge,
+            parents=[
+                cart_events,
+                logout_events,
+                trash_events,
+            ]
+        )
 
-    self.assertEqual(
-      event_types,
-      [
-        "raw",
-        "group_alias",
-        "raw",
-        "group_alias",
-        "group_alias"
-      ],
-    )
+        result = graph.combine(merge)
+        result_df = result.to_dataframe()
 
-    self.assertEqual(
-      user_ids,
-      ["1", "1", "1", "2", "1"]
-    )
-    
+        event_names = result_df[source.schema.event_name].to_list()
+        event_types = result_df[source.schema.event_type].to_list()
+        user_ids = result_df[source.schema.user_id].to_list()
 
-    
+        self.assertEqual(
+            event_names,
+            [
+                "pageview",
+                "add_to_cart",
+                "pageview",
+                "logout",
+                "add_to_cart",
+            ]
+        )
 
+        self.assertEqual(
+            event_types,
+            [
+                "raw",
+                "group_alias",
+                "raw",
+                "group_alias",
+                "group_alias"
+            ],
+        )
 
-
-
+        self.assertEqual(
+            user_ids,
+            ["1", "1", "1", "2", "1"]
+        )

@@ -5,9 +5,9 @@
 
 # TODO fix me
 from __future__ import annotations
-from typing import  Literal, TypedDict, Sequence, List, Mapping, Tuple, Callable, Type, Optional, Union, MutableMapping, MutableSequence, cast
-from enum import Enum
+from typing import TypedDict, List, Optional
 from dataclasses import dataclass, field
+
 
 @dataclass
 class EventstreamSchema():
@@ -20,58 +20,59 @@ class EventstreamSchema():
     custom_cols: List[str] = field(default_factory=list)
 
     def copy(self):
-      return EventstreamSchema(
-        event_id=self.event_id,
-        event_type=self.event_type,
-        event_index=self.event_index,
-        event_name=self.event_name,
-        event_timestamp=self.event_timestamp,
-        user_id=self.user_id,
-        custom_cols=self.custom_cols.copy(),
-      )
-    
+        return EventstreamSchema(
+            event_id=self.event_id,
+            event_type=self.event_type,
+            event_index=self.event_index,
+            event_name=self.event_name,
+            event_timestamp=self.event_timestamp,
+            user_id=self.user_id,
+            custom_cols=self.custom_cols.copy(),
+        )
+
     def is_equal(self, schema: EventstreamSchema):
-      return (
-        self.event_id == schema.event_id and
-        self.event_type == schema.event_type and
-        self.event_index == schema.event_index and
-        self.event_name == schema.event_name and
-        self.event_timestamp == schema.event_timestamp and
-        self.user_id == schema.user_id and
-        self.custom_cols == schema.custom_cols
-      )
+        return (
+            self.event_id == schema.event_id and
+            self.event_type == schema.event_type and
+            self.event_index == schema.event_index and
+            self.event_name == schema.event_name and
+            self.event_timestamp == schema.event_timestamp and
+            self.user_id == schema.user_id and
+            self.custom_cols == schema.custom_cols
+        )
 
     def get_cols(self):
-      return [
-        self.event_id,
-        self.event_type,
-        self.event_index,
-        self.event_name,
-        self.event_timestamp,
-        self.user_id,
-      ] + self.custom_cols
+        return [
+            self.event_id,
+            self.event_type,
+            self.event_index,
+            self.event_name,
+            self.event_timestamp,
+            self.user_id,
+        ] + self.custom_cols
 
     def to_raw_data_schema(self):
-      custom_cols: List[RawDataCustomColSchema] = []
+        custom_cols: List[RawDataCustomColSchema] = []
 
-      for col in self.custom_cols:
-        custom_cols.append({
-          "custom_col": col,
-          "raw_data_col": col
-        })
+        for col in self.custom_cols:
+            custom_cols.append({
+                "custom_col": col,
+                "raw_data_col": col
+            })
 
-      return RawDataSchema(
-        event_name=self.event_name,
-        event_type=self.event_type,
-        user_id=self.user_id,
-        event_timestamp=self.event_timestamp,
-        custom_cols=custom_cols
-      )
+        return RawDataSchema(
+            event_name=self.event_name,
+            event_type=self.event_type,
+            user_id=self.user_id,
+            event_timestamp=self.event_timestamp,
+            custom_cols=custom_cols
+        )
 
 
 class RawDataCustomColSchema(TypedDict):
     raw_data_col: str
     custom_col: str
+
 
 @dataclass
 class RawDataSchema():
@@ -82,10 +83,10 @@ class RawDataSchema():
     custom_cols: List[RawDataCustomColSchema] = field(default_factory=list)
 
     def copy(self):
-      return RawDataSchema(
-        event_name=self.event_name,
-        event_timestamp=self.event_timestamp,
-        user_id=self.user_id,
-        custom_cols=self.custom_cols,
-        event_type=self.event_type,
-      )
+        return RawDataSchema(
+            event_name=self.event_name,
+            event_timestamp=self.event_timestamp,
+            user_id=self.user_id,
+            custom_cols=self.custom_cols,
+            event_type=self.event_type,
+        )

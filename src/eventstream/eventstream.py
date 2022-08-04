@@ -43,7 +43,7 @@ class Relation(TypedDict):
     raw_col: Optional[str]
 
 
-class Eventstream():
+class Eventstream:
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]

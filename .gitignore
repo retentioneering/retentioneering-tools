@@ -2,3 +2,5 @@ __pycache__
 .ipynb_checkpoints
 typings
 .vscode
+.idea/
+.python-version

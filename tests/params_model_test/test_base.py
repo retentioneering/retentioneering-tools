@@ -3,7 +3,6 @@ from typing import Callable
 import pytest
 
 from src.params_model import ReteParamsModel
-from src.params_model.allowed_type import _AllowedTypes
 
 
 class TestParamsModel:

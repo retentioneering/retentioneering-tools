@@ -1,9 +1,10 @@
 from pydantic.main import ModelMetaclass
 from pydantic import BaseModel
+from .allowed_type import AllowedTypes
 
 
 class ReteMetaModel(ModelMetaclass):
-    __allowed_types = ('str', 'float', 'int', 'complex', 'Callable')
+    __allowed_types = AllowedTypes
 
     def __new__(cls, name: str, bases: tuple, namespace: dict, **kwargs: dict) -> type:
         if annotations := namespace.get('__annotations__', {}):

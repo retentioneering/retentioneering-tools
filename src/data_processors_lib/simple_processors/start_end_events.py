@@ -20,33 +20,38 @@ class StartEndEventsParams(TypedDict):
 
 
 class StartEndEvents(DataProcessor[StartEndEventsParams]):
-    def __init__(self, params: StartEndEventsParams):
-        super().__init__(params=params)
-        self.params = ParamsModel(
-            fields=params,
-            fields_schema={
-                "user_col": String(),
-                "event_col": String(),
-                "time_col": String(),
-                "type_col": String(),
-            }
-        )
+    def __init__(self, params: StartEndEventsParams = None):
+        pass
+        # super().__init__(params=params)
+        # self.params = ParamsModel(
+        #     fields={},
+        #     fields_schema={
+        #         "user_col": String(),
+        #         "event_col": String(),
+        #         "time_col": String(),
+        #         "type_col": String(),
+        #     }
+        # )
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
         events: DataFrame = eventstream.to_dataframe()
+        user_col = eventstream.schema.user_id
+        time_col = eventstream.schema.event_timestamp
+        type_col = eventstream.schema.event_type
+        event_col = eventstream.schema.event_name
 
-        matched_events_start: DataFrame = events.groupby(self.params.fields['user_col'], as_index=False)\
-            .apply(lambda group: group.nsmallest(1, columns=self.params.fields['time_col'])) \
+        matched_events_start: DataFrame = events.groupby(user_col, as_index=False)\
+            .apply(lambda group: group.nsmallest(1, columns=time_col)) \
             .reset_index(drop=True)
-        matched_events_start[self.params.fields['type_col']] = 'start'
-        matched_events_start[self.params.fields['event_col']] = 'start'
+        matched_events_start[type_col] = 'start'
+        matched_events_start[event_col] = 'start'
         matched_events_start["ref"] = matched_events_start[eventstream.schema.event_id]
 
-        matched_events_end = events.groupby(self.params.fields['user_col'], as_index=False)\
-            .apply(lambda group: group.nlargest(1, columns=self.params.fields['time_col'])) \
+        matched_events_end = events.groupby(user_col, as_index=False)\
+            .apply(lambda group: group.nlargest(1, columns=time_col)) \
             .reset_index(drop=True)
-        matched_events_end[self.params.fields['type_col']] = 'end'
-        matched_events_end[self.params.fields['event_col']] = 'end'
+        matched_events_end[type_col] = 'end'
+        matched_events_end[event_col] = 'end'
         matched_events_end["ref"] = matched_events_end[eventstream.schema.event_id]
 
         matched_events = pd.concat([matched_events_start, matched_events_end])

@@ -77,8 +77,7 @@ class TestStartEndEvents:
                              raw_data_schema=RawDataSchema(event_name="event_name", event_timestamp="event_timestamp",
                                                            user_id="user_id"), )
 
-        events = StartEndEvents(params={'user_col': 'user_id', 'event_col': 'event_name', 'time_col': 'event_timestamp',
-                                        'type_col': 'event_type'})
+        events = StartEndEvents()
 
         result = events.apply(source)
         result_df = result.to_dataframe(show_deleted=True)

@@ -1,7 +1,7 @@
 from typing import Any, Generic, List, Optional, TypeVar, Union,  cast
 import networkx
-from data_processor.data_processor import DataProcessor
-from eventstream.eventstream import Eventstream
+from src.data_processor.data_processor import DataProcessor
+from src.eventstream.eventstream import Eventstream
 
 
 class SourceNode():

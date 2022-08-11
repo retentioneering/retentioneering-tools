@@ -2,12 +2,13 @@
 from typing import List, Literal, TypedDict, Union
 import unittest
 import pandas as pd
-from eventstream.eventstream import EventstreamSchema, Eventstream
-from eventstream.schema import RawDataSchema
+from src.eventstream.eventstream import EventstreamSchema, Eventstream
+from src.eventstream.schema import RawDataSchema
 from .p_graph import SourceNode, MergeNode, PGraph, EventsNode, Node
-from data_processors_lib.simple_processors import SimpleGroup, DeleteEvents
-from data_processor.data_processor import DataProcessor
-from data_processor.params_model import ParamsModel, Enum
+from ..data_processors_lib.simple_processors.delete_events import DeleteEvents
+from ..data_processors_lib.simple_processors.simple_group import SimpleGroup
+from src.data_processor.data_processor import DataProcessor
+from src.data_processor.params_model import ParamsModel, Enum
 
 
 class StubProcessorParams(TypedDict):

@@ -57,7 +57,7 @@ class Eventstream:
                  prepare: bool = True,
                  index_order: IndexOrder = DEFAULT_INDEX_ORDER,
                  relations: List[Relation] = [],
-                 ):
+                 ) -> None:
         self.schema = schema
         self.index_order = index_order
         self.relations = relations
@@ -66,7 +66,7 @@ class Eventstream:
             raw_data) if prepare else raw_data
         self.index_events()
 
-    def copy(self):
+    def copy(self) -> Eventstream:
         return Eventstream(
             raw_data_schema=self.__raw_data_schema.copy(),
             raw_data=self.__events.copy(),
@@ -76,7 +76,7 @@ class Eventstream:
             relations=self.relations.copy(),
         )
 
-    def append_eventstream(self, eventstream: Eventstream):
+    def append_eventstream(self, eventstream: Eventstream) -> None:
         if not self.schema.is_equal(eventstream.schema):
             raise ValueError("invalid schema: joined eventstream")
 
@@ -135,7 +135,7 @@ class Eventstream:
         self.soft_delete(deleted_events)
         self.index_events()
 
-    def join_eventstream(self, eventstream: Eventstream):
+    def join_eventstream(self, eventstream: Eventstream) -> None:
         if not self.schema.is_equal(eventstream.schema):
             raise ValueError("invalid schema: joined eventstream")
 
@@ -217,7 +217,7 @@ class Eventstream:
             result_right_part).append(result_deleted_events)
         self.index_events()
 
-    def to_dataframe(self, raw_cols=False, show_deleted=False):
+    def to_dataframe(self, raw_cols=False, show_deleted=False) -> pd.DataFrame:
         cols = self.schema.get_cols() + self.get_relation_cols()
 
         if raw_cols:
@@ -230,7 +230,7 @@ class Eventstream:
         view = pd.DataFrame(events, columns=cols)
         return view
 
-    def index_events(self):
+    def index_events(self) -> None:
         order_temp_col_name = 'order'
         indexed = self.__events
 
@@ -246,7 +246,7 @@ class Eventstream:
         indexed[self.schema.event_index] = indexed.index
         self.__events = indexed
 
-    def get_raw_cols(self):
+    def get_raw_cols(self) -> list[str]:
         cols = self.__events.columns
         raw_cols: list[str] = []
         for col in cols:
@@ -254,7 +254,7 @@ class Eventstream:
                 raw_cols.append(col)
         return raw_cols
 
-    def get_relation_cols(self):
+    def get_relation_cols(self) -> list[str]:
         cols = self.__events.columns
         relation_cols: list[str] = []
         for col in cols:
@@ -262,7 +262,7 @@ class Eventstream:
                 relation_cols.append(col)
         return relation_cols
 
-    def soft_delete(self, events: pd.DataFrame):
+    def soft_delete(self, events: pd.DataFrame) -> None:
         deleted_events = events.copy()
         deleted_events[DELETE_COL_NAME] = True
         merged = pd.merge(
@@ -276,11 +276,11 @@ class Eventstream:
         self.__events[DELETE_COL_NAME] = self.__events[
             DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
 
-    def __get_not_deleted_events(self):
+    def __get_not_deleted_events(self) -> pd.DataFrame:
         events = self.__events
         return events[events[DELETE_COL_NAME] == False]
 
-    def __prepare_events(self, raw_data: pd.DataFrame):
+    def __prepare_events(self, raw_data: pd.DataFrame) -> pd.DataFrame:
         events = raw_data.copy()
         # add "raw_" prefix for raw cols
         events.rename(
@@ -344,7 +344,7 @@ class Eventstream:
                 raise ValueError(
                     f'invald raw data. Column "{colname}" does not exists!')
 
-    def __get_event_priority(self, event_type: Optional[str]):
+    def __get_event_priority(self, event_type: Optional[str]) -> int:
         if event_type in self.index_order:
             return self.index_order.index(event_type)
         return 8

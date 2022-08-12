@@ -16,7 +16,7 @@ class SimpleGroupParams(TypedDict, total=False):
 
 
 class SimpleGroup(DataProcessor[SimpleGroupParams]):
-    def __init__(self, params: SimpleGroupParams):
+    def __init__(self, params: SimpleGroupParams) -> None:
         self.params = ParamsModel(
             fields=params,
             fields_schema={
@@ -53,7 +53,7 @@ class DeleteEventsParams(TypedDict):
 
 
 class DeleteEvents(DataProcessor[DeleteEventsParams]):
-    def __init__(self, params: DeleteEventsParams):
+    def __init__(self, params: DeleteEventsParams) -> None:
         self.params = ParamsModel(
             fields=params,
             fields_schema={

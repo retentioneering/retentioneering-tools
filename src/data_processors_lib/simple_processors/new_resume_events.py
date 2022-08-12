@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Callable, Any, TypedDict
 
 import pandas as pd
@@ -10,15 +11,16 @@ from src.eventstream.schema import EventstreamSchema
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-class StartEndEventsParams(TypedDict):
+class NewResumeParams(TypedDict):
     user_col: str
     event_col: str
     time_col: str
     type_col: str
+    new_users_list: list[int]
 
 
-class StartEndEvents(DataProcessor[StartEndEventsParams]):
-    def __init__(self, params: StartEndEventsParams = None):
+class NewResumeEvents(DataProcessor[NewResumeParams]):
+    def __init__(self, params: NewResumeParams = None):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
@@ -27,22 +29,23 @@ class StartEndEvents(DataProcessor[StartEndEventsParams]):
         time_col = eventstream.schema.event_timestamp
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
-
-        matched_events_start: DataFrame = events.groupby(user_col, as_index=False) \
+        new_users_list = self.params.fields['new_users_list']
+        matched_events = events.groupby(user_col, as_index=False)\
             .apply(lambda group: group.nsmallest(1, columns=time_col)) \
             .reset_index(drop=True)
-        matched_events_start[type_col] = 'start'
-        matched_events_start[event_col] = 'start'
-        matched_events_start["ref"] = matched_events_start[eventstream.schema.event_id]
 
-        matched_events_end = events.groupby(user_col, as_index=False) \
-            .apply(lambda group: group.nlargest(1, columns=time_col)) \
-            .reset_index(drop=True)
-        matched_events_end[type_col] = 'end'
-        matched_events_end[event_col] = 'end'
-        matched_events_end["ref"] = matched_events_end[eventstream.schema.event_id]
+        if self.params.fields['new_users_list'] == 'all':
 
-        matched_events = pd.concat([matched_events_start, matched_events_end])
+            matched_events[type_col] = 'new_user'
+            matched_events[event_col] = 'new_user'
+
+        else:
+            new_user_mask = matched_events[user_col].isin(new_users_list)
+            matched_events.loc[new_user_mask, type_col] = 'new_user'
+            matched_events.loc[~new_user_mask, type_col] = 'resume'
+            matched_events[event_col] = matched_events[type_col]
+
+        matched_events["ref"] = matched_events[eventstream.schema.event_id]
 
         eventstream = Eventstream(
             raw_data=matched_events,

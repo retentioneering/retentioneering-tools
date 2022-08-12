@@ -16,7 +16,7 @@ class SimpleGroupParams(TypedDict, total=False):
 
 
 class SimpleGroup(DataProcessor[SimpleGroupParams]):
-    def __init__(self, params: SimpleGroupParams):
+    def __init__(self, params: SimpleGroupParams) -> None:
         self.params = ParamsModel(
             fields=params,
             fields_schema={
@@ -27,9 +27,9 @@ class SimpleGroup(DataProcessor[SimpleGroupParams]):
         )
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
-        event_name = self.params.fields["event_name"]
-        filter = self.params.fields["filter"]
-        event_type = self.params.fields["event_type"] if "event_type" in self.params.fields else None
+        event_name = self.params.fields.get("event_name")
+        filter = self.params.fields.get("filter", None)
+        event_type = self.params.fields.get("event_type", None)
 
         events = eventstream.to_dataframe()
         mathed_events_q = filter(events, eventstream.schema)
@@ -53,7 +53,7 @@ class DeleteEventsParams(TypedDict):
 
 
 class DeleteEvents(DataProcessor[DeleteEventsParams]):
-    def __init__(self, params: DeleteEventsParams):
+    def __init__(self, params: DeleteEventsParams) -> None:
         self.params = ParamsModel(
             fields=params,
             fields_schema={

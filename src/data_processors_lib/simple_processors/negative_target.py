@@ -40,8 +40,6 @@ class NegativeTarget(DataProcessor[NegativeTargetParams]):
         if inplace:
             logging.warning(f'original dataframe has been lost')
 
-        event_col, type_col = attrgetter('event_col', 'type_col')(target_stream.config)
-
         df = target_stream.to_dataframe()
 
         check = df[type_col].isin(['negative_target']).any()

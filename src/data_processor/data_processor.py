@@ -1,8 +1,9 @@
 from abc import abstractmethod
-from typing import Generic, TypeVar, TypedDict
-from .params_model import ParamsModel
+from typing import Generic, TypedDict, TypeVar
 
-from eventstream.eventstream import Eventstream
+from src.eventstream import Eventstream
+
+from .params_model import ParamsModel
 
 P = TypeVar("P", bound=TypedDict)
 

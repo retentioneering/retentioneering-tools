@@ -1,8 +1,9 @@
 # TODO fix me
 from __future__ import annotations
-from typing import TypeVar, Callable, List, Optional
 
-T = TypeVar('T')
+from typing import Callable, List, Optional, TypeVar
+
+T = TypeVar("T")
 
 
 def find_item(l: List[T], cond: Callable[[T], bool]) -> Optional[T]:

@@ -1,7 +1,17 @@
-
-from typing import TypedDict
 import unittest
-from .params_model import Numeric, ParamsModel, ModelDefinition, String, Enum, AvailableType, register_type, has_type, reset_types
+from typing import TypedDict
+
+from .params_model import (
+    AvailableType,
+    Enum,
+    ModelDefinition,
+    Numeric,
+    ParamsModel,
+    String,
+    has_type,
+    register_type,
+    reset_types,
+)
 
 
 class Zero(AvailableType[int]):
@@ -35,34 +45,24 @@ class TestParamsModel(unittest.TestCase):
             c: str
 
         model = ParamsModel[Fields](
-            fields={
-                "a": "test",
-                "b": 333,
-                "c": "first"
-            },
+            fields={"a": "test", "b": 333, "c": "first"},
             fields_schema={
                 "a": String(),
                 "b": Numeric(),
-                "c": Enum(["first", "second"])
-            }
+                "c": Enum(["first", "second"]),
+            },
         )
 
         definition = model.get_definition()
 
-        self.assertEqual(definition, {
-            "a": {
-                "type_name": "String",
-                "type_params": None
+        self.assertEqual(
+            definition,
+            {
+                "a": {"type_name": "String", "type_params": None},
+                "b": {"type_name": "Numeric", "type_params": None},
+                "c": {"type_name": "Enum", "type_params": ["first", "second"]},
             },
-            "b": {
-                "type_name": "Numeric",
-                "type_params": None
-            },
-            "c": {
-                "type_name": "Enum",
-                "type_params": ["first", "second"]
-            }
-        })
+        )
 
     def test_from_definition(self):
         class Fields(TypedDict):
@@ -71,25 +71,12 @@ class TestParamsModel(unittest.TestCase):
             c: str
 
         definition: ModelDefinition = {
-            "a": {
-                "type_name": "String",
-                "type_params": None
-            },
-            "b": {
-                "type_name": "Numeric",
-                "type_params": None
-            },
-            "c": {
-                "type_name": "Enum",
-                "type_params": ["first", "second"]
-            }
+            "a": {"type_name": "String", "type_params": None},
+            "b": {"type_name": "Numeric", "type_params": None},
+            "c": {"type_name": "Enum", "type_params": ["first", "second"]},
         }
 
-        fields: Fields = {
-            "a": "test",
-            "b": 123,
-            "c": "first"
-        }
+        fields: Fields = {"a": "test", "b": 123, "c": "first"}
 
         model = ParamsModel.from_definition(
             fields=fields,
@@ -100,9 +87,7 @@ class TestParamsModel(unittest.TestCase):
         # обратимость
         self.assertEqual(model.get_definition(), definition)
 
-        self.assertTrue(
-            set(("a", "b", "c")) == set(fields_schema.keys())
-        )
+        self.assertTrue(set(("a", "b", "c")) == set(fields_schema.keys()))
         self.assertIsInstance(fields_schema["a"], String)
         self.assertIsInstance(fields_schema["b"], Numeric)
         self.assertIsInstance(fields_schema["c"], Enum)
@@ -115,11 +100,7 @@ class TestParamsModel(unittest.TestCase):
             c: str
             d: str
 
-        fields: Fields = {
-            "a": "test",
-            "b": 3,
-            "c": "first"
-        }
+        fields: Fields = {"a": "test", "b": 3, "c": "first"}
 
         model = ParamsModel[Fields](
             fields=fields,
@@ -128,35 +109,22 @@ class TestParamsModel(unittest.TestCase):
                 "b": Numeric(),
                 "c": Enum(["first", "second"]),
                 "d": String(optional=True),
-            }
+            },
         )
 
-        self.assertTrue(model.is_valid({
-            "a": "test",
-            "b": 3,
-            "c": "first",
-            "d": "optional_parameter"
-        }))
-        self.assertTrue(model.is_valid({
-            "a": "test",
-            "b": 3,
-            "c": "first"
-        }))
-        self.assertFalse(model.is_valid({
-            "a": "test",
-            "b": 3,
-            "c": "unknown",
-        }))
-        self.assertFalse(model.is_valid({
-            "a": "test",
-            "b": 3,
-            "c": "first",
-            "unknown_key": 234234324
-        }))
-        self.assertFalse(model.is_valid({
-            "a": "test",
-            "b": 3
-        }))
+        self.assertTrue(model.is_valid({"a": "test", "b": 3, "c": "first", "d": "optional_parameter"}))
+        self.assertTrue(model.is_valid({"a": "test", "b": 3, "c": "first"}))
+        self.assertFalse(
+            model.is_valid(
+                {
+                    "a": "test",
+                    "b": 3,
+                    "c": "unknown",
+                }
+            )
+        )
+        self.assertFalse(model.is_valid({"a": "test", "b": 3, "c": "first", "unknown_key": 234234324}))
+        self.assertFalse(model.is_valid({"a": "test", "b": 3}))
 
     def test_set_fields(self):
         class Fields(TypedDict, total=False):
@@ -165,11 +133,7 @@ class TestParamsModel(unittest.TestCase):
             c: str
             d: str
 
-        fields: Fields = {
-            "a": "test",
-            "b": 3,
-            "c": "first"
-        }
+        fields: Fields = {"a": "test", "b": 3, "c": "first"}
 
         model = ParamsModel[Fields](
             fields=fields,
@@ -178,7 +142,7 @@ class TestParamsModel(unittest.TestCase):
                 "b": Numeric(),
                 "c": Enum(["first", "second"]),
                 "d": String(optional=True),
-            }
+            },
         )
 
         imvalid_fields: Fields = {
@@ -190,7 +154,7 @@ class TestParamsModel(unittest.TestCase):
             "a": "test",
             "b": 3,
             "c": "first",
-            "d": "optional_parameter"
+            "d": "optional_parameter",
         }
 
         def set_invalid_fields():

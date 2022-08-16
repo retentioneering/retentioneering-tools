@@ -1,7 +1,9 @@
-from typing import Any, Generic, List, Optional, TypeVar, Union,  cast
+from typing import Any, List, Optional, Union, cast
+
 import networkx
-from data_processor.data_processor import DataProcessor
-from eventstream.eventstream import Eventstream
+
+from src.data_processor.data_processor import DataProcessor
+from src.eventstream.eventstream import Eventstream
 
 
 class SourceNode:
@@ -49,9 +51,8 @@ class PGraph:
         if node.events is not None:
             self.__validate_schema(node.events)
 
-        if (not isinstance(node, MergeNode) and len(parents) > 1):
-            raise ValueError(
-                "multiple parents are only allowed for merge nodes!")
+        if not isinstance(node, MergeNode) and len(parents) > 1:
+            raise ValueError("multiple parents are only allowed for merge nodes!")
 
         self.__ngraph.add_node(node)
 
@@ -101,7 +102,7 @@ class PGraph:
 
     def get_merge_node_parents(self, node: MergeNode) -> List[Node]:
         parents = self.get_parents(node)
-        if (len(parents) == 0):
+        if len(parents) == 0:
             raise ValueError("orphan merge node!")
 
         return parents
@@ -109,8 +110,7 @@ class PGraph:
     def get_events_node_parent(self, node: EventsNode) -> Node:
         parents = self.get_parents(node)
         if len(parents) > 1:
-            raise ValueError(
-                "invalid graph: events node has more than 1 parent")
+            raise ValueError("invalid graph: events node has more than 1 parent")
 
         return parents[0]
 
@@ -118,10 +118,10 @@ class PGraph:
         return self.root.events.schema.is_equal(eventstream.schema)
 
     def __valiate_already_exists(self, node: Node) -> None:
-        if (node in self.__ngraph.nodes):
+        if node in self.__ngraph.nodes:
             raise ValueError("node already exists!")
 
     def __validate_not_found(self, nodes: List[Node]) -> None:
         for node in nodes:
-            if (node not in self.__ngraph.nodes):
+            if node not in self.__ngraph.nodes:
                 raise ValueError("node not found!")

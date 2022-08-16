@@ -1,8 +1,22 @@
 from __future__ import annotations
-from abc import abstractmethod
+
 import json
-from typing import Any, Callable, Dict, Generic, List, Optional, Type, TypeVar, TypedDict, Union, cast
-from utils.list import find_item
+from abc import abstractmethod
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Type,
+    TypedDict,
+    TypeVar,
+    Union,
+    cast,
+)
+
+from src.utils.list import find_item
 
 T = TypeVar("T")
 
@@ -85,7 +99,7 @@ class SerializedModel(TypedDict):
 
 
 # TODO добавить поддержку  сериализации
-V = TypeVar('V', bound=TypedDict)
+V = TypeVar("V", bound=TypedDict)
 
 
 class ParamsModel(Generic[V]):
@@ -126,8 +140,7 @@ class ParamsModel(Generic[V]):
         for field_name, type_definition in definition.items():
             type_name = type_definition["type_name"]
             type_params = type_definition["type_params"]
-            MatchedType = find_item(available_types, lambda t: t.__name__ ==
-                                    type_name)
+            MatchedType = find_item(available_types, lambda t: t.__name__ == type_name)
 
             if MatchedType is None:
                 raise ValueError(f"unknown type: {type_name}")
@@ -137,10 +150,12 @@ class ParamsModel(Generic[V]):
         return ParamsModel[V](fields=fields, fields_schema=fields_schema)
 
     def to_json(self) -> str:
-        return json.dumps({
-            "definition": self.get_definition(),
-            "fields": self.fields,
-        })
+        return json.dumps(
+            {
+                "definition": self.get_definition(),
+                "fields": self.fields,
+            }
+        )
 
     @staticmethod
     def from_json(json_str: str) -> ParamsModel[Any]:
@@ -173,5 +188,4 @@ class ParamsModel(Generic[V]):
     def __write_default_fields(self) -> None:
         for field_name, type_instance in self.fields_schema.items():
             if type_instance.default and field_name not in self.__fields:
-                cast(Dict[str, Any], self.__fields)[
-                    field_name] = type_instance.default
+                cast(Dict[str, Any], self.__fields)[field_name] = type_instance.default

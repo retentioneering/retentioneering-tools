@@ -3,3 +3,4 @@ __pycache__
 typings
 .vscode
 .idea
+.python-version

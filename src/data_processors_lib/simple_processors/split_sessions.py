@@ -11,10 +11,8 @@ from src.eventstream.schema import EventstreamSchema
 
 log = logging.getLogger(__name__)
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
-UOM_DICT = {'s': 1,
-            'm': 60,
-            'h': 3600,
-            'd': 24 * 3600}
+from src.data_processors_lib.simple_processors.constants import UOM_DICT
+
 
 
 class SplitSessionsParams(TypedDict):

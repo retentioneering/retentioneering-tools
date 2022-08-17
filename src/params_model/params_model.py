@@ -11,11 +11,10 @@ class ReteMetaModel(ModelMetaclass):
         if annotations := namespace.get('__annotations__', {}):
             annotations: dict
             names = [
-                x if isinstance(x, str) else getattr(x, '__name__', None)
-                                             or getattr(x, '_name', None) or getattr(x, '__str__')()
-                for x in annotations.values()
+                AllowedTypes.get_name(x) for x in annotations.values()
             ]
             correct_types = [name in cls.__allowed_types for name in names]
+            print(dict(zip(names, correct_types)))
             if not all(correct_types):
                 raise ValueError('Incorrect type in data, allowed types: {}'.format(cls.__allowed_types))
         obj = super().__new__(cls, name, bases, namespace, **kwargs)

@@ -1,62 +1,61 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Any, TypedDict
+from typing import Callable, Any, List, Optional
 
+import pandas as pd
 from pandas import DataFrame
 
-from src.data_processor.data_processor import DataProcessor
+from src.data_processor.data_processor import ReteDataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
+from src.params_model import ReteParamsModel
 
 log = logging.getLogger(__name__)
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-class PositiveTargetParams(TypedDict):
-    positive_target_events: list[str]
-    positive_function: Callable
-    inplace: bool
-    delete_previous: bool
+def _custom_func_positive(eventstream: Eventstream, positive_target_events: list) -> pd.DataFrame:
+    user_col = eventstream.schema.user_id
+    time_col = eventstream.schema.event_timestamp
+    event_col = eventstream.schema.event_name
+    df = eventstream.to_dataframe()
+
+    data_pos = df[df[event_col].isin(positive_target_events)]
+    data_pos = data_pos.groupby(user_col, as_index=False).apply(lambda group: group.nsmallest(1, columns=time_col)) \
+        .reset_index(drop=True)
+    return data_pos
 
 
-class PositiveTarget(DataProcessor[PositiveTargetParams]):
+class PositiveTargetParams(ReteParamsModel):
+    positive_target_events: List[str]
+    positive_function: Optional[Callable] = _custom_func_positive
+
+
+class PositiveTarget(ReteDataProcessor):
+    params: PositiveTargetParams
+
     def __init__(self, params: PositiveTargetParams = None):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
-        events: DataFrame = eventstream.to_dataframe()
-        user_col = eventstream.schema.user_id
-        time_col = eventstream.schema.event_timestamp
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 
-        positive_function = self.params.fields['positive_function']
-        positive_target_events = self.params.fields['positive_target_events']
-        inplace = self.params.fields['inplace']
-        delete_previous = self.params.fields['delete_previous']
+        positive_function = self.params.positive_function
+        positive_target_events = self.params.positive_target_events
 
-        target_stream = eventstream if inplace else eventstream.copy()
-        if inplace:
-            logging.warning(f'original dataframe has been lost')
-
-        df = target_stream.to_dataframe()
-
-        check = df[type_col].isin(['positive_target']).any()
-
-        if not delete_previous and check:
-            logging.warning(f'events with "positive_target" event_type are already exist!')
-        if delete_previous:
-            target_stream.delete_events(f'{type_col} == ["positive_target"]', hard=False, index=False, inplace=True)
+        df = eventstream.to_dataframe()
 
         positive_targets = positive_function(eventstream, positive_target_events)
         positive_targets[type_col] = 'positive_target'
         positive_targets[event_col] = 'positive_target_' + positive_targets[event_col]
+        positive_targets['ref'] = positive_targets[eventstream.schema.event_id]
 
-        target_stream.append_raw_events(positive_targets, save_raw_cols=False)
+        df = pd.concat([df, positive_targets])
 
         eventstream = Eventstream(
-            raw_data=target_stream,
+            raw_data=df,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
             relations=[{"raw_col": "ref", "evenstream": eventstream}],
         )

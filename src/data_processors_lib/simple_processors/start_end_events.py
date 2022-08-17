@@ -6,11 +6,12 @@ from pandas import DataFrame
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
+from src.params_model import ReteParamsModel
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-class StartEndEventsParams(TypedDict):
+class StartEndEventsParams(ReteParamsModel):
     user_col: str
     event_col: str
     time_col: str

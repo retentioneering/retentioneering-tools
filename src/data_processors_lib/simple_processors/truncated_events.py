@@ -96,7 +96,7 @@ class TruncatedEvents(DataProcessor[TruncatedParams]):
             target_stream.append_raw_events(df_start_to_start, save_raw_cols=False)
 
         eventstream = Eventstream(
-            raw_data=target_stream,
+            raw_data=target_stream.to_dataframe(),
             raw_data_schema=target_stream.schema.to_raw_data_schema(),
             relations=[{"raw_col": "ref", "evenstream": target_stream}],
         )

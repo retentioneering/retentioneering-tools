@@ -36,16 +36,12 @@ class CutPathAfterEvent(DataProcessor[CutPathAfterEventParams]):
         event_col = eventstream.schema.event_name
         id_col = eventstream.schema.event_id
 
-        inplace = self.params.fields['inplace']
         cutoff_events = self.params.fields['cutoff_events']
         min_cjm = self.params.fields['min_cjm']
         cut_shift = self.params.fields['cut_shift']
         inplace = self.params.fields['inplace']
 
         target_stream = eventstream if inplace else eventstream.copy()
-
-        if inplace:
-            logging.warning(f'original dataframe has been lost')
 
         df = target_stream.to_dataframe()
 
@@ -63,7 +59,6 @@ class CutPathAfterEvent(DataProcessor[CutPathAfterEventParams]):
         mask = ((df['_cumsum'] == 0) | ((df['_cumsum'] > 0) & (df['_point'] == 1) & (df['find_1'] == 1)))
 
         df_cut = df[mask]
-        # ids_to_del = df[~((df['_cumsum'] == 0) | ((df['_cumsum'] > 0) & (df['_point'] == 1) & (df['find_1'] == 1)))][id_col].to_list()
         ids_to_del = df[~mask][id_col].to_list()
         df_cut['rw_cumsum'] = df_cut.loc[::-1].groupby([user_col])[time_col].transform(
             lambda x: x.diff().ne(0).astype(int).cumsum())

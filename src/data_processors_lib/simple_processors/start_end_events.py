@@ -18,8 +18,6 @@ class StartEndEventsParams(TypedDict):
 
 
 class StartEndEvents(DataProcessor[StartEndEventsParams]):
-    def __init__(self, params: StartEndEventsParams = None):
-        super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
         events: DataFrame = eventstream.to_dataframe()

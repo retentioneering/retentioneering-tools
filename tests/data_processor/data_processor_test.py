@@ -1,10 +1,9 @@
 import unittest
-from typing import Literal, TypedDict, Union, cast, Optional
+from typing import Literal, TypedDict, Union, cast
+
+from src.data_processor.data_processor import DataProcessor
+from src.data_processor.params_model import ParamsModel, Enum
 from src.eventstream.eventstream import Eventstream
-from .data_processor import DataProcessor, ReteDataProcessor
-from .params_model import ParamsModel, Enum
-from src.params_model import ReteParamsModel
-import pandas as pd
 
 
 class StubProcessorParams(TypedDict):
@@ -13,7 +12,7 @@ class StubProcessorParams(TypedDict):
 
 class StubProcessor(DataProcessor[StubProcessorParams]):
     def __init__(self, params: StubProcessorParams):
-        super().__init__(params=params)
+        super().__init__()
         self.params = ParamsModel(
             fields=params,
             fields_schema={

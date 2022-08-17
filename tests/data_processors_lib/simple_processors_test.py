@@ -4,9 +4,9 @@ import pandas as pd
 
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import RawDataSchema, EventstreamSchema
-from .simple_processors.delete_events import DeleteEvents
-from .simple_processors.simple_group import SimpleGroup
-from .simple_processors.start_end_events import StartEndEvents
+from src.data_processors_lib.simple_processors.delete_events import DeleteEvents
+from src.data_processors_lib.simple_processors.simple_group import SimpleGroup
+from src.data_processors_lib.simple_processors.start_end_events import StartEndEvents
 
 
 class SimpleProcessorsTest(unittest.TestCase):

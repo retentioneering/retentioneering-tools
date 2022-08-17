@@ -1,29 +1,30 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Any, TypedDict
+from typing import Callable, Any, Tuple
 
+import pandas as pd
 from pandas import DataFrame
 
-from src.data_processor.data_processor import DataProcessor
+from src.data_processor.data_processor import ReteDataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
+from src.params_model import ReteParamsModel
 
 log = logging.getLogger(__name__)
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 from src.data_processors_lib.simple_processors.constants import UOM_DICT
 
 
-
-class SplitSessionsParams(TypedDict):
-    session_cutoff: tuple[float]
+class SplitSessionsParams(ReteParamsModel):
+    session_cutoff: Tuple[float, str]
     mark_truncated: bool
     session_col: str
-    inplace: bool
-    delete_previous: bool
 
 
-class SplitSessions(DataProcessor[SplitSessionsParams]):
+class SplitSessions(ReteDataProcessor):
+    params: SplitSessionsParams
+
     def __init__(self, params: SplitSessionsParams = None):
         super().__init__(params=params)
 
@@ -33,30 +34,13 @@ class SplitSessions(DataProcessor[SplitSessionsParams]):
         time_col = eventstream.schema.event_timestamp
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
-        session_col = self.params.fields['session_col']
-        inplace = self.params.fields['inplace']
-        delete_previous = self.params.fields['delete_previous']
-        session_cutoff = self.params.fields['session_cutoff']
-        mark_truncated = self.params.fields['mark_truncated']
-
-        target_stream = eventstream if inplace else eventstream.copy()
-        if inplace:
-            logging.warning(f'original dataframe has been lost')
+        session_col = self.params.session_col
+        session_cutoff = self.params.session_cutoff
+        mark_truncated = self.params.mark_truncated
 
         temp_col = 'temp_col'
 
-        df = target_stream.to_dataframe()
-
-        check_col = session_col in df.columns
-        check = df[type_col].isin(['start_session', 'end_session']).any()
-
-        if not delete_previous and (check or check_col):
-            logging.warning(
-                f'"start_session" and/or "end_session" event_types and/or {session_col} are already exist! ')
-
-        if delete_previous:
-            target_stream.delete_events('event_type == ["start_session", "end_session"]',
-                                        hard=False, index=False, inplace=delete_previous)
+        df = eventstream.to_dataframe()
 
         shift_df = df.groupby(user_col).shift(-1)
 
@@ -74,24 +58,21 @@ class SplitSessions(DataProcessor[SplitSessionsParams]):
         df[temp_col] = df.groupby(user_col)[temp_col].shift(1).fillna(0).map(int).map(str)
         df[session_col] = df[user_col].map(str) + '_' + df[temp_col]
 
-        target_stream.add_raw_custom_col(
-            colname=session_col, column=df[session_col])
-
         sessions_end_df = df.groupby([user_col, session_col], as_index=False).apply(
             lambda group: group.nlargest(1, columns=time_col)) \
             .reset_index(drop=True)
         sessions_end_df[event_col] = 'session_end'
         sessions_end_df[type_col] = 'session_end'
-
-        target_stream.append_raw_events(sessions_end_df, save_raw_cols=False)
+        sessions_end_df['ref'] = sessions_end_df[eventstream.schema.event_id]
 
         sessions_start_df = df.groupby([user_col, session_col], as_index=False).apply(
             lambda group: group.nsmallest(1, columns=time_col)) \
             .reset_index(drop=True)
         sessions_start_df[event_col] = 'session_start'
         sessions_start_df[type_col] = 'session_start'
+        sessions_start_df['ref'] = sessions_start_df[eventstream.schema.event_id]
 
-        target_stream.append_raw_events(sessions_start_df, save_raw_cols=False)
+        df = pd.concat([df, sessions_end_df, sessions_start_df])
 
         if mark_truncated:
             df_start_to_start_time = df.groupby(user_col)[[time_col]].min().reset_index()
@@ -116,16 +97,18 @@ class SplitSessions(DataProcessor[SplitSessionsParams]):
             end_sessions = cut_df[cut_df['diff_end_to_end']][session_col].to_list()
             start_sessions = cut_df[cut_df['diff_start_to_start']][session_col].to_list()
             # TODO dasha - после fix поменять на soft
-            target_stream.delete_events(query=f'{session_col}.isin({start_sessions}) \
-                                                        & (~{type_col}.isin(["start", "session_end"]))',
-                                        hard=False, inplace=True)
+            df = df.query(
+                f'{session_col}.isin({start_sessions}) & (~{type_col}.isin(["start", "session_end"]))',
+                engine='python'
+            )
             # TODO dasha - после fix поменять на soft
-            target_stream.delete_events(query=f'{session_col}.isin({end_sessions})\
-                                                         & (~{type_col}.isin(["end", "session_start"]))',
-                                        hard=False, inplace=True)
+            df = df.query(
+                f'{session_col}.isin({end_sessions}) & (~{type_col}.isin(["end", "session_start"]))',
+                engine='python'
+            )
 
         eventstream = Eventstream(
-            raw_data=target_stream,
+            raw_data=df,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
             relations=[{"raw_col": "ref", "evenstream": eventstream}],
         )

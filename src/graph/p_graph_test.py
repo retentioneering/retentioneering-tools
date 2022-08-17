@@ -1,14 +1,17 @@
+from __future__ import annotations
 
-from typing import List, Literal, TypedDict, Union
 import unittest
+from typing import List, Literal, TypedDict, Union
+
 import pandas as pd
+
+from src.data_processor.data_processor import DataProcessor
+from src.data_processor.params_model import ParamsModel, Enum
 from src.eventstream.eventstream import EventstreamSchema, Eventstream
 from src.eventstream.schema import RawDataSchema
 from .p_graph import SourceNode, MergeNode, PGraph, EventsNode, Node
-from ..data_processors_lib.simple_processors.delete_events import DeleteEvents
-from ..data_processors_lib.simple_processors.simple_group import SimpleGroup
-from src.data_processor.data_processor import DataProcessor
-from src.data_processor.params_model import ParamsModel, Enum
+from ..data_processors_lib.simple_processors.delete_events import DeleteEvents, DeleteEventsParams
+from ..data_processors_lib.simple_processors.simple_group import SimpleGroup, SimpleGroupParams
 
 
 class StubProcessorParams(TypedDict):
@@ -107,13 +110,13 @@ class EventstreamTest(unittest.TestCase):
     def test_combine_events_node(self):
         source_df = pd.DataFrame([
             {"event_name": "pageview",
-                "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
+             "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
             {"event_name": "cart_btn_click",
-                "event_timestamp": "2021-10-26 12:02", "user_id": "1"},
+             "event_timestamp": "2021-10-26 12:02", "user_id": "1"},
             {"event_name": "pageview",
-                "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
+             "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
             {"event_name": "plus_icon_click",
-                "event_timestamp": "2021-10-26 12:05", "user_id": "1"},
+             "event_timestamp": "2021-10-26 12:05", "user_id": "1"},
         ])
 
         source = Eventstream(
@@ -126,11 +129,11 @@ class EventstreamTest(unittest.TestCase):
         )
 
         cart_events = EventsNode(
-            SimpleGroup({
+            SimpleGroup(params=SimpleGroupParams(**{
                 "event_name": "add_to_cart",
                 "filter": lambda df, schema: df[schema.event_name].isin(
                     ["cart_btn_click", "plus_icon_click"]),
-            })
+            }))
         )
 
         graph = PGraph(source)
@@ -154,17 +157,17 @@ class EventstreamTest(unittest.TestCase):
     def test_combine_merge_node(self):
         source_df = pd.DataFrame([
             {"event_name": "pageview",
-                "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
+             "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
             {"event_name": "cart_btn_click",
-                "event_timestamp": "2021-10-26 12:02", "user_id": "1"},
+             "event_timestamp": "2021-10-26 12:02", "user_id": "1"},
             {"event_name": "pageview",
-                "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
+             "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
             {"event_name": "trash_event",
-                "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
+             "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
             {"event_name": "exit_btn_click",
-                "event_timestamp": "2021-10-26 12:04", "user_id": "2"},
+             "event_timestamp": "2021-10-26 12:04", "user_id": "2"},
             {"event_name": "plus_icon_click",
-                "event_timestamp": "2021-10-26 12:05", "user_id": "1"},
+             "event_timestamp": "2021-10-26 12:05", "user_id": "1"},
         ])
 
         source = Eventstream(
@@ -177,22 +180,22 @@ class EventstreamTest(unittest.TestCase):
         )
 
         cart_events = EventsNode(
-            SimpleGroup({
+            SimpleGroup(SimpleGroupParams(**{
                 "event_name": "add_to_cart",
                 "filter": lambda df, schema: df[schema.event_name].isin(
                     ["cart_btn_click", "plus_icon_click"])
-            })
+            }))
         )
         logout_events = EventsNode(
-            SimpleGroup({
+            SimpleGroup(SimpleGroupParams(**{
                 "event_name": "logout",
                 "filter": lambda df, schema: df[schema.event_name] == "exit_btn_click"
-            })
+            }))
         )
         trash_events = EventsNode(
-            DeleteEvents({
+            DeleteEvents(DeleteEventsParams(**{
                 "filter": lambda df, schema: df[schema.event_name] == "trash_event"
-            })
+            }))
         )
         merge = MergeNode()
 

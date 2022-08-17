@@ -1,6 +1,8 @@
-from typing import Any, Generic, List, Optional, TypeVar, Union,  cast
+from typing import List, Optional, Union, cast
+
 import networkx
-from src.data_processor.data_processor import DataProcessor
+
+from src.data_processor.data_processor import ReteDataProcessor
 from src.eventstream.eventstream import Eventstream
 
 
@@ -12,10 +14,10 @@ class SourceNode:
 
 
 class EventsNode:
-    processor: DataProcessor[Any]
+    processor: ReteDataProcessor
     events: Optional[Eventstream]
 
-    def __init__(self, processor: DataProcessor[Any]) -> None:
+    def __init__(self, processor: ReteDataProcessor) -> None:
         self.processor = processor
         self.events = None
 

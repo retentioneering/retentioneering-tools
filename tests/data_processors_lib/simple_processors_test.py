@@ -2,10 +2,10 @@ import unittest
 
 import pandas as pd
 
+from src.data_processors_lib.simple_processors.delete_events import DeleteEvents, DeleteEventsParams
+from src.data_processors_lib.simple_processors.simple_group import SimpleGroup, SimpleGroupParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import RawDataSchema, EventstreamSchema
-from src.data_processors_lib.simple_processors.delete_events import DeleteEvents
-from src.data_processors_lib.simple_processors.simple_group import SimpleGroup
 
 
 class SimpleProcessorsTest(unittest.TestCase):
@@ -23,9 +23,11 @@ class SimpleProcessorsTest(unittest.TestCase):
 
         source_df = source.to_dataframe()
 
-        group = SimpleGroup(params={"event_name": "add_to_cart", "event_type": "group_alias",
-                                    "filter": lambda df, schema: df[schema.event_name].isin(
-                                        ["cart_btn_click", "plus_icon_click"])})
+        params = SimpleGroupParams(**{"event_name": "add_to_cart", "event_type": "group_alias",
+                                      "filter": lambda df, schema: df[schema.event_name].isin(
+                                          ["cart_btn_click", "plus_icon_click"])})
+
+        group = SimpleGroup(params=params)
 
         result = group.apply(source)
         result_df = result.to_dataframe()
@@ -50,13 +52,14 @@ class SimpleProcessorsTest(unittest.TestCase):
                              raw_data_schema=RawDataSchema(event_name="event_name", event_timestamp="event_timestamp",
                                                            user_id="user_id"), )
 
-        delete_factory = DeleteEvents(
-            {"filter": lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])})
+        delete_factory = DeleteEvents(DeleteEventsParams(
+            **{
+                "filter": lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
+            }
+        ))
 
         result = delete_factory.apply(source)
         result_df = result.to_dataframe(show_deleted=True)
         events_names = result_df[result.schema.event_name].to_list()
 
         self.assertEqual(events_names, ["cart_btn_click", "plus_icon_click"])
-
-

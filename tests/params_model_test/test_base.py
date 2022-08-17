@@ -24,7 +24,7 @@ class TestParamsModel:
         with pytest.raises(ValueError):
             # cant create incorrect params model
             class ExampleWrongModel(ReteParamsModel):
-                a: list
+                a: frozenset
 
     def test_custom_allowed_types(self) -> None:
         AllowedTypes.add(list)

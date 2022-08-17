@@ -11,7 +11,8 @@ class ReteMetaModel(ModelMetaclass):
         if annotations := namespace.get('__annotations__', {}):
             annotations: dict
             names = [
-                x if isinstance(x, str) else getattr(x, '__name__', None) or getattr(x, '_name', None)
+                x if isinstance(x, str) else getattr(x, '__name__', None)
+                                             or getattr(x, '_name', None) or getattr(x, '__str__')()
                 for x in annotations.values()
             ]
             correct_types = [name in cls.__allowed_types for name in names]

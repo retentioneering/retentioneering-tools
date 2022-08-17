@@ -1,11 +1,13 @@
 from collections.abc import MutableSet
-from typing import Set, Tuple, Callable, Type
+from typing import Set, Tuple, Callable, Type, Union, Optional
 
 
 class _AllowedTypes(MutableSet):
     __allowed_types: Set[str] = None
+
     def _get_name(self, value: Type) -> str:
-        return getattr(value, '__name__', None) or getattr(value, '_name', None)
+        return value if isinstance(value, str) else getattr(value, '__name__', None) \
+                                                    or getattr(value, '_name', None) or getattr(value, '__str__')()
 
     def __init__(self, init_values: Tuple[Type] = None):
         self.__allowed_types: Set[str] = set()
@@ -50,4 +52,8 @@ class _AllowedTypes(MutableSet):
         return f'({", ".join(self.__allowed_types)})'
 
 
-AllowedTypes = _AllowedTypes(init_values=(str, int, float, bool, complex, Callable))
+AllowedTypes = _AllowedTypes(
+    init_values=(
+        str, int, float, bool, complex, Callable, Optional[str], list, None
+    )
+)

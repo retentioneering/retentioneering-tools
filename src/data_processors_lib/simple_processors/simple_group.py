@@ -1,36 +1,31 @@
-from typing import Callable, TypedDict, Any
+from typing import Callable, Any, Optional
 
 from pandas import DataFrame
 
-from src.data_processor.data_processor import DataProcessor
-from src.data_processor.params_model import ParamsModel, String, Func
+from src.data_processor.data_processor import ReteDataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
+from src.params_model import ReteParamsModel
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-class SimpleGroupParams(TypedDict, total=False):
+class SimpleGroupParams(ReteParamsModel):
     event_name: str
     filter: EventstreamFilter
-    event_type: str
+    event_type: Optional[str] = 'group_alias'
 
 
-class SimpleGroup(DataProcessor[SimpleGroupParams]):
+class SimpleGroup(ReteDataProcessor):
+    params: SimpleGroupParams
+
     def __init__(self, params: SimpleGroupParams) -> None:
-        self.params = ParamsModel(
-            fields=params,
-            fields_schema={
-                "event_name": String(),
-                "filter": Func(),
-                "event_type": String(optional=True, default="group_alias")
-            }
-        )
+        super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
-        event_name = self.params.fields.get("event_name")
-        filter_: Callable = self.params.fields.get("filter", None)
-        event_type = self.params.fields.get("event_type", None)
+        event_name = self.params.event_name
+        filter_: Callable = self.params.filter
+        event_type = self.params.event_type
 
         events = eventstream.to_dataframe()
         mathed_events_q = filter_(events, eventstream.schema)

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class EventstreamSchema():
+class EventstreamSchema:
     event_id: str = "event_id"
     event_type: str = "event_type"
     event_index: str = "event_index"
@@ -19,7 +19,7 @@ class EventstreamSchema():
     user_id: str = "user_id"
     custom_cols: List[str] = field(default_factory=list)
 
-    def copy(self):
+    def copy(self) -> EventstreamSchema:
         return EventstreamSchema(
             event_id=self.event_id,
             event_type=self.event_type,
@@ -30,7 +30,7 @@ class EventstreamSchema():
             custom_cols=self.custom_cols.copy(),
         )
 
-    def is_equal(self, schema: EventstreamSchema):
+    def is_equal(self, schema: EventstreamSchema) -> bool:
         return (
             self.event_id == schema.event_id and
             self.event_type == schema.event_type and
@@ -41,7 +41,7 @@ class EventstreamSchema():
             self.custom_cols == schema.custom_cols
         )
 
-    def get_cols(self):
+    def get_cols(self) -> list[str]:
         return [
             self.event_id,
             self.event_type,
@@ -51,7 +51,7 @@ class EventstreamSchema():
             self.user_id,
         ] + self.custom_cols
 
-    def to_raw_data_schema(self):
+    def to_raw_data_schema(self) -> RawDataSchema:
         custom_cols: List[RawDataCustomColSchema] = []
 
         for col in self.custom_cols:
@@ -75,14 +75,14 @@ class RawDataCustomColSchema(TypedDict):
 
 
 @dataclass
-class RawDataSchema():
+class RawDataSchema:
     event_name: str = "event_name"
     event_timestamp: str = "event_timestamp"
     user_id: str = "user_id"
     event_type: Optional[str] = None
     custom_cols: List[RawDataCustomColSchema] = field(default_factory=list)
 
-    def copy(self):
+    def copy(self) -> RawDataSchema:
         return RawDataSchema(
             event_name=self.event_name,
             event_timestamp=self.event_timestamp,

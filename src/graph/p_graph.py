@@ -4,18 +4,18 @@ from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 
 
-class SourceNode():
+class SourceNode:
     events: Eventstream
 
-    def __init__(self, source: Eventstream):
+    def __init__(self, source: Eventstream) -> None:
         self.events = source
 
 
-class EventsNode():
+class EventsNode:
     processor: DataProcessor[Any]
     events: Optional[Eventstream]
 
-    def __init__(self, processor: DataProcessor[Any]):
+    def __init__(self, processor: DataProcessor[Any]) -> None:
         self.processor = processor
         self.events = None
 
@@ -23,7 +23,7 @@ class EventsNode():
         self.events = self.processor.apply(parent)
 
 
-class MergeNode():
+class MergeNode:
     events: Optional[Eventstream]
 
     def __init__(self) -> None:
@@ -33,17 +33,17 @@ class MergeNode():
 Node = Union[SourceNode, EventsNode, MergeNode]
 
 
-class PGraph():
+class PGraph:
     root: SourceNode
     __ngraph: networkx.DiGraph
 
-    def __init__(self, source_stream: Eventstream):
+    def __init__(self, source_stream: Eventstream) -> None:
         self.root = SourceNode(source=source_stream)
         self.__ngraph = networkx.DiGraph()
         self.__ngraph.add_node(self.root)
 
-    def add_node(self, node: Node, parents: List[Node]):
-        self.__valiate_already_exists([node])
+    def add_node(self, node: Node, parents: List[Node]) -> None:
+        self.__valiate_already_exists(node)
         self.__validate_not_found(parents)
 
         if node.events is not None:
@@ -69,14 +69,14 @@ class PGraph():
 
         return self.combine_merge_node(node)
 
-    def combine_events_node(self, node: EventsNode):
+    def combine_events_node(self, node: EventsNode) -> Eventstream:
         parent = self.get_events_node_parent(node)
         parent_events = self.combine(parent)
         events = node.processor.apply(parent_events)
         parent_events.join_eventstream(events)
         return parent_events
 
-    def combine_merge_node(self, node: MergeNode):
+    def combine_merge_node(self, node: MergeNode) -> Eventstream:
         parents = self.get_merge_node_parents(node)
         curr_eventstream: Optional[Eventstream] = None
 
@@ -91,7 +91,7 @@ class PGraph():
 
         return cast(Eventstream, curr_eventstream)
 
-    def get_parents(self, node: Node):
+    def get_parents(self, node: Node) -> List[Node]:
         self.__validate_not_found([node])
         parents: List[Node] = []
 
@@ -99,14 +99,14 @@ class PGraph():
             parents.append(parent)
         return parents
 
-    def get_merge_node_parents(self, node: MergeNode):
+    def get_merge_node_parents(self, node: MergeNode) -> List[Node]:
         parents = self.get_parents(node)
         if (len(parents) == 0):
             raise ValueError("orphan merge node!")
 
         return parents
 
-    def get_events_node_parent(self, node: EventsNode):
+    def get_events_node_parent(self, node: EventsNode) -> Node:
         parents = self.get_parents(node)
         if len(parents) > 1:
             raise ValueError(
@@ -114,18 +114,14 @@ class PGraph():
 
         return parents[0]
 
-    def get_graph(self):
-        return self.__ngraph
-
-    def __validate_schema(self, eventstream: Eventstream):
+    def __validate_schema(self, eventstream: Eventstream) -> bool:
         return self.root.events.schema.is_equal(eventstream.schema)
 
-    def __valiate_already_exists(self, nodes: List[Node]):
-        for node in nodes:
-            if (node in self.__ngraph.nodes):
-                raise ValueError("node already exists!")
+    def __valiate_already_exists(self, node: Node) -> None:
+        if (node in self.__ngraph.nodes):
+            raise ValueError("node already exists!")
 
-    def __validate_not_found(self, nodes: List[Node]):
+    def __validate_not_found(self, nodes: List[Node]) -> None:
         for node in nodes:
             if (node not in self.__ngraph.nodes):
                 raise ValueError("node not found!")

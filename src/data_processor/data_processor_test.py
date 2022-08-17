@@ -26,15 +26,16 @@ class StubProcessor(DataProcessor[StubProcessorParams]):
 
 
 class TestDataProcessor(unittest.TestCase):
-    def test_set_params(self):
+    def test_set_valid_params(self):
         valid_params: StubProcessorParams = {
             "a": "a"
         }
-        invalid_params: StubProcessorParams = cast(StubProcessorParams, {
-            "a": "d"
-        })
         stub = StubProcessor(params=valid_params)
         self.assertEqual(stub.params.fields, valid_params)
 
+    def test_set_params(self):
+        invalid_params: StubProcessorParams = cast(StubProcessorParams, {
+            "a": "d"
+        })
         with self.assertRaises(ValueError):
             StubProcessor(params=invalid_params)

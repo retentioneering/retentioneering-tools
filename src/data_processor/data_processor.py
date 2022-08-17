@@ -10,12 +10,9 @@ P = TypeVar("P", bound=TypedDict)
 class DataProcessor(Generic[P]):
     params: ParamsModel[P]
 
-    def __init__(self, params: ParamsModel):
-        pass
-
     @abstractmethod
     def apply(self, eventstream: Eventstream) -> Eventstream:
-        pass
+        raise NotImplementedError()
 
 
 from src.params_model import ReteParamsModel

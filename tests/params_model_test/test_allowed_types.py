@@ -1,9 +1,9 @@
-from src.params_model.allowed_type import _AllowedTypes
 from typing import Callable
+
+from src.params_model.allowed_type import _AllowedTypes
 
 
 class TestAllowedTypes:
-
     def test_create_allowed_types(self):
 
         allowed_types = _AllowedTypes(init_values=(str, Callable, int))

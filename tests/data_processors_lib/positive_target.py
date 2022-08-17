@@ -5,9 +5,9 @@ from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 
 
-class TestStartEndEvents:
+class TestPositiveTarget:
 
-    def test_start_end(self):
+    def test_positive_target(self):
         source_df = pd.DataFrame(
             [{"event_name": "pageview", "event_type": "raw", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
              {"event_name": "cart_btn_click", "event_type": "raw", "event_timestamp": "2021-10-26 12:02", "user_id": "1"},

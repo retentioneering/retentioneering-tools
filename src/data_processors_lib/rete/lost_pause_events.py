@@ -14,7 +14,7 @@ from src.params_model import ParamsModel
 log = logging.getLogger(__name__)
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
-from src.data_processors_lib.simple_processors.constants import UOM_DICT
+from src.data_processors_lib.rete.constants import UOM_DICT
 
 
 

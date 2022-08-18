@@ -13,7 +13,7 @@ from src.params_model import ParamsModel
 
 log = logging.getLogger(__name__)
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
-from src.data_processors_lib.simple_processors.constants import UOM_DICT
+from src.data_processors_lib.rete.constants import UOM_DICT
 
 
 class SplitSessionsParams(ParamsModel):
@@ -97,15 +97,9 @@ class SplitSessions(DataProcessor):
             end_sessions = cut_df[cut_df['diff_end_to_end']][session_col].to_list()
             start_sessions = cut_df[cut_df['diff_start_to_start']][session_col].to_list()
             # TODO dasha - после fix поменять на soft
-            df = df.query(
-                f'{session_col}.isin({start_sessions}) & (~{type_col}.isin(["start", "session_end"]))',
-                engine='python'
-            )
+            df = df[df[session_col].isin(start_sessions) & ~df[type_col].isin(["start", "session_end"])]
             # TODO dasha - после fix поменять на soft
-            df = df.query(
-                f'{session_col}.isin({end_sessions}) & (~{type_col}.isin(["end", "session_start"]))',
-                engine='python'
-            )
+            df = df[df[session_col].isin(end_sessions) & ~df[type_col].isin(["end", "session_start"])]
 
         eventstream = Eventstream(
             raw_data=df,

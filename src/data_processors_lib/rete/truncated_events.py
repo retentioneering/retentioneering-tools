@@ -7,7 +7,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
-from src.data_processors_lib.simple_processors.constants import UOM_DICT
+from src.data_processors_lib.rete.constants import UOM_DICT
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel

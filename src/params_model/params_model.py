@@ -1,25 +1,27 @@
-from pydantic import BaseModel
-from pydantic.main import ModelMetaclass
+from __future__ import annotations
 
-from .allowed_type import AllowedTypes
+from collections.abc import Iterable
 
-
-class AllowedTypesMetaModel(ModelMetaclass):
-    __allowed_types = AllowedTypes
-
-    def __new__(cls, name: str, bases: tuple, namespace: dict, **kwargs: dict) -> type:
-        if annotations := namespace.get('__annotations__', {}):
-            annotations: dict
-            names = [
-                AllowedTypes.get_name(x) for x in annotations.values()
-            ]
-            correct_types = [name in cls.__allowed_types for name in names]
-            print(dict(zip(names, correct_types)))
-            if not all(correct_types):
-                raise ValueError('Incorrect type in data, allowed types: {}'.format(cls.__allowed_types))
-        obj = super().__new__(cls, name, bases, namespace, **kwargs)
-        return obj
+from pydantic import BaseModel, validator
 
 
-class ParamsModel(BaseModel, metaclass=AllowedTypesMetaModel):
-    pass
+class ParamsModel(BaseModel):
+
+    @validator('*')
+    def validate_subiterable(cls, value):
+        array_types = (Iterable, dict)
+        if isinstance(value, array_types):
+            try:
+                if isinstance(value, dict):
+                    subvalue = list(value.values())[0]
+                else:
+                    subvalue = next(iter(value))
+                if (isinstance(subvalue, array_types) or hasattr(subvalue, "__getitem__")) \
+                        and not isinstance(subvalue, str):
+                    raise ValueError(f'Inner iterable or hashable not allowed!')
+            except TypeError:
+                pass
+        return value
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)

@@ -1,7 +1,8 @@
 import unittest
-from typing import Literal, Union, cast
+from typing import Literal, Union, cast, List
 
-from pydantic import ValidationError
+import pytest
+from pydantic import ValidationError, BaseModel
 
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
@@ -34,3 +35,18 @@ class TestDataProcessor(unittest.TestCase):
         with self.assertRaises(ValidationError):
             invalid_params: StubProcessorParams = StubProcessorParams(**{'a': 'd'})
             StubProcessor(params=invalid_params)
+
+
+def test_params_not_subclasses() -> None:
+    with pytest.raises(TypeError):
+        class PydanticModel(BaseModel):
+            a: List[int]
+
+        model = PydanticModel(a=[1, 2, 3])
+
+        class StubPydanticProcessor(DataProcessor):
+
+            def __init__(self, params: PydanticModel):
+                super().__init__(params=params)
+
+        processor = StubPydanticProcessor(params=model)

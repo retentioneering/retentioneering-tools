@@ -1,6 +1,6 @@
 import pandas as pd
 
-from src.data_processors_lib.simple_processors import StartEndEvents, StartEndEventsParams
+from src.data_processors_lib.rete import StartEndEvents, StartEndEventsParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 

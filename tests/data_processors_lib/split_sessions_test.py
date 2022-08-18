@@ -1,6 +1,6 @@
 import pandas as pd
 
-from src.data_processors_lib.simple_processors import SplitSessions, SplitSessionsParams
+from src.data_processors_lib.rete import SplitSessions, SplitSessionsParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 

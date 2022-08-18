@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-def _custom_func_negative(eventstream, negative_target_events):
+def _default_func_negative(eventstream, negative_target_events):
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
@@ -30,7 +30,7 @@ def _custom_func_negative(eventstream, negative_target_events):
 
 class NegativeTargetParams(ParamsModel):
     negative_target_events: List[str]
-    negative_function: Optional[Callable] = _custom_func_negative
+    negative_function: Optional[Callable] = _default_func_negative
 
 
 class NegativeTarget(DataProcessor):

@@ -59,10 +59,9 @@ class CutPathBeforeEvent(DataProcessor):
             df_cut = df_cut.groupby([user_col])[['num_groups']].max().reset_index()
             users_to_del = df_cut[df_cut['num_groups'] < min_cjm][user_col].to_list()
             # TODO dasha - после fix поменять на soft
-            df.query(f'{user_col}.isin({users_to_del})', engine='python', inplace=True)
+            df = df.loc[df[user_col].apply(lambda x: x in users_to_del)]
 
         # TODO dasha - после fix поменять на soft
-        # df.query(f'{id_col}.isin({ids_to_del})', engine='python', inplace=True)
         df = df.loc[df[id_col].apply(lambda x: x in ids_to_del)]
         df['ref'] = df[eventstream.schema.event_id]
 

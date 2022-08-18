@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-def _custom_func_positive(eventstream: Eventstream, positive_target_events: list) -> pd.DataFrame:
+def _default_func_positive(eventstream: Eventstream, positive_target_events: list) -> pd.DataFrame:
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
@@ -29,7 +29,7 @@ def _custom_func_positive(eventstream: Eventstream, positive_target_events: list
 
 class PositiveTargetParams(ParamsModel):
     positive_target_events: List[str]
-    positive_function: Optional[Callable] = _custom_func_positive
+    positive_function: Optional[Callable] = _default_func_positive
 
 
 class PositiveTarget(DataProcessor):

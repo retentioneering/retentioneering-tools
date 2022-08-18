@@ -3,10 +3,10 @@ from typing import Callable
 
 from _pickle import PicklingError
 
-from src.params_model import ReteParamsModel
+from src.params_model import ParamsModel
 
 
-class Test(ReteParamsModel):
+class Test(ParamsModel):
     a: int
     b: str
     c: Callable

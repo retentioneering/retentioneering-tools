@@ -4,7 +4,7 @@ from pydantic.main import ModelMetaclass
 from .allowed_type import AllowedTypes
 
 
-class ReteMetaModel(ModelMetaclass):
+class AllowedTypesMetaModel(ModelMetaclass):
     __allowed_types = AllowedTypes
 
     def __new__(cls, name: str, bases: tuple, namespace: dict, **kwargs: dict) -> type:
@@ -21,5 +21,5 @@ class ReteMetaModel(ModelMetaclass):
         return obj
 
 
-class ReteParamsModel(BaseModel, metaclass=ReteMetaModel):
+class ParamsModel(BaseModel, metaclass=AllowedTypesMetaModel):
     pass

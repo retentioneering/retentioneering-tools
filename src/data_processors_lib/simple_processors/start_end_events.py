@@ -1,4 +1,4 @@
-from typing import Callable, Any, TypedDict
+from typing import Callable, Any
 
 import pandas as pd
 from pandas import DataFrame
@@ -6,19 +6,20 @@ from pandas import DataFrame
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
-from src.params_model import ReteParamsModel
+from src.params_model import ParamsModel
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-class StartEndEventsParams(ReteParamsModel):
-    user_col: str
-    event_col: str
-    time_col: str
-    type_col: str
+class StartEndEventsParams(ParamsModel):
+    pass
 
 
-class StartEndEvents(DataProcessor[StartEndEventsParams]):
+class StartEndEvents(DataProcessor):
+    params: StartEndEventsParams
+
+    def __init__(self, params: StartEndEventsParams) -> None:
+        super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
         events: DataFrame = eventstream.to_dataframe()

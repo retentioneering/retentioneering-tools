@@ -5,23 +5,23 @@ from typing import Callable, Any, List
 
 from pandas import DataFrame
 
-from src.data_processor.data_processor import ReteDataProcessor
+from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
-from src.params_model import ReteParamsModel
+from src.params_model import ParamsModel
 
 log = logging.getLogger(__name__)
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-class CutPathAfterEventParams(ReteParamsModel):
+class CutPathAfterEventParams(ParamsModel):
     cutoff_events: List[str]
     cut_shift: int
     min_cjm: int
 
 
-class CutPathAfterEvent(ReteDataProcessor):
+class CutPathAfterEvent(DataProcessor):
     params: CutPathAfterEventParams
 
     def __init__(self, params: CutPathAfterEventParams = None):

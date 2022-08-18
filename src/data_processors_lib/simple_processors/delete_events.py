@@ -2,19 +2,19 @@ from typing import Callable, Any
 
 from pandas import DataFrame
 
-from src.data_processor.data_processor import ReteDataProcessor
+from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
-from src.params_model import ReteParamsModel
+from src.params_model import ParamsModel
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-class DeleteEventsParams(ReteParamsModel):
+class DeleteEventsParams(ParamsModel):
     filter: EventstreamFilter
 
 
-class DeleteEvents(ReteDataProcessor):
+class DeleteEvents(DataProcessor):
     params: DeleteEventsParams
 
     def __init__(self, params: DeleteEventsParams):

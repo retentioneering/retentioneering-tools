@@ -6,10 +6,10 @@ from typing import Callable, Any, List, Optional
 import pandas as pd
 from pandas import DataFrame
 
-from src.data_processor.data_processor import ReteDataProcessor
+from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
-from src.params_model import ReteParamsModel
+from src.params_model import ParamsModel
 
 log = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ from src.data_processors_lib.simple_processors.constants import UOM_DICT
 
 
 
-class LostPauseParams(ReteParamsModel):
+class LostPauseParams(ParamsModel):
     lost_cutoff: Optional[List[int]]
     lost_users_list: Optional[list]
     func: Optional[Callable]
@@ -34,7 +34,7 @@ def _custom_func_lost(eventstream: Eventstream, lost_users_list: list):
     return data_lost
 
 
-class LostPauseEvents(ReteDataProcessor):
+class LostPauseEvents(DataProcessor):
     params: LostPauseParams
 
     def __init__(self, params: LostPauseParams = None):

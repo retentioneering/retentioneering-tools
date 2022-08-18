@@ -66,6 +66,7 @@ AllowedTypes = _AllowedTypes(
         str, int, float, bool, complex, Callable, Optional[str],
         list, None, List[int], 'List[int]', List[float], 'Callable',
         'Optional[list]', 'Optional[Callable]', 'Optional[List[int]]', 'Tuple[float]', 'Tuple[float, str]',
-        'Optional[Tuple[float, str]]', 'List[str]', 'list[str]'
+        'Optional[Tuple[float, str]]', 'List[str]', 'list[str]', "Union[Literal['a'], Literal['b']]",
+        "typing.Union[typing.Literal['a'], typing.Literal['b']]",
     )
 )

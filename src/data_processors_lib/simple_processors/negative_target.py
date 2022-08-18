@@ -6,10 +6,10 @@ from typing import Callable, Any, List, Optional
 import pandas as pd
 from pandas import DataFrame
 
-from src.data_processor.data_processor import ReteDataProcessor
+from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
-from src.params_model import ReteParamsModel
+from src.params_model import ParamsModel
 
 log = logging.getLogger(__name__)
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
@@ -28,12 +28,12 @@ def _custom_func_negative(eventstream, negative_target_events):
     return data_neg
 
 
-class NegativeTargetParams(ReteParamsModel):
+class NegativeTargetParams(ParamsModel):
     negative_target_events: List[str]
     negative_function: Optional[Callable] = _custom_func_negative
 
 
-class NegativeTarget(ReteDataProcessor):
+class NegativeTarget(DataProcessor):
     params: NegativeTargetParams
 
     def __init__(self, params: NegativeTargetParams = None):

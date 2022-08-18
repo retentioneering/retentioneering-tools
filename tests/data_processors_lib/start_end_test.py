@@ -1,6 +1,6 @@
 import pandas as pd
 
-from src.data_processors_lib.simple_processors import StartEndEvents
+from src.data_processors_lib.simple_processors import StartEndEvents, StartEndEventsParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 
@@ -19,7 +19,7 @@ class TestStartEndEvents:
                              raw_data_schema=RawDataSchema(event_name="event_name", event_timestamp="event_timestamp",
                                                            user_id="user_id"), )
 
-        events = StartEndEvents()
+        events = StartEndEvents(StartEndEventsParams(**{}))
 
         result = events.apply(source)
         result_df = result.to_dataframe(show_deleted=True)

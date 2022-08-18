@@ -2,21 +2,21 @@ from typing import Callable, Any, Optional
 
 from pandas import DataFrame
 
-from src.data_processor.data_processor import ReteDataProcessor
+from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
-from src.params_model import ReteParamsModel
+from src.params_model import ParamsModel
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-class SimpleGroupParams(ReteParamsModel):
+class SimpleGroupParams(ParamsModel):
     event_name: str
     filter: EventstreamFilter
     event_type: Optional[str] = 'group_alias'
 
 
-class SimpleGroup(ReteDataProcessor):
+class SimpleGroup(DataProcessor):
     params: SimpleGroupParams
 
     def __init__(self, params: SimpleGroupParams) -> None:

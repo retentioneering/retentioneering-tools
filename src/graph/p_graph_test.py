@@ -1,31 +1,28 @@
 from __future__ import annotations
 
 import unittest
-from typing import List, Literal, TypedDict, Union
+from typing import List, Literal, Union
 
 import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
-from src.data_processor.params_model import ParamsModel, Enum
 from src.eventstream.eventstream import EventstreamSchema, Eventstream
 from src.eventstream.schema import RawDataSchema
+from src.params_model import ParamsModel
 from .p_graph import SourceNode, MergeNode, PGraph, EventsNode, Node
 from ..data_processors_lib.simple_processors.delete_events import DeleteEvents, DeleteEventsParams
 from ..data_processors_lib.simple_processors.simple_group import SimpleGroup, SimpleGroupParams
 
 
-class StubProcessorParams(TypedDict):
+class StubProcessorParams(ParamsModel):
     a: Union[Literal["a"], Literal["b"]]
 
 
-class StubProcessor(DataProcessor[StubProcessorParams]):
+class StubProcessor(DataProcessor):
+    params: StubProcessorParams
+
     def __init__(self, params: StubProcessorParams):
-        self.params = ParamsModel(
-            fields=params,
-            fields_schema={
-                "a": Enum(["a", "b"]),
-            }
-        )
+        super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
         return eventstream.copy()
@@ -45,9 +42,9 @@ class EventstreamTest(unittest.TestCase):
             event_name="name", event_timestamp="event_timestamp", user_id="user_id")
 
     def mock_events_node(self):
-        return EventsNode(processor=StubProcessor(params={
+        return EventsNode(processor=StubProcessor(params=StubProcessorParams(**{
             "a": "a"
-        }))
+        })))
 
     def create_graph(self):
         source = Eventstream(

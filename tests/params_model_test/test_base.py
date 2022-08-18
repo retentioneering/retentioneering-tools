@@ -4,12 +4,12 @@ from typing import Callable
 
 import pytest
 
-from src.params_model import AllowedTypes, ReteParamsModel
+from src.params_model import AllowedTypes, ParamsModel
 
 
 class TestParamsModel:
     def test_create_correct_model(self) -> None:
-        class ExampleCorrectModel(ReteParamsModel):
+        class ExampleCorrectModel(ParamsModel):
             a: str
             b: int
             c: Callable
@@ -23,13 +23,13 @@ class TestParamsModel:
     def test_create_wrong_model(self) -> None:
         with pytest.raises(ValueError):
             # cant create incorrect params model
-            class ExampleWrongModel(ReteParamsModel):
+            class ExampleWrongModel(ParamsModel):
                 a: frozenset
 
     def test_custom_allowed_types(self) -> None:
         AllowedTypes.add(list)
 
-        class ModelWithList(ReteParamsModel):
+        class ModelWithList(ParamsModel):
             a: list
 
         data = {'a': [1, 2, 3]}

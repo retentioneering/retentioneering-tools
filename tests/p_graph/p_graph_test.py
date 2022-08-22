@@ -4,7 +4,7 @@ import unittest
 import pandas as pd
 from eventstream.eventstream import EventstreamSchema, Eventstream
 from eventstream.schema import RawDataSchema
-from .p_graph import SourceNode, MergeNode, PGraph, EventsNode, Node
+from src.graph.p_graph import SourceNode, MergeNode, PGraph, EventsNode, Node
 from data_processors_lib.simple_processors import SimpleGroup, DeleteEvents
 from data_processor.data_processor import DataProcessor
 from data_processor.params_model import ParamsModel, Enum

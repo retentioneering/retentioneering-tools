@@ -4,9 +4,9 @@ from typing import List, Optional, TypedDict
 import uuid
 import pandas as pd
 import numpy as np
-from eventstream.schema import EventstreamSchema, RawDataSchema
-from utils.list import find_index
-from utils.pandas import get_merged_col
+from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.utils.list import find_index
+from src.utils.pandas import get_merged_col
 
 
 IndexOrder = List[Optional[str]]
@@ -85,8 +85,8 @@ class Eventstream:
 
         curr_deleted_events = curr_events[curr_events[DELETE_COL_NAME] == True]
         new_deleted_events = new_events[new_events[DELETE_COL_NAME] == True]
-        deleted_events = curr_deleted_events.append(
-            new_deleted_events).drop_duplicates(subset=[self.schema.event_id])
+        deleted_events = pd.concat([curr_deleted_events, new_deleted_events])
+        deleted_events = deleted_events.drop_duplicates(subset=[self.schema.event_id])
 
         merged_events = pd.merge(
             curr_events,
@@ -131,7 +131,7 @@ class Eventstream:
         result_right_part[DELETE_COL_NAME] = get_merged_col(
             df=right_events, colname=DELETE_COL_NAME, suffix="_y")
 
-        self.__events = result_left_part.append(result_right_part)
+        self.__events = pd.concat([result_left_part, result_right_part])
         self.soft_delete(deleted_events)
         self.index_events()
 
@@ -213,8 +213,7 @@ class Eventstream:
         right_delete_col = f"{DELETE_COL_NAME}_y"
         result_right_part[DELETE_COL_NAME] = right_events[left_delete_col] | right_events[right_delete_col]
 
-        self.__events = result_left_part.append(
-            result_right_part).append(result_deleted_events)
+        self.__events = pd.concat([result_left_part, result_right_part, result_deleted_events])
         self.index_events()
 
     def to_dataframe(self, raw_cols=False, show_deleted=False) -> pd.DataFrame:

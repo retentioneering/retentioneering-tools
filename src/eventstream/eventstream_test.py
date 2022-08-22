@@ -3,7 +3,7 @@ import uuid
 import pandas as pd
 from .eventstream import DELETE_COL_NAME, Eventstream
 from .schema import RawDataSchema, EventstreamSchema
-from utils.pandas import shuffle_df
+from src.utils.pandas import shuffle_df
 
 
 class EventstreamTest(unittest.TestCase):

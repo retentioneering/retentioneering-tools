@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import unittest
 import uuid
 
@@ -10,9 +8,6 @@ from src.utils.pandas import shuffle_df
 from .eventstream import DELETE_COL_NAME, Eventstream
 from .schema import EventstreamSchema, RawDataSchema
 
-# from src.eventstream.eventstream import DELETE_COL_NAME
-# from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-
 
 class EventstreamTest(unittest.TestCase):
     __raw_data: pd.DataFrame
@@ -21,31 +16,15 @@ class EventstreamTest(unittest.TestCase):
     def setUp(self):
         self.__raw_data = pd.DataFrame(
             [
-                {
-                    "name": "pageview",
-                    "event_timestamp": "2021-10-26 12:00",
-                    "user_id": "1",
-                },
-                {
-                    "name": "click_1",
-                    "event_timestamp": "2021-10-26 12:02",
-                    "user_id": "1",
-                },
-                {
-                    "name": "click_2",
-                    "event_timestamp": "2021-10-26 12:03",
-                    "user_id": "1",
-                },
+                {"name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
+                {"name": "click_1", "event_timestamp": "2021-10-26 12:02", "user_id": "1"},
+                {"name": "click_2", "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
             ]
         )
         self.__raw_data_schema = RawDataSchema(event_name="name", event_timestamp="event_timestamp", user_id="user_id")
 
     def test_create_eventstream(self):
-        es = Eventstream(
-            raw_data=self.__raw_data,
-            raw_data_schema=self.__raw_data_schema,
-            schema=EventstreamSchema(),
-        )
+        es = Eventstream(raw_data=self.__raw_data, raw_data_schema=self.__raw_data_schema, schema=EventstreamSchema())
 
         df = es.to_dataframe()
         schema = es.schema
@@ -57,9 +36,9 @@ class EventstreamTest(unittest.TestCase):
         self.assertTrue(schema.event_timestamp in columns)
         self.assertTrue(schema.user_id in columns)
 
-        for [_, event] in df.iterrows():  # type: ignore
+        for [_, event] in df.iterrows():
             self.assertEqual(event[schema.event_type], "raw")
-            assert isinstance(event[schema.event_id], uuid.UUID)
+            self.assertIsInstance(event[schema.event_id], uuid.UUID)
 
     def test_create_custom_cols(self):
         custom_cols = ["custom_col_1", "custom_col_2"]
@@ -88,9 +67,7 @@ class EventstreamTest(unittest.TestCase):
         raw_data_schema.custom_cols = [{"custom_col": col, "raw_data_col": col} for col in custom_cols]
 
         es = Eventstream(
-            raw_data=raw_data,
-            raw_data_schema=raw_data_schema,
-            schema=EventstreamSchema(custom_cols=custom_cols),
+            raw_data=raw_data, raw_data_schema=raw_data_schema, schema=EventstreamSchema(custom_cols=custom_cols)
         )
 
         schema = es.schema
@@ -99,7 +76,7 @@ class EventstreamTest(unittest.TestCase):
         for custom_col in custom_cols:
             self.assertTrue(custom_col in df.columns)
 
-        for [_, event] in df.iterrows():  # type: ignore
+        for [i, event] in df.iterrows():
             self.assertEqual(event[schema.custom_cols[0]], "custom_col_value")
             self.assertEqual(event[schema.custom_cols[1]], "custom_col_value")
 
@@ -148,17 +125,13 @@ class EventstreamTest(unittest.TestCase):
         schema.event_type = "type"
 
         es = Eventstream(raw_data=raw_data, raw_data_schema=schema, schema=EventstreamSchema())
-        df: pd.DataFrame = es.to_dataframe()
+        df = es.to_dataframe()
 
-        names: list[str] = [event[es.schema.event_name] for [_, event] in df.iterrows()]  # type: ignore
+        names = [event[es.schema.event_name] for [_, event] in df.iterrows()]
         self.assertListEqual(names, ["pageview", "click_1", "start", "click_2", "pause", "end"])
 
     def test_create_relation(self):
-        es = Eventstream(
-            raw_data=self.__raw_data,
-            raw_data_schema=self.__raw_data_schema,
-            schema=EventstreamSchema(),
-        )
+        es = Eventstream(raw_data=self.__raw_data, raw_data_schema=self.__raw_data_schema, schema=EventstreamSchema())
 
         # shuffle data
         df = es.to_dataframe()
@@ -179,9 +152,9 @@ class EventstreamTest(unittest.TestCase):
 
         related_df = related_es.to_dataframe()
 
-        for [_, event] in related_df.iterrows():  # type: ignore
-            query: pd.Series[str] = parent_df[es.schema.event_id] == event["ref_0"]
-            related_event = parent_df[query].iloc[0]  # type: ignore
+        for [i, event] in related_df.iterrows():
+            query = parent_df[es.schema.event_id] == event["ref_0"]
+            related_event = parent_df[query].iloc[0]
             self.assertEqual(related_event[es.schema.event_id], event["ref_0"])
 
             self.assertEqual(
@@ -207,41 +180,18 @@ class EventstreamTest(unittest.TestCase):
             custom_cols=[],
         )
 
-        source_schema = RawDataSchema(
-            event_name="event_name",
-            event_timestamp="event_timestamp",
-            user_id="user_id",
-        )
+        source_schema = RawDataSchema(event_name="event_name", event_timestamp="event_timestamp", user_id="user_id")
 
         child_schema = RawDataSchema(
-            event_name="name",
-            event_timestamp="event_timestamp",
-            user_id="user_id",
-            event_type="type",
+            event_name="name", event_timestamp="event_timestamp", user_id="user_id", event_type="type"
         )
 
         source_df = pd.DataFrame(
             [
-                {
-                    "event_name": "pageview",
-                    "event_timestamp": "2021-10-26 12:00",
-                    "user_id": "1",
-                },
-                {
-                    "event_name": "cart_btn_click",
-                    "event_timestamp": "2021-10-26 12:02",
-                    "user_id": "1",
-                },
-                {
-                    "event_name": "pageview",
-                    "event_timestamp": "2021-10-26 12:03",
-                    "user_id": "1",
-                },
-                {
-                    "event_name": "plus_icon_click",
-                    "event_timestamp": "2021-10-26 12:04",
-                    "user_id": "1",
-                },
+                {"event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
+                {"event_name": "cart_btn_click", "event_timestamp": "2021-10-26 12:02", "user_id": "1"},
+                {"event_name": "pageview", "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
+                {"event_name": "plus_icon_click", "event_timestamp": "2021-10-26 12:04", "user_id": "1"},
             ]
         )
 
@@ -254,7 +204,7 @@ class EventstreamTest(unittest.TestCase):
         source_events_df = source.to_dataframe()
 
         joined_df = pd.DataFrame(
-            data=[  # type: ignore
+            [
                 {
                     "type": "synthetic",
                     "name": "add_to_cart",
@@ -298,19 +248,16 @@ class EventstreamTest(unittest.TestCase):
         source.join_eventstream(child)
         result_df = source.to_dataframe()
 
-        names: list[str] = result_df[schema.event_name].to_list()
-        timestamps: list[int] = result_df[schema.event_timestamp].to_list()
-        user_ids: list[str] = result_df[schema.user_id].to_list()
-        types: list[str] = result_df[schema.event_type].to_list()
+        names = result_df[schema.event_name].to_list()
+        timestamps = result_df[schema.event_timestamp].to_list()
+        user_ids = result_df[schema.user_id].to_list()
+        types = result_df[schema.event_type].to_list()
 
-        self.assertEqual(
-            names,
-            ["pageview", "add_to_cart", "pageview", "add_to_cart", "add_to_cart123"],
-        )
+        self.assertEqual(names, ["pageview", "add_to_cart", "pageview", "add_to_cart", "add_to_cart123"])
 
         self.assertEqual(types, ["raw", "synthetic", "raw", "synthetic", "synthetic"])
 
-        expected_timestamps: list[int] = [
+        expected_timestamps = [
             source_events_df.iloc[0][schema.event_timestamp],
             child_events_df.iloc[0][schema.event_timestamp],
             source_events_df.iloc[2][schema.event_timestamp],
@@ -323,15 +270,13 @@ class EventstreamTest(unittest.TestCase):
 
         result_with_deleted = source.to_dataframe(show_deleted=True)
         deleted_events = result_with_deleted[result_with_deleted[DELETE_COL_NAME] == True]
-        deleted_events_names: list[str] = deleted_events[schema.event_name].to_list()
+        deleted_events_names = deleted_events[schema.event_name].to_list()
 
         self.assertEqual(deleted_events_names, ["cart_btn_click", "plus_icon_click"])
 
     def test_soft_delete(self):
         source = Eventstream(
-            schema=EventstreamSchema(),
-            raw_data=self.__raw_data,
-            raw_data_schema=self.__raw_data_schema,
+            schema=EventstreamSchema(), raw_data=self.__raw_data, raw_data_schema=self.__raw_data_schema
         )
         df = source.to_dataframe()
 
@@ -340,8 +285,8 @@ class EventstreamTest(unittest.TestCase):
         after_delete = source.to_dataframe()
         after_delete_all = source.to_dataframe(show_deleted=True)
 
-        event_names: list[str] = after_delete[source.schema.event_name].to_list()
-        with_deleted_event_names: list[str] = after_delete_all[source.schema.event_name].to_list()
+        event_names = after_delete[source.schema.event_name].to_list()
+        with_deleted_event_names = after_delete_all[source.schema.event_name].to_list()
 
         self.assertEqual(event_names, ["click_1", "click_2"])
 
@@ -352,8 +297,8 @@ class EventstreamTest(unittest.TestCase):
         after_delete = source.to_dataframe()
         after_delete_all = source.to_dataframe(show_deleted=True)
 
-        event_names: list[str] = after_delete[source.schema.event_name].to_list()
-        with_deleted_event_names: list[str] = after_delete_all[source.schema.event_name].to_list()
+        event_names = after_delete[source.schema.event_name].to_list()
+        with_deleted_event_names = after_delete_all[source.schema.event_name].to_list()
 
         self.assertEqual(event_names, ["click_2"])
 
@@ -361,21 +306,19 @@ class EventstreamTest(unittest.TestCase):
 
     def test_delete_events_by_join(self):
         source = Eventstream(
-            schema=EventstreamSchema(),
-            raw_data=self.__raw_data,
-            raw_data_schema=self.__raw_data_schema,
+            schema=EventstreamSchema(), raw_data=self.__raw_data, raw_data_schema=self.__raw_data_schema
         )
         df = source.to_dataframe()
 
         source.soft_delete(events=df[df[source.schema.event_name] == "pageview"])
 
-        related_cols: list[str] = self.__raw_data.columns.to_list()  # type: ignore
+        related_cols = self.__raw_data.columns.to_list()
         related_cols.append("ref_id")
         related_df = pd.DataFrame(self.__raw_data.copy(), columns=related_cols)
         related_df = related_df[(related_df["name"] == "pageview") | (related_df["name"] == "click_1")]
         related_df.reset_index(inplace=True, drop=True)
-        related_df.at[0, "ref_id"] = df.iloc[0][source.schema.event_id]  # type: ignore
-        related_df.at[1, "ref_id"] = df.iloc[1][source.schema.event_id]  # type: ignore
+        related_df.at[0, "ref_id"] = df.iloc[0][source.schema.event_id]
+        related_df.at[1, "ref_id"] = df.iloc[1][source.schema.event_id]
 
         related = Eventstream(
             schema=EventstreamSchema(),
@@ -390,13 +333,13 @@ class EventstreamTest(unittest.TestCase):
 
         source.join_eventstream(related)
         result_df = source.to_dataframe()
-        result_events_names: list[str] = result_df[source.schema.event_name].to_list()
+        result_events_names = result_df[source.schema.event_name].to_list()
 
         self.assertEqual(result_events_names, ["click_2"])
 
         with_deleted_events = source.to_dataframe(show_deleted=True)
 
         deleted_events = with_deleted_events[with_deleted_events[DELETE_COL_NAME] == True]
-        deleted_events_names: list[str] = deleted_events[source.schema.event_name].to_list()
+        deleted_events_names = deleted_events[source.schema.event_name].to_list()
 
         self.assertEqual(deleted_events_names, ["pageview", "pageview", "click_1", "click_1"])

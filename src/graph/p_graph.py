@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Union, cast
+from typing import List, Optional, Union, cast
 
 import networkx
 
@@ -14,10 +14,10 @@ class SourceNode:
 
 
 class EventsNode:
-    processor: DataProcessor[Any]
+    processor: DataProcessor
     events: Optional[Eventstream]
 
-    def __init__(self, processor: DataProcessor[Any]) -> None:
+    def __init__(self, processor: DataProcessor) -> None:
         self.processor = processor
         self.events = None
 

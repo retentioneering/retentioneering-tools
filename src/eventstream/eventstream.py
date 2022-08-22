@@ -7,10 +7,9 @@ from typing import List, Optional, TypedDict
 import numpy as np
 import pandas as pd
 
+from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.utils.list import find_index
 from src.utils.pandas import get_merged_col
-
-from .schema import EventstreamSchema, RawDataSchema
 
 IndexOrder = List[Optional[str]]
 
@@ -86,13 +85,12 @@ class Eventstream:
         curr_events = self.to_dataframe(raw_cols=True, show_deleted=True)
         new_events = eventstream.to_dataframe(raw_cols=True, show_deleted=True)
 
-        curr_deleted_events = curr_events[curr_events[DELETE_COL_NAME] == True]  # noqa
-        new_deleted_events = new_events[new_events[DELETE_COL_NAME] == True]  # noqa
-        deleted_events = curr_deleted_events.append(new_deleted_events).drop_duplicates(  # type: ignore
-            subset=[self.schema.event_id]
-        )
+        curr_deleted_events = curr_events[curr_events[DELETE_COL_NAME] == True]
+        new_deleted_events = new_events[new_events[DELETE_COL_NAME] == True]
+        deleted_events = pd.concat([curr_deleted_events, new_deleted_events])
+        deleted_events = deleted_events.drop_duplicates(subset=[self.schema.event_id])
 
-        merged_events = pd.merge(  # type: ignore
+        merged_events = pd.merge(
             curr_events,
             new_events,
             left_on=self.schema.event_id,
@@ -145,9 +143,9 @@ class Eventstream:
         curr_events = self.to_dataframe(raw_cols=True, show_deleted=True)
         joined_events = eventstream.to_dataframe(raw_cols=True, show_deleted=True)
         not_related_events = joined_events[joined_events[relation_col_name].isna()]
-        not_related_events_ids: pd.Series[str] = not_related_events[self.schema.event_id]
+        not_related_events_ids = not_related_events[self.schema.event_id]
 
-        merged_events = pd.merge(  # type: ignore
+        merged_events = pd.merge(
             curr_events,
             joined_events,
             left_on=self.schema.event_id,
@@ -161,8 +159,7 @@ class Eventstream:
         both_events = merged_events[(merged_events["_merge"] == "both")]
         left_events = merged_events[(merged_events["_merge"] == "left_only")]
         right_events = merged_events[
-            (merged_events["_merge"] == "both")
-            | (merged_events[left_id_colname].isin(not_related_events_ids))  # type: ignore
+            (merged_events["_merge"] == "both") | (merged_events[left_id_colname].isin(not_related_events_ids))
         ]
 
         left_raw_cols = self.get_raw_cols()
@@ -193,10 +190,10 @@ class Eventstream:
         right_delete_col = f"{DELETE_COL_NAME}_y"
         result_right_part[DELETE_COL_NAME] = right_events[left_delete_col] | right_events[right_delete_col]
 
-        self.__events = result_left_part.append(result_right_part).append(result_deleted_events)  # type: ignore
+        self.__events = pd.concat([result_left_part, result_right_part, result_deleted_events])
         self.index_events()
 
-    def to_dataframe(self, raw_cols: bool = False, show_deleted: bool = False) -> pd.DataFrame:
+    def to_dataframe(self, raw_cols=False, show_deleted=False) -> pd.DataFrame:
         cols = self.schema.get_cols() + self.get_relation_cols()
 
         if raw_cols:
@@ -213,10 +210,8 @@ class Eventstream:
         order_temp_col_name = "order"
         indexed = self.__events
 
-        indexed[order_temp_col_name] = indexed[self.schema.event_type].apply(  # type: ignore
-            lambda e: self.__get_event_priority(e)  # type: ignore
-        )
-        indexed = indexed.sort_values([self.schema.event_timestamp, order_temp_col_name])  # type: ignore
+        indexed[order_temp_col_name] = indexed[self.schema.event_type].apply(lambda e: self.__get_event_priority(e))
+        indexed = indexed.sort_values([self.schema.event_timestamp, order_temp_col_name])
         indexed = indexed.drop([order_temp_col_name], axis=1)
         # indexed[id_col_col_name] = range(1, len(indexed) + 1)
         indexed.reset_index(inplace=True, drop=True)
@@ -224,25 +219,25 @@ class Eventstream:
         self.__events = indexed
 
     def get_raw_cols(self) -> list[str]:
-        cols: pd.Index = self.__events.columns
+        cols = self.__events.columns
         raw_cols: list[str] = []
-        for col in cols:  # type: ignore
-            if col.startswith(RAW_COL_PREFIX):  # type: ignore
-                raw_cols.append(col)  # type: ignore
+        for col in cols:
+            if col.startswith(RAW_COL_PREFIX):
+                raw_cols.append(col)
         return raw_cols
 
     def get_relation_cols(self) -> list[str]:
-        cols: pd.Index = self.__events.columns
+        cols = self.__events.columns
         relation_cols: list[str] = []
-        for col in cols:  # type: ignore
-            if col.startswith("ref_"):  # type: ignore
-                relation_cols.append(col)  # type: ignore
+        for col in cols:
+            if col.startswith("ref_"):
+                relation_cols.append(col)
         return relation_cols
 
     def soft_delete(self, events: pd.DataFrame) -> None:
         deleted_events = events.copy()
         deleted_events[DELETE_COL_NAME] = True
-        merged: pd.DataFrame = pd.merge(  # type: ignore
+        merged = pd.merge(
             left=self.__events,
             right=deleted_events,
             left_on=self.schema.event_id,
@@ -250,11 +245,11 @@ class Eventstream:
             indicator=True,
             how="left",
         )
-        self.__events[DELETE_COL_NAME] = self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True  # noqa
+        self.__events[DELETE_COL_NAME] = self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
 
     def __get_not_deleted_events(self) -> pd.DataFrame:
         events = self.__events
-        return events[events[DELETE_COL_NAME] == False]  # noqa type: ignore
+        return events[events[DELETE_COL_NAME] == False]
 
     def __prepare_events(self, raw_data: pd.DataFrame) -> pd.DataFrame:
         events = raw_data.copy()
@@ -262,13 +257,13 @@ class Eventstream:
         events.rename(lambda col: f"raw_{col}", axis="columns", inplace=True)
 
         events[DELETE_COL_NAME] = False
-        events[self.schema.event_id] = [uuid.uuid4() for _ in range(len(events))]
+        events[self.schema.event_id] = [uuid.uuid4() for x in range(len(events))]
         events[self.schema.event_name] = self.__get_col_from_raw_data(
             raw_data=raw_data,
             colname=self.__raw_data_schema.event_name,
         )
-        events[self.schema.event_timestamp] = pd.to_datetime(  # type: ignore
-            self.__get_col_from_raw_data(  # type: ignore
+        events[self.schema.event_timestamp] = pd.to_datetime(
+            self.__get_col_from_raw_data(
                 raw_data=raw_data,
                 colname=self.__raw_data_schema.event_timestamp,
             ),
@@ -305,16 +300,14 @@ class Eventstream:
         for i in range(len(self.relations)):
             rel_col_name = f"ref_{i}"
             relation = self.relations[i]
-            col = raw_data[relation["raw_col"]] if relation["raw_col"] is not None else np.nan  # type: ignore
+            col = raw_data[relation["raw_col"]] if relation["raw_col"] is not None else np.nan
             events[rel_col_name] = col
 
         return events
 
-    def __get_col_from_raw_data(
-        self, raw_data: pd.DataFrame, colname: str, create: bool = False
-    ) -> pd.Series | float | None:  # type: ignore
+    def __get_col_from_raw_data(self, raw_data: pd.DataFrame, colname: str, create=False):
         if colname in raw_data.columns:
-            return raw_data[colname]  # type: ignore
+            return raw_data[colname]
         else:
             if create:
                 return np.nan

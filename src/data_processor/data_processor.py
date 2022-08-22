@@ -1,16 +1,16 @@
-from abc import abstractmethod
-from typing import Generic, TypedDict, TypeVar
-
-from src.eventstream import Eventstream
-
-from .params_model import ParamsModel
-
-P = TypeVar("P", bound=TypedDict)
+from src.eventstream.eventstream import Eventstream
+from src.params_model import ParamsModel
 
 
-class DataProcessor(Generic[P]):
-    params: ParamsModel[P]
+class DataProcessor:
+    params: ParamsModel = None
 
-    @abstractmethod
+    def __init__(self, params: ParamsModel) -> None:
+        print(f"{issubclass(type(params), ParamsModel)=}")
+        if not issubclass(type(params), ParamsModel):
+            raise TypeError("params is not subclass of ParamsModel")
+
+        self.params = params
+
     def apply(self, eventstream: Eventstream) -> Eventstream:
-        raise NotImplementedError()
+        raise NotImplementedError

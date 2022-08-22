@@ -1,1 +1,2 @@
-from .jupiter_server import JupyterServer, ServerManager
+from .jupiter_server import JupyterServer
+from .server_manager import ServerManager

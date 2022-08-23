@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Tuple
 
 import pandas as pd
 from pandas import DataFrame
@@ -18,14 +18,14 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class TruncatedParams(ParamsModel):
-    left_truncated_cutoff: Optional[Tuple[float, str]]
-    right_truncated_cutoff: Optional[Tuple[float, str]]
+    left_truncated_cutoff: Tuple[float, str]
+    right_truncated_cutoff: Tuple[float, str]
 
 
 class TruncatedEvents(DataProcessor):
     params: TruncatedParams
 
-    def __init__(self, params: TruncatedParams = None):
+    def __init__(self, params: TruncatedParams):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
@@ -58,7 +58,6 @@ class TruncatedEvents(DataProcessor):
             df_end_to_end = df_end_to_end[df_end_to_end[type_col] != 0]
             df_end_to_end["ref"] = df_end_to_end[eventstream.schema.event_id]
             del df_end_to_end["diff_end_to_end"]
-            print(df_end_to_end)
             events = pd.concat([events, df_end_to_end])
 
         if right_truncated_cutoff:
@@ -90,8 +89,8 @@ class TruncatedEvents(DataProcessor):
             events = pd.concat([events, df_start_to_start])
 
         eventstream = Eventstream(
-            raw_data=events,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
+            raw_data=events,
             relations=[{"raw_col": "ref", "evenstream": eventstream}],
         )
         return eventstream

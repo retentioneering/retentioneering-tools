@@ -1,6 +1,6 @@
 import unittest
 
-from .list import find_index, find_item
+from src.utils.list import find_index, find_item
 
 
 class ListTest(unittest.TestCase):

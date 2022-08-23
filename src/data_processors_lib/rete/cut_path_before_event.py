@@ -30,7 +30,6 @@ class CutPathBeforeEvent(DataProcessor):
     def apply(self, eventstream: Eventstream) -> Eventstream:
         user_col = eventstream.schema.user_id
         time_col = eventstream.schema.event_timestamp
-        type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
         id_col = eventstream.schema.event_id
 
@@ -60,15 +59,15 @@ class CutPathBeforeEvent(DataProcessor):
             df_cut = df_cut.groupby([user_col])[["num_groups"]].max().reset_index()
             users_to_del = df_cut[df_cut["num_groups"] < min_cjm][user_col].to_list()
             # TODO dasha - после fix поменять на soft
-            df = df.loc[df[user_col].apply(lambda x: x in users_to_del)]
+            df = df.loc[df[user_col].apply(lambda x: x in users_to_del)]  # type: ignore
 
         # TODO dasha - после fix поменять на soft
-        df = df.loc[df[id_col].apply(lambda x: x in ids_to_del)]
+        df = df.loc[df[id_col].apply(lambda x: x in ids_to_del)]  # type: ignore
         df["ref"] = df[eventstream.schema.event_id]
 
         eventstream = Eventstream(
-            raw_data=df,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
+            raw_data=df,
             relations=[{"raw_col": "ref", "evenstream": eventstream}],
         )
         return eventstream

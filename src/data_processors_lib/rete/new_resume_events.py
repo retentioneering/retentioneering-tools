@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Union
 
 import pandas as pd
 from pandas import DataFrame
@@ -14,13 +14,13 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class NewResumeParams(ParamsModel):
-    new_users_list: List[int]
+    new_users_list: Union[List[int], str]
 
 
 class NewResumeEvents(DataProcessor):
     params: NewResumeParams
 
-    def __init__(self, params: NewResumeParams = None):
+    def __init__(self, params: NewResumeParams):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
@@ -50,8 +50,8 @@ class NewResumeEvents(DataProcessor):
         matched_events["ref"] = matched_events[eventstream.schema.event_id]
         result = pd.concat([events, matched_events])
         eventstream = Eventstream(
-            raw_data=result,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
+            raw_data=result,
             relations=[{"raw_col": "ref", "evenstream": eventstream}],
         )
         return eventstream

@@ -29,11 +29,11 @@ class TestTruncatedEvents:
         )
 
         source = Eventstream(
-            raw_data=source_df,
-            schema=EventstreamSchema(),
             raw_data_schema=RawDataSchema(
                 event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
             ),
+            raw_data=source_df,
+            schema=EventstreamSchema(),
         )
         params = {"left_truncated_cutoff": (1635231790, "s"), "right_truncated_cutoff": (1635231740, "s")}
         events = TruncatedEvents(params=TruncatedParams(**params))

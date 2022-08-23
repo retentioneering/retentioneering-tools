@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pandas as pd
 
 from src.data_processors_lib.rete import NewResumeEvents, NewResumeParams
@@ -27,11 +29,11 @@ class TestNewResume:
         )
 
         source = Eventstream(
-            raw_data=source_df,
-            schema=EventstreamSchema(),
             raw_data_schema=RawDataSchema(
                 event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
             ),
+            raw_data=source_df,
+            schema=EventstreamSchema(),
         )
         params = {"new_users_list": [3, 4, 5]}
 
@@ -39,5 +41,5 @@ class TestNewResume:
 
         result = events.apply(source)
         result_df = result.to_dataframe(show_deleted=True)
-        events_names = result_df[result.schema.event_name].to_list()
+        events_names: list[str] = result_df[result.schema.event_name].to_list()
         assert ["resume", "pageview", "cart_btn_click", "resume", "pageview", "plus_icon_click"] == events_names

@@ -7,6 +7,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
+from src.data_processors_lib.rete.constants import UOM_DICT
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
@@ -14,16 +15,15 @@ from src.params_model import ParamsModel
 log = logging.getLogger(__name__)
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
-from src.data_processors_lib.rete.constants import UOM_DICT
 
 
 class LostPauseParams(ParamsModel):
-    lost_cutoff: Optional[List[int]]
-    lost_users_list: Optional[list]
+    lost_cutoff: Optional[List]
+    lost_users_list: Optional[List]
     func: Optional[Callable]
 
 
-def _custom_func_lost(eventstream: Eventstream, lost_users_list: list):
+def _custom_func_lost(eventstream: Eventstream):
     df = eventstream.to_dataframe()
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
@@ -39,7 +39,7 @@ def _custom_func_lost(eventstream: Eventstream, lost_users_list: list):
 class LostPauseEvents(DataProcessor):
     params: LostPauseParams
 
-    def __init__(self, params: LostPauseParams = None):
+    def __init__(self, params: LostPauseParams):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
@@ -91,7 +91,7 @@ class LostPauseEvents(DataProcessor):
 
             data_pause.loc[:, [type_col, event_col]] = "pause"
             data_pause["ref"] = df[eventstream.schema.event_id]
-            df = pd.concat(df, data_pause)
+            df = pd.concat([df, data_pause])
 
         else:
             data_lost = (
@@ -106,8 +106,8 @@ class LostPauseEvents(DataProcessor):
         result = pd.concat([df, data_lost])
 
         eventstream = Eventstream(
-            raw_data=result,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
+            raw_data=result,
             relations=[{"raw_col": "ref", "evenstream": eventstream}],
         )
         return eventstream

@@ -7,13 +7,13 @@ import pandas as pd
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
+from src.data_processors_lib.rete.constants import UOM_DICT
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
 
 log = logging.getLogger(__name__)
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
-from src.data_processors_lib.rete.constants import UOM_DICT
 
 
 class SplitSessionsParams(ParamsModel):
@@ -25,11 +25,10 @@ class SplitSessionsParams(ParamsModel):
 class SplitSessions(DataProcessor):
     params: SplitSessionsParams
 
-    def __init__(self, params: SplitSessionsParams = None):
+    def __init__(self, params: SplitSessionsParams) -> None:
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
-        events: DataFrame = eventstream.to_dataframe()
         user_col = eventstream.schema.user_id
         time_col = eventstream.schema.event_timestamp
         type_col = eventstream.schema.event_type
@@ -108,8 +107,8 @@ class SplitSessions(DataProcessor):
             df = df[df[session_col].isin(end_sessions) & ~df[type_col].isin(["end", "session_start"])]
 
         eventstream = Eventstream(
-            raw_data=df,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
+            raw_data=df,
             relations=[{"raw_col": "ref", "evenstream": eventstream}],
         )
         return eventstream

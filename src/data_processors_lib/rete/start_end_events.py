@@ -49,8 +49,8 @@ class StartEndEvents(DataProcessor):
         matched_events = pd.concat([matched_events_start, matched_events_end])
 
         eventstream = Eventstream(
-            raw_data=matched_events,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
+            raw_data=matched_events,
             relations=[{"raw_col": "ref", "evenstream": eventstream}],
         )
         return eventstream

@@ -6,10 +6,26 @@ build-backend = "setuptools.build_meta"
 line-length = 120
 
 [tool.pyright]
-strict = ['**']
-exclude = ['src/utils/pandas.py', 'src/graph/p_graph.py', '**/__init__.py']
+useLibraryCodeForTypes = false
+#strict = ['**']
+typeCheckingMode = 'basic'
+stubPath = './typings'
+exclude = ['src/utils/pandas.py', 'src/graph/p_graph.py', '**/__init__.py', './typings', './examples']
 strictListInference = true
 strictDictionaryInference = true
 strictSetInference = true
 strictParameterNoneValue = true
-reportUnusedImport = "none"
+reportUntypedFunctionDecorator = "error"
+reportUntypedClassDecorator = "error"
+reportUntypedBaseClass = "error"
+#reportUnusedVariable = "error"
+reportUnusedClass = "error"
+reportUnnecessaryCast = "error"
+reportUnnecessaryComparison = "error"
+reportUnnecessaryContains = "error"
+reportUnnecessaryIsInstance = "error"
+reportImportCycles = "error"
+reportDuplicateImport = "error"
+
+[tool.mypy]
+exclude = ['^examples/00_pickle_params_model\.py$']

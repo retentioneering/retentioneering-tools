@@ -29,11 +29,11 @@ class TestStartEndEvents:
         )
 
         source = Eventstream(
-            raw_data=source_df,
-            schema=EventstreamSchema(),
             raw_data_schema=RawDataSchema(
                 event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
             ),
+            raw_data=source_df,
+            schema=EventstreamSchema(),
         )
 
         events = StartEndEvents(StartEndEventsParams(**{}))

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import List, Optional, TypedDict
+from typing import Any, List, Optional, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -37,6 +37,7 @@ DEFAULT_INDEX_ORDER: IndexOrder = [
 RAW_COL_PREFIX = "raw_"
 DELETE_COL_NAME = "_deleted"
 
+
 # TODO проработать резервирование колонок
 
 
@@ -50,20 +51,26 @@ class Eventstream:
     index_order: IndexOrder
     relations: List[Relation]
     __raw_data_schema: RawDataSchema
-    __events: pd.DataFrame
+    __events: pd.DataFrame | pd.Series[Any]
 
     def __init__(
         self,
         raw_data_schema: RawDataSchema,
-        raw_data: pd.DataFrame,
+        raw_data: pd.DataFrame | pd.Series[Any],
         schema: EventstreamSchema = EventstreamSchema(),
         prepare: bool = True,
-        index_order: IndexOrder = DEFAULT_INDEX_ORDER,
-        relations: List[Relation] = [],
+        index_order: Optional[IndexOrder] = None,
+        relations: Optional[List[Relation]] = None,
     ) -> None:
         self.schema = schema
-        self.index_order = index_order
-        self.relations = relations
+        if not index_order:
+            self.index_order = DEFAULT_INDEX_ORDER
+        else:
+            self.index_order = index_order
+        if not relations:
+            self.relations = []
+        else:
+            self.relations = relations
         self.__raw_data_schema = raw_data_schema
         self.__events = self.__prepare_events(raw_data) if prepare else raw_data
         self.index_events()
@@ -85,8 +92,8 @@ class Eventstream:
         curr_events = self.to_dataframe(raw_cols=True, show_deleted=True)
         new_events = eventstream.to_dataframe(raw_cols=True, show_deleted=True)
 
-        curr_deleted_events = curr_events[curr_events[DELETE_COL_NAME] == True]
-        new_deleted_events = new_events[new_events[DELETE_COL_NAME] == True]
+        curr_deleted_events = curr_events[curr_events[DELETE_COL_NAME] == True]  # type: ignore
+        new_deleted_events = new_events[new_events[DELETE_COL_NAME] == True]  # type: ignore
         deleted_events = pd.concat([curr_deleted_events, new_deleted_events])
         deleted_events = deleted_events.drop_duplicates(subset=[self.schema.event_id])
 
@@ -131,7 +138,7 @@ class Eventstream:
             raise ValueError("invalid schema: joined eventstream")
 
         relation_i = find_index(
-            l=eventstream.relations,
+            input_list=eventstream.relations,
             cond=lambda rel: rel["evenstream"] == self,
         )
 
@@ -211,7 +218,7 @@ class Eventstream:
         indexed = self.__events
 
         indexed[order_temp_col_name] = indexed[self.schema.event_type].apply(lambda e: self.__get_event_priority(e))
-        indexed = indexed.sort_values([self.schema.event_timestamp, order_temp_col_name])
+        indexed = indexed.sort_values([self.schema.event_timestamp, order_temp_col_name])  # type: ignore
         indexed = indexed.drop([order_temp_col_name], axis=1)
         # indexed[id_col_col_name] = range(1, len(indexed) + 1)
         indexed.reset_index(inplace=True, drop=True)
@@ -245,13 +252,15 @@ class Eventstream:
             indicator=True,
             how="left",
         )
-        self.__events[DELETE_COL_NAME] = self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
+        self.__events[DELETE_COL_NAME] = (
+            self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
+        )  # type: ignore
 
-    def __get_not_deleted_events(self) -> pd.DataFrame:
+    def __get_not_deleted_events(self) -> pd.DataFrame | pd.Series[Any]:
         events = self.__events
-        return events[events[DELETE_COL_NAME] == False]
+        return events[events[DELETE_COL_NAME] == False]  # type: ignore
 
-    def __prepare_events(self, raw_data: pd.DataFrame) -> pd.DataFrame:
+    def __prepare_events(self, raw_data: pd.DataFrame | pd.Series[Any]) -> pd.DataFrame | pd.Series[Any]:
         events = raw_data.copy()
         # add "raw_" prefix for raw cols
         events.rename(lambda col: f"raw_{col}", axis="columns", inplace=True)
@@ -305,7 +314,9 @@ class Eventstream:
 
         return events
 
-    def __get_col_from_raw_data(self, raw_data: pd.DataFrame, colname: str, create=False):
+    def __get_col_from_raw_data(
+        self, raw_data: pd.DataFrame | pd.Series[Any], colname: str, create=False
+    ) -> pd.Series | float:
         if colname in raw_data.columns:
             return raw_data[colname]
         else:

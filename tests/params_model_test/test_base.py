@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import pytest
 
@@ -14,8 +14,7 @@ class TestParamsModel:
             b: int
             c: Callable[[int], bool]
 
-        # correct_data = {"a": "asdasd", "b": 100500, "c": lambda x: x > 10}
-        cor: ExampleCorrectModel = ExampleCorrectModel(a="asdasd", b=100500, c=lambda x: x > 10)
+        cor: ExampleCorrectModel = ExampleCorrectModel(a="asdasd", b=100500, c=lambda x: x > 10)  # type: ignore
         assert cor.a == "asdasd"
         assert cor.b == 100500
         assert callable(cor.c)
@@ -26,20 +25,23 @@ class TestParamsModel:
             class ArrayModel(ParamsModel):
                 a: List[List[str]]
 
-            ArrayModel(a=[["123123"]])
+            ArrayModel(a=[["123123"]])  # type: ignore
 
     def test_optional_none(self) -> None:
         class ArrayModel(ParamsModel):
             a: Optional[List[str]]
 
-        model = ArrayModel()
+        model = ArrayModel(a=None)  # type: ignore
         assert None is model.a
 
     def test_optional_with_value(self) -> None:
         class ArrayModel(ParamsModel):
+            def __init__(self, **data: Dict[str, Any]) -> None:
+                super().__init__(**data)
+
             a: Optional[List[str]]
 
-        model = ArrayModel(a=["1", "2"])
+        model = ArrayModel(**{"a": ["1", "2"]})  # type: ignore
         assert ["1", "2"] == model.a
 
     def test_nested_dict(self) -> None:

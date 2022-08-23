@@ -38,7 +38,7 @@ class SimpleGroup(DataProcessor):
         matched_events["ref"] = matched_events[eventstream.schema.event_id]
 
         return Eventstream(
-            raw_data=matched_events,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
+            raw_data=matched_events,
             relations=[{"raw_col": "ref", "evenstream": eventstream}],
         )

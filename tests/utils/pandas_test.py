@@ -2,7 +2,7 @@ import unittest
 
 import pandas as pd
 
-from .pandas import get_merged_col
+from src.utils.pandas import get_merged_col
 
 
 class PandasTest(unittest.TestCase):

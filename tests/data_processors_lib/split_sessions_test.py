@@ -29,15 +29,20 @@ class TestSplitSessions:
         )
 
         source = Eventstream(
-            raw_data=source_df,
-            schema=EventstreamSchema(),
             raw_data_schema=RawDataSchema(
                 event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
             ),
+            raw_data=source_df,
+            schema=EventstreamSchema(),
         )
-        params = {"session_cutoff": (100, "s"), "mark_truncated": True, "session_col": "session_id"}
 
-        events = SplitSessions(params=SplitSessionsParams(**params))
+        events = SplitSessions(
+            params=SplitSessionsParams(
+                session_cutoff=(100, "s"),
+                mark_truncated=True,
+                session_col="session_id",
+            )
+        )
 
         result = events.apply(source)
         result_df = result.to_dataframe(show_deleted=True)

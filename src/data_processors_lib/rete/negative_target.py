@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List
 
 import pandas as pd
 from pandas import DataFrame
@@ -33,19 +33,16 @@ def _default_func_negative(eventstream, negative_target_events):
 
 class NegativeTargetParams(ParamsModel):
     negative_target_events: List[str]
-    negative_function: Optional[Callable] = _default_func_negative
+    negative_function: Callable = _default_func_negative
 
 
 class NegativeTarget(DataProcessor):
     params: NegativeTargetParams
 
-    def __init__(self, params: NegativeTargetParams = None):
+    def __init__(self, params: NegativeTargetParams):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
-        events: DataFrame = eventstream.to_dataframe()
-        user_col = eventstream.schema.user_id
-        time_col = eventstream.schema.event_timestamp
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 
@@ -63,8 +60,8 @@ class NegativeTarget(DataProcessor):
         df = pd.concat([df, negative_targets])
 
         eventstream = Eventstream(
-            raw_data=df,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
+            raw_data=df,
             relations=[{"raw_col": "ref", "evenstream": eventstream}],
         )
         return eventstream

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pandas as pd
 
 from src.data_processors_lib.rete import CutPathAfterEvent, CutPathAfterEventParams
@@ -27,21 +29,16 @@ class TestCutPathAfter:
         )
 
         source = Eventstream(
-            raw_data=source_df,
-            schema=EventstreamSchema(),
             raw_data_schema=RawDataSchema(
                 event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
             ),
+            raw_data=source_df,
+            schema=EventstreamSchema(),
         )
-        params = {
-            "cutoff_events": ["pageview"],
-            "cut_shift": 1,
-            "min_cjm": 0,
-        }
-        events = CutPathAfterEvent(params=CutPathAfterEventParams(**params))
+        events = CutPathAfterEvent(params=CutPathAfterEventParams(cutoff_events=["pageview"], cut_shift=1, min_cjm=0))
 
         result = events.apply(source)
         result_df = result.to_dataframe(show_deleted=True)
-        events_names = result_df[result.schema.event_name].to_list()
+        events_names: list[str] = result_df[result.schema.event_name].to_list()
         # @TODO: add correct test after example of needed work. Vladimir Makhanov
         assert True

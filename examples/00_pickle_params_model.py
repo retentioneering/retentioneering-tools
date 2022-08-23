@@ -24,12 +24,12 @@ if __name__ == "__main__":
 
     # Cant pickle lambdas
     try:
-        t = Test(**data1)
+        t = Test(**data1)  # type: ignore
         s = pickle.dumps(t, protocol=5)
     except pickle.PicklingError as e:
         print("Dont allow lambdas in pickle")
 
     # Picke with function-name
-    t = Test(**data2)
+    t = Test(**data2)  # type: ignore
     ts = pickle.dumps(t, protocol=5)
     print(len(ts))

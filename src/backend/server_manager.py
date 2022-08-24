@@ -4,18 +4,21 @@ import json
 from typing import Any
 
 from src.backend import JupyterServer
+import logging
 
+log = logging.getLogger(__name__)
 
 class Singleton:
     _instances = {}
 
-    def __call__(cls, *args, **kwargs) -> 'ServerManager':
+    def __call__(cls) -> 'ServerManager':
         if cls not in cls._instances:
-            cls._instances[cls] = super().__new__(cls, *args, **kwargs)
+            cls._instances[cls] = super().__init__(cls)
         return cls._instances[cls]
 
 
-class ServerManager(metaclass=Singleton):
+class ServerManager:
+    __metaclass__ = Singleton
     _servers: dict[str, JupyterServer]
 
     def __init__(self) -> None:
@@ -26,6 +29,7 @@ class ServerManager(metaclass=Singleton):
         return self._servers.get(server_id, None)
 
     def _on_colab_func_called(self, server_id: str, method: str, request_id: str, payload):
+        log.error(self._servers)
         target_server: JupyterServer | None = self._find_server(server_id)
         try:
             if target_server is not None:
@@ -51,9 +55,12 @@ class ServerManager(metaclass=Singleton):
             })
 
     def _on_comm_message(self, comm, open_msg):
+
+        print(1)
         @comm.on_msg
         def _recv(msg):
             data: dict[str, Any] = msg['content']['data']
+            print(f'{data=}')
             server_id = data['server_id']
             request_id = data['request_id']
             method = data['method']
@@ -63,7 +70,8 @@ class ServerManager(metaclass=Singleton):
             try:
                 if target_server is not None:
                     result = target_server.dispatch_method(
-                        method=method, payload=payload)
+                        method=method, payload=payload
+                    )
                     comm.send({
                         "success": True,
                         "server_id": server_id,

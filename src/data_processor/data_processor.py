@@ -10,7 +10,6 @@ class DataProcessor:
     params: ParamsModel = None
 
     def __init__(self, params: ParamsModel) -> None:
-        print(f'{issubclass(type(params), ParamsModel)=}')
         if not issubclass(type(params), ParamsModel):
             raise TypeError('params is not subclass of ParamsModel')
 

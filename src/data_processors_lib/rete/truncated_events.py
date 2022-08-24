@@ -55,7 +55,6 @@ class TruncatedEvents(DataProcessor):
             df_end_to_end = df_end_to_end[df_end_to_end[type_col] != 0]
             df_end_to_end['ref'] = df_end_to_end[eventstream.schema.event_id]
             del df_end_to_end['diff_end_to_end']
-            print(df_end_to_end)
             events = pd.concat([events, df_end_to_end])
 
         if right_truncated_cutoff:

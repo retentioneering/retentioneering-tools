@@ -31,6 +31,6 @@ class JupyterServer:
     def dispatch_method(self, method: str, payload: dict):
         action = self._find_action(method)
         if action is not None:
-            return action.callback(**payload)
+            return action.callback(payload)
         else:
             raise ServerNotFoundActionError('method not found!', method=method)

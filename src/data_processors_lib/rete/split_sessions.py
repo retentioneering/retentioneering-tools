@@ -72,7 +72,7 @@ class SplitSessions(DataProcessor):
         sessions_start_df[type_col] = 'session_start'
         sessions_start_df['ref'] = sessions_start_df[eventstream.schema.event_id]
 
-        df = pd.concat([df, sessions_end_df, sessions_start_df])
+        df_sessions = pd.concat([sessions_end_df, sessions_start_df])
 
         if mark_truncated:
             df_start_to_start_time = df.groupby(user_col)[[time_col]].min().reset_index()

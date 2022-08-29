@@ -50,12 +50,12 @@ class PositiveTarget(DataProcessor):
         positive_targets = positive_function(eventstream, positive_target_events)
         positive_targets[type_col] = 'positive_target'
         positive_targets[event_col] = 'positive_target_' + positive_targets[event_col]
-        positive_targets['ref'] = positive_targets[eventstream.schema.event_id]
+        positive_targets['ref'] = None
 
-        df = pd.concat([df, positive_targets])
+        # df = pd.concat([df, positive_targets])
 
         eventstream = Eventstream(
-            raw_data=df,
+            raw_data=positive_targets,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
             relations=[{"raw_col": "ref", "evenstream": eventstream}],
         )

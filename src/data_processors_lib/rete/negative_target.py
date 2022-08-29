@@ -56,11 +56,11 @@ class NegativeTarget(DataProcessor):
         negative_targets[event_col] = 'negative_target_' + negative_targets[event_col]
 
         negative_targets['event_type'] = 'negative_target'
-        negative_targets['ref'] = negative_targets[eventstream.schema.event_id]
-        df = pd.concat([df, negative_targets])
+        negative_targets['ref'] = None
+
 
         eventstream = Eventstream(
-            raw_data=df,
+            raw_data=negative_targets,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
             relations=[{"raw_col": "ref", "evenstream": eventstream}],
         )

@@ -1,5 +1,6 @@
 from typing import Callable, Any
 
+import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
@@ -33,15 +34,16 @@ class StartEndEvents(DataProcessor):
             .reset_index(drop=True)
         matched_events_start[type_col] = 'start'
         matched_events_start[event_col] = 'start'
-        matched_events_start["ref"] = matched_events_start[eventstream.schema.event_id]
+        # matched_events_start["ref"] = matched_events_start[eventstream.schema.event_id]
+        matched_events_start["ref"] = None
 
         matched_events_end = events.groupby(user_col, as_index=False) \
             .apply(lambda group: group.nlargest(1, columns=time_col)) \
             .reset_index(drop=True)
         matched_events_end[type_col] = 'end'
         matched_events_end[event_col] = 'end'
-        matched_events_end["ref"] = matched_events_end[eventstream.schema.event_id]
-
+        # matched_events_end["ref"] = matched_events_end[eventstream.schema.event_id]
+        matched_events_end["ref"] = None
         matched_events = pd.concat([matched_events_start, matched_events_end])
 
         eventstream = Eventstream(

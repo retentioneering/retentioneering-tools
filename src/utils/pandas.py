@@ -1,12 +1,11 @@
 # type: ignore
 
 import random
-from typing import Any
 
 import pandas as pd
 
 
-def shuffle_df(df: pd.DataFrame, inplace=True) -> pd.DataFrame:
+def shuffle_df(df: pd.DataFrame, inplace=True):
     df = df if inplace else df.copy()
     index = [i for i in range(df.shape[0])]
     random.shuffle(index)
@@ -14,7 +13,7 @@ def shuffle_df(df: pd.DataFrame, inplace=True) -> pd.DataFrame:
     return df
 
 
-def get_merged_col(df: pd.DataFrame, colname: str, suffix: str) -> pd.Series[Any]:
+def get_merged_col(df: pd.DataFrame, colname: str, suffix: str):
     return df[colname] if colname in df else df[f"{colname}{suffix}"]
 
 

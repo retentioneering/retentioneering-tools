@@ -1,17 +1,17 @@
-from typing import TypeVar, TypedDict
+from __future__ import annotations
+
+from typing import Any
 
 from src.eventstream.eventstream import Eventstream
 from src.params_model import ParamsModel
 
-P = TypeVar("P", bound=TypedDict)
-
 
 class DataProcessor:
-    params: ParamsModel = None
+    params: ParamsModel
 
-    def __init__(self, params: ParamsModel) -> None:
+    def __init__(self, params: ParamsModel | Any) -> None:
         if not issubclass(type(params), ParamsModel):
-            raise TypeError('params is not subclass of ParamsModel')
+            raise TypeError("params is not subclass of ParamsModel")
 
         self.params = params
 

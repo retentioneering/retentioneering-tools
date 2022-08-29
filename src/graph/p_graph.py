@@ -1,3 +1,4 @@
+import uuid
 from typing import List, Optional, Union, cast
 
 import networkx
@@ -6,18 +7,47 @@ from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 
 
-class SourceNode:
+class BaseNode:
+    processor: Optional[DataProcessor]
+    events: Optional[Eventstream]
+    pk: str
+
+    def __init__(self, **kwargs) -> None:
+        self.pk = str(uuid.uuid4())
+
+    def __str__(self) -> str:
+        data = {
+            'name': self.__class__.__name__,
+            'pk': self.pk
+        }
+        return str(data)
+
+    __repr__ = __str__
+
+    def export(self):
+        data = {
+            'name': self.__class__.__name__,
+            'pk': self.pk
+        }
+        if getattr(self, 'processor', None) is not None:
+            data['processor'] = self.processor.__repr__()
+        return data
+
+
+class SourceNode(BaseNode):
     events: Eventstream
 
     def __init__(self, source: Eventstream) -> None:
+        super().__init__()
         self.events = source
 
 
-class EventsNode:
+class EventsNode(BaseNode):
     processor: DataProcessor
     events: Optional[Eventstream]
 
     def __init__(self, processor: DataProcessor) -> None:
+        super().__init__()
         self.processor = processor
         self.events = None
 
@@ -25,10 +55,11 @@ class EventsNode:
         self.events = self.processor.apply(parent)
 
 
-class MergeNode:
+class MergeNode(BaseNode):
     events: Optional[Eventstream]
 
     def __init__(self) -> None:
+        super().__init__()
         self.events = None
 
 
@@ -52,8 +83,7 @@ class PGraph:
             self.__validate_schema(node.events)
 
         if (not isinstance(node, MergeNode) and len(parents) > 1):
-            raise ValueError(
-                "multiple parents are only allowed for merge nodes!")
+            raise ValueError("multiple parents are only allowed for merge nodes!")
 
         self.__ngraph.add_node(node)
 
@@ -111,8 +141,7 @@ class PGraph:
     def get_events_node_parent(self, node: EventsNode) -> Node:
         parents = self.get_parents(node)
         if len(parents) > 1:
-            raise ValueError(
-                "invalid graph: events node has more than 1 parent")
+            raise ValueError("invalid graph: events node has more than 1 parent")
 
         return parents[0]
 

@@ -17,3 +17,10 @@ class DataProcessor:
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
         raise NotImplementedError
+
+    def __repr__(self) -> str:
+        data = {
+            'schema': self.params.schema(),
+            'values': self.params.dict(),
+        }
+        return f'{data}'

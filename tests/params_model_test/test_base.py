@@ -14,7 +14,7 @@ class TestParamsModel:
             b: int
             c: Callable[[int], bool]
 
-        cor: ExampleCorrectModel = ExampleCorrectModel(a="asdasd", b=100500, c=lambda x: x > 10)  # type: ignore
+        cor: ExampleCorrectModel = ExampleCorrectModel(a="asdasd", b=100500, c=lambda x: x > 10)
         assert cor.a == "asdasd"
         assert cor.b == 100500
         assert callable(cor.c)
@@ -25,13 +25,13 @@ class TestParamsModel:
             class ArrayModel(ParamsModel):
                 a: List[List[str]]
 
-            ArrayModel(a=[["123123"]])  # type: ignore
+            ArrayModel(a=[["123123"]])
 
     def test_optional_none(self) -> None:
         class ArrayModel(ParamsModel):
             a: Optional[List[str]]
 
-        model = ArrayModel(a=None)  # type: ignore
+        model = ArrayModel(a=None)
         assert None is model.a
 
     def test_optional_with_value(self) -> None:

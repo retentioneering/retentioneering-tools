@@ -10,7 +10,14 @@ useLibraryCodeForTypes = false
 #strict = ['**']
 typeCheckingMode = 'basic'
 stubPath = './typings'
-exclude = ['src/utils/pandas.py', 'src/graph/p_graph.py', '**/__init__.py', './typings', './examples']
+exclude = [
+#    'src/utils/pandas.py',
+#    'src/graph/p_graph.py',
+    '**/__init__.py',
+    './typings',
+    './examples',
+    './.tox'
+]
 strictListInference = true
 strictDictionaryInference = true
 strictSetInference = true
@@ -29,3 +36,7 @@ reportDuplicateImport = "error"
 
 [tool.mypy]
 exclude = ['^examples/00_pickle_params_model\.py$']
+
+[[tool.mypy.overrides]]
+module = "examples"
+ignore_errors = true

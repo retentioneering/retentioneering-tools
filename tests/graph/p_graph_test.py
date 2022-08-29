@@ -120,7 +120,7 @@ class EventstreamTest(unittest.TestCase):
         )
 
         def cart_func(df: pd.DataFrame, schema: EventstreamSchema) -> pd.Series[bool]:
-            return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])  # type: ignore
+            return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
 
         cart_events = EventsNode(SimpleGroup(SimpleGroupParams(event_name="add_to_cart", filter=cart_func)))
 
@@ -157,29 +157,21 @@ class EventstreamTest(unittest.TestCase):
         cart_events = EventsNode(
             SimpleGroup(
                 SimpleGroupParams(
-                    **{
-                        "event_name": "add_to_cart",
-                        "filter": lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"]),  # type: ignore
-                    }
+                    event_name="add_to_cart",
+                    filter=lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"]),
                 )
             )
         )
         logout_events = EventsNode(
             SimpleGroup(
                 SimpleGroupParams(
-                    **{
-                        "event_name": "logout",
-                        "filter": lambda df, schema: df[schema.event_name] == "exit_btn_click",  # type: ignore
-                    }
+                    event_name="logout",
+                    filter=lambda df, schema: df[schema.event_name] == "exit_btn_click",
                 )
             )
         )
         trash_events = EventsNode(
-            DeleteEvents(
-                DeleteEventsParams(
-                    **{"filter": lambda df, schema: df[schema.event_name] == "trash_event"}  # type: ignore
-                )
-            )
+            DeleteEvents(DeleteEventsParams(filter=lambda df, schema: df[schema.event_name] == "trash_event"))
         )
         merge = MergeNode()
 

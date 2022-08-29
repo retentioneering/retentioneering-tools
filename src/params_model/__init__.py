@@ -1,1 +1,1 @@
-from .params_model import ParamsModel  # type: ignore
+from .params_model import ParamsModel

@@ -29,6 +29,7 @@ repos:
     rev: 'v0.971'
     hooks:
       - id: mypy
+        args: [--config-file, mypy.ini]
   - repo: local
     hooks:
       - id: pyright
@@ -38,4 +39,4 @@ repos:
         pass_filenames: false
         types: [ python ]
         # Replace the version below with the latest pyright version
-        additional_dependencies: [ 'pyright@1.1.266' ]
+        additional_dependencies: [ 'pyright@1.1.268' ]

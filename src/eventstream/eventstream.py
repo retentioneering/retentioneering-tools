@@ -1,4 +1,4 @@
-# TODO fix me
+# flake8: noqa
 from __future__ import annotations
 
 import uuid
@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.utils import get_merged_col
 from src.utils.list import find_index
-from src.utils.pandas import get_merged_col
 
 IndexOrder = List[Optional[str]]
 
@@ -92,8 +92,8 @@ class Eventstream:
         curr_events = self.to_dataframe(raw_cols=True, show_deleted=True)
         new_events = eventstream.to_dataframe(raw_cols=True, show_deleted=True)
 
-        curr_deleted_events = curr_events[curr_events[DELETE_COL_NAME] == True]  # type: ignore
-        new_deleted_events = new_events[new_events[DELETE_COL_NAME] == True]  # type: ignore
+        curr_deleted_events = curr_events[curr_events[DELETE_COL_NAME] == True]
+        new_deleted_events = new_events[new_events[DELETE_COL_NAME] == True]
         deleted_events = pd.concat([curr_deleted_events, new_deleted_events])
         deleted_events = deleted_events.drop_duplicates(subset=[self.schema.event_id])
 
@@ -252,13 +252,11 @@ class Eventstream:
             indicator=True,
             how="left",
         )
-        self.__events[DELETE_COL_NAME] = (
-            self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
-        )  # type: ignore
+        self.__events[DELETE_COL_NAME] = self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
 
     def __get_not_deleted_events(self) -> pd.DataFrame | pd.Series[Any]:
         events = self.__events
-        return events[events[DELETE_COL_NAME] == False]  # type: ignore
+        return events[events[DELETE_COL_NAME] == False]
 
     def __prepare_events(self, raw_data: pd.DataFrame | pd.Series[Any]) -> pd.DataFrame | pd.Series[Any]:
         events = raw_data.copy()

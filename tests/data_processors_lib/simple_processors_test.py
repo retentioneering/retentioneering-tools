@@ -38,7 +38,7 @@ class SimpleProcessorsTest(unittest.TestCase):
         source_df = source.to_dataframe()
 
         def filter_(df: pd.DataFrame, schema: EventstreamSchema) -> pd.Series[bool]:
-            return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])  # type: ignore
+            return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
 
         params = SimpleGroupParams(
             event_name="add_to_cart",
@@ -78,7 +78,7 @@ class SimpleProcessorsTest(unittest.TestCase):
         )
 
         def filter_(df: pd.DataFrame, schema: EventstreamSchema) -> pd.Series[bool]:
-            return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])  # type: ignore
+            return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
 
         delete_factory = DeleteEvents(DeleteEventsParams(filter=filter_))
 

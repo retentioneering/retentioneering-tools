@@ -7,7 +7,7 @@ import pandas as pd
 
 from src.eventstream.eventstream import DELETE_COL_NAME, Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
-from src.utils.pandas import shuffle_df
+from src.utils import shuffle_df
 
 
 class EventstreamTest(unittest.TestCase):
@@ -37,9 +37,9 @@ class EventstreamTest(unittest.TestCase):
         self.assertTrue(schema.event_timestamp in columns)
         self.assertTrue(schema.user_id in columns)
 
-        for [_, event] in df.iterrows():  # type: ignore
+        for [_, event] in df.iterrows():
             self.assertEqual(event[schema.event_type], "raw")
-            self.assertIsInstance(event[schema.event_id], uuid.UUID)  # type: ignore
+            self.assertIsInstance(event[schema.event_id], uuid.UUID)
 
     def test_create_custom_cols(self):
         custom_cols = ["custom_col_1", "custom_col_2"]
@@ -77,7 +77,7 @@ class EventstreamTest(unittest.TestCase):
         for custom_col in custom_cols:
             self.assertTrue(custom_col in df.columns)
 
-        for [i, event] in df.iterrows():  # type: ignore
+        for [i, event] in df.iterrows():
             self.assertEqual(event[schema.custom_cols[0]], "custom_col_value")
             self.assertEqual(event[schema.custom_cols[1]], "custom_col_value")
 
@@ -128,7 +128,7 @@ class EventstreamTest(unittest.TestCase):
         es = Eventstream(raw_data_schema=schema, raw_data=raw_data, schema=EventstreamSchema())
         df = es.to_dataframe()
 
-        names: list[str] = [event[es.schema.event_name] for [_, event] in df.iterrows()]  # type: ignore
+        names: list[str] = [event[es.schema.event_name] for [_, event] in df.iterrows()]
         self.assertListEqual(names, ["pageview", "click_1", "start", "click_2", "pause", "end"])
 
     def test_create_relation(self):
@@ -153,9 +153,9 @@ class EventstreamTest(unittest.TestCase):
 
         related_df = related_es.to_dataframe()
 
-        for [i, event] in related_df.iterrows():  # type: ignore
+        for [i, event] in related_df.iterrows():
             query: pd.Series[bool] = parent_df[es.schema.event_id] == event["ref_0"]
-            related_event = parent_df[query].iloc[0]  # type: ignore
+            related_event = parent_df[query].iloc[0]
             self.assertEqual(related_event[es.schema.event_id], event["ref_0"])
 
             self.assertEqual(
@@ -201,7 +201,7 @@ class EventstreamTest(unittest.TestCase):
         source_events_df = source.to_dataframe()
 
         joined_df = pd.DataFrame(
-            data=[  # type: ignore
+            data=[
                 {
                     "type": "synthetic",
                     "name": "add_to_cart",
@@ -266,7 +266,7 @@ class EventstreamTest(unittest.TestCase):
         self.assertEqual(user_ids, ["1", "1", "1", "1", "2"])
 
         result_with_deleted = source.to_dataframe(show_deleted=True)
-        deleted_events = result_with_deleted[result_with_deleted[DELETE_COL_NAME] == True]  # type: ignore
+        deleted_events = result_with_deleted[result_with_deleted[DELETE_COL_NAME] == True]
         deleted_events_names: list[str] = deleted_events[schema.event_name].to_list()
 
         self.assertEqual(deleted_events_names, ["cart_btn_click", "plus_icon_click"])
@@ -309,13 +309,13 @@ class EventstreamTest(unittest.TestCase):
 
         source.soft_delete(events=df[df[source.schema.event_name] == "pageview"])
 
-        related_cols: list[str] = self.__raw_data.columns.to_list()  # type: ignore
-        related_cols.append("ref_id")  # type: ignore
+        related_cols: list[str] = self.__raw_data.columns.to_list()
+        related_cols.append("ref_id")
         related_df = pd.DataFrame(self.__raw_data.copy(), columns=related_cols)
         related_df = related_df[(related_df["name"] == "pageview") | (related_df["name"] == "click_1")]
         related_df.reset_index(inplace=True, drop=True)
-        related_df.at[0, "ref_id"] = df.iloc[0][source.schema.event_id]  # type: ignore
-        related_df.at[1, "ref_id"] = df.iloc[1][source.schema.event_id]  # type: ignore
+        related_df.at[0, "ref_id"] = df.iloc[0][source.schema.event_id]
+        related_df.at[1, "ref_id"] = df.iloc[1][source.schema.event_id]
 
         related = Eventstream(
             raw_data_schema=self.__raw_data_schema,

@@ -29,7 +29,7 @@ repos:
     rev: 'v0.971'
     hooks:
       - id: mypy
-        args: [--config-file, mypy.ini]
+        exclude: "^(examples/|tests/)"
   - repo: local
     hooks:
       - id: pyright

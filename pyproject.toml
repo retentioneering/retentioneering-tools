@@ -11,8 +11,6 @@ useLibraryCodeForTypes = false
 typeCheckingMode = 'basic'
 stubPath = './typings'
 exclude = [
-#    'src/utils/pandas.py',
-#    'src/graph/p_graph.py',
     '**/__init__.py',
     './typings',
     './examples',
@@ -33,10 +31,3 @@ reportUnnecessaryContains = "error"
 reportUnnecessaryIsInstance = "error"
 reportImportCycles = "error"
 reportDuplicateImport = "error"
-
-[tool.mypy]
-exclude = ['^examples/00_pickle_params_model\.py$']
-
-[[tool.mypy.overrides]]
-module = "examples"
-ignore_errors = true

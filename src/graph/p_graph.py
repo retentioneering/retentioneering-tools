@@ -1,38 +1,11 @@
-from typing import List, Optional, Union, cast
+from typing import List, Optional, cast
 
 import networkx
+from IPython.display import HTML, DisplayObject, display
 
-from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
-
-
-class SourceNode:
-    events: Eventstream
-
-    def __init__(self, source: Eventstream) -> None:
-        self.events = source
-
-
-class EventsNode:
-    processor: DataProcessor
-    events: Optional[Eventstream]
-
-    def __init__(self, processor: DataProcessor) -> None:
-        self.processor = processor
-        self.events = None
-
-    def calc_events(self, parent: Eventstream):
-        self.events = self.processor.apply(parent)
-
-
-class MergeNode:
-    events: Optional[Eventstream]
-
-    def __init__(self) -> None:
-        self.events = None
-
-
-Node = Union[SourceNode, EventsNode, MergeNode]
+from src.graph.node import EventsNode, MergeNode, Node, SourceNode
+from src.templates import PGraphRenderer
 
 
 class PGraph:
@@ -125,3 +98,7 @@ class PGraph:
         for node in nodes:
             if node not in self.__ngraph.nodes:
                 raise ValueError("node not found!")
+
+    def display(self) -> DisplayObject:
+        render = PGraphRenderer()
+        return display(HTML(render.show()).__html__())

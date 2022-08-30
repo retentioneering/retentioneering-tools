@@ -1,7 +1,7 @@
 from typing import List, Optional, cast
 
 import networkx
-from IPython.display import HTML, DisplayObject, display
+from IPython.display import HTML, DisplayHandle, display
 
 from src.eventstream.eventstream import Eventstream
 from src.graph.node import EventsNode, MergeNode, Node, SourceNode
@@ -99,6 +99,6 @@ class PGraph:
             if node not in self.__ngraph.nodes:
                 raise ValueError("node not found!")
 
-    def display(self) -> DisplayObject:
+    def display(self) -> DisplayHandle:
         render = PGraphRenderer()
-        return display(HTML(render.show()).__html__())
+        return display(HTML(render.show()))

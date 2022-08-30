@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from itertools import chain
 from typing import Any, List, Optional, Union, cast
 
 import networkx
@@ -23,7 +24,7 @@ class BaseNode:
 
     __repr__ = __str__
 
-    def export(self):
+    def export(self) -> dict:
         data: dict[str, Any] = {"name": self.__class__.__name__, "pk": self.pk}
         if processor := getattr(self, "processor", None):
             data["processor"] = processor.__repr__()
@@ -152,3 +153,22 @@ class PGraph:
         for node in nodes:
             if node not in self.__ngraph.nodes:
                 raise ValueError("node not found!")
+
+    def export(self) -> dict:
+
+        source, target, link = "source", "target", "links"
+
+        data = {
+            "directed": self.__ngraph.is_directed(),
+            "nodes": [
+                dict(
+                    chain(
+                        self.__ngraph.nodes[n].items(),
+                        [("node", n.export())],
+                    )
+                )
+                for n in self.__ngraph
+            ],
+            link: [dict(chain(d.items(), [(source, u), (target, v)])) for u, v, d in self.__ngraph.edges(data=True)],
+        }
+        return data

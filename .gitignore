@@ -5,3 +5,4 @@ typings
 .idea/
 .python-version
 .pytest_cache
+.tox

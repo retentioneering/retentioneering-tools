@@ -30,21 +30,8 @@ class ServerManager:
 
     def _on_colab_func_called(self, server_id: str, method: str, request_id: str, payload) -> str:
         target_server: JupyterServer | None = self._find_server(server_id)
-        try:
-            if target_server is not None:
-                result = target_server.dispatch_method(method=method, payload=payload)
-                return json.dumps(
-                    {
-                        "success": True,
-                        "server_id": server_id,
-                        "request_id": request_id,
-                        "method": method,
-                        "result": result,
-                    }
-                )
-            else:
-                raise Exception("server not found!")
-        except Exception as err:
+        if target_server is None:
+            err = "ServerNotFound"
             return json.dumps(
                 {
                     "success": False,
@@ -54,6 +41,16 @@ class ServerManager:
                     "result": str(err),
                 }
             )
+        result = target_server.dispatch_method(method=method, payload=payload)
+        return json.dumps(
+            {
+                "success": True,
+                "server_id": server_id,
+                "request_id": request_id,
+                "method": method,
+                "result": result,
+            }
+        )
 
     def _on_comm_message(self, comm: Comm, open_msg) -> None:
         @comm.on_msg

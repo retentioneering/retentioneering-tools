@@ -18,7 +18,8 @@ from src.data_processors_lib.simple_processors.simple_group import (
 )
 from src.eventstream.eventstream import Eventstream, EventstreamSchema
 from src.eventstream.schema import RawDataSchema
-from src.graph.p_graph import EventsNode, MergeNode, Node, PGraph, SourceNode
+from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode
+from src.graph.p_graph import PGraph
 from src.params_model import ParamsModel
 
 
@@ -311,7 +312,7 @@ class EventstreamTest(unittest.TestCase):
         }
 
         export_data = graph.export()
-
+        print(export_data)
         del export_data["links"]
         # При каждом запуске функции имеют разные адреса, отсюда разница при ассерте
         del export_data["nodes"][1]["node"]["processor"]["values"]["filter"]

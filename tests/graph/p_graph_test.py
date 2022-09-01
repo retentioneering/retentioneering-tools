@@ -235,7 +235,7 @@ class EventstreamTest(unittest.TestCase):
             raw_data=source_df,
         )
         graph = PGraph(source)
-        root_node = [x for x in graph._PGraph__ngraph][0]
+        root_node = [x for x in graph._ngraph][0]
         root_node.pk = "0dc3b706-e6cc-401e-96f7-6a45d3947d5c"
         cart_events = EventsNode(
             SimpleGroup(

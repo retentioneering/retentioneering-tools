@@ -17,17 +17,16 @@ class Widget:
 
 @dataclass
 class StringWidget(Widget):
-    widget: str = 'str'
+    widget: str = "str"
 
 
-widget_mapping = {
-    str: StringWidget
-}
+widget_mapping = {str: StringWidget}
 
 
 # class ParamsModelWidget:
 #     widgets: list[Widget]
 #
+
 
 class ParamsModel(
     BaseModel,
@@ -46,7 +45,7 @@ class ParamsModel(
                 else:
                     subvalue = next(iter(value))
                 if (isinstance(subvalue, array_types) or hasattr(subvalue, "__getitem__")) and not isinstance(
-                        subvalue, str
+                    subvalue, str
                 ):
                     raise ValueError("Inner iterable or hashable not allowed!")
             except TypeError:
@@ -65,8 +64,5 @@ class ParamsModel(
         for widget_name, widget_type in hints.items():
             type_widget = widget_mapping.get(widget_type)
 
-            widgets[widget_name] = type_widget(
-                name=widget_name,
-                optional=False
-            )
+            widgets[widget_name] = type_widget(name=widget_name, optional=False)
         return widgets

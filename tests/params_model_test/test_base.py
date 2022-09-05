@@ -56,5 +56,5 @@ class TestParamsModel:
         class ExampleModel(ParamsModel):
             a: str
 
-        model = ExampleModel(a='asd')
-        assert 'asd' == model.a
+        model = ExampleModel(a="asd")
+        assert "asd" == model.a

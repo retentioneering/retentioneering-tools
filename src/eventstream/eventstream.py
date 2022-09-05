@@ -326,4 +326,4 @@ class Eventstream:
     def __get_event_priority(self, event_type: Optional[str]) -> int:
         if event_type in self.index_order:
             return self.index_order.index(event_type)
-        return 8
+        return len(self.index_order)

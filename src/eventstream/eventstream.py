@@ -200,7 +200,7 @@ class Eventstream:
         self.__events = pd.concat([result_left_part, result_right_part, result_deleted_events])
         self.index_events()
 
-    def to_dataframe(self, raw_cols=False, show_deleted=False) -> pd.DataFrame:
+    def to_dataframe(self, raw_cols=False, show_deleted=False, copy=False) -> pd.DataFrame:
         cols = self.schema.get_cols() + self.get_relation_cols()
 
         if raw_cols:
@@ -210,7 +210,7 @@ class Eventstream:
             cols.append(DELETE_COL_NAME)
 
         events = self.__events if show_deleted else self.__get_not_deleted_events()
-        view = pd.DataFrame(events, columns=cols)
+        view = pd.DataFrame(events, columns=cols, copy=copy)
         return view
 
     def index_events(self) -> None:

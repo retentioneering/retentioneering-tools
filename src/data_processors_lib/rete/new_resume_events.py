@@ -24,7 +24,7 @@ class NewResumeEvents(DataProcessor):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
-        events: DataFrame = eventstream.to_dataframe()
+        events: DataFrame = eventstream.to_dataframe(copy=True)
         user_col = eventstream.schema.user_id
         time_col = eventstream.schema.event_timestamp
         type_col = eventstream.schema.event_type

@@ -39,7 +39,7 @@ class SplitSessions(DataProcessor):
 
         temp_col = "temp_col"
 
-        df = eventstream.to_dataframe()
+        df = eventstream.to_dataframe(copy=True)
 
         shift_df = df.groupby(user_col).shift(-1)
 

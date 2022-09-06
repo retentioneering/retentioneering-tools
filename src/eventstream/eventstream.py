@@ -315,7 +315,7 @@ class Eventstream:
             custom_col = custom_col_schema["custom_col"]
             if custom_col not in self.schema.custom_cols:
                 self.schema.custom_cols.append(custom_col)
-                # raise ValueError(f'invald raw data schema. Custom column "{custom_col}" does not exists in schema!')
+
             events[custom_col] = self.__get_col_from_raw_data(
                 raw_data=raw_data,
                 colname=raw_data_col,

@@ -24,7 +24,7 @@ class LostPauseParams(ParamsModel):
 
 
 def _custom_func_lost(eventstream: Eventstream):
-    df = eventstream.to_dataframe()
+    df = eventstream.to_dataframe(copy=True)
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
 
@@ -55,7 +55,7 @@ class LostPauseEvents(DataProcessor):
         if lost_cutoff and func:
             raise ValueError("lost_cutoff and func parameters cannot be used at the same time!")
 
-        df = eventstream.to_dataframe()
+        df = eventstream.to_dataframe(copy=True)
 
         if lost_cutoff:
             data_lost = (
@@ -108,6 +108,6 @@ class LostPauseEvents(DataProcessor):
         eventstream = Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
             raw_data=result,
-            relations=[{"raw_col": "ref", "evenstream": eventstream}],
+            relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         return eventstream

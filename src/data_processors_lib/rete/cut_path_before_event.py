@@ -37,7 +37,7 @@ class CutPathBeforeEvent(DataProcessor):
         min_cjm = self.params.min_cjm
         cut_shift = self.params.cut_shift
 
-        df = eventstream.to_dataframe()
+        df = eventstream.to_dataframe(copy=True)
 
         df["_point"] = 0
         df.loc[df[event_col].isin(cutoff_events), "_point"] = 1
@@ -68,6 +68,6 @@ class CutPathBeforeEvent(DataProcessor):
         eventstream = Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
             raw_data=df,
-            relations=[{"raw_col": "ref", "evenstream": eventstream}],
+            relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         return eventstream

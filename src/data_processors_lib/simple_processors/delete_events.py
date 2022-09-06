@@ -23,7 +23,7 @@ class DeleteEvents(DataProcessor):
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
         filter_: Callable[[DataFrame, EventstreamSchema], Any] = self.params.filter  # type: ignore
-        events: pd.DataFrame = eventstream.to_dataframe()
+        events: pd.DataFrame = eventstream.to_dataframe(copy=True)
         mathed_events_q = filter_(events, eventstream.schema)
         matched_events = events[mathed_events_q].copy()
 
@@ -32,7 +32,7 @@ class DeleteEvents(DataProcessor):
         eventstream = Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
             raw_data=matched_events,
-            relations=[{"raw_col": "ref", "evenstream": eventstream}],
+            relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
-        eventstream.soft_delete(eventstream.to_dataframe())
+        eventstream.soft_delete(eventstream.to_dataframe(copy=True))
         return eventstream

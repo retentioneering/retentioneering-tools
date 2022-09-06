@@ -19,7 +19,7 @@ def _default_func_positive(eventstream: Eventstream, positive_target_events: lis
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
-    df = eventstream.to_dataframe()
+    df = eventstream.to_dataframe(copy=True)
 
     data_pos = df[df[event_col].isin(positive_target_events)]
     data_pos = (
@@ -48,7 +48,7 @@ class PositiveTarget(DataProcessor):
         positive_function: Callable[[Eventstream, list[str]], pd.DataFrame] = self.params.positive_function
         positive_target_events = self.params.positive_target_events
 
-        df = eventstream.to_dataframe()
+        df = eventstream.to_dataframe(copy=True)
 
         positive_targets = positive_function(eventstream, positive_target_events)
         positive_targets[type_col] = "positive_target"
@@ -60,6 +60,6 @@ class PositiveTarget(DataProcessor):
         eventstream = Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
             raw_data=df,
-            relations=[{"raw_col": "ref", "evenstream": eventstream}],
+            relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         return eventstream

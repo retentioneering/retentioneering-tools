@@ -108,6 +108,6 @@ class LostPauseEvents(DataProcessor):
         eventstream = Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
             raw_data=result,
-            relations=[{"raw_col": "ref", "evenstream": eventstream}],
+            relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         return eventstream

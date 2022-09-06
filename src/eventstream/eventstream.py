@@ -42,7 +42,7 @@ DELETE_COL_NAME = "_deleted"
 
 
 class Relation(TypedDict):
-    evenstream: Eventstream
+    eventstream: Eventstream
     raw_col: Optional[str]
 
 
@@ -139,7 +139,7 @@ class Eventstream:
 
         relation_i = find_index(
             input_list=eventstream.relations,
-            cond=lambda rel: rel["evenstream"] == self,
+            cond=lambda rel: rel["eventstream"] == self,
         )
 
         if relation_i == -1:
@@ -252,6 +252,18 @@ class Eventstream:
             indicator=True,
             how="left",
         )
+        if relation_cols := self.get_relation_cols():
+            last_relation_col = relation_cols[-1]
+            self.__events[DELETE_COL_NAME] = self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
+            merged = pd.merge(
+                left=self.__events,
+                right=deleted_events,
+                left_on=last_relation_col,
+                right_on=self.schema.event_id,
+                indicator=True,
+                how="left",
+            )
+
         self.__events[DELETE_COL_NAME] = self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
 
     def __get_not_deleted_events(self) -> pd.DataFrame | pd.Series[Any]:

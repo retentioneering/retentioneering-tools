@@ -57,12 +57,13 @@ class Eventstream:
         self,
         raw_data_schema: RawDataSchema,
         raw_data: pd.DataFrame | pd.Series[Any],
-        schema: EventstreamSchema = EventstreamSchema(),
+        schema: EventstreamSchema | None = None,
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
         relations: Optional[List[Relation]] = None,
     ) -> None:
-        self.schema = schema
+        self.schema = schema if schema else EventstreamSchema()
+
         if not index_order:
             self.index_order = DEFAULT_INDEX_ORDER
         else:
@@ -171,7 +172,7 @@ class Eventstream:
 
         left_raw_cols = self.get_raw_cols()
         right_raw_cols = eventstream.get_raw_cols()
-        cols = self.schema.get_cols()
+        cols = list(set(self.schema.get_cols()).union(set(eventstream.schema.get_cols())))
 
         result_left_part = pd.DataFrame()
         result_right_part = pd.DataFrame()
@@ -198,6 +199,7 @@ class Eventstream:
         result_right_part[DELETE_COL_NAME] = right_events[left_delete_col] | right_events[right_delete_col]
 
         self.__events = pd.concat([result_left_part, result_right_part, result_deleted_events])
+        self.schema.custom_cols = list(set(self.schema.custom_cols).union(set(eventstream.schema.custom_cols)))
         self.index_events()
 
     def to_dataframe(self, raw_cols=False, show_deleted=False, copy=False) -> pd.DataFrame:

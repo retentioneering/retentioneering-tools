@@ -242,6 +242,11 @@ class Eventstream:
         return relation_cols
 
     def soft_delete(self, events: pd.DataFrame) -> None:
+        """
+        method deletes events either by event_id or by the last relation
+        :param events:
+        :return:
+        """
         deleted_events = events.copy()
         deleted_events[DELETE_COL_NAME] = True
         merged = pd.merge(

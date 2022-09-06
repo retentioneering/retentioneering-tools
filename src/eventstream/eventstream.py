@@ -241,6 +241,11 @@ class Eventstream:
                 relation_cols.append(col)
         return relation_cols
 
+    def add_custom_col(self, name: str, data: pd.Series[Any] | None):
+        self.__raw_data_schema.custom_cols.extend([{"custom_col": name, "raw_data_col": name}])
+        self.schema.custom_cols.extend([name])
+        self.__events[name] = data
+
     def soft_delete(self, events: pd.DataFrame) -> None:
         """
         method deletes events either by event_id or by the last relation
@@ -309,7 +314,8 @@ class Eventstream:
             raw_data_col = custom_col_schema["raw_data_col"]
             custom_col = custom_col_schema["custom_col"]
             if custom_col not in self.schema.custom_cols:
-                raise ValueError(f'invald raw data schema. Custom column "{custom_col}" does not exists in schema!')
+                self.schema.custom_cols.append(custom_col)
+                # raise ValueError(f'invald raw data schema. Custom column "{custom_col}" does not exists in schema!')
             events[custom_col] = self.__get_col_from_raw_data(
                 raw_data=raw_data,
                 colname=raw_data_col,

@@ -5,8 +5,9 @@
 
 # TODO fix me
 from __future__ import annotations
-from typing import TypedDict, List, Optional
+
 from dataclasses import dataclass, field
+from typing import List, Optional, TypedDict
 
 
 @dataclass
@@ -32,13 +33,13 @@ class EventstreamSchema:
 
     def is_equal(self, schema: EventstreamSchema) -> bool:
         return (
-            self.event_id == schema.event_id and
-            self.event_type == schema.event_type and
-            self.event_index == schema.event_index and
-            self.event_name == schema.event_name and
-            self.event_timestamp == schema.event_timestamp and
-            self.user_id == schema.user_id and
-            self.custom_cols == schema.custom_cols
+            self.event_id == schema.event_id
+            and self.event_type == schema.event_type
+            and self.event_index == schema.event_index
+            and self.event_name == schema.event_name
+            and self.event_timestamp == schema.event_timestamp
+            and self.user_id == schema.user_id
+            and (set(self.custom_cols).issubset(schema.custom_cols))
         )
 
     def get_cols(self) -> list[str]:
@@ -55,17 +56,14 @@ class EventstreamSchema:
         custom_cols: List[RawDataCustomColSchema] = []
 
         for col in self.custom_cols:
-            custom_cols.append({
-                "custom_col": col,
-                "raw_data_col": col
-            })
+            custom_cols.append({"custom_col": col, "raw_data_col": col})
 
         return RawDataSchema(
             event_name=self.event_name,
             event_type=self.event_type,
             user_id=self.user_id,
             event_timestamp=self.event_timestamp,
-            custom_cols=custom_cols
+            custom_cols=custom_cols,
         )
 
 

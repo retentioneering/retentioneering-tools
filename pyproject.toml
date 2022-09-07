@@ -1,3 +1,33 @@
 [build-system]
 requires = ["setuptools>=42"]
 build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 120
+
+[tool.pyright]
+useLibraryCodeForTypes = false
+#strict = ['**']
+typeCheckingMode = 'basic'
+stubPath = './typings'
+exclude = [
+    '**/__init__.py',
+    './typings',
+    './examples',
+    './.tox'
+]
+strictListInference = true
+strictDictionaryInference = true
+strictSetInference = true
+strictParameterNoneValue = true
+reportUntypedFunctionDecorator = "error"
+reportUntypedClassDecorator = "error"
+reportUntypedBaseClass = "error"
+#reportUnusedVariable = "error"
+reportUnusedClass = "error"
+reportUnnecessaryCast = "error"
+reportUnnecessaryComparison = "error"
+reportUnnecessaryContains = "error"
+reportUnnecessaryIsInstance = "error"
+reportImportCycles = "error"
+reportDuplicateImport = "error"

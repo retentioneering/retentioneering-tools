@@ -1,4 +1,4 @@
-from typing import Callable, Any, Optional
+from typing import Any, Callable, Optional
 
 from pandas import DataFrame
 
@@ -13,7 +13,7 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 class SimpleGroupParams(ParamsModel):
     event_name: str
     filter: EventstreamFilter
-    event_type: Optional[str] = 'group_alias'
+    event_type: Optional[str] = "group_alias"
 
 
 class SimpleGroup(DataProcessor):
@@ -27,7 +27,7 @@ class SimpleGroup(DataProcessor):
         filter_: Callable = self.params.filter
         event_type = self.params.event_type
 
-        events = eventstream.to_dataframe()
+        events = eventstream.to_dataframe(copy=True)
         mathed_events_q = filter_(events, eventstream.schema)
         matched_events = events[mathed_events_q].copy()
 
@@ -38,7 +38,7 @@ class SimpleGroup(DataProcessor):
         matched_events["ref"] = matched_events[eventstream.schema.event_id]
 
         return Eventstream(
-            raw_data=matched_events,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            relations=[{"raw_col": "ref", "evenstream": eventstream}],
+            raw_data=matched_events,
+            relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )

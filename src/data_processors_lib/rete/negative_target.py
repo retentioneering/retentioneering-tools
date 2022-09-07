@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Any, List, Optional
+from typing import Any, Callable, List
 
 import pandas as pd
 from pandas import DataFrame
@@ -19,23 +19,27 @@ def _default_func_negative(eventstream, negative_target_events) -> pd.DataFrame:
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
-    df = eventstream.to_dataframe()
+    df = eventstream.to_dataframe(copy=True)
 
     data_neg = df[df[event_col].isin(negative_target_events)]
-    data_neg = data_neg.groupby(user_col, as_index=False).apply(lambda group: group.nsmallest(1, columns=time_col)) \
+    data_neg = (
+        data_neg.groupby(user_col, as_index=False)
+        .apply(lambda group: group.nsmallest(1, columns=time_col))
         .reset_index(drop=True)
+    )
+
     return data_neg
 
 
 class NegativeTargetParams(ParamsModel):
     negative_target_events: List[str]
-    negative_function: Optional[Callable] = _default_func_negative
+    negative_function: Callable = _default_func_negative
 
 
 class NegativeTarget(DataProcessor):
     params: NegativeTargetParams
 
-    def __init__(self, params: NegativeTargetParams = None):
+    def __init__(self, params: NegativeTargetParams):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
@@ -53,6 +57,7 @@ class NegativeTarget(DataProcessor):
         eventstream = Eventstream(
             raw_data=negative_targets,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            relations=[{"raw_col": "ref", "evenstream": eventstream}],
+            raw_data=df,
+            relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         return eventstream

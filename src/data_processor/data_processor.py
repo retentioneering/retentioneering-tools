@@ -17,3 +17,9 @@ class DataProcessor:
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
         raise NotImplementedError
+
+    def export(self) -> dict[str, Any]:
+        data = {}
+        params_schema = self.params.schema()
+
+        return data

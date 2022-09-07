@@ -172,7 +172,7 @@ class Eventstream:
 
         left_raw_cols = self.get_raw_cols()
         right_raw_cols = eventstream.get_raw_cols()
-        cols = list(set(self.schema.get_cols()).union(set(eventstream.schema.get_cols())))
+        cols = self._get_both_cols(eventstream)
 
         result_left_part = pd.DataFrame()
         result_right_part = pd.DataFrame()
@@ -199,8 +199,20 @@ class Eventstream:
         result_right_part[DELETE_COL_NAME] = right_events[left_delete_col] | right_events[right_delete_col]
 
         self.__events = pd.concat([result_left_part, result_right_part, result_deleted_events])
-        self.schema.custom_cols = list(set(self.schema.custom_cols).union(set(eventstream.schema.custom_cols)))
+        self.schema.custom_cols = self._get_both_custom_cols(eventstream)
         self.index_events()
+
+    def _get_both_custom_cols(self, eventstream):
+        self_custom_cols = set(self.schema.custom_cols)
+        eventstream_custom_cols = set(eventstream.schema.custom_cols)
+        all_custom_cols = self_custom_cols.union(eventstream_custom_cols)
+        return list(all_custom_cols)
+
+    def _get_both_cols(self, eventstream):
+        self_cols = set(self.schema.get_cols())
+        eventstream_cols = set(eventstream.schema.get_cols())
+        all_cols = self_cols.union(eventstream_cols)
+        return list(all_cols)
 
     def to_dataframe(self, raw_cols=False, show_deleted=False, copy=False) -> pd.DataFrame:
         cols = self.schema.get_cols() + self.get_relation_cols()

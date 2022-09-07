@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Any, Tuple
+from typing import Callable, Any, Tuple, Optional
 
 import pandas as pd
 from pandas import DataFrame
@@ -18,7 +18,7 @@ from src.data_processors_lib.rete.constants import UOM_DICT
 
 class SplitSessionsParams(ParamsModel):
     session_cutoff: Tuple[float, str]
-    mark_truncated: bool
+    cut_truncated: Optional[bool] = False
     session_col: str
 
 
@@ -29,17 +29,17 @@ class SplitSessions(DataProcessor):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
-        events: DataFrame = eventstream.to_dataframe()
+        # events: DataFrame = eventstream.to_dataframe()
         user_col = eventstream.schema.user_id
         time_col = eventstream.schema.event_timestamp
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
         session_col = self.params.session_col
         session_cutoff = self.params.session_cutoff
-        mark_truncated = self.params.mark_truncated
+        cut_truncated = self.params.cut_truncated
 
         temp_col = 'temp_col'
-
+        df_to_del: pd.DataFrame = pd.DataFrame()
         df = eventstream.to_dataframe()
 
         shift_df = df.groupby(user_col).shift(-1)
@@ -74,7 +74,7 @@ class SplitSessions(DataProcessor):
 
         df_sessions = pd.concat([sessions_end_df, sessions_start_df])
 
-        if mark_truncated:
+        if cut_truncated:
             df_start_to_start_time = df.groupby(user_col)[[time_col]].min().reset_index()
             df_start_to_start_time['diff_start_to_start'] = df_start_to_start_time[time_col] - df_start_to_start_time[
                 time_col].min()
@@ -118,6 +118,9 @@ class SplitSessions(DataProcessor):
             #     {"custom_col": session_col, "raw_data_col": session_col}
             # ]
 
+        if not df_to_del.empty:
+            eventstream.soft_delete(df_to_del)
+
         eventstream = Eventstream(
             raw_data=df_sessions,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
@@ -125,6 +128,5 @@ class SplitSessions(DataProcessor):
             # schema=EventstreamSchema(
             #     custom_cols=[session_col])
         )
-        eventstream.soft_delete(df_to_del)
 
         return eventstream

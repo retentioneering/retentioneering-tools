@@ -49,13 +49,19 @@ class TruncatedEvents(DataProcessor):
 
             if left_truncated_cutoff[1] != 's':
                 df_end_to_end['diff_end_to_end'] = df_end_to_end['diff_end_to_end'] / UOM_DICT[left_truncated_cutoff[1]]
-            df_end_to_end.loc[df_end_to_end['diff_end_to_end'] >= left_truncated_cutoff[0],
-                              [type_col, event_col]] = 'truncated_left'
-            # df_end_to_end[[type_col, event_col]] = 'truncated_left'
 
-            df_end_to_end = df_end_to_end[df_end_to_end[type_col] == 'truncated_left']
+            left_truncated_users = df_end_to_end[df_end_to_end['diff_end_to_end'] >= left_truncated_cutoff[0]][
+                user_col].to_list()
+
+            df_end_to_end = events[events[user_col].isin(left_truncated_users)]
+
+            df_end_to_end = df_end_to_end.groupby(user_col, as_index=False).apply(
+                lambda group: group.nsmallest(1, columns=time_col)) \
+                .reset_index(drop=True)
+            df_end_to_end.loc[:, [type_col, event_col]] = 'truncated_left'
+
             df_end_to_end['ref'] = None
-            del df_end_to_end['diff_end_to_end']
+
             truncated_events = pd.concat([truncated_events, df_end_to_end])
 
         if right_truncated_cutoff:
@@ -71,16 +77,19 @@ class TruncatedEvents(DataProcessor):
                 df_start_to_start['diff_start_to_start'] = \
                     df_start_to_start['diff_start_to_start'] / UOM_DICT[right_truncated_cutoff[1]]
 
-            df_start_to_start.loc[df_start_to_start['diff_start_to_start'] >= right_truncated_cutoff[0],
-                                  [type_col, event_col]] = 'truncated_right'
-            # df_start_to_start[[type_col, event_col]] = 'truncated_right'
+            right_truncated_users = \
+                df_start_to_start[df_start_to_start['diff_start_to_start'] >= right_truncated_cutoff[0]][user_col].to_list()
 
-            df_start_to_start = df_start_to_start[df_start_to_start[type_col] == 'truncated_right']
+            df_start_to_start = events[events[user_col].isin(right_truncated_users)]
+
+            df_start_to_start = df_start_to_start.groupby(user_col, as_index=False).apply(
+                lambda group: group.nlargest(1, columns=time_col)) \
+                .reset_index(drop=True)
+            df_start_to_start.loc[:, [type_col, event_col]] = 'truncated_right'
+
             df_start_to_start['ref'] = None
 
-            del df_start_to_start['diff_start_to_start']
             truncated_events = pd.concat([truncated_events, df_start_to_start])
-            # events = pd.concat([events, df_start_to_start])
 
         eventstream = Eventstream(
             raw_data=truncated_events,

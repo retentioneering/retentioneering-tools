@@ -45,14 +45,10 @@ class PositiveTarget(DataProcessor):
         positive_function = self.params.positive_function
         positive_target_events = self.params.positive_target_events
 
-        df = eventstream.to_dataframe()
-
         positive_targets = positive_function(eventstream, positive_target_events)
         positive_targets[type_col] = 'positive_target'
         positive_targets[event_col] = 'positive_target_' + positive_targets[event_col]
         positive_targets['ref'] = None
-
-        # df = pd.concat([df, positive_targets])
 
         eventstream = Eventstream(
             raw_data=positive_targets,

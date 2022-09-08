@@ -50,14 +50,13 @@ class NegativeTarget(DataProcessor):
         negative_target_events = self.params.negative_target_events
 
         negative_targets = negative_function(eventstream, negative_target_events)
-        negative_targets[type_col] = 'negative_target'
-        negative_targets[event_col] = 'negative_target_' + negative_targets[event_col]
-        negative_targets['ref'] = None
+        negative_targets[type_col] = "negative_target"
+        negative_targets[event_col] = "negative_target_" + negative_targets[event_col]
+        negative_targets["ref"] = None
 
         eventstream = Eventstream(
-            raw_data=negative_targets,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            raw_data=df,
+            raw_data=negative_targets,
             relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         return eventstream

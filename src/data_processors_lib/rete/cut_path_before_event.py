@@ -51,12 +51,11 @@ class CutPathBeforeEvent(DataProcessor):
             lambda x: x.diff().astype(int).ne(0).cumsum()
         )
 
-        # calc event_id that should be deleted
         if cut_shift > 0:
             ids_to_del = ids_to_del + df_cut[df_cut["num_groups"] <= cut_shift][id_col].to_list()
             df_cut = df_cut[df_cut["num_groups"] > cut_shift]
         df_to_del = df.loc[df[id_col].apply(lambda x: x in ids_to_del)]
-        # calc user_id that should be deleted
+
         if min_cjm > 0:
             df_cut = df_cut.groupby([user_col])[['num_groups']].max().reset_index()
             users_to_del = df_cut[df_cut["num_groups"] < min_cjm][user_col].to_list()
@@ -65,12 +64,13 @@ class CutPathBeforeEvent(DataProcessor):
             df_to_del.drop_duplicates(inplace=True)
 
         df_to_del["ref"] = df_to_del[eventstream.schema.event_id]
-        eventstream.soft_delete(events=df_to_del)
+
 
         eventstream = Eventstream(
-            raw_data=df_to_del,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            raw_data=df,
+            raw_data=df_to_del,
             relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
+
+        eventstream.soft_delete(events=df_to_del)
         return eventstream

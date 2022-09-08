@@ -29,7 +29,6 @@ class NewResumeEvents(DataProcessor):
         time_col = eventstream.schema.event_timestamp
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
-
         new_users_list = self.params.new_users_list
 #TODO - продумать текст отбивки
         if isinstance(new_users_list, str) and new_users_list != 'all':
@@ -55,9 +54,8 @@ class NewResumeEvents(DataProcessor):
 
 
         eventstream = Eventstream(
-            raw_data=matched_events,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            raw_data=result,
+            raw_data=matched_events,
             relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         return eventstream

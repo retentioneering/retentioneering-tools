@@ -54,9 +54,8 @@ class PositiveTarget(DataProcessor):
         positive_targets["ref"] = None
 
         eventstream = Eventstream(
-            raw_data=positive_targets,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            raw_data=df,
+            raw_data=positive_targets,
             relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         return eventstream

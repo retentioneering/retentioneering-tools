@@ -18,7 +18,7 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 class SplitSessionsParams(ParamsModel):
     session_cutoff: Tuple[float, str]
-    cut_truncated: Optional[bool] = False
+    mark_truncated: Optional[bool] = False
     session_col: str
 
 
@@ -35,7 +35,7 @@ class SplitSessions(DataProcessor):
         event_col = eventstream.schema.event_name
         session_col = self.params.session_col
         session_cutoff = self.params.session_cutoff
-        cut_truncated = self.params.cut_truncated
+        mark_truncated = self.params.mark_truncated
 
         temp_col = "temp_col"
         df_to_del: pd.DataFrame = pd.DataFrame()
@@ -74,10 +74,11 @@ class SplitSessions(DataProcessor):
         sessions_start_df[event_col] = "session_start"
         sessions_start_df[type_col] = "session_start"
         sessions_start_df["ref"] = None
+        df["ref"] = df[eventstream.schema.event_id]
 
         df_sessions = pd.concat([sessions_end_df, sessions_start_df])
 
-        if cut_truncated:
+        if mark_truncated:
             df_start_to_start_time = df.groupby(user_col)[[time_col]].min().reset_index()
             df_start_to_start_time["diff_start_to_start"] = (
                 df_start_to_start_time[time_col] - df_start_to_start_time[time_col].min()
@@ -108,8 +109,8 @@ class SplitSessions(DataProcessor):
 
 
             # TODO подумать какие нужны параметры - какие события удалять, какие оставлять
-            df_to_del_start.loc[:, 'ref'] = df_to_del_start.loc[:, eventstream.schema.event_id]
-            df_to_del_end.loc[:, 'ref'] = df_to_del_end[eventstream.schema.event_id]
+            df_to_del_start.loc[:, "ref"] = df_to_del_start.loc[:, eventstream.schema.event_id]
+            df_to_del_end.loc[:, "ref"] = df_to_del_end[eventstream.schema.event_id]
 
             sessions_start_df = sessions_start_df[~sessions_start_df[session_col].isin(start_sessions)]
             sessions_end_df = sessions_end_df[~sessions_end_df[session_col].isin(end_sessions)]
@@ -118,21 +119,21 @@ class SplitSessions(DataProcessor):
 
             df_sessions = pd.concat([df_to_del_start, df_to_del_end, sessions_end_df, sessions_start_df])
 
-            # raw_data_schema = eventstream.schema.to_raw_data_schema()
-            # raw_data_schema.custom_cols = [
-            #     {"custom_col": session_col, "raw_data_col": session_col}
-            # ]
+        df = pd.concat([df, df_sessions])
+        # TODO нормально, что мы конкатим общий df c df сессий?
+        raw_data_schema = eventstream.schema.to_raw_data_schema()
+        raw_data_schema.custom_cols.append(
+            {"custom_col": session_col, "raw_data_col": session_col}
+        )
+
+        eventstream = Eventstream(
+            schema=EventstreamSchema(custom_cols=[session_col]),
+            raw_data_schema=raw_data_schema,
+            raw_data=df,
+            relations=[{"raw_col": "ref", "eventstream": eventstream}]
+        )
 
         if not df_to_del.empty:
             eventstream.soft_delete(df_to_del)
-
-        eventstream = Eventstream(
-            raw_data=df_sessions,
-            raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            raw_data=df,
-            relations=[{"raw_col": "ref", "eventstream": eventstream}],
-            # schema=EventstreamSchema(
-            #     custom_cols=[session_col])
-        )
 
         return eventstream

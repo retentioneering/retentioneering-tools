@@ -65,13 +65,14 @@ class TruncatedEvents(DataProcessor):
 
             truncated_events = pd.concat([truncated_events, df_end_to_end])
 
-    if right_truncated_cutoff:
+        if right_truncated_cutoff:
 
             df_start_to_start = (
                 events.groupby(user_col, as_index=False)
                 .apply(lambda group: group.nsmallest(1, columns=time_col))
                 .reset_index(drop=True)
             )
+
             df_start_to_start["diff_start_to_start"] = df_start_to_start[time_col] - df_start_to_start[time_col].min()
             df_start_to_start["diff_start_to_start"] = df_start_to_start["diff_start_to_start"].dt.total_seconds()
             df_start_to_start = df_start_to_start[df_start_to_start["diff_start_to_start"] != 0]

@@ -71,21 +71,19 @@ class LostPauseEvents(DataProcessor):
             data_lost[event_col] = "lost"
             data_lost["ref"] = df[eventstream.schema.event_id]
 
-            data_pause = (
-                df[~df[user_col].isin(data_lost[user_col].unique())]
-            data_pause = data_pause.groupby(user_col, as_index=False)
+            data_pause = df[~df[user_col].isin(data_lost[user_col].unique())]
+            data_pause = (data_pause.groupby(user_col, as_index=False)
                 .apply(lambda group: group.nlargest(1, columns=time_col))
                 .reset_index(drop=True)
-            )
+                )
 
-            data_pause.loc[:, [type_col, event_col]] = 'pause'
-            data_pause['ref'] = None
+            data_pause.loc[:, [type_col, event_col]] = "pause"
+            data_pause["ref"] = None
             data_lost = pd.concat([data_lost, data_pause])
 
         eventstream = Eventstream(
-            raw_data=data_lost,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            raw_data=result,
+            raw_data=data_lost,
             relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         return eventstream

@@ -148,7 +148,7 @@ class EventstreamTest(unittest.TestCase):
             ),
             raw_data=parent_df,
             schema=EventstreamSchema(event_name="name"),
-            relations=[{"evenstream": es, "raw_col": "ref"}],
+            relations=[{"eventstream": es, "raw_col": "ref"}],
         )
 
         related_df = related_es.to_dataframe()
@@ -237,7 +237,7 @@ class EventstreamTest(unittest.TestCase):
             raw_data_schema=child_schema,
             raw_data=joined_df,
             schema=schema,
-            relations=[{"evenstream": source, "raw_col": "ref_id"}],
+            relations=[{"eventstream": source, "raw_col": "ref_id"}],
         )
 
         child_events_df = child.to_dataframe()
@@ -321,7 +321,7 @@ class EventstreamTest(unittest.TestCase):
             raw_data_schema=self.__raw_data_schema,
             raw_data=related_df,
             schema=EventstreamSchema(),
-            relations=[{"evenstream": source, "raw_col": "ref_id"}],
+            relations=[{"eventstream": source, "raw_col": "ref_id"}],
         )
         click_1_df = related.to_dataframe()
 

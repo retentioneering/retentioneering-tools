@@ -19,7 +19,7 @@ def _default_func_negative(eventstream, negative_target_events):
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
-    df = eventstream.to_dataframe()
+    df = eventstream.to_dataframe(copy=True)
 
     data_neg = df[df[event_col].isin(negative_target_events)]
     data_neg = (
@@ -49,7 +49,7 @@ class NegativeTarget(DataProcessor):
         negative_function = self.params.negative_function
         negative_target_events = self.params.negative_target_events
 
-        df = eventstream.to_dataframe()
+        df = eventstream.to_dataframe(copy=True)
 
         negative_targets = negative_function(eventstream, negative_target_events)
         negative_targets[type_col] = "negative_target"
@@ -62,6 +62,6 @@ class NegativeTarget(DataProcessor):
         eventstream = Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
             raw_data=df,
-            relations=[{"raw_col": "ref", "evenstream": eventstream}],
+            relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         return eventstream

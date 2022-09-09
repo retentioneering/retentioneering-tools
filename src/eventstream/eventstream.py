@@ -42,7 +42,7 @@ DELETE_COL_NAME = "_deleted"
 
 
 class Relation(TypedDict):
-    evenstream: Eventstream
+    eventstream: Eventstream
     raw_col: Optional[str]
 
 
@@ -139,7 +139,7 @@ class Eventstream:
 
         relation_i = find_index(
             input_list=eventstream.relations,
-            cond=lambda rel: rel["evenstream"] == self,
+            cond=lambda rel: rel["eventstream"] == self,
         )
 
         if relation_i == -1:
@@ -200,7 +200,7 @@ class Eventstream:
         self.__events = pd.concat([result_left_part, result_right_part, result_deleted_events])
         self.index_events()
 
-    def to_dataframe(self, raw_cols=False, show_deleted=False) -> pd.DataFrame:
+    def to_dataframe(self, raw_cols=False, show_deleted=False, copy=False) -> pd.DataFrame:
         cols = self.schema.get_cols() + self.get_relation_cols()
 
         if raw_cols:
@@ -210,7 +210,7 @@ class Eventstream:
             cols.append(DELETE_COL_NAME)
 
         events = self.__events if show_deleted else self.__get_not_deleted_events()
-        view = pd.DataFrame(events, columns=cols)
+        view = pd.DataFrame(events, columns=cols, copy=copy)
         return view
 
     def index_events(self) -> None:
@@ -242,6 +242,11 @@ class Eventstream:
         return relation_cols
 
     def soft_delete(self, events: pd.DataFrame) -> None:
+        """
+        method deletes events either by event_id or by the last relation
+        :param events:
+        :return:
+        """
         deleted_events = events.copy()
         deleted_events[DELETE_COL_NAME] = True
         merged = pd.merge(
@@ -252,6 +257,18 @@ class Eventstream:
             indicator=True,
             how="left",
         )
+        if relation_cols := self.get_relation_cols():
+            last_relation_col = relation_cols[-1]
+            self.__events[DELETE_COL_NAME] = self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
+            merged = pd.merge(
+                left=self.__events,
+                right=deleted_events,
+                left_on=last_relation_col,
+                right_on=self.schema.event_id,
+                indicator=True,
+                how="left",
+            )
+
         self.__events[DELETE_COL_NAME] = self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
 
     def __get_not_deleted_events(self) -> pd.DataFrame | pd.Series[Any]:
@@ -326,4 +343,4 @@ class Eventstream:
     def __get_event_priority(self, event_type: Optional[str]) -> int:
         if event_type in self.index_order:
             return self.index_order.index(event_type)
-        return 8
+        return len(self.index_order)

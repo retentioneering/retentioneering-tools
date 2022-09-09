@@ -27,7 +27,7 @@ class SimpleGroup(DataProcessor):
         filter_: Callable = self.params.filter
         event_type = self.params.event_type
 
-        events = eventstream.to_dataframe()
+        events = eventstream.to_dataframe(copy=True)
         mathed_events_q = filter_(events, eventstream.schema)
         matched_events = events[mathed_events_q].copy()
 
@@ -40,5 +40,5 @@ class SimpleGroup(DataProcessor):
         return Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
             raw_data=matched_events,
-            relations=[{"raw_col": "ref", "evenstream": eventstream}],
+            relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )

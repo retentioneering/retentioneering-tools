@@ -30,6 +30,9 @@ class NewResumeEvents(DataProcessor):
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
         new_users_list = self.params.new_users_list
+#TODO - продумать текст отбивки
+        if isinstance(new_users_list, str) and new_users_list != 'all':
+            raise ValueError('Should be list of users or "all"!')
         matched_events = (
             events.groupby(user_col, as_index=False)
             .apply(lambda group: group.nsmallest(1, columns=time_col))
@@ -47,11 +50,12 @@ class NewResumeEvents(DataProcessor):
             matched_events.loc[~new_user_mask, type_col] = "resume"
             matched_events[event_col] = matched_events[type_col]
 
-        matched_events["ref"] = matched_events[eventstream.schema.event_id]
-        result = pd.concat([events, matched_events])
+        matched_events["ref"] = None
+
+
         eventstream = Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            raw_data=result,
+            raw_data=matched_events,
             relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         return eventstream

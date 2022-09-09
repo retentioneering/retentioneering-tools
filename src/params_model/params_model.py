@@ -62,7 +62,7 @@ class ParamsModel(
         hints = typing.get_type_hints(self)
         widgets: dict[str, Widget] = dict()
         for widget_name, widget_type in hints.items():
-            type_widget = widget_mapping.get(widget_type)
+            type_widget = widget_mapping[widget_type]
 
             widgets[widget_name] = type_widget(name=widget_name, optional=False)
         return widgets

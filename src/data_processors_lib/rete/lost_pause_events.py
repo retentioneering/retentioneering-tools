@@ -16,9 +16,11 @@ log = logging.getLogger(__name__)
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
+
 class LostPauseParams(ParamsModel):
     lost_cutoff: Optional[Tuple[float, str]]
     lost_users_list: Optional[List[int]]
+
 
 class LostPauseEvents(DataProcessor):
     params: LostPauseParams
@@ -60,8 +62,8 @@ class LostPauseEvents(DataProcessor):
             data_lost[event_col] = data_lost[type_col]
             data_lost["ref"] = None
             del data_lost["diff_end_to_end"]
-
-        elif lost_users_list:
+        # TODO dasha продумать правильное условие
+        if lost_users_list:
             data_lost = df[df[user_col].isin(lost_users_list)]
             data_lost = data_lost.groupby(user_col, as_index=False).apply(
                 lambda group: group.nlargest(1, columns=time_col)) \

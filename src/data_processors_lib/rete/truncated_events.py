@@ -38,6 +38,11 @@ class TruncatedEvents(DataProcessor):
         left_truncated_cutoff = self.params.left_truncated_cutoff
         right_truncated_cutoff = self.params.right_truncated_cutoff
         truncated_events = pd.DataFrame()
+
+        # TODO dasha нужно сформулировать нормальную отбивку
+        if not left_truncated_cutoff and not right_truncated_cutoff:
+            raise ValueError('left_truncated_cutoff or right_truncated_cutoff should be specified!')
+
         if left_truncated_cutoff:
 
             df_end_to_end = (

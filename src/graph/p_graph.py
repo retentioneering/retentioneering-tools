@@ -6,7 +6,7 @@ from typing import List, Optional, cast
 
 import networkx
 
-from backend import JupyterServer, ServerManager
+from src.backend import JupyterServer, ServerManager
 from src.eventstream.eventstream import Eventstream
 from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode
 

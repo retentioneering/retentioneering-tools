@@ -28,7 +28,7 @@ class TestStartEndEvents:
         events = StartEndEvents(StartEndEventsParams(**{}))
 
         result = events.apply(source)
-        result_df = result.to_dataframe(show_deleted=True)
+        result_df = result.to_dataframe()
         events_names: list[str] = result_df[result.schema.event_name].to_list()
         assert ["start", "end"] == events_names
 
@@ -39,6 +39,19 @@ class TestStartEndEvents:
             [1, 'event3', '2022-01-01 00:00:02'],
             [2, 'event4', '2022-01-02 00:00:00'],
         ], columns=['user_id', 'event', 'timestamp']
+        )
+
+        correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp']
+        correct_result = pd.DataFrame([
+            [1, 'start', 'start', '2022-01-01 00:00:00'],
+            [1, 'event1', 'raw', '2022-01-01 00:00:00'],
+            [1, 'event2', 'raw', '2022-01-01 00:00:01'],
+            [1, 'event3', 'raw', '2022-01-01 00:00:02'],
+            [1, 'end', 'end', '2022-01-01 00:00:02'],
+            [2, 'start', 'start', '2022-01-02 00:00:00'],
+            [2, 'event4', 'raw', '2022-01-02 00:00:00'],
+            [2, 'end', 'end', '2022-01-02 00:00:00'],
+        ], columns=correct_result_columns
         )
 
         stream = Eventstream(
@@ -52,10 +65,6 @@ class TestStartEndEvents:
         graph = PGraph(source_stream=stream)
         start_end_events = EventsNode(StartEndEvents(params=StartEndEventsParams(**{})))
         graph.add_node(node=start_end_events, parents=[graph.root])
-        res = graph.combine(node=start_end_events).to_dataframe(show_deleted=True)
+        res = graph.combine(node=start_end_events).to_dataframe()[correct_result_columns]
 
-        assert res[res['user_id'] == 1].iloc[0]['event_name'] == 'start'
-        assert res[res['user_id'] == 1].iloc[-1]['event_name'] == 'end'
-        assert res[res['user_id'] == 2].iloc[0]['event_name'] == 'start'
-        assert res[res['user_id'] == 2].iloc[-1]['event_name'] == 'end'
-
+        assert res.compare(correct_result).shape == (0, 0)

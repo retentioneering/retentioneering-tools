@@ -39,7 +39,7 @@ class EventstreamSchema:
             and self.event_name == schema.event_name
             and self.event_timestamp == schema.event_timestamp
             and self.user_id == schema.user_id
-            and self.custom_cols == schema.custom_cols
+            and (set(self.custom_cols).issubset(schema.custom_cols))
         )
 
     def get_cols(self) -> list[str]:

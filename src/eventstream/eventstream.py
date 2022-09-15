@@ -18,6 +18,7 @@ DEFAULT_INDEX_ORDER: IndexOrder = [
     "start",
     "new_user",
     "resume",
+    "truncated_left",
     "session_start",
     "group_alias",
     "raw",
@@ -29,6 +30,7 @@ DEFAULT_INDEX_ORDER: IndexOrder = [
     "negative_target",
     "session_end",
     "session_sleep",
+    "truncated_right",
     "pause",
     "lost",
     "end",
@@ -42,7 +44,7 @@ DELETE_COL_NAME = "_deleted"
 
 
 class Relation(TypedDict):
-    evenstream: Eventstream
+    eventstream: Eventstream
     raw_col: Optional[str]
 
 
@@ -57,12 +59,13 @@ class Eventstream:
         self,
         raw_data_schema: RawDataSchema,
         raw_data: pd.DataFrame | pd.Series[Any],
-        schema: EventstreamSchema = EventstreamSchema(),
+        schema: EventstreamSchema | None = None,
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
         relations: Optional[List[Relation]] = None,
     ) -> None:
-        self.schema = schema
+        self.schema = schema if schema else EventstreamSchema()
+
         if not index_order:
             self.index_order = DEFAULT_INDEX_ORDER
         else:
@@ -139,7 +142,7 @@ class Eventstream:
 
         relation_i = find_index(
             input_list=eventstream.relations,
-            cond=lambda rel: rel["evenstream"] == self,
+            cond=lambda rel: rel["eventstream"] == self,
         )
 
         if relation_i == -1:
@@ -171,7 +174,7 @@ class Eventstream:
 
         left_raw_cols = self.get_raw_cols()
         right_raw_cols = eventstream.get_raw_cols()
-        cols = self.schema.get_cols()
+        cols = self._get_both_cols(eventstream)
 
         result_left_part = pd.DataFrame()
         result_right_part = pd.DataFrame()
@@ -198,9 +201,22 @@ class Eventstream:
         result_right_part[DELETE_COL_NAME] = right_events[left_delete_col] | right_events[right_delete_col]
 
         self.__events = pd.concat([result_left_part, result_right_part, result_deleted_events])
+        self.schema.custom_cols = self._get_both_custom_cols(eventstream)
         self.index_events()
 
-    def to_dataframe(self, raw_cols=False, show_deleted=False) -> pd.DataFrame:
+    def _get_both_custom_cols(self, eventstream):
+        self_custom_cols = set(self.schema.custom_cols)
+        eventstream_custom_cols = set(eventstream.schema.custom_cols)
+        all_custom_cols = self_custom_cols.union(eventstream_custom_cols)
+        return list(all_custom_cols)
+
+    def _get_both_cols(self, eventstream):
+        self_cols = set(self.schema.get_cols())
+        eventstream_cols = set(eventstream.schema.get_cols())
+        all_cols = self_cols.union(eventstream_cols)
+        return list(all_cols)
+
+    def to_dataframe(self, raw_cols=False, show_deleted=False, copy=False) -> pd.DataFrame:
         cols = self.schema.get_cols() + self.get_relation_cols()
 
         if raw_cols:
@@ -210,7 +226,7 @@ class Eventstream:
             cols.append(DELETE_COL_NAME)
 
         events = self.__events if show_deleted else self.__get_not_deleted_events()
-        view = pd.DataFrame(events, columns=cols)
+        view = pd.DataFrame(events, columns=cols, copy=copy)
         return view
 
     def index_events(self) -> None:
@@ -241,7 +257,17 @@ class Eventstream:
                 relation_cols.append(col)
         return relation_cols
 
+    def add_custom_col(self, name: str, data: pd.Series[Any] | None):
+        self.__raw_data_schema.custom_cols.extend([{"custom_col": name, "raw_data_col": name}])
+        self.schema.custom_cols.extend([name])
+        self.__events[name] = data
+
     def soft_delete(self, events: pd.DataFrame) -> None:
+        """
+        method deletes events either by event_id or by the last relation
+        :param events:
+        :return:
+        """
         deleted_events = events.copy()
         deleted_events[DELETE_COL_NAME] = True
         merged = pd.merge(
@@ -252,6 +278,18 @@ class Eventstream:
             indicator=True,
             how="left",
         )
+        if relation_cols := self.get_relation_cols():
+            last_relation_col = relation_cols[-1]
+            self.__events[DELETE_COL_NAME] = self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
+            merged = pd.merge(
+                left=self.__events,
+                right=deleted_events,
+                left_on=last_relation_col,
+                right_on=self.schema.event_id,
+                indicator=True,
+                how="left",
+            )
+
         self.__events[DELETE_COL_NAME] = self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
 
     def __get_not_deleted_events(self) -> pd.DataFrame | pd.Series[Any]:
@@ -292,7 +330,8 @@ class Eventstream:
             raw_data_col = custom_col_schema["raw_data_col"]
             custom_col = custom_col_schema["custom_col"]
             if custom_col not in self.schema.custom_cols:
-                raise ValueError(f'invald raw data schema. Custom column "{custom_col}" does not exists in schema!')
+                self.schema.custom_cols.append(custom_col)
+
             events[custom_col] = self.__get_col_from_raw_data(
                 raw_data=raw_data,
                 colname=raw_data_col,
@@ -326,4 +365,4 @@ class Eventstream:
     def __get_event_priority(self, event_type: Optional[str]) -> int:
         if event_type in self.index_order:
             return self.index_order.index(event_type)
-        return 8
+        return len(self.index_order)

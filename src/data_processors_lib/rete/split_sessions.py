@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Tuple, Optional
 
 import pandas as pd
 from pandas import DataFrame
@@ -18,7 +18,7 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 class SplitSessionsParams(ParamsModel):
     session_cutoff: Tuple[float, str]
-    mark_truncated: bool
+    mark_truncated: Optional[bool] = False
     session_col: str
 
 
@@ -38,8 +38,8 @@ class SplitSessions(DataProcessor):
         mark_truncated = self.params.mark_truncated
 
         temp_col = "temp_col"
-
-        df = eventstream.to_dataframe()
+        df_to_del: pd.DataFrame = pd.DataFrame()
+        df = eventstream.to_dataframe(copy=True)
 
         shift_df = df.groupby(user_col).shift(-1)
 
@@ -64,7 +64,7 @@ class SplitSessions(DataProcessor):
         )
         sessions_end_df[event_col] = "session_end"
         sessions_end_df[type_col] = "session_end"
-        sessions_end_df["ref"] = sessions_end_df[eventstream.schema.event_id]
+        sessions_end_df["ref"] = None
 
         sessions_start_df = (
             df.groupby([user_col, session_col], as_index=False)
@@ -73,9 +73,10 @@ class SplitSessions(DataProcessor):
         )
         sessions_start_df[event_col] = "session_start"
         sessions_start_df[type_col] = "session_start"
-        sessions_start_df["ref"] = sessions_start_df[eventstream.schema.event_id]
+        sessions_start_df["ref"] = None
+        df["ref"] = df[eventstream.schema.event_id]
 
-        df = pd.concat([df, sessions_end_df, sessions_start_df])
+        df_sessions = pd.concat([sessions_end_df, sessions_start_df])
 
         if mark_truncated:
             df_start_to_start_time = df.groupby(user_col)[[time_col]].min().reset_index()
@@ -99,16 +100,40 @@ class SplitSessions(DataProcessor):
             cut_df["diff_end_to_end"] = cut_df["diff_end_to_end"] < session_cutoff[0]
             cut_df["diff_start_to_start"] = cut_df["diff_start_to_start"] < session_cutoff[0]
 
+            # разорванные сессии
             end_sessions = cut_df[cut_df["diff_end_to_end"]][session_col].to_list()
             start_sessions = cut_df[cut_df["diff_start_to_start"]][session_col].to_list()
-            # TODO dasha - после fix поменять на soft
-            df = df[df[session_col].isin(start_sessions) & ~df[type_col].isin(["start", "session_end"])]
-            # TODO dasha - после fix поменять на soft
-            df = df[df[session_col].isin(end_sessions) & ~df[type_col].isin(["end", "session_start"])]
+
+            df_to_del_start = df[df[session_col].isin(start_sessions) & ~df[type_col].isin(["start", "session_end"])]
+            df_to_del_end = df[df[session_col].isin(end_sessions) & ~df[type_col].isin(["end", "session_start"])]
+
+
+            # TODO подумать какие нужны параметры - какие события удалять, какие оставлять
+            df_to_del_start.loc[:, "ref"] = df_to_del_start.loc[:, eventstream.schema.event_id]
+            df_to_del_end.loc[:, "ref"] = df_to_del_end[eventstream.schema.event_id]
+
+            sessions_start_df = sessions_start_df[~sessions_start_df[session_col].isin(start_sessions)]
+            sessions_end_df = sessions_end_df[~sessions_end_df[session_col].isin(end_sessions)]
+
+            df_to_del = pd.concat([df_to_del_start, df_to_del_end])
+
+            df_sessions = pd.concat([df_to_del_start, df_to_del_end, sessions_end_df, sessions_start_df])
+
+        df = pd.concat([df, df_sessions])
+        # TODO нормально, что мы конкатим общий df c df сессий?
+        raw_data_schema = eventstream.schema.to_raw_data_schema()
+        raw_data_schema.custom_cols.append(
+            {"custom_col": session_col, "raw_data_col": session_col}
+        )
 
         eventstream = Eventstream(
-            raw_data_schema=eventstream.schema.to_raw_data_schema(),
+            schema=EventstreamSchema(custom_cols=[session_col]),
+            raw_data_schema=raw_data_schema,
             raw_data=df,
-            relations=[{"raw_col": "ref", "evenstream": eventstream}],
+            relations=[{"raw_col": "ref", "eventstream": eventstream}]
         )
+
+        if not df_to_del.empty:
+            eventstream.soft_delete(df_to_del)
+
         return eventstream

@@ -1,0 +1,2 @@
+class BaseReteException(Exception):
+    pass

@@ -99,6 +99,6 @@ class PGraph:
             if node not in self.__ngraph.nodes:
                 raise ValueError("node not found!")
 
-    def display(self) -> DisplayHandle:
+    def display(self, server_id: str, env: str) -> DisplayHandle:
         render = PGraphRenderer()
-        return display(HTML(render.show()))
+        return display(HTML(render.show(server_id=server_id, env=env)))

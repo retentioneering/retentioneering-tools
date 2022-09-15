@@ -3,6 +3,7 @@ from typing import List, Optional, cast
 import networkx
 from IPython.display import HTML, DisplayHandle, display
 
+from src.backend import JupyterServer, ServerManager
 from src.eventstream.eventstream import Eventstream
 from src.graph.node import EventsNode, MergeNode, Node, SourceNode
 from src.templates import PGraphRenderer
@@ -11,11 +12,15 @@ from src.templates import PGraphRenderer
 class PGraph:
     root: SourceNode
     __ngraph: networkx.DiGraph
+    __server_manager: ServerManager
+    __server: JupyterServer
 
     def __init__(self, source_stream: Eventstream) -> None:
         self.root = SourceNode(source=source_stream)
         self.__ngraph = networkx.DiGraph()
         self.__ngraph.add_node(self.root)
+        self.__server_manager = ServerManager()
+        self.__server = self.__server_manager.create_server()
 
     def add_node(self, node: Node, parents: List[Node]) -> None:
         self.__valiate_already_exists(node)
@@ -99,6 +104,6 @@ class PGraph:
             if node not in self.__ngraph.nodes:
                 raise ValueError("node not found!")
 
-    def display(self, server_id: str, env: str) -> DisplayHandle:
+    def display(self) -> DisplayHandle:
         render = PGraphRenderer()
-        return display(HTML(render.show(server_id=server_id, env=env)))
+        return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))

@@ -14,7 +14,9 @@ exclude = [
     '**/__init__.py',
     './typings',
     './examples',
-    './.tox'
+    './.tox',
+    './tests',
+    './examples'
 ]
 strictListInference = true
 strictDictionaryInference = true

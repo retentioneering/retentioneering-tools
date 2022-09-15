@@ -5,50 +5,56 @@ import pandas as pd
 from src.data_processors_lib.rete import TruncatedEvents, TruncatedParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.graph.p_graph import PGraph, EventsNode
 
 
 class TestTruncatedEvents:
     def test_truncated_events(self):
         source_df = pd.DataFrame(
             [
-                {"event_name": "pageview", "event_type": "raw", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
-                {
-                    "event_name": "cart_btn_click",
-                    "event_type": "raw",
-                    "event_timestamp": "2021-10-26 12:02",
-                    "user_id": "1",
-                },
-                {"event_name": "pageview", "event_type": "raw", "event_timestamp": "2021-10-26 12:03", "user_id": "2"},
-                {
-                    "event_name": "plus_icon_click",
-                    "event_type": "raw",
-                    "event_timestamp": "2021-10-26 12:04",
-                    "user_id": "1",
-                },
-            ]
+                [1, 'event1', '2022-01-01 00:00:00'],
+                [2, 'event1', '2022-01-01 00:30:00'],
+                [2, 'event2', '2022-01-01 00:31:00'],
+                [3, 'event1', '2022-01-01 01:00:01'],
+                [3, 'event2', '2022-01-01 01:00:02'],
+                [4, 'event1', '2022-01-01 02:01:00'],
+                [4, 'event2', '2022-01-01 02:02:00'],
+                [5, 'event1', '2022-01-01 03:00:00']
+            ], columns=['user_id', 'event', 'timestamp']
         )
 
-        source = Eventstream(
+        correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp']
+        correct_result = pd.DataFrame(
+            [
+                [1, 'truncated_left', 'truncated_left', '2022-01-01 00:00:00'],
+                [1, 'event1', 'raw', '2022-01-01 00:00:00'],
+                [2, 'truncated_left', 'truncated_left', '2022-01-01 00:30:00'],
+                [2, 'event1', 'raw', '2022-01-01 00:30:00'],
+                [2, 'event2', 'raw', '2022-01-01 00:31:00'],
+                [3, 'event1', 'raw', '2022-01-01 01:00:01'],
+                [3, 'event2', 'raw', '2022-01-01 01:00:02'],
+                [4, 'event1', 'raw', '2022-01-01 02:01:00'],
+                [4, 'event2', 'raw', '2022-01-01 02:02:00'],
+                [4, 'truncated_right', 'truncated_right', '2022-01-01 02:02:00'],
+                [5, 'event1', 'raw', '2022-01-01 03:00:00'],
+                [5, 'truncated_right', 'truncated_right', '2022-01-01 03:00:00'],
+            ], columns=correct_result_columns
+        )
+
+        stream = Eventstream(
             raw_data_schema=RawDataSchema(
-                event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
+                event_name='event', event_timestamp='timestamp', user_id='user_id'
             ),
             raw_data=source_df,
             schema=EventstreamSchema(),
         )
-        params = {"left_truncated_cutoff": (1635231790, "s"), "right_truncated_cutoff": (1635231740, "s")}
-        events = TruncatedEvents(params=TruncatedParams(**params))
 
-        result = events.apply(source)
-        result_df = result.to_dataframe(show_deleted=True)
-        events_names: list[str] = result_df[result.schema.event_name].to_list()
-        assert "truncated_left" in events_names
-        assert "truncated_right" in events_names
-        assert [
-            "pageview",
-            "cart_btn_click",
-            "pageview",
-            "truncated_left",
-            "truncated_right",
-            "plus_icon_click",
-            "truncated_left",
-        ] == events_names
+        graph = PGraph(source_stream=stream)
+        params = TruncatedParams(left_truncated_cutoff=(1, 'h'), right_truncated_cutoff=(1, 'h'))
+        truncated_events = EventsNode(TruncatedEvents(params=params))
+        graph.add_node(node=truncated_events, parents=[graph.root])
+        res = graph.combine(node=truncated_events).to_dataframe()[correct_result_columns]
+
+        assert res.compare(correct_result).shape == (0, 0)
+
+

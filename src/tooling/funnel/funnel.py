@@ -6,11 +6,11 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from src.eventstream import Eventstream
+from src.eventstream.types import EventstreamType
 
 
 class Funnel:
-    __eventstream: Eventstream
+    __eventstream: EventstreamType
     __default_layout = dict(
         margin={"l": 180, "r": 0, "t": 30, "b": 0, "pad": 0},
         funnelmode="stack",
@@ -22,7 +22,7 @@ class Funnel:
 
     def __init__(
         self,
-        eventstream: Eventstream,
+        eventstream: EventstreamType,
         targets: list[str],
         groups: pd.Series | np.ndarray | list[int] | Sized | None = None,
         group_names: list[str] | None = None,

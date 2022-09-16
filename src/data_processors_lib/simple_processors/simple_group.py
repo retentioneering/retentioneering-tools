@@ -28,8 +28,8 @@ class SimpleGroup(DataProcessor):
         event_type = self.params.event_type
 
         events = eventstream.to_dataframe(copy=True)
-        mathed_events_q = filter_(events, eventstream.schema)
-        matched_events = events[mathed_events_q].copy()
+        matched_events_q = filter_(events, eventstream.schema)
+        matched_events = events[matched_events_q].copy()
 
         if event_type is not None:
             matched_events[eventstream.schema.event_type] = event_type

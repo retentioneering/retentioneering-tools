@@ -28,20 +28,12 @@ class StartEndEvents(DataProcessor):
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 
-        matched_events_start: DataFrame = (
-            events.groupby(user_col, as_index=False)
-            .apply(lambda group: group.nsmallest(1, columns=time_col))
-            .reset_index(drop=True)
-        )
+        matched_events_start: DataFrame = events.groupby(user_col, as_index=False)[time_col].min()  # type: ignore
         matched_events_start[type_col] = "start"
         matched_events_start[event_col] = "start"
         matched_events_start["ref"] = None
 
-        matched_events_end = (
-            events.groupby(user_col, as_index=False)
-            .apply(lambda group: group.nlargest(1, columns=time_col))
-            .reset_index(drop=True)
-        )
+        matched_events_end: DataFrame = events.groupby(user_col, as_index=False)[time_col].max()  # type: ignore
         matched_events_end[type_col] = "end"
         matched_events_end[event_col] = "end"
         matched_events_end["ref"] = None

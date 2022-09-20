@@ -56,17 +56,18 @@ class CutPathAfterEvent(DataProcessor):
 
         df_cut = df[mask]
         ids_to_del = df[~mask][id_col].to_list()
-        df_cut["rw_cumsum"] = df_cut.loc[::-1].groupby([user_col])[time_col].transform(
-            lambda x: x.diff().ne(0).astype(int).cumsum())
+        df_cut["rw_cumsum"] = (
+            df_cut.loc[::-1].groupby([user_col])[time_col].transform(lambda x: x.diff().ne(0).astype(int).cumsum())
+        )
         if cut_shift > 0:
             ids_to_del = ids_to_del + df_cut[df_cut["rw_cumsum"] <= cut_shift][id_col].to_list()
             df_cut = df_cut[df_cut["rw_cumsum"] > cut_shift]
 
-        df_to_del = df.loc[df[id_col].apply(lambda x: x in ids_to_del)]
+        df_to_del = df.loc[df[id_col].apply(lambda x: x in ids_to_del)]  # type: ignore
         if min_cjm > 0:
             df_cut = df_cut.groupby([user_col])[["num_groups"]].max().reset_index()
             users_to_del = df_cut[df_cut["num_groups"] < min_cjm][user_col].to_list()
-            df_users_to_del = df.loc[df[user_col].apply(lambda x: x in users_to_del)]
+            df_users_to_del = df.loc[df[user_col].apply(lambda x: x in users_to_del)]  # type: ignore
             df_to_del = pd.concat([df_to_del, df_users_to_del])
             df_to_del.drop_duplicates(inplace=True)
 

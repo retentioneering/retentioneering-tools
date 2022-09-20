@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, List, Optional, TypedDict
+from typing import Any, List, Optional, Sized
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.eventstream.types import EventstreamType, Relation
+from src.tooling.funnel import Funnel
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
@@ -43,12 +46,7 @@ DELETE_COL_NAME = "_deleted"
 # TODO проработать резервирование колонок
 
 
-class Relation(TypedDict):
-    eventstream: Eventstream
-    raw_col: Optional[str]
-
-
-class Eventstream:
+class Eventstream(EventstreamType):
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]
@@ -88,7 +86,7 @@ class Eventstream:
             relations=self.relations.copy(),
         )
 
-    def append_eventstream(self, eventstream: Eventstream) -> None:
+    def append_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
         if not self.schema.is_equal(eventstream.schema):
             raise ValueError("invalid schema: joined eventstream")
 
@@ -136,7 +134,7 @@ class Eventstream:
         self.soft_delete(deleted_events)
         self.index_events()
 
-    def join_eventstream(self, eventstream: Eventstream) -> None:
+    def join_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
         if not self.schema.is_equal(eventstream.schema):
             raise ValueError("invalid schema: joined eventstream")
 
@@ -257,7 +255,7 @@ class Eventstream:
                 relation_cols.append(col)
         return relation_cols
 
-    def add_custom_col(self, name: str, data: pd.Series[Any] | None):
+    def add_custom_col(self, name: str, data: pd.Series[Any] | None) -> None:
         self.__raw_data_schema.custom_cols.extend([{"custom_col": name, "raw_data_col": name}])
         self.schema.custom_cols.extend([name])
         self.__events[name] = data
@@ -366,3 +364,13 @@ class Eventstream:
         if event_type in self.index_order:
             return self.index_order.index(event_type)
         return len(self.index_order)
+
+    def funnel(
+        self,
+        targets: list[str],
+        groups: pd.Series | np.ndarray | list[int] | Sized | None = None,
+        group_names: list[str] | None = None,
+    ) -> go.Figure:
+        funnel = Funnel(eventstream=self, targets=targets, groups=groups, group_names=group_names)
+        plot = funnel.draw_plot()
+        return plot

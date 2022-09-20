@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Any, Tuple, Optional, List
+from typing import Any, Callable, List, Optional, Tuple
 
 import pandas as pd
 from pandas import DataFrame
@@ -36,12 +36,13 @@ class LostPauseEvents(DataProcessor):
 
         lost_cutoff = self.params.lost_cutoff
         lost_users_list = self.params.lost_users_list
+        data_lost = pd.DataFrame()
 
         if lost_cutoff and lost_users_list:
             raise ValueError("lost_cutoff and lost_users_list parameters cannot be used at the same time!")
         # TODO dasha нужна сформулировать нормальную отбивку
         if not lost_cutoff and not lost_users_list:
-            raise ValueError('lost_cutoff or lost_users_list should be specified!')
+            raise ValueError("lost_cutoff or lost_users_list should be specified!")
 
         df = eventstream.to_dataframe(copy=True)
 
@@ -65,19 +66,22 @@ class LostPauseEvents(DataProcessor):
         # TODO dasha продумать правильное условие
         if lost_users_list:
             data_lost = df[df[user_col].isin(lost_users_list)]
-            data_lost = data_lost.groupby(user_col, as_index=False).apply(
-                lambda group: group.nlargest(1, columns=time_col)) \
+            data_lost = (
+                data_lost.groupby(user_col, as_index=False)
+                .apply(lambda group: group.nlargest(1, columns=time_col))
                 .reset_index(drop=True)
+            )
 
             data_lost[type_col] = "lost"
             data_lost[event_col] = "lost"
             data_lost["ref"] = df[eventstream.schema.event_id]
 
             data_pause = df[~df[user_col].isin(data_lost[user_col].unique())]
-            data_pause = (data_pause.groupby(user_col, as_index=False)
+            data_pause = (
+                data_pause.groupby(user_col, as_index=False)
                 .apply(lambda group: group.nlargest(1, columns=time_col))
                 .reset_index(drop=True)
-                )
+            )
 
             data_pause.loc[:, [type_col, event_col]] = "pause"
             data_pause["ref"] = None

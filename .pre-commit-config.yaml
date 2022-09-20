@@ -4,8 +4,10 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
+        exclude: "examples/"
       - id: check-yaml
       - id: check-added-large-files
+        exclude: "examples/"
   - repo: https://github.com/hadialqattan/pycln
     rev: v2.1.1 # Possible releases: https://github.com/hadialqattan/pycln/releases
     hooks:

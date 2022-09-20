@@ -7,3 +7,4 @@ from .positive_target import PositiveTarget, PositiveTargetParams
 from .split_sessions import SplitSessions, SplitSessionsParams
 from .start_end_events import StartEndEvents, StartEndEventsParams
 from .truncated_events import TruncatedEvents, TruncatedParams
+from .collapse_loops import CollapseLoops, CollapseLoopsParams

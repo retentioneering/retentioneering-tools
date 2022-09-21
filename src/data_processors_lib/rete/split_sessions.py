@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Tuple, Optional
+from typing import Any, Callable, Optional, Tuple
 
 import pandas as pd
 from pandas import DataFrame
@@ -107,7 +107,6 @@ class SplitSessions(DataProcessor):
             df_to_del_start = df[df[session_col].isin(start_sessions) & ~df[type_col].isin(["start", "session_end"])]
             df_to_del_end = df[df[session_col].isin(end_sessions) & ~df[type_col].isin(["end", "session_start"])]
 
-
             # TODO подумать какие нужны параметры - какие события удалять, какие оставлять
             df_to_del_start.loc[:, "ref"] = df_to_del_start.loc[:, eventstream.schema.event_id]
             df_to_del_end.loc[:, "ref"] = df_to_del_end[eventstream.schema.event_id]
@@ -122,15 +121,13 @@ class SplitSessions(DataProcessor):
         df = pd.concat([df, df_sessions])
         # TODO нормально, что мы конкатим общий df c df сессий?
         raw_data_schema = eventstream.schema.to_raw_data_schema()
-        raw_data_schema.custom_cols.append(
-            {"custom_col": session_col, "raw_data_col": session_col}
-        )
+        raw_data_schema.custom_cols.append({"custom_col": session_col, "raw_data_col": session_col})
 
         eventstream = Eventstream(
             schema=EventstreamSchema(custom_cols=[session_col]),
             raw_data_schema=raw_data_schema,
             raw_data=df,
-            relations=[{"raw_col": "ref", "eventstream": eventstream}]
+            relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
 
         if not df_to_del.empty:

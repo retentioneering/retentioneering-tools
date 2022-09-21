@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from src.eventstream.eventstream import Eventstream
@@ -14,6 +15,16 @@ class DataProcessor:
             raise TypeError("params is not subclass of ParamsModel")
 
         self.params = params
+        self.pk = uuid.uuid4()
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
         raise NotImplementedError
+
+    def export(self) -> dict[str, Any]:
+        data: dict[str, Any] = {}
+        widgets: dict[str, Any] = self.params.get_widgets()
+        data["name"] = self.__class__.__name__
+        data["pk"] = str(self.pk)
+        data["schema"] = self.params.schema()
+        data["widgets"] = widgets
+        return data

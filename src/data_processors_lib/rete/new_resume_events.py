@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Callable, List, Union
 
-import pandas as pd
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
@@ -30,8 +29,8 @@ class NewResumeEvents(DataProcessor):
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
         new_users_list = self.params.new_users_list
-#TODO - продумать текст отбивки
-        if isinstance(new_users_list, str) and new_users_list != 'all':
+        # TODO - продумать текст отбивки
+        if isinstance(new_users_list, str) and new_users_list != "all":
             raise ValueError('Should be list of users or "all"!')
         matched_events = (
             events.groupby(user_col, as_index=False)
@@ -51,7 +50,6 @@ class NewResumeEvents(DataProcessor):
             matched_events[event_col] = matched_events[type_col]
 
         matched_events["ref"] = None
-
 
         eventstream = Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),

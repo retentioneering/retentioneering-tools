@@ -36,7 +36,7 @@ class TestLostPause:
             schema=EventstreamSchema(),
         )
 
-        events = LostPauseEvents(params=LostPauseParams(lost_users_list=[2], lost_cutoff=None, func=None))
+        events = LostPauseEvents(params=LostPauseParams(lost_users_list=[2], lost_cutoff=None))
 
         result = events.apply(source)
         result_df = result.to_dataframe(show_deleted=True)

@@ -8,7 +8,7 @@ from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.graph.p_graph import PGraph, EventsNode
 
 class TestNewResume:
-    def test_new_resume_apply_1(self):
+    def test_new_resume_apply__new_users_list_id(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:01:00'],
             [1, 'event1', '2022-01-01 00:02:00'],
@@ -44,7 +44,7 @@ class TestNewResume:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_new_resume_apply_2(self):
+    def test_new_resume_apply__new_users_list_all(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:01:00'],
             [1, 'event1', '2022-01-01 00:02:00'],
@@ -80,7 +80,9 @@ class TestNewResume:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_new_resume_combine_1(self):
+
+class TestNewResumeGraph:
+    def test_new_resume_graph__new_users_list_id(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:01:00'],
             [1, 'event2', '2022-01-01 00:01:02'],
@@ -126,7 +128,7 @@ class TestNewResume:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_new_resume_combine_2(self):
+    def test_new_resume_graph__new_users_list_all(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:01:00'],
             [1, 'event1', '2022-01-01 00:02:00'],
@@ -170,4 +172,3 @@ class TestNewResume:
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)
-

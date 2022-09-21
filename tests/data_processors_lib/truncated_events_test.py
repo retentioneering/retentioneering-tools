@@ -8,7 +8,7 @@ from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.graph.p_graph import PGraph, EventsNode
 
 
-class TestTruncatedEvents:
+class TestTruncatedEventsGraph:
     def test_truncated_events(self):
         source_df = pd.DataFrame(
             [

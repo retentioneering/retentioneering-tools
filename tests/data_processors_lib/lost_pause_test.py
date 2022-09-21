@@ -7,8 +7,9 @@ from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.graph.p_graph import PGraph, EventsNode
 
+
 class TestLostPause:
-    def test_lost_pause_apply_1(self):
+    def test_lost_pause_apply__lost_users_list(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:01:00'],
             [1, 'event1', '2022-01-01 00:02:00'],
@@ -44,7 +45,7 @@ class TestLostPause:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_lost_pause_apply_2(self):
+    def test_lost_pause_apply__lost_cutoff(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:01:00'],
             [1, 'event1', '2022-01-01 00:02:00'],
@@ -80,7 +81,9 @@ class TestLostPause:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_lost_pause_combine_1(self):
+
+class TestLostPauseGraph:
+    def test_lost_pause_graph__lost_users_list(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:01:00'],
             [1, 'event2', '2022-01-01 00:01:02'],
@@ -126,7 +129,7 @@ class TestLostPause:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_lost_pause_combine_2(self):
+    def test_lost_pause_graph__lost_cutoff(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:01:00'],
             [1, 'event1', '2022-01-01 00:02:00'],

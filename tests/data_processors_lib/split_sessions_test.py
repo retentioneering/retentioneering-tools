@@ -9,7 +9,7 @@ from src.graph.p_graph import PGraph, EventsNode
 
 
 class TestSplitSessions:
-    def test_split_session(self):
+    def test_split_session__data_processor(self):
         source_df = pd.DataFrame(
             [
                 {"event_name": "pageview", "event_type": "raw", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
@@ -51,7 +51,7 @@ class TestSplitSessions:
         # @TODO: add correct test after example of needed work. Vladimir Makhanov
         assert True
 
-    def test_split_sesssion_2(self):
+    def test_split_sesssion(self):
         source_df = pd.DataFrame(
             [
                 [111, 'event1', '2022-01-01 00:00:00'],
@@ -113,7 +113,7 @@ class TestSplitSessions:
 
         assert res.compare(correct_result).shape == (0, 0)
 
-    def test_split_sesssion_3(self):
+    def test_split_sesssion__mark_truncated_true(self):
         source_df = pd.DataFrame(
             [
                 [111, 'event1', '2022-01-01 00:00:00'],

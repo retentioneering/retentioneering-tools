@@ -69,7 +69,7 @@ class TestSplitSessions:
         )
 
         correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp', 'session_id']
-        correct_result_1 = pd.DataFrame(
+        correct_result = pd.DataFrame(
             [
                 [111, 'session_start', 'session_start', '2022-01-01 00:00:00', '111_1'],
                 [111, 'event1', 'raw', '2022-01-01 00:00:00', '111_1'],
@@ -95,7 +95,43 @@ class TestSplitSessions:
             ], columns=correct_result_columns
         )
 
-        correct_result_2 = pd.DataFrame(
+        stream = Eventstream(
+            raw_data_schema=RawDataSchema(
+                event_name='event', event_timestamp='timestamp', user_id='user_id'
+            ),
+            raw_data=source_df,
+            schema=EventstreamSchema(),
+        )
+
+        graph = PGraph(source_stream=stream)
+        params = SplitSessionsParams(session_cutoff=(30, 'm'), session_col='session_id')
+        splitted_sessions = EventsNode(SplitSessions(params=params))
+        graph.add_node(node=splitted_sessions, parents=[graph.root])
+        res = graph.combine(node=splitted_sessions).to_dataframe()[correct_result_columns]\
+            .sort_values(['user_id', 'event_timestamp'])\
+            .reset_index(drop=True)
+
+        assert res.compare(correct_result).shape == (0, 0)
+
+    def test_split_sesssion_3(self):
+        source_df = pd.DataFrame(
+            [
+                [111, 'event1', '2022-01-01 00:00:00'],
+                [111, 'event2', '2022-01-01 00:01:00'],
+                [111, 'event3', '2022-01-01 00:33:00'],
+                [111, 'event4', '2022-01-01 00:34:00'],
+                [222, 'event1', '2022-01-01 00:30:00'],
+                [222, 'event2', '2022-01-01 00:31:00'],
+                [222, 'event3', '2022-01-01 01:01:00'],
+                [333, 'event1', '2022-01-01 01:00:00'],
+                [333, 'event2', '2022-01-01 01:01:00'],
+                [333, 'event3', '2022-01-01 01:32:00'],
+                [333, 'event4', '2022-01-01 01:33:00']
+            ], columns=['user_id', 'event', 'timestamp']
+        )
+
+        correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp', 'session_id']
+        correct_result = pd.DataFrame(
             [
                 [111, 'session_start', 'session_start', '2022-01-01 00:00:00', '111_1'],
                 [111, 'session_start_truncated', 'session_start_truncated', '2022-01-01 00:00:00', '111_1'],
@@ -131,18 +167,6 @@ class TestSplitSessions:
             schema=EventstreamSchema(),
         )
 
-        # основной тест
-        graph = PGraph(source_stream=stream)
-        params = SplitSessionsParams(session_cutoff=(30, 'm'), session_col='session_id')
-        splitted_sessions = EventsNode(SplitSessions(params=params))
-        graph.add_node(node=splitted_sessions, parents=[graph.root])
-        res = graph.combine(node=splitted_sessions).to_dataframe()[correct_result_columns]\
-            .sort_values(['user_id', 'event_timestamp'])\
-            .reset_index(drop=True)
-
-        assert res.compare(correct_result_1).shape == (0, 0)
-
-        # проверка mark_truncated
         graph = PGraph(source_stream=stream)
         params = SplitSessionsParams(session_cutoff=(30, 'm'), session_col='session_id', mark_truncated=True)
         splitted_sessions = EventsNode(SplitSessions(params=params))
@@ -151,4 +175,4 @@ class TestSplitSessions:
             .sort_values(['user_id', 'event_timestamp'])\
             .reset_index(drop=True)
 
-        assert res.compare(correct_result_2).shape == (0, 0)
+        assert res.compare(correct_result).shape == (0, 0)

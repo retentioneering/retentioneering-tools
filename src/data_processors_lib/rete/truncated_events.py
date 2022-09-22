@@ -8,7 +8,6 @@ import pandas as pd
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
-from src.data_processors_lib.rete.constants import UOM_DICT
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
@@ -54,7 +53,7 @@ class TruncatedEvents(DataProcessor):
         )
 
         if left_truncated_cutoff:
-            timedelta = (userpath["end"] - events[time_col].min()).dt.total_seconds() / UOM_DICT[left_truncated_unit]
+            timedelta = (userpath["end"] - events[time_col].min()) / np.timedelta64(1, left_truncated_unit)
             left_truncated_events = (
                 userpath[timedelta < left_truncated_cutoff][["start"]]
                 .rename(columns={"start": time_col})  # type: ignore
@@ -66,7 +65,7 @@ class TruncatedEvents(DataProcessor):
             truncated_events = pd.concat([truncated_events, left_truncated_events])
 
         if right_truncated_cutoff:
-            timedelta = (events[time_col].max() - userpath["start"]).dt.total_seconds() / UOM_DICT[left_truncated_unit]
+            timedelta = (events[time_col].max() - userpath["start"]) / np.timedelta64(1, right_truncated_unit)
             right_truncated_events = (
                 userpath[timedelta < right_truncated_cutoff][["end"]]
                 .rename(columns={"end": time_col})  # type: ignore

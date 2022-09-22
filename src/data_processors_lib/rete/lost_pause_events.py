@@ -74,7 +74,7 @@ class LostPauseEvents(DataProcessor):
 
             data_lost[type_col] = "lost"
             data_lost[event_col] = "lost"
-            data_lost["ref"] = df[eventstream.schema.event_id]
+            data_lost["ref"] = None
 
             data_pause = df[~df[user_col].isin(data_lost[user_col].unique())]
             data_pause = (

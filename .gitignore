@@ -6,3 +6,4 @@ typings
 .python-version
 .pytest_cache
 .tox
+src/retentioneering_tools.egg-info/

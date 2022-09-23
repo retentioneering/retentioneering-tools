@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Literal, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -18,7 +18,7 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class LostPauseParams(ParamsModel):
-    lost_cutoff: Optional[Tuple[float, str]]
+    lost_cutoff: Optional[Tuple[float, Literal['Y', 'M', 'D', 'h', 'm', 's']]]
     lost_users_list: Optional[List[int]]
 
 

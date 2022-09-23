@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Literal, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -18,8 +18,8 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class TruncatedParams(ParamsModel):
-    left_truncated_cutoff: Optional[Tuple[float, str]]
-    right_truncated_cutoff: Optional[Tuple[float, str]]
+    left_truncated_cutoff: Optional[Tuple[float, Literal['Y', 'M', 'D', 'h', 'm', 's']]]
+    right_truncated_cutoff: Optional[Tuple[float, Literal['Y', 'M', 'D', 'h', 'm', 's']]]
 
 
 class TruncatedEvents(DataProcessor):

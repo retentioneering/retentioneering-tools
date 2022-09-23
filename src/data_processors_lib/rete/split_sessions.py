@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Literal, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,7 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class SplitSessionsParams(ParamsModel):
-    session_cutoff: Tuple[float, str]
+    session_cutoff: Tuple[float, Literal['Y', 'M', 'D', 'h', 'm', 's']]
     mark_truncated: Optional[bool] = False
     session_col: str
 

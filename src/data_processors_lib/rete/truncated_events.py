@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Literal, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
+from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
@@ -18,8 +19,8 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class TruncatedParams(ParamsModel):
-    left_truncated_cutoff: Optional[Tuple[float, Literal['Y', 'M', 'D', 'h', 'm', 's']]]
-    right_truncated_cutoff: Optional[Tuple[float, Literal['Y', 'M', 'D', 'h', 'm', 's']]]
+    left_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
+    right_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
 
 
 class TruncatedEvents(DataProcessor):

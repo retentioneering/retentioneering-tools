@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
+from pydantic import ValidationError
 from src.data_processors_lib.rete import SplitSessions, SplitSessionsParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
@@ -176,3 +178,8 @@ class TestSplitSessions:
             .reset_index(drop=True)
 
         assert res.compare(correct_result).shape == (0, 0)
+
+    def test_params_model__incorrect_datetime_unit(self):
+        with pytest.raises(ValidationError):
+            p = SplitSessionsParams(session_cutoff=(1, 'xxx'))
+

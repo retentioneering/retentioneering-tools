@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
+from pydantic import ValidationError
 from src.data_processors_lib.rete import LostPauseEvents, LostPauseParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
@@ -80,6 +82,10 @@ class TestLostPause:
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)
+
+    def test_params_model__incorrect_datetime_unit(self):
+        with pytest.raises(ValidationError):
+            p = LostPauseParams(lost_cutoff=(1, 'xxx'))
 
 
 class TestLostPauseGraph:

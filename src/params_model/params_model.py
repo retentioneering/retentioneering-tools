@@ -25,7 +25,7 @@ class CustomWidgetDataType(TypedDict):
         for custom_field in custom_fields:
             widget_params = custom_widgets[custom_field]
             if not all([x in required_params_for_widget for x in widget_params]):
-                raise ValidationError("Not all fields in <%s>" % custom_field)
+                raise ValidationError("Not all fields in <%s>" % custom_field)  # type: ignore
         return custom_widgets
 
 
@@ -69,17 +69,12 @@ class ParamsModel(BaseModel):
         optionals = {name: name not in required for name in properties.keys()}
         definitions = params_schema.get("definitions", {})
         widgets = {}
-        print(self.custom_widgets)
         for name, params in properties.items():
             widget = None
             if name == "custom_widgets":
                 pass
             elif name in self.custom_widgets:
-                custom_widget = self.custom_widgets[name]  # type: ignore
-                _widget = WIDGET_MAPPING[custom_widget["widget"]]
-
-                print(name)
-                print("AAAAAAAAAAAAAAAAAAAAAA")
+                widget = self._parse_custom_widget(name=name, optional=optionals[name])
             elif "$ref" in params:
                 widget = self._parse_schema_definition(params, definitions, optional=optionals[name])
             elif "allOf" in params:
@@ -117,8 +112,10 @@ class ParamsModel(BaseModel):
         except KeyError:
             raise Exception("Not found widget. Define new widget for %s and add it to mapping." % widget_type)
 
-    def _parse_custom_widget(self, name: str, params: dict[str, Any]) -> WIDGET_TYPE:
-        pass
+    def _parse_custom_widget(self, name: str, optional: bool = False) -> WIDGET_TYPE:
+        custom_widget = self.custom_widgets[name]  # type: ignore
+        _widget = WIDGET_MAPPING[custom_widget["widget"]]
+        return _widget(optional=optional, name=name, widget=custom_widget["widget"], value=getattr(self, name))
 
     def get_widgets(self):
         return self._parse_schemas()

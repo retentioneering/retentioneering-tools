@@ -42,9 +42,9 @@ class CutPathBeforeEvent(DataProcessor):
 
         df["_point"] = 0
         df.loc[df[event_col].isin(cutoff_events), "_point"] = 1
-        df["_point"] = df.groupby([user_col, time_col])._point.transform(max)
+        df["_point"] = df.groupby([user_col, time_col])._point.transform(max)  # type: ignore
 
-        _cumsum = df.groupby([user_col])._point.cumsum()
+        _cumsum = df.groupby([user_col])._point.cumsum()  # type: ignore
         df_cut = df[_cumsum > 0]
         ids_to_del = df[_cumsum == 0][id_col].to_list()
 

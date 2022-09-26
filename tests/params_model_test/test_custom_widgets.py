@@ -24,4 +24,4 @@ class TestCustomWidgets:
         )
         schema = params.get_widgets()
         assert "asdasd" == params.a
-        assert "ghjdsbknfm" in schema
+        assert {"name": "a", "optional": False, "value": "asdasd", "widget": "string"} == schema["a"]

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from typing import Any, Callable, List
 
 import pandas as pd
@@ -11,7 +10,6 @@ from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
 
-log = logging.getLogger(__name__)
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
@@ -48,18 +46,14 @@ class PositiveTarget(DataProcessor):
         positive_function: Callable[[Eventstream, list[str]], pd.DataFrame] = self.params.positive_function
         positive_target_events = self.params.positive_target_events
 
-        df = eventstream.to_dataframe(copy=True)
-
         positive_targets = positive_function(eventstream, positive_target_events)
         positive_targets[type_col] = "positive_target"
         positive_targets[event_col] = "positive_target_" + positive_targets[event_col]
-        positive_targets["ref"] = positive_targets[eventstream.schema.event_id]
-
-        df = pd.concat([df, positive_targets])
+        positive_targets["ref"] = None
 
         eventstream = Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            raw_data=df,
+            raw_data=positive_targets,
             relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         return eventstream

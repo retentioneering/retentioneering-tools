@@ -7,11 +7,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional, TypedDict
+from typing import List, Optional
+
+from src.eventstream.types import (
+    EventstreamSchemaType,
+    RawDataCustomColSchema,
+    RawDataSchemaType,
+)
 
 
 @dataclass
-class EventstreamSchema:
+class EventstreamSchema(EventstreamSchemaType):
     event_id: str = "event_id"
     event_type: str = "event_type"
     event_index: str = "event_index"
@@ -39,7 +45,7 @@ class EventstreamSchema:
             and self.event_name == schema.event_name
             and self.event_timestamp == schema.event_timestamp
             and self.user_id == schema.user_id
-            and self.custom_cols == schema.custom_cols
+            and (set(self.custom_cols).issubset(schema.custom_cols))
         )
 
     def get_cols(self) -> list[str]:
@@ -67,13 +73,8 @@ class EventstreamSchema:
         )
 
 
-class RawDataCustomColSchema(TypedDict):
-    raw_data_col: str
-    custom_col: str
-
-
 @dataclass
-class RawDataSchema:
+class RawDataSchema(RawDataSchemaType):
     event_name: str = "event_name"
     event_timestamp: str = "event_timestamp"
     user_id: str = "user_id"

@@ -115,7 +115,9 @@ class ParamsModel(BaseModel):
     def _parse_custom_widget(self, name: str, optional: bool = False) -> WIDGET_TYPE:
         custom_widget = self.custom_widgets[name]  # type: ignore
         _widget = WIDGET_MAPPING[custom_widget["widget"]]
-        return _widget(optional=optional, name=name, widget=custom_widget["widget"], value=getattr(self, name))
+        current_value = getattr(self, name)
+        serialized_value = custom_widget["serialize"](current_value)
+        return _widget(optional=optional, name=name, widget=custom_widget["widget"], value=serialized_value)
 
     def get_widgets(self):
         return self._parse_schemas()

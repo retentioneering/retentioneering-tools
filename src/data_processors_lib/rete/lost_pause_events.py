@@ -2,16 +2,17 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
-from src.data_processors_lib.rete.constants import UOM_DICT
+from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.eventstream import Eventstream
 from src.params_model import ParamsModel
 
 
 class LostPauseParams(ParamsModel):
-    lost_cutoff: Optional[Tuple[float, str]]
+    lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
     lost_users_list: Optional[List[int]]
 
 
@@ -27,15 +28,18 @@ class LostPauseEvents(DataProcessor):
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 
-        lost_cutoff = self.params.lost_cutoff
+        lost_cutoff, lost_cutoff_unit = None, None
         lost_users_list = self.params.lost_users_list
         data_lost = pd.DataFrame()
 
+        if self.params.lost_cutoff:
+            lost_cutoff, lost_cutoff_unit = self.params.lost_cutoff
+
         if lost_cutoff and lost_users_list:
-            raise ValueError("lost_cutoff and lost_users_list parameters cannot be used at the same time!")
-        # TODO dasha нужна сформулировать нормальную отбивку
+            raise ValueError("lost_cutoff and lost_users_list parameters cannot be used simultaneously!")
+
         if not lost_cutoff and not lost_users_list:
-            raise ValueError("lost_cutoff or lost_users_list should be specified!")
+            raise ValueError("Either lost_cutoff or lost_users_list must be specified!")
 
         df = eventstream.to_dataframe(copy=True)
 
@@ -46,12 +50,10 @@ class LostPauseEvents(DataProcessor):
                 .reset_index(drop=True)
             )
             data_lost["diff_end_to_end"] = data_lost[time_col].max() - data_lost[time_col]
-            data_lost["diff_end_to_end"] = data_lost["diff_end_to_end"].dt.total_seconds()
-            if lost_cutoff[1] != "s":
-                data_lost["diff_end_to_end"] = data_lost["diff_end_to_end"] / UOM_DICT[lost_cutoff[1]]
+            data_lost["diff_end_to_end"] /= np.timedelta64(1, lost_cutoff_unit)
 
             data_lost[type_col] = data_lost.apply(
-                lambda x: "pause" if x["diff_end_to_end"] < lost_cutoff[0] else "lost", axis=1
+                lambda x: "pause" if x["diff_end_to_end"] < lost_cutoff else "lost", axis=1
             )
             data_lost[event_col] = data_lost[type_col]
             data_lost["ref"] = None

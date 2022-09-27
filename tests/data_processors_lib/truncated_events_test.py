@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
+from pydantic import ValidationError
 from src.data_processors_lib.rete import TruncatedEvents, TruncatedParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
@@ -96,5 +98,10 @@ class TestTruncatedEventsGraph:
         res = graph.combine(node=truncated_events).to_dataframe()[correct_result_columns]
 
         assert res.compare(correct_result).shape == (0, 0)
+
+    def test_params_model__incorrect_datetime_unit(self):
+        with pytest.raises(ValidationError):
+            p = TruncatedParams(left_truncated_cutoff=(1, 'xxx'))
+
 
 

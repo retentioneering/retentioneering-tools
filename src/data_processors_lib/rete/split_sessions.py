@@ -6,13 +6,14 @@ import numpy as np
 import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
+from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
 
 
 class SplitSessionsParams(ParamsModel):
-    session_cutoff: Tuple[float, str]
+    session_cutoff: Tuple[float, DATETIME_UNITS]
     mark_truncated: Optional[bool] = False
     session_col: str
 

@@ -49,6 +49,10 @@ class TestTruncatedEvents:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
+    def test_params_model__incorrect_datetime_unit(self):
+        with pytest.raises(ValidationError):
+            p = TruncatedParams(left_truncated_cutoff=(1, 'xxx'))
+
 
 class TestTruncatedEventsGraph:
     def test_truncated_events_graph(self):
@@ -99,9 +103,7 @@ class TestTruncatedEventsGraph:
 
         assert res.compare(correct_result).shape == (0, 0)
 
-    def test_params_model__incorrect_datetime_unit(self):
-        with pytest.raises(ValidationError):
-            p = TruncatedParams(left_truncated_cutoff=(1, 'xxx'))
+
 
 
 

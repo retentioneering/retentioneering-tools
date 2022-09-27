@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib.rete import NewResumeEvents, NewResumeParams
+from src.data_processors_lib.rete import NewUserEvents, NewUserParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.graph.p_graph import PGraph, EventsNode
@@ -30,12 +30,12 @@ class TestNewResume:
             schema=EventstreamSchema(),
         )
 
-        events = NewResumeEvents(params=NewResumeParams(new_users_list=[2]))
+        events = NewUserEvents(params=NewUserParams(new_users_list=[2]))
 
         correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp']
 
         correct_result = pd.DataFrame([
-            [1, 'resume', 'resume', '2022-01-01 00:01:00'],
+            [1, 'existing_user', 'existing_user', '2022-01-01 00:01:00'],
             [2, 'new_user', 'new_user', '2022-01-02 00:00:00']
         ], columns=correct_result_columns
         )
@@ -66,7 +66,7 @@ class TestNewResume:
             schema=EventstreamSchema(),
         )
 
-        events = NewResumeEvents(params=NewResumeParams(new_users_list='all'))
+        events = NewUserEvents(params=NewUserParams(new_users_list='all'))
 
         correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp']
 
@@ -104,12 +104,12 @@ class TestNewResumeGraph:
             schema=EventstreamSchema(),
         )
         graph = PGraph(source_stream=source)
-        events = EventsNode(NewResumeEvents(params=NewResumeParams(new_users_list=[2])))
+        events = EventsNode(NewUserEvents(params=NewUserParams(new_users_list=[2])))
         graph.add_node(node=events, parents=[graph.root])
         correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp']
 
         correct_result = pd.DataFrame([
-            [1, 'resume', 'resume', '2022-01-01 00:01:00'],
+            [1, 'existing_user', 'existing_user', '2022-01-01 00:01:00'],
             [1, 'event1', 'raw', '2022-01-01 00:01:00'],
             [1, 'event2', 'raw', '2022-01-01 00:01:02'],
             [1, 'event1', 'raw', '2022-01-01 00:02:00'],
@@ -150,7 +150,7 @@ class TestNewResumeGraph:
             schema=EventstreamSchema(),
         )
         graph = PGraph(source_stream=source)
-        events = EventsNode(NewResumeEvents(params=NewResumeParams(new_users_list='all')))
+        events = EventsNode(NewUserEvents(params=NewUserParams(new_users_list='all')))
         graph.add_node(node=events, parents=[graph.root])
         correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp']
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable, List, Union
+from typing import Any, Callable, List, Union, Literal
 
 from pandas import DataFrame
 
@@ -13,7 +13,7 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class NewResumeParams(ParamsModel):
-    new_users_list: Union[List[int], str]
+    new_users_list: Union[List[int], Literal['all']]
 
 
 class NewResumeEvents(DataProcessor):

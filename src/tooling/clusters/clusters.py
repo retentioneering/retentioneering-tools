@@ -6,7 +6,6 @@ import pandas as pd
 
 from src.eventstream.types import EventstreamType
 
-
 COUNT_COL_NAME = "count"
 UserClass = Union[str, int]
 
@@ -16,10 +15,7 @@ class UserList:
     __users: pd.DataFrame
     __eventstream: EventstreamType
 
-    def __init__(
-            self,
-            eventstream: EventstreamType
-    ) -> None:
+    def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.__users = self.__make_userlist()
 
@@ -29,23 +25,14 @@ class UserList:
     def to_dataframe(self):
         return self.__users.copy()
 
-    def add_classes(
-            self,
-            colname: str,
-            classes: pd.DataFrame
-    ) -> None:
+    def add_classes(self, colname: str, classes: pd.DataFrame) -> None:
         user_col = self.__eventstream.schema.user_id
         self.__users.reset_index(inplace=True, drop=True)
         merged = self.__users.merge(classes, on=user_col, how="left")
         merged.reset_index(inplace=True, drop=True)
         self.__users[colname] = merged[colname]
 
-    def assign(
-            self,
-            colname: str,
-            value: UserClass,
-            users: pd.Series[Any] | list[Any]
-    ) -> None:
+    def assign(self, colname: str, value: UserClass, users: pd.Series[Any] | list[Any]) -> None:
         user_col = self.__eventstream.schema.user_id
         matched = self.__users[user_col].isin(users)
         matched_users = self.__users[matched].copy()
@@ -53,38 +40,24 @@ class UserList:
         source_col = self.__users[colname]
         source_col.update(matched_users[colname])
 
-    def get_count(
-            self,
-            colname: str
-    ) -> int:
+    def get_count(self, colname: str) -> int:
         usercol = self.__eventstream.schema.user_id
         r = self.__users.groupby([colname])[usercol].count().reset_index()
         return r
 
-    def mark_eventstream(
-            self,
-            colname: str,
-            inplace: bool = False
-    ):
+    def mark_eventstream(self, colname: str, inplace: bool = False):
         eventstream = self.__eventstream if inplace else self.__eventstream.copy()
 
         usercol = eventstream.schema.user_id
         eventstream_df = eventstream.to_dataframe()
 
         users = self.__users[[usercol, colname]]
-        merged = eventstream_df.merge(users, how='left', on=usercol)
+        merged = eventstream_df.merge(users, how="left", on=usercol)
         marked_col = merged[colname]
-        eventstream.add_custom_col(
-            name=colname,
-            data=marked_col
-        )
+        eventstream.add_custom_col(name=colname, data=marked_col)
         return eventstream
 
-    def get_eventstream_subset(
-            self,
-            colname: str,
-            values: list[UserClass] = None
-    ) -> pd.Series[Any]:
+    def get_eventstream_subset(self, colname: str, values: list[UserClass] = None) -> pd.Series[Any]:
         usercol = self.__eventstream.schema.user_id
         matched = self.__users[colname].isin(values=values)
         users_subset = self.__users[matched]

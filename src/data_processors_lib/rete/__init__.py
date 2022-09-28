@@ -1,6 +1,6 @@
 from .cut_path_after_event import CutPathAfterEvent, CutPathAfterEventParams
 from .cut_path_before_event import CutPathBeforeEvent, CutPathBeforeEventParams
-from .lost_pause_events import LostPauseEvents, LostPauseParams
+from .lost_users_events import LostUsersEvents, LostUsersParams
 from .negative_target import NegativeTarget, NegativeTargetParams
 from .new_users import NewUserEvents, NewUserParams
 from .positive_target import PositiveTarget, PositiveTargetParams

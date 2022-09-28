@@ -36,8 +36,8 @@ DEFAULT_INDEX_ORDER: IndexOrder = [
     "session_end",
     "session_sleep",
     "truncated_right",
-    "pause",
-    "lost",
+    "absent_user",
+    "lost_user",
     "end",
 ]
 

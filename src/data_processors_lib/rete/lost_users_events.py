@@ -1,21 +1,14 @@
 from __future__ import annotations
 
-import logging
-from typing import Any, Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
-
-log = logging.getLogger(__name__)
-
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class LostUsersParams(ParamsModel):

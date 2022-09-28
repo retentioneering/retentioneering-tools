@@ -5,7 +5,6 @@ from typing import Any, Callable, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.constants import DATETIME_UNITS
@@ -14,7 +13,7 @@ from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
 
 log = logging.getLogger(__name__)
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
+EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchema], Any]
 
 
 class SplitSessionsParams(ParamsModel):

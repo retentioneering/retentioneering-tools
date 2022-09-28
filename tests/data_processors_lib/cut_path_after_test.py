@@ -9,7 +9,7 @@ from src.graph.p_graph import PGraph, EventsNode
 
 
 class TestCutPathAfter:
-    def test_cut_path_after_apply__1_event(self):
+    def test_cut_path_after_apply__by_one_event(self):
 
         source_df = pd.DataFrame([
             [1, 'start', 'start', '2022-01-01 00:01:00'],
@@ -65,7 +65,7 @@ class TestCutPathAfter:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_cut_path_after_apply__2_events(self):
+    def test_cut_path_after_apply__by_two_events(self):
 
         source_df = pd.DataFrame([
             [1, 'start', 'start', '2022-01-01 00:01:00'],
@@ -316,7 +316,7 @@ class TestCutPathAfter:
 
 
 class TestCutPathAfterGraph:
-    def test_cut_path_after_graph__1_event(self):
+    def test_cut_path_after_graph__by_one_event(self):
 
         source_df = pd.DataFrame([
             [1, 'start', 'start', '2022-01-01 00:01:00'],
@@ -384,7 +384,7 @@ class TestCutPathAfterGraph:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_cut_path_after_graph__2_events(self):
+    def test_cut_path_after_graph__by_two_events(self):
 
         source_df = pd.DataFrame([
             [1, 'start', 'start', '2022-01-01 00:01:00'],

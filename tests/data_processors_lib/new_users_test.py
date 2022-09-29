@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib.rete import NewUserEvents, NewUserParams
+from src.data_processors_lib.rete import NewUsersEvents, NewUsersParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.graph.p_graph import PGraph, EventsNode
 
-class TestNewResume:
-    def test_new_resume_apply__new_users_list_id(self):
+
+class TestNewUsers:
+    def test_new_users_apply__new_users_list_id(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:01:00'],
             [1, 'event1', '2022-01-01 00:02:00'],
@@ -30,7 +31,7 @@ class TestNewResume:
             schema=EventstreamSchema(),
         )
 
-        events = NewUserEvents(params=NewUserParams(new_users_list=[2]))
+        events = NewUsersEvents(params=NewUsersParams(new_users_list=[2]))
 
         correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp']
 
@@ -44,7 +45,7 @@ class TestNewResume:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_new_resume_apply__new_users_list_all(self):
+    def test_new_users_apply__new_users_list_all(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:01:00'],
             [1, 'event1', '2022-01-01 00:02:00'],
@@ -66,7 +67,7 @@ class TestNewResume:
             schema=EventstreamSchema(),
         )
 
-        events = NewUserEvents(params=NewUserParams(new_users_list='all'))
+        events = NewUsersEvents(params=NewUsersParams(new_users_list='all'))
 
         correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp']
 
@@ -81,8 +82,8 @@ class TestNewResume:
         assert result_df.compare(correct_result).shape == (0, 0)
 
 
-class TestNewResumeGraph:
-    def test_new_resume_graph__new_users_list_id(self):
+class TestNewUsersGraph:
+    def test_new_users_graph__new_users_list_id(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:01:00'],
             [1, 'event2', '2022-01-01 00:01:02'],
@@ -104,7 +105,7 @@ class TestNewResumeGraph:
             schema=EventstreamSchema(),
         )
         graph = PGraph(source_stream=source)
-        events = EventsNode(NewUserEvents(params=NewUserParams(new_users_list=[2])))
+        events = EventsNode(NewUsersEvents(params=NewUsersParams(new_users_list=[2])))
         graph.add_node(node=events, parents=[graph.root])
         correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp']
 
@@ -128,7 +129,7 @@ class TestNewResumeGraph:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_new_resume_graph__new_users_list_all(self):
+    def test_new_users_graph__new_users_list_all(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:01:00'],
             [1, 'event1', '2022-01-01 00:02:00'],
@@ -150,7 +151,7 @@ class TestNewResumeGraph:
             schema=EventstreamSchema(),
         )
         graph = PGraph(source_stream=source)
-        events = EventsNode(NewUserEvents(params=NewUserParams(new_users_list='all')))
+        events = EventsNode(NewUsersEvents(params=NewUsersParams(new_users_list='all')))
         graph.add_node(node=events, parents=[graph.root])
         correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp']
 

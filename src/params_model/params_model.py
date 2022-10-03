@@ -4,8 +4,8 @@ from collections.abc import Iterable
 from dataclasses import asdict
 from typing import Any, Callable, Dict, Optional, TypedDict
 
-from pydantic import BaseModel, Field, ValidationError, validator
-from pydantic.fields import ModelField
+from pydantic import BaseModel, ValidationError, validator
+from pydantic.fields import FieldInfo, ModelField
 
 from src.widget import WIDGET_MAPPING, WIDGET_TYPE
 
@@ -18,8 +18,8 @@ class CustomWidgetDataType(TypedDict):
         yield cls.validate
 
     @classmethod  # type: ignore
-    def validate(cls, value, field: ModelField):
-        custom_widgets = field.field_info.extra["custom_widgets"]
+    def validate(cls, value: FieldInfo, field: ModelField):
+        custom_widgets = field.field_info.extra.get("custom_widgets") or value.default
         custom_fields = custom_widgets.keys()
         required_params_for_widget = ["widget", "serialize", "parse"]
         for custom_field in custom_fields:
@@ -30,7 +30,7 @@ class CustomWidgetDataType(TypedDict):
 
 
 class ParamsModel(BaseModel):
-    custom_widgets: Optional[CustomWidgetDataType] = Field(custom_widgets=None)
+    custom_widgets: Optional[CustomWidgetDataType] = None
 
     @classmethod
     def _validate_custom_widgets(cls, value: Any) -> bool:
@@ -59,7 +59,12 @@ class ParamsModel(BaseModel):
                 pass
         return value
 
-    def __init__(self, **data: Dict[str, Any]) -> None:
+    def __init__(
+        self,
+        # custom_widgets: CustomWidgetDataType | None = None,
+        **data: Dict[str, Any],
+    ) -> None:
+        # self.custom_widgets = custom_widgets
         super().__init__(**data)
 
     def _parse_schemas(self) -> dict[str, Any]:

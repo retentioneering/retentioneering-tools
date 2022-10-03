@@ -9,7 +9,7 @@ from src.graph.p_graph import EventsNode, PGraph
 
 
 class TestStartEndEvents:
-    def test_start_end(self):
+    def test_start_end__apply(self):
         source_df = pd.DataFrame(
             [
                 [1, "pageview", "raw", "2021-10-26 12:00"],
@@ -34,7 +34,9 @@ class TestStartEndEvents:
         events_names: list[str] = result_df[result.schema.event_name].to_list()
         assert ["start", "end"] == events_names
 
-    def test_start_end_2(self):
+
+class TestStartEndEventsGraph:
+    def test_start_end__graph(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:00:00"],

@@ -1,14 +1,9 @@
-from typing import Any, Callable
-
 import pandas as pd
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
-
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class StartEndEventsParams(ParamsModel):

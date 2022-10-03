@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict
 
 from pydantic import BaseModel, validator
 
-from widget import WIDGET_MAPPING, WIDGET_TYPE
+from src.widget import WIDGET_MAPPING, WIDGET_TYPE
 
 
 class ParamsModel(BaseModel):

@@ -89,8 +89,9 @@ class SimpleProcessorsTest(unittest.TestCase):
 
         self.assertEqual(events_names, ["cart_btn_click", "plus_icon_click"])
 
-    def test_simple_group_combine(self):
 
+class TestSimpleProcessorsGraph():
+    def test_simple_group_graph(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:00:00'],
             [1, 'event2', '2022-01-01 00:00:01'],
@@ -116,8 +117,7 @@ class SimpleProcessorsTest(unittest.TestCase):
         )
 
         def filter_(df, schema):
-            return ((df[schema.user_id].isin([2])) |
-                    (df.event_name.str.contains('event2')))
+            return (df[schema.user_id].isin([2])) | (df.event_name.str.contains('event2'))
 
         graph = PGraph(source_stream=stream)
 
@@ -129,12 +129,11 @@ class SimpleProcessorsTest(unittest.TestCase):
         )
 
         graph.add_node(node=event_agg, parents=[graph.root])
-        res = graph.combine(node=event_agg).to_dataframe()[correct_result_columns]\
-                    .reset_index(drop=True)
+        res = graph.combine(node=event_agg).to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert res.compare(correct_result).shape == (0, 0)
 
-    def test_delete_combine(self):
+    def test_delete_graph(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:00:00'],
             [1, 'event2', '2022-01-01 00:00:01'],

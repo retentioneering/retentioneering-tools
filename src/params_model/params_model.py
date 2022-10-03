@@ -30,7 +30,7 @@ class CustomWidgetDataType(TypedDict):
 
 
 class ParamsModel(BaseModel):
-    custom_widgets: CustomWidgetDataType = Field(custom_widgets=None)
+    custom_widgets: Optional[CustomWidgetDataType] = Field(custom_widgets=None)
 
     @classmethod
     def _validate_custom_widgets(cls, value: Any) -> bool:
@@ -73,7 +73,8 @@ class ParamsModel(BaseModel):
             widget = None
             if name == "custom_widgets":
                 pass
-            elif name in self.custom_widgets:
+            # CustomWidget inherits from dict, but may be None
+            elif name in self.custom_widgets:  # type: ignore
                 widget = self._parse_custom_widget(name=name, optional=optionals[name])
             elif "$ref" in params:
                 widget = self._parse_schema_definition(params, definitions, optional=optionals[name])

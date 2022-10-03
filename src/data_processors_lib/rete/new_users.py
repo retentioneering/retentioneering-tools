@@ -13,7 +13,7 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class NewUsersParams(ParamsModel):
-    new_users_list: Union[List[int], Literal['all']]
+    new_users_list: Union[List[int], Literal["all"]]
 
 
 class NewUsersEvents(DataProcessor):
@@ -37,8 +37,8 @@ class NewUsersEvents(DataProcessor):
             matched_events[event_col] = "new_user"
         else:
             new_user_mask = matched_events[user_col].isin(new_users_list)
-            matched_events.loc[new_user_mask, type_col] = "new_user"
-            matched_events.loc[~new_user_mask, type_col] = "existing_user"
+            matched_events.loc[new_user_mask, type_col] = "new_user"  # type: ignore
+            matched_events.loc[~new_user_mask, type_col] = "existing_user"  # type: ignore
             matched_events[event_col] = matched_events[type_col]
 
         matched_events["ref"] = None

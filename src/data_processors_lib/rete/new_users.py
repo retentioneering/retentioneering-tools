@@ -12,14 +12,14 @@ from src.params_model import ParamsModel
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-class NewUserParams(ParamsModel):
+class NewUsersParams(ParamsModel):
     new_users_list: Union[List[int], Literal['all']]
 
 
-class NewUserEvents(DataProcessor):
-    params: NewUserParams
+class NewUsersEvents(DataProcessor):
+    params: NewUsersParams
 
-    def __init__(self, params: NewUserParams):
+    def __init__(self, params: NewUsersParams):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:

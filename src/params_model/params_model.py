@@ -61,10 +61,8 @@ class ParamsModel(BaseModel):
 
     def __init__(
         self,
-        # custom_widgets: CustomWidgetDataType | None = None,
         **data: Dict[str, Any],
     ) -> None:
-        # self.custom_widgets = custom_widgets
         super().__init__(**data)
 
     def _parse_schemas(self) -> dict[str, Any]:

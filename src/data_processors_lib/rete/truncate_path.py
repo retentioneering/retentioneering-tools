@@ -21,8 +21,6 @@ class TruncatePath(DataProcessor):
 
     def __init__(self, params: TruncatePathParams):
         super().__init__(params=params)
-        # if not left_truncated_cutoff and not right_truncated_cutoff:
-        #     raise ValueError("Either left_truncated_cutoff or right_truncated_cutoff must be specified!")
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
         user_col = eventstream.schema.user_id
@@ -38,20 +36,19 @@ class TruncatePath(DataProcessor):
 
         df = eventstream.to_dataframe(copy=True)
         params_data: list[Any] = []
+
         if not drop_after and not drop_before:
-            raise Exception("WAT?")
+            raise Exception("Either drop_before or drop_after must be specified!")
 
         if drop_before:
-            if not occurrence_before or not shift_before:
-                raise Exception("")
-            before: list[str | list[str | int]] | None = [drop_before, ["before", occurrence_before, shift_before]]
+            before: list[str | list[str | int | None]] | None = [
+                drop_before,
+                ["before", occurrence_before, shift_before],
+            ]
             params_data.append(before)
 
         if drop_after:
-            if not occurrence_after or not shift_after:
-                raise Exception("")
-
-            after: list[str | list[str | int]] | None = [drop_after, ["after", occurrence_after, shift_after]]
+            after: list[str | list[str | int | None]] | None = [drop_after, ["after", occurrence_after, shift_after]]
             params_data.append(after)
 
         for truncate_type in params_data:

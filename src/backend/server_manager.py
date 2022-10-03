@@ -56,7 +56,7 @@ class ServerManager:
             )
 
     def _on_comm_message(self, comm: Comm, open_msg) -> None:
-        @comm.on_msg
+        @comm.on_msg  # type: ignore
         def _recv(msg):
             data: dict[str, Any] = msg["content"]["data"]
             server_id = data["server_id"]

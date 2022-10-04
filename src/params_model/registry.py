@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from utils.singleton import Singleton
 
 
 class ParamsModelRegistry(metaclass=Singleton):
-    REGISTRY = {}
+    REGISTRY: dict[str, type] = {}
 
     def __setitem__(self, key, value):
         self.REGISTRY[key] = value

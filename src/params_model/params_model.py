@@ -6,12 +6,12 @@ from typing import Any, Callable, Dict
 
 from pydantic import BaseModel, validator
 
-from .registry import register_params_model
 from src.widget import WIDGET_MAPPING, WIDGET_TYPE
+
+from .registry import register_params_model
 
 
 class ParamsModel(BaseModel):
-
     @classmethod
     def __init_subclass__(cls, **kwargs):
         register_params_model(cls)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List, Optional, cast
 
 import networkx
@@ -12,15 +14,13 @@ from src.templates import PGraphRenderer
 class PGraph:
     root: SourceNode
     __ngraph: networkx.DiGraph
-    __server_manager: ServerManager
-    __server: JupyterServer
+    __server_manager: ServerManager | None = None
+    __server: JupyterServer | None = None
 
     def __init__(self, source_stream: Eventstream) -> None:
         self.root = SourceNode(source=source_stream)
         self.__ngraph = networkx.DiGraph()
         self.__ngraph.add_node(self.root)
-        self.__server_manager = ServerManager()
-        self.__server = self.__server_manager.create_server()
 
     def add_node(self, node: Node, parents: List[Node]) -> None:
         self.__valiate_already_exists(node)
@@ -105,5 +105,11 @@ class PGraph:
                 raise ValueError("node not found!")
 
     def display(self) -> DisplayHandle:
+        if not self.__server_manager:
+            self.__server_manager = ServerManager()
+
+        if not self.__server:
+            self.__server = self.__server_manager.create_server()
+
         render = PGraphRenderer()
         return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))

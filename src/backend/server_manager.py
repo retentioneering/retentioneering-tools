@@ -104,11 +104,12 @@ class ServerManager:
                 ),
             )
         if env == "classic":
-            from IPython import get_ipython
+            from IPython.core.getipython import get_ipython
 
-            get_ipython().kernel.comm_manager.register_target(
-                "JupyterServerMainCallback", lambda comm, open_msg: self._on_comm_message(comm, open_msg)
-            )
+            if get_ipython() is not None:
+                get_ipython().kernel.comm_manager.register_target(
+                    "JupyterServerMainCallback", lambda comm, open_msg: self._on_comm_message(comm, open_msg)
+                )
         self._main_listener_created = True
 
     def check_env(self) -> str:

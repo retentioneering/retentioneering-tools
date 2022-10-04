@@ -17,7 +17,7 @@ class CustomWidgetProperties(TypedDict):
 
 
 class CustomWidgetDataType(dict):
-    custom_widgets: dict[str, CustomWidgetDataType]
+    custom_widgets: dict[str, CustomWidgetProperties]
 
 
 class ParamsModel(BaseModel):

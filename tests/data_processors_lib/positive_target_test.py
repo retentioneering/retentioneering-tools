@@ -7,6 +7,7 @@ from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.graph.p_graph import PGraph, EventsNode
 
+
 class TestPositiveTarget:
     def test_positive_target_apply__1_event(self):
         source_df = pd.DataFrame([

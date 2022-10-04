@@ -10,8 +10,8 @@ from src.params_model import ParamsModel
 class TruncatePathParams(ParamsModel):
     drop_before: Optional[str]
     drop_after: Optional[str]
-    occurrence_before: Optional[Literal["first", "last"]] = "first"
-    occurrence_after: Optional[Literal["first", "last"]] = "first"
+    occurrence_before: Literal["first", "last"] = "first"
+    occurrence_after: Literal["first", "last"] = "first"
     shift_before: int = 0
     shift_after: int = 0
 

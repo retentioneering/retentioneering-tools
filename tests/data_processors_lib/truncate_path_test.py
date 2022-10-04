@@ -125,7 +125,7 @@ class TestTruncatePath:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_truncate_path_apply__before_first_plus(self):
+    def test_truncate_path_apply__before_first_positive_shift(self):
         source_df = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],
@@ -188,7 +188,7 @@ class TestTruncatePath:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_truncate_path_apply__before_first_minus(self):
+    def test_truncate_path_apply__before_first_negative_shift(self):
         source_df = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],
@@ -240,7 +240,7 @@ class TestTruncatePath:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_truncate_path_apply__before_last_plus(self):
+    def test_truncate_path_apply__before_last_positive_shift(self):
         source_df = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],
@@ -305,7 +305,7 @@ class TestTruncatePath:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_truncate_path_apply__before_last_minus(self):
+    def test_truncate_path_apply__before_last_negative_shift(self):
         source_df = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],
@@ -468,7 +468,7 @@ class TestTruncatePath:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_truncate_path_apply__after_first_plus(self):
+    def test_truncate_path_apply__after_first_positive_shift(self):
         source_df = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],
@@ -515,7 +515,7 @@ class TestTruncatePath:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_truncate_path_apply__after_first_minus(self):
+    def test_truncate_path_apply__after_first_negative_shift(self):
         source_df = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],
@@ -576,7 +576,7 @@ class TestTruncatePath:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_truncate_path_apply__after_last_plus(self):
+    def test_truncate_path_apply__after_last_positive_shift(self):
         source_df = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],
@@ -621,7 +621,7 @@ class TestTruncatePath:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_truncate_path_apply__after_last_minus(self):
+    def test_truncate_path_apply__after_last_negative_shift(self):
         source_df = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],

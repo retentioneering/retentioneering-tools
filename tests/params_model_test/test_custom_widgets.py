@@ -1,10 +1,8 @@
 from typing import Tuple
 
 
-
 class TestCustomWidgets:
     def test_simple_custom_widget(self) -> None:
-        from pydantic import Field
 
         from src.params_model import CustomWidgetDataType, ParamsModel
         from src.params_model.params_model import CustomWidgetProperties
@@ -19,20 +17,12 @@ class TestCustomWidgets:
             a: Tuple[int, str]
             b: int
 
-            custom_widgets: CustomWidgetDataType = CustomWidgetDataType(
-                **{"a": CustomWidgetProperties(**{"widget": "string", "serialize": serialize, "parse": parse})}
-            )
+            class AdditionalParams:
+                custom_widgets: CustomWidgetDataType = CustomWidgetDataType(
+                    a=CustomWidgetProperties(widget="string", serialize=serialize, parse=parse)
+                )
 
-        params = TestWidgets(**dict(
-            a=(1, "asd"),
-            b=10,
-        ))
-
-        # params = TestWidgets(
-        #     a=(1, "asd"),
-        #     b=10,
-        #     custom_widgets=Field({"a": {"widget": "string", "serialize": serialize, "parse": parse}}),
-        # )
+        params = TestWidgets(a=(1, "asd"), b=10)
 
         schema = params.get_widgets()
         assert (1, "asd") == params.a

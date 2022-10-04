@@ -5,4 +5,5 @@ typings
 .idea/
 .python-version
 .pytest_cache
-src/retentioneering_tools.egg-info
+src/retentioneering_tools.egg-info/
+.tox/

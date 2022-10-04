@@ -17,7 +17,7 @@ class TestCustomWidgets:
             a: Tuple[int, str]
             b: int
 
-            class AdditionalParams:
+            class Options:
                 custom_widgets: CustomWidgetDataType = CustomWidgetDataType(
                     a=CustomWidgetProperties(widget="string", serialize=serialize, parse=parse)
                 )

@@ -21,7 +21,7 @@ class CustomWidgetDataType(dict):
 
 
 class ParamsModel(BaseModel):
-    class AdditionalParams:
+    class Options:
         custom_widgets: Optional[CustomWidgetDataType]
 
     @validator("*")
@@ -58,7 +58,7 @@ class ParamsModel(BaseModel):
             widget = None
             if name == "custom_widgets":
                 pass
-            elif name in self.AdditionalParams.custom_widgets:  # type: ignore
+            elif name in self.Options.custom_widgets:  # type: ignore
                 widget = self._parse_custom_widget(name=name, optional=optionals[name])
             elif "$ref" in params:
                 widget = self._parse_schema_definition(params, definitions, optional=optionals[name])
@@ -98,7 +98,7 @@ class ParamsModel(BaseModel):
             raise Exception("Not found widget. Define new widget for %s and add it to mapping." % widget_type)
 
     def _parse_custom_widget(self, name: str, optional: bool = False) -> WIDGET_TYPE:
-        custom_widget = self.AdditionalParams.custom_widgets[name]  # type: ignore
+        custom_widget = self.Options.custom_widgets[name]  # type: ignore
         _widget = WIDGET_MAPPING[custom_widget["widget"]]
         current_value = getattr(self, name)
         serialized_value = custom_widget["serialize"](current_value)

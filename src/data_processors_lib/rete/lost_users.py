@@ -43,10 +43,10 @@ class LostUsersEvents(DataProcessor):
 
         df = eventstream.to_dataframe(copy=True)
 
-        if lost_cutoff:
+        if lost_cutoff and lost_cutoff_unit:
             data_lost = df.groupby(user_col, as_index=False)[time_col].max()
             data_lost["diff_end_to_end"] = data_lost[time_col].max() - data_lost[time_col]
-            data_lost["diff_end_to_end"] /= np.timedelta64(1, lost_cutoff_unit)
+            data_lost["diff_end_to_end"] /= np.timedelta64(1, lost_cutoff_unit)  # type: ignore
 
             data_lost[type_col] = np.where(data_lost["diff_end_to_end"] < lost_cutoff, "absent_user", "lost_user")
             data_lost[event_col] = data_lost[type_col]
@@ -55,7 +55,7 @@ class LostUsersEvents(DataProcessor):
 
         if lost_users_list:
             data_lost = df.groupby(user_col, as_index=False)[time_col].max()
-            data_lost[type_col] = np.where(data_lost['user_id'].isin(lost_users_list), "lost_user", "absent_user")
+            data_lost[type_col] = np.where(data_lost["user_id"].isin(lost_users_list), "lost_user", "absent_user")
             data_lost[event_col] = data_lost[type_col]
             data_lost["ref"] = None
 

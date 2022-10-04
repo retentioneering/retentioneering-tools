@@ -79,7 +79,7 @@ class SimpleProcessorsTest(unittest.TestCase):
         )
 
         def filter_(df: pd.DataFrame, schema: EventstreamSchema) -> pd.Series[bool]:
-            return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
+            return ~df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
 
         delete_factory = FilterEvents(FilterEventsParams(filter=filter_))
 
@@ -159,7 +159,7 @@ class TestSimpleProcessorsGraph():
         stream_orig = stream.to_dataframe()
 
         def filter_(df, schema):
-            return ((df[schema.user_id].isin([2])) |
+            return ~((df[schema.user_id].isin([2])) |
                     (df.event_name.str.contains('event2')))
 
         graph = PGraph(source_stream=stream)

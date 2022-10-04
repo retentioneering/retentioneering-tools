@@ -171,21 +171,21 @@ class EventstreamTest(unittest.TestCase):
                 )
             )
         )
-        trash_events = EventsNode(
-            FilterEvents(FilterEventsParams(filter=lambda df, schema: df[schema.event_name] == "trash_event"))
+        allowed_events = EventsNode(
+            FilterEvents(FilterEventsParams(filter=lambda df, schema: df[schema.event_name] != "trash_event"))
         )
         merge = MergeNode()
 
         graph = PGraph(source)
         graph.add_node(node=cart_events, parents=[graph.root])
         graph.add_node(node=logout_events, parents=[graph.root])
-        graph.add_node(node=trash_events, parents=[graph.root])
+        graph.add_node(node=allowed_events, parents=[graph.root])
         graph.add_node(
             node=merge,
             parents=[
                 cart_events,
                 logout_events,
-                trash_events,
+                allowed_events,
             ],
         )
 

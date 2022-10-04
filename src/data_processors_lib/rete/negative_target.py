@@ -17,16 +17,12 @@ def _default_func_negative(eventstream, negative_target_events) -> pd.DataFrame:
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
-    df = eventstream.to_dataframe(copy=True)
+    df = eventstream.to_dataframe()
 
-    data_neg = df[df[event_col].isin(negative_target_events)]
-    data_neg = (
-        data_neg.groupby(user_col, as_index=False)
-        .apply(lambda group: group.nsmallest(1, columns=time_col))
-        .reset_index(drop=True)
-    )
+    negative_events_index = df[df[event_col].isin(negative_target_events)]\
+        .groupby(user_col)[time_col].idxmin()
 
-    return data_neg
+    return df.iloc[negative_events_index]
 
 
 class NegativeTargetParams(ParamsModel):

@@ -97,10 +97,10 @@ class EventstreamTest(unittest.TestCase):
                     "type": "raw",
                 },
                 {
-                    "name": "pause",
+                    "name": "absent_user",
                     "event_timestamp": "2021-10-26 12:03",
                     "user_id": "1",
-                    "type": "pause",
+                    "type": "absent_user",
                 },
                 {
                     "name": "click_2",
@@ -129,7 +129,7 @@ class EventstreamTest(unittest.TestCase):
         df = es.to_dataframe()
 
         names: list[str] = [event[es.schema.event_name] for [_, event] in df.iterrows()]
-        self.assertListEqual(names, ["pageview", "click_1", "start", "click_2", "pause", "end"])
+        self.assertListEqual(names, ["pageview", "click_1", "start", "click_2", "absent_user", "end"])
 
     def test_create_relation(self):
         es = Eventstream(raw_data_schema=self.__raw_data_schema, raw_data=self.__raw_data, schema=EventstreamSchema())

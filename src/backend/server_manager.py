@@ -56,7 +56,7 @@ class ServerManager:
             )
 
     def _on_comm_message(self, comm: Comm, open_msg) -> None:
-        @comm.on_msg
+        @comm.on_msg  # type: ignore
         def _recv(msg):
             data: dict[str, Any] = msg["content"]["data"]
             server_id = data["server_id"]
@@ -104,11 +104,12 @@ class ServerManager:
                 ),
             )
         if env == "classic":
-            from IPython import get_ipython
+            from IPython.core.getipython import get_ipython
 
-            get_ipython().kernel.comm_manager.register_target(
-                "JupyterServerMainCallback", lambda comm, open_msg: self._on_comm_message(comm, open_msg)
-            )
+            if get_ipython() is not None:
+                get_ipython().kernel.comm_manager.register_target(
+                    "JupyterServerMainCallback", lambda comm, open_msg: self._on_comm_message(comm, open_msg)
+                )
         self._main_listener_created = True
 
     def check_env(self) -> str:

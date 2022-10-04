@@ -5,16 +5,24 @@ from dataclasses import asdict
 from typing import Any, Callable, Dict
 
 from pydantic import BaseModel, validator
+from pydantic.main import ModelMetaclass
 
 from src.widget import WIDGET_MAPPING, WIDGET_TYPE
-
 from .registry import register_params_model
 
 
-class ParamsModel(BaseModel):
-    @classmethod
-    def __init_subclass__(cls, **kwargs):
-        register_params_model(cls)
+class _ReteParamsModelMetaclass(ModelMetaclass):
+
+    def __new__(cls, name: str, bases: tuple, namespace: dict, **kwargs: dict) -> type:
+        obj = super().__new__(cls, name, bases, namespace, **kwargs)
+        return obj
+
+
+class ParamsModel(BaseModel, metaclass=_ReteParamsModelMetaclass):
+
+    # @classmethod
+    # def __init_subclass__(cls, **kwargs):
+    #     register_params_model(cls)
 
     @validator("*")
     def validate_subiterable(cls, value: Any) -> Any:
@@ -26,7 +34,7 @@ class ParamsModel(BaseModel):
                 else:
                     subvalue = next(iter(value))
                 if (isinstance(subvalue, array_types) or hasattr(subvalue, "__getitem__")) and not isinstance(
-                    subvalue, str
+                        subvalue, str
                 ):
                     raise ValueError("Inner iterable or hashable not allowed!")
             except TypeError:
@@ -56,11 +64,11 @@ class ParamsModel(BaseModel):
         return widgets
 
     def _parse_schema_definition(
-        self,
-        params: dict[str, dict[str, Any]] | Any,
-        definitions: dict[str, Any],
-        default: Any | None = None,
-        optional: bool = True,
+            self,
+            params: dict[str, dict[str, Any]] | Any,
+            definitions: dict[str, Any],
+            default: Any | None = None,
+            optional: bool = True,
     ) -> WIDGET_TYPE:
         ref: str = params.get("$ref", "") or params.get("allOf", [{}])[0].get("$ref", "")  # type: ignore
         definition_name = ref.split("/")[-1]

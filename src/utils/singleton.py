@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from backend import ServerManager
-
 
 class Singleton:
     _instances: dict = {}  # type: ignore

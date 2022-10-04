@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from utils.singleton import Singleton
 
-
-class ParamsModelRegistry(metaclass=Singleton):
+class ParamsModelRegistry:
     REGISTRY: dict[str, type] = {}
 
     def __setitem__(self, key, value):
@@ -18,4 +16,5 @@ params_model_registry = ParamsModelRegistry()
 
 
 def register_params_model(cls):
+    print(f'REGISTER {cls.__name__}')
     params_model_registry[cls.__name__] = cls

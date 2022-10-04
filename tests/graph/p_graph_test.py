@@ -16,7 +16,8 @@ from src.data_processors_lib.simple_processors.simple_group import (
 )
 from src.eventstream.eventstream import Eventstream, EventstreamSchema
 from src.eventstream.schema import RawDataSchema
-from src.graph.p_graph import EventsNode, MergeNode, Node, PGraph, SourceNode
+from src.graph.node import EventsNode, MergeNode, Node, SourceNode
+from src.graph.p_graph import PGraph
 from src.params_model import ParamsModel
 
 
@@ -212,3 +213,14 @@ class EventstreamTest(unittest.TestCase):
         )
 
         self.assertEqual(user_ids, ["1", "1", "1", "2", "1"])
+
+    def test_display(self):
+        source = Eventstream(
+            raw_data_schema=self.__raw_data_schema, raw_data=self.__raw_data, schema=EventstreamSchema()
+        )
+
+        graph = PGraph(source_stream=source)
+        display = graph.display()
+        print(display)
+        print(dir(display))
+        assert None is display

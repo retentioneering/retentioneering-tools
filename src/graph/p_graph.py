@@ -1,43 +1,21 @@
-from typing import List, Optional, Union, cast
+from __future__ import annotations
+
+from typing import List, Optional, cast
 
 import networkx
+from IPython.display import HTML, DisplayHandle, display
 
-from src.data_processor.data_processor import DataProcessor
+from src.backend import JupyterServer, ServerManager
 from src.eventstream.eventstream import Eventstream
-
-
-class SourceNode:
-    events: Eventstream
-
-    def __init__(self, source: Eventstream) -> None:
-        self.events = source
-
-
-class EventsNode:
-    processor: DataProcessor
-    events: Optional[Eventstream]
-
-    def __init__(self, processor: DataProcessor) -> None:
-        self.processor = processor
-        self.events = None
-
-    def calc_events(self, parent: Eventstream):
-        self.events = self.processor.apply(parent)
-
-
-class MergeNode:
-    events: Optional[Eventstream]
-
-    def __init__(self) -> None:
-        self.events = None
-
-
-Node = Union[SourceNode, EventsNode, MergeNode]
+from src.graph.node import EventsNode, MergeNode, Node, SourceNode
+from src.templates import PGraphRenderer
 
 
 class PGraph:
     root: SourceNode
     __ngraph: networkx.DiGraph
+    __server_manager: ServerManager | None = None
+    __server: JupyterServer | None = None
 
     def __init__(self, source_stream: Eventstream) -> None:
         self.root = SourceNode(source=source_stream)
@@ -125,3 +103,13 @@ class PGraph:
         for node in nodes:
             if node not in self.__ngraph.nodes:
                 raise ValueError("node not found!")
+
+    def display(self) -> DisplayHandle:
+        if not self.__server_manager:
+            self.__server_manager = ServerManager()
+
+        if not self.__server:
+            self.__server = self.__server_manager.create_server()
+
+        render = PGraphRenderer()
+        return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))

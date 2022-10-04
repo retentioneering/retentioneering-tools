@@ -11,14 +11,14 @@ from src.params_model import ParamsModel
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-class DeleteEventsParams(ParamsModel):
+class FilterEventsParams(ParamsModel):
     filter: Callable[[DataFrame, EventstreamSchema], Any]
 
 
-class DeleteEvents(DataProcessor):
-    params: DeleteEventsParams
+class FilterEvents(DataProcessor):
+    params: FilterEventsParams
 
-    def __init__(self, params: DeleteEventsParams):
+    def __init__(self, params: FilterEventsParams):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:

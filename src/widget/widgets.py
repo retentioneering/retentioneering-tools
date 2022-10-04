@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Union
+from typing import Any, Callable, Union
 
 
 @dataclass
 class StringWidget:
     name: str
     optional: bool
+    value: str
     widget: str = "string"
 
 
@@ -15,6 +16,7 @@ class StringWidget:
 class IntegerWidget:
     name: str
     optional: bool
+    value: int
     widget: str = "integer"
 
 
@@ -24,6 +26,7 @@ class EnumWidget:
     optional: bool
     default: str
     params: list[str]
+    value: Any
     widget: str = "enum"
 
 

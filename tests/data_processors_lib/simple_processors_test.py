@@ -156,6 +156,7 @@ class TestSimpleProcessorsGraph():
             raw_data=source_df,
             schema=EventstreamSchema(),
         )
+        stream_orig = stream.to_dataframe()
 
         def filter_(df, schema):
             return ((df[schema.user_id].isin([2])) |
@@ -171,3 +172,5 @@ class TestSimpleProcessorsGraph():
             drop=True)
 
         assert res.compare(correct_result).shape == (0, 0)
+        # checking that the original stream remains immutable
+        assert stream_orig.compare(stream.to_dataframe()).shape == (0, 0)

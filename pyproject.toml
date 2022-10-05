@@ -18,16 +18,16 @@ pydantic = "^1.10.2"
 networkx = "^2.8.6"
 mypy = "^0.971"
 tox-poetry = "^0.4.1"
+plotly = "^5.10.0"
 
 [tool.poetry.dev-dependencies]
+
+#[tool.poetry.scripts]
+#test = { callable = "pytest", extras = ["tests"] }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-#[build-system]
-#requires = ["setuptools>=42"]
-#build-backend = "setuptools.build_meta"
 
 [tool.black]
 line-length = 120
@@ -52,7 +52,6 @@ strictParameterNoneValue = true
 reportUntypedFunctionDecorator = "error"
 reportUntypedClassDecorator = "error"
 reportUntypedBaseClass = "error"
-#reportUnusedVariable = "error"
 reportUnusedClass = "error"
 reportUnnecessaryCast = "error"
 reportUnnecessaryComparison = "error"
@@ -60,3 +59,13 @@ reportUnnecessaryContains = "error"
 reportUnnecessaryIsInstance = "error"
 reportImportCycles = "error"
 reportDuplicateImport = "error"
+
+[tool.pytest.ini_options]
+addopts = "-rfs"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::pytest.PytestExperimentalApiWarning",
+    "ignore::FutureWarning",
+    "ignore::UserWarning",
+    "ignore::pandas.errors.SettingWithCopyWarning",
+]

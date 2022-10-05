@@ -19,10 +19,11 @@ def _default_func_positive(eventstream: Eventstream, positive_target_events: lis
     event_col = eventstream.schema.event_name
     df = eventstream.to_dataframe()
 
-    positive_events_index = df[df[event_col].isin(positive_target_events)]\
-        .groupby(user_col)[time_col].idxmin()
+    positive_events_index = (
+        df[df[event_col].isin(positive_target_events)].groupby(user_col)[time_col].idxmin()  # type: ignore
+    )
 
-    return df.iloc[positive_events_index]
+    return df.iloc[positive_events_index]  # type: ignore
 
 
 class PositiveTargetParams(ParamsModel):

@@ -6,9 +6,9 @@ from typing import List, Literal, Union
 import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
-from src.data_processors_lib.simple_processors.delete_events import (
-    DeleteEvents,
-    DeleteEventsParams,
+from src.data_processors_lib.simple_processors.filter_events import (
+    FilterEvents,
+    FilterEventsParams,
 )
 from src.data_processors_lib.simple_processors.simple_group import (
     SimpleGroup,
@@ -171,21 +171,21 @@ class EventstreamTest(unittest.TestCase):
                 )
             )
         )
-        trash_events = EventsNode(
-            DeleteEvents(DeleteEventsParams(filter=lambda df, schema: df[schema.event_name] == "trash_event"))
+        allowed_events = EventsNode(
+            FilterEvents(FilterEventsParams(filter=lambda df, schema: df[schema.event_name] != "trash_event"))
         )
         merge = MergeNode()
 
         graph = PGraph(source)
         graph.add_node(node=cart_events, parents=[graph.root])
         graph.add_node(node=logout_events, parents=[graph.root])
-        graph.add_node(node=trash_events, parents=[graph.root])
+        graph.add_node(node=allowed_events, parents=[graph.root])
         graph.add_node(
             node=merge,
             parents=[
                 cart_events,
                 logout_events,
-                trash_events,
+                allowed_events,
             ],
         )
 

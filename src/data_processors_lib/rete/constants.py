@@ -1,9 +1,5 @@
 from __future__ import annotations
+from typing import Literal
 
-from collections import defaultdict
-
-UOM_DICT: dict[str | None, int] = defaultdict(lambda: 1)
-UOM_DICT["s"] = 1
-UOM_DICT["m"] = 60
-UOM_DICT["h"] = 3600
-UOM_DICT["d"] = 24 * 3600
+# https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units
+DATETIME_UNITS = Literal['Y', 'M', 'W', 'D', 'h', 'm', 's', 'ms', 'us', 'μs', 'ns', 'ps', 'fs', 'as']

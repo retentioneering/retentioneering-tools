@@ -5,24 +5,16 @@ from dataclasses import asdict
 from typing import Any, Callable, Dict
 
 from pydantic import BaseModel, validator
-from pydantic.main import ModelMetaclass
 
 from src.widget import WIDGET_MAPPING, WIDGET_TYPE
 from .registry import register_params_model
 
 
-class _ReteParamsModelMetaclass(ModelMetaclass):
+class ParamsModel(BaseModel):
 
-    def __new__(cls, name: str, bases: tuple, namespace: dict, **kwargs: dict) -> type:
-        obj = super().__new__(cls, name, bases, namespace, **kwargs)
-        return obj
-
-
-class ParamsModel(BaseModel, metaclass=_ReteParamsModelMetaclass):
-
-    # @classmethod
-    # def __init_subclass__(cls, **kwargs):
-    #     register_params_model(cls)
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        register_params_model(cls)
 
     @validator("*")
     def validate_subiterable(cls, value: Any) -> Any:

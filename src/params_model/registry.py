@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import typing
+from typing import Type
+if typing.TYPE_CHECKING:
+    from src.data_processor.data_processor import DataProcessor
+
 
 class ParamsModelRegistry:
     REGISTRY: dict[str, type] = {}
@@ -15,6 +20,7 @@ class ParamsModelRegistry:
 params_model_registry = ParamsModelRegistry()
 
 
-def register_params_model(cls):
-    print(f'REGISTER {cls.__name__}')
-    params_model_registry[cls.__name__] = cls
+def register_params_model(cls: Type['DataProcessor']):
+    print(cls)
+    print(dir(cls))
+    params_model_registry[cls.__name__] = cls.get_view()

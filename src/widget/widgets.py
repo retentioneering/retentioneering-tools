@@ -8,7 +8,6 @@ from typing import Any, Callable, Union
 class StringWidget:
     name: str
     optional: bool
-    value: str
     widget: str = "string"
 
 
@@ -16,7 +15,6 @@ class StringWidget:
 class IntegerWidget:
     name: str
     optional: bool
-    value: int
     widget: str = "integer"
 
 
@@ -26,10 +24,22 @@ class EnumWidget:
     optional: bool
     default: str
     params: list[str]
-    value: Any
     widget: str = "enum"
+
+@dataclass
+class ArrayWidget:
+    name: str
+    optional: bool
+    default: str
+    type: str
+    widget: str = "array"
 
 
 # @TODO: make default dict
-WIDGET_MAPPING: dict[str, Callable] = {"string": StringWidget, "integer": IntegerWidget, "enum": EnumWidget}
+WIDGET_MAPPING: dict[str, Callable] = {
+    "string": StringWidget,
+    "integer": IntegerWidget,
+    "enum": EnumWidget,
+    "array": ArrayWidget,
+}
 WIDGET_TYPE = Union[StringWidget, IntegerWidget, EnumWidget]

@@ -9,8 +9,6 @@ from typing_extensions import TypedDict
 
 from src.widget import WIDGET_MAPPING, WIDGET_TYPE
 
-from .registry import register_params_model
-
 
 class CustomWidgetProperties(TypedDict):
     widget: str
@@ -23,9 +21,6 @@ class CustomWidgetDataType(dict):
 
 
 class ParamsModel(BaseModel):
-    @classmethod
-    def __init_subclass__(cls, **kwargs):
-        register_params_model(cls)
 
     class Options:
         custom_widgets: Optional[CustomWidgetDataType]
@@ -53,34 +48,37 @@ class ParamsModel(BaseModel):
     ) -> None:
         super().__init__(**data)
 
-    def _parse_schemas(self) -> dict[str, Any]:
-        params_schema: dict[str, Any] = self.schema()
+    @classmethod
+    def _parse_schemas(cls) -> dict[str, Any]:
+        params_schema: dict[str, Any] = cls.schema()
+        # print(params_schema)
+        # print(cls.schema())
         properties: dict[str, dict] = params_schema.get("properties", {})
         required: list[str] = params_schema.get("required", [])
         optionals = {name: name not in required for name in properties.keys()}
         definitions = params_schema.get("definitions", {})
         widgets = {}
+        custom_widgets = getattr(getattr(cls, 'Options', None), 'custom_widgets', [])
         for name, params in properties.items():
             widget = None
-            if name == "custom_widgets":
-                pass
-            elif name in self.Options.custom_widgets:  # type: ignore
-                widget = self._parse_custom_widget(name=name, optional=optionals[name])
+            default = params.get('default')
+            if name in custom_widgets:  # type: ignore
+                widget = cls._parse_custom_widget(name=name, optional=optionals[name])
             elif "$ref" in params:
-                widget = self._parse_schema_definition(params, definitions, optional=optionals[name])
+                widget = cls._parse_schema_definition(params, definitions, optional=optionals[name])
             elif "allOf" in params:
-                default = params["default"]
-                widget = self._parse_schema_definition(params, definitions, default=default, optional=optionals[name])
+                widget = cls._parse_schema_definition(params, definitions, default=default, optional=optionals[name])
 
             else:
-                widget = self._parse_simple_widget(name, params, optional=optionals[name])
+                widget = cls._parse_simple_widget(name, params, optional=optionals[name], default=default)
 
             if widget:
                 widgets[name] = asdict(widget)
         return widgets
 
+    @classmethod
     def _parse_schema_definition(
-        self,
+        cls,
         params: dict[str, dict[str, Any]] | Any,
         definitions: dict[str, Any],
         default: Any | None = None,
@@ -93,22 +91,69 @@ class ParamsModel(BaseModel):
         kwargs = {"name": definition_name, "widget": "enum", "default": default, "optional": optional, "params": params}
         return WIDGET_MAPPING["enum"](**kwargs)
 
-    def _parse_simple_widget(self, name: str, params: dict[str, Any], optional: bool = False) -> WIDGET_TYPE:
+    @classmethod
+    def _parse_simple_widget(
+            cls,
+            name: str,
+            params: dict[str, Any],
+            default: Any | None = None,
+            optional: bool = False
+    ) -> WIDGET_TYPE:
         widget_type = params.get("type")
-        value = getattr(self, name, None)
+        print(params)
+        try:
+            items = params.get("items", [{}])[-1]
+        except KeyError:
+            items = params.get("items", [{}])
+        widget_params = dict(optional=optional, name=name, widget=widget_type)
+        widget_params['type'] = widget_type
+        if 'enum' in items and widget_type != 'enum':
+            widget_type = 'enum'
+            widget_params['params'] = items['enum']
+            widget_params['default'] = default
+
+
+        print(f'{widget_type=} - {params=}')
         try:
             widget: Callable = WIDGET_MAPPING[widget_type]  # type: ignore
-            return widget(optional=optional, name=name, widget=widget_type, value=value)
+            return widget(**widget_params)
 
         except KeyError:
-            raise Exception("Not found widget. Define new widget for %s and add it to mapping." % widget_type)
+            raise Exception("Not found widget. Define new widget for <%s> and add it to mapping." % widget_type)
 
-    def _parse_custom_widget(self, name: str, optional: bool = False) -> WIDGET_TYPE:
-        custom_widget = self.Options.custom_widgets[name]  # type: ignore
+    @classmethod
+    def _parse_custom_widget(cls, name: str, optional: bool = False) -> WIDGET_TYPE:
+        custom_widget = cls.Options.custom_widgets[name]  # type: ignore
         _widget = WIDGET_MAPPING[custom_widget["widget"]]
-        current_value = getattr(self, name)
+        current_value = getattr(cls, name)
         serialized_value = custom_widget["serialize"](current_value)
         return _widget(optional=optional, name=name, widget=custom_widget["widget"], value=serialized_value)
 
-    def get_widgets(self):
-        return self._parse_schemas()
+    @classmethod
+    def get_widgets(cls):
+        return cls._parse_schemas()
+
+    # @classmethod
+    # def get_view(cls) -> list[dict[str, str]]:
+    #     data: list[dict[str, str]] = []
+    #     schema = cls.schema()
+    #     properties = schema['properties']
+    #     for field, property in properties.items():
+    #         field_data = {
+    #                 'name': field,
+    #                 'widget': property['type'],
+    #                 'default': true,
+    #                 'optional': false
+    #             }
+    #         data.append(field_data)
+    #     # for field, properties in cls.__fields__.items():
+    #     #     print(field)
+    #     #     print(properties)
+    #     #     field_data = {
+    #     #         'name': field,
+    #     #         'widget': 'bool',
+    #     #         'default': true,
+    #     #         'optional': false
+    #     #     }
+    #
+    #     return data

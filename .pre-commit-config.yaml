@@ -4,7 +4,10 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
+        exclude: "examples/"
+      - id: check-yaml
       - id: check-added-large-files
+        exclude: "examples/"
   - repo: https://github.com/hadialqattan/pycln
     rev: v2.1.1 # Possible releases: https://github.com/hadialqattan/pycln/releases
     hooks:
@@ -36,6 +39,7 @@ repos:
         entry: pyright
         language: node
         pass_filenames: false
+        exclude: "^(examples/|tests/)"
         types: [ python ]
         # Replace the version below with the latest pyright version
         additional_dependencies: [ 'pyright@1.1.268' ]

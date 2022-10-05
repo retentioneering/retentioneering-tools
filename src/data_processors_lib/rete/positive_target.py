@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from typing import Any, Callable, List
 
 import pandas as pd
@@ -11,7 +10,6 @@ from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
 
-log = logging.getLogger(__name__)
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
@@ -19,15 +17,12 @@ def _default_func_positive(eventstream: Eventstream, positive_target_events: lis
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
-    df = eventstream.to_dataframe(copy=True)
+    df = eventstream.to_dataframe()
 
-    data_pos = df[df[event_col].isin(positive_target_events)]
-    data_pos = (
-        data_pos.groupby(user_col, as_index=False)
-        .apply(lambda group: group.nsmallest(1, columns=time_col))
-        .reset_index(drop=True)
-    )
-    return data_pos
+    positive_events_index = df[df[event_col].isin(positive_target_events)]\
+        .groupby(user_col)[time_col].idxmin()
+
+    return df.iloc[positive_events_index]
 
 
 class PositiveTargetParams(ParamsModel):

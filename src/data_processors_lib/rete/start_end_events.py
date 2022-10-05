@@ -1,14 +1,9 @@
-from typing import Any, Callable
-
 import pandas as pd
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
-
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class StartEndEventsParams(ParamsModel):
@@ -28,12 +23,12 @@ class StartEndEvents(DataProcessor):
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 
-        matched_events_start: DataFrame = events.groupby(user_col, as_index=False)[time_col].min()
+        matched_events_start: DataFrame = events.groupby(user_col, as_index=False)[time_col].min()  # type: ignore
         matched_events_start[type_col] = "start"
         matched_events_start[event_col] = "start"
         matched_events_start["ref"] = None
 
-        matched_events_end: DataFrame = events.groupby(user_col, as_index=False)[time_col].max()
+        matched_events_end: DataFrame = events.groupby(user_col, as_index=False)[time_col].max()  # type: ignore
         matched_events_end[type_col] = "end"
         matched_events_end[event_col] = "end"
         matched_events_end["ref"] = None

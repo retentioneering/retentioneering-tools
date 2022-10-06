@@ -1,13 +1,12 @@
+import pandas as pd
 from typing import Any, Callable, Optional
-
-from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
 
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
+EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchema], Any]
 
 
 class SimpleGroupParams(ParamsModel):
@@ -27,15 +26,16 @@ class SimpleGroup(DataProcessor):
         filter_: Callable = self.params.filter
         event_type = self.params.event_type
 
-        events = eventstream.to_dataframe(copy=True)
-        matched_events_q = filter_(events, eventstream.schema)
-        matched_events = events[matched_events_q].copy()
+        events = eventstream.to_dataframe()
+        mask = filter_(events, eventstream.schema)
+        matched_events = events[mask]
 
-        if event_type is not None:
-            matched_events[eventstream.schema.event_type] = event_type
+        with pd.option_context('mode.chained_assignment', None):
+            if event_type is not None:
+                matched_events[eventstream.schema.event_type] = event_type
 
-        matched_events[eventstream.schema.event_name] = event_name
-        matched_events["ref"] = matched_events[eventstream.schema.event_id]
+            matched_events[eventstream.schema.event_name] = event_name
+            matched_events["ref"] = matched_events[eventstream.schema.event_id]
 
         return Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),

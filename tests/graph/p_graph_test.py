@@ -221,6 +221,4 @@ class EventstreamTest(unittest.TestCase):
 
         graph = PGraph(source_stream=source)
         display = graph.display()
-        print(display)
-        print(dir(display))
         assert None is display

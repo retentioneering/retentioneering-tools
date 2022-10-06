@@ -9,16 +9,16 @@ from src.params_model import ParamsModel
 EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchema], Any]
 
 
-class SimpleGroupParams(ParamsModel):
+class GroupEventsParams(ParamsModel):
     event_name: str
     filter: EventstreamFilter
     event_type: Optional[str] = "group_alias"
 
 
-class SimpleGroup(DataProcessor):
-    params: SimpleGroupParams
+class GroupEvents(DataProcessor):
+    params: GroupEventsParams
 
-    def __init__(self, params: SimpleGroupParams) -> None:
+    def __init__(self, params: GroupEventsParams) -> None:
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:

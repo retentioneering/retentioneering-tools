@@ -9,8 +9,8 @@ from src.data_processors_lib.simple_processors.filter_events import (
     FilterEventsParams,
 )
 from src.data_processors_lib.simple_processors.simple_group import (
-    SimpleGroup,
-    SimpleGroupParams,
+    GroupEvents,
+    GroupEventsParams,
 )
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
@@ -41,13 +41,13 @@ class SimpleProcessorsTest(unittest.TestCase):
         def filter_(df: pd.DataFrame, schema: EventstreamSchema) -> pd.Series[bool]:
             return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
 
-        params = SimpleGroupParams(
+        params = GroupEventsParams(
             event_name="add_to_cart",
             event_type="group_alias",
             filter=filter_,
         )
 
-        group = SimpleGroup(params=params)
+        group = GroupEvents(params=params)
 
         result = group.apply(source)
         result_df = result.to_dataframe()
@@ -115,6 +115,7 @@ class TestSimpleProcessorsGraph():
             raw_data=source_df,
             schema=EventstreamSchema(),
         )
+        stream_orig = stream.to_dataframe()
 
         def filter_(df, schema):
             return (df[schema.user_id].isin([2])) | (df.event_name.str.contains('event2'))
@@ -122,7 +123,7 @@ class TestSimpleProcessorsGraph():
         graph = PGraph(source_stream=stream)
 
         event_agg = EventsNode(
-            SimpleGroup(params=SimpleGroupParams(**{
+            GroupEvents(params=GroupEventsParams(**{
                 'event_name': 'event_new',
                 'filter': filter_
             }))
@@ -132,6 +133,8 @@ class TestSimpleProcessorsGraph():
         res = graph.combine(node=event_agg).to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert res.compare(correct_result).shape == (0, 0)
+        # checking that the original stream remains immutable
+        assert stream_orig.compare(stream.to_dataframe()).shape == (0, 0)
 
     def test_delete_graph(self):
         source_df = pd.DataFrame([

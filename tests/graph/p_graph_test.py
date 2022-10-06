@@ -11,8 +11,8 @@ from src.data_processors_lib.simple_processors.filter_events import (
     FilterEventsParams,
 )
 from src.data_processors_lib.simple_processors.simple_group import (
-    SimpleGroup,
-    SimpleGroupParams,
+    GroupEvents,
+    GroupEventsParams,
 )
 from src.eventstream.eventstream import Eventstream, EventstreamSchema
 from src.eventstream.schema import RawDataSchema
@@ -123,7 +123,7 @@ class EventstreamTest(unittest.TestCase):
         def cart_func(df: pd.DataFrame, schema: EventstreamSchema) -> pd.Series[bool]:
             return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
 
-        cart_events = EventsNode(SimpleGroup(SimpleGroupParams(event_name="add_to_cart", filter=cart_func)))
+        cart_events = EventsNode(GroupEvents(GroupEventsParams(event_name="add_to_cart", filter=cart_func)))
 
         graph = PGraph(source)
         graph.add_node(node=cart_events, parents=[graph.root])
@@ -156,16 +156,16 @@ class EventstreamTest(unittest.TestCase):
         )
 
         cart_events = EventsNode(
-            SimpleGroup(
-                SimpleGroupParams(
+            GroupEvents(
+                GroupEventsParams(
                     event_name="add_to_cart",
                     filter=lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"]),
                 )
             )
         )
         logout_events = EventsNode(
-            SimpleGroup(
-                SimpleGroupParams(
+            GroupEvents(
+                GroupEventsParams(
                     event_name="logout",
                     filter=lambda df, schema: df[schema.event_name] == "exit_btn_click",
                 )

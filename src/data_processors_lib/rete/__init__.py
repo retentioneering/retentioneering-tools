@@ -12,3 +12,4 @@ from .positive_target import PositiveTarget, PositiveTargetParams
 from .split_sessions import SplitSessions, SplitSessionsParams
 from .start_end_events import StartEndEvents, StartEndEventsParams
 from .truncate_path import TruncatePath, TruncatePathParams
+from .truncated_events import TruncatedEvents, TruncatedParams

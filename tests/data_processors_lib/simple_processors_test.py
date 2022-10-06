@@ -4,9 +4,9 @@ import unittest
 
 import pandas as pd
 
-from src.data_processors_lib.simple_processors.delete_events import (
-    DeleteEvents,
-    DeleteEventsParams,
+from src.data_processors_lib.simple_processors.filter_events import (
+    FilterEvents,
+    FilterEventsParams,
 )
 from src.data_processors_lib.simple_processors.simple_group import (
     SimpleGroup,
@@ -79,9 +79,9 @@ class SimpleProcessorsTest(unittest.TestCase):
         )
 
         def filter_(df: pd.DataFrame, schema: EventstreamSchema) -> pd.Series[bool]:
-            return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
+            return ~df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
 
-        delete_factory = DeleteEvents(DeleteEventsParams(filter=filter_))
+        delete_factory = FilterEvents(FilterEventsParams(filter=filter_))
 
         result = delete_factory.apply(source)
         result_df = result.to_dataframe(show_deleted=True)
@@ -156,18 +156,21 @@ class TestSimpleProcessorsGraph():
             raw_data=source_df,
             schema=EventstreamSchema(),
         )
+        stream_orig = stream.to_dataframe()
 
         def filter_(df, schema):
-            return ((df[schema.user_id].isin([2])) |
+            return ~((df[schema.user_id].isin([2])) |
                     (df.event_name.str.contains('event2')))
 
         graph = PGraph(source_stream=stream)
 
-        delete_conditional = EventsNode(DeleteEvents(
-            params=DeleteEventsParams(filter=filter_)))
+        delete_conditional = EventsNode(FilterEvents(
+            params=FilterEventsParams(filter=filter_)))
 
         graph.add_node(node=delete_conditional, parents=[graph.root])
         res = graph.combine(node=delete_conditional).to_dataframe()[correct_result_columns].reset_index(
             drop=True)
 
         assert res.compare(correct_result).shape == (0, 0)
+        # checking that the original stream remains immutable
+        assert stream_orig.compare(stream.to_dataframe()).shape == (0, 0)

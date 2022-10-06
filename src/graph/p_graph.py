@@ -6,6 +6,7 @@ import networkx
 from IPython.display import HTML, DisplayHandle, display
 
 from src.backend import JupyterServer, ServerManager
+from src.backend.callback import list_dataprocessor
 from src.eventstream.eventstream import Eventstream
 from src.graph.node import EventsNode, MergeNode, Node, SourceNode
 from src.templates import PGraphRenderer
@@ -110,6 +111,8 @@ class PGraph:
 
         if not self.__server:
             self.__server = self.__server_manager.create_server()
+            self.__server.register_action("list-dataprocessor", list_dataprocessor)
+            print(self.__server.pk)
 
         render = PGraphRenderer()
         return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))

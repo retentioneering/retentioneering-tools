@@ -62,7 +62,7 @@ class ServerManager:
             server_id = data["server_id"]
             request_id = data["request_id"]
             method = data["method"]
-            payload = data["payload"]
+            payload = data.get("payload", {})
 
             target_server = self._find_server(server_id)
             if target_server is None:

@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  test38:
+    build:
+      context: ./
+      dockerfile: test38.Dockerfile
+    volumes:
+      - ".:/app"
+    command: poetry run pytest
+  test39:
+    build:
+      context: ./
+      dockerfile: test38.Dockerfile
+    volumes:
+      - ".:/app"
+    command: poetry run pytest
+    depends_on:
+      - test38
+  test310:
+    build:
+      context: ./
+      dockerfile: test38.Dockerfile
+    volumes:
+      - ".:/app"
+    command: poetry run pytest
+    depends_on:
+      - test39

@@ -10,7 +10,7 @@ from src.data_processors_lib.simple_processors.filter_events import (
     FilterEvents,
     FilterEventsParams,
 )
-from src.data_processors_lib.simple_processors.simple_group import (
+from src.data_processors_lib.simple_processors.group_events import (
     GroupEvents,
     GroupEventsParams,
 )

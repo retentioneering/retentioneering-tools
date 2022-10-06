@@ -8,7 +8,7 @@ from src.data_processors_lib.simple_processors.filter_events import (
     FilterEvents,
     FilterEventsParams,
 )
-from src.data_processors_lib.simple_processors.simple_group import (
+from src.data_processors_lib.simple_processors.group_events import (
     GroupEvents,
     GroupEventsParams,
 )
@@ -18,7 +18,7 @@ from src.graph.p_graph import PGraph, EventsNode
 
 
 class SimpleProcessorsTest(unittest.TestCase):
-    def test_simple_group(self):
+    def test_group_events(self):
         source_df = pd.DataFrame(
             [
                 {"event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
@@ -90,8 +90,8 @@ class SimpleProcessorsTest(unittest.TestCase):
         self.assertEqual(events_names, ["cart_btn_click", "plus_icon_click"])
 
 
-class TestSimpleProcessorsGraph():
-    def test_simple_group_graph(self):
+class TestSimpleProcessorsGraph:
+    def test_group_events_graph(self):
         source_df = pd.DataFrame([
             [1, 'event1', '2022-01-01 00:00:00'],
             [1, 'event2', '2022-01-01 00:00:01'],

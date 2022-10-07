@@ -20,7 +20,7 @@ class NewUsersEvents(DataProcessor):
     params: NewUsersParams
 
     def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
+        obj = super().__new__(cls)
         obj.params = NewUsersParams  # type: ignore
         return obj
 

@@ -14,7 +14,7 @@ class DeleteProcessor(DataProcessor):
     params: DeleteParamsModel
 
     def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
+        obj = super().__new__(cls)
         obj.params = DeleteParamsModel  # type: ignore
         return obj
 

@@ -19,7 +19,7 @@ class FilterEvents(DataProcessor):
     params: FilterEventsParams
 
     def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
+        obj = super().__new__(cls)
         obj.params = FilterEventsParams  # type: ignore
         return obj
 

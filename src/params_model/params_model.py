@@ -128,11 +128,7 @@ class ParamsModel(BaseModel):
     def _parse_custom_widget(cls, name: str, optional: bool = False) -> WIDGET:
         custom_widget = cls.Options.custom_widgets[name]  # type: ignore
         _widget = WIDGET_MAPPING[custom_widget["widget"]]
-        current_value = getattr(cls, name)
-        serialized_value = custom_widget["serialize"](current_value)
-        return _widget.from_dict(
-            **dict(optional=optional, name=name, widget=custom_widget["widget"], value=serialized_value)
-        )
+        return _widget.from_dict(**dict(optional=optional, name=name, widget=custom_widget["widget"], value=None))
 
     @classmethod
     def get_widgets(cls) -> dict[str, str | dict | list]:

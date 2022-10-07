@@ -20,7 +20,7 @@ class TruncatePath(DataProcessor):
     params: TruncatePathParams
 
     def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
+        obj = super().__new__(cls)
         obj.params = TruncatePathParams  # type: ignore
         return obj
 

@@ -20,7 +20,7 @@ class LostUsersEvents(DataProcessor):
     params: LostUsersParams
 
     def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
+        obj = super().__new__(cls)
         obj.params = LostUsersParams  # type: ignore
         return obj
 

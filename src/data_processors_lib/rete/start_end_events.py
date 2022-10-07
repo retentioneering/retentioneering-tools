@@ -14,7 +14,7 @@ class StartEndEvents(DataProcessor):
     params: StartEndEventsParams
 
     def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
+        obj = super().__new__(cls)
         obj.params = StartEndEventsParams  # type: ignore
         return obj
 

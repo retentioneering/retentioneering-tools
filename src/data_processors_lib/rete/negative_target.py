@@ -33,7 +33,7 @@ class NegativeTarget(DataProcessor):
     params: NegativeTargetParams
 
     def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
+        obj = super().__new__(cls)
         obj.params = NegativeTargetParams  # type: ignore
         return obj
 

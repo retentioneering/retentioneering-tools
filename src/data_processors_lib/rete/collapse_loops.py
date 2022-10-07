@@ -18,7 +18,7 @@ class CollapseLoops(DataProcessor):
     params: CollapseLoopsParams
 
     def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
+        obj = super().__new__(cls)
         obj.params = CollapseLoopsParams  # type: ignore
         return obj
 

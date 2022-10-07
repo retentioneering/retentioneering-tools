@@ -22,7 +22,7 @@ class SplitSessions(DataProcessor):
     params: SplitSessionsParams
 
     def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
+        obj = super().__new__(cls)
         obj.params = SplitSessionsParams  # type: ignore
         return obj
 

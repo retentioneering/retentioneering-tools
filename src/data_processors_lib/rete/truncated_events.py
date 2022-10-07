@@ -21,7 +21,7 @@ class TruncatedEvents(DataProcessor):
     params: TruncatedParams
 
     def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
+        obj = super().__new__(cls)
         obj.params = TruncatedParams  # type: ignore
         return obj
 

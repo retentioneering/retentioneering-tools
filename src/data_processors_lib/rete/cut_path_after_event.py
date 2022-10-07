@@ -19,7 +19,7 @@ class CutPathAfterEvent(DataProcessor):
     params: CutPathAfterEventParams
 
     def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
+        obj = super().__new__(cls)
         obj.params = CutPathAfterEventParams  # type: ignore
         return obj
 

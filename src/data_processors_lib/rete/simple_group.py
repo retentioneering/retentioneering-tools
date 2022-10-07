@@ -20,7 +20,7 @@ class SimpleGroup(DataProcessor):
     params: SimpleGroupParams
 
     def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls, *args, **kwargs)
+        obj = super().__new__(cls)
         obj.params = SimpleGroupParams  # type: ignore
         return obj
 

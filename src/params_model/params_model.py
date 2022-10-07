@@ -61,9 +61,7 @@ class ParamsModel(BaseModel):
             default = params.get("default")
             if name in custom_widgets:  # type: ignore
                 widget = cls._parse_custom_widget(name=name, optional=optionals[name])
-            elif "$ref" in params:
-                widget = cls._parse_schema_definition(params, definitions, optional=optionals[name])
-            elif "allOf" in params:
+            elif "$ref" in params or "allOf" in params:
                 widget = cls._parse_schema_definition(params, definitions, default=default, optional=optionals[name])
             elif "anyOf" in params:
                 widget = cls._parse_anyof_schema_definition(

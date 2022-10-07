@@ -18,6 +18,11 @@ class FilterEventsParams(ParamsModel):
 class FilterEvents(DataProcessor):
     params: FilterEventsParams
 
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.params = FilterEventsParams  # type: ignore
+        return obj
+
     def __init__(self, params: FilterEventsParams):
         super().__init__(params=params)
 
@@ -27,7 +32,7 @@ class FilterEvents(DataProcessor):
         mask = filter_(events, eventstream.schema)
         events_to_delete = events[~mask]
 
-        with pd.option_context('mode.chained_assignment', None):
+        with pd.option_context("mode.chained_assignment", None):
             events_to_delete["ref"] = events_to_delete[eventstream.schema.event_id]
 
         eventstream = Eventstream(

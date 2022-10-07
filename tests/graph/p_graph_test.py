@@ -6,14 +6,8 @@ from typing import List, Literal, Union
 import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
-from src.data_processors_lib.simple_processors.filter_events import (
-    FilterEvents,
-    FilterEventsParams,
-)
-from src.data_processors_lib.simple_processors.simple_group import (
-    SimpleGroup,
-    SimpleGroupParams,
-)
+from src.data_processors_lib.rete.filter_events import FilterEvents, FilterEventsParams
+from src.data_processors_lib.rete.simple_group import SimpleGroup, SimpleGroupParams
 from src.eventstream.eventstream import Eventstream, EventstreamSchema
 from src.eventstream.schema import RawDataSchema
 from src.graph.node import EventsNode, MergeNode, Node, SourceNode
@@ -27,6 +21,11 @@ class StubProcessorParams(ParamsModel):
 
 class StubProcessor(DataProcessor):
     params: StubProcessorParams
+
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.params = StubProcessorParams  # type: ignore
+        return obj
 
     def __init__(self, params: StubProcessorParams):
         super().__init__(params=params)

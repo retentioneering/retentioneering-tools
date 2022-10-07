@@ -19,6 +19,11 @@ class SimpleGroupParams(ParamsModel):
 class SimpleGroup(DataProcessor):
     params: SimpleGroupParams
 
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.params = SimpleGroupParams  # type: ignore
+        return obj
+
     def __init__(self, params: SimpleGroupParams) -> None:
         super().__init__(params=params)
 

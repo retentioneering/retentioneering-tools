@@ -3,17 +3,19 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from src.params_model.registry import register_params_model
 from src.eventstream.eventstream import Eventstream
 from src.params_model import ParamsModel
+from src.params_model.registry import register_params_model
 
 
 class DataProcessor:
     params: ParamsModel
 
-    # @classmethod
+    @classmethod
     def __init_subclass__(cls, **kwargs):
-        register_params_model(cls)
+        super().__init_subclass__(**kwargs)
+        obj = cls.__new__(cls)
+        register_params_model(obj)
 
     def __init__(self, params: ParamsModel | Any) -> None:
         if not issubclass(type(params), ParamsModel):
@@ -35,12 +37,10 @@ class DataProcessor:
         return data
 
     @classmethod
-    def get_view(cls) -> dict[str, str]:
-        data: dict[str, str | list[dict]] = dict()
-        data["name"] = cls.__class__.__name__
-        print(cls)
-        print(dir(cls))
-        # view = cls.params.get_view()
-        # data["params"] = view
-
+    def get_view(cls) -> dict[str, str | list | dict]:
+        data: dict[str, str | list | dict] = dict()
+        data["name"] = cls.__name__
+        obj = cls.__new__(cls)
+        view = obj.params.get_widgets()
+        data["params"] = view
         return data

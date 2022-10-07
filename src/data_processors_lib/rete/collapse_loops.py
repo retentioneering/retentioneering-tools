@@ -17,6 +17,11 @@ class CollapseLoopsParams(ParamsModel):
 class CollapseLoops(DataProcessor):
     params: CollapseLoopsParams
 
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.params = CollapseLoopsParams  # type: ignore
+        return obj
+
     def __init__(self, params: CollapseLoopsParams):
         super().__init__(params=params)
 

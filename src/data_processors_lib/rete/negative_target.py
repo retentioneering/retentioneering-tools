@@ -19,8 +19,7 @@ def _default_func_negative(eventstream, negative_target_events) -> pd.DataFrame:
     event_col = eventstream.schema.event_name
     df = eventstream.to_dataframe()
 
-    negative_events_index = df[df[event_col].isin(negative_target_events)]\
-        .groupby(user_col)[time_col].idxmin()
+    negative_events_index = df[df[event_col].isin(negative_target_events)].groupby(user_col)[time_col].idxmin()
 
     return df.iloc[negative_events_index]
 
@@ -32,6 +31,11 @@ class NegativeTargetParams(ParamsModel):
 
 class NegativeTarget(DataProcessor):
     params: NegativeTargetParams
+
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.params = NegativeTargetParams  # type: ignore
+        return obj
 
     def __init__(self, params: NegativeTargetParams):
         super().__init__(params=params)

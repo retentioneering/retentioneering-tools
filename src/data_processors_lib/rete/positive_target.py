@@ -34,6 +34,11 @@ class PositiveTargetParams(ParamsModel):
 class PositiveTarget(DataProcessor):
     params: PositiveTargetParams
 
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.params = PositiveTargetParams  # type: ignore
+        return obj
+
     def __init__(self, params: PositiveTargetParams):
         super().__init__(params=params)
 

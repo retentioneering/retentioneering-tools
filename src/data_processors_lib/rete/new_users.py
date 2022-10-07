@@ -19,6 +19,11 @@ class NewUsersParams(ParamsModel):
 class NewUsersEvents(DataProcessor):
     params: NewUsersParams
 
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.params = NewUsersParams  # type: ignore
+        return obj
+
     def __init__(self, params: NewUsersParams):
         super().__init__(params=params)
 

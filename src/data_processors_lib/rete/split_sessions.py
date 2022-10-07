@@ -21,6 +21,11 @@ class SplitSessionsParams(ParamsModel):
 class SplitSessions(DataProcessor):
     params: SplitSessionsParams
 
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.params = SplitSessionsParams  # type: ignore
+        return obj
+
     def __init__(self, params: SplitSessionsParams) -> None:
         super().__init__(params=params)
 

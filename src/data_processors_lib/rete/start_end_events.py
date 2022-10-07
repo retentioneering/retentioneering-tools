@@ -13,6 +13,11 @@ class StartEndEventsParams(ParamsModel):
 class StartEndEvents(DataProcessor):
     params: StartEndEventsParams
 
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.params = StartEndEventsParams  # type: ignore
+        return obj
+
     def __init__(self, params: StartEndEventsParams) -> None:
         super().__init__(params=params)
 

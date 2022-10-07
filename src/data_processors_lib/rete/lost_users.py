@@ -19,6 +19,11 @@ class LostUsersParams(ParamsModel):
 class LostUsersEvents(DataProcessor):
     params: LostUsersParams
 
+    def __new__(cls, *args, **kwargs):
+        obj = super().__new__(cls, *args, **kwargs)
+        obj.params = LostUsersParams  # type: ignore
+        return obj
+
     def __init__(self, params: LostUsersParams):
         super().__init__(params=params)
 

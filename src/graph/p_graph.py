@@ -123,7 +123,7 @@ class PGraph:
         graph = self._ngraph
         data = {
             "directed": graph.is_directed(),
-            "nodes": [{"node": n.export()} for n in graph],
+            "nodes": [n.export() for n in graph],
             link: [dict(chain(d.items(), [(source, u), (target, v)])) for u, v, d in graph.edges(data=True)],
         }
         return data

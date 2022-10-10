@@ -50,12 +50,13 @@ class CutPathAfterEvent(DataProcessor):
         df_cut = df[mask]
         ids_to_del = df[~mask][id_col].to_list()
         df_cut["rw_cumsum"] = (
-            df_cut.loc[::-1].groupby([user_col])[time_col].transform(lambda x: x.diff().dt.total_seconds().ne(0).cumsum())
+            df_cut.loc[::-1]
+            .groupby([user_col])[time_col]
+            .transform(lambda x: x.diff().dt.total_seconds().ne(0).cumsum())
         )
         if cut_shift > 0:
             users_with_target = df[df[event_col].isin(cutoff_events)][user_col].to_list()
-            mask_shift = ((df_cut["rw_cumsum"] <= cut_shift) &
-                          (df_cut[user_col].isin(users_with_target)))
+            mask_shift = (df_cut["rw_cumsum"] <= cut_shift) & (df_cut[user_col].isin(users_with_target))
             ids_to_del = ids_to_del + df_cut[mask_shift][id_col].to_list()
             df_cut = df_cut[~mask_shift]
 

@@ -27,7 +27,7 @@ class FilterEvents(DataProcessor):
         mask = filter_(events, eventstream.schema)
         events_to_delete = events[~mask]
 
-        with pd.option_context('mode.chained_assignment', None):
+        with pd.option_context("mode.chained_assignment", None):
             events_to_delete["ref"] = events_to_delete[eventstream.schema.event_id]
 
         eventstream = Eventstream(

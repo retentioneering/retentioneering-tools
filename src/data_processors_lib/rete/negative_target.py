@@ -19,8 +19,7 @@ def _default_func_negative(eventstream, negative_target_events) -> pd.DataFrame:
     event_col = eventstream.schema.event_name
     df = eventstream.to_dataframe()
 
-    negative_events_index = df[df[event_col].isin(negative_target_events)]\
-        .groupby(user_col)[time_col].idxmin()
+    negative_events_index = df[df[event_col].isin(negative_target_events)].groupby(user_col)[time_col].idxmin()
 
     return df.iloc[negative_events_index]
 

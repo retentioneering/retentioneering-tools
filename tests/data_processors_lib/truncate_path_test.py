@@ -841,3 +841,71 @@ class TestTruncatePathGraph:
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)
+
+    def test_truncate_path_graph__irrelevant_before_event(self):
+        source_df = pd.DataFrame(
+            [
+                [1, "event1", "raw", "2022-01-01 00:00:00"],
+                [1, "event2", "raw", "2022-01-01 00:01:00"],
+                [1, "event3", "raw", "2022-01-01 00:02:00"],
+                [1, "event1", "raw", "2022-01-01 00:03:00"],
+                [1, "event2", "raw", "2022-01-01 00:04:00"],
+                [1, "event3", "raw", "2022-01-01 00:05:00"]
+            ],
+            columns=["user_id", "event", "event_type", "timestamp"],
+        )
+
+        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result = pd.DataFrame(source_df, copy=True)
+        correct_result.columns = correct_result_columns
+
+        source = Eventstream(
+            raw_data_schema=RawDataSchema(
+                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
+            ),
+            raw_data=source_df,
+            schema=EventstreamSchema(),
+        )
+        events = EventsNode(TruncatePath(params=TruncatePathParams(drop_before="missing_event")))
+
+        graph = PGraph(source_stream=source)
+        graph.add_node(node=events, parents=[graph.root])
+
+        result = graph.combine(node=events)
+        result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
+
+        assert result_df.compare(correct_result).shape == (0, 0)
+
+    def test_truncate_path_graph__irrelevant_after_event(self):
+        source_df = pd.DataFrame(
+            [
+                [1, "event1", "raw", "2022-01-01 00:00:00"],
+                [1, "event2", "raw", "2022-01-01 00:01:00"],
+                [1, "event3", "raw", "2022-01-01 00:02:00"],
+                [1, "event1", "raw", "2022-01-01 00:03:00"],
+                [1, "event2", "raw", "2022-01-01 00:04:00"],
+                [1, "event3", "raw", "2022-01-01 00:05:00"]
+            ],
+            columns=["user_id", "event", "event_type", "timestamp"],
+        )
+
+        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result = pd.DataFrame(source_df, copy=True)
+        correct_result.columns = correct_result_columns
+
+        source = Eventstream(
+            raw_data_schema=RawDataSchema(
+                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
+            ),
+            raw_data=source_df,
+            schema=EventstreamSchema(),
+        )
+        events = EventsNode(TruncatePath(params=TruncatePathParams(drop_after="missing_event")))
+
+        graph = PGraph(source_stream=source)
+        graph.add_node(node=events, parents=[graph.root])
+
+        result = graph.combine(node=events)
+        result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
+
+        assert result_df.compare(correct_result).shape == (0, 0)

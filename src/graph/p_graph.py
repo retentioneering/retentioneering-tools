@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, cast
+from typing import List, Optional, cast, TypedDict
 
 import networkx
 from IPython.display import HTML, DisplayHandle, display
@@ -8,9 +8,16 @@ from IPython.display import HTML, DisplayHandle, display
 from src.backend import JupyterServer, ServerManager
 from src.backend.callback import list_dataprocessor
 from src.eventstream.eventstream import Eventstream
-from src.graph.node import EventsNode, MergeNode, Node, SourceNode
+from src.graph.node import EventsNode, MergeNode, Node, SourceNode, build_node
 from src.templates import PGraphRenderer
 
+class NodeData(TypedDict):
+    name: str
+    pk: str
+
+class NodeLink(TypedDict):
+    source: NodeData
+    target: NodeData
 
 class PGraph:
     root: SourceNode
@@ -124,35 +131,68 @@ class PGraph:
 
         Payload example:
 
-        [
-            {
-                "node": {
+        {
+            "nodes": [
+                {
                     "name": "SourceNode",
                     "pk": "0dc3b706-e6cc-401e-96f7-6a45d3947d5c"
-                }
-            },
-            {
-                "node": {
+                },
+                {
                     "name": "EventsNode",
                     "pk": "07921cb0-60b8-45af-928d-272d1b622b25",
                     "processor": {
                         "name": "SimpleGroup",
                         "values": {"event_name": "add_to_cart", "event_type": "group_alias"},
                     },
-                }
-            },
-            {
-                "node": {
+                },
+                {
                     "name": "EventsNode",
                     "pk": "114251ae-0f03-45e6-a163-af51bb02dfd5",
                     "processor": {
                         "name": "SimpleGroup",
                         "values": {"event_name": "logout", "event_type": "group_alias"},
                     },
+                },
+            ],
+            "links": [
+                {
+                    'source': {'name': 'SourceNode', 'pk': '0dc3b706-e6cc-401e-96f7-6a45d3947d5c'},
+                    'target': {'name': 'EventsNode', 'pk': '07921cb0-60b8-45af-928d-272d1b622b25'}
+                },
+                {
+                    'source': {'name': 'EventsNode', 'pk': '07921cb0-60b8-45af-928d-272d1b622b25'},
+                    'target': {'name': 'EventsNode', 'pk': '114251ae-0f03-45e6-a163-af51bb02dfd5'}
                 }
-            },
-        ]
+            ]
+        }
+
         """
         for node in payload:
-            pass
+            node: dict[str, str | dict]
+            node_pk = node['pk']
+            if actual_node := self._find_node(pk=node_pk):
+                if getattr(actual_node, "processor", None):
+                    actual_node.processor.params(**node["processor"])
+            else:
+                actual_node = build_node(
+                    node_name=node["name"],
+                    processor_name=node.get("processor", {}).get("name", None),
+                    processor_params=node.get("processor", {}).get("values", None)
+                )
+                parend, child = self._find_linked_nodes(
+                    link_list=payload["links"]
+                )
         pass
+
+    def _build_link_list(self, links_data: list[NodeLink]):
+        
+        for node_link in links_data
+        pk: {parent: pk, child: pk}
+
+    def _find_node(self, pk: str) -> Node | None:
+        for node in self.__ngraph:
+            if node.pk == pk:
+                return node
+        else:
+            return None
+

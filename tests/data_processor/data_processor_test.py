@@ -34,6 +34,11 @@ class TestDataProcessor(unittest.TestCase):
             invalid_params: StubProcessorParams = StubProcessorParams(a="d")  # type: ignore
             StubProcessor(params=invalid_params)
 
+    def test_update_params(self):
+        valid_params: StubProcessorParams = StubProcessorParams(a="a")  # type: ignore
+        stub = StubProcessor(params=valid_params)
+        stub.params(**{"a": "b"})
+        assert stub.params.dict()["a"] == "b"
 
 def test_params_not_subclasses() -> None:
     with pytest.raises(TypeError):

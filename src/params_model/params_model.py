@@ -47,6 +47,9 @@ class ParamsModel(BaseModel):
     ) -> None:
         super().__init__(**data)
 
+    def __call__(self, **data: Dict[str, Any]) -> None:
+        super().__init__(**data)
+
     def _parse_schemas(self) -> dict[str, Any]:
         params_schema: dict[str, Any] = self.schema()
         properties: dict[str, dict] = params_schema.get("properties", {})

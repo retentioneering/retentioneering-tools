@@ -1,56 +1,27 @@
 from __future__ import annotations
 
-import json
-from itertools import chain
 from typing import List, Optional, cast
 
 import networkx
+from IPython.display import HTML, DisplayHandle, display
 
 from src.backend import JupyterServer, ServerManager
+from src.backend.callback import list_dataprocessor
 from src.eventstream.eventstream import Eventstream
-from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode
+from src.graph.node import EventsNode, MergeNode, Node, SourceNode
+from src.templates import PGraphRenderer
 
 
-class GraphServer:
-    _ngraph: networkx.DiGraph
-
-    def __init__(self) -> None:
-        self.server_manager = ServerManager()
-        self.server: JupyterServer = self.server_manager.create_server()
-        self.server.register_action("get-graph", self._export_to_json)
-
-    def export(self) -> dict:
-        source, target, link = "source", "target", "links"
-        graph = self._ngraph
-        data = {
-            "directed": graph.is_directed(),
-            "nodes": [
-                dict(
-                    chain(
-                        graph.nodes[n].items(),
-                        [("node", n.export())],
-                    )
-                )
-                for n in graph
-            ],
-            link: [dict(chain(d.items(), [(source, u), (target, v)])) for u, v, d in graph.edges(data=True)],
-        }
-        return data
-
-    def _export_to_json(self) -> str:
-        data = self.export()
-        return json.dumps(data)
-
-
-class PGraph(GraphServer):
+class PGraph:
     root: SourceNode
-    _ngraph: networkx.DiGraph
+    __ngraph: networkx.DiGraph
+    __server_manager: ServerManager | None = None
+    __server: JupyterServer | None = None
 
     def __init__(self, source_stream: Eventstream) -> None:
-        super().__init__()
         self.root = SourceNode(source=source_stream)
-        self._ngraph = networkx.DiGraph()
-        self._ngraph.add_node(self.root)
+        self.__ngraph = networkx.DiGraph()
+        self.__ngraph.add_node(self.root)
 
     def add_node(self, node: Node, parents: List[Node]) -> None:
         self.__valiate_already_exists(node)
@@ -62,10 +33,10 @@ class PGraph(GraphServer):
         if not isinstance(node, MergeNode) and len(parents) > 1:
             raise ValueError("multiple parents are only allowed for merge nodes!")
 
-        self._ngraph.add_node(node)
+        self.__ngraph.add_node(node)
 
         for parent in parents:
-            self._ngraph.add_edge(parent, node)
+            self.__ngraph.add_edge(parent, node)
 
     def combine(self, node: Node) -> Eventstream:
         self.__validate_not_found([node])
@@ -104,7 +75,7 @@ class PGraph(GraphServer):
         self.__validate_not_found([node])
         parents: List[Node] = []
 
-        for parent in self._ngraph.predecessors(node):
+        for parent in self.__ngraph.predecessors(node):
             parents.append(parent)
         return parents
 
@@ -126,10 +97,22 @@ class PGraph(GraphServer):
         return self.root.events.schema.is_equal(eventstream.schema)
 
     def __valiate_already_exists(self, node: Node) -> None:
-        if node in self._ngraph.nodes:
+        if node in self.__ngraph.nodes:
             raise ValueError("node already exists!")
 
     def __validate_not_found(self, nodes: List[Node]) -> None:
         for node in nodes:
-            if node not in self._ngraph.nodes:
+            if node not in self.__ngraph.nodes:
                 raise ValueError("node not found!")
+
+    def display(self) -> DisplayHandle:
+        if not self.__server_manager:
+            self.__server_manager = ServerManager()
+
+        if not self.__server:
+            self.__server = self.__server_manager.create_server()
+            self.__server.register_action("list-dataprocessor", list_dataprocessor)
+            print(self.__server.pk)
+
+        render = PGraphRenderer()
+        return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))

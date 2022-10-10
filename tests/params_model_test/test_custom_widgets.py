@@ -1,27 +1,29 @@
+from typing import Tuple
+
+
 class TestCustomWidgets:
     def test_simple_custom_widget(self) -> None:
-        from pydantic import Field
 
         from src.params_model import CustomWidgetDataType, ParamsModel
+        from src.params_model.params_model import CustomWidgetProperties
 
-        def serialize(data):
-            print(data)
-            return data
+        def serialize(data: Tuple[int, str]) -> str:
+            return ",".join([str(x) for x in data])
 
-        def parse(data):
-            print(data)
-            return data
+        def parse(data: str) -> Tuple:
+            return tuple(data.split())
 
         class TestWidgets(ParamsModel):
-            a: str
+            a: Tuple[int, str]
             b: int
-            custom_widgets: CustomWidgetDataType = Field(
-                custom_widgets={"a": {"widget": "string", "serialize": serialize, "parse": parse}}
-            )
 
-        params = TestWidgets(
-            a="asdasd", b=10, custom_widgets=Field({"a": {"widget": "string", "serialize": serialize, "parse": parse}})
-        )
+            class Options:
+                custom_widgets: CustomWidgetDataType = CustomWidgetDataType(
+                    a=CustomWidgetProperties(widget="string", serialize=serialize, parse=parse)
+                )
+
+        params = TestWidgets(a=(1, "asd"), b=10)
+
         schema = params.get_widgets()
-        assert "asdasd" == params.a
-        assert "ghjdsbknfm" in schema
+        assert (1, "asd") == params.a
+        assert {"name": "a", "optional": False, "value": "1,asd", "widget": "string"} == schema["a"]

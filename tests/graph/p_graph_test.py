@@ -1,5 +1,3 @@
-# type: ignore
-
 from __future__ import annotations
 
 import unittest
@@ -8,9 +6,9 @@ from typing import List, Literal, Union
 import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
-from src.data_processors_lib.simple_processors.delete_events import (
-    DeleteEvents,
-    DeleteEventsParams,
+from src.data_processors_lib.simple_processors.filter_events import (
+    FilterEvents,
+    FilterEventsParams,
 )
 from src.data_processors_lib.simple_processors.simple_group import (
     SimpleGroup,
@@ -18,7 +16,7 @@ from src.data_processors_lib.simple_processors.simple_group import (
 )
 from src.eventstream.eventstream import Eventstream, EventstreamSchema
 from src.eventstream.schema import RawDataSchema
-from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode
+from src.graph.node import EventsNode, MergeNode, Node, SourceNode
 from src.graph.p_graph import PGraph
 from src.params_model import ParamsModel
 
@@ -173,21 +171,21 @@ class EventstreamTest(unittest.TestCase):
                 )
             )
         )
-        trash_events = EventsNode(
-            DeleteEvents(DeleteEventsParams(filter=lambda df, schema: df[schema.event_name] == "trash_event"))
+        allowed_events = EventsNode(
+            FilterEvents(FilterEventsParams(filter=lambda df, schema: df[schema.event_name] != "trash_event"))
         )
         merge = MergeNode()
 
         graph = PGraph(source)
         graph.add_node(node=cart_events, parents=[graph.root])
         graph.add_node(node=logout_events, parents=[graph.root])
-        graph.add_node(node=trash_events, parents=[graph.root])
+        graph.add_node(node=allowed_events, parents=[graph.root])
         graph.add_node(
             node=merge,
             parents=[
                 cart_events,
                 logout_events,
-                trash_events,
+                allowed_events,
             ],
         )
 
@@ -320,3 +318,12 @@ class EventstreamTest(unittest.TestCase):
         print(export_data)
 
         assert example == export_data
+
+    def test_display(self):
+        source = Eventstream(
+            raw_data_schema=self.__raw_data_schema, raw_data=self.__raw_data, schema=EventstreamSchema()
+        )
+
+        graph = PGraph(source_stream=source)
+        display = graph.display()
+        assert None is display

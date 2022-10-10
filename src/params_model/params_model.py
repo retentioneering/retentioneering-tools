@@ -2,48 +2,30 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import asdict
-from typing import Any, Callable, Dict, Optional, TypedDict
+from typing import Any, Callable, Dict, Optional
 
-from pydantic import BaseModel, Field, ValidationError, validator
-from pydantic.fields import ModelField
+from pydantic import BaseModel, validator
+from typing_extensions import TypedDict
 
 from src.widget import WIDGET_MAPPING, WIDGET_TYPE
 
-CUSTOM_WIDGET = Optional[Dict[str, Dict]]
+
+class CustomWidgetProperties(TypedDict):
+    widget: str
+    serialize: Callable
+    parse: Callable
 
 
-class CustomWidgetDataType(TypedDict):
-    @classmethod  # type: ignore
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod  # type: ignore
-    def validate(cls, value, field: ModelField):
-        custom_widgets = field.field_info.extra["custom_widgets"]
-        custom_fields = custom_widgets.keys()
-        required_params_for_widget = ["widget", "serialize", "parse"]
-        for custom_field in custom_fields:
-            widget_params = custom_widgets[custom_field]
-            if not all([x in required_params_for_widget for x in widget_params]):
-                raise ValidationError("Not all fields in <%s>" % custom_field)
-        return custom_widgets
+class CustomWidgetDataType(dict):
+    custom_widgets: dict[str, CustomWidgetProperties]
 
 
 class ParamsModel(BaseModel):
-    custom_widgets: CustomWidgetDataType = Field(custom_widgets=None)
-
-    @classmethod
-    def _validate_custom_widgets(cls, value: Any) -> bool:
-        if isinstance(value, dict) and all(
-            [x in inner.keys() for x in ["widget", "serialize", "parse"] for inner in value.values()]
-        ):
-            return True
-        return False
+    class Options:
+        custom_widgets: Optional[CustomWidgetDataType]
 
     @validator("*")
     def validate_subiterable(cls, value: Any) -> Any:
-        if cls._validate_custom_widgets(value):
-            return value
         array_types = (Iterable, dict)
         if isinstance(value, array_types):
             try:
@@ -59,7 +41,10 @@ class ParamsModel(BaseModel):
                 pass
         return value
 
-    def __init__(self, **data: Dict[str, Any]) -> None:
+    def __init__(
+        self,
+        **data: Dict[str, Any],
+    ) -> None:
         super().__init__(**data)
 
     def _parse_schemas(self) -> dict[str, Any]:
@@ -73,9 +58,8 @@ class ParamsModel(BaseModel):
             widget = None
             if name == "custom_widgets":
                 pass
-            elif name in self.custom_widgets:
-                custom_widget = self.custom_widgets[name]  # type: ignore
-                _widget = WIDGET_MAPPING[custom_widget["widget"]]
+            elif name in self.Options.custom_widgets:  # type: ignore
+                widget = self._parse_custom_widget(name=name, optional=optionals[name])
             elif "$ref" in params:
                 widget = self._parse_schema_definition(params, definitions, optional=optionals[name])
             elif "allOf" in params:
@@ -113,8 +97,12 @@ class ParamsModel(BaseModel):
         except KeyError:
             raise Exception("Not found widget. Define new widget for %s and add it to mapping." % widget_type)
 
-    def _parse_custom_widget(self, name: str, params: dict[str, Any]) -> WIDGET_TYPE:
-        pass
+    def _parse_custom_widget(self, name: str, optional: bool = False) -> WIDGET_TYPE:
+        custom_widget = self.Options.custom_widgets[name]  # type: ignore
+        _widget = WIDGET_MAPPING[custom_widget["widget"]]
+        current_value = getattr(self, name)
+        serialized_value = custom_widget["serialize"](current_value)
+        return _widget(optional=optional, name=name, widget=custom_widget["widget"], value=serialized_value)
 
     def get_widgets(self):
         return self._parse_schemas()

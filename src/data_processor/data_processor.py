@@ -27,11 +27,11 @@ class DataProcessor:
         data["pk"] = str(self.pk)
         data["schema"] = self.params.schema()
         data["widgets"] = widgets
-        data["values"] = self.params.dict()
         return data
 
     def to_dict(self) -> dict:
         data = {
             "values": self.params.dict(),
+            "name": self.__class__.__name__,
         }
         return data

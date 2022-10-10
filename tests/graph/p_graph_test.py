@@ -266,6 +266,7 @@ class EventstreamTest(unittest.TestCase):
                         "name": "EventsNode",
                         "pk": "07921cb0-60b8-45af-928d-272d1b622b25",
                         "processor": {
+                            "name": "SimpleGroup",
                             "values": {"event_name": "add_to_cart", "event_type": "group_alias"},
                         },
                     }
@@ -275,6 +276,7 @@ class EventstreamTest(unittest.TestCase):
                         "name": "EventsNode",
                         "pk": "114251ae-0f03-45e6-a163-af51bb02dfd5",
                         "processor": {
+                            "name": "SimpleGroup",
                             "values": {"event_name": "logout", "event_type": "group_alias"},
                         },
                     }

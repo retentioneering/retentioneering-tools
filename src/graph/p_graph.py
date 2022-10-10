@@ -116,5 +116,43 @@ class PGraph:
         render = PGraphRenderer()
         return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))
 
-    def _set_graph(self, payload: dict[str, str]) -> None:
+    def _set_graph(self, payload: list[dict[str, str]]) -> None:
+        """
+
+        :param payload:
+        :return:
+
+        Payload example:
+
+        [
+            {
+                "node": {
+                    "name": "SourceNode",
+                    "pk": "0dc3b706-e6cc-401e-96f7-6a45d3947d5c"
+                }
+            },
+            {
+                "node": {
+                    "name": "EventsNode",
+                    "pk": "07921cb0-60b8-45af-928d-272d1b622b25",
+                    "processor": {
+                        "name": "SimpleGroup",
+                        "values": {"event_name": "add_to_cart", "event_type": "group_alias"},
+                    },
+                }
+            },
+            {
+                "node": {
+                    "name": "EventsNode",
+                    "pk": "114251ae-0f03-45e6-a163-af51bb02dfd5",
+                    "processor": {
+                        "name": "SimpleGroup",
+                        "values": {"event_name": "logout", "event_type": "group_alias"},
+                    },
+                }
+            },
+        ]
+        """
+        for node in payload:
+            pass
         pass

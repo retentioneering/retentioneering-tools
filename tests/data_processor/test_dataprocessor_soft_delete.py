@@ -13,11 +13,6 @@ class DeleteParamsModel(ParamsModel):
 class DeleteProcessor(DataProcessor):
     params: DeleteParamsModel
 
-    def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls)
-        obj.params = DeleteParamsModel  # type: ignore
-        return obj
-
     def __init__(self, params: DeleteParamsModel) -> None:
         super().__init__(params=params)
 

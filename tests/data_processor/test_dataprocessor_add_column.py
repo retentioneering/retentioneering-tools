@@ -14,11 +14,6 @@ class AddColParamsModel(ParamsModel):
 class HelperAddColProcessor(DataProcessor):
     params: AddColParamsModel
 
-    def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls)
-        obj.params = AddColParamsModel  # type: ignore
-        return obj
-
     def __init__(self, params: AddColParamsModel) -> None:
         super().__init__(params=params)
 
@@ -40,11 +35,6 @@ class HelperAddColProcessor(DataProcessor):
 
 class NoHelperAddColProcessor(DataProcessor):
     params: AddColParamsModel
-
-    def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls)
-        obj.params = AddColParamsModel  # type: ignore
-        return obj
 
     def __init__(self, params: AddColParamsModel) -> None:
         super().__init__(params=params)

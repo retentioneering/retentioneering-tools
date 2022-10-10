@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, Optional
 from pydantic import BaseModel, validator
 from typing_extensions import TypedDict
 
+from src.params_model.registry import register_params_model
 from src.widget import WIDGET, WIDGET_MAPPING, WIDGET_TYPE
 
 
@@ -21,6 +22,12 @@ class CustomWidgetDataType(dict):
 
 
 class ParamsModel(BaseModel):
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        obj = cls.__new__(cls)
+        register_params_model(obj)
+
     class Options:
         custom_widgets: Optional[CustomWidgetDataType]
 

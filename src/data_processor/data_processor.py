@@ -3,9 +3,9 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from src.data_processor.registry import register_dataprocessor
 from src.eventstream.eventstream import Eventstream
 from src.params_model import ParamsModel
-from src.params_model.registry import register_params_model
 
 
 class DataProcessor:
@@ -15,7 +15,7 @@ class DataProcessor:
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         obj = cls.__new__(cls)
-        register_params_model(obj)
+        register_dataprocessor(obj)
 
     def __init__(self, params: ParamsModel | Any) -> None:
         if not issubclass(type(params), ParamsModel):
@@ -40,7 +40,14 @@ class DataProcessor:
     def get_view(cls) -> dict[str, str | list | dict]:
         data: dict[str, str | list | dict] = dict()
         data["name"] = cls.__name__
-        obj = cls.__new__(cls)
-        view = obj.params.get_widgets()
+        from src.params_model.registry import params_model_registry
+
+        params_models = params_model_registry.get_registry()
+        params_model_name = cls.__annotations__["params"]
+        if type(params_model_name) is str:
+            params = params_models[params_model_name]
+        else:
+            params = params_model_name
+        view = params.get_widgets()
         data["params"] = view
         return data

@@ -19,11 +19,6 @@ class TruncatePathParams(ParamsModel):
 class TruncatePath(DataProcessor):
     params: TruncatePathParams
 
-    def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls)
-        obj.params = TruncatePathParams  # type: ignore
-        return obj
-
     def __init__(self, params: TruncatePathParams):
         super().__init__(params=params)
 

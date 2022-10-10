@@ -18,11 +18,6 @@ class FilterEventsParams(ParamsModel):
 class FilterEvents(DataProcessor):
     params: FilterEventsParams
 
-    def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls)
-        obj.params = FilterEventsParams  # type: ignore
-        return obj
-
     def __init__(self, params: FilterEventsParams):
         super().__init__(params=params)
 

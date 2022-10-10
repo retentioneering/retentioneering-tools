@@ -16,11 +16,6 @@ class StubProcessorParams(ParamsModel):
 class StubProcessor(DataProcessor):
     params: StubProcessorParams
 
-    def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls)
-        obj.params = StubProcessorParams  # type: ignore
-        return obj
-
     def __init__(self, params: StubProcessorParams):
         super().__init__(params=params)
 
@@ -52,11 +47,6 @@ def test_params_not_subclasses() -> None:
         model = PydanticModel(a=[1, 2, 3])
 
         class StubPydanticProcessor(DataProcessor):
-            def __new__(cls, *args, **kwargs):
-                obj = super().__new__(cls)
-                obj.params = PydanticModel  # type: ignore
-                return obj
-
             def __init__(self, params: PydanticModel):
                 super().__init__(params=params)  # type: ignore
 

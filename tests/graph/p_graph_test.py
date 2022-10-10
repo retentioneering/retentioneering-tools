@@ -22,11 +22,6 @@ class StubProcessorParams(ParamsModel):
 class StubProcessor(DataProcessor):
     params: StubProcessorParams
 
-    def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls)
-        obj.params = StubProcessorParams  # type: ignore
-        return obj
-
     def __init__(self, params: StubProcessorParams):
         super().__init__(params=params)
 

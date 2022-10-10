@@ -111,8 +111,8 @@ class PGraph:
 
         if not self.__server:
             self.__server = self.__server_manager.create_server()
-            self.__server.register_action("list-dataprocessor", list_dataprocessor_mock)
-            self.__server.register_action("list-dataprocessor-actual", list_dataprocessor)
+            self.__server.register_action("list-dataprocessor-mock", list_dataprocessor_mock)
+            self.__server.register_action("list-dataprocessor", list_dataprocessor)
 
         render = PGraphRenderer()
         return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))

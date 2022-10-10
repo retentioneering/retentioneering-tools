@@ -18,11 +18,6 @@ class CutPathBeforeEventParams(ParamsModel):
 class CutPathBeforeEvent(DataProcessor):
     params: CutPathBeforeEventParams
 
-    def __new__(cls, *args, **kwargs):
-        obj = super().__new__(cls)
-        obj.params = CutPathBeforeEventParams  # type: ignore
-        return obj
-
     def __init__(self, params: CutPathBeforeEventParams):
         super().__init__(params=params)
 

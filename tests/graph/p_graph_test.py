@@ -16,7 +16,7 @@ from src.data_processors_lib.simple_processors.simple_group import (
 )
 from src.eventstream.eventstream import Eventstream, EventstreamSchema
 from src.eventstream.schema import RawDataSchema
-from src.graph.node import EventsNode, MergeNode, Node, SourceNode
+from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode
 from src.graph.p_graph import PGraph
 from src.params_model import ParamsModel
 
@@ -214,7 +214,7 @@ class EventstreamTest(unittest.TestCase):
 
         self.assertEqual(user_ids, ["1", "1", "1", "2", "1"])
 
-    def test_export(self) -> None:
+    def test_get_values(self) -> None:
         source_df = pd.DataFrame(
             [
                 {"event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
@@ -266,15 +266,6 @@ class EventstreamTest(unittest.TestCase):
                         "name": "EventsNode",
                         "pk": "07921cb0-60b8-45af-928d-272d1b622b25",
                         "processor": {
-                            "schema": {
-                                "title": "SimpleGroupParams",
-                                "type": "object",
-                                "properties": {
-                                    "event_name": {"title": "Event Name", "type": "string"},
-                                    "event_type": {"title": "Event Type", "default": "group_alias", "type": "string"},
-                                },
-                                "required": ["event_name"],
-                            },
                             "values": {"event_name": "add_to_cart", "event_type": "group_alias"},
                         },
                     }
@@ -284,38 +275,24 @@ class EventstreamTest(unittest.TestCase):
                         "name": "EventsNode",
                         "pk": "114251ae-0f03-45e6-a163-af51bb02dfd5",
                         "processor": {
-                            "schema": {
-                                "title": "SimpleGroupParams",
-                                "type": "object",
-                                "properties": {
-                                    "event_name": {"title": "Event Name", "type": "string"},
-                                    "event_type": {"title": "Event Type", "default": "group_alias", "type": "string"},
-                                },
-                                "required": ["event_name"],
-                            },
                             "values": {"event_name": "logout", "event_type": "group_alias"},
                         },
                     }
                 },
             ],
             # 'links': [
-            #     {'source': {'name': 'SourceNode',
-            #                 'pk': '0dc3b706-e6cc-401e-96f7-6a45d3947d5c'},
-            #      'target': {'name': 'EventsNode',
-            #                 'pk': '07921cb0-60b8-45af-928d-272d1b622b25'}},
-            #     {'source': {'name': 'EventsNode',
-            #                 'pk': '07921cb0-60b8-45af-928d-272d1b622b25'},
-            #      'target': {'name': 'EventsNode',
-            #                 'pk': '114251ae-0f03-45e6-a163-af51bb02dfd5'}}]
+            #     {'source': {'name': 'SourceNode', 'pk': '0dc3b706-e6cc-401e-96f7-6a45d3947d5c'},
+            #      'target': {'name': 'EventsNode', 'pk': '07921cb0-60b8-45af-928d-272d1b622b25'}},
+            #     {'source': {'name': 'EventsNode', 'pk': '07921cb0-60b8-45af-928d-272d1b622b25'},
+            #      'target': {'name': 'EventsNode', 'pk': '114251ae-0f03-45e6-a163-af51bb02dfd5'}}]
         }
 
         export_data = graph.export()
-        print(export_data)
         del export_data["links"]
         # При каждом запуске функции имеют разные адреса, отсюда разница при ассерте
         del export_data["nodes"][1]["node"]["processor"]["values"]["filter"]
         del export_data["nodes"][2]["node"]["processor"]["values"]["filter"]
-        print(export_data)
+        # print(export_data)
 
         assert example == export_data
 

@@ -29,3 +29,9 @@ class DataProcessor:
         data["widgets"] = widgets
         data["values"] = self.params.dict()
         return data
+
+    def to_dict(self) -> dict:
+        data = {
+            "values": self.params.dict(),
+        }
+        return data

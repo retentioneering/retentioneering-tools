@@ -280,11 +280,6 @@ class EventstreamTest(unittest.TestCase):
                     }
                 },
             ],
-            # 'links': [
-            #     {'source': {'name': 'SourceNode', 'pk': '0dc3b706-e6cc-401e-96f7-6a45d3947d5c'},
-            #      'target': {'name': 'EventsNode', 'pk': '07921cb0-60b8-45af-928d-272d1b622b25'}},
-            #     {'source': {'name': 'EventsNode', 'pk': '07921cb0-60b8-45af-928d-272d1b622b25'},
-            #      'target': {'name': 'EventsNode', 'pk': '114251ae-0f03-45e6-a163-af51bb02dfd5'}}]
         }
 
         export_data = graph.export()
@@ -292,7 +287,6 @@ class EventstreamTest(unittest.TestCase):
         # При каждом запуске функции имеют разные адреса, отсюда разница при ассерте
         del export_data["nodes"][1]["node"]["processor"]["values"]["filter"]
         del export_data["nodes"][2]["node"]["processor"]["values"]["filter"]
-        # print(export_data)
 
         assert example == export_data
 

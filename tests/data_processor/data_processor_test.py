@@ -36,7 +36,7 @@ class TestDataProcessor(unittest.TestCase):
 
 
 def test_params_not_subclasses() -> None:
-    with pytest.raises(TypeError):
+    with pytest.raises(KeyError):
 
         class PydanticModel(BaseModel):
             a: List[int]

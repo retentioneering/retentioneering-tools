@@ -11,7 +11,7 @@ if typing.TYPE_CHECKING:
 class ParamsModelRegistry(ReteRegistry):
     REGISTRY: dict = {}  # type: ignore
 
-    objects = "Dataprocessor"
+    objects = "ParamsModel"
 
     def __setitem__(self, key, value):
         if key not in self.REGISTRY:

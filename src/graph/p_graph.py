@@ -184,26 +184,26 @@ class PGraph:
                     processor_name=node.get("processor", {}).get("name", None),  # type: ignore
                     processor_params=node.get("processor", {}).get("values", None),  # type: ignore
                 )
-                parent, child = self._find_linked_nodes(target_node=node_pk, link_list=payload["links"])
-                self.insert_node(parent=parent, child=child, node=actual_node)
+                parents, child = self._find_linked_nodes(target_node=node_pk, link_list=payload["links"])
+                self.insert_node(parents=parents, child=child, node=actual_node)
 
-    def insert_node(self, parent: Node, child: Node, node: Node) -> None:
-        self.__ngraph.remove_edge(parent, child)
-        self.add_node(node=node, parents=[parent])
+    def insert_node(self, parents: list[Node], child: Node, node: Node) -> None:
+        [self.__ngraph.remove_edge(parent, child) for parent in parents]
+        self.add_node(node=node, parents=parents)
         self.__ngraph.add_edge(node, child)
 
-    def _find_linked_nodes(self, target_node: str, link_list: list[NodeLink]) -> tuple[Node, Node]:
-        parent: str = ""
+    def _find_linked_nodes(self, target_node: str, link_list: list[NodeLink]) -> tuple[list[Node], Node]:
+        parents: list[str] = []
         child: str = ""
         for node in link_list:
             if node["source"]["pk"] == target_node:
-                parent = node["source"]["pk"]
+                parents.append(node["source"]["pk"])
 
             if node["target"]["pk"] == target_node:
                 child = node["target"]["pk"]
-        parent_node = self._find_node(parent)
+        parent_nodes = [self._find_node(parent) for parent in parents]
         child_node = self._find_node(child)
-        return parent_node, child_node  # type: ignore
+        return parent_nodes, child_node  # type: ignore
 
     def _find_node(self, pk: str) -> Node | None:
         for node in self.__ngraph:

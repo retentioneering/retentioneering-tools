@@ -6,14 +6,8 @@ from typing import List, Literal, Union
 import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
-from src.data_processors_lib.simple_processors.filter_events import (
-    FilterEvents,
-    FilterEventsParams,
-)
-from src.data_processors_lib.simple_processors.simple_group import (
-    SimpleGroup,
-    SimpleGroupParams,
-)
+from src.data_processors_lib.rete.filter_events import FilterEvents, FilterEventsParams
+from src.data_processors_lib.rete.simple_group import SimpleGroup, SimpleGroupParams
 from src.eventstream.eventstream import Eventstream, EventstreamSchema
 from src.eventstream.schema import RawDataSchema
 from src.graph.node import EventsNode, MergeNode, Node, SourceNode
@@ -21,14 +15,14 @@ from src.graph.p_graph import PGraph
 from src.params_model import ParamsModel
 
 
-class StubProcessorParams(ParamsModel):
+class StubPProcessorParams(ParamsModel):
     a: Union[Literal["a"], Literal["b"]]
 
 
 class StubProcessor(DataProcessor):
-    params: StubProcessorParams
+    params: StubPProcessorParams
 
-    def __init__(self, params: StubProcessorParams):
+    def __init__(self, params: StubPProcessorParams):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
@@ -50,7 +44,7 @@ class EventstreamTest(unittest.TestCase):
         self.__raw_data_schema = RawDataSchema(event_name="name", event_timestamp="event_timestamp", user_id="user_id")
 
     def mock_events_node(self):
-        return EventsNode(processor=StubProcessor(params=StubProcessorParams(a="a")))
+        return EventsNode(processor=StubProcessor(params=StubPProcessorParams(a="a")))
 
     def create_graph(self):
         source = Eventstream(

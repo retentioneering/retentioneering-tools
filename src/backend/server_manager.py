@@ -6,15 +6,7 @@ from typing import Any, Optional
 from ipykernel.comm.comm import Comm
 
 from src.backend import JupyterServer
-
-
-class Singleton:
-    _instances: dict = {}  # type: ignore
-
-    def __call__(self) -> "ServerManager":
-        if self not in self._instances:
-            self._instances[self] = super().__init__()
-        return self._instances[self]
+from src.utils.singleton import Singleton
 
 
 class ServerManager:

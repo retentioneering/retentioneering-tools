@@ -4,14 +4,8 @@ import unittest
 
 import pandas as pd
 
-from src.data_processors_lib.simple_processors.filter_events import (
-    FilterEvents,
-    FilterEventsParams,
-)
-from src.data_processors_lib.simple_processors.simple_group import (
-    SimpleGroup,
-    SimpleGroupParams,
-)
+from src.data_processors_lib.rete.filter_events import FilterEvents, FilterEventsParams
+from src.data_processors_lib.rete.simple_group import SimpleGroup, SimpleGroupParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.graph.p_graph import EventsNode, PGraph

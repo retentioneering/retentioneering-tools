@@ -22,8 +22,8 @@ class TestCustomWidgets:
                     a=CustomWidgetProperties(widget="string", serialize=serialize, parse=parse)
                 )
 
-        params = TestWidgets(a=(1, "asd"), b=10)
+        params = TestWidgets(**dict(a=(1, "asd"), b=10))
 
         schema = params.get_widgets()
         assert (1, "asd") == params.a
-        assert {"name": "a", "optional": False, "value": "1,asd", "widget": "string"} == schema["a"]
+        assert {"name": "a", "optional": False, "widget": "string"} == schema["a"]

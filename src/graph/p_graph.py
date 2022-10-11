@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, cast, TypedDict
+from typing import List, Optional, TypedDict, cast
 
 import networkx
 from IPython.display import HTML, DisplayHandle, display
@@ -11,13 +11,22 @@ from src.eventstream.eventstream import Eventstream
 from src.graph.node import EventsNode, MergeNode, Node, SourceNode, build_node
 from src.templates import PGraphRenderer
 
+
 class NodeData(TypedDict):
     name: str
     pk: str
+    processor: Optional[dict]
+
 
 class NodeLink(TypedDict):
     source: NodeData
     target: NodeData
+
+
+class Payload(TypedDict):
+    nodes: list[NodeData]
+    links: list[NodeLink]
+
 
 class PGraph:
     root: SourceNode
@@ -123,12 +132,8 @@ class PGraph:
         render = PGraphRenderer()
         return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))
 
-    def _set_graph(self, payload: list[dict[str, str]]) -> None:
+    def _set_graph(self, payload: Payload) -> None:
         """
-
-        :param payload:
-        :return:
-
         Payload example:
 
         {
@@ -167,27 +172,38 @@ class PGraph:
         }
 
         """
-        for node in payload:
-            node: dict[str, str | dict]
-            node_pk = node['pk']
+        for node in payload["nodes"]:
+            # node: dict[str, str | dict[str, Any]]
+            node_pk: str = node["pk"]
             if actual_node := self._find_node(pk=node_pk):
                 if getattr(actual_node, "processor", None):
-                    actual_node.processor.params(**node["processor"])
+                    actual_node.processor.params(**node["processor"])  # type: ignore
             else:
                 actual_node = build_node(
                     node_name=node["name"],
-                    processor_name=node.get("processor", {}).get("name", None),
-                    processor_params=node.get("processor", {}).get("values", None)
+                    processor_name=node.get("processor", {}).get("name", None),  # type: ignore
+                    processor_params=node.get("processor", {}).get("values", None),  # type: ignore
                 )
-                parend, child = self._find_linked_nodes(
-                    link_list=payload["links"]
-                )
-        pass
+                parent, child = self._find_linked_nodes(target_node=node_pk, link_list=payload["links"])
+                self.insert_node(parent=parent, child=child, node=actual_node)
 
-    def _build_link_list(self, links_data: list[NodeLink]):
-        
-        for node_link in links_data
-        pk: {parent: pk, child: pk}
+    def insert_node(self, parent: Node, child: Node, node: Node) -> None:
+        self.__ngraph.remove_edge(parent, child)
+        self.add_node(node=node, parents=[parent])
+        self.__ngraph.add_edge(node, child)
+
+    def _find_linked_nodes(self, target_node: str, link_list: list[NodeLink]) -> tuple[Node, Node]:
+        parent: str = ""
+        child: str = ""
+        for node in link_list:
+            if node["source"]["pk"] == target_node:
+                parent = node["source"]["pk"]
+
+            if node["target"]["pk"] == target_node:
+                child = node["target"]["pk"]
+        parent_node = self._find_node(parent)
+        child_node = self._find_node(child)
+        return parent_node, child_node  # type: ignore
 
     def _find_node(self, pk: str) -> Node | None:
         for node in self.__ngraph:
@@ -195,4 +211,3 @@ class PGraph:
                 return node
         else:
             return None
-

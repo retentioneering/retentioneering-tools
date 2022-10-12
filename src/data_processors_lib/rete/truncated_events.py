@@ -18,6 +18,41 @@ class TruncatedParams(ParamsModel):
 
 
 class TruncatedEvents(DataProcessor):
+    """
+    Create new synthetic event(s) for each user if condition on the base of threshold
+
+    Parameters
+    ----------
+    left_truncated_cutoff : Tuple(float, DATETIME_UNITS), optional
+        Threshold value and it's unit of measure.
+        Calculate timedelta between last event in each user's path and first event in whole Eventstream.
+        For users with timedelta less than selected left_truncated_cutoff, new synthetic event - 'truncated_left'
+        will be added
+
+    right_truncated_cutoff : Tuple(float, DATETIME_UNITS), optional
+        Threshold value and it's unit of measure.
+        Calculate timedelta between first event in each user's path and last event in whole Eventstream.
+        For users with timedelta less than selected right_truncated_cutoff, new synthetic event - 'truncated_right'
+        will be added
+
+
+    Returns
+    -------
+    Eventstream with with new synthetic events 0, one or two for each user (details in the table below)
+
+        +-------------------+-------------------+------------------------+
+        | event_name        | event_type        | timestamp              |
+        +-------------------+-------------------+------------------------+
+        | truncated_left    | truncated_left    | timestamp(first_event) |
+        +-------------------+------------------+-------------------------+
+        | truncated_right   | truncated_right   | timestamp(last_event)  |
+        +-------------------+-------------------+------------------------+
+
+    See Also
+    -------
+    """
+
+
     params: TruncatedParams
 
     def __init__(self, params: TruncatedParams):

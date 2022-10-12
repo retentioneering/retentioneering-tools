@@ -17,6 +17,27 @@ class TruncatePathParams(ParamsModel):
 
 
 class TruncatePath(DataProcessor):
+    """
+    Cut each user path on the base of specified event
+
+    Parameters
+    ----------
+    drop_before : str, optional
+        Event name before which part of the user's path is dropped. Specified event remains in the data.
+    drop_after : str, optional
+        Event name after which part of the user's path is dropped. Specified event remains in the data.
+    occurrence_before : {"first", "last""}, default="first"
+        If there are more than one event with the specified name
+
+    occurrence_after : {"first", "last""}, default="first"
+
+
+
+    shift_before : int,  default=0
+
+    shift_after : int,  default=0
+
+    """
     params: TruncatePathParams
 
     def __init__(self, params: TruncatePathParams):

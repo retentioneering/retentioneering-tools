@@ -11,6 +11,41 @@ class StartEndEventsParams(ParamsModel):
 
 
 class StartEndEvents(DataProcessor):
+    """
+    Add two synthetic events in each user's path:
+    'start' and 'end'
+
+    Returns
+    -------
+    Eventstream with new synthetic events - two for each user (details in the table below)
+
+        ╔════════════╦════════════╦════════════════════════╗
+        ║ event_name ║ event_type ║ timestamp              ║
+        ╠════════════╬════════════╬════════════════════════╣
+        ║ start      ║ start      ║ timestamp(first_event) ║
+        ╠════════════╬════════════╬════════════════════════╣
+        ║ end        ║ end        ║ timestamp(last_event)  ║
+        ╚════════════╩════════════╩════════════════════════╝
+
+        +------------+------------+------------------------+
+        | event_name | event_type | timestamp              |
+        +------------+------------+------------------------+
+        | start      | start      | timestamp(first_event) |
+        +------------+------------+------------------------+
+        | end        | end        | timestamp(last_event)  |
+        +------------+------------+------------------------+
+
+    Output Eventstream could be added to the original Eventstream using src.graph.p_graph.PGraph.combine
+
+    See Also
+    -------
+
+    src.graph.p_graph.PGraph
+    src.graph.p_graph.EventsNode
+    src.graph.p_graph.PGraph.add_node
+    src.graph.p_graph.PGraph.combine
+    """
+
     params: StartEndEventsParams
 
     def __init__(self, params: StartEndEventsParams) -> None:

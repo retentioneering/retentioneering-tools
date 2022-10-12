@@ -17,6 +17,35 @@ class NewUsersParams(ParamsModel):
 
 
 class NewUsersEvents(DataProcessor):
+    """
+    Add one of synthetic events in each user's path:
+    Create new synthetic event for each user:
+    'new_user' or 'existing_user'
+
+    Parameters
+    ----------
+    new_users_list: list[int] or 'all'
+
+        If the list of user_ids is given - new synthetic event will be created for each user from the list
+        If new_users_list = 'all' - new synthetic event will be created to each user from the original eventstream
+
+    Returns
+    -------
+    Eventstream : table of shape ()???
+     with new synthetic events one for each user (details in the table below)
+
+        +---------------+---------------+------------------------+
+        | event_name    | event_type    | timestamp              |
+        +---------------+---------------+------------------------+
+        | new_user      | new_user      | timestamp(first_event) |
+        +---------------+---------------+------------------------+
+        | existing_user | existing_user | timestamp(first_event) |
+        +---------------+---------------+------------------------+
+
+    See Also
+    -------
+
+    """
     params: NewUsersParams
 
     def __init__(self, params: NewUsersParams):

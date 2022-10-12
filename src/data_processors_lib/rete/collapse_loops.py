@@ -42,7 +42,7 @@ class CollapseLoops(DataProcessor):
     See Also
     -------
 
-        """
+    """
 
     params: CollapseLoopsParams
 

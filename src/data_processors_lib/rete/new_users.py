@@ -46,6 +46,7 @@ class NewUsersEvents(DataProcessor):
     -------
 
     """
+
     params: NewUsersParams
 
     def __init__(self, params: NewUsersParams):

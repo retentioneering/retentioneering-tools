@@ -38,6 +38,7 @@ class TruncatePath(DataProcessor):
     shift_after : int,  default=0
 
     """
+
     params: TruncatePathParams
 
     def __init__(self, params: TruncatePathParams):

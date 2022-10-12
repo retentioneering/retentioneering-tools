@@ -51,6 +51,7 @@ class LostUsersEvents(DataProcessor):
     -------
 
     """
+
     params: LostUsersParams
 
     def __init__(self, params: LostUsersParams):

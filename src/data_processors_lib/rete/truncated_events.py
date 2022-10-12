@@ -30,7 +30,7 @@ class TruncatedEvents(DataProcessor):
         will be added
 
     right_truncated_cutoff : Tuple(float, DATETIME_UNITS), optional
-        Threshold value and it's unit of measure.
+        Threshold value and its unit of measure.
         Calculate timedelta between first event in each user's path and last event in whole Eventstream.
         For users with timedelta less than selected right_truncated_cutoff, new synthetic event - 'truncated_right'
         will be added
@@ -51,7 +51,6 @@ class TruncatedEvents(DataProcessor):
     See Also
     -------
     """
-
 
     params: TruncatedParams
 

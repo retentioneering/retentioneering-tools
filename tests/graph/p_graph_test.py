@@ -10,7 +10,7 @@ from src.data_processors_lib.rete.filter_events import FilterEvents, FilterEvent
 from src.data_processors_lib.rete.simple_group import SimpleGroup, SimpleGroupParams
 from src.eventstream.eventstream import Eventstream, EventstreamSchema
 from src.eventstream.schema import RawDataSchema
-from src.graph.node import EventsNode, MergeNode, Node, SourceNode
+from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode
 from src.graph.p_graph import PGraph
 from src.params_model import ParamsModel
 
@@ -207,6 +207,80 @@ class EventstreamTest(unittest.TestCase):
         )
 
         self.assertEqual(user_ids, ["1", "1", "1", "2", "1"])
+
+    def test_get_values(self) -> None:
+        source_df = pd.DataFrame(
+            [
+                {"event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
+                {"event_name": "cart_btn_click", "event_timestamp": "2021-10-26 12:02", "user_id": "1"},
+                {"event_name": "pageview", "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
+                {"event_name": "trash_event", "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
+                {"event_name": "exit_btn_click", "event_timestamp": "2021-10-26 12:04", "user_id": "2"},
+                {"event_name": "plus_icon_click", "event_timestamp": "2021-10-26 12:05", "user_id": "1"},
+            ]
+        )
+
+        source = Eventstream(
+            raw_data_schema=RawDataSchema(
+                event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
+            ),
+            raw_data=source_df,
+        )
+        graph = PGraph(source)
+        root_node = [x for x in graph._ngraph][0]
+        root_node.pk = "0dc3b706-e6cc-401e-96f7-6a45d3947d5c"
+        cart_events = EventsNode(
+            SimpleGroup(
+                SimpleGroupParams(
+                    event_name="add_to_cart",
+                    filter=lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"]),
+                )
+            )
+        )
+        cart_events.pk = "07921cb0-60b8-45af-928d-272d1b622b25"
+        logout_events = EventsNode(
+            SimpleGroup(
+                SimpleGroupParams(
+                    event_name="logout",
+                    filter=lambda df, schema: df[schema.event_name] == "exit_btn_click",
+                )
+            )
+        )
+        logout_events.pk = "114251ae-0f03-45e6-a163-af51bb02dfd5"
+
+        graph.add_node(node=cart_events, parents=[graph.root])
+        graph.add_node(node=logout_events, parents=[cart_events])
+
+        example = {
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode", "pk": "0dc3b706-e6cc-401e-96f7-6a45d3947d5c"},
+                {
+                    "name": "EventsNode",
+                    "pk": "07921cb0-60b8-45af-928d-272d1b622b25",
+                    "processor": {
+                        "name": "SimpleGroup",
+                        "values": {"event_name": "add_to_cart", "event_type": "group_alias"},
+                    },
+                },
+                {
+                    "name": "EventsNode",
+                    "pk": "114251ae-0f03-45e6-a163-af51bb02dfd5",
+                    "processor": {
+                        "name": "SimpleGroup",
+                        "values": {"event_name": "logout", "event_type": "group_alias"},
+                    },
+                },
+            ],
+        }
+
+        export_data = graph.export()
+        del export_data["links"]
+        # При каждом запуске функции имеют разные адреса, отсюда разница при ассерте
+        del export_data["nodes"][1]["processor"]["values"]["filter"]
+        del export_data["nodes"][2]["processor"]["values"]["filter"]
+
+        assert example == export_data
 
     def test_display(self):
         source = Eventstream(

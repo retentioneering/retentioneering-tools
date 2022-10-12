@@ -51,3 +51,10 @@ class DataProcessor:
         view = params.get_widgets()
         data["params"] = view
         return data
+
+    def to_dict(self) -> dict:
+        data = {
+            "values": self.params.dict(),
+            "name": self.__class__.__name__,
+        }
+        return data

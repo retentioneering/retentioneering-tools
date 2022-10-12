@@ -51,3 +51,10 @@ class TestParamsModel:
                 a: Dict[str, Dict[str, str]]
 
             ArrayModel3(a={"a": {"b": "c"}})
+
+    def test_widget(self) -> None:
+        class ExampleModel(ParamsModel):
+            a: str
+
+        model = ExampleModel(a="asd")
+        assert "asd" == model.a

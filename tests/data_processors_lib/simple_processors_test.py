@@ -4,11 +4,11 @@ import unittest
 
 import pandas as pd
 
-from src.data_processors_lib.simple_processors.filter_events import (
+from src.data_processors_lib.rete.filter_events import (
     FilterEvents,
     FilterEventsParams,
 )
-from src.data_processors_lib.simple_processors.group_events import (
+from src.data_processors_lib.rete.group_events import (
     GroupEvents,
     GroupEventsParams,
 )

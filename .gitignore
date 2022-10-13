@@ -5,6 +5,6 @@ typings
 .idea/
 .python-version
 .pytest_cache
-<<<<<<< HEAD
 .tox
 src/retentioneering_tools.egg-info/
+.coverage

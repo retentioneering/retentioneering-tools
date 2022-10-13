@@ -1,5 +1,6 @@
-import pandas as pd
 from typing import Any, Callable, Optional
+
+import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
@@ -30,7 +31,7 @@ class GroupEvents(DataProcessor):
         mask = filter_(events, eventstream.schema)
         matched_events = events[mask]
 
-        with pd.option_context('mode.chained_assignment', None):
+        with pd.option_context("mode.chained_assignment", None):
             if event_type is not None:
                 matched_events[eventstream.schema.event_type] = event_type
 

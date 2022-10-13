@@ -40,11 +40,15 @@ class TestDataProcessor(unittest.TestCase):
         stub.params(**{"a": "b"})
         assert stub.params.dict()["a"] == "b"
 
+
 def test_params_not_subclasses() -> None:
-    with pytest.raises(TypeError):
+    with pytest.raises(KeyError):
 
         class PydanticModel(BaseModel):
             a: List[int]
+
+            def get_widgets(self) -> dict:
+                return {}
 
         model = PydanticModel(a=[1, 2, 3])
 

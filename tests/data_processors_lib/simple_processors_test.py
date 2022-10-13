@@ -4,21 +4,15 @@ import unittest
 
 import pandas as pd
 
-from src.data_processors_lib.simple_processors.filter_events import (
-    FilterEvents,
-    FilterEventsParams,
-)
-from src.data_processors_lib.simple_processors.simple_group import (
-    SimpleGroup,
-    SimpleGroupParams,
-)
+from src.data_processors_lib.rete.filter_events import FilterEvents, FilterEventsParams
+from src.data_processors_lib.rete.group_events import GroupEvents, GroupEventsParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
-from src.graph.p_graph import PGraph, EventsNode
+from src.graph.p_graph import EventsNode, PGraph
 
 
 class SimpleProcessorsTest(unittest.TestCase):
-    def test_simple_group(self):
+    def test_group_events(self):
         source_df = pd.DataFrame(
             [
                 {"event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
@@ -41,13 +35,13 @@ class SimpleProcessorsTest(unittest.TestCase):
         def filter_(df: pd.DataFrame, schema: EventstreamSchema) -> pd.Series[bool]:
             return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
 
-        params = SimpleGroupParams(
+        params = GroupEventsParams(
             event_name="add_to_cart",
             event_type="group_alias",
             filter=filter_,
         )
 
-        group = SimpleGroup(params=params)
+        group = GroupEvents(params=params)
 
         result = group.apply(source)
         result_df = result.to_dataframe()
@@ -90,86 +84,85 @@ class SimpleProcessorsTest(unittest.TestCase):
         self.assertEqual(events_names, ["cart_btn_click", "plus_icon_click"])
 
 
-class TestSimpleProcessorsGraph():
-    def test_simple_group_graph(self):
-        source_df = pd.DataFrame([
-            [1, 'event1', '2022-01-01 00:00:00'],
-            [1, 'event2', '2022-01-01 00:00:01'],
-            [1, 'event3', '2022-01-01 00:00:02'],
-            [2, 'event4', '2022-01-02 00:00:00'],
-        ], columns=['user_id', 'event', 'timestamp']
+class TestSimpleProcessorsGraph:
+    def test_group_events_graph(self):
+        source_df = pd.DataFrame(
+            [
+                [1, "event1", "2022-01-01 00:00:00"],
+                [1, "event2", "2022-01-01 00:00:01"],
+                [1, "event3", "2022-01-01 00:00:02"],
+                [2, "event4", "2022-01-02 00:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
         )
 
-        correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp']
-        correct_result = pd.DataFrame([
-            [1, 'event1', 'raw', '2022-01-01 00:00:00'],
-            [1, 'event_new', 'group_alias', '2022-01-01 00:00:01'],
-            [1, 'event3', 'raw', '2022-01-01 00:00:02'],
-            [2, 'event_new', 'group_alias', '2022-01-02 00:00:00'],
-        ], columns=correct_result_columns
+        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result = pd.DataFrame(
+            [
+                [1, "event1", "raw", "2022-01-01 00:00:00"],
+                [1, "event_new", "group_alias", "2022-01-01 00:00:01"],
+                [1, "event3", "raw", "2022-01-01 00:00:02"],
+                [2, "event_new", "group_alias", "2022-01-02 00:00:00"],
+            ],
+            columns=correct_result_columns,
         )
         stream = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name='event', event_timestamp='timestamp', user_id='user_id'
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
-
-        def filter_(df, schema):
-            return (df[schema.user_id].isin([2])) | (df.event_name.str.contains('event2'))
-
-        graph = PGraph(source_stream=stream)
-
-        event_agg = EventsNode(
-            SimpleGroup(params=SimpleGroupParams(**{
-                'event_name': 'event_new',
-                'filter': filter_
-            }))
-        )
-
-        graph.add_node(node=event_agg, parents=[graph.root])
-        res = graph.combine(node=event_agg).to_dataframe()[correct_result_columns].reset_index(drop=True)
-
-        assert res.compare(correct_result).shape == (0, 0)
-
-    def test_delete_graph(self):
-        source_df = pd.DataFrame([
-            [1, 'event1', '2022-01-01 00:00:00'],
-            [1, 'event2', '2022-01-01 00:00:01'],
-            [1, 'event3', '2022-01-01 00:00:02'],
-            [2, 'event4', '2022-01-02 00:00:00'],
-        ], columns=['user_id', 'event', 'timestamp']
-        )
-
-        correct_result_columns = ['user_id', 'event_name', 'event_type', 'event_timestamp']
-        correct_result = pd.DataFrame([
-            [1, 'event1', 'raw', '2022-01-01 00:00:00'],
-            [1, 'event3', 'raw', '2022-01-01 00:00:02'],
-        ], columns=correct_result_columns
-        )
-
-        stream = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name='event', event_timestamp='timestamp', user_id='user_id'
-            ),
+            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
             raw_data=source_df,
             schema=EventstreamSchema(),
         )
         stream_orig = stream.to_dataframe()
 
         def filter_(df, schema):
-            return ~((df[schema.user_id].isin([2])) |
-                    (df.event_name.str.contains('event2')))
+            return (df[schema.user_id].isin([2])) | (df.event_name.str.contains("event2"))
 
         graph = PGraph(source_stream=stream)
 
-        delete_conditional = EventsNode(FilterEvents(
-            params=FilterEventsParams(filter=filter_)))
+        event_agg = EventsNode(GroupEvents(params=GroupEventsParams(**{"event_name": "event_new", "filter": filter_})))
+
+        graph.add_node(node=event_agg, parents=[graph.root])
+        res = graph.combine(node=event_agg).to_dataframe()[correct_result_columns].reset_index(drop=True)
+
+        assert res.compare(correct_result).shape == (0, 0)
+        # checking that the original stream remains immutable
+        assert stream_orig.compare(stream.to_dataframe()).shape == (0, 0)
+
+    def test_delete_graph(self):
+        source_df = pd.DataFrame(
+            [
+                [1, "event1", "2022-01-01 00:00:00"],
+                [1, "event2", "2022-01-01 00:00:01"],
+                [1, "event3", "2022-01-01 00:00:02"],
+                [2, "event4", "2022-01-02 00:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+
+        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result = pd.DataFrame(
+            [
+                [1, "event1", "raw", "2022-01-01 00:00:00"],
+                [1, "event3", "raw", "2022-01-01 00:00:02"],
+            ],
+            columns=correct_result_columns,
+        )
+
+        stream = Eventstream(
+            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
+            raw_data=source_df,
+            schema=EventstreamSchema(),
+        )
+        stream_orig = stream.to_dataframe()
+
+        def filter_(df, schema):
+            return ~((df[schema.user_id].isin([2])) | (df.event_name.str.contains("event2")))
+
+        graph = PGraph(source_stream=stream)
+
+        delete_conditional = EventsNode(FilterEvents(params=FilterEventsParams(filter=filter_)))
 
         graph.add_node(node=delete_conditional, parents=[graph.root])
-        res = graph.combine(node=delete_conditional).to_dataframe()[correct_result_columns].reset_index(
-            drop=True)
+        res = graph.combine(node=delete_conditional).to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert res.compare(correct_result).shape == (0, 0)
         # checking that the original stream remains immutable

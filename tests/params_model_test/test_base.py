@@ -28,26 +28,33 @@ class TestParamsModel:
             ArrayModel(a=[["123123"]])
 
     def test_optional_none(self) -> None:
-        class ArrayModel(ParamsModel):
+        class ArrayModel1(ParamsModel):
             a: Optional[List[str]]
 
-        model = ArrayModel(a=None)
+        model = ArrayModel1(a=None)
         assert None is model.a
 
     def test_optional_with_value(self) -> None:
-        class ArrayModel(ParamsModel):
+        class ArrayModel2(ParamsModel):
             def __init__(self, **data: Dict[str, Any]) -> None:
                 super().__init__(**data)
 
             a: Optional[List[str]]
 
-        model = ArrayModel(**{"a": ["1", "2"]})  # type: ignore
+        model = ArrayModel2(**{"a": ["1", "2"]})  # type: ignore
         assert ["1", "2"] == model.a
 
     def test_nested_dict(self) -> None:
         with pytest.raises(ValueError):
 
-            class ArrayModel(ParamsModel):
+            class ArrayModel3(ParamsModel):
                 a: Dict[str, Dict[str, str]]
 
-            ArrayModel(a={"a": {"b": "c"}})
+            ArrayModel3(a={"a": {"b": "c"}})
+
+    def test_widget(self) -> None:
+        class ExampleModel(ParamsModel):
+            a: str
+
+        model = ExampleModel(a="asd")
+        assert "asd" == model.a

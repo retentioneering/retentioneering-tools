@@ -6,15 +6,7 @@ from typing import Any, Optional
 from ipykernel.comm.comm import Comm
 
 from src.backend import JupyterServer
-
-
-class Singleton:
-    _instances: dict = {}  # type: ignore
-
-    def __call__(self) -> "ServerManager":
-        if self not in self._instances:
-            self._instances[self] = super().__init__()
-        return self._instances[self]
+from src.utils.singleton import Singleton
 
 
 class ServerManager:
@@ -30,21 +22,8 @@ class ServerManager:
 
     def _on_colab_func_called(self, server_id: str, method: str, request_id: str, payload) -> str:
         target_server: JupyterServer | None = self._find_server(server_id)
-        try:
-            if target_server is not None:
-                result = target_server.dispatch_method(method=method, payload=payload)
-                return json.dumps(
-                    {
-                        "success": True,
-                        "server_id": server_id,
-                        "request_id": request_id,
-                        "method": method,
-                        "result": result,
-                    }
-                )
-            else:
-                raise Exception("server not found!")
-        except Exception as err:
+        if target_server is None:
+            err = "ServerNotFound"
             return json.dumps(
                 {
                     "success": False,
@@ -54,6 +33,16 @@ class ServerManager:
                     "result": str(err),
                 }
             )
+        result = target_server.dispatch_method(method=method, payload=payload)
+        return json.dumps(
+            {
+                "success": True,
+                "server_id": server_id,
+                "request_id": request_id,
+                "method": method,
+                "result": result,
+            }
+        )
 
     def _on_comm_message(self, comm: Comm, open_msg) -> None:
         @comm.on_msg  # type: ignore
@@ -62,7 +51,7 @@ class ServerManager:
             server_id = data["server_id"]
             request_id = data["request_id"]
             method = data["method"]
-            payload = data["payload"]
+            payload = data.get("payload", {})
 
             target_server = self._find_server(server_id)
             if target_server is None:

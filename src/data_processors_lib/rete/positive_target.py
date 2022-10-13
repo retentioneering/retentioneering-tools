@@ -13,7 +13,7 @@ from src.params_model import ParamsModel
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-def _default_func_positive(eventstream, positive_target_events) -> pd.DataFrame:
+def _default_func_positive(eventstream: Eventstream, positive_target_events: list[str]) -> pd.DataFrame:
     """
     Filter rows with target events from the input eventstream
     If there are several target events in user path - the event with minimum timestamp is taken
@@ -42,9 +42,11 @@ def _default_func_positive(eventstream, positive_target_events) -> pd.DataFrame:
     event_col = eventstream.schema.event_name
     df = eventstream.to_dataframe()
 
-    positive_events_index = df[df[event_col].isin(positive_target_events)].groupby(user_col)[time_col].idxmin()
+    positive_events_index = (
+        df[df[event_col].isin(positive_target_events)].groupby(user_col)[time_col].idxmin()  # type: ignore
+    )
 
-    return df.iloc[positive_events_index]
+    return df.iloc[positive_events_index]  # type: ignore
 
 
 class PositiveTargetParams(ParamsModel):
@@ -89,7 +91,6 @@ class PositiveTarget(DataProcessor):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
-
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 

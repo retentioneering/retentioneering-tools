@@ -8,3 +8,7 @@ class ServerNotFoundActionError(BaseReteException):
     def __init__(self, message: str, method: str):
         self.message = message
         self.method = method
+
+
+class ServerNotFound(BaseReteException):
+    pass

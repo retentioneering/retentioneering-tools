@@ -13,7 +13,7 @@ from src.params_model import ParamsModel
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-def _default_func_negative(eventstream, negative_target_events) -> pd.DataFrame:
+def _default_func_negative(eventstream: Eventstream, negative_target_events: list[str]) -> pd.DataFrame:
     """
     Filter rows with target events from the input eventstream on the base
 
@@ -41,9 +41,10 @@ def _default_func_negative(eventstream, negative_target_events) -> pd.DataFrame:
     event_col = eventstream.schema.event_name
     df = eventstream.to_dataframe()
 
-    negative_events_index = df[df[event_col].isin(negative_target_events)].groupby(user_col)[time_col].idxmin()
-
-    return df.iloc[negative_events_index]
+    negative_events_index = (
+        df[df[event_col].isin(negative_target_events)].groupby(user_col)[time_col].idxmin()  # type: ignore
+    )
+    return df.iloc[negative_events_index]  # type: ignore
 
 
 class NegativeTargetParams(ParamsModel):

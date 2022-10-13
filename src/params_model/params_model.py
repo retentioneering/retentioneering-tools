@@ -7,7 +7,8 @@ from typing import Any, Callable, Dict, Optional
 from pydantic import BaseModel, validator
 from typing_extensions import TypedDict
 
-from src.widget import WIDGET_MAPPING, WIDGET_TYPE
+from src.params_model.registry import register_params_model
+from src.widget import WIDGET, WIDGET_MAPPING, WIDGET_TYPE
 
 
 class CustomWidgetProperties(TypedDict):
@@ -21,6 +22,12 @@ class CustomWidgetDataType(dict):
 
 
 class ParamsModel(BaseModel):
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        obj = cls.__new__(cls)
+        register_params_model(obj)
+
     class Options:
         custom_widgets: Optional[CustomWidgetDataType]
 
@@ -47,62 +54,89 @@ class ParamsModel(BaseModel):
     ) -> None:
         super().__init__(**data)
 
-    def _parse_schemas(self) -> dict[str, Any]:
-        params_schema: dict[str, Any] = self.schema()
+    @classmethod
+    def _parse_schemas(cls) -> dict[str, str | dict | list]:
+        params_schema: dict[str, Any] = cls.schema()
         properties: dict[str, dict] = params_schema.get("properties", {})
         required: list[str] = params_schema.get("required", [])
         optionals = {name: name not in required for name in properties.keys()}
         definitions = params_schema.get("definitions", {})
         widgets = {}
+        custom_widgets = getattr(getattr(cls, "Options", None), "custom_widgets", [])
         for name, params in properties.items():
             widget = None
-            if name == "custom_widgets":
-                pass
-            elif name in self.Options.custom_widgets:  # type: ignore
-                widget = self._parse_custom_widget(name=name, optional=optionals[name])
-            elif "$ref" in params:
-                widget = self._parse_schema_definition(params, definitions, optional=optionals[name])
-            elif "allOf" in params:
-                default = params["default"]
-                widget = self._parse_schema_definition(params, definitions, default=default, optional=optionals[name])
-
+            default = params.get("default")
+            if name in custom_widgets:  # type: ignore
+                widget = cls._parse_custom_widget(name=name, optional=optionals[name])
+            elif "$ref" in params or "allOf" in params:
+                widget = cls._parse_schema_definition(params, definitions, default=default, optional=optionals[name])
+            elif "anyOf" in params:
+                widget = cls._parse_anyof_schema_definition(
+                    params, definitions, default=default, optional=optionals[name]
+                )
             else:
-                widget = self._parse_simple_widget(name, params, optional=optionals[name])
+                widget = cls._parse_simple_widget(name, params, optional=optionals[name], default=default)
 
             if widget:
                 widgets[name] = asdict(widget)
-        return widgets
+        return widgets  # type: ignore
 
+    @classmethod
     def _parse_schema_definition(
-        self,
+        cls,
         params: dict[str, dict[str, Any]] | Any,
         definitions: dict[str, Any],
         default: Any | None = None,
         optional: bool = True,
-    ) -> WIDGET_TYPE:
+    ) -> WIDGET:
         ref: str = params.get("$ref", "") or params.get("allOf", [{}])[0].get("$ref", "")  # type: ignore
         definition_name = ref.split("/")[-1]
         definition = definitions[definition_name]
         params = definition.get("enum", [])
         kwargs = {"name": definition_name, "widget": "enum", "default": default, "optional": optional, "params": params}
-        return WIDGET_MAPPING["enum"](**kwargs)
+        return WIDGET_MAPPING["enum"].from_dict(**kwargs)
 
-    def _parse_simple_widget(self, name: str, params: dict[str, Any], optional: bool = False) -> WIDGET_TYPE:
+    @classmethod
+    def _parse_anyof_schema_definition(
+        cls,
+        params: dict[str, dict[str, Any]] | Any,
+        definitions: dict[str, Any],
+        default: Any | None = None,
+        optional: bool = True,
+    ) -> WIDGET:
+        definition_name = params.get("title")
+        kwargs = {"name": definition_name, "widget": "array", "default": default, "optional": optional, "type": str}
+        return WIDGET_MAPPING["array"].from_dict(**kwargs)
+
+    @classmethod
+    def _parse_simple_widget(
+        cls, name: str, params: dict[str, Any], default: Any | None = None, optional: bool = False
+    ) -> WIDGET:
         widget_type = params.get("type")
-        value = getattr(self, name, None)
         try:
-            widget: Callable = WIDGET_MAPPING[widget_type]  # type: ignore
-            return widget(optional=optional, name=name, widget=widget_type, value=value)
+            items = params.get("items", [{}])[-1]
+        except KeyError:
+            items = params.get("items", [{}])
+        widget_params = dict(optional=optional, name=name, widget=widget_type)
+        widget_params["type"] = widget_type
+        widget_params["default"] = default
+        if "enum" in items and widget_type != "enum":
+            widget_type = "enum"
+            widget_params["params"] = items["enum"]  # type: ignore
+
+        try:
+            widget: WIDGET_TYPE = WIDGET_MAPPING[widget_type]  # type: ignore
+            return widget.from_dict(**widget_params)
 
         except KeyError:
-            raise Exception("Not found widget. Define new widget for %s and add it to mapping." % widget_type)
+            raise Exception("Not found widget. Define new widget for <%s> and add it to mapping." % widget_type)
 
-    def _parse_custom_widget(self, name: str, optional: bool = False) -> WIDGET_TYPE:
-        custom_widget = self.Options.custom_widgets[name]  # type: ignore
+    @classmethod
+    def _parse_custom_widget(cls, name: str, optional: bool = False) -> WIDGET:
+        custom_widget = cls.Options.custom_widgets[name]  # type: ignore
         _widget = WIDGET_MAPPING[custom_widget["widget"]]
-        current_value = getattr(self, name)
-        serialized_value = custom_widget["serialize"](current_value)
-        return _widget(optional=optional, name=name, widget=custom_widget["widget"], value=serialized_value)
+        return _widget.from_dict(**dict(optional=optional, name=name, widget=custom_widget["widget"], value=None))
 
-    def get_widgets(self):
-        return self._parse_schemas()
+    @classmethod
+    def get_widgets(cls) -> dict[str, str | dict | list]:
+        return cls._parse_schemas()

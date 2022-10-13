@@ -141,7 +141,7 @@ class PGraph:
         data = {
             "directed": graph.is_directed(),
             "nodes": [n.export() for n in graph],
-            link: [dict(chain(d.items(), [(source, u), (target, v)])) for u, v, d in graph.edges(data=True)],
+            link: [dict(chain(d.items(), [(source, u.pk), (target, v.pk)])) for u, v, d in graph.edges(data=True)],
         }
         return data
 

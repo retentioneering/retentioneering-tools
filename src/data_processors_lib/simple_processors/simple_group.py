@@ -17,6 +17,30 @@ class SimpleGroupParams(ParamsModel):
 
 
 class SimpleGroup(DataProcessor):
+    """
+    Creating new events which grouping input events on the basis of specified conditions
+
+    Parameters
+    ----------
+    event_name :
+        Name of new, grouped event
+    filter : Callable[[DataFrame, EventstreamSchema], Any]
+        Custom function which returns boolean mask the same length as input Eventstream
+        If True - events, that will be grouped
+        If False - events, that will be remained
+    event_type : str, default="group_alias"
+        Event_type name for the grouped events
+        If custom event_type is created - it is important to add it to the DEFAULT_INDEX_ORDER
+
+    See Also
+    ----------
+
+    Returns
+    -------
+    eventstream
+
+    """
+
     params: SimpleGroupParams
 
     def __init__(self, params: SimpleGroupParams) -> None:

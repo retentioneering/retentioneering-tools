@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -14,11 +14,69 @@ from src.params_model import ParamsModel
 
 class SplitSessionsParams(ParamsModel):
     session_cutoff: Tuple[float, DATETIME_UNITS]
-    mark_truncated: Optional[bool] = False
+    mark_truncated: bool = False
     session_col: str
 
 
 class SplitSessions(DataProcessor):
+    """
+    Creating new events, which divide user's paths on sessions
+    Also create and add new column to the input eventstream with the session number
+    Session number (view):
+        {user_id}_{session_number through one user path}
+
+    Parameters
+    ----------
+    session_cutoff : Tuple(float, DATETIME_UNITS)
+        Threshold value and its unit of measure.
+        'session_start' and 'session_end' events are always placed before the first and after the last event
+        in each user's path
+        But user can have more than one session, so that
+        Calculate timedelta between every two consecutive events in each user's path.
+        If calculated timedelta is more than selected session_cutoff,
+        new synthetic events - 'session_start' and 'session_end' will occur in the middle of
+        will be added
+
+    mark_truncated : bool, default=False
+
+
+    session_col : str
+        The name of future session_col
+    Note
+    -------
+    Hists
+
+    Returns
+    -------
+    Eventstream with new synthetic events (details in the table below)
+        +-----------------------------+------------------+----------------------------------+
+        | event_name                  | event_type                 | timestamp              |
+        +-----------------------------+----------------------------+------------------------+
+        | session_start               | session_start              | timestamp(first_event) |
+        +-----------------------------+----------------------------+------------------------+
+        | session_end                 | session_end                | timestamp(last_event)  |
+        +-----------------------------+----------------------------+------------------------+
+        | session_start_truncated     | session_start_truncated    | timestamp(first_event) |
+        +-----------------------------+----------------------------+------------------------+
+        | session_end_truncated       | session_end_truncated      | timestamp(last_event)  |
+        +-----------------------------+----------------------------+------------------------+
+
+    If (timestamp(event(n)) -  (timestamp(event(n-1)) > session_cutoff))
+        +-------------------+------------------+------------------------+
+        | event_name        | event_type       | timestamp              |
+        +-------------------+------------------+------------------------+
+        | session_start     | session_start    | timestamp(event(n))    |
+        +-------------------+------------------+------------------------+
+        | session_end       | session_end      | timestamp(event(n-1))  |
+        +-------------------+------------------+------------------------+
+
+
+    See Also
+    -------
+
+
+    """
+
     params: SplitSessionsParams
 
     def __init__(self, params: SplitSessionsParams) -> None:

@@ -19,7 +19,7 @@ class TruncatedParams(ParamsModel):
 
 class TruncatedEvents(DataProcessor):
     """
-    Create new synthetic event(s) for each user if condition on the base of threshold
+    Create new synthetic event(s) for each user on the base of timeout threshold
 
     Parameters
     ----------
@@ -38,7 +38,8 @@ class TruncatedEvents(DataProcessor):
 
     Returns
     -------
-    Eventstream with with new synthetic events 0, one or two for each user (details in the table below)
+    Eventstream with new synthetic events for users whose paths satisfy the specified cut-offs
+    (details in the table below)
 
         +-------------------+-------------------+------------------------+
         | event_name        | event_type        | timestamp              |
@@ -50,6 +51,7 @@ class TruncatedEvents(DataProcessor):
 
     See Also
     -------
+    Hists
     """
 
     params: TruncatedParams

@@ -12,7 +12,7 @@ class StartEndEventsParams(ParamsModel):
 
 class StartEndEvents(DataProcessor):
     """
-    Add two synthetic events in each user's path:
+    Create two synthetic events in each user's path:
     'start' and 'end'
 
     Returns

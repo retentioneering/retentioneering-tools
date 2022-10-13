@@ -16,6 +16,22 @@ class FilterEventsParams(ParamsModel):
 
 
 class FilterEvents(DataProcessor):
+    """
+    Filtering input Eventstream on the basis of custom conditions
+
+    Parameters
+    ----------
+    filter : Callable[[DataFrame, EventstreamSchema], Any]
+        Custom function which returns boolean mask the same length as input Eventstream
+        If True - row will be remained
+        If False - row will be deleted
+
+    Returns
+    -------
+    eventstream
+
+    """
+
     params: FilterEventsParams
 
     def __init__(self, params: FilterEventsParams):
@@ -27,7 +43,7 @@ class FilterEvents(DataProcessor):
         mask = filter_(events, eventstream.schema)
         events_to_delete = events[~mask]
 
-        with pd.option_context('mode.chained_assignment', None):
+        with pd.option_context("mode.chained_assignment", None):
             events_to_delete["ref"] = events_to_delete[eventstream.schema.event_id]
 
         eventstream = Eventstream(

@@ -7,7 +7,7 @@ import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.filter_events import FilterEvents, FilterEventsParams
-from src.data_processors_lib.rete.simple_group import SimpleGroup, SimpleGroupParams
+from src.data_processors_lib.rete.group_events import GroupEvents, GroupEventsParams
 from src.eventstream.eventstream import Eventstream, EventstreamSchema
 from src.eventstream.schema import RawDataSchema
 from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode
@@ -117,7 +117,7 @@ class EventstreamTest(unittest.TestCase):
         def cart_func(df: pd.DataFrame, schema: EventstreamSchema) -> pd.Series[bool]:
             return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
 
-        cart_events = EventsNode(SimpleGroup(SimpleGroupParams(event_name="add_to_cart", filter=cart_func)))
+        cart_events = EventsNode(GroupEvents(GroupEventsParams(event_name="add_to_cart", filter=cart_func)))
 
         graph = PGraph(source)
         graph.add_node(node=cart_events, parents=[graph.root])
@@ -150,16 +150,16 @@ class EventstreamTest(unittest.TestCase):
         )
 
         cart_events = EventsNode(
-            SimpleGroup(
-                SimpleGroupParams(
+            GroupEvents(
+                GroupEventsParams(
                     event_name="add_to_cart",
                     filter=lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"]),
                 )
             )
         )
         logout_events = EventsNode(
-            SimpleGroup(
-                SimpleGroupParams(
+            GroupEvents(
+                GroupEventsParams(
                     event_name="logout",
                     filter=lambda df, schema: df[schema.event_name] == "exit_btn_click",
                 )
@@ -230,8 +230,8 @@ class EventstreamTest(unittest.TestCase):
         root_node = [x for x in graph._ngraph][0]
         root_node.pk = "0dc3b706-e6cc-401e-96f7-6a45d3947d5c"
         cart_events = EventsNode(
-            SimpleGroup(
-                SimpleGroupParams(
+            GroupEvents(
+                GroupEventsParams(
                     event_name="add_to_cart",
                     filter=lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"]),
                 )
@@ -239,8 +239,8 @@ class EventstreamTest(unittest.TestCase):
         )
         cart_events.pk = "07921cb0-60b8-45af-928d-272d1b622b25"
         logout_events = EventsNode(
-            SimpleGroup(
-                SimpleGroupParams(
+            GroupEvents(
+                GroupEventsParams(
                     event_name="logout",
                     filter=lambda df, schema: df[schema.event_name] == "exit_btn_click",
                 )
@@ -259,7 +259,7 @@ class EventstreamTest(unittest.TestCase):
                     "name": "EventsNode",
                     "pk": "07921cb0-60b8-45af-928d-272d1b622b25",
                     "processor": {
-                        "name": "SimpleGroup",
+                        "name": "GroupEvents",
                         "values": {"event_name": "add_to_cart", "event_type": "group_alias"},
                     },
                 },
@@ -267,7 +267,7 @@ class EventstreamTest(unittest.TestCase):
                     "name": "EventsNode",
                     "pk": "114251ae-0f03-45e6-a163-af51bb02dfd5",
                     "processor": {
-                        "name": "SimpleGroup",
+                        "name": "GroupEvents",
                         "values": {"event_name": "logout", "event_type": "group_alias"},
                     },
                 },

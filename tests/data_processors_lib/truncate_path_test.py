@@ -815,7 +815,7 @@ class TestTruncatePathGraph:
                 [1, "event3", "raw", "2022-01-01 00:02:00"],
                 [1, "event1", "raw", "2022-01-01 00:03:00"],
                 [1, "event2", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:05:00"]
+                [1, "event3", "raw", "2022-01-01 00:05:00"],
             ],
             columns=["user_id", "event", "event_type", "timestamp"],
         )
@@ -830,10 +830,18 @@ class TestTruncatePathGraph:
             raw_data=source_df,
             schema=EventstreamSchema(),
         )
-        events = EventsNode(TruncatePath(params=TruncatePathParams(
-            drop_before="event3", occurrence_before='first', shift_before=2,
-            drop_after="event3", occurrence_after='last', shift_after=-2
-        )))
+        events = EventsNode(
+            TruncatePath(
+                params=TruncatePathParams(
+                    drop_before="event3",
+                    occurrence_before="first",
+                    shift_before=2,
+                    drop_after="event3",
+                    occurrence_after="last",
+                    shift_after=-2,
+                )
+            )
+        )
         graph = PGraph(source_stream=source)
         graph.add_node(node=events, parents=[graph.root])
 
@@ -850,7 +858,7 @@ class TestTruncatePathGraph:
                 [1, "event3", "raw", "2022-01-01 00:02:00"],
                 [1, "event1", "raw", "2022-01-01 00:03:00"],
                 [1, "event2", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:05:00"]
+                [1, "event3", "raw", "2022-01-01 00:05:00"],
             ],
             columns=["user_id", "event", "event_type", "timestamp"],
         )
@@ -884,7 +892,7 @@ class TestTruncatePathGraph:
                 [1, "event3", "raw", "2022-01-01 00:02:00"],
                 [1, "event1", "raw", "2022-01-01 00:03:00"],
                 [1, "event2", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:05:00"]
+                [1, "event3", "raw", "2022-01-01 00:05:00"],
             ],
             columns=["user_id", "event", "event_type", "timestamp"],
         )

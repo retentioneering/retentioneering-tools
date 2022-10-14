@@ -4,15 +4,9 @@ import uuid
 from typing import Any, Optional, Type, Union
 
 from src.data_processor.data_processor import DataProcessor
+from src.data_processor.registry import dataprocessor_registry
 from src.eventstream import Eventstream
-
-
-def get_registry_dataprocessor(processor_name: str) -> Type[DataProcessor]:
-    """
-    mock function!!!
-    :return:
-    """
-    return DataProcessor
+from src.params_model.registry import params_model_registry
 
 
 class BaseNode:
@@ -75,15 +69,26 @@ nodes = {
 }
 
 
-def build_node(node_name: str, processor_name: str | None, processor_params: dict[str, Any] | None) -> Node | None:
+class NotFoundDataprocessor(Exception):
+    pass
+
+
+def build_node(node_name: str, processor_name: str, processor_params: dict[str, Any] | None = None) -> Node | None:
     if node_name == "SourceNode":
         return None
 
     _node = nodes[node_name]
     node_kwargs = {}
     if processor_name:
-        _processor: Type[DataProcessor] = get_registry_dataprocessor(processor_name)
-        processor: DataProcessor = _processor(params=processor_params)  # type: ignore
+        _params_model_registry = params_model_registry.get_registry()
+        _params_model = _params_model_registry[f"{processor_name}Params"]
+        params_model = _params_model(**processor_params)
+
+        _dataprocessor_registry = dataprocessor_registry.get_registry()
+        _processor: Type[DataProcessor] = _dataprocessor_registry[processor_name]  # type: ignore
+        print(params_model)
+        processor: DataProcessor = _processor(params=params_model)
+
         node_kwargs["processor"] = processor
 
     node = _node(**node_kwargs)

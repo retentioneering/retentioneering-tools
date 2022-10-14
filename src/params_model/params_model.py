@@ -54,8 +54,9 @@ class ParamsModel(BaseModel):
     ) -> None:
         super().__init__(**data)
 
-    def __call__(self, **data: Dict[str, Any]) -> None:
-        super().__init__(**data)
+    def __call__(self, **data: Dict[str, Any]) -> ParamsModel:
+        ParamsModel.__init__(self, **data)
+        return self
 
     @classmethod
     def _parse_schemas(cls) -> dict[str, str | dict | list]:

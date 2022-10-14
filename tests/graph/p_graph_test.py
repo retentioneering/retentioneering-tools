@@ -19,7 +19,7 @@ class StubPProcessorParams(ParamsModel):
     a: Union[Literal["a"], Literal["b"]]
 
 
-class StubProcessor(DataProcessor):
+class StubProcessorPGraph(DataProcessor):
     params: StubPProcessorParams
 
     def __init__(self, params: StubPProcessorParams):
@@ -44,7 +44,7 @@ class EventstreamTest(unittest.TestCase):
         self.__raw_data_schema = RawDataSchema(event_name="name", event_timestamp="event_timestamp", user_id="user_id")
 
     def mock_events_node(self):
-        return EventsNode(processor=StubProcessor(params=StubPProcessorParams(a="a")))
+        return EventsNode(processor=StubProcessorPGraph(params=StubPProcessorParams(a="a")))
 
     def create_graph(self):
         source = Eventstream(
@@ -278,7 +278,7 @@ class EventstreamTest(unittest.TestCase):
             ],
         }
 
-        export_data = graph.export()
+        export_data = graph.export(payload={})
         # del export_data["links"]
         # При каждом запуске функции имеют разные адреса, отсюда разница при ассерте
         del export_data["nodes"][1]["processor"]["values"]["filter"]

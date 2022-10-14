@@ -201,22 +201,20 @@ class PGraph:
                 processor_name=node.get("processor", {}).get("name", None),  # type: ignore
                 processor_params=node.get("processor", {}).get("values", None),  # type: ignore
             ):
-                parents, child = self._find_linked_nodes(target_node=node_pk, link_list=payload["links"])
+                actual_node.pk = node_pk
+                parents = self._find_parents_by_links(target_node=node_pk, link_list=payload["links"])
                 self.add_node(parents=parents, node=actual_node)
+            if node["name"] == "SourceNode":
+                self.root.pk = node["pk"]
 
-    def _find_linked_nodes(self, target_node: str, link_list: list[NodeLink]) -> tuple[list[Node], Node]:
+    def _find_parents_by_links(self, target_node: str, link_list: list[NodeLink]) -> list[Node]:
         parents: list[str] = []
-        child: str = ""
         for node in link_list:
-            if node["source"] == target_node:
+            if node["target"] == target_node:
                 parents.append(node["source"])
 
-            if node["target"] == target_node:
-                child = node["target"]
-
         parent_nodes = [self._find_node(parent) for parent in parents]
-        child_node = self._find_node(child)
-        return parent_nodes, child_node  # type: ignore
+        return parent_nodes  # type: ignore
 
     def _find_node(self, pk: str) -> Node | None:
         for node in self._ngraph:

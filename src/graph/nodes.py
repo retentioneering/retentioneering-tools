@@ -66,14 +66,17 @@ class MergeNode(BaseNode):
 
 
 Node = Union[SourceNode, EventsNode, MergeNode]
+nodes = {
+    "MergeNode": MergeNode,
+    "EventsNode": EventsNode,
+    "SourceNode": SourceNode,
+}
 
 
-def build_node(node_name: str, processor_name: str | None, processor_params: dict[str, Any] | None) -> Node:
-    nodes = {
-        "MergeNode": MergeNode,
-        "EventsNode": EventsNode,
-        "SourceNode": SourceNode,
-    }
+def build_node(node_name: str, processor_name: str | None, processor_params: dict[str, Any] | None) -> Node | None:
+    if node_name == "SourceNode":
+        return None
+
     _node = nodes[node_name]
     node_kwargs = {}
     if processor_name:

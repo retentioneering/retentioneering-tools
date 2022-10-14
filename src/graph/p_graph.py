@@ -20,8 +20,8 @@ class NodeData(TypedDict):
 
 
 class NodeLink(TypedDict):
-    source: NodeData
-    target: NodeData
+    source: str
+    target: str
 
 
 class Payload(TypedDict):
@@ -130,6 +130,7 @@ class PGraph:
             self.__server = self.__server_manager.create_server()
             self.__server.register_action("list-dataprocessor-mock", list_dataprocessor_mock)
             self.__server.register_action("list-dataprocessor", list_dataprocessor)
+            self.__server.register_action("set-graph", self._set_graph)
 
         render = PGraphRenderer()
         return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))
@@ -177,46 +178,40 @@ class PGraph:
             ],
             "links": [
                 {
-                    'source': {'name': 'SourceNode', 'pk': '0dc3b706-e6cc-401e-96f7-6a45d3947d5c'},
-                    'target': {'name': 'EventsNode', 'pk': '07921cb0-60b8-45af-928d-272d1b622b25'}
+                    'source': '0dc3b706-e6cc-401e-96f7-6a45d3947d5c',
+                    'target': '07921cb0-60b8-45af-928d-272d1b622b25'
                 },
                 {
-                    'source': {'name': 'EventsNode', 'pk': '07921cb0-60b8-45af-928d-272d1b622b25'},
-                    'target': {'name': 'EventsNode', 'pk': '114251ae-0f03-45e6-a163-af51bb02dfd5'}
+                    'source': '07921cb0-60b8-45af-928d-272d1b622b25',
+                    'target': '114251ae-0f03-45e6-a163-af51bb02dfd5'
                 }
             ]
         }
 
         """
-        for node in payload["nodes"]:
-            # node: dict[str, str | dict[str, Any]]
-            node_pk: str = node["pk"]
-            if actual_node := self._find_node(pk=node_pk):
-                if getattr(actual_node, "processor", None):
-                    actual_node.processor.params(**node["processor"])  # type: ignore
-            else:
-                actual_node = build_node(
-                    node_name=node["name"],
-                    processor_name=node.get("processor", {}).get("name", None),  # type: ignore
-                    processor_params=node.get("processor", {}).get("values", None),  # type: ignore
-                )
-                parents, child = self._find_linked_nodes(target_node=node_pk, link_list=payload["links"])
-                self.insert_node(parents=parents, child=child, node=actual_node)
+        self._ngraph = networkx.DiGraph()
+        self._ngraph.add_node(self.root)
 
-    def insert_node(self, parents: list[Node], child: Node, node: Node) -> None:
-        [self._ngraph.remove_edge(parent, child) for parent in parents]
-        self.add_node(node=node, parents=parents)
-        self._ngraph.add_edge(node, child)
+        for node in payload["nodes"]:
+            node_pk = node["pk"]
+            if actual_node := build_node(
+                node_name=node["name"],
+                processor_name=node.get("processor", {}).get("name", None),  # type: ignore
+                processor_params=node.get("processor", {}).get("values", None),  # type: ignore
+            ):
+                parents, child = self._find_linked_nodes(target_node=node_pk, link_list=payload["links"])
+                self.add_node(parents=parents, node=actual_node)
 
     def _find_linked_nodes(self, target_node: str, link_list: list[NodeLink]) -> tuple[list[Node], Node]:
         parents: list[str] = []
         child: str = ""
         for node in link_list:
-            if node["source"]["pk"] == target_node:
-                parents.append(node["source"]["pk"])
+            if node["source"] == target_node:
+                parents.append(node["source"])
 
-            if node["target"]["pk"] == target_node:
-                child = node["target"]["pk"]
+            if node["target"] == target_node:
+                child = node["target"]
+
         parent_nodes = [self._find_node(parent) for parent in parents]
         child_node = self._find_node(child)
         return parent_nodes, child_node  # type: ignore

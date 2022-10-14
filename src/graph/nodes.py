@@ -16,7 +16,9 @@ class BaseNode:
         self.pk = str(uuid.uuid4())
 
     def __str__(self) -> str:
-        data = {"name": self.__class__.__name__, "pk": self.pk}
+        data = {"name": self.__class__.__name__}
+        if pk := getattr(self, "pk", None):
+            data["pk"] = pk
         return str(data)
 
     __repr__ = __str__

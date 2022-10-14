@@ -1,6 +1,4 @@
 from .collapse_loops import CollapseLoops, CollapseLoopsParams
-from .cut_path_after_event import CutPathAfterEvent, CutPathAfterEventParams
-from .cut_path_before_event import CutPathBeforeEvent, CutPathBeforeEventParams
 from .delete_users_by_path_length import (
     DeleteUsersByPathLength,
     DeleteUsersByPathLengthParams,

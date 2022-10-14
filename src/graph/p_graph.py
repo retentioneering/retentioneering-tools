@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import json
-from itertools import chain
-from typing import List, Optional, cast
+from typing import Any, List, Optional, TypedDict, cast
 
 import networkx
 from IPython.display import HTML, DisplayHandle, display
@@ -10,8 +9,24 @@ from IPython.display import HTML, DisplayHandle, display
 from src.backend import JupyterServer, ServerManager
 from src.backend.callback import list_dataprocessor, list_dataprocessor_mock
 from src.eventstream.eventstream import Eventstream
-from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode
+from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode, build_node
 from src.templates import PGraphRenderer
+
+
+class NodeData(TypedDict):
+    name: str
+    pk: str
+    processor: Optional[dict]
+
+
+class NodeLink(TypedDict):
+    source: str
+    target: str
+
+
+class Payload(TypedDict):
+    nodes: list[NodeData]
+    links: list[NodeLink]
 
 
 class PGraph:
@@ -115,20 +130,96 @@ class PGraph:
             self.__server = self.__server_manager.create_server()
             self.__server.register_action("list-dataprocessor-mock", list_dataprocessor_mock)
             self.__server.register_action("list-dataprocessor", list_dataprocessor)
+            self.__server.register_action("set-graph", self._set_graph)
+            self.__server.register_action("get-graph", self.export)
 
         render = PGraphRenderer()
         return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))
 
-    def export(self) -> dict:
+    def export(self, payload: dict[str, Any]) -> dict:
         source, target, link = "source", "target", "links"
         graph = self._ngraph
         data = {
             "directed": graph.is_directed(),
             "nodes": [n.export() for n in graph],
-            link: [dict(chain(d.items(), [(source, u), (target, v)])) for u, v, d in graph.edges(data=True)],
+            link: [{source: u.pk, target: v.pk} for u, v, d in graph.edges(data=True)],
         }
         return data
 
     def _export_to_json(self) -> str:
-        data = self.export()
+        data = self.export(payload=dict())
         return json.dumps(data)
+
+    def _set_graph(self, payload: Payload) -> None:
+        """
+        Payload example:
+
+        {
+            "nodes": [
+                {
+                    "name": "SourceNode",
+                    "pk": "0dc3b706-e6cc-401e-96f7-6a45d3947d5c"
+                },
+                {
+                    "name": "EventsNode",
+                    "pk": "07921cb0-60b8-45af-928d-272d1b622b25",
+                    "processor": {
+                        "name": "SimpleGroup",
+                        "values": {"event_name": "add_to_cart", "event_type": "group_alias"},
+                    },
+                },
+                {
+                    "name": "EventsNode",
+                    "pk": "114251ae-0f03-45e6-a163-af51bb02dfd5",
+                    "processor": {
+                        "name": "SimpleGroup",
+                        "values": {"event_name": "logout", "event_type": "group_alias"},
+                    },
+                },
+            ],
+            "links": [
+                {
+                    'source': '0dc3b706-e6cc-401e-96f7-6a45d3947d5c',
+                    'target': '07921cb0-60b8-45af-928d-272d1b622b25'
+                },
+                {
+                    'source': '07921cb0-60b8-45af-928d-272d1b622b25',
+                    'target': '114251ae-0f03-45e6-a163-af51bb02dfd5'
+                }
+            ]
+        }
+
+        """
+        self._ngraph = networkx.DiGraph()
+        self._ngraph.add_node(self.root)
+
+        for node in payload["nodes"]:
+            node_pk = node["pk"]
+            if actual_node := build_node(
+                node_name=node["name"],
+                processor_name=node.get("processor", {}).get("name", None),  # type: ignore
+                processor_params=node.get("processor", {}).get("values", None),  # type: ignore
+            ):
+                parents, child = self._find_linked_nodes(target_node=node_pk, link_list=payload["links"])
+                self.add_node(parents=parents, node=actual_node)
+
+    def _find_linked_nodes(self, target_node: str, link_list: list[NodeLink]) -> tuple[list[Node], Node]:
+        parents: list[str] = []
+        child: str = ""
+        for node in link_list:
+            if node["source"] == target_node:
+                parents.append(node["source"])
+
+            if node["target"] == target_node:
+                child = node["target"]
+
+        parent_nodes = [self._find_node(parent) for parent in parents]
+        child_node = self._find_node(child)
+        return parent_nodes, child_node  # type: ignore
+
+    def _find_node(self, pk: str) -> Node | None:
+        for node in self._ngraph:
+            if node.pk == pk:
+                return node
+        else:
+            return None

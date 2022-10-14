@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import List, Optional, TypedDict, cast
+from typing import Any, List, Optional, TypedDict, cast
 
 import networkx
 from IPython.display import HTML, DisplayHandle, display
@@ -131,11 +131,12 @@ class PGraph:
             self.__server.register_action("list-dataprocessor-mock", list_dataprocessor_mock)
             self.__server.register_action("list-dataprocessor", list_dataprocessor)
             self.__server.register_action("set-graph", self._set_graph)
+            self.__server.register_action("get-graph", self.export)
 
         render = PGraphRenderer()
         return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))
 
-    def export(self) -> dict:
+    def export(self, payload: dict[str, Any]) -> dict:
         source, target, link = "source", "target", "links"
         graph = self._ngraph
         data = {
@@ -146,7 +147,7 @@ class PGraph:
         return data
 
     def _export_to_json(self) -> str:
-        data = self.export()
+        data = self.export(payload=dict())
         return json.dumps(data)
 
     def _set_graph(self, payload: Payload) -> None:

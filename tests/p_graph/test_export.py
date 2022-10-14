@@ -1,5 +1,3 @@
-import json
-
 import pandas as pd
 
 from src.data_processors_lib.rete import StartEndEventsParams, StartEndEvents
@@ -39,25 +37,59 @@ class TestPGraphExportImport:
         )
         graph.add_node(node=node, parents=[graph.root])
 
-        export_data = graph.export()
-        del export_data["links"][0]['source'].pk
-        del export_data["links"][0]['target'].pk
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data['links'])
+        del export_data["links"]
         del export_data["nodes"][0]['pk']
         del export_data["nodes"][1]['pk']
-        print(export_data)
-        assert json.dumps({'directed': True,
-                'links': [{'source': {'name': 'SourceNode'},
-                           'target': {'name': 'EventsNode'}}],
-                'nodes': [{'name': 'SourceNode'},
-                          {'name': 'EventsNode',
-                           'processor': {'name': 'StartEndEvents', 'values': {}}}]}) == json.dumps(export_data)
+
+        assert {'directed': True,
+                'nodes': [
+                    {'name': 'SourceNode'},
+                    {'name': 'EventsNode', 'processor': {'values': {}, 'name': 'StartEndEvents'}}
+                ]} == export_data
+
+    def test_start_end_import(self) -> None:
+        graph = self.create_graph()
+
+        graph._set_graph(payload={
+            'directed': True,
+            'nodes': [
+                {
+                    'name': 'SourceNode',
+                    'pk': 'a911d6de-48a9-4898-8d4f-c123efc84498'
+                },
+                {
+                    'name': 'EventsNode',
+                    'pk': '81e5ead2-c0ed-43c5-a522-9d2484a1607e',
+                    'processor': {
+                        'values': {},
+                        'name': 'StartEndEvents'
+                    }
+                }
+            ],
+            'links': [
+                {
+                    'source': 'a911d6de-48a9-4898-8d4f-c123efc84498',
+                    'target': '81e5ead2-c0ed-43c5-a522-9d2484a1607e'
+                }
+            ]
+        })
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data['links'])
+        del export_data["links"]
+        del export_data["nodes"][0]['pk']
+        del export_data["nodes"][1]['pk']
+
+        assert {'directed': True,
+                'nodes': [
+                    {'name': 'SourceNode'},
+                    {'name': 'EventsNode', 'processor': {'values': {}, 'name': 'StartEndEvents'}}
+                ]} == export_data
 
     """
-    {'directed': True,
-                'links': [{'source': {'name': 'SourceNode', 'pk': '47f68185-a4a4-4493-9dcd-d64116190d95'},
-                           'target': {'name': 'EventsNode', 'pk': '5b1a9b1b-886d-4334-abbb-6f903581f280'}}],
-                'nodes': [{'name': 'SourceNode', 'pk': '47f68185-a4a4-4493-9dcd-d64116190d95'},
-                          {'name': 'EventsNode',
-                           'pk': '5b1a9b1b-886d-4334-abbb-6f903581f280',
-                           'processor': {'name': 'StartEndEvents', 'values': {}}}]}
-                           """
+    {'directed': True, 'nodes': [
+    {'name': 'SourceNode', 'pk': 'a911d6de-48a9-4898-8d4f-c123efc84498'}, 
+    {'name': 'EventsNode', 'pk': '81e5ead2-c0ed-43c5-a522-9d2484a1607e', 'processor': {'values': {}, 'name': 'StartEndEvents'}}], 'links': [{'source': 'a911d6de-48a9-4898-8d4f-c123efc84498', 'target': '81e5ead2-c0ed-43c5-a522-9d2484a1607e'}]}
+    """

@@ -25,6 +25,7 @@ class NodeLink(TypedDict):
 
 
 class Payload(TypedDict):
+    directed: bool
     nodes: list[NodeData]
     links: list[NodeLink]
 

@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from src.data_processors_lib.rete import TruncatedEvents, TruncatedParams
+from src.data_processors_lib.rete import TruncatedEvents, TruncatedEventsParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.graph.p_graph import EventsNode, PGraph
@@ -42,7 +42,7 @@ class TestTruncatedEvents:
             raw_data=source_df,
             schema=EventstreamSchema(),
         )
-        params = TruncatedParams(left_truncated_cutoff=(1, "h"), right_truncated_cutoff=(1, "h"))
+        params = TruncatedEventsParams(left_truncated_cutoff=(1, "h"), right_truncated_cutoff=(1, "h"))
         events = TruncatedEvents(params=params)
         result = events.apply(source)
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
@@ -78,7 +78,7 @@ class TestTruncatedEvents:
             raw_data=source_df,
             schema=EventstreamSchema(),
         )
-        params = TruncatedParams(left_truncated_cutoff=(1, "h"))
+        params = TruncatedEventsParams(left_truncated_cutoff=(1, "h"))
         events = TruncatedEvents(params=params)
         result = events.apply(source)
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
@@ -114,7 +114,7 @@ class TestTruncatedEvents:
             raw_data=source_df,
             schema=EventstreamSchema(),
         )
-        params = TruncatedParams(right_truncated_cutoff=(1, "h"))
+        params = TruncatedEventsParams(right_truncated_cutoff=(1, "h"))
         events = TruncatedEvents(params=params)
         result = events.apply(source)
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
@@ -123,7 +123,7 @@ class TestTruncatedEvents:
 
     def test_params_model__incorrect_datetime_unit(self):
         with pytest.raises(ValidationError):
-            p = TruncatedParams(left_truncated_cutoff=(1, "xxx"))
+            p = TruncatedEventsParams(left_truncated_cutoff=(1, "xxx"))
 
 
 class TestTruncatedEventsGraph:
@@ -168,7 +168,7 @@ class TestTruncatedEventsGraph:
         )
 
         graph = PGraph(source_stream=stream)
-        params = TruncatedParams(left_truncated_cutoff=(1, "h"), right_truncated_cutoff=(1, "h"))
+        params = TruncatedEventsParams(left_truncated_cutoff=(1, "h"), right_truncated_cutoff=(1, "h"))
         truncated_events = EventsNode(TruncatedEvents(params=params))
         graph.add_node(node=truncated_events, parents=[graph.root])
         res = graph.combine(node=truncated_events).to_dataframe()[correct_result_columns]

@@ -1,6 +1,11 @@
 import pandas as pd
 
-from src.data_processors_lib.rete import StartEndEvents, StartEndEventsParams, TruncatedParams, TruncatedEvents
+from src.data_processors_lib.rete import (
+    StartEndEvents,
+    StartEndEventsParams,
+    TruncatedEvents,
+    TruncatedEventsParams,
+)
 from src.eventstream.eventstream import Eventstream, RawDataSchema
 from src.graph.nodes import EventsNode
 from src.graph.p_graph import PGraph
@@ -41,12 +46,12 @@ class TestPGraphExportImport:
         del export_data["nodes"][1]["pk"]
 
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
+            ],
+        } == export_data
 
     def test_start_end__import(self) -> None:
         graph = self.create_graph()
@@ -76,20 +81,21 @@ class TestPGraphExportImport:
         del export_data["nodes"][1]["pk"]
 
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
+            ],
+        } == export_data
 
     def test_truncated__export(self) -> None:
         graph = self.create_graph()
 
         node = EventsNode(
             processor=TruncatedEvents(
-                params=TruncatedParams(
-                    left_truncated_cutoff=(1, "h"), right_truncated_cutoff=(1, "h"))))
+                params=TruncatedEventsParams(left_truncated_cutoff=(1, "h"), right_truncated_cutoff=(1, "h"))
+            )
+        )
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -97,54 +103,57 @@ class TestPGraphExportImport:
         del export_data["links"]
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
-        assert {'directed': True,
-                'nodes': [
-                    {
-                        'name': 'SourceNode'
+        assert {
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "TruncatedEvents",
+                        "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
                     },
-                    {
-                        'name': 'EventsNode',
-                        'processor': {
-                            'name': 'TruncatedEvents',
-                            'values': {
-                                'left_truncated_cutoff': "1.0,h",
-                                'right_truncated_cutoff': "1.0,h"
-                            }
-                        }
-                    }]} == export_data
+                },
+            ],
+        } == export_data
 
     def test_truncated__import(self) -> None:
         graph = self.create_graph()
-        graph._set_graph(payload={
-            'directed': True,
-            'nodes': [{'name': 'SourceNode', 'pk': '0ad30844-66f8-47db-b5f0-221679296fe7'},
-                      {'name': 'EventsNode', 'pk': 'f45f7390-d2b4-4414-bcd2-94532ede375d',
-                       'processor': {'values': {'left_truncated_cutoff': '1.0,h',
-                                                'right_truncated_cutoff': '1.0,h'},
-                                     'name': 'TruncatedEvents'}}],
-            'links': [
-                {'source': '0ad30844-66f8-47db-b5f0-221679296fe7', 'target': 'f45f7390-d2b4-4414-bcd2-94532ede375d'}
-            ]}
+        graph._set_graph(
+            payload={
+                "directed": True,
+                "nodes": [
+                    {"name": "SourceNode", "pk": "0ad30844-66f8-47db-b5f0-221679296fe7"},
+                    {
+                        "name": "EventsNode",
+                        "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
+                        "processor": {
+                            "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
+                            "name": "TruncatedEvents",
+                        },
+                    },
+                ],
+                "links": [
+                    {"source": "0ad30844-66f8-47db-b5f0-221679296fe7", "target": "f45f7390-d2b4-4414-bcd2-94532ede375d"}
+                ],
+            }
         )
 
         export_data = graph.export(payload={})
-        print(export_data)
         assert 1 == len(export_data["links"])
         del export_data["links"]
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
-        assert {'directed': True,
-                'nodes': [
-                    {
-                        'name': 'SourceNode1'
+        assert {
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "TruncatedEvents",
+                        "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
                     },
-                    {
-                        'name': 'EventsNode',
-                        'processor': {
-                            'name': 'TruncatedEvents',
-                            'values': {
-                                'left_truncated_cutoff': "1.0,h",
-                                'right_truncated_cutoff': "1.0,h"
-                            }
-                        }
-                    }]} == export_data
+                },
+            ],
+        } == export_data

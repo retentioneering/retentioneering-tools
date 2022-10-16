@@ -80,14 +80,18 @@ class ReteTimeWidget:
 
     @classmethod
     def _serialize(cls, value: tuple[float, str]) -> str:
-        return ','.join([str(x) for x in value])
+        return ",".join([str(x) for x in value])
 
     @classmethod
     def _parse(cls, value: str) -> tuple[float, str]:
+        if type(value) is tuple:
+            value: tuple[float, str]
+            return value
+
         TIME, QUANT = 0, 1
-        data = value.split()
+        data = value.split(",")
         if len(data) > 2:
-            raise Exception('Incorrect input')
+            raise Exception("Incorrect input")
         return float(data[TIME]), str(data[QUANT])
 
 
@@ -108,5 +112,5 @@ WIDGET_MAPPING: dict[str, WIDGET_TYPE] = {
     "enum": EnumWidget,
     "array": ArrayWidget,
     "boolean": BooleanWidget,
-    "tuple": ReteTimeWidget
+    "tuple": ReteTimeWidget,
 }

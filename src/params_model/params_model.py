@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import asdict
-from typing import Any, Callable, Dict, Optional, Union, TYPE_CHECKING, Type
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Union
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ValidationError, validator
 from typing_extensions import TypedDict
 
 from src.params_model.registry import register_params_model
@@ -27,6 +27,7 @@ class CustomWidgetDataType(dict):
 class ParamsModel(BaseModel):
 
     _widgets: dict = {}
+
     @classmethod
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -46,7 +47,7 @@ class ParamsModel(BaseModel):
                 else:
                     subvalue = next(iter(value))
                 if (isinstance(subvalue, array_types) or hasattr(subvalue, "__getitem__")) and not isinstance(
-                        subvalue, str
+                    subvalue, str
                 ):
                     raise ValueError("Inner iterable or hashable not allowed!")
             except TypeError:
@@ -54,10 +55,16 @@ class ParamsModel(BaseModel):
         return value
 
     def __init__(
-            self,
-            **data: Dict[str, Any],
+        self,
+        **data: Dict[str, Any],
     ) -> None:
-        super().__init__(**data)
+        try:
+            super().__init__(**data)
+        except ValidationError:
+            for key in data:
+                if key in self._widgets:
+                    data[key] = self._widgets[key]._parse(data[key])
+            super().__init__(**data)
 
     def __call__(self, **data: Dict[str, Any]) -> ParamsModel:
         ParamsModel.__init__(self, **data)
@@ -92,11 +99,11 @@ class ParamsModel(BaseModel):
 
     @classmethod
     def _parse_schema_definition(
-            cls,
-            params: dict[str, dict[str, Any]] | Any,
-            definitions: dict[str, Any],
-            default: Any | None = None,
-            optional: bool = True,
+        cls,
+        params: dict[str, dict[str, Any]] | Any,
+        definitions: dict[str, Any],
+        default: Any | None = None,
+        optional: bool = True,
     ) -> WIDGET:
         ref: str = params.get("$ref", "") or params.get("allOf", [{}])[0].get("$ref", "")  # type: ignore
         definition_name = ref.split("/")[-1]
@@ -107,11 +114,11 @@ class ParamsModel(BaseModel):
 
     @classmethod
     def _parse_anyof_schema_definition(
-            cls,
-            params: dict[str, dict[str, Any]] | Any,
-            definitions: dict[str, Any],
-            default: Any | None = None,
-            optional: bool = True,
+        cls,
+        params: dict[str, dict[str, Any]] | Any,
+        definitions: dict[str, Any],
+        default: Any | None = None,
+        optional: bool = True,
     ) -> WIDGET:
         definition_name = params.get("title")
         kwargs = {"name": definition_name, "widget": "array", "default": default, "optional": optional, "type": str}
@@ -119,7 +126,7 @@ class ParamsModel(BaseModel):
 
     @classmethod
     def _parse_simple_widget(
-            cls, name: str, params: dict[str, Any], default: Any | None = None, optional: bool = False
+        cls, name: str, params: dict[str, Any], default: Any | None = None, optional: bool = False
     ) -> WIDGET:
         widget_type = params.get("type")
         try:
@@ -135,7 +142,6 @@ class ParamsModel(BaseModel):
 
         try:
             widget: WIDGET_TYPE = WIDGET_MAPPING[widget_type]  # type: ignore
-            print(f'{widget_params = }')
             return widget.from_dict(**widget_params)
 
         except KeyError:
@@ -152,21 +158,25 @@ class ParamsModel(BaseModel):
         return cls._parse_schemas()
 
     def dict(
-            self,
-            *,
-            include: Optional[Union['AbstractSetIntStr', 'MappingIntStrAny']] = None,
-            exclude: Optional[Union['AbstractSetIntStr', 'MappingIntStrAny']] = None,
-            by_alias: bool = False,
-            skip_defaults: Optional[bool] = None,
-            exclude_unset: bool = False,
-            exclude_defaults: bool = False,
-            exclude_none: bool = False,
+        self,
+        *,
+        include: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+        exclude: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+        by_alias: bool = False,
+        skip_defaults: Optional[bool] = None,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
     ) -> Dict:
         data = super().dict(
-            include=include, exclude=exclude, by_alias=by_alias, skip_defaults=skip_defaults,
-            exclude_unset=exclude_unset, exclude_defaults=exclude_defaults, exclude_none=exclude_none
+            include=include,
+            exclude=exclude,
+            by_alias=by_alias,
+            skip_defaults=skip_defaults,
+            exclude_unset=exclude_unset,
+            exclude_defaults=exclude_defaults,
+            exclude_none=exclude_none,
         )
-        print(f'{self._widgets = }')
         for key in data:
             if widget := self._widgets.get(key, None):
                 data[key] = widget._serialize(value=data[key])  # type: ignore

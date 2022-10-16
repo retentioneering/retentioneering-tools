@@ -84,7 +84,6 @@ def build_node(node_name: str, processor_name: str, processor_params: dict[str, 
 
         _dataprocessor_registry = dataprocessor_registry.get_registry()
         _processor: Type[DataProcessor] = _dataprocessor_registry[processor_name]  # type: ignore
-        print(params_model)
         processor: DataProcessor = _processor(params=params_model)
 
         node_kwargs["processor"] = processor

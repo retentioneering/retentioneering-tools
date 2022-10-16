@@ -2,13 +2,7 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional, Protocol, Type, Union
-
-
-class DataclassProtocol(Protocol):
-    __dataclass_fields__: Dict
-    __dataclass_params__: Dict
-    __post_init__: Optional[Callable]
+from typing import Type, Union
 
 
 @dataclass
@@ -72,8 +66,40 @@ class BooleanWidget:
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
 
-WIDGET_TYPE = Union[Type[StringWidget], Type[IntegerWidget], Type[EnumWidget], Type[ArrayWidget], Type[BooleanWidget]]
-WIDGET = Union[StringWidget, IntegerWidget, EnumWidget, ArrayWidget, BooleanWidget]
+@dataclass
+class ReteTimeWidget:
+    name: str
+    optional: bool
+    default: str
+    type: str
+    widget: str = "tuple"
+
+    @classmethod
+    def from_dict(cls, **kwargs) -> "ReteTimeWidget":
+        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
+
+    @classmethod
+    def _serialize(cls, value: tuple[float, str]) -> str:
+        return ','.join([str(x) for x in value])
+
+    @classmethod
+    def _parse(cls, value: str) -> tuple[float, str]:
+        TIME, QUANT = 0, 1
+        data = value.split()
+        if len(data) > 2:
+            raise Exception('Incorrect input')
+        return float(data[TIME]), str(data[QUANT])
+
+
+WIDGET_TYPE = Union[
+    Type[StringWidget],
+    Type[IntegerWidget],
+    Type[EnumWidget],
+    Type[ArrayWidget],
+    Type[BooleanWidget],
+    Type[ReteTimeWidget],
+]
+WIDGET = Union[StringWidget, IntegerWidget, EnumWidget, ArrayWidget, BooleanWidget, ReteTimeWidget]
 
 # @TODO: make default dict
 WIDGET_MAPPING: dict[str, WIDGET_TYPE] = {
@@ -82,4 +108,5 @@ WIDGET_MAPPING: dict[str, WIDGET_TYPE] = {
     "enum": EnumWidget,
     "array": ArrayWidget,
     "boolean": BooleanWidget,
+    "tuple": ReteTimeWidget
 }

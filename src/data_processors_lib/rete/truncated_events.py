@@ -10,11 +10,17 @@ from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.eventstream import Eventstream
 from src.params_model import ParamsModel
+from src.widget.widgets import ReteTimeWidget
 
 
 class TruncatedParams(ParamsModel):
     left_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
     right_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
+
+    _widgets = {
+        'left_truncated_cutoff': ReteTimeWidget,
+        'right_truncated_cutoff': ReteTimeWidget,
+    }
 
 
 class TruncatedEvents(DataProcessor):

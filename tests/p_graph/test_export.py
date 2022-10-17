@@ -5,6 +5,7 @@ from src.data_processors_lib.rete import (
     StartEndEventsParams,
     TruncatedEvents,
     TruncatedEventsParams,
+    NewUsersEvents, NewUsersParams
 )
 from src.eventstream.eventstream import Eventstream, RawDataSchema
 from src.graph.nodes import EventsNode

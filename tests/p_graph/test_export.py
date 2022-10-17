@@ -5,9 +5,12 @@ from src.data_processors_lib.rete import (
     DeleteUsersByPathLength, DeleteUsersByPathLengthParams,
     LostUsersEvents, LostUsersParams,
     NegativeTarget, NegativeTargetParams,
+    NewUsersEvents, NewUsersParams,
+    PositiveTarget, PositiveTargetParams,
+    SplitSessions, SplitSessionsParams,
     StartEndEvents, StartEndEventsParams,
+    TruncatePath, TruncatePathParams,
     TruncatedEvents, TruncatedEventsParams,
-    NewUsersEvents, NewUsersParams
 )
 from src.eventstream.eventstream import Eventstream, RawDataSchema
 from src.graph.nodes import EventsNode
@@ -525,7 +528,6 @@ class TestPGraphExportImport:
         del export_data["links"]
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
-        print(f'{export_data = }')
         assert {
                    "directed": True,
                    "nodes": [
@@ -548,6 +550,254 @@ class TestPGraphExportImport:
                                                         '(user_col)[time_col].idxmin()\n'
                                                         '\n'
                                                         '    return df.iloc[negative_events_index]\n',
+                               },
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_positive_events__export(self) -> None:
+        graph = self.create_graph()
+
+        node = EventsNode(
+            processor=PositiveTarget(
+                params=PositiveTargetParams(**{"positive_target_events": ["event3", "event2"]})
+            )
+        )
+        graph.add_node(node=node, parents=[graph.root])
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "PositiveTarget",
+                               "values": {
+                                   "positive_target_events": ["event3", "event2"],
+                                   'positive_function': 'def _default_func_positive('
+                                                        'eventstream: Eventstream, positive_target_events: list[str]) '
+                                                        '-> pd.DataFrame:\n    user_col = eventstream.schema.user_id'
+                                                        '\n    time_col = eventstream.schema.event_timestamp'
+                                                        '\n    event_col = eventstream.schema.event_name'
+                                                        '\n    df = eventstream.to_dataframe()\n\n    '
+                                                        'positive_events_index = (\n        '
+                                                        'df[df[event_col].isin(positive_target_events)].'
+                                                        'groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n'
+                                                        '    return df.iloc[positive_events_index]  # type: ignore\n'
+                               },
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_positive_events__import(self) -> None:
+        graph = self.create_graph()
+        graph._set_graph(
+            payload={
+                "directed": True,
+                "nodes": [
+                    {"name": "SourceNode", "pk": "0ad30844-66f8-47db-b5f0-221679296fe7"},
+                    {
+                        "name": "EventsNode",
+                        "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
+                        "processor": {
+                            "name": "PositiveTarget",
+                            "values": {"positive_target_events": ["event3", "event2"]},
+                        },
+                    },
+                ],
+                "links": [
+                    {"source": "0ad30844-66f8-47db-b5f0-221679296fe7", "target": "f45f7390-d2b4-4414-bcd2-94532ede375d"}
+                ],
+            }
+        )
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "PositiveTarget",
+                               "values": {
+                                   "positive_target_events": ["event3", "event2"],
+                                   'positive_function': 'def _default_func_positive('
+                                                        'eventstream: Eventstream, positive_target_events: list[str]) '
+                                                        '-> pd.DataFrame:\n    user_col = eventstream.schema.user_id'
+                                                        '\n    time_col = eventstream.schema.event_timestamp'
+                                                        '\n    event_col = eventstream.schema.event_name'
+                                                        '\n    df = eventstream.to_dataframe()\n\n    '
+                                                        'positive_events_index = (\n        '
+                                                        'df[df[event_col].isin(positive_target_events)].'
+                                                        'groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n'
+                                                        '    return df.iloc[positive_events_index]  # type: ignore\n'
+                               },
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_split_sesssion__export(self) -> None:
+        graph = self.create_graph()
+
+        node = EventsNode(
+            processor=SplitSessions(
+                params=SplitSessionsParams(session_cutoff=(30, "m"), session_col="session_id", mark_truncated=True)
+            )
+        )
+        graph.add_node(node=node, parents=[graph.root])
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "SplitSessions",
+                               "values": {
+                                   'session_cutoff': "30.0,m", 'session_col': 'session_id', 'mark_truncated': True
+                               },
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_split_sesssion__import(self) -> None:
+        graph = self.create_graph()
+        graph._set_graph(
+            payload={
+                "directed": True,
+                "nodes": [
+                    {"name": "SourceNode", "pk": "0ad30844-66f8-47db-b5f0-221679296fe7"},
+                    {
+                        "name": "EventsNode",
+                        "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
+                        "processor": {
+                            "name": "SplitSessions",
+                            "values": {
+                                'session_cutoff': "30.0,m", 'session_col': 'session_id', 'mark_truncated': True
+                            },
+                        },
+                    },
+                ],
+                "links": [
+                    {"source": "0ad30844-66f8-47db-b5f0-221679296fe7", "target": "f45f7390-d2b4-4414-bcd2-94532ede375d"}
+                ],
+            }
+        )
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "SplitSessions",
+                               "values": {
+                                   'session_cutoff': "30.0,m", 'session_col': 'session_id', 'mark_truncated': True
+                               },
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_truncated_path__export(self) -> None:
+        graph = self.create_graph()
+
+        node = EventsNode(
+            processor=TruncatePath(
+                params=TruncatePathParams(drop_before="event3", occurrence_before="last", shift_before=2)
+            )
+        )
+        graph.add_node(node=node, parents=[graph.root])
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "TruncatePath",
+                               "values": {
+                                   'drop_before': "event3", 'occurrence_before': 'last', 'shift_before': 2,
+                                   'drop_after': None, 'occurrence_after': 'first', 'shift_after': 0,
+                               },
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_truncated_path__import(self) -> None:
+        graph = self.create_graph()
+        graph._set_graph(
+            payload={
+                "directed": True,
+                "nodes": [
+                    {"name": "SourceNode", "pk": "0ad30844-66f8-47db-b5f0-221679296fe7"},
+                    {
+                        "name": "EventsNode",
+                        "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
+                        "processor": {
+                            "name": "TruncatePath",
+                            "values": {
+                                'drop_before': "event3", 'occurrence_before': 'last', 'shift_before': 2
+                            },
+                        },
+                    },
+                ],
+                "links": [
+                    {"source": "0ad30844-66f8-47db-b5f0-221679296fe7", "target": "f45f7390-d2b4-4414-bcd2-94532ede375d"}
+                ],
+            }
+        )
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "TruncatePath",
+                               "values": {
+                                   'drop_before': "event3", 'occurrence_before': 'last', 'shift_before': 2,
+                                   'drop_after': None, 'occurrence_after': 'first', 'shift_after': 0,
                                },
                            },
                        },

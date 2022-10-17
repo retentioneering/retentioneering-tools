@@ -1,16 +1,26 @@
 import pandas as pd
 
 from src.data_processors_lib.rete import (
-    CollapseLoops, CollapseLoopsParams,
-    DeleteUsersByPathLength, DeleteUsersByPathLengthParams,
-    LostUsersEvents, LostUsersParams,
-    NegativeTarget, NegativeTargetParams,
-    NewUsersEvents, NewUsersParams,
-    PositiveTarget, PositiveTargetParams,
-    SplitSessions, SplitSessionsParams,
-    StartEndEvents, StartEndEventsParams,
-    TruncatePath, TruncatePathParams,
-    TruncatedEvents, TruncatedEventsParams,
+    CollapseLoops,
+    CollapseLoopsParams,
+    DeleteUsersByPathLength,
+    DeleteUsersByPathLengthParams,
+    LostUsersEvents,
+    LostUsersParams,
+    NegativeTarget,
+    NegativeTargetParams,
+    NewUsersEvents,
+    NewUsersParams,
+    PositiveTarget,
+    PositiveTargetParams,
+    SplitSessions,
+    SplitSessionsParams,
+    StartEndEvents,
+    StartEndEventsParams,
+    TruncatedEvents,
+    TruncatedEventsParams,
+    TruncatePath,
+    TruncatePathParams,
 )
 from src.eventstream.eventstream import Eventstream, RawDataSchema
 from src.graph.nodes import EventsNode
@@ -52,12 +62,12 @@ class TestPGraphExportImport:
         del export_data["nodes"][1]["pk"]
 
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
+            ],
+        } == export_data
 
     def test_start_end__import(self) -> None:
         graph = self.create_graph()
@@ -87,12 +97,12 @@ class TestPGraphExportImport:
         del export_data["nodes"][1]["pk"]
 
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
+            ],
+        } == export_data
 
     def test_truncated__export(self) -> None:
         graph = self.create_graph()
@@ -110,18 +120,18 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "TruncatedEvents",
-                               "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "TruncatedEvents",
+                        "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
+                    },
+                },
+            ],
+        } == export_data
 
     def test_truncated__import(self) -> None:
         graph = self.create_graph()
@@ -151,27 +161,23 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "TruncatedEvents",
-                               "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "TruncatedEvents",
+                        "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
+                    },
+                },
+            ],
+        } == export_data
 
     def test_new_users__export(self) -> None:
         graph = self.create_graph()
 
-        node = EventsNode(
-            processor=NewUsersEvents(
-                params=NewUsersParams(new_users_list=[2])
-            )
-        )
+        node = EventsNode(processor=NewUsersEvents(params=NewUsersParams(new_users_list=[2])))
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -180,18 +186,18 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "NewUsersEvents",
-                               "values": {'new_users_list': [2]},
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "NewUsersEvents",
+                        "values": {"new_users_list": [2]},
+                    },
+                },
+            ],
+        } == export_data
 
     def test_new_users__import(self) -> None:
         graph = self.create_graph()
@@ -205,7 +211,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "NewUsersEvents",
-                            "values": {'new_users_list': [2]},
+                            "values": {"new_users_list": [2]},
                         },
                     },
                 ],
@@ -221,18 +227,18 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "NewUsersEvents",
-                               "values": {'new_users_list': [2]},
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "NewUsersEvents",
+                        "values": {"new_users_list": [2]},
+                    },
+                },
+            ],
+        } == export_data
 
     def test_collapse_loops__export(self) -> None:
         graph = self.create_graph()
@@ -250,18 +256,18 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "CollapseLoops",
-                               "values": {'full_collapse': False, "timestamp_aggregation_type": "min"},
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "CollapseLoops",
+                        "values": {"full_collapse": False, "timestamp_aggregation_type": "min"},
+                    },
+                },
+            ],
+        } == export_data
 
     def test_collapse_loops__import(self) -> None:
         graph = self.create_graph()
@@ -275,7 +281,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "CollapseLoops",
-                            "values": {'full_collapse': False, "timestamp_aggregation_type": "min"},
+                            "values": {"full_collapse": False, "timestamp_aggregation_type": "min"},
                         },
                     },
                 ],
@@ -291,27 +297,23 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "CollapseLoops",
-                               "values": {'full_collapse': False, "timestamp_aggregation_type": "min"},
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "CollapseLoops",
+                        "values": {"full_collapse": False, "timestamp_aggregation_type": "min"},
+                    },
+                },
+            ],
+        } == export_data
 
     def test_delete_user__export(self) -> None:
         graph = self.create_graph()
 
-        node = EventsNode(
-            processor=DeleteUsersByPathLength(
-                params=DeleteUsersByPathLengthParams(cutoff=(1.5, "m"))
-            )
-        )
+        node = EventsNode(processor=DeleteUsersByPathLength(params=DeleteUsersByPathLengthParams(cutoff=(1.5, "m"))))
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -320,18 +322,18 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "DeleteUsersByPathLength",
-                               "values": {'cutoff': '1.5,m', 'events_num': None},
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "DeleteUsersByPathLength",
+                        "values": {"cutoff": "1.5,m", "events_num": None},
+                    },
+                },
+            ],
+        } == export_data
 
     def test_delete_user__import(self) -> None:
         graph = self.create_graph()
@@ -345,7 +347,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "DeleteUsersByPathLength",
-                            "values": {'cutoff': '1.5,m'},
+                            "values": {"cutoff": "1.5,m"},
                         },
                     },
                 ],
@@ -361,27 +363,23 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "DeleteUsersByPathLength",
-                               "values": {'cutoff': '1.5,m', 'events_num': None},
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "DeleteUsersByPathLength",
+                        "values": {"cutoff": "1.5,m", "events_num": None},
+                    },
+                },
+            ],
+        } == export_data
 
     def test_lost_users__export(self) -> None:
         graph = self.create_graph()
 
-        node = EventsNode(
-            processor=LostUsersEvents(
-                params=LostUsersParams(lost_users_list=None, lost_cutoff=(4, "h"))
-            )
-        )
+        node = EventsNode(processor=LostUsersEvents(params=LostUsersParams(lost_users_list=None, lost_cutoff=(4, "h"))))
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -390,18 +388,18 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "LostUsersEvents",
-                               "values": {'lost_users_list': None, 'lost_cutoff': '4.0,h'},
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "LostUsersEvents",
+                        "values": {"lost_users_list": None, "lost_cutoff": "4.0,h"},
+                    },
+                },
+            ],
+        } == export_data
 
     def test_lost_users__import(self) -> None:
         graph = self.create_graph()
@@ -415,7 +413,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "LostUsersEvents",
-                            "values": {'lost_users_list': None, 'lost_cutoff': '4.0,h'},
+                            "values": {"lost_users_list": None, "lost_cutoff": "4.0,h"},
                         },
                     },
                 ],
@@ -431,26 +429,24 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "LostUsersEvents",
-                               "values": {'lost_users_list': None, 'lost_cutoff': '4.0,h'},
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "LostUsersEvents",
+                        "values": {"lost_users_list": None, "lost_cutoff": "4.0,h"},
+                    },
+                },
+            ],
+        } == export_data
 
     def test_negative_target__export(self) -> None:
         graph = self.create_graph()
 
         node = EventsNode(
-            processor=NegativeTarget(
-                params=NegativeTargetParams(**{"negative_target_events": ["event3", "event2"]})
-            )
+            processor=NegativeTarget(params=NegativeTargetParams(**{"negative_target_events": ["event3", "event2"]}))
         )
         graph.add_node(node=node, parents=[graph.root])
 
@@ -460,32 +456,32 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "NegativeTarget",
-                               "values": {
-                                   'negative_target_events': ["event3", "event2"],
-                                   'negative_function': 'def _default_func_negative(eventstream, '
-                                                        'negative_target_events) -> pd.DataFrame:\n'
-                                                        '    user_col = eventstream.schema.user_id\n'
-                                                        '    time_col = eventstream.schema.event_timestamp\n'
-                                                        '    event_col = eventstream.schema.event_name\n'
-                                                        '    df = eventstream.to_dataframe()\n'
-                                                        '\n'
-                                                        '    negative_events_index = '
-                                                        'df[df[event_col].isin(negative_target_events)].groupby'
-                                                        '(user_col)[time_col].idxmin()\n'
-                                                        '\n'
-                                                        '    return df.iloc[negative_events_index]\n',
-                               },
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "NegativeTarget",
+                        "values": {
+                            "negative_target_events": ["event3", "event2"],
+                            "negative_function": "def _default_func_negative(eventstream, "
+                            "negative_target_events) -> pd.DataFrame:\n"
+                            "    user_col = eventstream.schema.user_id\n"
+                            "    time_col = eventstream.schema.event_timestamp\n"
+                            "    event_col = eventstream.schema.event_name\n"
+                            "    df = eventstream.to_dataframe()\n"
+                            "\n"
+                            "    negative_events_index = "
+                            "df[df[event_col].isin(negative_target_events)].groupby"
+                            "(user_col)[time_col].idxmin()\n"
+                            "\n"
+                            "    return df.iloc[negative_events_index]\n",
+                        },
+                    },
+                },
+            ],
+        } == export_data
 
     def test_negative_target__import(self) -> None:
         graph = self.create_graph()
@@ -500,19 +496,19 @@ class TestPGraphExportImport:
                         "processor": {
                             "name": "NegativeTarget",
                             "values": {
-                                'negative_target_events': ["event3", "event2"],
-                                'negative_function': 'def _default_func_negative(eventstream, '
-                                                     'negative_target_events) -> pd.DataFrame:\n'
-                                                     '    user_col = eventstream.schema.user_id\n'
-                                                     '    time_col = eventstream.schema.event_timestamp\n'
-                                                     '    event_col = eventstream.schema.event_name\n'
-                                                     '    df = eventstream.to_dataframe()\n'
-                                                     '\n'
-                                                     '    negative_events_index = '
-                                                     'df[df[event_col].isin(negative_target_events)].groupby'
-                                                     '(user_col)[time_col].idxmin()\n'
-                                                     '\n'
-                                                     '    return df.iloc[negative_events_index]\n',
+                                "negative_target_events": ["event3", "event2"],
+                                "negative_function": "def _default_func_negative(eventstream, "
+                                "negative_target_events) -> pd.DataFrame:\n"
+                                "    user_col = eventstream.schema.user_id\n"
+                                "    time_col = eventstream.schema.event_timestamp\n"
+                                "    event_col = eventstream.schema.event_name\n"
+                                "    df = eventstream.to_dataframe()\n"
+                                "\n"
+                                "    negative_events_index = "
+                                "df[df[event_col].isin(negative_target_events)].groupby"
+                                "(user_col)[time_col].idxmin()\n"
+                                "\n"
+                                "    return df.iloc[negative_events_index]\n",
                             },
                         },
                     },
@@ -529,40 +525,38 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "NegativeTarget",
-                               "values": {
-                                   'negative_target_events': ["event3", "event2"],
-                                   'negative_function': 'def _default_func_negative(eventstream, '
-                                                        'negative_target_events) -> pd.DataFrame:\n'
-                                                        '    user_col = eventstream.schema.user_id\n'
-                                                        '    time_col = eventstream.schema.event_timestamp\n'
-                                                        '    event_col = eventstream.schema.event_name\n'
-                                                        '    df = eventstream.to_dataframe()\n'
-                                                        '\n'
-                                                        '    negative_events_index = '
-                                                        'df[df[event_col].isin(negative_target_events)].groupby'
-                                                        '(user_col)[time_col].idxmin()\n'
-                                                        '\n'
-                                                        '    return df.iloc[negative_events_index]\n',
-                               },
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "NegativeTarget",
+                        "values": {
+                            "negative_target_events": ["event3", "event2"],
+                            "negative_function": "def _default_func_negative(eventstream, "
+                            "negative_target_events) -> pd.DataFrame:\n"
+                            "    user_col = eventstream.schema.user_id\n"
+                            "    time_col = eventstream.schema.event_timestamp\n"
+                            "    event_col = eventstream.schema.event_name\n"
+                            "    df = eventstream.to_dataframe()\n"
+                            "\n"
+                            "    negative_events_index = "
+                            "df[df[event_col].isin(negative_target_events)].groupby"
+                            "(user_col)[time_col].idxmin()\n"
+                            "\n"
+                            "    return df.iloc[negative_events_index]\n",
+                        },
+                    },
+                },
+            ],
+        } == export_data
 
     def test_positive_events__export(self) -> None:
         graph = self.create_graph()
 
         node = EventsNode(
-            processor=PositiveTarget(
-                params=PositiveTargetParams(**{"positive_target_events": ["event3", "event2"]})
-            )
+            processor=PositiveTarget(params=PositiveTargetParams(**{"positive_target_events": ["event3", "event2"]}))
         )
         graph.add_node(node=node, parents=[graph.root])
 
@@ -572,30 +566,30 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "PositiveTarget",
-                               "values": {
-                                   "positive_target_events": ["event3", "event2"],
-                                   'positive_function': 'def _default_func_positive('
-                                                        'eventstream: Eventstream, positive_target_events: list[str]) '
-                                                        '-> pd.DataFrame:\n    user_col = eventstream.schema.user_id'
-                                                        '\n    time_col = eventstream.schema.event_timestamp'
-                                                        '\n    event_col = eventstream.schema.event_name'
-                                                        '\n    df = eventstream.to_dataframe()\n\n    '
-                                                        'positive_events_index = (\n        '
-                                                        'df[df[event_col].isin(positive_target_events)].'
-                                                        'groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n'
-                                                        '    return df.iloc[positive_events_index]  # type: ignore\n'
-                               },
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "PositiveTarget",
+                        "values": {
+                            "positive_target_events": ["event3", "event2"],
+                            "positive_function": "def _default_func_positive("
+                            "eventstream: Eventstream, positive_target_events: list[str]) "
+                            "-> pd.DataFrame:\n    user_col = eventstream.schema.user_id"
+                            "\n    time_col = eventstream.schema.event_timestamp"
+                            "\n    event_col = eventstream.schema.event_name"
+                            "\n    df = eventstream.to_dataframe()\n\n    "
+                            "positive_events_index = (\n        "
+                            "df[df[event_col].isin(positive_target_events)]."
+                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
+                            "    return df.iloc[positive_events_index]  # type: ignore\n",
+                        },
+                    },
+                },
+            ],
+        } == export_data
 
     def test_positive_events__import(self) -> None:
         graph = self.create_graph()
@@ -625,30 +619,30 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "PositiveTarget",
-                               "values": {
-                                   "positive_target_events": ["event3", "event2"],
-                                   'positive_function': 'def _default_func_positive('
-                                                        'eventstream: Eventstream, positive_target_events: list[str]) '
-                                                        '-> pd.DataFrame:\n    user_col = eventstream.schema.user_id'
-                                                        '\n    time_col = eventstream.schema.event_timestamp'
-                                                        '\n    event_col = eventstream.schema.event_name'
-                                                        '\n    df = eventstream.to_dataframe()\n\n    '
-                                                        'positive_events_index = (\n        '
-                                                        'df[df[event_col].isin(positive_target_events)].'
-                                                        'groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n'
-                                                        '    return df.iloc[positive_events_index]  # type: ignore\n'
-                               },
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "PositiveTarget",
+                        "values": {
+                            "positive_target_events": ["event3", "event2"],
+                            "positive_function": "def _default_func_positive("
+                            "eventstream: Eventstream, positive_target_events: list[str]) "
+                            "-> pd.DataFrame:\n    user_col = eventstream.schema.user_id"
+                            "\n    time_col = eventstream.schema.event_timestamp"
+                            "\n    event_col = eventstream.schema.event_name"
+                            "\n    df = eventstream.to_dataframe()\n\n    "
+                            "positive_events_index = (\n        "
+                            "df[df[event_col].isin(positive_target_events)]."
+                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
+                            "    return df.iloc[positive_events_index]  # type: ignore\n",
+                        },
+                    },
+                },
+            ],
+        } == export_data
 
     def test_split_sesssion__export(self) -> None:
         graph = self.create_graph()
@@ -666,20 +660,18 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "SplitSessions",
-                               "values": {
-                                   'session_cutoff': "30.0,m", 'session_col': 'session_id', 'mark_truncated': True
-                               },
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "SplitSessions",
+                        "values": {"session_cutoff": "30.0,m", "session_col": "session_id", "mark_truncated": True},
+                    },
+                },
+            ],
+        } == export_data
 
     def test_split_sesssion__import(self) -> None:
         graph = self.create_graph()
@@ -693,9 +685,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "SplitSessions",
-                            "values": {
-                                'session_cutoff': "30.0,m", 'session_col': 'session_id', 'mark_truncated': True
-                            },
+                            "values": {"session_cutoff": "30.0,m", "session_col": "session_id", "mark_truncated": True},
                         },
                     },
                 ],
@@ -711,20 +701,18 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "SplitSessions",
-                               "values": {
-                                   'session_cutoff': "30.0,m", 'session_col': 'session_id', 'mark_truncated': True
-                               },
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "SplitSessions",
+                        "values": {"session_cutoff": "30.0,m", "session_col": "session_id", "mark_truncated": True},
+                    },
+                },
+            ],
+        } == export_data
 
     def test_truncated_path__export(self) -> None:
         graph = self.create_graph()
@@ -742,21 +730,25 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "TruncatePath",
-                               "values": {
-                                   'drop_before': "event3", 'occurrence_before': 'last', 'shift_before': 2,
-                                   'drop_after': None, 'occurrence_after': 'first', 'shift_after': 0,
-                               },
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "TruncatePath",
+                        "values": {
+                            "drop_before": "event3",
+                            "occurrence_before": "last",
+                            "shift_before": 2,
+                            "drop_after": None,
+                            "occurrence_after": "first",
+                            "shift_after": 0,
+                        },
+                    },
+                },
+            ],
+        } == export_data
 
     def test_truncated_path__import(self) -> None:
         graph = self.create_graph()
@@ -770,9 +762,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "TruncatePath",
-                            "values": {
-                                'drop_before': "event3", 'occurrence_before': 'last', 'shift_before': 2
-                            },
+                            "values": {"drop_before": "event3", "occurrence_before": "last", "shift_before": 2},
                         },
                     },
                 ],
@@ -788,18 +778,22 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-                   "directed": True,
-                   "nodes": [
-                       {"name": "SourceNode"},
-                       {
-                           "name": "EventsNode",
-                           "processor": {
-                               "name": "TruncatePath",
-                               "values": {
-                                   'drop_before': "event3", 'occurrence_before': 'last', 'shift_before': 2,
-                                   'drop_after': None, 'occurrence_after': 'first', 'shift_after': 0,
-                               },
-                           },
-                       },
-                   ],
-               } == export_data
+            "directed": True,
+            "nodes": [
+                {"name": "SourceNode"},
+                {
+                    "name": "EventsNode",
+                    "processor": {
+                        "name": "TruncatePath",
+                        "values": {
+                            "drop_before": "event3",
+                            "occurrence_before": "last",
+                            "shift_before": 2,
+                            "drop_after": None,
+                            "occurrence_after": "first",
+                            "shift_after": 0,
+                        },
+                    },
+                },
+            ],
+        } == export_data

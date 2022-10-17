@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import inspect
-import pickle
 import types
 from dataclasses import dataclass
-from typing import Type, Union, Callable
+from typing import Callable, Type, Union
 
 
 @dataclass
@@ -87,7 +86,6 @@ class ReteTimeWidget:
     @classmethod
     def _parse(cls, value: str) -> tuple[float, str]:  # type: ignore
         if type(value) is tuple:
-            value: tuple[float, str]
             return value  # type: ignore
 
         TIME, QUANT = 0, 1
@@ -96,6 +94,7 @@ class ReteTimeWidget:
             raise Exception("Incorrect input")
         return float(data[TIME]), str(data[QUANT])
 
+
 @dataclass
 class ReteFunction:
     name: str
@@ -103,7 +102,7 @@ class ReteFunction:
     default: str
     type: str
     widget: str = "function"
-    _source_code: str = None
+    _source_code: str = ""
 
     @classmethod
     def from_dict(cls, **kwargs) -> "ReteFunction":
@@ -118,7 +117,7 @@ class ReteFunction:
 
     @classmethod
     def _parse(cls, value: str) -> Callable:  # type: ignore
-        code_obj = compile(value, '<string>', 'exec')
+        code_obj = compile(value, "<string>", "exec")
         new_func_type = types.FunctionType(code_obj.co_consts[2], {})
         cls._source_code = value
         return new_func_type

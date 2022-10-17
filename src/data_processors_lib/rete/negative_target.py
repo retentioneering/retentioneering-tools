@@ -29,9 +29,7 @@ class NegativeTargetParams(ParamsModel):
     negative_target_events: List[str]
     negative_function: Callable = _default_func_negative
 
-    _widgets = {
-        'negative_function': ReteFunction
-    }
+    _widgets = {"negative_function": ReteFunction}
 
 
 class NegativeTarget(DataProcessor):

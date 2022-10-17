@@ -18,9 +18,7 @@ class SplitSessionsParams(ParamsModel):
     mark_truncated: Optional[bool] = False
     session_col: str
 
-    _widgets = {
-        'session_cutoff': ReteTimeWidget
-    }
+    _widgets = {"session_cutoff": ReteTimeWidget}
 
 
 class SplitSessions(DataProcessor):

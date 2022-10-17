@@ -32,7 +32,7 @@ class PositiveTargetParams(ParamsModel):
     positive_function: Callable = _default_func_positive
 
     _widgets = {
-        'positive_function': ReteFunction,
+        "positive_function": ReteFunction,
     }
 
 

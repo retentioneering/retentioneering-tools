@@ -16,9 +16,7 @@ class LostUsersParams(ParamsModel):
     lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
     lost_users_list: Optional[List[int]]
 
-    _widgets = {
-        'lost_cutoff': ReteTimeWidget
-    }
+    _widgets = {"lost_cutoff": ReteTimeWidget}
 
 
 class LostUsersEvents(DataProcessor):

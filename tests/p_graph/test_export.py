@@ -1,10 +1,10 @@
 import pandas as pd
 
 from src.data_processors_lib.rete import (
-    StartEndEvents,
-    StartEndEventsParams,
-    TruncatedEvents,
-    TruncatedEventsParams,
+    CollapseLoops, CollapseLoopsParams,
+    DeleteUsersByPathLength, DeleteUsersByPathLengthParams,
+    StartEndEvents, StartEndEventsParams,
+    TruncatedEvents, TruncatedEventsParams,
     NewUsersEvents, NewUsersParams
 )
 from src.eventstream.eventstream import Eventstream, RawDataSchema
@@ -47,12 +47,12 @@ class TestPGraphExportImport:
         del export_data["nodes"][1]["pk"]
 
         assert {
-            "directed": True,
-            "nodes": [
-                {"name": "SourceNode"},
-                {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
-            ],
-        } == export_data
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
+                   ],
+               } == export_data
 
     def test_start_end__import(self) -> None:
         graph = self.create_graph()
@@ -82,12 +82,12 @@ class TestPGraphExportImport:
         del export_data["nodes"][1]["pk"]
 
         assert {
-            "directed": True,
-            "nodes": [
-                {"name": "SourceNode"},
-                {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
-            ],
-        } == export_data
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
+                   ],
+               } == export_data
 
     def test_truncated__export(self) -> None:
         graph = self.create_graph()
@@ -105,18 +105,18 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-            "directed": True,
-            "nodes": [
-                {"name": "SourceNode"},
-                {
-                    "name": "EventsNode",
-                    "processor": {
-                        "name": "TruncatedEvents",
-                        "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
-                    },
-                },
-            ],
-        } == export_data
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "TruncatedEvents",
+                               "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
+                           },
+                       },
+                   ],
+               } == export_data
 
     def test_truncated__import(self) -> None:
         graph = self.create_graph()
@@ -146,15 +146,225 @@ class TestPGraphExportImport:
         del export_data["nodes"][0]["pk"]
         del export_data["nodes"][1]["pk"]
         assert {
-            "directed": True,
-            "nodes": [
-                {"name": "SourceNode"},
-                {
-                    "name": "EventsNode",
-                    "processor": {
-                        "name": "TruncatedEvents",
-                        "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "TruncatedEvents",
+                               "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_new_users__export(self) -> None:
+        graph = self.create_graph()
+
+        node = EventsNode(
+            processor=NewUsersEvents(
+                params=NewUsersParams(new_users_list=[2])
+            )
+        )
+        graph.add_node(node=node, parents=[graph.root])
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "NewUsersEvents",
+                               "values": {'new_users_list': [2]},
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_new_users__import(self) -> None:
+        graph = self.create_graph()
+        graph._set_graph(
+            payload={
+                "directed": True,
+                "nodes": [
+                    {"name": "SourceNode", "pk": "0ad30844-66f8-47db-b5f0-221679296fe7"},
+                    {
+                        "name": "EventsNode",
+                        "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
+                        "processor": {
+                            "name": "NewUsersEvents",
+                            "values": {'new_users_list': [2]},
+                        },
                     },
-                },
-            ],
-        } == export_data
+                ],
+                "links": [
+                    {"source": "0ad30844-66f8-47db-b5f0-221679296fe7", "target": "f45f7390-d2b4-4414-bcd2-94532ede375d"}
+                ],
+            }
+        )
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "NewUsersEvents",
+                               "values": {'new_users_list': [2]},
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_collapse_loops__export(self) -> None:
+        graph = self.create_graph()
+
+        node = EventsNode(
+            processor=CollapseLoops(
+                params=CollapseLoopsParams(**{"full_collapse": False, "timestamp_aggregation_type": "min"})
+            )
+        )
+        graph.add_node(node=node, parents=[graph.root])
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "CollapseLoops",
+                               "values": {'full_collapse': False, "timestamp_aggregation_type": "min"},
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_collapse_loops__import(self) -> None:
+        graph = self.create_graph()
+        graph._set_graph(
+            payload={
+                "directed": True,
+                "nodes": [
+                    {"name": "SourceNode", "pk": "0ad30844-66f8-47db-b5f0-221679296fe7"},
+                    {
+                        "name": "EventsNode",
+                        "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
+                        "processor": {
+                            "name": "CollapseLoops",
+                            "values": {'full_collapse': False, "timestamp_aggregation_type": "min"},
+                        },
+                    },
+                ],
+                "links": [
+                    {"source": "0ad30844-66f8-47db-b5f0-221679296fe7", "target": "f45f7390-d2b4-4414-bcd2-94532ede375d"}
+                ],
+            }
+        )
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "CollapseLoops",
+                               "values": {'full_collapse': False, "timestamp_aggregation_type": "min"},
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_delete_user__export(self) -> None:
+        graph = self.create_graph()
+
+        node = EventsNode(
+            processor=DeleteUsersByPathLength(
+                params=DeleteUsersByPathLengthParams(cutoff=(1.5, "m"))
+            )
+        )
+        graph.add_node(node=node, parents=[graph.root])
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "DeleteUsersByPathLength",
+                               "values": {'cutoff': '1.5,m', 'events_num': None},
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_delete_user__import(self) -> None:
+        graph = self.create_graph()
+        graph._set_graph(
+            payload={
+                "directed": True,
+                "nodes": [
+                    {"name": "SourceNode", "pk": "0ad30844-66f8-47db-b5f0-221679296fe7"},
+                    {
+                        "name": "EventsNode",
+                        "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
+                        "processor": {
+                            "name": "DeleteUsersByPathLength",
+                            "values": {'cutoff': '1.5,m'},
+                        },
+                    },
+                ],
+                "links": [
+                    {"source": "0ad30844-66f8-47db-b5f0-221679296fe7", "target": "f45f7390-d2b4-4414-bcd2-94532ede375d"}
+                ],
+            }
+        )
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "DeleteUsersByPathLength",
+                               "values": {'cutoff': '1.5,m', 'events_num': None},
+                           },
+                       },
+                   ],
+               } == export_data

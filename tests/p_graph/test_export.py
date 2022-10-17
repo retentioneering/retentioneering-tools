@@ -3,6 +3,8 @@ import pandas as pd
 from src.data_processors_lib.rete import (
     CollapseLoops, CollapseLoopsParams,
     DeleteUsersByPathLength, DeleteUsersByPathLengthParams,
+    LostUsersEvents, LostUsersParams,
+    NegativeTarget, NegativeTargetParams,
     StartEndEvents, StartEndEventsParams,
     TruncatedEvents, TruncatedEventsParams,
     NewUsersEvents, NewUsersParams
@@ -364,6 +366,189 @@ class TestPGraphExportImport:
                            "processor": {
                                "name": "DeleteUsersByPathLength",
                                "values": {'cutoff': '1.5,m', 'events_num': None},
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_lost_users__export(self) -> None:
+        graph = self.create_graph()
+
+        node = EventsNode(
+            processor=LostUsersEvents(
+                params=LostUsersParams(lost_users_list=None, lost_cutoff=(4, "h"))
+            )
+        )
+        graph.add_node(node=node, parents=[graph.root])
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "LostUsersEvents",
+                               "values": {'lost_users_list': None, 'lost_cutoff': '4.0,h'},
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_lost_users__import(self) -> None:
+        graph = self.create_graph()
+        graph._set_graph(
+            payload={
+                "directed": True,
+                "nodes": [
+                    {"name": "SourceNode", "pk": "0ad30844-66f8-47db-b5f0-221679296fe7"},
+                    {
+                        "name": "EventsNode",
+                        "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
+                        "processor": {
+                            "name": "LostUsersEvents",
+                            "values": {'lost_users_list': None, 'lost_cutoff': '4.0,h'},
+                        },
+                    },
+                ],
+                "links": [
+                    {"source": "0ad30844-66f8-47db-b5f0-221679296fe7", "target": "f45f7390-d2b4-4414-bcd2-94532ede375d"}
+                ],
+            }
+        )
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "LostUsersEvents",
+                               "values": {'lost_users_list': None, 'lost_cutoff': '4.0,h'},
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_negative_target__export(self) -> None:
+        graph = self.create_graph()
+
+        node = EventsNode(
+            processor=NegativeTarget(
+                params=NegativeTargetParams(**{"negative_target_events": ["event3", "event2"]})
+            )
+        )
+        graph.add_node(node=node, parents=[graph.root])
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "NegativeTarget",
+                               "values": {
+                                   'negative_target_events': ["event3", "event2"],
+                                   'negative_function': 'def _default_func_negative(eventstream, '
+                                                        'negative_target_events) -> pd.DataFrame:\n'
+                                                        '    user_col = eventstream.schema.user_id\n'
+                                                        '    time_col = eventstream.schema.event_timestamp\n'
+                                                        '    event_col = eventstream.schema.event_name\n'
+                                                        '    df = eventstream.to_dataframe()\n'
+                                                        '\n'
+                                                        '    negative_events_index = '
+                                                        'df[df[event_col].isin(negative_target_events)].groupby'
+                                                        '(user_col)[time_col].idxmin()\n'
+                                                        '\n'
+                                                        '    return df.iloc[negative_events_index]\n',
+                               },
+                           },
+                       },
+                   ],
+               } == export_data
+
+    def test_negative_target__import(self) -> None:
+        graph = self.create_graph()
+        graph._set_graph(
+            payload={
+                "directed": True,
+                "nodes": [
+                    {"name": "SourceNode", "pk": "0ad30844-66f8-47db-b5f0-221679296fe7"},
+                    {
+                        "name": "EventsNode",
+                        "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
+                        "processor": {
+                            "name": "NegativeTarget",
+                            "values": {
+                                'negative_target_events': ["event3", "event2"],
+                                'negative_function': 'def _default_func_negative(eventstream, '
+                                                     'negative_target_events) -> pd.DataFrame:\n'
+                                                     '    user_col = eventstream.schema.user_id\n'
+                                                     '    time_col = eventstream.schema.event_timestamp\n'
+                                                     '    event_col = eventstream.schema.event_name\n'
+                                                     '    df = eventstream.to_dataframe()\n'
+                                                     '\n'
+                                                     '    negative_events_index = '
+                                                     'df[df[event_col].isin(negative_target_events)].groupby'
+                                                     '(user_col)[time_col].idxmin()\n'
+                                                     '\n'
+                                                     '    return df.iloc[negative_events_index]\n',
+                            },
+                        },
+                    },
+                ],
+                "links": [
+                    {"source": "0ad30844-66f8-47db-b5f0-221679296fe7", "target": "f45f7390-d2b4-4414-bcd2-94532ede375d"}
+                ],
+            }
+        )
+
+        export_data = graph.export(payload={})
+        assert 1 == len(export_data["links"])
+        del export_data["links"]
+        del export_data["nodes"][0]["pk"]
+        del export_data["nodes"][1]["pk"]
+        print(f'{export_data = }')
+        assert {
+                   "directed": True,
+                   "nodes": [
+                       {"name": "SourceNode"},
+                       {
+                           "name": "EventsNode",
+                           "processor": {
+                               "name": "NegativeTarget",
+                               "values": {
+                                   'negative_target_events': ["event3", "event2"],
+                                   'negative_function': 'def _default_func_negative(eventstream, '
+                                                        'negative_target_events) -> pd.DataFrame:\n'
+                                                        '    user_col = eventstream.schema.user_id\n'
+                                                        '    time_col = eventstream.schema.event_timestamp\n'
+                                                        '    event_col = eventstream.schema.event_name\n'
+                                                        '    df = eventstream.to_dataframe()\n'
+                                                        '\n'
+                                                        '    negative_events_index = '
+                                                        'df[df[event_col].isin(negative_target_events)].groupby'
+                                                        '(user_col)[time_col].idxmin()\n'
+                                                        '\n'
+                                                        '    return df.iloc[negative_events_index]\n',
+                               },
                            },
                        },
                    ],

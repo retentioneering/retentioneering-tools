@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import inspect
+import pickle
+import types
 from dataclasses import dataclass
-from typing import Type, Union
+from typing import Type, Union, Callable
 
 
 @dataclass
@@ -93,6 +95,33 @@ class ReteTimeWidget:
         if len(data) > 2:
             raise Exception("Incorrect input")
         return float(data[TIME]), str(data[QUANT])
+
+@dataclass
+class ReteFunction:
+    name: str
+    optional: bool
+    default: str
+    type: str
+    widget: str = "function"
+    _source_code: str = None
+
+    @classmethod
+    def from_dict(cls, **kwargs) -> "ReteFunction":
+        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
+
+    @classmethod
+    def _serialize(cls, value: Callable) -> str:
+        try:
+            return inspect.getsource(value)
+        except OSError:
+            return cls._source_code
+
+    @classmethod
+    def _parse(cls, value: str) -> Callable:  # type: ignore
+        code_obj = compile(value, '<string>', 'exec')
+        new_func_type = types.FunctionType(code_obj.co_consts[2], {})
+        cls._source_code = value
+        return new_func_type
 
 
 WIDGET_TYPE = Union[

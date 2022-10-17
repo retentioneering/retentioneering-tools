@@ -79,11 +79,13 @@ def build_node(node_name: str, processor_name: str, processor_params: dict[str, 
     node_kwargs = {}
     if processor_name:
         _params_model_registry = params_model_registry.get_registry()
-        _params_model = _params_model_registry[f"{processor_name}Params"]
+        _dataprocessor_registry = dataprocessor_registry.get_registry()
+
+        _processor: Type[DataProcessor] = _dataprocessor_registry[processor_name]  # type: ignore
+        params_name = _processor.__annotations__["params"]
+        _params_model = _params_model_registry[params_name]
         params_model = _params_model(**processor_params)
 
-        _dataprocessor_registry = dataprocessor_registry.get_registry()
-        _processor: Type[DataProcessor] = _dataprocessor_registry[processor_name]  # type: ignore
         processor: DataProcessor = _processor(params=params_model)
 
         node_kwargs["processor"] = processor

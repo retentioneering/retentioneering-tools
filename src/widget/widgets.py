@@ -83,10 +83,10 @@ class ReteTimeWidget:
         return ",".join([str(x) for x in value])
 
     @classmethod
-    def _parse(cls, value: str) -> tuple[float, str]:
+    def _parse(cls, value: str) -> tuple[float, str]:   # type: ignore
         if type(value) is tuple:
             value: tuple[float, str]
-            return value
+            return value    # type: ignore
 
         TIME, QUANT = 0, 1
         data = value.split(",")

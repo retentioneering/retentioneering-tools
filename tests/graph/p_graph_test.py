@@ -278,7 +278,7 @@ class EventstreamTest(unittest.TestCase):
             ],
         }
 
-        export_data = graph.export()
+        export_data = graph.export(payload={})
         # del export_data["links"]
         # При каждом запуске функции имеют разные адреса, отсюда разница при ассерте
         del export_data["nodes"][1]["processor"]["values"]["filter"]

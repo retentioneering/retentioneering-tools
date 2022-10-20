@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Sized
+from typing import Any, Iterable, Literal
 
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from pandas.core.common import flatten
 
 from src.eventstream.types import EventstreamType
 
@@ -18,61 +18,126 @@ class Funnel:
         hovermode="closest",
         legend=dict(orientation="v", bgcolor="#E2E2E2", xanchor="left", font=dict(size=12)),
     )
-    groups: pd.Series | np.ndarray | list[list[int]]
+
+    """
+    Plots convertion funnel with specified parameters.
+
+    Parameters
+    ----------
+    stages: list of str
+        List of events used as stages for the funnel. Absolute and relative
+        number of users who reached specified events at least once will be
+        plotted. Multiple events can be grouped together as individual state
+        by combining them as sub list.
+    stages_names: Optional, list of str
+        List of stages names, this is especially necessary for stages that include several events
+    funnel_type: 'open' or 'closed' (optional, default 'open')
+        if 'open' - all users will be counted on each stage
+        if 'closed' - Each stage will include only users,
+        who was on all previous stages.
+    segment_col: column in DataFrame (optional, default None)
+        With segment names each user should have unique segment_name
+    segments_names: list of strings (optional, default None)
+        Names of segments. Should be a list from unique values of the segment_col.
+        If None and segment_col is given - all values from segment_col will be used
+    sequence: Boolean (optional, default False)
+        Used for closed funnels only
+        If True, the sequence and timestamp of events is taken into account when constructing the funnel
+        In another case, the standart closed funnel rules is implemented
+    """
 
     def __init__(
         self,
         eventstream: EventstreamType,
-        targets: list[str],
-        groups: pd.Series | np.ndarray | list[int] | Sized | None = None,
-        group_names: list[str] | None = None,
+        stages: list[str],
+        stages_names: list[str] | None = None,
+        funnel_type: Literal["open"] | Literal["closed"] = "open",
+        segments: Iterable[Iterable[int]] | None = None,
+        segments_names: list[str] | None = None,
+        sequence: bool = False,
     ) -> None:
         self.__eventstream = eventstream
-        self.data = self.__eventstream.to_dataframe()
-        self.index_col = self.__eventstream.schema.user_id
+        self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
+        self.time_col = self.__eventstream.schema.event_timestamp
+        self.stages = stages
+        self.stages_names = stages_names  # TODO добавить проверку на длину
+        self.funnel_type = funnel_type
+        self.sequence = sequence
 
-        self.targets = targets
-
-        if groups is None:
-            groups = [self.data[self.index_col].unique()]
-            group_names = ["all users"]
-
+        data = self.__eventstream.to_dataframe()
+        data = data[data[self.event_col].isin([flatten(stages)])]
+        self.data = data
+        # TODO проверка на пересечение групп
+        if segments is None:
+            segments = [self.data[self.user_col].unique().tolist()]
+            segments_names = ["all users"]
         # IDK why but pyright thinks this is Funnel!!!
-        self.groups = groups  # type: ignore
+        self.segments = segments  # type: ignore
 
-        if group_names is None:
-            group_names = [f"group {i=}" for i in range(len(self.groups))]
-        self.group_names = group_names
+        if segments_names is None:
+            segments_names = [f"group {i}" for i in range(len(segments))]  # type: ignore
+        self.segments_names = segments_names
 
     def draw_plot(self) -> go.Figure:
-        plot_params = self._calculate(targets=self.targets, groups=self.groups, group_names=self.group_names)
+        """
+
+        Returns
+        -------
+        Funnel plot
+        """
+        plot_params = self._calculate(
+            data=self.data,
+            stages=self.stages,
+            stages_names=self.stages_names,
+            funnel_type=self.funnel_type,
+            segments=self.segments,
+            segments_names=self.segments_names,
+            sequence=self.sequence,
+        )
         data = self._calculate_plot_data(plot_params=plot_params)
         plot = self._plot_stacked_funnel(data=data)
         return plot
 
     def _calculate(
         self,
-        targets: list[str],
-        groups: pd.Series | np.ndarray | list[list[int]],
-        group_names: list[str],
+        data: pd.DataFrame,
+        stages: list[str],
+        stages_names: list[str] | None,
+        funnel_type: str,
+        segments: Iterable[Iterable[int]],
+        segments_names: list[str],
+        sequence: bool = False,
     ) -> dict[str, Any]:
 
-        for idx, target in enumerate(targets):
-            if type(target) is not list:
-                targets[idx] = [target]  # type: ignore
+        for idx, stage in enumerate(stages):
+            if type(stage) is not list:
+                stages[idx] = [stage]  # type: ignore
 
-        target_names = []
-        for t in targets:
-            # get name
-            target_names.append(" | ".join(t).strip(" | "))
-        res_dict = {}
-        for group, group_name in zip(groups, group_names):
-            # isolate users from group
-            group_data = self.data[self.data[self.index_col].isin(group)]
-            vals = [group_data[group_data[self.event_col].isin(target)][self.index_col].nunique() for target in targets]
-            res_dict[group_name] = {"targets": target_names, "values": vals}
+        if stages_names is None:
+            stages_names = []
+            for t in stages:
+                # get name
+                stages_names.append(" | ".join(t).strip(" | "))
 
+        if funnel_type == "closed":
+            res_dict = self._prepare_data_for_closed_funnel(
+                data=data,
+                stages=stages,
+                segments=segments,
+                segments_names=segments_names,
+                stages_names=stages_names,
+                sequence=sequence,
+            )
+
+        else:
+            res_dict = {}
+            for segment, segment_name in zip(segments, segments_names):
+                # isolate users from group
+                group_data = data[data[self.user_col].isin(segment)]
+                vals = [group_data[group_data[self.event_col].isin(stage)][self.user_col].nunique() for stage in stages]
+                res_dict[segment_name] = {"stages": stages_names, "values": vals}
+        self.dict = res_dict
         return res_dict
 
     def _plot_stacked_funnel(self, data) -> go.Figure:
@@ -93,10 +158,71 @@ class Funnel:
         for t in plot_params.keys():
             trace = go.Funnel(
                 name=t,
-                y=plot_params[t]["targets"],
+                y=plot_params[t]["stages"],
                 x=plot_params[t]["values"],
                 textinfo="value+percent initial+percent previous",
             )
             data.append(trace)
 
         return data
+
+    def _prepare_data_for_closed_funnel(
+        self,
+        data: pd.DataFrame,
+        stages: list[str],
+        stages_names: list[str],
+        segments: Iterable[Iterable[int]],
+        segments_names: list[str],
+        sequence: bool = False,
+    ):
+
+        min_time_0stage = (
+            data[data[self.event_col].isin(stages[0])].groupby(self.user_col)[[self.time_col]].min().reset_index()
+        )
+        data = data.merge(min_time_0stage, "left", on=self.user_col, suffixes=("", "_min"))
+        data.rename(columns={data.columns[-1]: "min_date"}, inplace=True)
+
+        # filtered NA and only events that occured after the user entered the first funnel event remain
+        data = data[(~data["min_date"].isna()) & (data["min_date"] <= data[self.time_col])]
+        data.drop(columns="min_date", inplace=True)
+        res_dict = {}
+        df = data.copy()  # TODO Проверить нужна ли тут копия
+        for segment, segment_name in zip(segments, segments_names):
+            vals = self._crop_df(df, stages, segment, sequence)
+            res_dict[segment_name] = {"stages": stages_names, "values": vals}
+        return res_dict
+
+    def _crop_df(self, df: pd.DataFrame, stages: list[str], segment: Iterable[int], sequence: bool = False):
+
+        users_0 = set((df[(df[self.event_col].isin(stages[0])) & (df[self.user_col].isin(segment))][self.user_col]))
+        df = df.drop(df[(~df[self.user_col].isin(users_0)) | (df[self.event_col].isin(stages[0]))].index.tolist())
+
+        prev_users_stage = users_0
+        vals = [len(users_0)]
+        for stage in stages[1:]:
+            user_stage = set(df[(df[self.event_col].isin(stage)) & (df[self.user_col].isin(users_0))][self.user_col])
+            user_stage = user_stage - (user_stage - prev_users_stage)
+            prev_users_stage = user_stage
+
+            vals.append(len(user_stage))
+
+            if sequence:
+                stage_min_df = (
+                    df[df[self.event_col].isin(stage)].groupby(self.user_col)[[self.time_col]].min().reset_index()
+                )
+                df = df.merge(stage_min_df, "left", on=self.user_col, suffixes=("", "_min"))
+                df.rename(columns={df.columns[-1]: "min_date"}, inplace=True)
+
+                df.drop(
+                    df[
+                        (df["min_date"].isna())
+                        | (df["min_date"] >= df[self.time_col])
+                        | (~df[self.user_col].isin(user_stage))
+                    ].index.tolist(),
+                    inplace=True,
+                )
+                df.drop(columns="min_date", inplace=True)
+            else:
+                df = df.drop(df[~df[self.user_col].isin(user_stage)].index.tolist())
+
+        return vals

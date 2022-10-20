@@ -93,10 +93,10 @@ class TestFunnel:
         )
 
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
-        stages_names = None
+        stage_names = None
         funnel_type = "open"
         segments = None
-        segments_names = None
+        segment_names = None
         sequence = False
 
         funnel = Funnel(eventstream=source, stages=stages)
@@ -106,18 +106,18 @@ class TestFunnel:
 
         if segments is None:
             segments = [data["user_id"].unique()]
-            segments_names = ["all users"]
+            segment_names = ["all users"]
 
-        if segments_names is None:
-            segments_names = [f"group {i}" for i in range(len(segments))]
+        if segment_names is None:
+            segment_names = [f"group {i}" for i in range(len(segments))]
 
         res_dict = funnel._calculate(
             data=data,
             stages=stages,
-            stages_names=stages_names,
+            stage_names=stage_names,
             funnel_type=funnel_type,
             segments=segments,
-            segments_names=segments_names,
+            segment_names=segment_names,
             sequence=sequence,
         )
 
@@ -127,7 +127,7 @@ class TestFunnel:
 
         assert correct_result == res_dict
 
-    def test_funnel__open_stages_names(self):
+    def test_funnel__open_stage_names(self):
         source_df = pd.DataFrame(
             [
                 # открытая, закрытая, закрытая+
@@ -212,10 +212,10 @@ class TestFunnel:
         )
 
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
-        stages_names = ["catalog", "product", "cart", "payment_done"]
+        stage_names = ["catalog", "product", "cart", "payment_done"]
         funnel_type = "open"
         segments = None
-        segments_names = None
+        segment_names = None
         sequence = False
 
         funnel = Funnel(eventstream=source, stages=stages)
@@ -225,18 +225,18 @@ class TestFunnel:
 
         if segments is None:
             segments = [data["user_id"].unique()]
-            segments_names = ["all users"]
+            segment_names = ["all users"]
 
-        if segments_names is None:
-            segments_names = [f"group {i}" for i in range(len(segments))]
+        if segment_names is None:
+            segment_names = [f"group {i}" for i in range(len(segments))]
 
         res_dict = funnel._calculate(
             data=data,
             stages=stages,
-            stages_names=stages_names,
+            stage_names=stage_names,
             funnel_type=funnel_type,
             segments=segments,
-            segments_names=segments_names,
+            segment_names=segment_names,
             sequence=sequence,
         )
 
@@ -331,10 +331,10 @@ class TestFunnel:
         )
 
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
-        stages_names = None
+        stage_names = None
         funnel_type = "closed"
         segments = None
-        segments_names = None
+        segment_names = None
         sequence = False
 
         funnel = Funnel(eventstream=source, stages=stages)
@@ -344,18 +344,18 @@ class TestFunnel:
 
         if segments is None:
             segments = [data["user_id"].unique()]
-            segments_names = ["all users"]
+            segment_names = ["all users"]
 
-        if segments_names is None:
-            segments_names = [f"group {i}" for i in range(len(segments))]
+        if segment_names is None:
+            segment_names = [f"group {i}" for i in range(len(segments))]
 
         res_dict = funnel._calculate(
             data=data,
             stages=stages,
-            stages_names=stages_names,
+            stage_names=stage_names,
             funnel_type=funnel_type,
             segments=segments,
-            segments_names=segments_names,
+            segment_names=segment_names,
             sequence=sequence,
         )
 
@@ -450,10 +450,10 @@ class TestFunnel:
         )
 
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
-        stages_names = None
+        stage_names = None
         funnel_type = "closed"
         segments = None
-        segments_names = None
+        segment_names = None
         sequence = True
 
         funnel = Funnel(eventstream=source, stages=stages)
@@ -463,18 +463,18 @@ class TestFunnel:
 
         if segments is None:
             segments = [data["user_id"].unique()]
-            segments_names = ["all users"]
+            segment_names = ["all users"]
 
-        if segments_names is None:
-            segments_names = [f"group {i}" for i in range(len(segments))]
+        if segment_names is None:
+            segment_names = [f"group {i}" for i in range(len(segments))]
 
         res_dict = funnel._calculate(
             data=data,
             stages=stages,
-            stages_names=stages_names,
+            stage_names=stage_names,
             funnel_type=funnel_type,
             segments=segments,
-            segments_names=segments_names,
+            segment_names=segment_names,
             sequence=sequence,
         )
 
@@ -571,10 +571,10 @@ class TestFunnel:
         non_conv_users = [4, 5, 6, 8]
 
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
-        stages_names = None
+        stage_names = None
         funnel_type = "closed"
         segments = (conv_users, non_conv_users)
-        segments_names = None
+        segment_names = None
         sequence = False
 
         funnel = Funnel(eventstream=source, stages=stages)
@@ -584,18 +584,18 @@ class TestFunnel:
 
         if segments is None:
             segments = [data["user_id"].unique()]
-            segments_names = ["all users"]
+            segment_names = ["all users"]
 
-        if segments_names is None:
-            segments_names = [f"group {i}" for i in range(len(segments))]
+        if segment_names is None:
+            segment_names = [f"group {i}" for i in range(len(segments))]
 
         res_dict = funnel._calculate(
             data=data,
             stages=stages,
-            stages_names=stages_names,
+            stage_names=stage_names,
             funnel_type=funnel_type,
             segments=segments,
-            segments_names=segments_names,
+            segment_names=segment_names,
             sequence=sequence,
         )
 
@@ -605,7 +605,7 @@ class TestFunnel:
         }
         assert correct_result == res_dict
 
-    def test_funnel__closed_sequence_segments_names(self):
+    def test_funnel__closed_sequence_segment_names(self):
         source_df = pd.DataFrame(
             [
                 # открытая, закрытая, закрытая+
@@ -692,10 +692,10 @@ class TestFunnel:
         conv_users = [1, 2, 3, 7]
         non_conv_users = [4, 5, 6, 8]
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
-        stages_names = None
+        stage_names = None
         funnel_type = "closed"
         segments = (conv_users, non_conv_users)
-        segments_names = ["conv_users", "non_conv_users"]
+        segment_names = ["conv_users", "non_conv_users"]
         sequence = True
 
         funnel = Funnel(eventstream=source, stages=stages)
@@ -705,18 +705,18 @@ class TestFunnel:
 
         if segments is None:
             segments = [data["user_id"].unique()]
-            segments_names = ["all users"]
+            segment_names = ["all users"]
 
-        if segments_names is None:
-            segments_names = [f"group {i}" for i in range(len(segments))]
+        if segment_names is None:
+            segment_names = [f"group {i}" for i in range(len(segments))]
 
         res_dict = funnel._calculate(
             data=data,
             stages=stages,
-            stages_names=stages_names,
+            stage_names=stage_names,
             funnel_type=funnel_type,
             segments=segments,
-            segments_names=segments_names,
+            segment_names=segment_names,
             sequence=sequence,
         )
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, List, Literal, Optional
+from typing import Any, Iterable, List, Literal, Optional
 
 import numpy as np
 import pandas as pd
@@ -370,21 +370,19 @@ class Eventstream(EventstreamType):
     def funnel(
         self,
         stages: list[str],
-        stages_names: list[str] | None = None,  # TODO убрать optional, добавить NONE
-        funnel_type: Literal["open", "closed"] = "open",
-        segments: list[list[int] | tuple[int] | set[int]]
-        | tuple[list[int] | tuple[int] | set[int]]
-        | None = None,  # почему такие типы?
+        stages_names: list[str] | None = None,
+        funnel_type: Literal["open"] | Literal["closed"] = "open",
+        segments: Iterable[Iterable[int]] | None = None,
         segments_names: list[str] | None = None,
         sequence: bool = False,
     ) -> go.Figure:
         funnel = Funnel(
             eventstream=self,
             stages=stages,
-            stages_names=stages_names,
+            stage_names=stages_names,
             funnel_type=funnel_type,
             segments=segments,
-            segments_names=segments_names,
+            segment_names=segments_names,
             sequence=sequence,
         )
         plot = funnel.draw_plot()

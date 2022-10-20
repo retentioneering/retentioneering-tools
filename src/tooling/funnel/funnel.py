@@ -71,7 +71,7 @@ class Funnel:
         self.sequence = sequence
 
         data = self.__eventstream.to_dataframe()
-        data = data[data[self.event_col].isin([flatten(stages)])]
+        data = data[data[self.event_col].isin([i for i in flatten(stages)])]  # type: ignore
         self.data = data
         if segments and segment_names and len(segments) != len(segment_names):  # type: ignore
             raise ValueError("segments and segment_names must be the same length!")
@@ -152,7 +152,6 @@ class Funnel:
                 group_data = data[data[self.user_col].isin(segment)]
                 vals = [group_data[group_data[self.event_col].isin(stage)][self.user_col].nunique() for stage in stages]
                 res_dict[name] = {"stages": stage_names, "values": vals}
-        self.dict = res_dict
         return res_dict
 
     def _plot_stacked_funnel(self, data) -> go.Figure:

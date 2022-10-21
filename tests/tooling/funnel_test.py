@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 from pandas.core.common import flatten
+from pydantic import ValidationError
 
 from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
 from src.tooling.funnel import Funnel
@@ -95,8 +97,6 @@ class TestFunnel:
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
         stage_names = None
         funnel_type = "open"
-        segments = None
-        segment_names = None
         sequence = False
 
         funnel = Funnel(eventstream=source, stages=stages)
@@ -104,12 +104,8 @@ class TestFunnel:
         data = source.to_dataframe()
         data = data[data["event_name"].isin(list(flatten(stages)))]
 
-        if segments is None:
-            segments = [data["user_id"].unique()]
-            segment_names = ["all users"]
-
-        if segment_names is None:
-            segment_names = [f"group {i}" for i in range(len(segments))]
+        segments = [data["user_id"].unique()]
+        segment_names = ["all users"]
 
         res_dict = funnel._calculate(
             data=data,
@@ -214,21 +210,15 @@ class TestFunnel:
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
         stage_names = ["catalog", "product", "cart", "payment_done"]
         funnel_type = "open"
-        segments = None
-        segment_names = None
         sequence = False
-
-        funnel = Funnel(eventstream=source, stages=stages)
 
         data = source.to_dataframe()
         data = data[data["event_name"].isin(list(flatten(stages)))]
 
-        if segments is None:
-            segments = [data["user_id"].unique()]
-            segment_names = ["all users"]
+        segments = [data["user_id"].unique()]
+        segment_names = ["all users"]
 
-        if segment_names is None:
-            segment_names = [f"group {i}" for i in range(len(segments))]
+        funnel = Funnel(eventstream=source, stages=stages)
 
         res_dict = funnel._calculate(
             data=data,
@@ -333,21 +323,15 @@ class TestFunnel:
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
         stage_names = None
         funnel_type = "closed"
-        segments = None
-        segment_names = None
         sequence = False
-
-        funnel = Funnel(eventstream=source, stages=stages)
 
         data = source.to_dataframe()
         data = data[data["event_name"].isin(list(flatten(stages)))]
 
-        if segments is None:
-            segments = [data["user_id"].unique()]
-            segment_names = ["all users"]
+        segments = [data["user_id"].unique()]
+        segment_names = ["all users"]
 
-        if segment_names is None:
-            segment_names = [f"group {i}" for i in range(len(segments))]
+        funnel = Funnel(eventstream=source, stages=stages)
 
         res_dict = funnel._calculate(
             data=data,
@@ -452,22 +436,15 @@ class TestFunnel:
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
         stage_names = None
         funnel_type = "closed"
-        segments = None
-        segment_names = None
         sequence = True
-
-        funnel = Funnel(eventstream=source, stages=stages)
 
         data = source.to_dataframe()
         data = data[data["event_name"].isin(list(flatten(stages)))]
 
-        if segments is None:
-            segments = [data["user_id"].unique()]
-            segment_names = ["all users"]
+        segments = [data["user_id"].unique()]
+        segment_names = ["all users"]
 
-        if segment_names is None:
-            segment_names = [f"group {i}" for i in range(len(segments))]
-
+        funnel = Funnel(eventstream=source, stages=stages)
         res_dict = funnel._calculate(
             data=data,
             stages=stages,
@@ -574,7 +551,6 @@ class TestFunnel:
         stage_names = None
         funnel_type = "closed"
         segments = (conv_users, non_conv_users)
-        segment_names = None
         sequence = False
 
         funnel = Funnel(eventstream=source, stages=stages)
@@ -582,12 +558,7 @@ class TestFunnel:
         data = source.to_dataframe()
         data = data[data["event_name"].isin(list(flatten(stages)))]
 
-        if segments is None:
-            segments = [data["user_id"].unique()]
-            segment_names = ["all users"]
-
-        if segment_names is None:
-            segment_names = [f"group {i}" for i in range(len(segments))]
+        segment_names = [f"group {i}" for i in range(len(segments))]
 
         res_dict = funnel._calculate(
             data=data,
@@ -703,13 +674,6 @@ class TestFunnel:
         data = source.to_dataframe()
         data = data[data["event_name"].isin(list(flatten(stages)))]
 
-        if segments is None:
-            segments = [data["user_id"].unique()]
-            segment_names = ["all users"]
-
-        if segment_names is None:
-            segment_names = [f"group {i}" for i in range(len(segments))]
-
         res_dict = funnel._calculate(
             data=data,
             stages=stages,
@@ -731,3 +695,30 @@ class TestFunnel:
             },
         }
         assert correct_result == res_dict
+
+    def test_params_model__incorrect_funnel_type(self):
+        with pytest.raises(ValueError):
+            source_df = pd.DataFrame(
+                [
+                    # открытая, закрытая, закрытая+
+                    [1, "start", "start", "2022-01-01 00:01:00"],
+                    [1, "catalog", "raw", "2022-01-01 00:01:00"],
+                    [1, "product1", "raw", "2022-01-01 00:02:00"],
+                    [1, "product2", "raw", "2022-01-01 00:03:00"],
+                    [1, "cart", "raw", "2022-01-01 00:07:00"],
+                    [1, "payment_done", "raw", "2022-01-01 00:08:00"],
+                ],
+                columns=["user_id", "event", "event_type", "timestamp"],
+            )
+
+            source = Eventstream(
+                raw_data=source_df,
+                raw_data_schema=RawDataSchema(
+                    event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
+                ),
+                schema=EventstreamSchema(),
+            )
+
+            stages = ["catalog", "cart", "payment_done"]
+
+            p = Funnel(eventstream=source, stages=stages, funnel_type="check_me")

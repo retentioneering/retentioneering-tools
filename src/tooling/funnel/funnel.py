@@ -56,7 +56,7 @@ class Funnel:
         eventstream: EventstreamType,
         stages: list[str],
         stage_names: list[str] | None = None,
-        funnel_type: Literal["open"] | Literal["closed"] = "open",
+        funnel_type: Literal["open", "closed"] = "open",
         segments: Iterable[Iterable[int]] | None = None,
         segment_names: list[str] | None = None,
         sequence: bool = False,
@@ -73,8 +73,6 @@ class Funnel:
         data = self.__eventstream.to_dataframe()
         data = data[data[self.event_col].isin([i for i in flatten(stages)])]  # type: ignore
         self.data = data
-        if segments and segment_names and len(segments) != len(segment_names):  # type: ignore
-            raise ValueError("segments and segment_names must be the same length!")
 
         if self.stages and self.stage_names and len(self.stages) != len(self.stage_names):
             raise ValueError("stages and stage_names must be the same length!")
@@ -87,12 +85,18 @@ class Funnel:
             if len(set.intersection(*sets)) > 0:
                 raise ValueError("Check intersections of users in segments!")
 
-        # IDK why but pyright thinks this is Funnel!!!
-        self.segments = segments
-
         if segment_names is None:
             segment_names = [f"group {i}" for i in range(len(segments))]  # type: ignore
+
+        if segments and segment_names and len(segments) != len(segment_names):  # type: ignore
+            raise ValueError("segments and segment_names must be the same length!")
+
+        # IDK why but pyright thinks this is Funnel!!!
+        self.segments = segments
         self.segment_names = segment_names
+
+        if funnel_type not in ["open", "closed"]:
+            raise ValueError("funnel_type should be 'open' or 'closed'!")
 
     def draw_plot(self) -> go.Figure:
         """
@@ -105,7 +109,7 @@ class Funnel:
             data=self.data,
             stages=self.stages,
             stage_names=self.stage_names,
-            funnel_type=self.funnel_type,
+            funnel_type=self.funnel_type,  # type: ignore
             segments=self.segments,
             segment_names=self.segment_names,
             sequence=self.sequence,
@@ -119,7 +123,7 @@ class Funnel:
         data: pd.DataFrame,
         stages: list[str],
         stage_names: list[str] | None,
-        funnel_type: str,
+        funnel_type: Literal["open", "closed"],
         segments: Iterable[Iterable[int]],
         segment_names: list[str],
         sequence: bool = False,
@@ -146,12 +150,9 @@ class Funnel:
             )
 
         else:
-            res_dict = {}
-            for segment, name in zip(segments, segment_names):
-                # isolate users from group
-                group_data = data[data[self.user_col].isin(segment)]
-                vals = [group_data[group_data[self.event_col].isin(stage)][self.user_col].nunique() for stage in stages]
-                res_dict[name] = {"stages": stage_names, "values": vals}
+            res_dict = self._prepare_data_for_open_funnel(
+                data=data, stages=stages, segments=segments, segment_names=segment_names, stage_names=stage_names
+            )
         return res_dict
 
     def _plot_stacked_funnel(self, data) -> go.Figure:
@@ -206,15 +207,39 @@ class Funnel:
             res_dict[name] = {"stages": stage_names, "values": vals}
         return res_dict
 
+    def _prepare_data_for_open_funnel(
+        self,
+        data: pd.DataFrame,
+        stages: list[str],
+        stage_names: list[str],
+        segments: Iterable[Iterable[int]],
+        segment_names: list[str],
+    ):
+        res_dict = {}
+        for segment, name in zip(segments, segment_names):
+            # isolate users from group
+            group_data = data[data[self.user_col].isin(segment)]
+            vals = [group_data[group_data[self.event_col].isin(stage)][self.user_col].nunique() for stage in stages]
+            res_dict[name] = {"stages": stage_names, "values": vals}
+        return res_dict
+
     def _crop_df(self, df: pd.DataFrame, stages: list[str], segment: Iterable[int], sequence: bool = False):
+        first_stage = stages[0]
+        next_stages = stages[1:]
 
-        users_0 = set((df[(df[self.event_col].isin(stages[0])) & (df[self.user_col].isin(segment))][self.user_col]))
-        df = df.drop(df[(~df[self.user_col].isin(users_0)) | (df[self.event_col].isin(stages[0]))].index.tolist())
+        first_stage_users = set(
+            (df[(df[self.event_col].isin(first_stage)) & (df[self.user_col].isin(segment))][self.user_col])
+        )
+        df = df.drop(
+            df[(~df[self.user_col].isin(first_stage_users)) | (df[self.event_col].isin(first_stage))].index.tolist()
+        )
 
-        prev_users_stage = users_0
-        vals = [len(users_0)]
-        for stage in stages[1:]:
-            user_stage = set(df[(df[self.event_col].isin(stage)) & (df[self.user_col].isin(users_0))][self.user_col])
+        prev_users_stage = first_stage_users
+        vals = [len(first_stage_users)]
+        for stage in next_stages:
+            user_stage = set(
+                df[(df[self.event_col].isin(stage)) & (df[self.user_col].isin(first_stage_users))][self.user_col]
+            )
             user_stage = user_stage - (user_stage - prev_users_stage)
             prev_users_stage = user_stage
 

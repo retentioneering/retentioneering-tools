@@ -34,9 +34,6 @@ class ParamsModel(BaseModel):
         obj = cls.__new__(cls)
         register_params_model(obj)
 
-    class Options:
-        custom_widgets: Optional[CustomWidgetDataType]
-
     @validator("*")
     def validate_subiterable(cls, value: Any) -> Any:
         array_types = (Iterable, dict)
@@ -78,7 +75,7 @@ class ParamsModel(BaseModel):
         optionals = {name: name not in required for name in properties.keys()}
         definitions = params_schema.get("definitions", {})
         widgets = {}
-        custom_widgets = getattr(getattr(cls, "Options", None), "custom_widgets", [])
+        custom_widgets = cls._widgets
         for name, params in properties.items():
             widget = None
             default = params.get("default")
@@ -149,9 +146,10 @@ class ParamsModel(BaseModel):
 
     @classmethod
     def _parse_custom_widget(cls, name: str, optional: bool = False) -> WIDGET:
-        custom_widget = cls.Options.custom_widgets[name]  # type: ignore
-        _widget = WIDGET_MAPPING[custom_widget["widget"]]
-        return _widget.from_dict(**dict(optional=optional, name=name, widget=custom_widget["widget"], value=None))
+        custom_widget = cls._widgets[name]  # type: ignore
+        _widget = WIDGET_MAPPING[custom_widget["widget"]] if isinstance(custom_widget, dict) else custom_widget
+        widget_type = custom_widget["widget"] if isinstance(custom_widget, dict) else custom_widget.widget
+        return _widget.from_dict(**dict(optional=optional, name=name, widget=widget_type, value=None))
 
     @classmethod
     def get_widgets(cls) -> dict[str, str | dict | list]:

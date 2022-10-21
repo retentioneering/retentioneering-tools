@@ -32,8 +32,8 @@ class IntegerWidget:
 class EnumWidget:
     name: str
     optional: bool
-    default: str
     params: list[str]
+    default: str = ""
     widget: str = "enum"
 
     @classmethod
@@ -45,8 +45,8 @@ class EnumWidget:
 class ArrayWidget:
     name: str
     optional: bool
-    default: str
-    type: str
+    default: str = ""
+    type: str = ""
     widget: str = "array"
 
     @classmethod
@@ -58,8 +58,6 @@ class ArrayWidget:
 class BooleanWidget:
     name: str
     optional: bool
-    default: str
-    type: str
     widget: str = "boolean"
 
     @classmethod
@@ -71,8 +69,6 @@ class BooleanWidget:
 class ReteTimeWidget:
     name: str
     optional: bool
-    default: str
-    type: str
     widget: str = "tuple"
 
     @classmethod
@@ -99,8 +95,6 @@ class ReteTimeWidget:
 class ReteFunction:
     name: str
     optional: bool
-    default: str
-    type: str
     widget: str = "function"
     _source_code: str = ""
 

@@ -69,7 +69,7 @@ class BooleanWidget:
 class ReteTimeWidget:
     name: str
     optional: bool
-    widget: str = "tuple"
+    widget: str = "time_widget"
 
     @classmethod
     def from_dict(cls, **kwargs) -> "ReteTimeWidget":

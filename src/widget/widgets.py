@@ -111,7 +111,9 @@ class ReteFunction:
     @classmethod
     def _serialize(cls, value: Callable) -> str:
         try:
-            return inspect.getsource(value)
+            code = inspect.getsource(value)
+            cls._source_code = code
+            return code
         except OSError:
             return cls._source_code
 

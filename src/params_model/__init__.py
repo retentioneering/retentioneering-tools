@@ -1,1 +1,1 @@
-from .params_model import CustomWidgetDataType, ParamsModel
+from .params_model import ParamsModel

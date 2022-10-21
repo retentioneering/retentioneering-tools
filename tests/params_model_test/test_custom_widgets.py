@@ -3,8 +3,7 @@ from typing import Tuple
 
 class TestCustomWidgets:
     def test_simple_custom_widget(self) -> None:
-
-        from src.params_model import CustomWidgetDataType, ParamsModel
+        from src.params_model import ParamsModel
         from src.params_model.params_model import CustomWidgetProperties
 
         def serialize(data: Tuple[int, str]) -> str:

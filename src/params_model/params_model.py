@@ -20,10 +20,6 @@ class CustomWidgetProperties(TypedDict):
     parse: Callable
 
 
-class CustomWidgetDataType(dict):
-    custom_widgets: dict[str, CustomWidgetProperties]
-
-
 class ParamsModel(BaseModel):
 
     _widgets: dict = {}
@@ -70,6 +66,13 @@ class ParamsModel(BaseModel):
     @classmethod
     def _parse_schemas(cls) -> dict[str, str | dict | list]:
         params_schema: dict[str, Any] = cls.schema()
+        for field_name, field in cls.__fields__.items():
+            if getattr(field, "type_", None) is Callable:
+                params_schema["properties"][field_name] = {
+                    "title": field_name.title(),
+                    "type": "callable",
+                    "_source_code": cls._widgets[field_name]._serialize(value=field.default),
+                }
         properties: dict[str, dict] = params_schema.get("properties", {})
         required: list[str] = params_schema.get("required", [])
         optionals = {name: name not in required for name in properties.keys()}
@@ -148,7 +151,6 @@ class ParamsModel(BaseModel):
     def _parse_custom_widget(cls, name: str, optional: bool = False) -> WIDGET:
         custom_widget = cls._widgets[name]  # type: ignore
         _widget = WIDGET_MAPPING[custom_widget["widget"]] if isinstance(custom_widget, dict) else custom_widget
-        print(f"{_widget = }")
         widget_type = custom_widget["widget"] if isinstance(custom_widget, dict) else custom_widget.widget
         return _widget.from_dict(**dict(optional=optional, name=name, widget=widget_type, value=None))
 

@@ -148,6 +148,7 @@ class ParamsModel(BaseModel):
     def _parse_custom_widget(cls, name: str, optional: bool = False) -> WIDGET:
         custom_widget = cls._widgets[name]  # type: ignore
         _widget = WIDGET_MAPPING[custom_widget["widget"]] if isinstance(custom_widget, dict) else custom_widget
+        print(f"{_widget = }")
         widget_type = custom_widget["widget"] if isinstance(custom_widget, dict) else custom_widget.widget
         return _widget.from_dict(**dict(optional=optional, name=name, widget=widget_type, value=None))
 

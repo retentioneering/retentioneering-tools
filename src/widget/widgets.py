@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 import types
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Type, Union
 
 
@@ -71,8 +71,14 @@ class ReteTimeWidget:
     optional: bool
     widget: str = "time_widget"
 
+    params: list = field(default_factory=list)
+
     @classmethod
     def from_dict(cls, **kwargs) -> "ReteTimeWidget":
+        kwargs["params"] = [
+            {"widget": "float"},
+            {"widget": "enum", "params": ["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]},
+        ]
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
     @classmethod

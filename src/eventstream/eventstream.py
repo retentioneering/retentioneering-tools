@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Iterable, List, Literal, Optional
+from collections.abc import Collection
+from typing import Any, List, Literal, Optional
 
 import numpy as np
 import pandas as pd
@@ -372,7 +373,7 @@ class Eventstream(EventstreamType):
         stages: list[str],
         stage_names: list[str] | None = None,
         funnel_type: Literal["open", "closed"] = "open",
-        segments: Iterable[Iterable[int]] | None = None,
+        segments: Collection[Collection[int]] | None = None,
         segment_names: list[str] | None = None,
         sequence: bool = False,
     ) -> go.Figure:

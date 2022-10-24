@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Literal
+from collections.abc import Collection
+from typing import Any, Literal
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -34,7 +35,7 @@ class Funnel:
     funnel_type: 'open' or 'closed' (optional, default 'open')
         if 'open' - all users will be counted on each stage
         if 'closed' - Each stage will include only users, who was on all previous stages.
-    segments: Iterable[Iterable[int]] | None (default None)
+    segments: Collection[Collection[int]] | None (default None)
         List of user_ids collections. Funnel for each user_id collection will be plotted.
         If None - all users from dataset will be plotted. A user can only belong to one segment at a time.
     segment_names: list of strings | None (default None)
@@ -57,7 +58,7 @@ class Funnel:
         stages: list[str],
         stage_names: list[str] | None = None,
         funnel_type: Literal["open", "closed"] = "open",
-        segments: Iterable[Iterable[int]] | None = None,
+        segments: Collection[Collection[int]] | None = None,
         segment_names: list[str] | None = None,
         sequence: bool = False,
     ) -> None:
@@ -67,7 +68,7 @@ class Funnel:
         self.time_col = self.__eventstream.schema.event_timestamp
         self.stages = stages
         self.stage_names = stage_names
-        self.funnel_type = funnel_type
+        self.funnel_type: Literal["open", "closed"] = funnel_type
         self.sequence = sequence
 
         data = self.__eventstream.to_dataframe()
@@ -109,7 +110,7 @@ class Funnel:
             data=self.data,
             stages=self.stages,
             stage_names=self.stage_names,
-            funnel_type=self.funnel_type,  # type: ignore
+            funnel_type=self.funnel_type,
             segments=self.segments,
             segment_names=self.segment_names,
             sequence=self.sequence,
@@ -124,11 +125,12 @@ class Funnel:
         stages: list[str],
         stage_names: list[str] | None,
         funnel_type: Literal["open", "closed"],
-        segments: Iterable[Iterable[int]],
+        segments: Collection[Collection[int]],
         segment_names: list[str],
         sequence: bool = False,
     ) -> dict[str, Any]:
 
+        res_dict = {}
         for idx, stage in enumerate(stages):
             if type(stage) is not list:
                 stages[idx] = [stage]  # type: ignore
@@ -149,7 +151,7 @@ class Funnel:
                 sequence=sequence,
             )
 
-        else:
+        elif funnel_type == "open":
             res_dict = self._prepare_data_for_open_funnel(
                 data=data, stages=stages, segments=segments, segment_names=segment_names, stage_names=stage_names
             )
@@ -186,7 +188,7 @@ class Funnel:
         data: pd.DataFrame,
         stages: list[str],
         stage_names: list[str],
-        segments: Iterable[Iterable[int]],
+        segments: Collection[Collection[int]],
         segment_names: list[str],
         sequence: bool = False,
     ):
@@ -203,7 +205,7 @@ class Funnel:
 
         res_dict = {}
         for segment, name in zip(segments, segment_names):
-            vals = self._crop_df(data, stages, segment, sequence)
+            vals, _df = self._crop_df(data, stages, segment, sequence)
             res_dict[name] = {"stages": stage_names, "values": vals}
         return res_dict
 
@@ -212,7 +214,7 @@ class Funnel:
         data: pd.DataFrame,
         stages: list[str],
         stage_names: list[str],
-        segments: Iterable[Iterable[int]],
+        segments: Collection[Collection[int]],
         segment_names: list[str],
     ):
         res_dict = {}
@@ -223,7 +225,7 @@ class Funnel:
             res_dict[name] = {"stages": stage_names, "values": vals}
         return res_dict
 
-    def _crop_df(self, df: pd.DataFrame, stages: list[str], segment: Iterable[int], sequence: bool = False):
+    def _crop_df(self, df: pd.DataFrame, stages: list[str], segment: Collection[int], sequence: bool = False):
         first_stage = stages[0]
         next_stages = stages[1:]
 
@@ -264,4 +266,4 @@ class Funnel:
             else:
                 df = df.drop(df[~df[self.user_col].isin(user_stage)].index.tolist())
 
-        return vals
+        return vals, df

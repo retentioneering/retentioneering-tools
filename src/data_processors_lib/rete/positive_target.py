@@ -16,7 +16,7 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 def _default_func_positive(eventstream: Eventstream, positive_target_events: list[str]) -> pd.DataFrame:
     """
-    Filter rows with target events from the input eventstream
+    Filters rows with target events from the input eventstream
     If there are several target events in user path - the event with minimum timestamp is taken
 
     Parameters

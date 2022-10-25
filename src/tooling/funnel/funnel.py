@@ -11,15 +11,6 @@ from src.eventstream.types import EventstreamType
 
 
 class Funnel:
-    __eventstream: EventstreamType
-    __default_layout = dict(
-        margin={"l": 180, "r": 0, "t": 30, "b": 0, "pad": 0},
-        funnelmode="stack",
-        showlegend=True,
-        hovermode="closest",
-        legend=dict(orientation="v", bgcolor="#E2E2E2", xanchor="left", font=dict(size=12)),
-    )
-
     """
     Plots convertion funnel with specified parameters.
 
@@ -51,6 +42,15 @@ class Funnel:
     Funnel plot
 
     """
+
+    __eventstream: EventstreamType
+    __default_layout = dict(
+        margin={"l": 180, "r": 0, "t": 30, "b": 0, "pad": 0},
+        funnelmode="stack",
+        showlegend=True,
+        hovermode="closest",
+        legend=dict(orientation="v", bgcolor="#E2E2E2", xanchor="left", font=dict(size=12)),
+    )
 
     def __init__(
         self,

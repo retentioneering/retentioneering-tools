@@ -11,5 +11,11 @@ preprocessing
    Preprocessing <preprocessing.rst>
    Github <>
 
-funnel
+tooling
 -----------
+.. toctree::
+   :caption: PREPROCESSING:
+   :maxdepth: 2
+
+   Preprocessing <tooling.rst>
+   Github <>

@@ -20,10 +20,9 @@ class SplitSessionsParams(ParamsModel):
 
 class SplitSessions(DataProcessor):
     """
-    Creating new events, which divide user's paths on sessions
+    Creates new events, which divide user's paths on sessions
     Also create and add new column to the input eventstream with the session number
-    Session number (view):
-        {user_id}_{session_number through one user path}
+    Session number (view): {user_id}_{session_number through one user path}
 
     Parameters
     ----------
@@ -38,7 +37,6 @@ class SplitSessions(DataProcessor):
         will be added
 
     mark_truncated : bool, default=False
-
 
     session_col : str
         The name of future session_col

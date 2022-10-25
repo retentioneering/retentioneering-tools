@@ -10,14 +10,21 @@ from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.eventstream import Eventstream
 from src.params_model import ParamsModel
+from src.widget.widgets import ReteTimeWidget
 
 
-class TruncatedParams(ParamsModel):
+class TruncatedEventsParams(ParamsModel):
     left_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
     right_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
 
+    _widgets = {
+        "left_truncated_cutoff": ReteTimeWidget,
+        "right_truncated_cutoff": ReteTimeWidget,
+    }
+
 
 class TruncatedEvents(DataProcessor):
+
     """
     Create new synthetic event(s) for each user on the base of timeout threshold
 
@@ -54,9 +61,9 @@ class TruncatedEvents(DataProcessor):
     Hists
     """
 
-    params: TruncatedParams
+    params: TruncatedEventsParams
 
-    def __init__(self, params: TruncatedParams):
+    def __init__(self, params: TruncatedEventsParams):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:

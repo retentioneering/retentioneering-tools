@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import asdict
-from typing import Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Union
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ValidationError, validator
 from typing_extensions import TypedDict
 
 from src.params_model.registry import register_params_model
 from src.widget import WIDGET, WIDGET_MAPPING, WIDGET_TYPE
+
+if TYPE_CHECKING:
+    from pydantic.typing import AbstractSetIntStr, MappingIntStrAny
 
 
 class CustomWidgetProperties(TypedDict):
@@ -17,19 +20,15 @@ class CustomWidgetProperties(TypedDict):
     parse: Callable
 
 
-class CustomWidgetDataType(dict):
-    custom_widgets: dict[str, CustomWidgetProperties]
-
-
 class ParamsModel(BaseModel):
+
+    _widgets: dict = {}
+
     @classmethod
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         obj = cls.__new__(cls)
         register_params_model(obj)
-
-    class Options:
-        custom_widgets: Optional[CustomWidgetDataType]
 
     @validator("*")
     def validate_subiterable(cls, value: Any) -> Any:
@@ -52,17 +51,34 @@ class ParamsModel(BaseModel):
         self,
         **data: Dict[str, Any],
     ) -> None:
-        super().__init__(**data)
+        try:
+            super().__init__(**data)
+        except ValidationError:
+            for key in data:
+                if key in self._widgets:
+                    data[key] = self._widgets[key]._parse(data[key])
+            super().__init__(**data)
+
+    def __call__(self, **data: Dict[str, Any]) -> ParamsModel:
+        ParamsModel.__init__(self, **data)
+        return self
 
     @classmethod
     def _parse_schemas(cls) -> dict[str, str | dict | list]:
         params_schema: dict[str, Any] = cls.schema()
+        for field_name, field in cls.__fields__.items():
+            if getattr(field, "type_", None) is Callable:
+                params_schema["properties"][field_name] = {
+                    "title": field_name.title(),
+                    "type": "callable",
+                    "_source_code": cls._widgets[field_name]._serialize(value=field.default),
+                }
         properties: dict[str, dict] = params_schema.get("properties", {})
         required: list[str] = params_schema.get("required", [])
         optionals = {name: name not in required for name in properties.keys()}
         definitions = params_schema.get("definitions", {})
         widgets = {}
-        custom_widgets = getattr(getattr(cls, "Options", None), "custom_widgets", [])
+        custom_widgets = cls._widgets
         for name, params in properties.items():
             widget = None
             default = params.get("default")
@@ -133,10 +149,36 @@ class ParamsModel(BaseModel):
 
     @classmethod
     def _parse_custom_widget(cls, name: str, optional: bool = False) -> WIDGET:
-        custom_widget = cls.Options.custom_widgets[name]  # type: ignore
-        _widget = WIDGET_MAPPING[custom_widget["widget"]]
-        return _widget.from_dict(**dict(optional=optional, name=name, widget=custom_widget["widget"], value=None))
+        custom_widget = cls._widgets[name]  # type: ignore
+        _widget = WIDGET_MAPPING[custom_widget["widget"]] if isinstance(custom_widget, dict) else custom_widget
+        widget_type = custom_widget["widget"] if isinstance(custom_widget, dict) else custom_widget.widget
+        return _widget.from_dict(**dict(optional=optional, name=name, widget=widget_type, value=None))
 
     @classmethod
     def get_widgets(cls) -> dict[str, str | dict | list]:
         return cls._parse_schemas()
+
+    def dict(
+        self,
+        *,
+        include: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+        exclude: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+        by_alias: bool = False,
+        skip_defaults: Optional[bool] = None,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+    ) -> Dict:
+        data = super().dict(
+            include=include,
+            exclude=exclude,
+            by_alias=by_alias,
+            skip_defaults=skip_defaults,
+            exclude_unset=exclude_unset,
+            exclude_defaults=exclude_defaults,
+            exclude_none=exclude_none,
+        )
+        for key in data:
+            if widget := self._widgets.get(key, None):
+                data[key] = widget._serialize(value=data[key])  # type: ignore
+        return data

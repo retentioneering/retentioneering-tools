@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Optional, Union
+from typing import Any, Optional, Type, Union
 
 from src.data_processor.data_processor import DataProcessor
+from src.data_processor.registry import dataprocessor_registry
 from src.eventstream import Eventstream
+from src.params_model.registry import params_model_registry
 
 
 class BaseNode:
@@ -58,3 +60,35 @@ class MergeNode(BaseNode):
 
 
 Node = Union[SourceNode, EventsNode, MergeNode]
+nodes = {
+    "MergeNode": MergeNode,
+    "EventsNode": EventsNode,
+    "SourceNode": SourceNode,
+}
+
+
+class NotFoundDataprocessor(Exception):
+    pass
+
+
+def build_node(node_name: str, processor_name: str, processor_params: dict[str, Any] | None = None) -> Node | None:
+    if node_name == "SourceNode":
+        return None
+
+    _node = nodes[node_name]
+    node_kwargs = {}
+    if processor_name:
+        _params_model_registry = params_model_registry.get_registry()
+        _dataprocessor_registry = dataprocessor_registry.get_registry()
+
+        _processor: Type[DataProcessor] = _dataprocessor_registry[processor_name]  # type: ignore
+        params_name = _processor.__annotations__["params"]
+        _params_model = _params_model_registry[params_name]
+        params_model = _params_model(**processor_params)
+
+        processor: DataProcessor = _processor(params=params_model)
+
+        node_kwargs["processor"] = processor
+
+    node = _node(**node_kwargs)
+    return node

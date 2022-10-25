@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
 import pytest
@@ -58,3 +59,30 @@ class TestParamsModel:
 
         model = ExampleModel(a="asd")
         assert "asd" == model.a
+
+    def test_get_values(self) -> None:
+
+        import inspect
+
+        @dataclass
+        class TestWidget:
+            name: str
+            optional: bool
+            widget: str = "string"
+
+            @classmethod
+            def from_dict(cls, **kwargs) -> "TestWidget":
+                return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
+
+            @classmethod
+            def _serialize(cls, value) -> str:
+                return str(value) * 3
+
+        class ExampleModelExport(ParamsModel):
+            a: str
+
+            _widgets = {"a": TestWidget}
+
+        model = ExampleModelExport(a="asd")
+        data = model.dict()
+        assert {"a": "asdasdasd"} == data

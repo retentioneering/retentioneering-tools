@@ -10,12 +10,15 @@ from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
+from src.widget.widgets import ReteTimeWidget
 
 
 class SplitSessionsParams(ParamsModel):
     session_cutoff: Tuple[float, DATETIME_UNITS]
     mark_truncated: bool = False
     session_col: str
+
+    _widgets = {"session_cutoff": ReteTimeWidget}
 
 
 class SplitSessions(DataProcessor):

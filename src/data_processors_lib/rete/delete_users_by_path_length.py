@@ -8,11 +8,16 @@ from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.eventstream import Eventstream
 from src.params_model import ParamsModel
+from src.widget.widgets import ReteTimeWidget
 
 
 class DeleteUsersByPathLengthParams(ParamsModel):
     events_num: Optional[int]
     cutoff: Optional[Tuple[float, DATETIME_UNITS]]
+
+    _widgets = {
+        "cutoff": ReteTimeWidget,
+    }
 
 
 class DeleteUsersByPathLength(DataProcessor):

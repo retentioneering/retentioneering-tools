@@ -24,6 +24,10 @@ class DataProcessor:
         self.params = params
         self.pk = uuid.uuid4()
 
+    def __call__(self, params: ParamsModel) -> DataProcessor:
+        DataProcessor.__init__(self, params=params)
+        return self
+
     def apply(self, eventstream: Eventstream) -> Eventstream:
         raise NotImplementedError
 

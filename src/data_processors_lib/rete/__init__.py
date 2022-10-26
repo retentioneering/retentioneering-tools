@@ -3,6 +3,8 @@ from .delete_users_by_path_length import (
     DeleteUsersByPathLength,
     DeleteUsersByPathLengthParams,
 )
+from .filter_events import FilterEvents, FilterEventsParams
+from .group_events import GroupEvents, GroupEventsParams
 from .lost_users import LostUsersEvents, LostUsersParams
 from .negative_target import NegativeTarget, NegativeTargetParams
 from .new_users import NewUsersEvents, NewUsersParams

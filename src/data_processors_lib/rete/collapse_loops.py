@@ -16,7 +16,7 @@ class CollapseLoopsParams(ParamsModel):
 
 class CollapseLoops(DataProcessor):
     """
-    Group and replace loops with new synthetic events in each user's path.
+    Groups and replaces loops in each user's path with new synthetic events.
 
     Loop - is the sequence of repetitive events in user's path.
     For example "event1 -> event1"

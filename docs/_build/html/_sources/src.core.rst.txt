@@ -1,5 +1,5 @@
 
-API
+API REFERENCE
 ======================================
 
 preprocessing
@@ -14,8 +14,8 @@ preprocessing
 tooling
 -----------
 .. toctree::
-   :caption: PREPROCESSING:
+   :caption: CORE FUNCTIONS:
    :maxdepth: 2
 
-   Preprocessing <tooling.rst>
+   CORE FUNCTIONS <tooling.rst>
    Github <>

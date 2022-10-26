@@ -26,13 +26,13 @@ class TruncatedEventsParams(ParamsModel):
 class TruncatedEvents(DataProcessor):
 
     """
-    Create new synthetic event(s) for each user on the base of timeout threshold
+    Creates new synthetic event(s) for each user on the base of timeout threshold
 
     Parameters
     ----------
     left_truncated_cutoff : Tuple(float, DATETIME_UNITS), optional
         Threshold value and it's unit of measure.
-        Calculate timedelta between last event in each user's path and first event in whole Eventstream.
+        Calculates timedelta between last event in each user's path and first event in whole Eventstream.
         For users with timedelta less than selected left_truncated_cutoff, new synthetic event - 'truncated_left'
         will be added
 

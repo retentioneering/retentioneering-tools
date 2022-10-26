@@ -21,9 +21,8 @@ class LostUsersParams(ParamsModel):
 
 class LostUsersEvents(DataProcessor):
     """
-    Create one of synthetic events in each user's path:
+    Creates one of synthetic events in each user's path:
     'lost_user' or 'absent_user'
-    # Add one of synthetic events for each user
 
     Parameters
     ----------

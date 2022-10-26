@@ -15,6 +15,8 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 def _default_func_positive(eventstream: Eventstream, positive_target_events: list[str]) -> pd.DataFrame:
+    # TODO добавить доку в тесты tests/p_graph/test_export.py test_positive_events__export
+    #  и test_positive_events__import
     """
     Filters rows with target events from the input eventstream
     If there are several target events in user path - the event with minimum timestamp is taken
@@ -61,7 +63,7 @@ class PositiveTargetParams(ParamsModel):
 
 class PositiveTarget(DataProcessor):
     """
-    Create new synthetic events for users who have had specified event(s) in their paths
+    Creates new synthetic events for users who have had specified event(s) in their paths
 
     Parameters
     ----------
@@ -74,17 +76,21 @@ class PositiveTarget(DataProcessor):
 
     Note
     -------
-
+    Shouldn't be empty
 
     Returns
     -------
-    Eventstream with new synthetic events for users who have удовлетворяет условиям (details in the table below)
+    Eventstream with new synthetic events for users who fit the conditions (details in the table below)
 
         +--------------------------------------+------------------+-----------------------------------------+
         | event_name                           | event_type       | timestamp                               |
         +--------------------------------------+------------------+-----------------------------------------+
         | positive_target_ORIGINAL_EVENT_NAME  | positive_target  | min(timestamp(positive_target_events))  |
         +--------------------------------------+------------------+-----------------------------------------+
+
+    Return type
+    -----------
+    Eventstream
 
     See Also
     -------

@@ -17,7 +17,7 @@ class FilterEventsParams(ParamsModel):
 
 class FilterEvents(DataProcessor):
     """
-    Filtering input Eventstream on the basis of custom conditions
+    Filters input Eventstream on the basis of custom conditions
 
     Parameters
     ----------

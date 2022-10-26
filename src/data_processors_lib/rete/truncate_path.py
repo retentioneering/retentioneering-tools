@@ -18,7 +18,7 @@ class TruncatePathParams(ParamsModel):
 
 class TruncatePath(DataProcessor):
     """
-    Truncate each user's path on the base of specified event and selected parameters
+    Truncates each user's path on the base of specified event and selected parameters
 
     Parameters
     ----------

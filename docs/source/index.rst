@@ -5,12 +5,17 @@
 
 Rete Doc
 ======================================
+.. toctree::
+   :caption: TUTORIAL:
+   :maxdepth: 2
+
+   What is Retentioneering? <what_is_rete.rst>
 
 .. toctree::
    :caption: API REFERENCE:
    :maxdepth: 2
 
-   Core functions <src.core.rst>
+   API REFERENCE <src.core.rst>
    Github <>
 
 

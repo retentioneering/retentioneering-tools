@@ -15,8 +15,9 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 def _default_func_negative(eventstream: Eventstream, negative_target_events: list[str]) -> pd.DataFrame:
+    # TODO добавить доку в тесты test_negative_target__export tests/p_graph/test_export.py
     """
-    Filter rows with target events from the input eventstream on the base
+    Filters rows with target events from the input eventstream on the base
 
     Parameters
     ----------
@@ -57,7 +58,7 @@ class NegativeTargetParams(ParamsModel):
 
 class NegativeTarget(DataProcessor):
     """
-    Creating new synthetic events for users who have had specified event(s) in their paths
+    Creates new synthetic events for users who have had specified event(s) in their paths
 
     Parameters
     ----------
@@ -75,7 +76,7 @@ class NegativeTarget(DataProcessor):
 
     Returns
     -------
-    Eventstream with new synthetic events for users who have удовлетворяет условиям (details in the table below)
+    Eventstream with new synthetic events for users who fit the conditions (details in the table below)
 
         +--------------------------------------+------------------+-----------------------------------------+
         | event_name                           | event_type       | timestamp                               |

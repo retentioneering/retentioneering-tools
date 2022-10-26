@@ -18,8 +18,7 @@ class NewUsersParams(ParamsModel):
 
 class NewUsersEvents(DataProcessor):
     """
-    Add one of synthetic events in each user's path:
-    Create new synthetic event for each user:
+    Creates new synthetic event for each user:
     'new_user' or 'existing_user'
 
     Parameters

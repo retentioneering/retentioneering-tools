@@ -17,8 +17,9 @@ class GroupEventsParams(ParamsModel):
 
 
 class GroupEvents(DataProcessor):
+    # TODO переформулировать
     """
-    Creating new events which grouping input events on the basis of specified conditions
+    Creates new events which grouping input events on the basis of specified conditions
 
     Parameters
     ----------

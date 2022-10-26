@@ -245,7 +245,7 @@ class TestPGraphExportImport:
 
         node = EventsNode(
             processor=CollapseLoops(
-                params=CollapseLoopsParams(**{"full_collapse": False, "timestamp_aggregation_type": "min"})
+                params=CollapseLoopsParams(**{"suffix": "count", "timestamp_aggregation_type": "min"})
             )
         )
         graph.add_node(node=node, parents=[graph.root])
@@ -263,7 +263,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "CollapseLoops",
-                        "values": {"full_collapse": False, "timestamp_aggregation_type": "min"},
+                        "values": {"suffix": "count", "timestamp_aggregation_type": "min"},
                     },
                 },
             ],
@@ -281,7 +281,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "CollapseLoops",
-                            "values": {"full_collapse": False, "timestamp_aggregation_type": "min"},
+                            "values": {"suffix": "count", "timestamp_aggregation_type": "min"},
                         },
                     },
                 ],
@@ -304,7 +304,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "CollapseLoops",
-                        "values": {"full_collapse": False, "timestamp_aggregation_type": "min"},
+                        "values": {"suffix": "count", "timestamp_aggregation_type": "min"},
                     },
                 },
             ],

@@ -13,7 +13,7 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class NewUsersParams(ParamsModel):
-    new_users_list: Union[List[int], Literal["all"]]
+    new_users_list: Union[List[int], List[str], Literal["all"]]
 
 
 class NewUsersEvents(DataProcessor):

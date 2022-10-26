@@ -46,7 +46,6 @@ class ArrayWidget:
     name: str
     optional: bool
     default: str = ""
-    type: str = ""
     widget: str = "array"
 
     @classmethod

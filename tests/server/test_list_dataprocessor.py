@@ -92,10 +92,9 @@ class TestListDataprocessors:
                             "widget": "time_widget",
                         },
                         "lost_users_list": {
-                            "default": None,
                             "name": "lost_users_list",
                             "optional": True,
-                            "widget": "array",
+                            "widget": "list_of_int",
                         },
                     },
                 }

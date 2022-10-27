@@ -124,6 +124,33 @@ class ReteFunction:
         return new_func_type
 
 
+@dataclass
+class ListOfInt:
+    name: str
+    optional: bool
+    widget: str = "list_of_int"
+
+    @classmethod
+    def from_dict(cls, **kwargs) -> "ListOfInt":
+        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
+
+    @classmethod
+    def _serialize(cls, value: list[int] | None) -> str | None:
+        if value is None:
+            return None
+        return ",".join([str(x) for x in value])
+
+    @classmethod
+    def _parse(cls, value: str) -> list[int] | None:  # type: ignore
+        if type(value) is list:
+            return value  # type: ignore
+        if value is None:
+            return None
+        _data: list[str] = value.split(",")
+        data = [int(x) for x in _data]
+        return data
+
+
 WIDGET_TYPE = Union[
     Type[StringWidget],
     Type[IntegerWidget],

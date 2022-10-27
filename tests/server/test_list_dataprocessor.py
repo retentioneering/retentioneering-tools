@@ -114,11 +114,9 @@ class TestListDataprocessors:
                         "name": "new_users_list",
                         "optional": False,
                         "widget": "list_of_int",
-                        "params": [
-                            {
-                                "disable_value": "all",
-                            }
-                        ],
+                        "params": {
+                            "disable_value": "all",
+                        },
                     }
                 ],
             },

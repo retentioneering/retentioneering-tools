@@ -161,7 +161,7 @@ class ListOfIntNewUsers:
 
     @classmethod
     def from_dict(cls, **kwargs) -> "ListOfIntNewUsers":
-        kwargs["params"] = [{"disable_value": "all"}]
+        kwargs["params"] = {"disable_value": "all"}
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
     @classmethod

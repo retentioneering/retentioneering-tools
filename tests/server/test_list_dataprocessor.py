@@ -110,10 +110,9 @@ class TestListDataprocessors:
                             "widget": "function",
                         },
                         "negative_target_events": {
-                            "default": None,
                             "name": "negative_target_events",
                             "optional": False,
-                            "widget": "array",
+                            "widget": "list_of_string",
                         },
                     },
                 }

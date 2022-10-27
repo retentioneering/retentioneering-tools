@@ -151,6 +151,32 @@ class ListOfInt:
         return data
 
 
+@dataclass
+class ListOfString:
+    name: str
+    optional: bool
+    widget: str = "list_of_string"
+
+    @classmethod
+    def from_dict(cls, **kwargs) -> "ListOfString":
+        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
+
+    @classmethod
+    def _serialize(cls, value: list[str] | None) -> str | None:
+        if value is None:
+            return None
+        return ",".join(value)
+
+    @classmethod
+    def _parse(cls, value: str) -> list[str] | None:  # type: ignore
+        if type(value) is list:
+            return value  # type: ignore
+        if value is None:
+            return None
+        data: list[str] = value.split(",")
+        return data
+
+
 WIDGET_TYPE = Union[
     Type[StringWidget],
     Type[IntegerWidget],

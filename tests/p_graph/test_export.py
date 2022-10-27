@@ -464,7 +464,7 @@ class TestPGraphExportImport:
                     "processor": {
                         "name": "NegativeTarget",
                         "values": {
-                            "negative_target_events": ["event3", "event2"],
+                            "negative_target_events": "event3,event2",
                             "negative_function": "def _default_func_negative(eventstream, "
                             "negative_target_events) -> pd.DataFrame:\n"
                             "    user_col = eventstream.schema.user_id\n"
@@ -496,7 +496,7 @@ class TestPGraphExportImport:
                         "processor": {
                             "name": "NegativeTarget",
                             "values": {
-                                "negative_target_events": ["event3", "event2"],
+                                "negative_target_events": "event3,event2",
                                 "negative_function": "def _default_func_negative(eventstream, "
                                 "negative_target_events) -> pd.DataFrame:\n"
                                 "    user_col = eventstream.schema.user_id\n"
@@ -533,7 +533,7 @@ class TestPGraphExportImport:
                     "processor": {
                         "name": "NegativeTarget",
                         "values": {
-                            "negative_target_events": ["event3", "event2"],
+                            "negative_target_events": "event3,event2",
                             "negative_function": "def _default_func_negative(eventstream, "
                             "negative_target_events) -> pd.DataFrame:\n"
                             "    user_col = eventstream.schema.user_id\n"

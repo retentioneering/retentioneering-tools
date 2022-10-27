@@ -18,3 +18,11 @@ class ReteRegistry:
     @classmethod
     def get_registry(cls):
         return cls.REGISTRY
+
+    @classmethod
+    def get_export_registry(cls):
+        data = []
+        for processor in cls.REGISTRY:
+            key = list(processor.keys())[0]
+            data.append(processor[key])
+        return data

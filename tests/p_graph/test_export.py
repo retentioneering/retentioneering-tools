@@ -193,7 +193,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "NewUsersEvents",
-                        "values": {"new_users_list": [2]},
+                        "values": {"new_users_list": "2"},
                     },
                 },
             ],
@@ -211,7 +211,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "NewUsersEvents",
-                            "values": {"new_users_list": [2]},
+                            "values": {"new_users_list": "2"},
                         },
                     },
                 ],
@@ -234,7 +234,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "NewUsersEvents",
-                        "values": {"new_users_list": [2]},
+                        "values": {"new_users_list": "2"},
                     },
                 },
             ],
@@ -464,7 +464,7 @@ class TestPGraphExportImport:
                     "processor": {
                         "name": "NegativeTarget",
                         "values": {
-                            "negative_target_events": ["event3", "event2"],
+                            "negative_target_events": "event3,event2",
                             "negative_function": "def _default_func_negative(eventstream, "
                             "negative_target_events) -> pd.DataFrame:\n"
                             "    user_col = eventstream.schema.user_id\n"
@@ -496,7 +496,7 @@ class TestPGraphExportImport:
                         "processor": {
                             "name": "NegativeTarget",
                             "values": {
-                                "negative_target_events": ["event3", "event2"],
+                                "negative_target_events": "event3,event2",
                                 "negative_function": "def _default_func_negative(eventstream, "
                                 "negative_target_events) -> pd.DataFrame:\n"
                                 "    user_col = eventstream.schema.user_id\n"
@@ -533,7 +533,7 @@ class TestPGraphExportImport:
                     "processor": {
                         "name": "NegativeTarget",
                         "values": {
-                            "negative_target_events": ["event3", "event2"],
+                            "negative_target_events": "event3,event2",
                             "negative_function": "def _default_func_negative(eventstream, "
                             "negative_target_events) -> pd.DataFrame:\n"
                             "    user_col = eventstream.schema.user_id\n"
@@ -574,7 +574,7 @@ class TestPGraphExportImport:
                     "processor": {
                         "name": "PositiveTarget",
                         "values": {
-                            "positive_target_events": ["event3", "event2"],
+                            "positive_target_events": "event3,event2",
                             "positive_function": "def _default_func_positive("
                             "eventstream: Eventstream, positive_target_events: list[str]) "
                             "-> pd.DataFrame:\n    user_col = eventstream.schema.user_id"
@@ -603,7 +603,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "PositiveTarget",
-                            "values": {"positive_target_events": ["event3", "event2"]},
+                            "values": {"positive_target_events": "event3,event2"},
                         },
                     },
                 ],
@@ -627,7 +627,7 @@ class TestPGraphExportImport:
                     "processor": {
                         "name": "PositiveTarget",
                         "values": {
-                            "positive_target_events": ["event3", "event2"],
+                            "positive_target_events": "event3,event2",
                             "positive_function": "def _default_func_positive("
                             "eventstream: Eventstream, positive_target_events: list[str]) "
                             "-> pd.DataFrame:\n    user_col = eventstream.schema.user_id"

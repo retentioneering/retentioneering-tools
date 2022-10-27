@@ -121,7 +121,7 @@ class ParamsModel(BaseModel):
         optional: bool = True,
     ) -> WIDGET:
         definition_name = params.get("title")
-        kwargs = {"name": definition_name, "widget": "array", "default": default, "optional": optional, "type": str}
+        kwargs = {"name": definition_name, "widget": "array", "default": default, "optional": optional}
         return WIDGET_MAPPING["array"].from_dict(**kwargs)
 
     @classmethod

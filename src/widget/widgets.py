@@ -153,13 +153,15 @@ class ListOfInt:
 
 @dataclass
 class ListOfIntNewUsers:
+    # @TODO: remove this widget and make his functionality in ListOfInt
     name: str
     optional: bool
-    disable_value: str = "all"
+    params: list[str]
     widget: str = "list_of_int"
 
     @classmethod
     def from_dict(cls, **kwargs) -> "ListOfIntNewUsers":
+        kwargs["params"] = [{"disable_value": "all"}]
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
     @classmethod

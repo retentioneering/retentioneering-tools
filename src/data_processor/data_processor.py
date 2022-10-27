@@ -53,7 +53,11 @@ class DataProcessor:
         else:
             params = params_model_name
         view = params.get_widgets()
-        data["params"] = view
+        view_data = []
+        for key in view:
+            view_data.append(view[key])
+
+        data["params"] = view_data
         return data
 
     def to_dict(self) -> dict:

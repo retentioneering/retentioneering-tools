@@ -8,23 +8,24 @@ class TestListDataprocessors:
         correct_data = [
             {
                 "name": "StubProcessor",
-                "params": {"a": {"default": None, "name": "A", "optional": False, "widget": "array"}},
+                "params": [{"default": None, "name": "A", "optional": False, "widget": "array"}],
             },
             {
                 "name": "CollapseLoops",
-                "params": {
-                    "full_collapse": {"name": "full_collapse", "optional": True, "widget": "boolean"},
-                    "timestamp_aggregation_type": {
+                "params": [
+                    {"name": "full_collapse", "optional": True, "widget": "boolean"},
+                    {
                         "name": "timestamp_aggregation_type",
                         "optional": True,
                         "widget": "string",
                     },
-                },
+                ],
             },
             {
                 "name": "DeleteUsersByPathLength",
-                "params": {
-                    "cutoff": {
+                "params": [
+                    {"name": "events_num", "optional": True, "widget": "integer"},
+                    {
                         "name": "cutoff",
                         "optional": True,
                         "params": [
@@ -51,13 +52,12 @@ class TestListDataprocessors:
                         ],
                         "widget": "time_widget",
                     },
-                    "events_num": {"name": "events_num", "optional": True, "widget": "integer"},
-                },
+                ],
             },
             {
                 "name": "LostUsersEvents",
-                "params": {
-                    "lost_cutoff": {
+                "params": [
+                    {
                         "name": "lost_cutoff",
                         "optional": True,
                         "params": [
@@ -84,62 +84,64 @@ class TestListDataprocessors:
                         ],
                         "widget": "time_widget",
                     },
-                    "lost_users_list": {
+                    {
                         "name": "lost_users_list",
                         "optional": True,
                         "widget": "list_of_int",
                     },
-                },
+                ],
             },
             {
                 "name": "NegativeTarget",
-                "params": {
-                    "negative_function": {
+                "params": [
+                    {
+                        "name": "negative_target_events",
+                        "optional": False,
+                        "widget": "list_of_string",
+                    },
+                    {
                         "_source_code": "",
                         "name": "negative_function",
                         "optional": True,
                         "widget": "function",
                     },
-                    "negative_target_events": {
-                        "name": "negative_target_events",
-                        "optional": False,
-                        "widget": "list_of_string",
-                    },
-                },
+                ],
             },
             {
                 "name": "NewUsersEvents",
-                "params": {
-                    "new_users_list": {
+                "params": [
+                    {
                         "name": "new_users_list",
-                        "disable_value": "all",
                         "optional": False,
                         "widget": "list_of_int",
+                        "params": [
+                            {
+                                "disable_value": "all",
+                            }
+                        ],
                     }
-                },
+                ],
             },
             {
                 "name": "PositiveTarget",
-                "params": {
-                    "positive_function": {
+                "params": [
+                    {
+                        "name": "positive_target_events",
+                        "optional": False,
+                        "widget": "list_of_string",
+                    },
+                    {
                         "_source_code": "",
                         "name": "positive_function",
                         "optional": True,
                         "widget": "function",
                     },
-                    "positive_target_events": {
-                        "name": "positive_target_events",
-                        "optional": False,
-                        "widget": "list_of_string",
-                    },
-                },
+                ],
             },
             {
                 "name": "SplitSessions",
-                "params": {
-                    "mark_truncated": {"name": "mark_truncated", "optional": True, "widget": "boolean"},
-                    "session_col": {"name": "session_col", "optional": False, "widget": "string"},
-                    "session_cutoff": {
+                "params": [
+                    {
                         "name": "session_cutoff",
                         "optional": False,
                         "params": [
@@ -166,24 +168,26 @@ class TestListDataprocessors:
                         ],
                         "widget": "time_widget",
                     },
-                },
+                    {"name": "mark_truncated", "optional": True, "widget": "boolean"},
+                    {"name": "session_col", "optional": False, "widget": "string"},
+                ],
             },
-            {"name": "StartEndEvents", "params": {}},
+            {"name": "StartEndEvents", "params": []},
             {
                 "name": "TruncatePath",
-                "params": {
-                    "drop_after": {"name": "drop_after", "optional": True, "widget": "string"},
-                    "drop_before": {"name": "drop_before", "optional": True, "widget": "string"},
-                    "occurrence_after": {"name": "occurrence_after", "optional": True, "widget": "string"},
-                    "occurrence_before": {"name": "occurrence_before", "optional": True, "widget": "string"},
-                    "shift_after": {"name": "shift_after", "optional": True, "widget": "integer"},
-                    "shift_before": {"name": "shift_before", "optional": True, "widget": "integer"},
-                },
+                "params": [
+                    {"name": "drop_before", "optional": True, "widget": "string"},
+                    {"name": "drop_after", "optional": True, "widget": "string"},
+                    {"name": "occurrence_before", "optional": True, "widget": "string"},
+                    {"name": "occurrence_after", "optional": True, "widget": "string"},
+                    {"name": "shift_before", "optional": True, "widget": "integer"},
+                    {"name": "shift_after", "optional": True, "widget": "integer"},
+                ],
             },
             {
                 "name": "TruncatedEvents",
-                "params": {
-                    "left_truncated_cutoff": {
+                "params": [
+                    {
                         "name": "left_truncated_cutoff",
                         "optional": True,
                         "params": [
@@ -210,7 +214,7 @@ class TestListDataprocessors:
                         ],
                         "widget": "time_widget",
                     },
-                    "right_truncated_cutoff": {
+                    {
                         "name": "right_truncated_cutoff",
                         "optional": True,
                         "params": [
@@ -237,37 +241,37 @@ class TestListDataprocessors:
                         ],
                         "widget": "time_widget",
                     },
-                },
+                ],
             },
             {
                 "name": "HelperAddColProcessor",
-                "params": {
-                    "column_name": {"name": "column_name", "optional": False, "widget": "string"},
-                    "event_name": {"name": "event_name", "optional": False, "widget": "string"},
-                },
+                "params": [
+                    {"name": "event_name", "optional": False, "widget": "string"},
+                    {"name": "column_name", "optional": False, "widget": "string"},
+                ],
             },
             {
                 "name": "NoHelperAddColProcessor",
-                "params": {
-                    "column_name": {"name": "column_name", "optional": False, "widget": "string"},
-                    "event_name": {"name": "event_name", "optional": False, "widget": "string"},
-                },
+                "params": [
+                    {"name": "event_name", "optional": False, "widget": "string"},
+                    {"name": "column_name", "optional": False, "widget": "string"},
+                ],
             },
             {
                 "name": "DeleteProcessor",
-                "params": {"name": {"name": "name", "optional": False, "widget": "string"}},
+                "params": [{"name": "name", "optional": False, "widget": "string"}],
             },
-            {"name": "FilterEvents", "params": {}},
+            {"name": "FilterEvents", "params": []},
             {
                 "name": "GroupEvents",
-                "params": {
-                    "event_name": {"name": "event_name", "optional": False, "widget": "string"},
-                    "event_type": {"name": "event_type", "optional": True, "widget": "string"},
-                },
+                "params": [
+                    {"name": "event_name", "optional": False, "widget": "string"},
+                    {"name": "event_type", "optional": True, "widget": "string"},
+                ],
             },
             {
                 "name": "StubProcessorPGraph",
-                "params": {"a": {"default": None, "name": "A", "optional": False, "widget": "array"}},
+                "params": [{"default": None, "name": "A", "optional": False, "widget": "array"}],
             },
         ]
 

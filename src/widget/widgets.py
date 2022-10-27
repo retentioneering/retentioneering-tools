@@ -152,6 +152,34 @@ class ListOfInt:
 
 
 @dataclass
+class ListOfIntNewUsers:
+    name: str
+    optional: bool
+    disable_value: str = "all"
+    widget: str = "list_of_int"
+
+    @classmethod
+    def from_dict(cls, **kwargs) -> "ListOfIntNewUsers":
+        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
+
+    @classmethod
+    def _serialize(cls, value: list[int] | None) -> str | None:
+        if value is None:
+            return None
+        return ",".join([str(x) for x in value])
+
+    @classmethod
+    def _parse(cls, value: str) -> list[int] | None:  # type: ignore
+        if type(value) is list:
+            return value  # type: ignore
+        if value is None:
+            return None
+        _data: list[str] = value.split(",")
+        data = [int(x) for x in _data]
+        return data
+
+
+@dataclass
 class ListOfString:
     name: str
     optional: bool

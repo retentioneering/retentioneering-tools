@@ -193,7 +193,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "NewUsersEvents",
-                        "values": {"new_users_list": [2]},
+                        "values": {"new_users_list": "2"},
                     },
                 },
             ],
@@ -211,7 +211,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "NewUsersEvents",
-                            "values": {"new_users_list": [2]},
+                            "values": {"new_users_list": "2"},
                         },
                     },
                 ],
@@ -234,7 +234,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "NewUsersEvents",
-                        "values": {"new_users_list": [2]},
+                        "values": {"new_users_list": "2"},
                     },
                 },
             ],

@@ -8,12 +8,15 @@ from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
+from src.widget.widgets import ListOfIntNewUsers
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class NewUsersParams(ParamsModel):
     new_users_list: Union[List[int], Literal["all"]]
+
+    _widgets = {"new_users_list": ListOfIntNewUsers}
 
 
 class NewUsersEvents(DataProcessor):

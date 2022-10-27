@@ -122,10 +122,10 @@ class TestListDataprocessors:
                     "name": "NewUsersEvents",
                     "params": {
                         "new_users_list": {
-                            "default": None,
-                            "name": "New Users List",
+                            "name": "new_users_list",
+                            "disable_value": "all",
                             "optional": False,
-                            "widget": "array",
+                            "widget": "list_of_int",
                         }
                     },
                 }

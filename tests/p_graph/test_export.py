@@ -193,7 +193,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "NewUsersEvents",
-                        "values": {"new_users_list": [2]},
+                        "values": {"new_users_list": "2"},
                     },
                 },
             ],
@@ -211,7 +211,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "NewUsersEvents",
-                            "values": {"new_users_list": [2]},
+                            "values": {"new_users_list": "2"},
                         },
                     },
                 ],
@@ -234,7 +234,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "NewUsersEvents",
-                        "values": {"new_users_list": [2]},
+                        "values": {"new_users_list": "2"},
                     },
                 },
             ],
@@ -245,7 +245,7 @@ class TestPGraphExportImport:
 
         node = EventsNode(
             processor=CollapseLoops(
-                params=CollapseLoopsParams(**{"full_collapse": False, "timestamp_aggregation_type": "min"})
+                params=CollapseLoopsParams(**{"suffix": "count", "timestamp_aggregation_type": "min"})
             )
         )
         graph.add_node(node=node, parents=[graph.root])
@@ -263,7 +263,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "CollapseLoops",
-                        "values": {"full_collapse": False, "timestamp_aggregation_type": "min"},
+                        "values": {"suffix": "count", "timestamp_aggregation_type": "min"},
                     },
                 },
             ],
@@ -281,7 +281,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "CollapseLoops",
-                            "values": {"full_collapse": False, "timestamp_aggregation_type": "min"},
+                            "values": {"suffix": "count", "timestamp_aggregation_type": "min"},
                         },
                     },
                 ],
@@ -304,7 +304,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "CollapseLoops",
-                        "values": {"full_collapse": False, "timestamp_aggregation_type": "min"},
+                        "values": {"suffix": "count", "timestamp_aggregation_type": "min"},
                     },
                 },
             ],
@@ -464,7 +464,7 @@ class TestPGraphExportImport:
                     "processor": {
                         "name": "NegativeTarget",
                         "values": {
-                            "negative_target_events": ["event3", "event2"],
+                            "negative_target_events": "event3,event2",
                             "negative_function": "def _default_func_negative(eventstream, "
                             "negative_target_events) -> pd.DataFrame:\n"
                             "    user_col = eventstream.schema.user_id\n"
@@ -496,7 +496,7 @@ class TestPGraphExportImport:
                         "processor": {
                             "name": "NegativeTarget",
                             "values": {
-                                "negative_target_events": ["event3", "event2"],
+                                "negative_target_events": "event3,event2",
                                 "negative_function": "def _default_func_negative(eventstream, "
                                 "negative_target_events) -> pd.DataFrame:\n"
                                 "    user_col = eventstream.schema.user_id\n"
@@ -533,7 +533,7 @@ class TestPGraphExportImport:
                     "processor": {
                         "name": "NegativeTarget",
                         "values": {
-                            "negative_target_events": ["event3", "event2"],
+                            "negative_target_events": "event3,event2",
                             "negative_function": "def _default_func_negative(eventstream, "
                             "negative_target_events) -> pd.DataFrame:\n"
                             "    user_col = eventstream.schema.user_id\n"
@@ -574,7 +574,7 @@ class TestPGraphExportImport:
                     "processor": {
                         "name": "PositiveTarget",
                         "values": {
-                            "positive_target_events": ["event3", "event2"],
+                            "positive_target_events": "event3,event2",
                             "positive_function": "def _default_func_positive("
                             "eventstream: Eventstream, positive_target_events: list[str]) "
                             "-> pd.DataFrame:\n    user_col = eventstream.schema.user_id"
@@ -603,7 +603,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "PositiveTarget",
-                            "values": {"positive_target_events": ["event3", "event2"]},
+                            "values": {"positive_target_events": "event3,event2"},
                         },
                     },
                 ],
@@ -627,7 +627,7 @@ class TestPGraphExportImport:
                     "processor": {
                         "name": "PositiveTarget",
                         "values": {
-                            "positive_target_events": ["event3", "event2"],
+                            "positive_target_events": "event3,event2",
                             "positive_function": "def _default_func_positive("
                             "eventstream: Eventstream, positive_target_events: list[str]) "
                             "-> pd.DataFrame:\n    user_col = eventstream.schema.user_id"

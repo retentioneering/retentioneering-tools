@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Union
 
 import pandas as pd
 
@@ -10,7 +10,7 @@ from src.params_model import ParamsModel
 
 
 class CollapseLoopsParams(ParamsModel):
-    full_collapse: bool = True
+    suffix: Union[Literal["loop", "count"], None] = "loop"
     timestamp_aggregation_type: Literal["max", "min", "mean"] = "max"
 
 
@@ -26,7 +26,7 @@ class CollapseLoops(DataProcessor):
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 
-        full_collapse = self.params.full_collapse
+        suffix = self.params.suffix
         timestamp_aggregation_type = self.params.timestamp_aggregation_type
         df = eventstream.to_dataframe(copy=True)
         df["ref"] = df[eventstream.schema.event_id]
@@ -45,9 +45,9 @@ class CollapseLoops(DataProcessor):
             .reset_index()
         )
 
-        if full_collapse:
+        if suffix == "loop":
             loops[event_col] = loops[event_col].map(str) + "_loop"
-        else:
+        elif suffix == "count":
             loops[event_col] = loops[event_col].map(str) + "_loop_" + loops["count"].map(str)
         loops[type_col] = "group_alias"
         loops["ref"] = None

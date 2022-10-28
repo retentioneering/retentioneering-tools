@@ -51,7 +51,7 @@ DELETE_COL_NAME = "_deleted"
 # TODO проработать резервирование колонок
 
 
-class Eventstream(EventstreamType, StartEndHelperMixin, NewUsersHelperMixin):
+class Eventstream(StartEndHelperMixin, NewUsersHelperMixin, EventstreamType):
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]

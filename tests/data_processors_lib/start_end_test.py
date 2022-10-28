@@ -34,29 +34,6 @@ class TestStartEndEvents:
         events_names: list[str] = result_df[result.schema.event_name].to_list()
         assert ["start", "end"] == events_names
 
-    def start_end_events_helper(self) -> None:
-        source_df = pd.DataFrame(
-            [
-                [1, "pageview", "raw", "2021-10-26 12:00"],
-                [1, "cart_btn_click", "raw", "2021-10-26 12:02"],
-                [1, "plus_icon_click", "raw", "2021-10-26 12:04"],
-            ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
-        )
-
-        es = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
-
-        result = es.add_start_end()
-        result_df = result.to_dataframe()
-        events_names: list[str] = result_df[result.schema.event_name].to_list()
-        assert ["start", "end"] == events_names
-
 
 class TestStartEndEventsGraph:
     def test_start_end__graph(self):
@@ -97,3 +74,39 @@ class TestStartEndEventsGraph:
         res = graph.combine(node=start_end_events).to_dataframe()[correct_result_columns]
 
         assert res.compare(correct_result).shape == (0, 0)
+
+    def test_start_end_events_helper(self) -> None:
+        source_df = pd.DataFrame(
+            [
+                [1, "event1", "2022-01-01 00:00:00"],
+                [1, "event2", "2022-01-01 00:00:01"],
+                [1, "event3", "2022-01-01 00:00:02"],
+                [2, "event4", "2022-01-02 00:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+
+        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result = pd.DataFrame(
+            [
+                [1, "start", "start", "2022-01-01 00:00:00"],
+                [1, "event1", "raw", "2022-01-01 00:00:00"],
+                [1, "event2", "raw", "2022-01-01 00:00:01"],
+                [1, "event3", "raw", "2022-01-01 00:00:02"],
+                [1, "end", "end", "2022-01-01 00:00:02"],
+                [2, "start", "start", "2022-01-02 00:00:00"],
+                [2, "event4", "raw", "2022-01-02 00:00:00"],
+                [2, "end", "end", "2022-01-02 00:00:00"],
+            ],
+            columns=correct_result_columns,
+        )
+
+        stream = Eventstream(
+            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
+            raw_data=source_df,
+            schema=EventstreamSchema(),
+        )
+
+        result = stream.add_start_end()
+        result_df = result.to_dataframe()[correct_result_columns]
+        assert result_df.compare(correct_result).shape == (0, 0)

@@ -1,19 +1,33 @@
-<iframe  src="about:blank" width="960" height="900">
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>Rete Preprocessing Graph</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-  <script>
-     init({
-          serverId: "{{server_id}}",
-          env: "{{env}}",
-     })
-  </script>
-  </html>
-</iframe>
+<div id="{{block_id}}">
+</div>
+<script>
+  (function () {
+    const iframe = document.createElement("iframe")
+    iframe.src = "about:blank"
+    iframe.width = 960
+    iframe.height = 900
+
+    const renderBlock = document.getElementById("{{block_id}}")
+    renderBlock.appendChild(iframe)
+
+    iframe.contentWindow.__SERVER_ID__ = "{{server_id}}"
+    iframe.contentWindow.__ENV__ = "{{env}}"
+    const fDocument = iframe.contentDocument
+    const container = fDocument.createElement("div")
+    container.id = "root"
+
+    const script = fDocument.createElement("script")
+    script.src = "https://static.server.retentioneering.com/viztools/preprocessing-graph/preprocessing-graph.js"
+    script.type = "text/javascript"
+
+    fDocument.body.appendChild(container)
+    fDocument.body.appendChild(script)
+  })()
+  /*
+  init({
+    blockId: "{{block_id}}",
+    serverId: "{{server_id}}",
+    env: "{{env}}",
+  })
+  */
+</script>

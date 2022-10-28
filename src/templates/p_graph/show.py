@@ -1,4 +1,6 @@
+import uuid
 from jinja2 import Environment, FileSystemLoader, Template
+from numpy import block
 
 
 class PGraphRenderer:
@@ -17,4 +19,8 @@ class PGraphRenderer:
         self.__template = self.__environment.get_template("p_graph/p_graph.html")
 
     def show(self, server_id: str, env: str) -> str:
-        return self.__template.render(server_id=server_id, env=env)
+        return self.__template.render(
+            server_id=server_id,
+            env=env,
+            block_id=str(uuid.uuid4()),
+        )

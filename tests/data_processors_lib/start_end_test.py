@@ -34,6 +34,29 @@ class TestStartEndEvents:
         events_names: list[str] = result_df[result.schema.event_name].to_list()
         assert ["start", "end"] == events_names
 
+    def start_end_events_helper(self) -> None:
+        source_df = pd.DataFrame(
+            [
+                [1, "pageview", "raw", "2021-10-26 12:00"],
+                [1, "cart_btn_click", "raw", "2021-10-26 12:02"],
+                [1, "plus_icon_click", "raw", "2021-10-26 12:04"],
+            ],
+            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+        )
+
+        es = Eventstream(
+            raw_data_schema=RawDataSchema(
+                event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
+            ),
+            raw_data=source_df,
+            schema=EventstreamSchema(),
+        )
+
+        result = es.add_start_end()
+        result_df = result.to_dataframe()
+        events_names: list[str] = result_df[result.schema.event_name].to_list()
+        assert ["start", "end"] == events_names
+
 
 class TestStartEndEventsGraph:
     def test_start_end__graph(self):

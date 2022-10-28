@@ -15,7 +15,7 @@ from src.tooling.funnel import Funnel
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
-from .helpers import StartEndHelperMixin
+from .helpers import NewUsersHelperMixin, StartEndHelperMixin
 
 IndexOrder = List[Optional[str]]
 
@@ -51,7 +51,7 @@ DELETE_COL_NAME = "_deleted"
 # TODO проработать резервирование колонок
 
 
-class Eventstream(EventstreamType, StartEndHelperMixin):
+class Eventstream(EventstreamType, StartEndHelperMixin, NewUsersHelperMixin):
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]

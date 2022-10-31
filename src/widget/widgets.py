@@ -135,20 +135,12 @@ class ListOfInt:
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
     @classmethod
-    def _serialize(cls, value: list[int] | None) -> str | None:
-        if value is None:
-            return None
-        return ",".join([str(x) for x in value])
+    def _serialize(cls, value: list[int] | None) -> list[int] | None:
+        return value
 
     @classmethod
-    def _parse(cls, value: str) -> list[int] | None:  # type: ignore
-        if type(value) is list:
-            return value  # type: ignore
-        if value is None:
-            return None
-        _data: list[str] = value.split(",")
-        data = [int(x) for x in _data]
-        return data
+    def _parse(cls, value: list[int]) -> list[int] | None:  # type: ignore
+        return value
 
 
 @dataclass
@@ -165,20 +157,12 @@ class ListOfIntNewUsers:
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
     @classmethod
-    def _serialize(cls, value: list[int] | None) -> str | None:
-        if value is None:
-            return None
-        return ",".join([str(x) for x in value])
+    def _serialize(cls, value: list[int] | None) -> list[int] | None:
+        return value
 
     @classmethod
-    def _parse(cls, value: str) -> list[int] | None:  # type: ignore
-        if type(value) is list:
-            return value  # type: ignore
-        if value is None:
-            return None
-        _data: list[str] = value.split(",")
-        data = [int(x) for x in _data]
-        return data
+    def _parse(cls, value: list[int]) -> list[int] | None:  # type: ignore
+        return value
 
 
 @dataclass
@@ -192,19 +176,12 @@ class ListOfString:
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
     @classmethod
-    def _serialize(cls, value: list[str] | None) -> str | None:
-        if value is None:
-            return None
-        return ",".join(value)
+    def _serialize(cls, value: list[str] | None) -> list[str] | None:
+        return value
 
     @classmethod
-    def _parse(cls, value: str) -> list[str] | None:  # type: ignore
-        if type(value) is list:
-            return value  # type: ignore
-        if value is None:
-            return None
-        data: list[str] = value.split(",")
-        return data
+    def _parse(cls, value: list[str]) -> list[str] | None:  # type: ignore
+        return value
 
 
 WIDGET_TYPE = Union[

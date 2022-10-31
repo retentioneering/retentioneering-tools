@@ -2,147 +2,129 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib.rete import PositiveTarget, PositiveTargetParams
-from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
-from src.graph.p_graph import EventsNode, PGraph
+from src.eventstream.schema import RawDataSchema
+from src.data_processors_lib.rete import (
+    PositiveTarget,
+    PositiveTargetParams,
+)
+from tests.data_processors_lib.common import (
+    apply_processor,
+    apply_processor_with_graph,
+)
 
 
 class TestPositiveTarget:
-    def test_positive_target_apply__1_event(self):
-        source_df = pd.DataFrame(
-            [
-                [1, "start", "start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "end", "end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
-            ],
-            columns=["user_id", "event", "event_type", "timestamp"],
+    _source_df = pd.DataFrame(
+        [
+            [1, "start", "start", "2022-01-01 00:01:00"],
+            [1, "event1", "raw", "2022-01-01 00:01:00"],
+            [1, "event2", "raw", "2022-01-01 00:01:02"],
+            [1, "event1", "raw", "2022-01-01 00:02:00"],
+            [1, "event1", "raw", "2022-01-01 00:03:00"],
+            [1, "event1", "synthetic", "2022-01-01 00:03:00"],
+            [1, "session_start", "session_start", "2022-01-01 00:03:30"],
+            [1, "event3", "raw", "2022-01-01 00:03:30"],
+            [1, "event1", "raw", "2022-01-01 00:04:00"],
+            [1, "event3", "raw", "2022-01-01 00:04:30"],
+            [1, "event1", "raw", "2022-01-01 00:05:00"],
+            [2, "event1", "raw", "2022-01-02 00:00:00"],
+            [2, "event3", "raw", "2022-01-02 00:00:05"],
+            [2, "event2", "raw", "2022-01-02 00:01:05"],
+            [2, "end", "end", "2022-01-02 00:01:05"],
+            [3, "event1", "raw", "2022-01-02 00:01:10"],
+            [3, "event1", "raw", "2022-01-02 00:02:05"],
+            [3, "event4", "raw", "2022-01-02 00:03:05"],
+            [3, "end", "end", "2022-01-02 00:03:05"],
+        ],
+        columns=["user_id", "event", "event_type", "timestamp"],
+    )
+    _raw_data_schema = RawDataSchema(
+        user_id="user_id",
+        event_name="event",
+        event_type="event_type",
+        event_timestamp="timestamp",
+    )
+
+    def _apply(self, params: PositiveTargetParams) -> pd.DataFrame:
+        original, actual = apply_processor(
+            PositiveTarget(params),
+            self._source_df,
+            raw_data_schema=self._raw_data_schema,
         )
+        return actual
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
-
-        correct_result = pd.DataFrame(
+    def test_positive_target_apply__1_event(self):
+        actual = self._apply(PositiveTargetParams(
+            positive_target_events=["event3"],
+        ))
+        expected = pd.DataFrame(
             [
                 [1, "positive_target_event3", "positive_target", "2022-01-01 00:03:30"],
                 [2, "positive_target_event3", "positive_target", "2022-01-02 00:00:05"],
             ],
-            columns=correct_result_columns,
+            columns=["user_id", "event_name", "event_type", "event_timestamp"],
         )
-
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
-
-        params = {"positive_target_events": ["event3"]}
-
-        events = PositiveTarget(params=PositiveTargetParams(**params))
-        result = events.apply(source)
-        result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
-
-        assert result_df.compare(correct_result).shape == (0, 0)
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_positive_target_apply__2_events(self):
-        source_df = pd.DataFrame(
-            [
-                [1, "start", "start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "end", "end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
-            ],
-            columns=["user_id", "event", "event_type", "timestamp"],
-        )
-
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
-
-        correct_result = pd.DataFrame(
+        actual = self._apply(PositiveTargetParams(
+            positive_target_events=["event3", "event2"],
+        ))
+        expected = pd.DataFrame(
             [
                 [1, "positive_target_event2", "positive_target", "2022-01-01 00:01:02"],
                 [2, "positive_target_event3", "positive_target", "2022-01-02 00:00:05"],
             ],
-            columns=correct_result_columns,
+            columns=["user_id", "event_name", "event_type", "event_timestamp"],
         )
-
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
-
-        params = {"positive_target_events": ["event3", "event2"]}
-
-        events = PositiveTarget(params=PositiveTargetParams(**params))
-        result = events.apply(source)
-        result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
-
-        assert result_df.compare(correct_result).shape == (0, 0)
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
 class TestPositiveTargetGraph:
-    def test_positive_target_graph__1_event(self):
-        source_df = pd.DataFrame(
-            [
-                [1, "start", "start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "end", "end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
-            ],
-            columns=["user_id", "event", "event_type", "timestamp"],
-        )
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+    _source_df = pd.DataFrame(
+        [
+            [1, "start", "start", "2022-01-01 00:01:00"],
+            [1, "event1", "raw", "2022-01-01 00:01:00"],
+            [1, "event2", "raw", "2022-01-01 00:01:02"],
+            [1, "event1", "raw", "2022-01-01 00:02:00"],
+            [1, "event1", "raw", "2022-01-01 00:03:00"],
+            [1, "event1", "synthetic", "2022-01-01 00:03:00"],
+            [1, "session_start", "session_start", "2022-01-01 00:03:30"],
+            [1, "event3", "raw", "2022-01-01 00:03:30"],
+            [1, "event1", "raw", "2022-01-01 00:04:00"],
+            [1, "event3", "raw", "2022-01-01 00:04:30"],
+            [1, "event1", "raw", "2022-01-01 00:05:00"],
+            [2, "event1", "raw", "2022-01-02 00:00:00"],
+            [2, "event3", "raw", "2022-01-02 00:00:05"],
+            [2, "event2", "raw", "2022-01-02 00:01:05"],
+            [2, "end", "end", "2022-01-02 00:01:05"],
+            [3, "event1", "raw", "2022-01-02 00:01:10"],
+            [3, "event1", "raw", "2022-01-02 00:02:05"],
+            [3, "event4", "raw", "2022-01-02 00:03:05"],
+            [3, "end", "end", "2022-01-02 00:03:05"],
+        ],
+        columns=["user_id", "event", "event_type", "timestamp"],
+    )
+    _raw_data_schema = RawDataSchema(
+        user_id="user_id",
+        event_name="event",
+        event_type="event_type",
+        event_timestamp="timestamp",
+    )
 
-        correct_result = pd.DataFrame(
+    def _apply(self, params: PositiveTargetParams) -> pd.DataFrame:
+        original, actual = apply_processor_with_graph(
+            PositiveTarget(params),
+            self._source_df,
+            raw_data_schema=self._raw_data_schema,
+        )
+        return actual
+
+    def test_positive_target_graph__1_event(self):
+        actual = self._apply(PositiveTargetParams(
+            positive_target_events=["event3"],
+        ))
+        expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -166,57 +148,15 @@ class TestPositiveTargetGraph:
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
                 [3, "end", "end", "2022-01-02 00:03:05"],
             ],
-            columns=correct_result_columns,
+            columns=["user_id", "event_name", "event_type", "event_timestamp"],
         )
-
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
-
-        params = {"positive_target_events": ["event3"]}
-
-        events = EventsNode(PositiveTarget(params=PositiveTargetParams(**params)))
-        graph = PGraph(source_stream=source)
-        graph.add_node(node=events, parents=[graph.root])
-
-        result = graph.combine(node=events)
-        result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
-
-        assert result_df.compare(correct_result).shape == (0, 0)
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_positive_target_graph__2_events(self):
-        source_df = pd.DataFrame(
-            [
-                [1, "start", "start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "end", "end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
-            ],
-            columns=["user_id", "event", "event_type", "timestamp"],
-        )
-
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
-
-        correct_result = pd.DataFrame(
+        actual = self._apply(PositiveTargetParams(
+            positive_target_events=["event3", "event2"],
+        ))
+        expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -240,24 +180,6 @@ class TestPositiveTargetGraph:
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
                 [3, "end", "end", "2022-01-02 00:03:05"],
             ],
-            columns=correct_result_columns,
+            columns=["user_id", "event_name", "event_type", "event_timestamp"],
         )
-
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
-
-        params = {"positive_target_events": ["event3", "event2"]}
-
-        events = EventsNode(PositiveTarget(params=PositiveTargetParams(**params)))
-        graph = PGraph(source_stream=source)
-        graph.add_node(node=events, parents=[graph.root])
-
-        result = graph.combine(node=events)
-        result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
-
-        assert result_df.compare(correct_result).shape == (0, 0)
+        assert actual[expected.columns].compare(expected).shape == (0, 0)

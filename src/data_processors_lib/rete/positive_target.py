@@ -9,7 +9,7 @@ from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
-from src.widget.widgets import ReteFunction
+from src.widget.widgets import ListOfString, ReteFunction
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
@@ -53,9 +53,7 @@ class PositiveTargetParams(ParamsModel):
     positive_target_events: List[str]
     positive_function: Callable = _default_func_positive
 
-    _widgets = {
-        "positive_function": ReteFunction,
-    }
+    _widgets = {"positive_function": ReteFunction, "positive_target_events": ListOfString}
 
 
 class PositiveTarget(DataProcessor):

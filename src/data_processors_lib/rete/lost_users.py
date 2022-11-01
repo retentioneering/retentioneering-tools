@@ -9,7 +9,7 @@ from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.eventstream import Eventstream
 from src.params_model import ParamsModel
-from src.widget.widgets import ReteTimeWidget
+from src.widget.widgets import ListOfInt, ReteTimeWidget
 
 
 class LostUsersParams(ParamsModel):
@@ -20,7 +20,10 @@ class LostUsersParams(ParamsModel):
     lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
     lost_users_list: Optional[List[int]]
 
-    _widgets = {"lost_cutoff": ReteTimeWidget}
+    _widgets = {
+        "lost_cutoff": ReteTimeWidget,
+        "lost_users_list": ListOfInt,
+    }
 
 
 class LostUsersEvents(DataProcessor):

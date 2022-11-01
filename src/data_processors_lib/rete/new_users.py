@@ -8,6 +8,7 @@ from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
+from src.widget.widgets import ListOfIntNewUsers
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
@@ -15,11 +16,10 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 class NewUsersParams(ParamsModel):
     """
     Class with parameters for class :py:func:`NewUsersEvents`
-
-
     """
 
-    new_users_list: Union[List[int], Literal["all"]]
+    new_users_list: Union[List[int], List[str], Literal["all"]]
+    _widgets = {"new_users_list": ListOfIntNewUsers}
 
 
 class NewUsersEvents(DataProcessor):

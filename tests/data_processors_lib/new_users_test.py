@@ -47,6 +47,44 @@ class TestNewUsers:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
+    def test_new_users_apply__new_users_list_id_str(self):
+        source_df = pd.DataFrame(
+            [
+                ["user111", "event1", "2022-01-01 00:01:00"],
+                ["user111", "event1", "2022-01-01 00:02:00"],
+                ["user111", "event2", "2022-01-01 00:01:02"],
+                ["user111", "event1", "2022-01-01 00:03:00"],
+                ["user111", "event1", "2022-01-01 00:04:00"],
+                ["user111", "event1", "2022-01-01 00:05:00"],
+                ["user222", "event1", "2022-01-02 00:00:00"],
+                ["user222", "event1", "2022-01-02 00:00:05"],
+                ["user222", "event2", "2022-01-02 00:01:05"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+
+        source = Eventstream(
+            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
+            raw_data=source_df,
+            schema=EventstreamSchema(),
+        )
+
+        events = NewUsersEvents(params=NewUsersParams(new_users_list=["user222"]))
+
+        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+
+        correct_result = pd.DataFrame(
+            [
+                ["user111", "existing_user", "existing_user", "2022-01-01 00:01:00"],
+                ["user222", "new_user", "new_user", "2022-01-02 00:00:00"],
+            ],
+            columns=correct_result_columns,
+        )
+        result = events.apply(source)
+        result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
+
+        assert result_df.compare(correct_result).shape == (0, 0)
+
     def test_new_users_apply__new_users_list_all(self):
         source_df = pd.DataFrame(
             [

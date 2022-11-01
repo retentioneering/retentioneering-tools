@@ -9,7 +9,7 @@ from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
-from src.widget.widgets import ReteFunction
+from src.widget.widgets import ListOfString, ReteFunction
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
@@ -51,7 +51,7 @@ class NegativeTargetParams(ParamsModel):
     negative_target_events: List[str]
     negative_function: Callable = _default_func_negative
 
-    _widgets = {"negative_function": ReteFunction}
+    _widgets = {"negative_function": ReteFunction, "negative_target_events": ListOfString}
 
 
 class NegativeTarget(DataProcessor):

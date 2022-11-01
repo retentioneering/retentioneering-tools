@@ -13,7 +13,7 @@ class TestListDataprocessors:
             {
                 "name": "CollapseLoops",
                 "params": [
-                    {"name": "full_collapse", "optional": True, "widget": "boolean"},
+                    {"name": "suffix", "optional": True, "widget": "string"},
                     {
                         "name": "timestamp_aggregation_type",
                         "optional": True,
@@ -52,6 +52,14 @@ class TestListDataprocessors:
                         ],
                         "widget": "time_widget",
                     },
+                ],
+            },
+            {"name": "FilterEvents", "params": []},
+            {
+                "name": "GroupEvents",
+                "params": [
+                    {"name": "event_name", "optional": False, "widget": "string"},
+                    {"name": "event_type", "optional": True, "widget": "string"},
                 ],
             },
             {
@@ -258,14 +266,6 @@ class TestListDataprocessors:
             {
                 "name": "DeleteProcessor",
                 "params": [{"name": "name", "optional": False, "widget": "string"}],
-            },
-            {"name": "FilterEvents", "params": []},
-            {
-                "name": "GroupEvents",
-                "params": [
-                    {"name": "event_name", "optional": False, "widget": "string"},
-                    {"name": "event_type", "optional": True, "widget": "string"},
-                ],
             },
             {
                 "name": "StubProcessorPGraph",

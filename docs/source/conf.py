@@ -35,16 +35,9 @@ release = "3.0.0"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
-    # "sphinx.ext.mathjax",
-    # "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
-    # "sphinx.ext.githubpages",
-    # "sphinx.ext.intersphinx",
     "sphinx.ext.extlinks",
 ]
-
-# autodoc_default_options = {"members": True, "inherited-members": False}
-
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -80,15 +73,5 @@ source_suffix = ".rst"
 
 # The master toctree document.
 master_doc = "index"
-
-# List of patterns, relative to source directory, that match files and
-# directories to ignore when looking for source files.
-# This pattern also affects html_static_path and html_extra_path.
-# exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
-# The name of the Pygments (syntax highlighting) style to use.
-# pygments_style = None
-
-# The reST default role (used for this markup: `text`) to use for all
-# documents.
 
 extlinks = {"numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units", "")}

@@ -25,7 +25,7 @@ author = '"Data Driven Lab" LLC'
 # The short X.Y version
 version = ""
 # The full version, including alpha/beta/rc tags
-release = "2.0.0"
+release = "3.0.0"
 
 # -- General configuration ---------------------------------------------------
 
@@ -35,15 +35,15 @@ release = "2.0.0"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
-    "sphinx.ext.mathjax",
-    "sphinx.ext.ifconfig",
+    # "sphinx.ext.mathjax",
+    # "sphinx.ext.ifconfig",
     "sphinx.ext.viewcode",
-    "sphinx.ext.githubpages",
-    "sphinx.ext.intersphinx",
+    # "sphinx.ext.githubpages",
+    # "sphinx.ext.intersphinx",
     "sphinx.ext.extlinks",
 ]
 
-autodoc_default_options = {"members": True, "inherited-members": False}
+# autodoc_default_options = {"members": True, "inherited-members": False}
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -90,63 +90,5 @@ master_doc = "index"
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
-
-# -- Options for LaTeX output ------------------------------------------------
-
-# Grouping the document tree into LaTeX files. List of tuples
-# (source start file, target name, title,
-#  author, documentclass [howto, manual, or own class]).
-latex_documents = [
-    (
-        master_doc,
-        "RetentioneeringTools.tex",
-        "Retentioneering Tools Documentation",
-        "Retentioneering User Trajectory Analysis Lab",
-        "manual",
-    ),
-]
-
-
-# -- Options for manual page output ------------------------------------------
-
-# One entry per manual page. List of tuples
-# (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "retentioneeringtools", "Retentioneering Tools Documentation", [author], 1)]
-
-
-# -- Options for Texinfo output ----------------------------------------------
-
-# Grouping the document tree into Texinfo files. List of tuples
-# (source start file, target name, title, author,
-#  dir menu entry, description, category)
-texinfo_documents = [
-    (
-        master_doc,
-        "RetentioneeringTools",
-        "Retentioneering Tools Documentation",
-        author,
-        "RetentioneeringTools",
-        "One line description of project.",
-        "Miscellaneous",
-    ),
-]
-
-
-# -- Options for Epub output -------------------------------------------------
-
-# Bibliographic Dublin Core info.
-epub_title = project
-
-# The unique identifier of the text. This can be a ISBN number
-# or the project homepage.
-#
-# epub_identifier = ''
-
-# A unique identification for the text.
-#
-# epub_uid = ''
-
-# A list of files that should not be packed into the epub file.
-epub_exclude_files = ["search.html"]
 
 extlinks = {"numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units", "")}

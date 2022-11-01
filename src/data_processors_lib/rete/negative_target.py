@@ -9,6 +9,7 @@ from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
+from src.widget.widgets import ListOfString, ReteFunction
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
@@ -17,21 +18,18 @@ def _default_func_negative(eventstream, negative_target_events) -> pd.DataFrame:
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
-    df = eventstream.to_dataframe(copy=True)
+    df = eventstream.to_dataframe()
 
-    data_neg = df[df[event_col].isin(negative_target_events)]
-    data_neg = (
-        data_neg.groupby(user_col, as_index=False)
-        .apply(lambda group: group.nsmallest(1, columns=time_col))
-        .reset_index(drop=True)
-    )
+    negative_events_index = df[df[event_col].isin(negative_target_events)].groupby(user_col)[time_col].idxmin()
 
-    return data_neg
+    return df.iloc[negative_events_index]
 
 
 class NegativeTargetParams(ParamsModel):
     negative_target_events: List[str]
     negative_function: Callable = _default_func_negative
+
+    _widgets = {"negative_function": ReteFunction, "negative_target_events": ListOfString}
 
 
 class NegativeTarget(DataProcessor):

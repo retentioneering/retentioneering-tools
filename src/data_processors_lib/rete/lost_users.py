@@ -1,32 +1,31 @@
 from __future__ import annotations
 
-import logging
-from typing import Any, Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
-
-log = logging.getLogger(__name__)
-
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
+from src.widget.widgets import ListOfInt, ReteTimeWidget
 
 
-class LostPauseParams(ParamsModel):
+class LostUsersParams(ParamsModel):
     lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
     lost_users_list: Optional[List[int]]
 
+    _widgets = {
+        "lost_cutoff": ReteTimeWidget,
+        "lost_users_list": ListOfInt,
+    }
 
-class LostPauseEvents(DataProcessor):
-    params: LostPauseParams
 
-    def __init__(self, params: LostPauseParams):
+class LostUsersEvents(DataProcessor):
+    params: LostUsersParams
+
+    def __init__(self, params: LostUsersParams):
         super().__init__(params=params)
 
     def apply(self, eventstream: Eventstream) -> Eventstream:
@@ -50,44 +49,21 @@ class LostPauseEvents(DataProcessor):
 
         df = eventstream.to_dataframe(copy=True)
 
-        if lost_cutoff:
-            data_lost = (
-                df.groupby(user_col, as_index=False)
-                .apply(lambda group: group.nlargest(1, columns=time_col))
-                .reset_index(drop=True)
-            )
+        if lost_cutoff and lost_cutoff_unit:
+            data_lost = df.groupby(user_col, as_index=False)[time_col].max()
             data_lost["diff_end_to_end"] = data_lost[time_col].max() - data_lost[time_col]
-            data_lost["diff_end_to_end"] /= np.timedelta64(1, lost_cutoff_unit)
+            data_lost["diff_end_to_end"] /= np.timedelta64(1, lost_cutoff_unit)  # type: ignore
 
-            data_lost[type_col] = data_lost.apply(
-                lambda x: "pause" if x["diff_end_to_end"] < lost_cutoff else "lost", axis=1
-            )
+            data_lost[type_col] = np.where(data_lost["diff_end_to_end"] < lost_cutoff, "absent_user", "lost_user")
             data_lost[event_col] = data_lost[type_col]
             data_lost["ref"] = None
             del data_lost["diff_end_to_end"]
-        # TODO dasha продумать правильное условие
+
         if lost_users_list:
-            data_lost = df[df[user_col].isin(lost_users_list)]
-            data_lost = (
-                data_lost.groupby(user_col, as_index=False)
-                .apply(lambda group: group.nlargest(1, columns=time_col))
-                .reset_index(drop=True)
-            )
-
-            data_lost[type_col] = "lost"
-            data_lost[event_col] = "lost"
+            data_lost = df.groupby(user_col, as_index=False)[time_col].max()
+            data_lost[type_col] = np.where(data_lost["user_id"].isin(lost_users_list), "lost_user", "absent_user")
+            data_lost[event_col] = data_lost[type_col]
             data_lost["ref"] = None
-
-            data_pause = df[~df[user_col].isin(data_lost[user_col].unique())]
-            data_pause = (
-                data_pause.groupby(user_col, as_index=False)
-                .apply(lambda group: group.nlargest(1, columns=time_col))
-                .reset_index(drop=True)
-            )
-
-            data_pause.loc[:, [type_col, event_col]] = "pause"
-            data_pause["ref"] = None
-            data_lost = pd.concat([data_lost, data_pause])
 
         eventstream = Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),

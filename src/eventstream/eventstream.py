@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, List, Optional, Sized
+from collections.abc import Collection
+from typing import Any, List, Literal, Optional
 
 import numpy as np
 import pandas as pd
@@ -20,7 +21,7 @@ DEFAULT_INDEX_ORDER: IndexOrder = [
     "profile",
     "start",
     "new_user",
-    "resume",
+    "existing_user",
     "truncated_left",
     "session_start",
     "session_start_truncated",
@@ -36,8 +37,8 @@ DEFAULT_INDEX_ORDER: IndexOrder = [
     "session_end",
     "session_sleep",
     "truncated_right",
-    "pause",
-    "lost",
+    "absent_user",
+    "lost_user",
     "end",
 ]
 
@@ -369,10 +370,21 @@ class Eventstream(EventstreamType):
 
     def funnel(
         self,
-        targets: list[str],
-        groups: pd.Series | np.ndarray | list[int] | Sized | None = None,
-        group_names: list[str] | None = None,
+        stages: list[str],
+        stage_names: list[str] | None = None,
+        funnel_type: Literal["open", "closed"] = "open",
+        segments: Collection[Collection[int]] | None = None,
+        segment_names: list[str] | None = None,
+        sequence: bool = False,
     ) -> go.Figure:
-        funnel = Funnel(eventstream=self, targets=targets, groups=groups, group_names=group_names)
+        funnel = Funnel(
+            eventstream=self,
+            stages=stages,
+            stage_names=stage_names,
+            funnel_type=funnel_type,
+            segments=segments,
+            segment_names=segment_names,
+            sequence=sequence,
+        )
         plot = funnel.draw_plot()
         return plot

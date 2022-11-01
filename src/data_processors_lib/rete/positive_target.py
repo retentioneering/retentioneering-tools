@@ -9,6 +9,7 @@ from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
+from src.widget.widgets import ListOfString, ReteFunction
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
@@ -17,20 +18,20 @@ def _default_func_positive(eventstream: Eventstream, positive_target_events: lis
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
-    df = eventstream.to_dataframe(copy=True)
+    df = eventstream.to_dataframe()
 
-    data_pos = df[df[event_col].isin(positive_target_events)]
-    data_pos = (
-        data_pos.groupby(user_col, as_index=False)
-        .apply(lambda group: group.nsmallest(1, columns=time_col))
-        .reset_index(drop=True)
+    positive_events_index = (
+        df[df[event_col].isin(positive_target_events)].groupby(user_col)[time_col].idxmin()  # type: ignore
     )
-    return data_pos
+
+    return df.iloc[positive_events_index]  # type: ignore
 
 
 class PositiveTargetParams(ParamsModel):
     positive_target_events: List[str]
     positive_function: Callable = _default_func_positive
+
+    _widgets = {"positive_function": ReteFunction, "positive_target_events": ListOfString}
 
 
 class PositiveTarget(DataProcessor):

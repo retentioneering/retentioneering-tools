@@ -1,26 +1,24 @@
 from __future__ import annotations
 
-import logging
-from typing import Any, Callable, Optional, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
-
-log = logging.getLogger(__name__)
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
+from src.widget.widgets import ReteTimeWidget
 
 
 class SplitSessionsParams(ParamsModel):
     session_cutoff: Tuple[float, DATETIME_UNITS]
     mark_truncated: Optional[bool] = False
     session_col: str
+
+    _widgets = {"session_cutoff": ReteTimeWidget}
 
 
 class SplitSessions(DataProcessor):
@@ -43,8 +41,8 @@ class SplitSessions(DataProcessor):
 
         df["prev_timedelta"] = df[time_col] - df.groupby(user_col)[time_col].shift(1)
         df["next_timedelta"] = df.groupby(user_col)[time_col].shift(-1) - df[time_col]
-        df["prev_timedelta"] /= np.timedelta64(1, session_cutoff_unit)
-        df["next_timedelta"] /= np.timedelta64(1, session_cutoff_unit)
+        df["prev_timedelta"] /= np.timedelta64(1, session_cutoff_unit)  # type: ignore
+        df["next_timedelta"] /= np.timedelta64(1, session_cutoff_unit)  # type: ignore
 
         session_starts_mask = (df["prev_timedelta"] > session_cutoff) | (df["prev_timedelta"].isnull())
         session_ends_mask = (df["next_timedelta"] > session_cutoff) | (df["next_timedelta"].isnull())

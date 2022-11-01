@@ -6,15 +6,7 @@ from typing import Any, Optional
 from ipykernel.comm.comm import Comm
 
 from src.backend import JupyterServer
-
-
-class Singleton:
-    _instances: dict = {}  # type: ignore
-
-    def __call__(self) -> "ServerManager":
-        if self not in self._instances:
-            self._instances[self] = super().__init__()
-        return self._instances[self]
+from src.utils.singleton import Singleton
 
 
 class ServerManager:
@@ -30,21 +22,8 @@ class ServerManager:
 
     def _on_colab_func_called(self, server_id: str, method: str, request_id: str, payload) -> str:
         target_server: JupyterServer | None = self._find_server(server_id)
-        try:
-            if target_server is not None:
-                result = target_server.dispatch_method(method=method, payload=payload)
-                return json.dumps(
-                    {
-                        "success": True,
-                        "server_id": server_id,
-                        "request_id": request_id,
-                        "method": method,
-                        "result": result,
-                    }
-                )
-            else:
-                raise Exception("server not found!")
-        except Exception as err:
+        if target_server is None:
+            err = "ServerNotFound"
             return json.dumps(
                 {
                     "success": False,
@@ -54,15 +33,25 @@ class ServerManager:
                     "result": str(err),
                 }
             )
+        result = target_server.dispatch_method(method=method, payload=payload)
+        return json.dumps(
+            {
+                "success": True,
+                "server_id": server_id,
+                "request_id": request_id,
+                "method": method,
+                "result": result,
+            }
+        )
 
     def _on_comm_message(self, comm: Comm, open_msg) -> None:
-        @comm.on_msg
+        @comm.on_msg  # type: ignore
         def _recv(msg):
             data: dict[str, Any] = msg["content"]["data"]
             server_id = data["server_id"]
             request_id = data["request_id"]
             method = data["method"]
-            payload = data["payload"]
+            payload = data.get("payload", {})
 
             target_server = self._find_server(server_id)
             if target_server is None:
@@ -104,11 +93,12 @@ class ServerManager:
                 ),
             )
         if env == "classic":
-            from IPython import get_ipython
+            from IPython.core.getipython import get_ipython
 
-            get_ipython().kernel.comm_manager.register_target(
-                "JupyterServerMainCallback", lambda comm, open_msg: self._on_comm_message(comm, open_msg)
-            )
+            if get_ipython() is not None:
+                get_ipython().kernel.comm_manager.register_target(
+                    "JupyterServerMainCallback", lambda comm, open_msg: self._on_comm_message(comm, open_msg)
+                )
         self._main_listener_created = True
 
     def check_env(self) -> str:

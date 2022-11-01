@@ -4,14 +4,14 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from src.data_processors_lib.rete import LostPauseEvents, LostPauseParams
+from src.data_processors_lib.rete import LostUsersEvents, LostUsersParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.graph.p_graph import EventsNode, PGraph
 
 
-class TestLostPause:
-    def test_lost_pause_apply__lost_users_list(self):
+class TestLostUsers:
+    def test_lost_users_apply__lost_users_list(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -33,12 +33,15 @@ class TestLostPause:
             schema=EventstreamSchema(),
         )
 
-        events = LostPauseEvents(params=LostPauseParams(lost_users_list=[2], lost_cutoff=None))
+        events = LostUsersEvents(params=LostUsersParams(lost_users_list=[2], lost_cutoff=None))
 
         correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
 
         correct_result = pd.DataFrame(
-            [[1, "pause", "pause", "2022-01-01 00:05:00"], [2, "lost", "lost", "2022-01-02 00:00:05"]],
+            [
+                [1, "absent_user", "absent_user", "2022-01-01 00:05:00"],
+                [2, "lost_user", "lost_user", "2022-01-02 00:00:05"],
+            ],
             columns=correct_result_columns,
         )
         result = events.apply(source)
@@ -46,7 +49,7 @@ class TestLostPause:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_lost_pause_apply__lost_cutoff(self):
+    def test_lost_users_apply__lost_cutoff(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -68,12 +71,15 @@ class TestLostPause:
             schema=EventstreamSchema(),
         )
 
-        events = LostPauseEvents(params=LostPauseParams(lost_users_list=None, lost_cutoff=(4, "h")))
+        events = LostUsersEvents(params=LostUsersParams(lost_users_list=None, lost_cutoff=(4, "h")))
 
         correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
 
         correct_result = pd.DataFrame(
-            [[1, "lost", "lost", "2022-01-01 00:05:00"], [2, "pause", "pause", "2022-01-02 00:00:05"]],
+            [
+                [1, "lost_user", "lost_user", "2022-01-01 00:05:00"],
+                [2, "absent_user", "absent_user", "2022-01-02 00:00:05"],
+            ],
             columns=correct_result_columns,
         )
         result = events.apply(source)
@@ -83,11 +89,11 @@ class TestLostPause:
 
     def test_params_model__incorrect_datetime_unit(self):
         with pytest.raises(ValidationError):
-            p = LostPauseParams(lost_cutoff=(1, "xxx"))
+            p = LostUsersParams(lost_cutoff=(1, "xxx"))
 
 
-class TestLostPauseGraph:
-    def test_lost_pause_graph__lost_users_list(self):
+class TestLostUsersGraph:
+    def test_lost_users_graph__lost_users_list(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -109,7 +115,7 @@ class TestLostPauseGraph:
             schema=EventstreamSchema(),
         )
         graph = PGraph(source_stream=source)
-        events = EventsNode(LostPauseEvents(params=LostPauseParams(lost_users_list=[2], lost_cutoff=None)))
+        events = EventsNode(LostUsersEvents(params=LostUsersParams(lost_users_list=[2], lost_cutoff=None)))
         graph.add_node(node=events, parents=[graph.root])
         correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
 
@@ -121,11 +127,11 @@ class TestLostPauseGraph:
                 [1, "event1", "raw", "2022-01-01 00:03:00"],
                 [1, "event1", "raw", "2022-01-01 00:04:00"],
                 [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [1, "pause", "pause", "2022-01-01 00:05:00"],
+                [1, "absent_user", "absent_user", "2022-01-01 00:05:00"],
                 [2, "event1", "raw", "2022-01-02 00:00:00"],
                 [2, "event1", "raw", "2022-01-02 00:00:05"],
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
-                [2, "lost", "lost", "2022-01-02 00:00:05"],
+                [2, "lost_user", "lost_user", "2022-01-02 00:00:05"],
             ],
             columns=correct_result_columns,
         )
@@ -135,7 +141,7 @@ class TestLostPauseGraph:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_lost_pause_graph__lost_cutoff(self):
+    def test_lost_users_graph__lost_cutoff(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -157,7 +163,7 @@ class TestLostPauseGraph:
             schema=EventstreamSchema(),
         )
         graph = PGraph(source_stream=source)
-        events = EventsNode(LostPauseEvents(params=LostPauseParams(lost_users_list=None, lost_cutoff=(4, "h"))))
+        events = EventsNode(LostUsersEvents(params=LostUsersParams(lost_users_list=None, lost_cutoff=(4, "h"))))
         graph.add_node(node=events, parents=[graph.root])
         correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
 
@@ -169,11 +175,11 @@ class TestLostPauseGraph:
                 [1, "event1", "raw", "2022-01-01 00:03:00"],
                 [1, "event1", "raw", "2022-01-01 00:04:00"],
                 [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [1, "lost", "lost", "2022-01-01 00:05:00"],
+                [1, "lost_user", "lost_user", "2022-01-01 00:05:00"],
                 [2, "event1", "raw", "2022-01-02 00:00:00"],
                 [2, "event1", "raw", "2022-01-02 00:00:05"],
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
-                [2, "pause", "pause", "2022-01-02 00:00:05"],
+                [2, "absent_user", "absent_user", "2022-01-02 00:00:05"],
             ],
             columns=correct_result_columns,
         )

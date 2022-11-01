@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Union, Any
+from typing import Any, Union
 
 import pandas as pd
 
@@ -25,11 +25,7 @@ class UserList:
     def to_dataframe(self):
         return self.__users.copy()
 
-    def add_classes(
-            self,
-            colname: str,
-            classes: pd.DataFrame | pd.Series[Any]
-    ) -> None:
+    def add_classes(self, colname: str, classes: pd.DataFrame | pd.Series[Any]) -> None:
         user_col = self.__eventstream.schema.user_id
         self.__users.reset_index(inplace=True, drop=True)
         merged = self.__users.merge(classes, on=user_col, how="left")
@@ -47,7 +43,7 @@ class UserList:
     def get_count(self, colname: str) -> int:
         usercol = self.__eventstream.schema.user_id
         r = self.__users.groupby([colname])[usercol].count().reset_index()
-        return r    # type: ignore
+        return r  # type: ignore
 
     def mark_eventstream(self, colname: str, inplace: bool = False):
         eventstream = self.__eventstream if inplace else self.__eventstream.copy()
@@ -62,12 +58,10 @@ class UserList:
         return eventstream
 
     def get_eventstream_subset(
-            self,
-            colname: str,
-            values: list[UserClass] | None = None
+        self, colname: str, values: list[UserClass] | None = None
     ) -> pd.Series[Any] | pd.DataFrame:
         usercol = self.__eventstream.schema.user_id
-        matched = self.__users[colname].isin(values=values)     # type: ignore
+        matched = self.__users[colname].isin(values=values)  # type: ignore
         users_subset = self.__users[matched]
         eventstream_dataframe = self.__eventstream.to_dataframe(copy=True)
         _df = eventstream_dataframe[eventstream_dataframe[usercol].isin(users_subset[usercol])]

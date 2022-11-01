@@ -1,2 +1,2 @@
-from .delete_events import DeleteEvents, DeleteEventsParams
-from .simple_group import SimpleGroup, SimpleGroupParams
+from .filter_events import FilterEvents, FilterEventsParams
+from .group_events import GroupEvents, GroupEventsParams

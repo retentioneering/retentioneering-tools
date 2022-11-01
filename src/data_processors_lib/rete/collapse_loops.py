@@ -10,7 +10,7 @@ from src.params_model import ParamsModel
 
 
 class CollapseLoopsParams(ParamsModel):
-    full_collapse: bool = True,
+    full_collapse: bool = (True,)
     timestamp_aggregation_type: Literal["max", "min", "mean"] = "max"
 
 
@@ -38,13 +38,17 @@ class CollapseLoops(DataProcessor):
         df["collapsed"] = df.groupby([user_col, "cumgroup", event_col])["count"].transform(max)
         df["collapsed"] = df["collapsed"].apply(lambda x: False if x == 1 else True)
 
-        loops = df[df["collapsed"] == 1].groupby([user_col, "cumgroup", event_col]).agg(
-            {time_col: timestamp_aggregation_type, "count": "max"}).reset_index()
+        loops = (
+            df[df["collapsed"] == 1]
+            .groupby([user_col, "cumgroup", event_col])
+            .agg({time_col: timestamp_aggregation_type, "count": "max"})
+            .reset_index()
+        )
 
         if full_collapse:
-            loops[event_col] = loops[event_col].map(str) + '_loop'
+            loops[event_col] = loops[event_col].map(str) + "_loop"
         else:
-            loops[event_col] = loops[event_col].map(str) + '_loop_' + loops['count'].map(str)
+            loops[event_col] = loops[event_col].map(str) + "_loop_" + loops["count"].map(str)
         loops[type_col] = "group_alias"
         loops["ref"] = None
 

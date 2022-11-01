@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, List, Literal, Tuple, Union, cast
+from typing import Any, List, Literal, Tuple, cast
 
-import numpy
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -12,128 +11,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.mixture import GaussianMixture
 
 from src.eventstream.types import EventstreamType
-
-SEGMENTS_COLNAME = "segment"
-SegmentVal = Union[int, str]
-COUNT_COL_NAME = "count"
-UserClass = Union[str, int]
-
-
-class UserList:
-    # readonly
-    __users: pd.DataFrame
-    __eventstream: EventstreamType
-
-    def __init__(self, eventstream: EventstreamType) -> None:
-        self.__eventstream = eventstream
-        self.__users = self.__make_userlist()
-
-    def get_eventstream(self):
-        return self.__eventstream
-
-    def to_dataframe(self):
-        return self.__users.copy()
-
-    def add_classes(self, colname: str, classes: pd.DataFrame) -> None:
-        user_col = self.__eventstream.schema.user_id
-        self.__users.reset_index(inplace=True, drop=True)
-        merged = self.__users.merge(classes, on=user_col, how="left")
-        merged.reset_index(inplace=True, drop=True)
-        self.__users[colname] = merged[colname]
-
-    def assign(self, colname: str, value: UserClass, users: pd.Series[Any] | list[Any]) -> None:
-        user_col = self.__eventstream.schema.user_id
-        matched = self.__users[user_col].isin(users)
-        matched_users = self.__users[matched].copy()
-        matched_users[colname] = value
-        source_col = self.__users[colname]
-        source_col.update(matched_users[colname])
-
-    def get_count(self, colname: str) -> int:
-        usercol = self.__eventstream.schema.user_id
-        r = self.__users.groupby([colname])[usercol].count().reset_index()
-        return r
-
-    def mark_eventstream(self, colname: str, inplace: bool = False):
-        eventstream = self.__eventstream if inplace else self.__eventstream.copy()
-
-        usercol = eventstream.schema.user_id
-        eventstream_df = eventstream.to_dataframe()
-
-        users = self.__users[[usercol, colname]]
-        merged = eventstream_df.merge(users, how="left", on=usercol)
-        marked_col = merged[colname]
-        eventstream.add_custom_col(name=colname, data=marked_col)
-        return eventstream
-
-    def get_eventstream_subset(self, colname: str, values: list[UserClass] = None) -> pd.Series[Any]:
-        usercol = self.__eventstream.schema.user_id
-        matched = self.__users[colname].isin(values=values)
-        users_subset = self.__users[matched]
-        eventstream_dataframe = self.__eventstream.to_dataframe(copy=True)
-        _df = eventstream_dataframe[eventstream_dataframe[usercol].isin(users_subset[usercol])]
-        return _df
-
-    def __make_userlist(self) -> pd.Series[Any]:
-        user_col = self.__eventstream.schema.user_id
-        id_col = self.__eventstream.schema.event_id
-
-        events = self.__eventstream.to_dataframe()
-        users = events.groupby([user_col])[id_col].count().reset_index()
-
-        users = users.sort_values(by=id_col, ascending=False)
-
-        users.reset_index(inplace=True, drop=True)
-        users.rename(columns={id_col: COUNT_COL_NAME}, inplace=True)
-
-        return users
-
-
-class Segments:
-    # readonly
-    __userlist: UserList
-    __eventstream: EventstreamType
-
-    def __init__(
-        self,
-        eventstream: EventstreamType,
-        segments_df: pd.DataFrame = None,
-    ):
-        self.__userlist = UserList(eventstream=eventstream)
-        self.__eventstream = eventstream
-
-        if segments_df is not None:
-            self.__userlist.add_classes(SEGMENTS_COLNAME, segments_df)
-        else:
-            # add empty segments
-            userlist_df = self.__userlist.to_dataframe()
-            userlist_df[SEGMENTS_COLNAME] = numpy.nan
-            self.__userlist.add_classes(SEGMENTS_COLNAME, userlist_df)
-
-    def show_segments(self):
-        user_id = self.__eventstream.schema.user_id
-        return self.__userlist.to_dataframe()[[user_id, SEGMENTS_COLNAME]]
-
-    def add_segment(self, segment: SegmentVal, users: Union[pd.Series, List]):
-        self.__userlist.assign(SEGMENTS_COLNAME, value=segment, users=users)
-
-    def get_users(self, segment: SegmentVal):
-        user_id = self.__eventstream.schema.user_id
-        userlist_df = self.__userlist.to_dataframe()
-        return userlist_df[userlist_df[SEGMENTS_COLNAME] == segment][user_id]
-
-    def get_all_users(self):
-        user_id = self.__eventstream.schema.user_id
-        return self.__userlist.to_dataframe()[user_id]
-
-    def get_all_segments(self):
-        userlist_df = self.__userlist.to_dataframe()
-        return userlist_df[SEGMENTS_COLNAME].unique()
-
-    def get_segment_list(self):
-        userlist_df = self.__userlist.get_count(SEGMENTS_COLNAME)
-        return userlist_df
-
+from src.tooling.clusters.segments import Segments
 
 FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "external"]
 NgramRange = Tuple[int, int]
@@ -187,7 +65,7 @@ class Clusters:
             vectorizer = self.__get_vectorizer(feature_type=feature_type, ngram_range=ngram_range, corpus=corpus)
 
             vocabulary_items = sorted(vectorizer.vocabulary_.items(), key=lambda x: x[1])
-            cols: List[str] = [dict_key[0] for dict_key in vocabulary_items]
+            cols: list[str] = [dict_key[0] for dict_key in vocabulary_items]
             sorted_index_col = sorted(events[index_col].unique())
 
             vec_data = pd.DataFrame(index=sorted_index_col, columns=cols, data=vectorizer.transform(corpus).todense())
@@ -201,7 +79,7 @@ class Clusters:
         if feature_type in ["time", "time_fraction"]:
             events.sort_values(by=[index_col, time_col], inplace=True)
             events.reset_index(inplace=True)
-            events["time_diff"] = events.groupby(index_col)[time_col].diff().dt.total_seconds()
+            events["time_diff"] = events.groupby(index_col)[time_col].diff().dt.total_seconds()  # type: ignore
             events["time_length"] = events["time_diff"].shift(-1)
             if feature_type == "time_fraction":
                 vec_data = (
@@ -222,7 +100,7 @@ class Clusters:
         return cast(pd.DataFrame, vec_data)
 
     # TODO: add save
-    def cluster_bar(self, clusters: List[int], target: List[List[bool]], target_names: List[str], plot_name=None):
+    def cluster_bar(self, clusters: list[int], target: list[list[bool]], target_names: list[str], plot_name=None):
         """
         Plots bar charts with cluster sizes and average target conversion rate.
         Parameters
@@ -302,15 +180,15 @@ class Clusters:
         ngram_range: NgramRange = (1, 1),
         n_clusters: int = 8,
         method: Method = "kmeans",
-        plot_type: PlotType = None,
-        refit_cluster: bool = True,
-        targets: List[str] = None,
-        vector: pd.DataFrame = None,
+        plot_type: PlotType | None = None,
+        refit_cluster: bool | None = True,
+        targets: list[str] | None = None,
+        vector: pd.DataFrame | None = None,
     ):
         user_col = self.__eventstream.schema.user_id
         event_col = self.__eventstream.schema.event_id
 
-        if feature_type == "external" and not isinstance(vector, pd.DataFrame):
+        if feature_type == "external" and not isinstance(vector, pd.DataFrame):  # type: ignore
             raise ValueError("Vector is not a DataFrame!")
 
         if feature_type == "external" and vector is not None:
@@ -352,9 +230,6 @@ class Clusters:
         events = self.__eventstream.to_dataframe()
         grouped_events = events.groupby(user_col)[event_col]
 
-        targets_bool = []
-        target_names = [" "]
-
         if targets is not None:
             targets_bool = []
             target_names = []
@@ -362,10 +237,10 @@ class Clusters:
             formated_targets = []
             # format targets to list of lists:
             for n, i in enumerate(targets):
-                if type(i) != list:
+                if type(i) != list:  # type: ignore
                     formated_targets.append([i])
                 else:
-                    formated_targets.append(i)
+                    formated_targets.append(i)  # type: ignore
 
             for t in formated_targets:
                 # get name

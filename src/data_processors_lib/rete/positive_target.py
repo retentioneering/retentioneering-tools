@@ -15,30 +15,23 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 def _default_func_positive(eventstream: Eventstream, positive_target_events: list[str]) -> pd.DataFrame:
-    # TODO добавить доку в тесты tests/p_graph/test_export.py test_positive_events__export
-    #  и test_positive_events__import
     """
-    Filters rows with target events from the input eventstream
-    If there are several target events in user path - the event with minimum timestamp is taken
+    Filters rows with target events from the input eventstream.
 
     Parameters
     ----------
     eventstream : Eventstream
-        Source eventstream or output from previous nodes
+        Source eventstream or output from previous nodes.
 
     positive_target_events : list[str]
-        Condition for eventstream filtering
-        Each event from that list is associated with a conversion goal in the user behaviour in the product
-
+        Condition for eventstream filtering.
+        Each event from that list is associated with a conversion goal of the user behaviour in the product.
+        If there are several target events in user path - the event with minimum timestamp is taken.
 
     Returns
     -------
-    Filtered DataFrame
-
-    Return type
-    ----------
     pd.DataFrame
-
+        Filtered DataFrame with positive_target_events and its timestamps.
     """
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
@@ -53,6 +46,10 @@ def _default_func_positive(eventstream: Eventstream, positive_target_events: lis
 
 
 class PositiveTargetParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`PositiveTarget`
+    """
+
     positive_target_events: List[str]
     positive_function: Callable = _default_func_positive
 
@@ -63,34 +60,29 @@ class PositiveTargetParams(ParamsModel):
 
 class PositiveTarget(DataProcessor):
     """
-    Creates new synthetic events for users who have had specified event(s) in their paths
+    Creates new synthetic events for users who have had specified event(s) in their paths:
+
 
     Parameters
     ----------
     positive_target_events : List(str)
-        Each event from that list is associated with a conversional user behaviour in the product
-        If there are several target events in user path - the event with minimum timestamp is taken
+        Each event from that list is associated with a conversional user behaviour in the product.
+        If there are several target events in user path - the event with minimum timestamp taken.
 
     positive_function : Callable, default=_default_func_positive
-        Filter rows with target events from the input eventstream
-
-    Note
-    -------
-    Shouldn't be empty
+        Filter rows with target events from the input eventstream.
 
     Returns
     -------
-    Eventstream with new synthetic events for users who fit the conditions (details in the table below)
-
-        +--------------------------------------+------------------+-----------------------------------------+
-        | event_name                           | event_type       | timestamp                               |
-        +--------------------------------------+------------------+-----------------------------------------+
-        | positive_target_ORIGINAL_EVENT_NAME  | positive_target  | min(timestamp(positive_target_events))  |
-        +--------------------------------------+------------------+-----------------------------------------+
-
-    Return type
-    -----------
     Eventstream
+        Eventstream with new synthetic events for users who fit the conditions.
+
+        +--------------------------------+-----------------+-----------------------------+
+        | **event_name**                 | **event_type**  | **timestamp**               |
+        +--------------------------------+-----------------+-----------------------------+
+        | positive_target_RAW_EVENT_NAME | positive_target | min(positive_target_events) |
+        +--------------------------------+-----------------+-----------------------------+
+
 
     See Also
     -------

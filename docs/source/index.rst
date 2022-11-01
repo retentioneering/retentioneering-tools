@@ -3,20 +3,40 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Rete Doc
+
+.. title:: Retentioneering Tools
+
+---------------------------------------------------------------------
+
+#.. include:: what_is_rete.rst
+
+Contents
 ======================================
 .. toctree::
-   :caption: TUTORIAL:
+   :caption: Quick start:
    :maxdepth: 2
 
    What is Retentioneering? <what_is_rete.rst>
 
 .. toctree::
-   :caption: API REFERENCE:
+   :caption: Tools Description:
    :maxdepth: 2
 
-   API REFERENCE <src.core.rst>
+   About eventstream <eventstream.rst>
+   Funnel analysis <funnel.rst>
+
+.. toctree::
+   :caption: Tutorial:
+   :maxdepth: 2
+
+   Preprocessing scenario <tutorial.rst>
+
+.. toctree::
+   :caption: API Reference:
+   :maxdepth: 2
+
+   API REFERENCE <api_reference.rst>
    Github <>
 
 
-back to github: `back to github <https://github.com/retentioneering/retentioneering-tools>`_.
+`back to github. <https://github.com/retentioneering/retentioneering-tools>`__

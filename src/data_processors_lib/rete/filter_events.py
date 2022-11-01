@@ -12,6 +12,11 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class FilterEventsParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`FilterEvents`
+
+    """
+
     filter: Callable[[DataFrame, EventstreamSchema], Any]
 
 
@@ -23,12 +28,13 @@ class FilterEvents(DataProcessor):
     ----------
     filter : Callable[[DataFrame, EventstreamSchema], Any]
         Custom function which returns boolean mask the same length as input Eventstream
-        If True - row will be remained
-        If False - row will be deleted
+        If ``True`` - row will be remained
+        If ``False`` - row will be deleted
 
     Returns
     -------
-    eventstream
+    Eventstream
+        Eventstream with events that should be deleted from input Eventstream.
 
     """
 

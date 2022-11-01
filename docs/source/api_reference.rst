@@ -1,9 +1,6 @@
 
-API REFERENCE
-======================================
+.. title:: API Reference
 
-preprocessing
--------------
 .. toctree::
    :caption: PREPROCESSING:
    :maxdepth: 2
@@ -11,8 +8,7 @@ preprocessing
    Preprocessing <preprocessing.rst>
    Github <>
 
-tooling
------------
+
 .. toctree::
    :caption: CORE FUNCTIONS:
    :maxdepth: 2

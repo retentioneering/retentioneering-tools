@@ -11,35 +11,51 @@ EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchema], Any]
 
 
 class GroupEventsParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`GroupEvents`
+    """
+
     event_name: str
     filter: EventstreamFilter
     event_type: Optional[str] = "group_alias"
 
 
 class GroupEvents(DataProcessor):
-    # TODO переформулировать
     """
-    Creates new events which grouping input events on the basis of specified conditions
+    Creates new events which rename input events on the basis of specified conditions
 
     Parameters
     ----------
-    event_name :
+    event_name : str
         Name of new, grouped event
     filter : Callable[[DataFrame, EventstreamSchema], Any]
         Custom function which returns boolean mask the same length as input Eventstream
-        If True - events, that will be grouped
-        If False - events, that will be remained
+        If ``True`` - events, that will be grouped
+        If ``False`` - events, that will be remained
     event_type : str, default="group_alias"
         Event_type name for the grouped events
-        If custom event_type is created - it is important to add it to the DEFAULT_INDEX_ORDER
-
-    See Also
-    ----------
+        If custom event_type is created - it is important to add it to the ``DEFAULT_INDEX_ORDER``
 
     Returns
     -------
-    eventstream
+    Eventstream
+        Eventstream with new events and raw events marked ``_deleted=True``
 
+        +-----------------+----------------+-------------------+----------------+
+        | **event_name**  | **event_type** | **timestamp**     |  **_deleted**  |
+        +-----------------+----------------+-------------------+----------------+
+        | raw_event_name  | raw            | raw_event         |  True          |
+        +-----------------+----------------+-------------------+----------------+
+        | new_event_name  | group_alias    | raw_event         |  False         |
+        +-----------------+----------------+-------------------+----------------+
+
+    See Also
+    -------
+    src.graph.p_graph.PGraph
+    src.graph.p_graph.EventsNode
+    src.graph.p_graph.PGraph.add_node
+    :py:func:`src.graph.p_graph.PGraph.combine`
+    DEFAULT_INDEX_ORDER
     """
 
     params: GroupEventsParams

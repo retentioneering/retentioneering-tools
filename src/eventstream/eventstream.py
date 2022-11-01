@@ -377,6 +377,12 @@ class Eventstream(EventstreamType):
         segment_names: list[str] | None = None,
         sequence: bool = False,
     ) -> go.Figure:
+        """
+        See Also
+        --------
+        :py:func:`src.tooling.funnel.funnel`
+
+        """
         funnel = Funnel(
             eventstream=self,
             stages=stages,

@@ -13,33 +13,41 @@ EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class NewUsersParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`NewUsersEvents`
+
+
+    """
+
     new_users_list: Union[List[int], Literal["all"]]
 
 
 class NewUsersEvents(DataProcessor):
     """
     Creates new synthetic event for each user:
-    'new_user' or 'existing_user'
+    ``new_user`` or ``existing_user``
 
     Parameters
     ----------
-    new_users_list: list[int] or 'all'
+    new_users_list : list of (int or str) or `all`
 
-        If the list of user_ids is given - new synthetic event will be created for each user from the list
-        If new_users_list = 'all' - new synthetic event will be created to each user from the original eventstream
+        If the `list of user_ids` is given - ``new_user`` event will be created for each user from the list.
+        Event ``existing_user`` will be added to the rest of the users.
+
+        If ``all`` - ``new_user`` synthetic event will be created for all users from the input Eventstream
 
     Returns
     -------
-    Eventstream : table of shape ()???
-     with new synthetic events one for each user (details in the table below)
+    Eventstream
+        Eventstream with new synthetic events one for each user:
 
-        +---------------+---------------+------------------------+
-        | event_name    | event_type    | timestamp              |
-        +---------------+---------------+------------------------+
-        | new_user      | new_user      | timestamp(first_event) |
-        +---------------+---------------+------------------------+
-        | existing_user | existing_user | timestamp(first_event) |
-        +---------------+---------------+------------------------+
+        +-----------------+-----------------+------------------------+
+        | **event_name**  | **event_type**  | **timestamp**          |
+        +-----------------+-----------------+------------------------+
+        | new_user        | new_user        | first_event            |
+        +-----------------+-----------------+------------------------+
+        | existing_user   | existing_user   | first_event            |
+        +-----------------+-----------------+------------------------+
 
     See Also
     -------

@@ -10,6 +10,10 @@ from src.params_model import ParamsModel
 
 
 class CollapseLoopsParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`CollapseLoops`.
+    """
+
     full_collapse: bool = True
     timestamp_aggregation_type: Literal["max", "min", "mean"] = "max"
 
@@ -19,25 +23,32 @@ class CollapseLoops(DataProcessor):
     Groups and replaces loops in each user's path with new synthetic events.
 
     Loop - is the sequence of repetitive events in user's path.
-    For example "event1 -> event1"
+    For example *"event1 -> event1"*
 
     Parameters
     ----------
     full_collapse: bool, default=True
-        If True event_name will be event_name_loop
+        If ``True`` event_name will be event_name_loop.
 
     timestamp_aggregation_type : {"max", "min", "mean"}, default="max"
-        Aggregation method to define timestamp for new group
+        Aggregation method to define timestamp for new group.
 
     Returns
     -------
-    Eventstream with:
-        Raw events, that should be soft-deleted from original Eventstream.
+    Eventstream
+        Eventstream with:
+        raw events: that should be soft-deleted from original Eventstream
 
-        New synthetic events that can be added to the original Eventstream with columns below
-            event_name: event_name_loop / event_name_loop_count
-            event_type: group_alias
-            timestamp: min/max/mean(group of repetitive events)
+        new synthetic events: that can be added to the original Eventstream with columns below.
+
+        +-----------------------+--------------+--------------------------------------------+
+        | event_name            | event_type   | timestamp                                  |
+        +-----------------------+--------------+--------------------------------------------+
+        | event_name_loop       | group_alias  | min/max/mean(group of repetitive events))  |
+        +-----------------------+--------------+--------------------------------------------+
+        | event_name_loop_count | group_alias  | (min/max/mean(group of repetitive events)) |
+        +-----------------------+--------------+--------------------------------------------+
+
 
     See Also
     -------

@@ -13,6 +13,10 @@ from src.widget.widgets import ReteTimeWidget
 
 
 class LostUsersParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`LostUsersEvents`
+    """
+
     lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
     lost_users_list: Optional[List[int]]
 
@@ -22,32 +26,33 @@ class LostUsersParams(ParamsModel):
 class LostUsersEvents(DataProcessor):
     """
     Creates one of synthetic events in each user's path:
-    'lost_user' or 'absent_user'
+    ``lost_user`` or ``absent_user``
 
     Parameters
     ----------
-    lost_cutoff: Tuple(float, DATETIME_UNITS), optional
+    lost_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
         Threshold value and it's unit of measure.
         Calculate timedelta between last event in each user's path and last event in whole Eventstream.
-        For users with timedelta more or equal than selected lost_cutoff, new synthetic event - 'lost_user'
-        will be added
-        For other user's paths will be added new synthetic event - 'absent_user'
+        For users with timedelta more or equal than selected ``lost_cutoff``, new synthetic event - ``lost_user``
+        will be added.
+        For other user's paths will be added new synthetic event - ``absent_user``
 
-    lost_users_list: list[int], optional
-        If the list of user_ids is given new synthetic event - 'lost_user' will be added to each user from the list
-        For other user's paths will be added new synthetic event - 'absent_user'
+    lost_users_list : list[int], optional
+        If the `list of user_ids` is given new synthetic event - ``lost_user`` will be added to each user from the list.
+        For other user's paths will be added new synthetic event - ``absent_user``
 
     Returns
     -------
-    Eventstream with with new synthetic events - one for each user (details in the table below)
+    Eventstream
+        Eventstream with new synthetic events - one for each user:
 
-        +---------------+---------------+------------------------+
-        | event_name    | event_type    | timestamp              |
-        +---------------+---------------+------------------------+
-        | lost_user     | lost_user     | timestamp(last_event)  |
-        +---------------+---------------+------------------------+
-        | absent_user   | absent_user   | timestamp(last_event)  |
-        +---------------+---------------+------------------------+
+        +-----------------+-----------------+------------------+
+        | **event_name**  | **event_type**  |  **timestamp**   |
+        +-----------------+-----------------+------------------+
+        | lost_user       | lost_user       | last_event       |
+        +-----------------+-----------------+------------------+
+        | absent_user     | absent_user     | last_event       |
+        +-----------------+-----------------+------------------+
 
     See Also
     -------

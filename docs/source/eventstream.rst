@@ -1,3 +1,5 @@
 
-Tutorial
+.. title:: Eventstream
+
+Eventstream
 ======================================

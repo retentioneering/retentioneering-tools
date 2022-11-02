@@ -43,7 +43,7 @@ class Clusters:
                 corpus
             )
 
-    def extract_features(
+    def _extract_features(
         self, eventstream: EventstreamType, feature_type: FeatureType = "tfidf", ngram_range: NgramRange = (1, 1)
     ):
         index_col = eventstream.schema.user_id
@@ -100,7 +100,7 @@ class Clusters:
         return cast(pd.DataFrame, vec_data)
 
     # TODO: add save
-    def cluster_bar(self, clusters: list[int], target: list[list[bool]], target_names: list[str], plot_name=None):
+    def _cluster_bar(self, clusters: list[int], target: list[list[bool]], target_names: list[str]):
         """
         Plots bar charts with cluster sizes and average target conversion rate.
         Parameters
@@ -111,10 +111,8 @@ class Clusters:
             Array of cluster IDs.
         target: "np.array"
             Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
-        target: list of np.arrays
+        target: list[np.ndarray]
             Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
-        plot_name : str, optional
-            Name of plot to save. Default: ``'clusters_bar_{timestamp}.svg'``
         kwargs: optional
             Width and height of plot.
         Returns
@@ -158,7 +156,12 @@ class Clusters:
 
         return bar
 
-    def kmeans(self, features: pd.DataFrame, n_clusters: int = 8, random_state: int = 0):
+    def _kmeans(
+            self,
+            features: pd.DataFrame,
+            n_clusters: int = 8,
+            random_state: int = 0
+    ) -> np.ndarray:
 
         km = KMeans(random_state=random_state, n_clusters=n_clusters)
 
@@ -166,7 +169,12 @@ class Clusters:
 
         return cl
 
-    def gmm(self, features: pd.DataFrame, n_clusters: int = 8, random_state: int = 0):
+    def _gmm(
+            self,
+            features: pd.DataFrame,
+            n_clusters: int = 8,
+            random_state: int = 0
+    ) -> np.ndarray:
 
         km = GaussianMixture(random_state=random_state, n_components=n_clusters)
 
@@ -200,7 +208,7 @@ class Clusters:
                     "Vector is wrong formatted! NaN should be replaced with 0 and dtypes all must be float!"
                 )
         else:
-            features = self.extract_features(
+            features = self._extract_features(
                 eventstream=self.__eventstream,
                 feature_type=feature_type,
                 ngram_range=ngram_range,
@@ -210,12 +218,14 @@ class Clusters:
 
         if self.segments is None or refit_cluster:
             if method == "kmeans":
-                clusters_list = self.kmeans(features=features, n_clusters=n_clusters)
-            else:
-                clusters_list = self.gmm(
+                clusters_list = self._kmeans(features=features, n_clusters=n_clusters)
+            elif method == "gmm":
+                clusters_list = self._gmm(
                     features=features,
                     n_clusters=n_clusters,
                 )
+            else:
+                raise ValueError("Unknown method: %s" % method)
 
             self.__clusters_list = clusters_list
 
@@ -230,6 +240,18 @@ class Clusters:
         events = self.__eventstream.to_dataframe()
         grouped_events = events.groupby(user_col)[event_col]
 
+        target_names, targets_bool = self._prepare_targets(event_col, grouped_events, targets)
+
+        if plot_type == "cluster_bar":
+            self._cluster_bar(
+                clusters=self.__clusters_list,
+                # TODO: fix types
+                target=cast(List[List[bool]], targets_bool),
+                target_names=target_names,
+            )
+        return targets_bool
+
+    def _prepare_targets(self, event_col, grouped_events, targets):
         if targets is not None:
             targets_bool = []
             target_names = []
@@ -253,12 +275,4 @@ class Clusters:
         else:
             targets_bool = [np.array([False] * len(self.__clusters_list))]
             target_names = [" "]
-
-        if plot_type == "cluster_bar":
-            self.cluster_bar(
-                clusters=self.__clusters_list,
-                # TODO: fix types
-                target=cast(List[List[bool]], targets_bool),
-                target_names=target_names,
-            )
-        return targets_bool
+        return target_names, targets_bool

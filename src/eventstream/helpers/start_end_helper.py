@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from ..types import EventstreamType
-from .typing import HelperProtocol
 
 
-class StartEndHelperMixin(HelperProtocol):
+class StartEndHelperMixin:
     def add_start_end(self) -> EventstreamType:
 
         # avoid circular import

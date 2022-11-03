@@ -10,12 +10,13 @@ from src.data_processors_lib.rete import (
     LostUsersParams,
 )
 from tests.data_processors_lib.common import (
-    apply_processor,
-    apply_processor_with_graph,
+    ApplyTestBase,
+    GraphTestBase,
 )
 
 
-class TestLostUsers:
+class TestLostUsers(ApplyTestBase):
+    _Processor = LostUsersEvents
     _source_df = pd.DataFrame(
         [
             [1, "event1", "2022-01-01 00:01:00"],
@@ -35,14 +36,6 @@ class TestLostUsers:
         event_name="event",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: LostUsersParams) -> pd.DataFrame:
-        original, actual = apply_processor(
-            LostUsersEvents(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_lost_users_apply__lost_users_list(self):
         actual = self._apply(LostUsersParams(
@@ -77,7 +70,8 @@ class TestLostUsers:
             p = LostUsersParams(lost_cutoff=(1, "xxx"))
 
 
-class TestLostUsersGraph:
+class TestLostUsersGraph(GraphTestBase):
+    _Processor = LostUsersEvents
     _source_df = pd.DataFrame(
         [
             [1, "event1", "2022-01-01 00:01:00"],
@@ -97,14 +91,6 @@ class TestLostUsersGraph:
         event_name="event",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: LostUsersParams) -> pd.DataFrame:
-        original, actual = apply_processor_with_graph(
-            LostUsersEvents(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_lost_users_graph__lost_users_list(self):
         actual = self._apply(LostUsersParams(

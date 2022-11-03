@@ -8,7 +8,7 @@ from ..types import EventstreamType
 
 
 class SplitSessionsHelperMixin:
-    def add_new_users(
+    def split_sessions(
         self,
         session_cutoff: Tuple[float, DATETIME_UNITS],
         session_col: str,

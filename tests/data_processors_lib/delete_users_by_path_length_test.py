@@ -8,12 +8,13 @@ from src.data_processors_lib.rete import (
     DeleteUsersByPathLengthParams,
 )
 from tests.data_processors_lib.common import (
-    apply_processor,
-    apply_processor_with_graph,
+    ApplyTestBase,
+    GraphTestBase,
 )
 
 
-class TestDeleteUsersByPathLength:
+class TestDeleteUsersByPathLength(ApplyTestBase):
+    _Processor = DeleteUsersByPathLength
     _source_df = pd.DataFrame(
         [
             [1, "start", "start", "2022-01-01 00:01:00"],
@@ -45,14 +46,6 @@ class TestDeleteUsersByPathLength:
         event_type="event_type",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: DeleteUsersByPathLengthParams) -> pd.DataFrame:
-        original, actual = apply_processor(
-            DeleteUsersByPathLength(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_delete_users_by_path_length_apply__by_event_4(self):
         actual = self._apply(DeleteUsersByPathLengthParams(
@@ -89,7 +82,8 @@ class TestDeleteUsersByPathLength:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestDeleteUsersByPathLengthGraph:
+class TestDeleteUsersByPathLengthGraph(GraphTestBase):
+    _Processor = DeleteUsersByPathLength
     _source_df = pd.DataFrame(
         [
             [1, "start", "start", "2022-01-01 00:01:00"],
@@ -121,14 +115,6 @@ class TestDeleteUsersByPathLengthGraph:
         event_type="event_type",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: DeleteUsersByPathLengthParams) -> pd.DataFrame:
-        original, actual = apply_processor_with_graph(
-            DeleteUsersByPathLength(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_delete_users_by_path_length_graph__by_event_4(self):
         actual = self._apply(DeleteUsersByPathLengthParams(

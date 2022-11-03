@@ -8,12 +8,13 @@ from src.data_processors_lib.rete import (
     PositiveTargetParams,
 )
 from tests.data_processors_lib.common import (
-    apply_processor,
-    apply_processor_with_graph,
+    ApplyTestBase,
+    GraphTestBase,
 )
 
 
-class TestPositiveTarget:
+class TestPositiveTarget(ApplyTestBase):
+    _Processor = PositiveTarget
     _source_df = pd.DataFrame(
         [
             [1, "start", "start", "2022-01-01 00:01:00"],
@@ -44,14 +45,6 @@ class TestPositiveTarget:
         event_type="event_type",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: PositiveTargetParams) -> pd.DataFrame:
-        original, actual = apply_processor(
-            PositiveTarget(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_positive_target_apply__1_event(self):
         actual = self._apply(PositiveTargetParams(
@@ -80,7 +73,8 @@ class TestPositiveTarget:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestPositiveTargetGraph:
+class TestPositiveTargetGraph(GraphTestBase):
+    _Processor = PositiveTarget
     _source_df = pd.DataFrame(
         [
             [1, "start", "start", "2022-01-01 00:01:00"],
@@ -111,14 +105,6 @@ class TestPositiveTargetGraph:
         event_type="event_type",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: PositiveTargetParams) -> pd.DataFrame:
-        original, actual = apply_processor_with_graph(
-            PositiveTarget(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_positive_target_graph__1_event(self):
         actual = self._apply(PositiveTargetParams(

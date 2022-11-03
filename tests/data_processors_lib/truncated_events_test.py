@@ -10,12 +10,13 @@ from src.data_processors_lib.rete import (
     TruncatedEventsParams,
 )
 from tests.data_processors_lib.common import (
-    apply_processor,
-    apply_processor_with_graph,
+    ApplyTestBase,
+    GraphTestBase,
 )
 
 
-class TestTruncatedEvents:
+class TestTruncatedEvents(ApplyTestBase):
+    _Processor = TruncatedEvents
     _source_df = pd.DataFrame(
         [
             [1, "event1", "2022-01-01 00:00:00"],
@@ -34,14 +35,6 @@ class TestTruncatedEvents:
         event_name="event",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: TruncatedEventsParams) -> pd.DataFrame:
-        original, actual = apply_processor(
-            TruncatedEvents(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_truncated_events_apply__left_right(self):
         actual = self._apply(TruncatedEventsParams(
@@ -90,7 +83,8 @@ class TestTruncatedEvents:
             p = TruncatedEventsParams(left_truncated_cutoff=(1, "xxx"))
 
 
-class TestTruncatedEventsGraph:
+class TestTruncatedEventsGraph(GraphTestBase):
+    _Processor = TruncatedEvents
     _source_df = pd.DataFrame(
         [
             [1, "event1", "2022-01-01 00:00:00"],
@@ -109,14 +103,6 @@ class TestTruncatedEventsGraph:
         event_name="event",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: TruncatedEventsParams) -> pd.DataFrame:
-        original, actual = apply_processor_with_graph(
-            TruncatedEvents(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_truncated_events_graph__left_right(self):
         actual = self._apply(TruncatedEventsParams(

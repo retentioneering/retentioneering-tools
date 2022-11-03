@@ -8,12 +8,13 @@ from src.data_processors_lib.rete import (
     TruncatePathParams,
 )
 from tests.data_processors_lib.common import (
-    apply_processor,
-    apply_processor_with_graph,
+    ApplyTestBase,
+    GraphTestBase,
 )
 
 
-class TestTruncatePath:
+class TestTruncatePath(ApplyTestBase):
+    _Processor = TruncatePath
     _source_df_1 = pd.DataFrame(
         [
             [1, "start", "start", "2022-01-01 00:01:00"],
@@ -71,26 +72,10 @@ class TestTruncatePath:
         event_timestamp="timestamp",
     )
 
-    def _apply_1(self, params: TruncatePathParams) -> pd.DataFrame:
-        original, actual = apply_processor(
-            TruncatePath(params),
-            self._source_df_1,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
-
-    def _apply_2(self, params: TruncatePathParams) -> pd.DataFrame:
-        original, actual = apply_processor(
-            TruncatePath(params),
-            self._source_df_2,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
-
     def test_truncate_path_apply__before_first(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_before="event3",
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00", True],
@@ -106,10 +91,10 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__before_last(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_before="event3",
             occurrence_before="last",
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00", True],
@@ -129,10 +114,10 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__before_first_positive_shift(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_before="event3",
             shift_before=2,
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00", True],
@@ -155,10 +140,10 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__before_first_negative_shift(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_before="event3",
             shift_before=-2,
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00", True],
@@ -170,11 +155,11 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__before_last_positive_shift(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_before="event3",
             occurrence_before="last",
             shift_before=2,
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00", True],
@@ -199,11 +184,11 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__before_last_negative_shift(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_before="event3",
             occurrence_before="last",
             shift_before=-2,
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00", True],
@@ -218,9 +203,9 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__after_first(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_after="event3",
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:04:00", True],
@@ -234,10 +219,10 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__after_last(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_after="event3",
             occurrence_after="last",
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:05:00", True],
@@ -249,10 +234,10 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__after_first_positive_shift(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_after="event3",
             shift_after=2,
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:05:00", True],
@@ -262,10 +247,10 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__after_first_negative_shift(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_after="event3",
             shift_after=-2,
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:03:00", True],
@@ -286,11 +271,11 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__after_last_positive_shift(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_after="event3",
             occurrence_after="last",
             shift_after=2,
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [],
             columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"]
@@ -298,11 +283,11 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__after_last_negative_shift(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_after="event3",
             occurrence_after="last",
             shift_after=-2,
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:04:00", True],
@@ -318,10 +303,10 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__before_after_first(self):
-        actual = self._apply_2(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_before="event3",
             drop_after="event5",
-        ))
+        ), source_df=self._source_df_2)
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00", True],
@@ -340,7 +325,8 @@ class TestTruncatePath:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestTruncatePathGraph:
+class TestTruncatePathGraph(GraphTestBase):
+    _Processor = TruncatePath
     _source_df_1 = pd.DataFrame(
         [
             [1, "start", "start", "2022-01-01 00:01:00"],
@@ -388,27 +374,11 @@ class TestTruncatePathGraph:
         event_timestamp="timestamp",
     )
 
-    def _apply_1(self, params: TruncatePathParams) -> pd.DataFrame:
-        original, actual = apply_processor_with_graph(
-            TruncatePath(params),
-            self._source_df_1,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
-
-    def _apply_2(self, params: TruncatePathParams) -> pd.DataFrame:
-        original, actual = apply_processor_with_graph(
-            TruncatePath(params),
-            self._source_df_2,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
-
     def test_truncate_path_graph__before_after_first(self):
-        actual = self._apply_1(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_before="event3",
             drop_after="event5",
-        ))
+        ), source_df=self._source_df_1)
         expected = pd.DataFrame(
             [
                 [1, "session_start", "session_start", "2022-01-01 00:03:30"],
@@ -431,14 +401,14 @@ class TestTruncatePathGraph:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_graph__inversed_bounds(self):
-        actual = self._apply_2(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_before="event3",
             occurrence_before="first",
             shift_before=2,
             drop_after="event3",
             occurrence_after="last",
             shift_after=-2,
-        ))
+        ), source_df=self._source_df_2)
         expected = pd.DataFrame(
             [],
             columns=["user_id", "event_name", "event_type", "event_timestamp"]
@@ -446,9 +416,9 @@ class TestTruncatePathGraph:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_graph__irrelevant_before_event(self):
-        actual = self._apply_2(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_before="missing_event",
-        ))
+        ), source_df=self._source_df_2)
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:00:00"],
@@ -463,9 +433,9 @@ class TestTruncatePathGraph:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_graph__irrelevant_after_event(self):
-        actual = self._apply_2(TruncatePathParams(
+        actual = self._apply(TruncatePathParams(
             drop_after="missing_event",
-        ))
+        ), source_df=self._source_df_2)
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:00:00"],

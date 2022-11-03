@@ -10,12 +10,13 @@ from src.data_processors_lib.rete import (
     SplitSessionsParams,
 )
 from tests.data_processors_lib.common import (
-    apply_processor,
-    apply_processor_with_graph,
+    ApplyTestBase,
+    GraphTestBase,
 )
 
 
-class TestSplitSessions:
+class TestSplitSessions(ApplyTestBase):
+    _Processor = SplitSessions
     _source_df = pd.DataFrame(
         [
             [1, "pageview",        "raw", "2021-10-26 12:00"],
@@ -31,14 +32,6 @@ class TestSplitSessions:
         event_type="event_type",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: SplitSessionsParams) -> pd.DataFrame:
-        original, actual = apply_processor(
-            SplitSessions(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_params_model__incorrect_datetime_unit(self):
         with pytest.raises(ValidationError):
@@ -88,7 +81,8 @@ class TestSplitSessions:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestSplitSessionsGraph:
+class TestSplitSessionsGraph(GraphTestBase):
+    _Processor = SplitSessions
     _source_df = pd.DataFrame(
         [
             [111, "event1", "2022-01-01 00:00:00"],
@@ -110,14 +104,6 @@ class TestSplitSessionsGraph:
         event_name="event",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: SplitSessionsParams) -> pd.DataFrame:
-        original, actual = apply_processor_with_graph(
-            SplitSessions(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_split_sesssion_graph_1(self) -> None:
         actual = self._apply(SplitSessionsParams(

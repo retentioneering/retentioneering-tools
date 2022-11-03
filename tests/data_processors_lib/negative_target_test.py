@@ -8,12 +8,13 @@ from src.data_processors_lib.rete import (
     NegativeTargetParams,
 )
 from tests.data_processors_lib.common import (
-    apply_processor,
-    apply_processor_with_graph,
+    ApplyTestBase,
+    GraphTestBase,
 )
 
 
-class TestNegativeTarget:
+class TestNegativeTarget(ApplyTestBase):
+    _Processor = NegativeTarget
     _source_df = pd.DataFrame(
         [
             [1, "start", "start", "2022-01-01 00:01:00"],
@@ -44,14 +45,6 @@ class TestNegativeTarget:
         event_type="event_type",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: NegativeTargetParams) -> pd.DataFrame:
-        original, actual = apply_processor(
-            NegativeTarget(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_negative_target_apply__1_event(self):
         actual = self._apply(NegativeTargetParams(
@@ -80,7 +73,8 @@ class TestNegativeTarget:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestNegativeTargetGraph:
+class TestNegativeTargetGraph(GraphTestBase):
+    _Processor = NegativeTarget
     _source_df = pd.DataFrame(
         [
             [1, "start", "start", "2022-01-01 00:01:00"],
@@ -111,14 +105,6 @@ class TestNegativeTargetGraph:
         event_type="event_type",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: NegativeTargetParams) -> pd.DataFrame:
-        original, actual = apply_processor_with_graph(
-            NegativeTarget(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_negative_target_graph__1_event(self):
         actual = self._apply(NegativeTargetParams(

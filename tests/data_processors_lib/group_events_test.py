@@ -11,12 +11,13 @@ from src.data_processors_lib.rete import (
     GroupEventsParams,
 )
 from tests.data_processors_lib.common import (
-    apply_processor,
-    apply_processor_with_graph,
+    ApplyTestBase,
+    GraphTestBase,
 )
 
 
-class TestGroupEvents:
+class TestGroupEvents(ApplyTestBase):
+    _Processor = GroupEvents
     _source_df = pd.DataFrame([
         [1, "pageview",        "2021-10-26 12:00"],
         [1, "cart_btn_click",  "2021-10-26 12:02"],
@@ -30,13 +31,6 @@ class TestGroupEvents:
         event_timestamp="timestamp",
     )
 
-    def _apply(self, params: GroupEventsParams) -> (pd.DataFrame, pd.DataFrame):
-        return apply_processor(
-            GroupEvents(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-
     def test_group_events_apply_1(self) -> None:
         def _filter(df: pd.DataFrame, schema: EventstreamSchema):
             return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
@@ -44,7 +38,7 @@ class TestGroupEvents:
             event_name="add_to_cart",
             event_type="group_alias",
             filter=_filter,
-        ))
+        ), return_with_original=True)
         expected = pd.DataFrame([
             [1, "add_to_cart", "group_alias", "2021-10-26 12:02", original["event_id"].iat[1]],
             [2, "add_to_cart", "group_alias", "2021-10-26 12:04", original["event_id"].iat[3]],
@@ -59,7 +53,7 @@ class TestGroupEvents:
             event_name="add_to_cart",
             event_type="group_alias",
             filter=_filter,
-        ))
+        ), return_with_original=True)
         expected = pd.DataFrame([
         ], columns=["user_id", "event_name", "event_type", "event_timestamp", "ref_0"]
         )
@@ -72,7 +66,7 @@ class TestGroupEvents:
             event_name="anything",
             event_type="group_alias",
             filter=_filter,
-        ))
+        ), return_with_original=True)
         expected = pd.DataFrame([
             [1, "anything", "group_alias", "2021-10-26 12:00", original["event_id"].iat[0]],
             [1, "anything", "group_alias", "2021-10-26 12:02", original["event_id"].iat[1]],
@@ -83,7 +77,8 @@ class TestGroupEvents:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestGroupEventsGraph:
+class TestGroupEventsGraph(GraphTestBase):
+    _Processor = GroupEvents
     _source_df = pd.DataFrame([
         [1, "pageview",        "2021-10-26 12:00"],
         [1, "cart_btn_click",  "2021-10-26 12:02"],
@@ -97,13 +92,6 @@ class TestGroupEventsGraph:
         event_timestamp="timestamp",
     )
 
-    def _apply(self, params: GroupEventsParams) -> (pd.DataFrame, pd.DataFrame):
-        return apply_processor_with_graph(
-            GroupEvents(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-
     def test_group_events_graph_1(self) -> None:
         def _filter(df: pd.DataFrame, schema: EventstreamSchema):
             return (df[schema.user_id].isin([2])) | (df.event_name.str.contains("cart_btn_click"))
@@ -111,7 +99,7 @@ class TestGroupEventsGraph:
             event_name="event_new",
             event_type="group_alias",
             filter=_filter,
-        ))
+        ), return_with_original=True)
         expected = pd.DataFrame([
             [1, "pageview",  "raw",         "2021-10-26 12:00"],
             [1, "event_new", "group_alias", "2021-10-26 12:02"],
@@ -128,7 +116,7 @@ class TestGroupEventsGraph:
             event_name="event_new",
             event_type="group_alias",
             filter=_filter,
-        ))
+        ), return_with_original=True)
         expected = pd.DataFrame([
             [1, "pageview",        "raw", "2021-10-26 12:00"],
             [1, "cart_btn_click",  "raw", "2021-10-26 12:02"],
@@ -145,7 +133,7 @@ class TestGroupEventsGraph:
             event_name="anything",
             event_type="group_alias",
             filter=_filter,
-        ))
+        ), return_with_original=True)
         expected = pd.DataFrame([
             [1, "anything", "group_alias", "2021-10-26 12:00"],
             [1, "anything", "group_alias", "2021-10-26 12:02"],

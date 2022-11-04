@@ -10,7 +10,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
-from src.eventstream.types import EventstreamType, Relation
+from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.funnel import Funnel
 from src.utils import get_merged_col
 from src.utils.list import find_index
@@ -82,12 +82,12 @@ class Eventstream(
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]
-    __raw_data_schema: RawDataSchema
+    __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
 
     def __init__(
         self,
-        raw_data_schema: RawDataSchema,
+        raw_data_schema: RawDataSchemaType,
         raw_data: pd.DataFrame | pd.Series[Any],
         schema: EventstreamSchema | None = None,
         prepare: bool = True,

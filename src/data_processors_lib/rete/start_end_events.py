@@ -4,7 +4,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
-from src.eventstream.eventstream import Eventstream
+from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
 
 
@@ -18,7 +18,9 @@ class StartEndEvents(DataProcessor):
     def __init__(self, params: StartEndEventsParams) -> None:
         super().__init__(params=params)
 
-    def apply(self, eventstream: Eventstream) -> Eventstream:
+    def apply(self, eventstream: EventstreamType) -> EventstreamType:
+        from src.eventstream.eventstream import Eventstream
+
         events: DataFrame = eventstream.to_dataframe(copy=True)
         user_col = eventstream.schema.user_id
         time_col = eventstream.schema.event_timestamp

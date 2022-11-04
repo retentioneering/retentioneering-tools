@@ -6,15 +6,15 @@ import pandas as pd
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
-from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
+from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
 from src.widget.widgets import ListOfString, ReteFunction
 
 EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
-def _default_func_positive(eventstream: Eventstream, positive_target_events: list[str]) -> pd.DataFrame:
+def _default_func_positive(eventstream: EventstreamType, positive_target_events: list[str]) -> pd.DataFrame:
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
@@ -40,11 +40,13 @@ class PositiveTarget(DataProcessor):
     def __init__(self, params: PositiveTargetParams):
         super().__init__(params=params)
 
-    def apply(self, eventstream: Eventstream) -> Eventstream:
+    def apply(self, eventstream: EventstreamType) -> EventstreamType:
+        from src.eventstream.eventstream import Eventstream
+
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 
-        positive_function: Callable[[Eventstream, list[str]], pd.DataFrame] = self.params.positive_function
+        positive_function: Callable[[EventstreamType, list[str]], pd.DataFrame] = self.params.positive_function
         positive_target_events = self.params.positive_target_events
 
         positive_targets = positive_function(eventstream, positive_target_events)

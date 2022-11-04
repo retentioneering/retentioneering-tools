@@ -472,11 +472,15 @@ class TestPGraphExportImport:
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n"
                             "\n"
-                            "    negative_events_index = "
+                            "    negative_events_index"
+                            " = (\n"
+                            "        "
                             "df[df[event_col].isin(negative_target_events)].groupby"
-                            "(user_col)[time_col].idxmin()\n"
+                            "(user_col)[time_col].idxmin()  # type: ignore\n"
+                            "    )\n"
                             "\n"
-                            "    return df.iloc[negative_events_index]\n",
+                            "    return df.iloc[negative_events_index]  "
+                            "# type: ignore\n",
                         },
                     },
                 },

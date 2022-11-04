@@ -1,20 +1,16 @@
 from __future__ import annotations
 
-from typing import Any, Callable, List
+from typing import Callable, List
 
 import pandas as pd
-from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
 from src.widget.widgets import ListOfString, ReteFunction
 
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
-
-def _default_func_positive(eventstream: Eventstream, positive_target_events: list[str]) -> pd.DataFrame:
+def _default_func_positive(eventstream: Eventstream, positive_target_events: List[str]) -> pd.DataFrame:
     """
     Filters rows with target events from the input eventstream.
 
@@ -23,7 +19,7 @@ def _default_func_positive(eventstream: Eventstream, positive_target_events: lis
     eventstream : Eventstream
         Source eventstream or output from previous nodes.
 
-    positive_target_events : list[str]
+    positive_target_events : List[str]
         Condition for eventstream filtering.
         Each event from that list is associated with a conversion goal of the user behaviour in the product.
         If there are several target events in user path - the event with minimum timestamp is taken.
@@ -63,7 +59,7 @@ class PositiveTarget(DataProcessor):
 
     Parameters
     ----------
-    positive_target_events : List(str)
+    positive_target_events : List[str]
         Each event from that list is associated with a conversional user behaviour in the product.
         If there are several target events in user path - the event with minimum timestamp taken.
 
@@ -81,9 +77,6 @@ class PositiveTarget(DataProcessor):
         | positive_target_RAW_EVENT_NAME | positive_target | min(positive_target_events) |
         +--------------------------------+-----------------+-----------------------------+
 
-
-    See Also
-    -------
     """
 
     params: PositiveTargetParams

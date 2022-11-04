@@ -35,7 +35,7 @@ class SplitSessions(DataProcessor):
 
     Parameters
     ----------
-    session_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`)  # type: ignore
+    session_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`)
         Threshold value and its unit of measure.
         ``session_start`` and ``session_end`` events are always placed before the first and after the last event
         in each user's path.

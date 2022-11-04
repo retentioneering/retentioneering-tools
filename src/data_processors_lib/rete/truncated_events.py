@@ -63,6 +63,11 @@ class TruncatedEvents(DataProcessor):
     See Also
     -------
     Hists
+
+    Raises
+    ------
+    ValueError
+        If both of ``left_truncated_cutoff`` and ``right_truncated_cutoff`` are empty.
     """
 
     params: TruncatedEventsParams

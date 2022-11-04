@@ -49,13 +49,6 @@ class TruncatePath(DataProcessor):
     If user path doesn't contain events from ``drop_before`` and ``drop_after`` parameters - than its
     path does not change.
 
-    See Also
-    -------
-
-    Examples
-    -------
-
-
     """
 
     params: TruncatePathParams

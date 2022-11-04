@@ -6,6 +6,8 @@
 
 # -- Path setup --------------------------------------------------------------
 
+import datetime
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -17,9 +19,10 @@ sys.path.insert(0, os.path.abspath("../.."))
 
 
 # -- Project information -----------------------------------------------------
+actual_year = datetime.datetime.now().year
 
 project = "Retentioneering"
-copyright = '2020, "Data Driven Lab" LLC'
+copyright = f'2018-{actual_year}, "Data Driven Lab" LLC'
 author = '"Data Driven Lab" LLC'
 
 # The short X.Y version
@@ -65,7 +68,6 @@ htmlhelp_basename = "RetentioneeringToolsdoc"
 
 # Add any paths that contain _templates here, relative to this directory.
 templates_path = ["_templates"]
-
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #

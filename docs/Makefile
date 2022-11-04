@@ -18,35 +18,3 @@ help:
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
-
-#------------------------------------------------------------------------------
-# Basic Sphinx generation rules for different formats
-#------------------------------------------------------------------------------
-
-html-build: generate
-	mkdir -p build/html build/doctrees
-	$(PYTHON) preprocess.py
-ifeq (, $(shell which $(DOXYGEN)))
-	@echo "Unable to find 'Doxygen:$(DOXYGEN)', skip generating C/C++ API from comment blocks."
-else
-	$(DOXYGEN) build/doxygen/Doxyfile
-endif
-	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) build/html $(FILES)
-	$(PYTHON) postprocess.py html build/html/*.html
-	@echo
-	@echo "Build finished. The HTML pages are in build/html."
-
-htmlhelp: generate version-check
-	mkdir -p build/htmlhelp build/doctrees
-	$(SPHINXBUILD) -b htmlhelp $(ALLSPHINXOPTS) build/htmlhelp $(FILES)
-	@echo
-	@echo "Build finished; now you can run HTML Help Workshop with the" \
-	      ".hhp project file in build/htmlhelp."
-
-htmlhelp-build: htmlhelp build/htmlhelp/numpy.chm
-%.chm: %.hhp
-	-hhc.exe $^
-
-qthelp: generate version-check
-	mkdir -p build/qthelp build/doctrees
-	$(SPHINXBUILD) -b qthelp $(ALLSPHINXOPTS) build/qthelp $(FILES)

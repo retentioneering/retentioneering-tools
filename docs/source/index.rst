@@ -1,8 +1,3 @@
-.. rete-tools documentation master file, created by
-   sphinx-quickstart on Mon Oct 24 17:37:11 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 
 .. title:: Retentioneering Tools
 
@@ -34,7 +29,7 @@ Contents
    :caption: API Reference:
    :maxdepth: 2
 
-   API REFERENCE <api_reference.rst>
+   API Reference <api_reference.rst>
    Github <>
 
 

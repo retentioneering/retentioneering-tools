@@ -1,5 +1,5 @@
 
-RETE CORE TOOLS
+Core Tools
 ======================================
 
 funnel

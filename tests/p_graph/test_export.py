@@ -465,8 +465,8 @@ class TestPGraphExportImport:
                         "name": "NegativeTarget",
                         "values": {
                             "negative_target_events": ["event3", "event2"],
-                            "negative_function": "def _default_func_negative(eventstream, "
-                            "negative_target_events) -> pd.DataFrame:\n"
+                            "negative_function": "def _default_func_negative(eventstream: Eventstream, "
+                            "negative_target_events: List[str]) -> pd.DataFrame:\n"
                             '    """\n'
                             "    Filters rows with target events from the input eventstream.\n"
                             "\n"
@@ -475,7 +475,7 @@ class TestPGraphExportImport:
                             "    eventstream : Eventstream\n"
                             "        Source eventstream or output from previous nodes.\n"
                             "\n"
-                            "    negative_target_events : list[str]\n"
+                            "    negative_target_events : List[str]\n"
                             "        Each event from that list is associated with the bad result (scenario)\n"
                             "        of user's behaviour (experience) in the product.\n"
                             "        If there are several target events in user path - the event with minimum "
@@ -491,11 +491,10 @@ class TestPGraphExportImport:
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n"
                             "\n"
-                            "    negative_events_index = "
-                            "df[df[event_col].isin(negative_target_events)].groupby"
-                            "(user_col)[time_col].idxmin()\n"
-                            "\n"
-                            "    return df.iloc[negative_events_index]\n",
+                            "    negative_events_index = (\n"
+                            "        df[df[event_col].isin(negative_target_events)]."
+                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
+                            "    return df.iloc[negative_events_index]  # type: ignore\n",
                         },
                     },
                 },
@@ -595,7 +594,7 @@ class TestPGraphExportImport:
                         "values": {
                             "positive_target_events": ["event3", "event2"],
                             "positive_function": "def _default_func_positive("
-                            "eventstream: Eventstream, positive_target_events: list[str]) "
+                            "eventstream: Eventstream, positive_target_events: List[str]) "
                             "-> pd.DataFrame:\n"
                             '    """\n'
                             "    Filters rows with target events from the input eventstream.\n"
@@ -605,7 +604,7 @@ class TestPGraphExportImport:
                             "    eventstream : Eventstream\n"
                             "        Source eventstream or output from previous nodes.\n"
                             "\n"
-                            "    positive_target_events : list[str]\n"
+                            "    positive_target_events : List[str]\n"
                             "        Condition for eventstream filtering.\n"
                             "        Each event from that list is associated with a conversion goal "
                             "of the user behaviour in the product.\n"
@@ -669,7 +668,7 @@ class TestPGraphExportImport:
                         "values": {
                             "positive_target_events": ["event3", "event2"],
                             "positive_function": "def _default_func_positive("
-                            "eventstream: Eventstream, positive_target_events: list[str]) "
+                            "eventstream: Eventstream, positive_target_events: List[str]) "
                             "-> pd.DataFrame:\n"
                             '    """\n'
                             "    Filters rows with target events from the input eventstream.\n"
@@ -679,7 +678,7 @@ class TestPGraphExportImport:
                             "    eventstream : Eventstream\n"
                             "        Source eventstream or output from previous nodes.\n"
                             "\n"
-                            "    positive_target_events : list[str]\n"
+                            "    positive_target_events : List[str]\n"
                             "        Condition for eventstream filtering.\n"
                             "        Each event from that list is associated with a conversion goal "
                             "of the user behaviour in the product.\n"

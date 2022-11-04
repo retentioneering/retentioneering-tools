@@ -40,6 +40,11 @@ class DeleteUsersByPathLength(DataProcessor):
     -------
     Eventstream
         Eventstream with events that should be deleted from input Eventstream.
+
+    Raises
+    ------
+    ValueError
+        If both of ``events_num`` and ``cutoff`` are empty or both are given.
     """
 
     params: DeleteUsersByPathLengthParams

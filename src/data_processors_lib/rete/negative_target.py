@@ -1,20 +1,16 @@
 from __future__ import annotations
 
-from typing import Any, Callable, List
+from typing import Callable, List
 
 import pandas as pd
-from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
 from src.widget.widgets import ListOfString, ReteFunction
 
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
-
-def _default_func_negative(eventstream, negative_target_events) -> pd.DataFrame:
+def _default_func_negative(eventstream: Eventstream, negative_target_events: List[str]) -> pd.DataFrame:
     """
     Filters rows with target events from the input eventstream.
 
@@ -23,7 +19,7 @@ def _default_func_negative(eventstream, negative_target_events) -> pd.DataFrame:
     eventstream : Eventstream
         Source eventstream or output from previous nodes.
 
-    negative_target_events : list[str]
+    negative_target_events : List[str]
         Each event from that list is associated with the bad result (scenario)
         of user's behaviour (experience) in the product.
         If there are several target events in user path - the event with minimum timestamp is taken.
@@ -38,9 +34,11 @@ def _default_func_negative(eventstream, negative_target_events) -> pd.DataFrame:
     event_col = eventstream.schema.event_name
     df = eventstream.to_dataframe()
 
-    negative_events_index = df[df[event_col].isin(negative_target_events)].groupby(user_col)[time_col].idxmin()
+    negative_events_index = (
+        df[df[event_col].isin(negative_target_events)].groupby(user_col)[time_col].idxmin()  # type: ignore
+    )
 
-    return df.iloc[negative_events_index]
+    return df.iloc[negative_events_index]  # type: ignore
 
 
 class NegativeTargetParams(ParamsModel):
@@ -61,7 +59,7 @@ class NegativeTarget(DataProcessor):
 
     Parameters
     ----------
-    negative_target_events : List(str)
+    negative_target_events : List[str]
         Each event from that list is associated with the negative user behaviour in the product.
         If there are several target events in user path - the event with minimum timestamp is taken.
 
@@ -79,8 +77,6 @@ class NegativeTarget(DataProcessor):
         | negative_target_RAW_EVENT_NAME | negative_target | min(negative_target_events) |
         +--------------------------------+-----------------+-----------------------------+
 
-    See Also
-    -------
     """
 
     params: NegativeTargetParams

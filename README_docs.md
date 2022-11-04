@@ -33,6 +33,12 @@ Parameters
     Note
     -------
         Надо выработать правила для этого блока
+
+    Raises
+    ------
+        Описание, когда выбрасывается ошибка.
+        Пока не получилось сделать список внутри этого блока
+        Парсится только первый буллит или номер пункта
 """
 ```
 ---
@@ -54,7 +60,10 @@ Parameters
 ```commandline
 pip install sphinx
 ```
-
+Установить тему `sphinx-rtd-theme`
+```commandline
+pip install sphinx-rtd-theme
+```
 ```commandline
 cd docs
 ```

@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Callable, List, Literal, Union
+from typing import List, Literal, Union
 
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
 from src.widget.widgets import ListOfIntNewUsers
-
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
 
 class NewUsersParams(ParamsModel):
@@ -29,7 +26,7 @@ class NewUsersEvents(DataProcessor):
 
     Parameters
     ----------
-    new_users_list : list of (int or str) or `all`
+    new_users_list : List[int], List[str] or `all`
 
         If the `list of user_ids` is given - ``new_user`` event will be created for each user from the list.
         Event ``existing_user`` will be added to the rest of the users.

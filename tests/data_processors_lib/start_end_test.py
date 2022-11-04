@@ -75,6 +75,8 @@ class TestStartEndEventsGraph:
 
         assert res.compare(correct_result).shape == (0, 0)
 
+
+class TestStartEndEventsHelper:
     def test_start_end_events_helper(self) -> None:
         source_df = pd.DataFrame(
             [

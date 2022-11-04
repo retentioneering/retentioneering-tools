@@ -8,8 +8,8 @@ from ..types import EventstreamType
 class TruncatePathHelperMixin:
     def truncate_path(
         self,
-        drop_before: Optional[str],
-        drop_after: Optional[str],
+        drop_before: Optional[str] = None,
+        drop_after: Optional[str] = None,
         occurrence_before: Literal["first", "last"] = "first",
         occurrence_after: Literal["first", "last"] = "first",
         shift_before: int = 0,

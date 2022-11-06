@@ -168,5 +168,4 @@ class TestTruncatedEventsGraph(GraphTestBase):
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp"],
         )
-        print(actual[expected.columns].to_string())
         assert actual[expected.columns].compare(expected).shape == (0, 0)

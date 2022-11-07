@@ -46,7 +46,6 @@ class ArrayWidget:
     name: str
     optional: bool
     default: str = ""
-    type: str = ""
     widget: str = "array"
 
     @classmethod
@@ -123,6 +122,66 @@ class ReteFunction:
         new_func_type = types.FunctionType(code_obj.co_consts[2], {})
         cls._source_code = value
         return new_func_type
+
+
+@dataclass
+class ListOfInt:
+    name: str
+    optional: bool
+    widget: str = "list_of_int"
+
+    @classmethod
+    def from_dict(cls, **kwargs) -> "ListOfInt":
+        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
+
+    @classmethod
+    def _serialize(cls, value: list[int] | None) -> list[int] | None:
+        return value
+
+    @classmethod
+    def _parse(cls, value: list[int]) -> list[int] | None:  # type: ignore
+        return value
+
+
+@dataclass
+class ListOfIntNewUsers:
+    # @TODO: remove this widget and make his functionality in ListOfInt
+    name: str
+    optional: bool
+    params: list[str]
+    widget: str = "list_of_int"
+
+    @classmethod
+    def from_dict(cls, **kwargs) -> "ListOfIntNewUsers":
+        kwargs["params"] = {"disable_value": "all"}
+        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
+
+    @classmethod
+    def _serialize(cls, value: list[int] | None) -> list[int] | None:
+        return value
+
+    @classmethod
+    def _parse(cls, value: list[int]) -> list[int] | None:  # type: ignore
+        return value
+
+
+@dataclass
+class ListOfString:
+    name: str
+    optional: bool
+    widget: str = "list_of_string"
+
+    @classmethod
+    def from_dict(cls, **kwargs) -> "ListOfString":
+        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
+
+    @classmethod
+    def _serialize(cls, value: list[str] | None) -> list[str] | None:
+        return value
+
+    @classmethod
+    def _parse(cls, value: list[str]) -> list[str] | None:  # type: ignore
+        return value
 
 
 WIDGET_TYPE = Union[

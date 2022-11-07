@@ -104,30 +104,6 @@ class TestSplitSessionsGraph(GraphTestBase):
         event_timestamp="timestamp",
     )
 
-    def test_params_model__incorrect_datetime_unit(self):
-        with pytest.raises(ValidationError):
-            p = SplitSessionsParams(session_cutoff=(1, "xxx"))
-
-
-class TestSplitSessionsGraph:
-    def test_split_sesssion(self):
-        source_df = pd.DataFrame(
-            [
-                [111, "event1", "2022-01-01 00:00:00"],
-                [111, "event2", "2022-01-01 00:01:00"],
-                [111, "event3", "2022-01-01 00:33:00"],
-                [111, "event4", "2022-01-01 00:34:00"],
-                [222, "event1", "2022-01-01 00:30:00"],
-                [222, "event2", "2022-01-01 00:31:00"],
-                [222, "event3", "2022-01-01 01:01:00"],
-                [333, "event1", "2022-01-01 01:00:00"],
-                [333, "event2", "2022-01-01 01:01:00"],
-                [333, "event3", "2022-01-01 01:32:00"],
-                [333, "event4", "2022-01-01 01:33:00"],
-            ],
-            columns=["user_id", "event", "timestamp"],
-        )
-
     def test_split_sesssion_graph_1(self) -> None:
         actual = self._apply(
             SplitSessionsParams(
@@ -199,19 +175,7 @@ class TestSplitSessionsGraph:
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp", "session_id"],
         )
-
-        graph = PGraph(source_stream=stream)
-        params = SplitSessionsParams(session_cutoff=(30, "m"), session_col="session_id", mark_truncated=True)
-        splitted_sessions = EventsNode(SplitSessions(params=params))
-        graph.add_node(node=splitted_sessions, parents=[graph.root])
-        res = (
-            graph.combine(node=splitted_sessions)
-            .to_dataframe()[correct_result_columns]
-            .sort_values(["user_id", "event_timestamp"])
-            .reset_index(drop=True)
-        )
-
-        assert res.compare(correct_result).shape == (0, 0)
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
 class TestSplitSessionsHelper:
@@ -372,4 +336,3 @@ class TestSplitSessionsHelper:
                 .sort_values(["user_id", "event_timestamp"])
                 .reset_index(drop=True)
             )
-        assert actual[expected.columns].compare(expected).shape == (0, 0)

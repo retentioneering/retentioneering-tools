@@ -5,10 +5,17 @@ import pandas as pd
 from src.data_processors_lib.rete import CollapseLoops, CollapseLoopsParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
-from tests.data_processors_lib.common import apply_processor, apply_processor_with_graph
+from tests.data_processors_lib.common import (
+    ApplyTestBase,
+    GraphTestBase,
+    apply_processor,
+    apply_processor_with_graph,
+)
 
 
-class TestCollapseLoops:
+class TestCollapseLoops(ApplyTestBase):
+
+    _Processor = CollapseLoops
     _source_df = pd.DataFrame(
         [
             [1, "event1", "2022-01-01 00:01:00"],
@@ -28,14 +35,6 @@ class TestCollapseLoops:
         event_name="event",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: CollapseLoopsParams) -> pd.DataFrame:
-        original, actual = apply_processor(
-            CollapseLoops(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_collapse_loops_apply__suffix_count__agg_min(self):
         actual = self._apply(
@@ -104,7 +103,8 @@ class TestCollapseLoops:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestCollapseLoopsGraph:
+class TestCollapseLoopsGraph(GraphTestBase):
+    _Processor = CollapseLoops
     _source_df = pd.DataFrame(
         [
             [1, "event1", "2022-01-01 00:01:00"],
@@ -124,14 +124,6 @@ class TestCollapseLoopsGraph:
         event_name="event",
         event_timestamp="timestamp",
     )
-
-    def _apply(self, params: CollapseLoopsParams) -> pd.DataFrame:
-        original, actual = apply_processor_with_graph(
-            CollapseLoops(params),
-            self._source_df,
-            raw_data_schema=self._raw_data_schema,
-        )
-        return actual
 
     def test_collapse_loops_graph__suffix_count__agg_min(self):
         actual = self._apply(

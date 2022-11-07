@@ -83,3 +83,12 @@ open index.html
 ```commandline
 make clean
 ```
+
+## Экспорт картинок в html для раздела "tools description"
+
+```
+import plotly.express as px
+
+fig = funnel.draw_plot()
+fig.write_html("funnel_0.html")
+```

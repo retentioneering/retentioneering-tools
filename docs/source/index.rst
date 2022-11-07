@@ -17,7 +17,7 @@ Contents
    :maxdepth: 2
 
    About eventstream <eventstream.rst>
-   Funnel analysis <funnel.rst>
+   Funnel analysis <funnel_tutorial.rst>
 
 .. toctree::
    :caption: Tutorial:

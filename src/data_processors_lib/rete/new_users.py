@@ -1,25 +1,56 @@
 from __future__ import annotations
 
-from typing import Any, Callable, List, Literal, Union
+from typing import List, Literal, Union
 
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema
 from src.params_model import ParamsModel
 from src.widget.widgets import ListOfIntNewUsers
 
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
-
 
 class NewUsersParams(ParamsModel):
-    new_users_list: Union[List[int], List[str], Literal["all"]]
+    """
+    Class with parameters for class :py:func:`NewUsersEvents`
+    """
 
+    new_users_list: Union[List[int], List[str], Literal["all"]]
     _widgets = {"new_users_list": ListOfIntNewUsers}
 
 
 class NewUsersEvents(DataProcessor):
+    """
+    Creates new synthetic event for each user:
+    ``new_user`` or ``existing_user``
+
+    Parameters
+    ----------
+    new_users_list : List[int], List[str] or `all`
+
+        If the `list of user_ids` is given - ``new_user`` event will be created for each user from the list.
+        Event ``existing_user`` will be added to the rest of the users.
+
+        If ``all`` - ``new_user`` synthetic event will be created for all users from the input Eventstream
+
+    Returns
+    -------
+    Eventstream
+        Eventstream with new synthetic events one for each user:
+
+        +-----------------+-----------------+------------------------+
+        | **event_name**  | **event_type**  | **timestamp**          |
+        +-----------------+-----------------+------------------------+
+        | new_user        | new_user        | first_event            |
+        +-----------------+-----------------+------------------------+
+        | existing_user   | existing_user   | first_event            |
+        +-----------------+-----------------+------------------------+
+
+    See Also
+    -------
+
+    """
+
     params: NewUsersParams
 
     def __init__(self, params: NewUsersParams):

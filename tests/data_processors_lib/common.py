@@ -1,5 +1,6 @@
 import pandas as pd
 
+from src.params_model.params_model import ParamsModel
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import (
@@ -45,3 +46,29 @@ def apply_processor_with_graph(data_processor: DataProcessor, source_df: pd.Data
     result = graph.combine(node=node)
     result_df = result.to_dataframe().reset_index(drop=True)
     return original_df, result_df
+
+
+class ApplyTestBase:
+    def _apply(self, params: ParamsModel, source_df: pd.DataFrame=None, return_with_original=False):
+        original, actual = apply_processor(
+            self._Processor(params),
+            self._source_df if source_df is None else source_df,
+            raw_data_schema=self._raw_data_schema,
+        )
+        if return_with_original:
+            return original, actual
+        else:
+            return actual
+
+
+class GraphTestBase:
+    def _apply(self, params: ParamsModel, source_df: pd.DataFrame=None, return_with_original=False):
+        original, actual = apply_processor_with_graph(
+            self._Processor(params),
+            self._source_df if source_df is None else source_df,
+            raw_data_schema=self._raw_data_schema,
+        )
+        if return_with_original:
+            return original, actual
+        else:
+            return actual

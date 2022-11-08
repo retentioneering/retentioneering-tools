@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-from typing import Callable, List
+from typing import Any, Callable, List
 
 import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
-from src.eventstream.eventstream import Eventstream
+from src.eventstream.schema import EventstreamSchema
+from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
 from src.widget.widgets import ListOfString, ReteFunction
 
+EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchema], Any]
 
-def _default_func_negative(eventstream: Eventstream, negative_target_events: List[str]) -> pd.DataFrame:
+
+def _default_func_negative(eventstream: EventstreamType, negative_target_events: List[str]) -> pd.DataFrame:
     """
     Filters rows with target events from the input eventstream.
 
@@ -84,7 +87,9 @@ class NegativeTarget(DataProcessor):
     def __init__(self, params: NegativeTargetParams):
         super().__init__(params=params)
 
-    def apply(self, eventstream: Eventstream) -> Eventstream:
+    def apply(self, eventstream: EventstreamType) -> EventstreamType:
+        from src.eventstream.eventstream import Eventstream
+
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 

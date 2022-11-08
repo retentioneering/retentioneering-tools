@@ -99,7 +99,10 @@ class TestFilterEventsGraph(GraphTestBase):
             return df[schema.event_name].isin([])
 
         original, actual = self._apply(FilterEventsParams(filter=_filter), return_with_original=True)
-        expected = pd.DataFrame([], columns=["user_id", "event_name", "event_timestamp"])
+        expected = pd.DataFrame(
+            [],
+            columns=["user_id", "event_name", "event_timestamp"],
+        )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_filter_events_graph_3_all_filtered(self) -> None:

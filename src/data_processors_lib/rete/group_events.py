@@ -3,11 +3,10 @@ from typing import Any, Callable, Optional
 import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
-from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema
+from src.eventstream.types import EventstreamSchemaType, EventstreamType
 from src.params_model import ParamsModel
 
-EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchema], Any]
+EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchemaType], Any]
 
 
 class GroupEventsParams(ParamsModel):
@@ -63,7 +62,9 @@ class GroupEvents(DataProcessor):
     def __init__(self, params: GroupEventsParams) -> None:
         super().__init__(params=params)
 
-    def apply(self, eventstream: Eventstream) -> Eventstream:
+    def apply(self, eventstream: EventstreamType) -> EventstreamType:
+        from src.eventstream.eventstream import Eventstream
+
         event_name = self.params.event_name
         filter_: Callable = self.params.filter
         event_type = self.params.event_type

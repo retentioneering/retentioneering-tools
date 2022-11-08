@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection
-from typing import Any, List, Literal, Optional
+from typing import Any, List, Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.eventstream.types import EventstreamType, Relation
 from src.tooling.funnel import Funnel
+from src.tooling.sankey import Sankey
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
@@ -19,7 +20,7 @@ IndexOrder = List[Optional[str]]
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
     "profile",
-    "start",
+    "path_start",
     "new_user",
     "existing_user",
     "truncated_left",
@@ -39,7 +40,7 @@ DEFAULT_INDEX_ORDER: IndexOrder = [
     "truncated_right",
     "absent_user",
     "lost_user",
-    "end",
+    "path_end",
 ]
 
 RAW_COL_PREFIX = "raw_"
@@ -388,3 +389,25 @@ class Eventstream(EventstreamType):
         )
         plot = funnel.draw_plot()
         return plot
+
+    def step_sankey(
+        self,
+        max_steps: int | None = 5,
+        thresh: Union[int, float] | None = 0.0,
+        sorting: list | None = None,
+        target: str | None = None,
+        autosize: bool | None = True,
+        width: int | None = None,
+        height: int | None = None,
+        as_data_graph: bool = False,
+    ) -> tuple[pd.DataFrame | None, pd.DataFrame | None, pd.DataFrame | None]:
+        return Sankey(
+            eventstream=self,
+            max_steps=max_steps,
+            thresh=thresh,
+            sorting=sorting,
+            target=target,
+            autosize=autosize,
+            width=width,
+            height=height,
+        ).plot(as_data_graph=as_data_graph)

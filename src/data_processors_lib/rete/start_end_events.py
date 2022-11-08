@@ -26,13 +26,13 @@ class StartEndEvents(DataProcessor):
         event_col = eventstream.schema.event_name
 
         matched_events_start: DataFrame = events.groupby(user_col, as_index=False)[time_col].min()  # type: ignore
-        matched_events_start[type_col] = "start"
-        matched_events_start[event_col] = "start"
+        matched_events_start[type_col] = "path_start"
+        matched_events_start[event_col] = "path_start"
         matched_events_start["ref"] = None
 
         matched_events_end: DataFrame = events.groupby(user_col, as_index=False)[time_col].max()  # type: ignore
-        matched_events_end[type_col] = "end"
-        matched_events_end[event_col] = "end"
+        matched_events_end[type_col] = "path_end"
+        matched_events_end[event_col] = "path_end"
         matched_events_end["ref"] = None
 
         matched_events = pd.concat([matched_events_start, matched_events_end])

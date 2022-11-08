@@ -465,7 +465,7 @@ class TestPGraphExportImport:
                         "name": "NegativeTarget",
                         "values": {
                             "negative_target_events": ["event3", "event2"],
-                            "negative_function": "def _default_func_negative(eventstream: Eventstream, "
+                            "negative_function": "def _default_func_negative(eventstream: EventstreamType, "
                             "negative_target_events: List[str]) -> pd.DataFrame:\n"
                             '    """\n'
                             "    Filters rows with target events from the input eventstream.\n"
@@ -594,7 +594,7 @@ class TestPGraphExportImport:
                         "values": {
                             "positive_target_events": ["event3", "event2"],
                             "positive_function": "def _default_func_positive("
-                            "eventstream: Eventstream, positive_target_events: List[str]) "
+                            "eventstream: EventstreamType, positive_target_events: list[str]) "
                             "-> pd.DataFrame:\n"
                             '    """\n'
                             "    Filters rows with target events from the input eventstream.\n"
@@ -668,7 +668,7 @@ class TestPGraphExportImport:
                         "values": {
                             "positive_target_events": ["event3", "event2"],
                             "positive_function": "def _default_func_positive("
-                            "eventstream: Eventstream, positive_target_events: List[str]) "
+                            "eventstream: EventstreamType, positive_target_events: list[str]) "
                             "-> pd.DataFrame:\n"
                             '    """\n'
                             "    Filters rows with target events from the input eventstream.\n"

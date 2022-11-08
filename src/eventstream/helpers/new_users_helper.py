@@ -3,10 +3,9 @@ from __future__ import annotations
 from typing import List, Literal, Union
 
 from ..types import EventstreamType
-from .typing import HelperProtocol
 
 
-class NewUsersHelperMixin(HelperProtocol):
+class NewUsersHelperMixin:
     def add_new_users(self, new_users_list: Union[List[int], Literal["all"]]) -> EventstreamType:
 
         # avoid circular import

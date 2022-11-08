@@ -8,7 +8,7 @@ from IPython.display import HTML, DisplayHandle, display
 
 from src.backend import JupyterServer, ServerManager
 from src.backend.callback import list_dataprocessor, list_dataprocessor_mock
-from src.eventstream.eventstream import Eventstream
+from src.eventstream.types import EventstreamType
 from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode, build_node
 from src.templates import PGraphRenderer
 
@@ -36,7 +36,7 @@ class PGraph:
     __server_manager: ServerManager | None = None
     __server: JupyterServer | None = None
 
-    def __init__(self, source_stream: Eventstream) -> None:
+    def __init__(self, source_stream: EventstreamType) -> None:
         self.root = SourceNode(source=source_stream)
         self._ngraph = networkx.DiGraph()
         self._ngraph.add_node(self.root)
@@ -56,7 +56,7 @@ class PGraph:
         for parent in parents:
             self._ngraph.add_edge(parent, node)
 
-    def combine(self, node: Node) -> Eventstream:
+    def combine(self, node: Node) -> EventstreamType:
         self.__validate_not_found([node])
 
         if isinstance(node, SourceNode):
@@ -67,16 +67,16 @@ class PGraph:
 
         return self.combine_merge_node(node)
 
-    def combine_events_node(self, node: EventsNode) -> Eventstream:
+    def combine_events_node(self, node: EventsNode) -> EventstreamType:
         parent = self.get_events_node_parent(node)
         parent_events = self.combine(parent)
         events = node.processor.apply(parent_events)
         parent_events.join_eventstream(events)
         return parent_events
 
-    def combine_merge_node(self, node: MergeNode) -> Eventstream:
+    def combine_merge_node(self, node: MergeNode) -> EventstreamType:
         parents = self.get_merge_node_parents(node)
-        curr_eventstream: Optional[Eventstream] = None
+        curr_eventstream: Optional[EventstreamType] = None
 
         for parent_node in parents:
             if curr_eventstream is None:
@@ -87,7 +87,7 @@ class PGraph:
 
         node.events = curr_eventstream
 
-        return cast(Eventstream, curr_eventstream)
+        return cast(EventstreamType, curr_eventstream)
 
     def get_parents(self, node: Node) -> List[Node]:
         self.__validate_not_found([node])
@@ -111,7 +111,7 @@ class PGraph:
 
         return parents[0]
 
-    def __validate_schema(self, eventstream: Eventstream) -> bool:
+    def __validate_schema(self, eventstream: EventstreamType) -> bool:
         return self.root.events.schema.is_equal(eventstream.schema)
 
     def __valiate_already_exists(self, node: Node) -> None:

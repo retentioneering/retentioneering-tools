@@ -10,12 +10,25 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
-from src.eventstream.types import EventstreamType, Relation
+from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.funnel import Funnel
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
-from .helpers import NewUsersHelperMixin, StartEndHelperMixin
+from .helpers import (
+    CollapseLoopsHelperMixin,
+    DeleteUsersByPathLengthHelperMixin,
+    FilterHelperMixin,
+    GroupHelperMixin,
+    LostUsersHelperMixin,
+    NegativeTargetHelperMixin,
+    NewUsersHelperMixin,
+    PositiveTargetHelperMixin,
+    SplitSessionsHelperMixin,
+    StartEndHelperMixin,
+    TruncatedEventsHelperMixin,
+    TruncatePathHelperMixin,
+)
 
 IndexOrder = List[Optional[str]]
 
@@ -51,16 +64,30 @@ DELETE_COL_NAME = "_deleted"
 # TODO проработать резервирование колонок
 
 
-class Eventstream(StartEndHelperMixin, NewUsersHelperMixin, EventstreamType):
+class Eventstream(
+    CollapseLoopsHelperMixin,
+    DeleteUsersByPathLengthHelperMixin,
+    FilterHelperMixin,
+    GroupHelperMixin,
+    LostUsersHelperMixin,
+    NegativeTargetHelperMixin,
+    NewUsersHelperMixin,
+    PositiveTargetHelperMixin,
+    SplitSessionsHelperMixin,
+    StartEndHelperMixin,
+    TruncatedEventsHelperMixin,
+    TruncatePathHelperMixin,
+    EventstreamType,
+):
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]
-    __raw_data_schema: RawDataSchema
+    __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
 
     def __init__(
         self,
-        raw_data_schema: RawDataSchema,
+        raw_data_schema: RawDataSchemaType,
         raw_data: pd.DataFrame | pd.Series[Any],
         schema: EventstreamSchema | None = None,
         prepare: bool = True,

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import rcParams
+from numpy import ndarray
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.mixture import GaussianMixture
@@ -21,12 +22,13 @@ PlotType = Literal["cluster_bar"]
 
 class Clusters:
     __eventstream: EventstreamType
-    __clusters_list: list[int]
+    __clusters_list: list[int] | ndarray
     segments: Segments | None
 
-    def __init__(self, eventstream: EventstreamType):
+    def __init__(self, eventstream: EventstreamType, user_clusters: dict[str | int, list[int]] | None = None):
         self.__eventstream = eventstream
         self.segments = None
+        self.user_clusters = user_clusters
 
     def __get_vectorizer(
         self,
@@ -44,8 +46,10 @@ class Clusters:
             )
 
     def _extract_features(
-        self, eventstream: EventstreamType, feature_type: FeatureType = "tfidf", ngram_range: NgramRange = (1, 1)
+        self, eventstream: EventstreamType, feature_type: FeatureType = "tfidf", ngram_range: NgramRange | None = None
     ):
+        if ngram_range is None:
+            ngram_range = (1, 1)
         index_col = eventstream.schema.user_id
         event_col = eventstream.schema.event_id
         time_col = eventstream.schema.event_timestamp
@@ -100,7 +104,7 @@ class Clusters:
         return cast(pd.DataFrame, vec_data)
 
     # TODO: add save
-    def _cluster_bar(self, clusters: list[int], target: list[list[bool]], target_names: list[str]):
+    def _cluster_bar(self, clusters: list[int] | ndarray, target: list[list[bool]], target_names: list[str]):
         """
         Plots bar charts with cluster sizes and average target conversion rate.
         Parameters
@@ -156,12 +160,7 @@ class Clusters:
 
         return bar
 
-    def _kmeans(
-            self,
-            features: pd.DataFrame,
-            n_clusters: int = 8,
-            random_state: int = 0
-    ) -> np.ndarray:
+    def _kmeans(self, features: pd.DataFrame, n_clusters: int = 8, random_state: int = 0) -> np.ndarray:
 
         km = KMeans(random_state=random_state, n_clusters=n_clusters)
 
@@ -169,12 +168,7 @@ class Clusters:
 
         return cl
 
-    def _gmm(
-            self,
-            features: pd.DataFrame,
-            n_clusters: int = 8,
-            random_state: int = 0
-    ) -> np.ndarray:
+    def _gmm(self, features: pd.DataFrame, n_clusters: int = 8, random_state: int = 0) -> np.ndarray:
 
         km = GaussianMixture(random_state=random_state, n_components=n_clusters)
 
@@ -188,17 +182,35 @@ class Clusters:
         ngram_range: NgramRange = (1, 1),
         n_clusters: int = 8,
         method: Method = "kmeans",
-        plot_type: PlotType | None = None,
-        refit_cluster: bool | None = True,
+        refit_cluster: bool = True,
         targets: list[str] | None = None,
         vector: pd.DataFrame | None = None,
     ):
+        if self.user_clusters:
+            targets_bool = [[True] * x for x in [len(y) for y in self.user_clusters.values()]]
+            target_names: list[str] = list(map(str, list(self.user_clusters.keys())))
+        else:
+            target_names, targets_bool = self._prepare_clusters(
+                feature_type=feature_type,
+                method=method,
+                n_clusters=n_clusters,
+                ngram_range=ngram_range,
+                refit_cluster=refit_cluster,
+                targets=targets,
+                vector=vector,
+            )
+
+        return self._cluster_bar(
+            clusters=self.__clusters_list,
+            target=cast(List[List[bool]], targets_bool),  # TODO: fix types
+            target_names=target_names,
+        )
+
+    def _prepare_clusters(self, feature_type, method, n_clusters, ngram_range, refit_cluster, targets, vector):
         user_col = self.__eventstream.schema.user_id
         event_col = self.__eventstream.schema.event_id
-
         if feature_type == "external" and not isinstance(vector, pd.DataFrame):  # type: ignore
             raise ValueError("Vector is not a DataFrame!")
-
         if feature_type == "external" and vector is not None:
             # Check consistency and copy vector to features
             if np.all(np.all(vector.dtypes == "float") and vector.isna().sum().sum() == 0):
@@ -213,9 +225,7 @@ class Clusters:
                 feature_type=feature_type,
                 ngram_range=ngram_range,
             )
-
         users_ids: pd.Series = features.index.to_series()
-
         if self.segments is None or refit_cluster:
             if method == "kmeans":
                 clusters_list = self._kmeans(features=features, n_clusters=n_clusters)
@@ -236,20 +246,10 @@ class Clusters:
                 eventstream=self.__eventstream,
                 segments_df=users_clusters,
             )
-
         events = self.__eventstream.to_dataframe()
         grouped_events = events.groupby(user_col)[event_col]
-
         target_names, targets_bool = self._prepare_targets(event_col, grouped_events, targets)
-
-        if plot_type == "cluster_bar":
-            self._cluster_bar(
-                clusters=self.__clusters_list,
-                # TODO: fix types
-                target=cast(List[List[bool]], targets_bool),
-                target_names=target_names,
-            )
-        return targets_bool
+        return target_names, targets_bool
 
     def _prepare_targets(self, event_col, grouped_events, targets):
         if targets is not None:

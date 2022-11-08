@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection
-from typing import Any, List, Literal, Optional
+from typing import Any, List, Literal, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -11,11 +11,17 @@ import plotly.graph_objects as go
 
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.eventstream.types import EventstreamType, Relation
+from src.tooling.clusters import Clusters
 from src.tooling.funnel import Funnel
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
 IndexOrder = List[Optional[str]]
+FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "external"]
+NgramRange = Tuple[int, int]
+Method = Literal["kmeans", "gmm"]
+PlotType = Literal["cluster_bar"]
+
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
     "profile",
@@ -388,3 +394,25 @@ class Eventstream(EventstreamType):
         )
         plot = funnel.draw_plot()
         return plot
+
+    def create_clusters(
+        self,
+        feature_type: FeatureType = "tfidf",
+        ngram_range: NgramRange = (1, 1),
+        n_clusters: int = 8,
+        method: Method = "kmeans",
+        refit_cluster: bool = True,
+        targets: list[str] | None = None,
+        vector: pd.DataFrame | None = None,
+        user_clusters: dict[str | int, list[int]] | None = None,
+    ):
+        clusters = Clusters(eventstream=self, user_clusters=user_clusters)
+        return clusters.create_clusters(
+            feature_type=feature_type,
+            ngram_range=ngram_range,
+            n_clusters=n_clusters,
+            method=method,
+            refit_cluster=refit_cluster,
+            targets=targets,
+            vector=vector,
+        )

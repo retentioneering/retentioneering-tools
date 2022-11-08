@@ -18,14 +18,13 @@ analytics workflow. To learn how to plot basic funnels in
 Retentioneering framework let’s work through a basic example.
 
 In order to start, we need to: - ``import retentioneering``, - load
-sample dataset - create ``eventstream`` object (LINK TO EXPLANATION OF
-EVENTSTREAM)
+sample dataset - create ``eventstream`` object @TODO: Link to explanation of eventstream. dpanina
 
 .. code:: ipython3
 
     import retentioneering
     from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-
+    # @TODO: check imports in final version. dpanina
     # load sample user behavior data as a pandas dataframe:
     raw_data = pd.read_csv('simple-onlineshop.csv')
 
@@ -138,8 +137,7 @@ Stage names
 -----------
 
 If you need to group long list of events, you have two ways:
-1) return to preprocessing and use grouping data processor (See LINK TO
-PREPROCESSING)
+1) return to preprocessing and use grouping data processor (See @TODO: Link to preprocessing. dpanina)
 2) give a new name to your group just to see the plot,
 without changing your ``eventstream``
 
@@ -183,8 +181,7 @@ look at the users who move to each next stage only if earlier they were
 on all previous ones. Parameter ``sequence=True`` should be used in that
 case.
 
-In order to feel the difference - see very simple example (LINK TO API
-REFERENCE FUNNEL)
+In order to feel the difference - see very simple example (@TODO: Link to API reference funnel. dpanina)
 
 Let’s build ``closed`` funnel with ``sequence=False``.
 
@@ -312,8 +309,10 @@ users add product to cart directly from the catalog is incorrect, and
 those users appear in the ``cart`` from the others stages, not from
 ``catalog``.
 
-CLUSTERING - LINK доделать
---------------------------
+Clustering
+------------
+
+@TODO: Clustering. dpanina
 
 To understand deeper what are the common behavioral patterns for each
-graph we can plot graphs or step matrix. (LINK)
+graph we can plot graphs or step matrix. (@TODO: Link to graphs and step matrix. dpanina)

@@ -1,17 +1,10 @@
 import pandas as pd
 
-from src.params_model.params_model import ParamsModel
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import (
-    RawDataSchema,
-    EventstreamSchema,
-)
-from src.graph.p_graph import (
-    PGraph,
-    EventsNode,
-)
-
+from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.graph.p_graph import EventsNode, PGraph
+from src.params_model.params_model import ParamsModel
 
 _default_raw_data_schema = RawDataSchema(
     user_id="user_id",
@@ -21,7 +14,9 @@ _default_raw_data_schema = RawDataSchema(
 )
 
 
-def apply_processor(data_processor: DataProcessor, source_df: pd.DataFrame, raw_data_schema: RawDataSchema = _default_raw_data_schema) -> (pd.DataFrame, pd.DataFrame):
+def apply_processor(
+    data_processor: DataProcessor, source_df: pd.DataFrame, raw_data_schema: RawDataSchema = _default_raw_data_schema
+) -> (pd.DataFrame, pd.DataFrame):
     stream = Eventstream(
         raw_data_schema=raw_data_schema,
         raw_data=source_df.copy(),
@@ -33,7 +28,9 @@ def apply_processor(data_processor: DataProcessor, source_df: pd.DataFrame, raw_
     return original_df, result_df
 
 
-def apply_processor_with_graph(data_processor: DataProcessor, source_df: pd.DataFrame, raw_data_schema: RawDataSchema = _default_raw_data_schema) -> (pd.DataFrame, pd.DataFrame):
+def apply_processor_with_graph(
+    data_processor: DataProcessor, source_df: pd.DataFrame, raw_data_schema: RawDataSchema = _default_raw_data_schema
+) -> (pd.DataFrame, pd.DataFrame):
     stream = Eventstream(
         raw_data_schema=raw_data_schema,
         raw_data=source_df.copy(),
@@ -49,7 +46,10 @@ def apply_processor_with_graph(data_processor: DataProcessor, source_df: pd.Data
 
 
 class ApplyTestBase:
-    def _apply(self, params: ParamsModel, source_df: pd.DataFrame=None, return_with_original=False):
+
+    _Processor: DataProcessor
+
+    def _apply(self, params: ParamsModel, source_df: pd.DataFrame = None, return_with_original: bool = False):
         original, actual = apply_processor(
             self._Processor(params),
             self._source_df if source_df is None else source_df,
@@ -62,7 +62,10 @@ class ApplyTestBase:
 
 
 class GraphTestBase:
-    def _apply(self, params: ParamsModel, source_df: pd.DataFrame=None, return_with_original=False):
+
+    _Processor: DataProcessor
+
+    def _apply(self, params: ParamsModel, source_df: pd.DataFrame = None, return_with_original: bool = False):
         original, actual = apply_processor_with_graph(
             self._Processor(params),
             self._source_df if source_df is None else source_df,

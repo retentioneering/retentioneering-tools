@@ -25,14 +25,14 @@ EVENTSTREAM)
 
     import retentioneering
     from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-    
+
     # load sample user behavior data as a pandas dataframe:
     raw_data = pd.read_csv('simple-onlineshop.csv')
-    
+
     # create data schema
     raw_data_schema = RawDataSchema(
         event_name="event", event_timestamp="timestamp", user_id="user_id")
-    
+
     # create source eventstream
     source = Eventstream(
         raw_data=raw_data,
@@ -47,7 +47,7 @@ There are two ways to plot funnel using retentioneering:
 .. code:: ipython3
 
     from src.tooling.funnel import Funnel
-    
+
     funnel = Funnel(
         eventstream=source,
         stages = ['catalog', 'cart', 'payment_done']
@@ -259,7 +259,7 @@ it to groups parameters for ``eventstream.funnel()`` method:
     source_df = source.to_dataframe()
     segment1 = set(source_df[source_df['event_name'] == 'payment_done']['user_id'])
     segment2 = set(source_df['user_id']) - segment1
-    
+
     source.funnel(stages = ['catalog', ['product1', 'product2'], 'cart', 'payment_done'],
                      stage_names = ['catalog', 'product', 'cart', 'payment_done'],
                      segments = (segment1, segment2),
@@ -317,4 +317,3 @@ CLUSTERING - LINK доделать
 
 To understand deeper what are the common behavioral patterns for each
 graph we can plot graphs or step matrix. (LINK)
-

@@ -55,6 +55,7 @@ class FilterEvents(DataProcessor):
             raw_data=events_to_delete,
             relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
-        eventstream.soft_delete(eventstream.to_dataframe())
+        if not events_to_delete.empty:
+            eventstream.soft_delete(events=eventstream.to_dataframe())
 
         return eventstream

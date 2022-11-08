@@ -14,6 +14,10 @@ from src.widget.widgets import ReteTimeWidget
 
 
 class TruncatedEventsParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`TruncatedEvents`
+    """
+
     left_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
     right_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
 
@@ -24,6 +28,48 @@ class TruncatedEventsParams(ParamsModel):
 
 
 class TruncatedEvents(DataProcessor):
+
+    """
+    Creates new synthetic event(s) for each user on the base of timeout threshold:
+    ``truncated_left`` and ``truncated_right``
+
+    Parameters
+    ----------
+    left_truncated_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
+        Threshold value, and it's unit of measure.
+        Timedelta between last event in each user's path and first event in whole Eventstream is calculating.
+        For users with timedelta less than selected ``left_truncated_cutoff``, new synthetic event - ``truncated_left``
+        will be added.
+
+    right_truncated_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
+        Threshold value and its unit of measure.
+        Timedelta between first event in each user's path and last event in whole Eventstream is calculating.
+        For users with timedelta less than selected ``right_truncated_cutoff``,
+        new synthetic event - ``truncated_right`` will be added.
+
+    Returns
+    -------
+    Eventstream
+        Eventstream with new synthetic events for users whose paths satisfy the specified cut-offs
+
+        +-------------------+-------------------+------------------+
+        | **event_name**    | **event_type**    |  **timestamp**   |
+        +-------------------+-------------------+------------------+
+        | truncated_left    | truncated_left    |  first_event     |
+        +-------------------+-------------------+------------------+
+        | truncated_right   | truncated_right   |  last_event      |
+        +-------------------+-------------------+------------------+
+
+    See Also
+    -------
+    Hists
+
+    Raises
+    ------
+    ValueError
+        If both of ``left_truncated_cutoff`` and ``right_truncated_cutoff`` are empty.
+    """
+
     params: TruncatedEventsParams
 
     def __init__(self, params: TruncatedEventsParams):

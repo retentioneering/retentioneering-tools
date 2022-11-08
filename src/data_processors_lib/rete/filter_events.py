@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Callable
 
 import pandas as pd
 from pandas import DataFrame
@@ -8,14 +8,34 @@ from src.eventstream.schema import EventstreamSchema
 from src.eventstream.types import EventstreamSchemaType, EventstreamType
 from src.params_model import ParamsModel
 
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
-
 
 class FilterEventsParams(ParamsModel):
-    filter: Callable[[DataFrame, EventstreamSchema], Any]
+    """
+    Class with parameters for class :py:func:`FilterEvents`
+
+    """
+
+    filter: Callable[[DataFrame, EventstreamSchema], bool]
 
 
 class FilterEvents(DataProcessor):
+    """
+    Filters input Eventstream on the basis of custom conditions
+
+    Parameters
+    ----------
+    filter : Callable[[DataFrame, EventstreamSchema], bool]
+        Custom function which returns boolean mask the same length as input Eventstream
+        If ``True`` - row will be remained
+        If ``False`` - row will be deleted
+
+    Returns
+    -------
+    Eventstream
+        Eventstream with events that should be deleted from input Eventstream.
+
+    """
+
     params: FilterEventsParams
 
     def __init__(self, params: FilterEventsParams):
@@ -24,7 +44,7 @@ class FilterEvents(DataProcessor):
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from src.eventstream.eventstream import Eventstream
 
-        filter_: Callable[[DataFrame, EventstreamSchemaType], Any] = self.params.filter  # type: ignore
+        filter_: Callable[[DataFrame, EventstreamSchemaType], bool] = self.params.filter  # type: ignore
         events: pd.DataFrame = eventstream.to_dataframe()
         mask = filter_(events, eventstream.schema)
         events_to_delete = events[~mask]

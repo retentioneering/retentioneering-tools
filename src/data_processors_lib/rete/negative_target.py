@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Callable, List
 
 import pandas as pd
-from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.schema import EventstreamSchema
@@ -11,10 +10,28 @@ from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
 from src.widget.widgets import ListOfString, ReteFunction
 
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
+EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchema], Any]
 
 
-def _default_func_negative(eventstream: EventstreamType, negative_target_events) -> pd.DataFrame:
+def _default_func_negative(eventstream: EventstreamType, negative_target_events: List[str]) -> pd.DataFrame:
+    """
+    Filters rows with target events from the input eventstream.
+
+    Parameters
+    ----------
+    eventstream : Eventstream
+        Source eventstream or output from previous nodes.
+
+    negative_target_events : List[str]
+        Each event from that list is associated with the bad result (scenario)
+        of user's behaviour (experience) in the product.
+        If there are several target events in user path - the event with minimum timestamp is taken.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered DataFrame with negative_target_events and its timestamps.
+    """
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
@@ -28,6 +45,10 @@ def _default_func_negative(eventstream: EventstreamType, negative_target_events)
 
 
 class NegativeTargetParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`NegativeTarget`
+    """
+
     negative_target_events: List[str]
     negative_function: Callable = _default_func_negative
 
@@ -35,6 +56,32 @@ class NegativeTargetParams(ParamsModel):
 
 
 class NegativeTarget(DataProcessor):
+    """
+    Creates new synthetic events for users who have had specified event(s) in their paths:
+    ``negative_target``
+
+    Parameters
+    ----------
+    negative_target_events : List[str]
+        Each event from that list is associated with the negative user behaviour in the product.
+        If there are several target events in user path - the event with minimum timestamp is taken.
+
+    negative_function : Callable, default=_default_func_negative
+        Filter rows with target events from the input eventstream.
+
+    Returns
+    -------
+    Eventstream
+        Eventstream with new synthetic events for users who fit the conditions.
+
+        +--------------------------------+-----------------+-----------------------------+
+        | **event_name**                 | **event_type**  | **timestamp**               |
+        +--------------------------------+-----------------+-----------------------------+
+        | negative_target_RAW_EVENT_NAME | negative_target | min(negative_target_events) |
+        +--------------------------------+-----------------+-----------------------------+
+
+    """
+
     params: NegativeTargetParams
 
     def __init__(self, params: NegativeTargetParams):

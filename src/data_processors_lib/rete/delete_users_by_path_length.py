@@ -12,6 +12,10 @@ from src.widget.widgets import ReteTimeWidget
 
 
 class DeleteUsersByPathLengthParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`DeleteUsersByPathLength`
+    """
+
     events_num: Optional[int]
     cutoff: Optional[Tuple[float, DATETIME_UNITS]]
 
@@ -21,6 +25,28 @@ class DeleteUsersByPathLengthParams(ParamsModel):
 
 
 class DeleteUsersByPathLength(DataProcessor):
+    """
+    Deletes entire user paths if they are shorter than the specified number of events or cut_off.
+
+    Parameters
+    ----------
+    events_num : int, optional
+        Minimum user path length
+
+    cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
+        Minimum user path length and its unit of measure.
+
+    Returns
+    -------
+    Eventstream
+        Eventstream with events that should be deleted from input Eventstream.
+
+    Raises
+    ------
+    ValueError
+        If both of ``events_num`` and ``cutoff`` are empty or both are given.
+    """
+
     params: DeleteUsersByPathLengthParams
 
     def __init__(self, params: DeleteUsersByPathLengthParams):

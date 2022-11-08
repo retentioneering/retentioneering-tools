@@ -8,6 +8,10 @@ from src.params_model import ParamsModel
 
 
 class TruncatePathParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`TruncatePath`
+    """
+
     drop_before: Optional[str]
     drop_after: Optional[str]
     occurrence_before: Literal["first", "last"] = "first"
@@ -17,6 +21,36 @@ class TruncatePathParams(ParamsModel):
 
 
 class TruncatePath(DataProcessor):
+    """
+    Truncates each user's path on the base of specified event and selected parameters
+
+    Parameters
+    ----------
+    drop_before : str, optional
+        Event name before which part of the user's path is dropped. Specified event remains in the data.
+    drop_after : str, optional
+        Event name after which part of the user's path is dropped. Specified event remains in the data.
+    occurrence_before : {"first", "last"}, default="first"
+        This parameter is necessary when specified event occurs more than once in one user's path.
+        ``first`` - before first occurrence of the specified event the user's path will be dropped.
+        ``last`` - before last occurrence of the specified event the user's path will be dropped.
+    occurrence_after : {"first", "last""}, default="first"
+        The same behavior as in the 'occurrence_before', but for the other part of the user path.
+    shift_before : int,  default=0
+        Sets the number of steps by which truncate point is shifted from the selected event.
+        If the value is negative, then the offset occurs to the left along the timeline.
+        If positive, then to the right.
+    shift_after : int,  default=0
+        The same behavior as in the ``shift_before``, but for the other part of the user path.
+
+    Notes
+    -----
+    Step - is the group of events in user path with the same timestamp
+    If user path doesn't contain events from ``drop_before`` and ``drop_after`` parameters - than its
+    path does not change.
+
+    """
+
     params: TruncatePathParams
 
     def __init__(self, params: TruncatePathParams):

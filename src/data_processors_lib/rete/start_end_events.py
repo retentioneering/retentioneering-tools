@@ -13,6 +13,35 @@ class StartEndEventsParams(ParamsModel):
 
 
 class StartEndEvents(DataProcessor):
+    """
+    Creates two synthetic events in each user's path:
+    ``start`` and ``end``
+
+    Returns
+    -------
+    Eventstream
+        Eventstream with new synthetic events - two for each user:
+
+        +----------------+----------------+----------------+
+        | **event_name** | **event_type** | **timestamp**  |
+        +----------------+----------------+----------------+
+        | start          | start          | first_event    |
+        +----------------+----------------+----------------+
+        | end            | end            | last_event     |
+        +----------------+----------------+----------------+
+
+    Note
+    -------
+    Output Eventstream could be added to the original Eventstream using :py:func:`src.graph.p_graph.PGraph.combine`
+
+    See Also
+    -------
+    :py:func:`src.graph.p_graph.PGraph`
+    :py:func:`src.graph.p_graph.EventsNode`
+    :py:func:`src.graph.p_graph.PGraph.add_node`
+    :py:func:`src.graph.p_graph.PGraph.combine`
+    """
+
     params: StartEndEventsParams
 
     def __init__(self, params: StartEndEventsParams) -> None:

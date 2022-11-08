@@ -5,22 +5,71 @@ from typing import Literal, Union
 import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
-from src.eventstream.eventstream import Eventstream
+from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
 
 
 class CollapseLoopsParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`CollapseLoops`.
+    """
+
     suffix: Union[Literal["loop", "count"], None] = "loop"
     timestamp_aggregation_type: Literal["max", "min", "mean"] = "max"
 
 
 class CollapseLoops(DataProcessor):
+    """
+    Groups and replaces loops in each user's path with new synthetic events.
+
+    Loop - is the sequence of repetitive events in user's path.
+    For example *"event1 -> event1"*
+
+    Parameters
+    ----------
+    suffix: {"loop", "count", None}, default="loop"
+        If ``loop`` event_name will be event_name_loop.\n
+        For example *"event1 - event1 - event1"* --> event1_loop
+
+        If ``count`` event_name will be event_name_loop_{number of events}.\n
+        For example *"event1 - event1 - event1"* --> event1_loop_3
+
+        If ``None`` event_name will be - event_name without any changes.\n
+        For example *"event1 - event1 - event1"* --> event1
+
+    timestamp_aggregation_type : {"max", "min", "mean"}, default="max"
+        Aggregation method to define timestamp for new group.
+
+    Returns
+    -------
+    Eventstream
+        Eventstream with:
+        raw events: that should be soft-deleted from original Eventstream
+        new synthetic events: that can be added to the original Eventstream with columns below.
+
+        +------------------------+----------------+--------------------------------------------+
+        | **event_name**         | **event_type** | **timestamp**                              |
+        +------------------------+----------------+--------------------------------------------+
+        | event_name_loop        | group_alias    | min/max/mean(group of repetitive events))  |
+        +------------------------+----------------+--------------------------------------------+
+        | event_name_loop_{count}| group_alias    | (min/max/mean(group of repetitive events)) |
+        +------------------------+----------------+--------------------------------------------+
+        | event_name             | group_alias    | (min/max/mean(group of repetitive events)) |
+        +------------------------+----------------+--------------------------------------------+
+
+    See Also
+    -------
+
+    """
+
     params: CollapseLoopsParams
 
     def __init__(self, params: CollapseLoopsParams):
         super().__init__(params=params)
 
-    def apply(self, eventstream: Eventstream) -> Eventstream:
+    def apply(self, eventstream: EventstreamType) -> EventstreamType:
+        from src.eventstream.eventstream import Eventstream
+
         user_col = eventstream.schema.user_id
         time_col = eventstream.schema.event_timestamp
         type_col = eventstream.schema.event_type

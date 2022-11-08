@@ -5,8 +5,8 @@ from typing import List, Union
 import numpy
 import pandas as pd
 
-from eventstream.types import EventstreamType
-from tooling.clusters.userlist import UserList
+from src.eventstream.types import EventstreamType
+from src.tooling.clusters.userlist import UserList
 
 SEGMENTS_COLNAME = "segment"
 SegmentVal = Union[int, str]

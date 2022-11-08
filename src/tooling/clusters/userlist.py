@@ -4,7 +4,7 @@ from typing import Any, Union
 
 import pandas as pd
 
-from eventstream.types import EventstreamType
+from src.eventstream.types import EventstreamType
 
 COUNT_COL_NAME = "count"
 UserClass = Union[str, int]

@@ -4,6 +4,7 @@ from src.data_processor.data_processor import DataProcessor
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.graph.p_graph import EventsNode, PGraph
+from src.params_model.params_model import ParamsModel
 
 _default_raw_data_schema = RawDataSchema(
     user_id="user_id",
@@ -42,3 +43,35 @@ def apply_processor_with_graph(
     result = graph.combine(node=node)
     result_df = result.to_dataframe().reset_index(drop=True)
     return original_df, result_df
+
+
+class ApplyTestBase:
+
+    _Processor: DataProcessor
+
+    def _apply(self, params: ParamsModel, source_df: pd.DataFrame = None, return_with_original: bool = False):
+        original, actual = apply_processor(
+            self._Processor(params),
+            self._source_df if source_df is None else source_df,
+            raw_data_schema=self._raw_data_schema,
+        )
+        if return_with_original:
+            return original, actual
+        else:
+            return actual
+
+
+class GraphTestBase:
+
+    _Processor: DataProcessor
+
+    def _apply(self, params: ParamsModel, source_df: pd.DataFrame = None, return_with_original: bool = False):
+        original, actual = apply_processor_with_graph(
+            self._Processor(params),
+            self._source_df if source_df is None else source_df,
+            raw_data_schema=self._raw_data_schema,
+        )
+        if return_with_original:
+            return original, actual
+        else:
+            return actual

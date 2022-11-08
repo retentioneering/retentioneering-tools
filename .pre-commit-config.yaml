@@ -9,6 +9,7 @@ repos:
         exclude: "examples/"
       - id: check-added-large-files
         exclude: "examples/"
+        args: ["--maxkb=1100"]
   - repo: https://github.com/hadialqattan/pycln
     rev: v2.1.1 # Possible releases: https://github.com/hadialqattan/pycln/releases
     hooks:

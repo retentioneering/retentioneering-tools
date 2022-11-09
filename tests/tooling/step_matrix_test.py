@@ -12,6 +12,7 @@ from src.data_processors_lib.rete import (
 )
 from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
 from src.graph.p_graph import EventsNode, PGraph
+from src.tooling.step_matrix import StepMatrix
 
 FLOAT_PRECISION = 6
 
@@ -41,7 +42,9 @@ def stream():
 
 
 def run_test(stream, filename, **kwargs):
-    result = stream.step_matrix(**kwargs).round(FLOAT_PRECISION)
+    sm = StepMatrix(eventstream=stream, **kwargs)
+    result, _, _, _ = sm._get_plot_data()
+    result = result.round(FLOAT_PRECISION)
     result_correct = read_test_data(filename)
     test_is_correct = result.compare(result_correct).shape == (0, 0)
     return test_is_correct
@@ -85,14 +88,15 @@ class TestStepMatrix:
             schema=EventstreamSchema(),
         )
 
-        result = source_stream.step_matrix(max_steps=5, show_plot=False)
+        sm = StepMatrix(eventstream=source_stream, max_steps=5)
+        result, _, _, _ = sm._get_plot_data()
         assert result.compare(correct_result).shape == (0, 0)
 
     def test_step_matrix__basic(self, stream):
-        assert run_test(stream, "01_basic.csv", show_plot=False)
+        assert run_test(stream, "01_basic.csv")
 
     def test_step_matrix__one_step(self, stream):
-        assert run_test(stream, "02_one_step.csv", show_plot=False, max_steps=1)
+        assert run_test(stream, "02_one_step.csv", max_steps=1)
 
     def test_step_matrix__100_steps(self, stream):
-        assert run_test(stream, "03_100_steps.csv", show_plot=False, max_steps=100, precision=3)
+        assert run_test(stream, "03_100_steps.csv", max_steps=100, precision=3)

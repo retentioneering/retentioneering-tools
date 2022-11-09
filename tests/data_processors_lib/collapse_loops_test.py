@@ -2,15 +2,9 @@ from __future__ import annotations
 
 import pandas as pd
 
+from src.data_processors_lib.rete import CollapseLoops, CollapseLoopsParams
 from src.eventstream.schema import RawDataSchema
-from src.data_processors_lib.rete import (
-    CollapseLoops,
-    CollapseLoopsParams,
-)
-from tests.data_processors_lib.common import (
-    apply_processor,
-    apply_processor_with_graph,
-)
+from tests.data_processors_lib.common import apply_processor, apply_processor_with_graph
 
 
 class TestCollapseLoops:
@@ -43,10 +37,12 @@ class TestCollapseLoops:
         return actual
 
     def test_collapse_loops_apply__suffix_count__agg_min(self):
-        actual = self._apply(CollapseLoopsParams(
-            suffix="count",
-            timestamp_aggregation_type="min",
-        ))
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="count",
+                timestamp_aggregation_type="min",
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "event1_loop_4", "group_alias", "2022-01-01 00:02:00", False],
@@ -63,10 +59,12 @@ class TestCollapseLoops:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_collapse_loops_apply__suffix_count__agg_max(self):
-        actual = self._apply(CollapseLoopsParams(
-            suffix="count",
-            timestamp_aggregation_type="max",
-        ))
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="count",
+                timestamp_aggregation_type="max",
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
@@ -83,10 +81,12 @@ class TestCollapseLoops:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_collapse_loops_apply__suffix_loop__agg_mean(self):
-        actual = self._apply(CollapseLoopsParams(
-            suffix="loop",
-            timestamp_aggregation_type="mean",
-        ))
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="loop",
+                timestamp_aggregation_type="mean",
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
@@ -133,10 +133,12 @@ class TestCollapseLoopsGraph:
         return actual
 
     def test_collapse_loops_graph__suffix_count__agg_min(self):
-        actual = self._apply(CollapseLoopsParams(
-            suffix="count",
-            timestamp_aggregation_type="min",
-        ))
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="count",
+                timestamp_aggregation_type="min",
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -150,10 +152,12 @@ class TestCollapseLoopsGraph:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_collapse_loops_graph__suffix_count__agg_max(self):
-        actual = self._apply(CollapseLoopsParams(
-            suffix="count",
-            timestamp_aggregation_type="max",
-        ))
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="count",
+                timestamp_aggregation_type="max",
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -167,10 +171,12 @@ class TestCollapseLoopsGraph:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_collapse_loops_graph__suffix_loop__agg_mean(self):
-        actual = self._apply(CollapseLoopsParams(
-            suffix="loop",
-            timestamp_aggregation_type="mean",
-        ))
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="loop",
+                timestamp_aggregation_type="mean",
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -184,10 +190,12 @@ class TestCollapseLoopsGraph:
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_collapse_loops_graph__suffix_none__agg_mean(self):
-        actual = self._apply(CollapseLoopsParams(
-            suffix=None,
-            timestamp_aggregation_type="mean",
-        ))
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix=None,
+                timestamp_aggregation_type="mean",
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],

@@ -2,15 +2,9 @@ from __future__ import annotations
 
 import pandas as pd
 
+from src.data_processors_lib.rete import NegativeTarget, NegativeTargetParams
 from src.eventstream.schema import RawDataSchema
-from src.data_processors_lib.rete import (
-    NegativeTarget,
-    NegativeTargetParams,
-)
-from tests.data_processors_lib.common import (
-    ApplyTestBase,
-    GraphTestBase,
-)
+from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
 class TestNegativeTarget(ApplyTestBase):
@@ -47,9 +41,11 @@ class TestNegativeTarget(ApplyTestBase):
     )
 
     def test_negative_target_apply__1_event(self):
-        actual = self._apply(NegativeTargetParams(
-            negative_target_events=["event3"],
-        ))
+        actual = self._apply(
+            NegativeTargetParams(
+                negative_target_events=["event3"],
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "negative_target_event3", "negative_target", "2022-01-01 00:03:30"],
@@ -60,9 +56,11 @@ class TestNegativeTarget(ApplyTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_negative_target_apply__2_events(self):
-        actual = self._apply(NegativeTargetParams(
-            negative_target_events=["event3", "event2"],
-        ))
+        actual = self._apply(
+            NegativeTargetParams(
+                negative_target_events=["event3", "event2"],
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "negative_target_event2", "negative_target", "2022-01-01 00:01:02"],
@@ -107,9 +105,11 @@ class TestNegativeTargetGraph(GraphTestBase):
     )
 
     def test_negative_target_graph__1_event(self):
-        actual = self._apply(NegativeTargetParams(
-            negative_target_events=["event3"],
-        ))
+        actual = self._apply(
+            NegativeTargetParams(
+                negative_target_events=["event3"],
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],
@@ -139,9 +139,11 @@ class TestNegativeTargetGraph(GraphTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_negative_target_graph__2_events(self):
-        actual = self._apply(NegativeTargetParams(
-            negative_target_events=["event3", "event2"],
-        ))
+        actual = self._apply(
+            NegativeTargetParams(
+                negative_target_events=["event3", "event2"],
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],

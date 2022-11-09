@@ -2,15 +2,9 @@ from __future__ import annotations
 
 import pandas as pd
 
+from src.data_processors_lib.rete import NewUsersEvents, NewUsersParams
 from src.eventstream.schema import RawDataSchema
-from src.data_processors_lib.rete import (
-    NewUsersEvents,
-    NewUsersParams,
-)
-from tests.data_processors_lib.common import (
-    ApplyTestBase,
-    GraphTestBase,
-)
+from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
 class TestNewUsers(ApplyTestBase):
@@ -36,9 +30,11 @@ class TestNewUsers(ApplyTestBase):
     )
 
     def test_new_users__apply__new_users_list_id(self):
-        actual = self._apply(NewUsersParams(
-            new_users_list=[2],
-        ))
+        actual = self._apply(
+            NewUsersParams(
+                new_users_list=[2],
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "existing_user", "existing_user", "2022-01-01 00:01:00"],
@@ -49,9 +45,11 @@ class TestNewUsers(ApplyTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_new_users__apply__new_users_list_all(self):
-        actual = self._apply(NewUsersParams(
-            new_users_list="all",
-        ))
+        actual = self._apply(
+            NewUsersParams(
+                new_users_list="all",
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "new_user", "new_user", "2022-01-01 00:01:00"],
@@ -76,9 +74,12 @@ class TestNewUsers(ApplyTestBase):
             ],
             columns=["user_id", "event", "timestamp"],
         )
-        actual = self._apply(NewUsersParams(
-            new_users_list=["user222"],
-        ), source_df=source_df)
+        actual = self._apply(
+            NewUsersParams(
+                new_users_list=["user222"],
+            ),
+            source_df=source_df,
+        )
         expected = pd.DataFrame(
             [
                 ["user111", "existing_user", "existing_user", "2022-01-01 00:01:00"],
@@ -112,9 +113,11 @@ class TestNewUsersGraph(GraphTestBase):
     )
 
     def test_new_users_graph__new_users_list_id(self):
-        actual = self._apply(NewUsersParams(
-            new_users_list=[2],
-        ))
+        actual = self._apply(
+            NewUsersParams(
+                new_users_list=[2],
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "existing_user", "existing_user", "2022-01-01 00:01:00"],
@@ -134,9 +137,11 @@ class TestNewUsersGraph(GraphTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_new_users_graph__new_users_list_all(self):
-        actual = self._apply(NewUsersParams(
-            new_users_list="all",
-        ))
+        actual = self._apply(
+            NewUsersParams(
+                new_users_list="all",
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "new_user", "new_user", "2022-01-01 00:01:00"],
@@ -170,9 +175,12 @@ class TestNewUsersGraph(GraphTestBase):
             ],
             columns=["user_id", "event", "timestamp"],
         )
-        actual = self._apply(NewUsersParams(
-            new_users_list=["user222"],
-        ), source_df=source_df)
+        actual = self._apply(
+            NewUsersParams(
+                new_users_list=["user222"],
+            ),
+            source_df=source_df,
+        )
         expected = pd.DataFrame(
             [
                 ["user111", "existing_user", "existing_user", "2022-01-01 00:01:00"],

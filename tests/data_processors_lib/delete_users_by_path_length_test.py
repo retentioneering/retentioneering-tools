@@ -2,15 +2,12 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.eventstream.schema import RawDataSchema
 from src.data_processors_lib.rete import (
     DeleteUsersByPathLength,
     DeleteUsersByPathLengthParams,
 )
-from tests.data_processors_lib.common import (
-    ApplyTestBase,
-    GraphTestBase,
-)
+from src.eventstream.schema import RawDataSchema
+from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
 class TestDeleteUsersByPathLength(ApplyTestBase):
@@ -48,9 +45,11 @@ class TestDeleteUsersByPathLength(ApplyTestBase):
     )
 
     def test_delete_users_by_path_length_apply__by_event_4(self):
-        actual = self._apply(DeleteUsersByPathLengthParams(
-            events_num=4,
-        ))
+        actual = self._apply(
+            DeleteUsersByPathLengthParams(
+                events_num=4,
+            )
+        )
         expected = pd.DataFrame(
             [
                 [2, "event1", "raw", "2022-01-02 00:00:00", True],
@@ -67,9 +66,11 @@ class TestDeleteUsersByPathLength(ApplyTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_delete_users_by_path_length_apply__by_cutoff(self):
-        actual = self._apply(DeleteUsersByPathLengthParams(
-            cutoff=(1.5, "m"),
-        ))
+        actual = self._apply(
+            DeleteUsersByPathLengthParams(
+                cutoff=(1.5, "m"),
+            )
+        )
         expected = pd.DataFrame(
             [
                 [2, "event1", "raw", "2022-01-02 00:00:00", True],
@@ -117,9 +118,11 @@ class TestDeleteUsersByPathLengthGraph(GraphTestBase):
     )
 
     def test_delete_users_by_path_length_graph__by_event_4(self):
-        actual = self._apply(DeleteUsersByPathLengthParams(
-            events_num=4,
-        ))
+        actual = self._apply(
+            DeleteUsersByPathLengthParams(
+                events_num=4,
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],
@@ -140,9 +143,11 @@ class TestDeleteUsersByPathLengthGraph(GraphTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_delete_users_by_path_length_graph__by_cutoff(self):
-        actual = self._apply(DeleteUsersByPathLengthParams(
-            cutoff=(1.5, "m"),
-        ))
+        actual = self._apply(
+            DeleteUsersByPathLengthParams(
+                cutoff=(1.5, "m"),
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],

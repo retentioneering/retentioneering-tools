@@ -2,16 +2,10 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.data_processors_lib.rete import StartEndEvents, StartEndEventsParams
 from src.eventstream.eventstream import Eventstream
-from src.data_processors_lib.rete import (
-    StartEndEvents,
-    StartEndEventsParams,
-)
-from tests.data_processors_lib.common import (
-    ApplyTestBase,
-    GraphTestBase,
-)
+from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
 class TestStartEndEvents(ApplyTestBase):
@@ -35,10 +29,10 @@ class TestStartEndEvents(ApplyTestBase):
         actual = self._apply(StartEndEventsParams())
         expected = pd.DataFrame(
             [
-                [1,      "start",      "start", "2021-10-26 12:00:00"],
-                [1,        "end",        "end", "2021-10-26 12:04:00"],
+                [1, "start", "start", "2021-10-26 12:00:00"],
+                [1, "end", "end", "2021-10-26 12:04:00"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"]
+            columns=["user_id", "event_name", "event_type", "event_timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 

@@ -5,6 +5,7 @@ import uuid
 from collections.abc import Collection
 from typing import Any, List, Literal, Optional, Tuple, Union
 
+import matplotlib
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -409,9 +410,7 @@ class Eventstream(StartEndHelperMixin, NewUsersHelperMixin, EventstreamType):
         thresh: float = 0,
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
-        export_segments: Optional[str] = None,
-        show_plot: bool = True,
-    ) -> pd.DataFrame:
+    ) -> matplotlib.figure.Figure:
         return StepMatrix(
             eventstream=self,
             max_steps=max_steps,
@@ -423,6 +422,4 @@ class Eventstream(StartEndHelperMixin, NewUsersHelperMixin, EventstreamType):
             thresh=thresh,
             centered=centered,
             groups=groups,
-            export_segments=export_segments,
-            show_plot=show_plot,
         ).plot()

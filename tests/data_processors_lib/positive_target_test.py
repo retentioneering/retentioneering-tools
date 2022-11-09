@@ -2,15 +2,9 @@ from __future__ import annotations
 
 import pandas as pd
 
+from src.data_processors_lib.rete import PositiveTarget, PositiveTargetParams
 from src.eventstream.schema import RawDataSchema
-from src.data_processors_lib.rete import (
-    PositiveTarget,
-    PositiveTargetParams,
-)
-from tests.data_processors_lib.common import (
-    ApplyTestBase,
-    GraphTestBase,
-)
+from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
 class TestPositiveTarget(ApplyTestBase):
@@ -47,9 +41,11 @@ class TestPositiveTarget(ApplyTestBase):
     )
 
     def test_positive_target_apply__1_event(self):
-        actual = self._apply(PositiveTargetParams(
-            positive_target_events=["event3"],
-        ))
+        actual = self._apply(
+            PositiveTargetParams(
+                positive_target_events=["event3"],
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "positive_target_event3", "positive_target", "2022-01-01 00:03:30"],
@@ -60,9 +56,11 @@ class TestPositiveTarget(ApplyTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_positive_target_apply__2_events(self):
-        actual = self._apply(PositiveTargetParams(
-            positive_target_events=["event3", "event2"],
-        ))
+        actual = self._apply(
+            PositiveTargetParams(
+                positive_target_events=["event3", "event2"],
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "positive_target_event2", "positive_target", "2022-01-01 00:01:02"],
@@ -107,9 +105,11 @@ class TestPositiveTargetGraph(GraphTestBase):
     )
 
     def test_positive_target_graph__1_event(self):
-        actual = self._apply(PositiveTargetParams(
-            positive_target_events=["event3"],
-        ))
+        actual = self._apply(
+            PositiveTargetParams(
+                positive_target_events=["event3"],
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],
@@ -139,9 +139,11 @@ class TestPositiveTargetGraph(GraphTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_positive_target_graph__2_events(self):
-        actual = self._apply(PositiveTargetParams(
-            positive_target_events=["event3", "event2"],
-        ))
+        actual = self._apply(
+            PositiveTargetParams(
+                positive_target_events=["event3", "event2"],
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "start", "start", "2022-01-01 00:01:00"],

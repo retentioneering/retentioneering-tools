@@ -1,18 +1,12 @@
 from __future__ import annotations
 
-import pytest
 import pandas as pd
-
+import pytest
 from pydantic import ValidationError
+
+from src.data_processors_lib.rete import LostUsersEvents, LostUsersParams
 from src.eventstream.schema import RawDataSchema
-from src.data_processors_lib.rete import (
-    LostUsersEvents,
-    LostUsersParams,
-)
-from tests.data_processors_lib.common import (
-    ApplyTestBase,
-    GraphTestBase,
-)
+from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
 class TestLostUsers(ApplyTestBase):
@@ -38,10 +32,12 @@ class TestLostUsers(ApplyTestBase):
     )
 
     def test_lost_users_apply__lost_users_list(self):
-        actual = self._apply(LostUsersParams(
-            lost_users_list=[2],
-            lost_cutoff=None,
-        ))
+        actual = self._apply(
+            LostUsersParams(
+                lost_users_list=[2],
+                lost_cutoff=None,
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "absent_user", "absent_user", "2022-01-01 00:05:00"],
@@ -52,10 +48,12 @@ class TestLostUsers(ApplyTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_lost_users_apply__lost_cutoff(self):
-        actual = self._apply(LostUsersParams(
-            lost_users_list=None,
-            lost_cutoff=(4, "h"),
-        ))
+        actual = self._apply(
+            LostUsersParams(
+                lost_users_list=None,
+                lost_cutoff=(4, "h"),
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "lost_user", "lost_user", "2022-01-01 00:05:00"],
@@ -93,10 +91,12 @@ class TestLostUsersGraph(GraphTestBase):
     )
 
     def test_lost_users_graph__lost_users_list(self):
-        actual = self._apply(LostUsersParams(
-            lost_users_list=[2],
-            lost_cutoff=None,
-        ))
+        actual = self._apply(
+            LostUsersParams(
+                lost_users_list=[2],
+                lost_cutoff=None,
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -116,10 +116,12 @@ class TestLostUsersGraph(GraphTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_lost_users_graph__lost_cutoff(self):
-        actual = self._apply(LostUsersParams(
-            lost_users_list=None,
-            lost_cutoff=(4, "h"),
-        ))
+        actual = self._apply(
+            LostUsersParams(
+                lost_users_list=None,
+                lost_cutoff=(4, "h"),
+            )
+        )
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],

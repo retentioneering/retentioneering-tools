@@ -4,8 +4,8 @@ import pandas as pd
 from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
-from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
+from src.eventstream.types import EventstreamSchemaType, EventstreamType
 from src.params_model import ParamsModel
 
 
@@ -41,8 +41,10 @@ class FilterEvents(DataProcessor):
     def __init__(self, params: FilterEventsParams):
         super().__init__(params=params)
 
-    def apply(self, eventstream: Eventstream) -> Eventstream:
-        filter_: Callable[[DataFrame, EventstreamSchema], bool] = self.params.filter  # type: ignore
+    def apply(self, eventstream: EventstreamType) -> EventstreamType:
+        from src.eventstream.eventstream import Eventstream
+
+        filter_: Callable[[DataFrame, EventstreamSchemaType], bool] = self.params.filter  # type: ignore
         events: pd.DataFrame = eventstream.to_dataframe()
         mask = filter_(events, eventstream.schema)
         events_to_delete = events[~mask]
@@ -55,6 +57,7 @@ class FilterEvents(DataProcessor):
             raw_data=events_to_delete,
             relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
-        eventstream.soft_delete(eventstream.to_dataframe())
+        if not events_to_delete.empty:
+            eventstream.soft_delete(events=eventstream.to_dataframe())
 
         return eventstream

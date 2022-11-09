@@ -46,7 +46,10 @@ def apply_processor_with_graph(
 
 
 class ApplyTestBase:
-    def _apply(self, params: ParamsModel, source_df: pd.DataFrame = None, return_with_original=False):
+
+    _Processor: DataProcessor
+
+    def _apply(self, params: ParamsModel, source_df: pd.DataFrame = None, return_with_original: bool = False):
         original, actual = apply_processor(
             self._Processor(params),
             self._source_df if source_df is None else source_df,
@@ -59,7 +62,10 @@ class ApplyTestBase:
 
 
 class GraphTestBase:
-    def _apply(self, params: ParamsModel, source_df: pd.DataFrame = None, return_with_original=False):
+
+    _Processor: DataProcessor
+
+    def _apply(self, params: ParamsModel, source_df: pd.DataFrame = None, return_with_original: bool = False):
         original, actual = apply_processor_with_graph(
             self._Processor(params),
             self._source_df if source_df is None else source_df,

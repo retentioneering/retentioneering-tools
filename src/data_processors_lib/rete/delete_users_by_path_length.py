@@ -6,7 +6,7 @@ import numpy as np
 
 from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.constants import DATETIME_UNITS
-from src.eventstream.eventstream import Eventstream
+from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
 from src.widget.widgets import ReteTimeWidget
 
@@ -52,7 +52,9 @@ class DeleteUsersByPathLength(DataProcessor):
     def __init__(self, params: DeleteUsersByPathLengthParams):
         super().__init__(params=params)
 
-    def apply(self, eventstream: Eventstream) -> Eventstream:
+    def apply(self, eventstream: EventstreamType) -> EventstreamType:
+        from src.eventstream.eventstream import Eventstream
+
         user_col = eventstream.schema.user_id
         time_col = eventstream.schema.event_timestamp
 

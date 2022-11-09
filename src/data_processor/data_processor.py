@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import typing
 import uuid
 from typing import Any
 
 from src.data_processor.registry import register_dataprocessor
-from src.eventstream.eventstream import Eventstream
 from src.params_model import ParamsModel
+
+if typing.TYPE_CHECKING:
+    from src.eventstream.types import EventstreamType
 
 
 class DataProcessor:
@@ -28,7 +31,7 @@ class DataProcessor:
         DataProcessor.__init__(self, params=params)
         return self
 
-    def apply(self, eventstream: Eventstream) -> Eventstream:
+    def apply(self, eventstream: EventstreamType) -> EventstreamType:
         raise NotImplementedError
 
     def export(self) -> dict[str, Any]:

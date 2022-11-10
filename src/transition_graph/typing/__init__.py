@@ -1,18 +1,36 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, List, Literal, Protocol, TypedDict
+from typing import Any, List, Literal, Protocol, TypedDict, MutableMapping
 
 from eventstream.types import EventstreamType
 
 
-class PlotParams(TypedDict):
+class Degree(TypedDict):
+    degree: float
+    source: float
+
+
+class PreparedNode(TypedDict):
+    index: int
+    name: str
+    degree: MutableMapping[str, Degree]
+    changed_name: str | None
+    type: str
+    x: float | None
+    y: float | None
+    active: bool
+    alias: str
+    parent: str
+
+
+class PlotParamsType(TypedDict):
     pass
 
 
 class TransitionGraphPlotProtocol(Protocol):
     @abstractmethod
-    def __init__(self, plot_params: PlotParams) -> None:
+    def __init__(self, plot_params: PlotParamsType) -> None:
         ...
 
     @abstractmethod
@@ -38,8 +56,8 @@ class TransitionGraphProtocol(Protocol):
     def __init__(
         self,
         eventstream: EventstreamType,
-        graph: dict,  # preprocessed graph
-        plot_params: PlotParams | None,
+        # graph: dict,  # preprocessed graph
+        plot_params: PlotParamsType | None,
         nodes: List[Node],
         edges: List[Edge],
     ) -> None:

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import os
+
 import pandas as pd
 
 from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
+from src.tooling.sankey import Sankey
 
 
 class TestSankey:
-    def test_funnel__open(self):
+    def test_sankey__simple(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -36,4 +39,17 @@ class TestSankey:
             raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
             schema=EventstreamSchema(),
         )
-        res_data, res_nodes, res_edges = stream.step_sankey(as_data_graph=True)
+        s = Sankey(eventstream=stream, max_steps=5)
+        _, res_nodes, res_edges, res_data = s._get_plot_data()
+
+        test_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)))
+        correct_data = pd.read_csv(os.path.join(test_dir, "data/01_simple_test_data.csv"))
+        correct_nodes = pd.read_csv(os.path.join(test_dir, "data/01_simple_test_nodes.csv"))
+        correct_edges = pd.read_csv(os.path.join(test_dir, "data/01_simple_test_edges.csv"))
+
+        res_nodes = res_nodes.drop("color", axis=1)
+        correct_nodes = correct_nodes.drop("color", axis=1)
+
+        assert res_data.compare(correct_data).shape == (0, 0)
+        assert res_nodes.compare(correct_nodes).shape == (0, 0)
+        assert res_edges.compare(correct_edges).shape == (0, 0)

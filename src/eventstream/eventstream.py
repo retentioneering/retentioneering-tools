@@ -392,15 +392,14 @@ class Eventstream(EventstreamType):
 
     def step_sankey(
         self,
-        max_steps: int | None = 5,
-        thresh: Union[int, float] | None = 0.0,
+        max_steps: int = 5,
+        thresh: Union[int, float] = 0.0,
         sorting: list | None = None,
-        target: str | None = None,
+        target: Union[list[str], str] | None = None,
         autosize: bool | None = True,
         width: int | None = None,
         height: int | None = None,
-        as_data_graph: bool = False,
-    ) -> tuple[pd.DataFrame | None, pd.DataFrame | None, pd.DataFrame | None]:
+    ) -> go.Figure:
         return Sankey(
             eventstream=self,
             max_steps=max_steps,
@@ -410,4 +409,4 @@ class Eventstream(EventstreamType):
             autosize=autosize,
             width=width,
             height=height,
-        ).plot(as_data_graph=as_data_graph)
+        ).plot()

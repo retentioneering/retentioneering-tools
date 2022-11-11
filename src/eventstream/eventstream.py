@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection
-from typing import Any, List, Literal, Optional, Tuple
+from typing import Any, List, Literal, Optional, Tuple, Union
 
+import matplotlib
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -13,6 +14,7 @@ from src.eventstream.schema import EventstreamSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.clusters import Clusters
 from src.tooling.funnel import Funnel
+from src.tooling.step_matrix import StepMatrix
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
@@ -438,3 +440,28 @@ class Eventstream(
         if self.__clusters is None:
             self.__clusters = Clusters(eventstream=self, user_clusters=None)
         return self.__clusters
+
+    def step_matrix(
+        self,
+        max_steps: int = 20,
+        weight_col: Optional[str] = None,
+        precision: int = 2,
+        targets: Optional[list[str] | str] = None,
+        accumulated: Optional[Union[Literal["both", "only"], None]] = None,
+        sorting: Optional[list[str]] = None,
+        thresh: float = 0,
+        centered: Optional[dict] = None,
+        groups: Optional[Tuple[list, list]] = None,
+    ) -> matplotlib.figure.Figure:
+        return StepMatrix(
+            eventstream=self,
+            max_steps=max_steps,
+            weight_col=weight_col,
+            precision=precision,
+            targets=targets,
+            accumulated=accumulated,
+            sorting=sorting,
+            thresh=thresh,
+            centered=centered,
+            groups=groups,
+        ).plot()

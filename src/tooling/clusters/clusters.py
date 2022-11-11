@@ -31,7 +31,7 @@ class Clusters:
     __segments: Segments | None
 
     def __init__(self, eventstream: EventstreamType, user_clusters: dict[str | int, list[int]] | None = None):
-        self.__eventstream = eventstream
+        self.__eventstream: EventstreamType = eventstream
         self.__segments = None
         self._user_clusters = user_clusters
         self.__clusters_list = user_clusters if user_clusters else {}
@@ -83,14 +83,23 @@ class Clusters:
     def user_clusters(self, user_clusters: dict[str | int, list[int]]):
         self._set_user_clusters(user_clusters=user_clusters)
 
-    def narrow_eventstream(self, cluster: int | str) -> pd.DataFrame | pd.Series[Any]:
+    def narrow_eventstream(self, cluster: int | str) -> EventstreamType:
+        from src.eventstream.eventstream import Eventstream
+
+        eventstream: Eventstream = self.__eventstream  # type: ignore
         cluster_events = []
         if self._user_clusters:
             cluster_events = self._user_clusters[cluster]
         else:
             pass
         df = self.__eventstream.to_dataframe()
-        return df[df[self.__eventstream.schema.event_id].isin(cluster_events)]
+        df = df[df[self.__eventstream.schema.event_id].isin(cluster_events)]
+        es = Eventstream(
+            raw_data=df,
+            raw_data_schema=eventstream.schema.to_raw_data_schema(),
+            schema=eventstream.schema.copy(),
+        )
+        return es
 
     def projection(
         self,

@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from functools import partial
 from typing import Any, List, Literal, Tuple, cast
 
+import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import umap.umap_ as umap
 from matplotlib import rcParams
 from numpy import ndarray
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 
 from src.eventstream.types import EventstreamType
@@ -18,17 +22,260 @@ FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fra
 NgramRange = Tuple[int, int]
 Method = Literal["kmeans", "gmm"]
 PlotType = Literal["cluster_bar"]
+PlotProjectionMethod = Literal["tsne", "umap"]
 
 
 class Clusters:
     __eventstream: EventstreamType
-    __clusters_list: list[int] | ndarray
-    segments: Segments | None
+    __clusters_list: dict[str | int, list[int]] | ndarray
+    __segments: Segments | None
 
     def __init__(self, eventstream: EventstreamType, user_clusters: dict[str | int, list[int]] | None = None):
         self.__eventstream = eventstream
-        self.segments = None
-        self.user_clusters = user_clusters
+        self.__segments = None
+        self._user_clusters = user_clusters
+        self.__clusters_list = user_clusters if user_clusters else {}
+        self.__projection = None
+
+    # public API
+    def extract_features(self, feature_type: FeatureType = "tfidf", ngram_range: NgramRange | None = None):
+        extract_features_partial = partial(self._extract_features, eventstream=self.__eventstream)
+        return extract_features_partial(feature_type=feature_type, ngram_range=ngram_range)
+
+    def create_clusters(
+        self,
+        feature_type: FeatureType = "tfidf",
+        ngram_range: NgramRange = (1, 1),
+        n_clusters: int = 8,
+        method: Method = "kmeans",
+        refit_cluster: bool = True,
+        targets: list[str] | None = None,
+        vector: pd.DataFrame | None = None,
+    ):
+        if self._user_clusters:
+            targets_bool = [[True] * x for x in [len(y) for y in self._user_clusters.values()]]
+            target_names: list[str] = list(map(str, list(self._user_clusters.keys())))
+        else:
+            target_names, targets_bool = self._prepare_clusters(
+                feature_type=feature_type,
+                method=method,
+                n_clusters=n_clusters,
+                ngram_range=ngram_range,
+                refit_cluster=refit_cluster,
+                targets=targets,
+                vector=vector,
+            )
+
+        return self._cluster_bar(
+            clusters=self.__clusters_list,  # type: ignore
+            target=cast(List[List[bool]], targets_bool),  # @TODO: fix types. Vladimir Makhanov
+            target_names=target_names,
+        )
+
+    def set_user_clusters(self, user_clusters: dict[str | int, list[int]]) -> None:
+        self._set_user_clusters(user_clusters=user_clusters)
+
+    @property
+    def user_clusters(self) -> dict[str | int, list[int]] | None:
+        return self._user_clusters
+
+    @user_clusters.setter
+    def user_clusters(self, user_clusters: dict[str | int, list[int]]):
+        self._set_user_clusters(user_clusters=user_clusters)
+
+    def narrow_eventstream(self, cluster: int | str) -> pd.DataFrame | pd.Series[Any]:
+        cluster_events = []
+        if self._user_clusters:
+            cluster_events = self._user_clusters[cluster]
+        else:
+            pass
+        df = self.__eventstream.to_dataframe()
+        return df[df[self.__eventstream.schema.event_id].isin(cluster_events)]
+
+    def projection(
+        self,
+        method: PlotProjectionMethod = "tsne",
+        targets: list[str] | None = None,
+        ngram_range: NgramRange | None = None,
+        feature_type: FeatureType = "tfidf",
+        plot_type=None,
+        **kwargs,
+    ):
+        """
+        Does dimention reduction of user trajectories and draws projection plane.
+        Parameters
+        ----------
+        method: {'umap', 'tsne'} (optional, default 'tsne')
+            Type of manifold transformation.
+        plot_type: {'targets', 'clusters', None} (optional, default None)
+            Type of color-coding used for projection visualization:
+                - 'clusters': colors trajectories with different colors depending on cluster number.
+                IMPORTANT: must do .rete.get_clusters() before to obtain cluster mapping.
+                - 'targets': color trajectories based on reach to any event provided in 'targets' parameter.
+                Must provide 'targets' parameter in this case.
+            If None, then only calculates TSNE without visualization.
+        targets: list or tuple of str (optional, default  ())
+            Vector of event_names as str. If user reach any of the specified events, the dot corresponding
+            to this user will be highlighted as converted on the resulting projection plot
+        feature_type: str, (optional, default 'tfidf')
+            Type of vectorizer to use before dimension-reduction. Available vectorization methods:
+            {'tfidf', 'count', 'binary', 'frequency'}
+        ngram_range: tuple, (optional, default (1,1))
+            The lower and upper boundary of the range of n-values for different
+            word n-grams or char n-grams to be extracted before dimension-reduction.
+            For example ngram_range=(1, 1) means only single events, (1, 2) means single events
+            and bigrams.
+        Returns
+        --------
+        Dataframe with data in the low-dimensional space for user trajectories indexed by user IDs.
+        Return type
+        --------
+        pd.DataFrame
+        """
+
+        if targets is None:
+            targets = []
+        if ngram_range is None:
+            ngram_range = (1, 1)
+
+        event_col = self.__eventstream.schema.event_id
+        index_col = self.__eventstream.schema.user_id
+
+        if plot_type == "clusters":
+            if self.__clusters_list:
+                targets_mapping = self.__clusters_list
+                legend_title = "cluster number:"
+            else:
+                raise AttributeError(
+                    "Run .rete.get_clusters() before using plot_type='clusters' to obtain clusters mapping"
+                )
+
+        elif plot_type == "targets":
+            if (not targets) and (len(targets) < 1):
+                raise ValueError(
+                    "When plot_type ='targets' must provide parameter targets as list of target event names"
+                )
+            else:
+                targets = [list(pd.core.common.flatten(targets))]  # type: ignore
+                legend_title = "conversion to (" + " | ".join(targets[0]).strip(" | ") + "):"  # type: ignore
+                targets_mapping = (
+                    self.__eventstream.to_dataframe()
+                    .groupby(index_col)[event_col]
+                    .apply(lambda x: bool(set(*targets) & set(x)))
+                    .to_frame()
+                    .sort_index()[event_col]
+                    .values
+                )
+        else:
+            raise ValueError("Unexpected plot type: %s. Allowed values: clusters, targets" % plot_type)
+
+        features = self.extract_features(feature_type=feature_type, ngram_range=ngram_range)
+
+        if method == "tsne":
+            projection: pd.DataFrame = self._learn_tsne(features, **kwargs)
+        elif method == "umap":
+            projection = self._learn_umap(features, **kwargs)
+        else:
+            raise ValueError("Unknown method: %s. Allowed methods: tsne, umap" % method)
+
+        self.__projection = projection
+
+        # return only embeddings is no plot_type:
+        if plot_type is None:
+            return projection
+
+        self._plot_projection(
+            projection=projection.values,
+            targets=targets_mapping,
+            legend_title=legend_title,
+        )
+
+        return projection
+
+    # inner functions
+
+    def _plot_projection(self, projection, targets, legend_title):
+        rcParams["figure.figsize"] = 8, 6
+
+        scatter = sns.scatterplot(
+            x=projection[:, 0],
+            y=projection[:, 1],
+            hue=targets,
+            legend="full",
+            palette=sns.color_palette("bright")[0 : np.unique(targets).shape[0]],  # noqa
+        )
+
+        # move legend outside the box
+        scatter.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0).set_title(legend_title)
+        plt.setp(scatter.get_legend().get_title(), fontsize="12")
+
+        return (
+            scatter,
+            projection,
+        )
+
+    def _learn_tsne(self, data, **kwargs):
+        """
+        Calculates TSNE transformation for given matrix features.
+        Parameters
+        --------
+        data: np.array
+            Array of features.
+        kwargs: optional
+            Parameters for ``sklearn.manifold.TSNE()``
+        Returns
+        -------
+        Calculated TSNE transform
+        Return type
+        -------
+        np.ndarray
+        """
+
+        TSNE_PARAMS = [
+            "angle",
+            "early_exaggeration",
+            "init",
+            "learning_rate",
+            "method",
+            "metric",
+            "min_grad_norm",
+            "n_components",
+            "n_iter",
+            "n_iter_without_progress",
+            "n_jobs",
+            "perplexity",
+            "verbose",
+        ]
+
+        kwargs = {k: v for k, v in kwargs.items() if k in TSNE_PARAMS}
+        res = TSNE(random_state=0, **kwargs).fit_transform(data.values)
+        return pd.DataFrame(res, index=data.index.values)
+
+    def _learn_umap(self, data, **kwargs):
+        """
+        Calculates UMAP transformation for given matrix features.
+        Parameters
+        --------
+        data: np.array
+            Array of features.
+        kwargs: optional
+            Parameters for ``umap.UMAP()``
+        Returns
+        -------
+        Calculated UMAP transform
+        Return type
+        -------
+        np.ndarray
+        """
+        reducer = umap.UMAP()
+        _umap_filter = reducer.get_params()
+        kwargs = {k: v for k, v in kwargs.items() if k in _umap_filter}
+        embedding = umap.UMAP(random_state=0, **kwargs).fit_transform(data.values)
+        return pd.DataFrame(embedding, index=data.index.values)
+
+    def _set_user_clusters(self, user_clusters: dict[str | int, list[int]]) -> None:
+        # @TODO: add some validation. Vladimir Makhanov
+        self._user_clusters = user_clusters
 
     def __get_vectorizer(
         self,
@@ -76,7 +323,7 @@ class Clusters:
             vec_data.index.rename(index_col, inplace=True)
 
             if feature_type == "frequency":
-                # TODO: fix me
+                # @FIXME: lecacy todo without explanation, idk why. Vladimir Makhanov
                 sum = cast(Any, vec_data.sum(axis=1))
                 vec_data = vec_data.div(sum, axis=0).fillna(0)
 
@@ -104,7 +351,7 @@ class Clusters:
         return cast(pd.DataFrame, vec_data)
 
     # TODO: add save
-    def _cluster_bar(self, clusters: list[int] | ndarray, target: list[list[bool]], target_names: list[str]):
+    def _cluster_bar(self, clusters: ndarray, target: list[list[bool]], target_names: list[str]):
         """
         Plots bar charts with cluster sizes and average target conversion rate.
         Parameters
@@ -176,36 +423,6 @@ class Clusters:
 
         return cl
 
-    def create_clusters(
-        self,
-        feature_type: FeatureType = "tfidf",
-        ngram_range: NgramRange = (1, 1),
-        n_clusters: int = 8,
-        method: Method = "kmeans",
-        refit_cluster: bool = True,
-        targets: list[str] | None = None,
-        vector: pd.DataFrame | None = None,
-    ):
-        if self.user_clusters:
-            targets_bool = [[True] * x for x in [len(y) for y in self.user_clusters.values()]]
-            target_names: list[str] = list(map(str, list(self.user_clusters.keys())))
-        else:
-            target_names, targets_bool = self._prepare_clusters(
-                feature_type=feature_type,
-                method=method,
-                n_clusters=n_clusters,
-                ngram_range=ngram_range,
-                refit_cluster=refit_cluster,
-                targets=targets,
-                vector=vector,
-            )
-
-        return self._cluster_bar(
-            clusters=self.__clusters_list,
-            target=cast(List[List[bool]], targets_bool),  # TODO: fix types
-            target_names=target_names,
-        )
-
     def _prepare_clusters(self, feature_type, method, n_clusters, ngram_range, refit_cluster, targets, vector):
         user_col = self.__eventstream.schema.user_id
         event_col = self.__eventstream.schema.event_id
@@ -226,7 +443,7 @@ class Clusters:
                 ngram_range=ngram_range,
             )
         users_ids: pd.Series = features.index.to_series()
-        if self.segments is None or refit_cluster:
+        if self.__segments is None or refit_cluster:
             if method == "kmeans":
                 clusters_list = self._kmeans(features=features, n_clusters=n_clusters)
             elif method == "gmm":
@@ -242,7 +459,7 @@ class Clusters:
             users_clusters = users_ids.to_frame().reset_index(drop=True)
             users_clusters["segment"] = pd.Series(clusters_list)
 
-            self.segments = Segments(
+            self.__segments = Segments(
                 eventstream=self.__eventstream,
                 segments_df=users_clusters,
             )

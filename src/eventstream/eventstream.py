@@ -90,6 +90,7 @@ class Eventstream(
     relations: List[Relation]
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
+    __clusters: Clusters | None = None
 
     def __init__(
         self,
@@ -100,6 +101,8 @@ class Eventstream(
         index_order: Optional[IndexOrder] = None,
         relations: Optional[List[Relation]] = None,
     ) -> None:
+        self.__clusters = None
+
         self.schema = schema if schema else EventstreamSchema()
 
         if not index_order:
@@ -430,24 +433,8 @@ class Eventstream(
         plot = funnel.draw_plot()
         return plot
 
-    def create_clusters(
-        self,
-        feature_type: FeatureType = "tfidf",
-        ngram_range: NgramRange = (1, 1),
-        n_clusters: int = 8,
-        method: Method = "kmeans",
-        refit_cluster: bool = True,
-        targets: list[str] | None = None,
-        vector: pd.DataFrame | None = None,
-        user_clusters: dict[str | int, list[int]] | None = None,
-    ):
-        clusters = Clusters(eventstream=self, user_clusters=user_clusters)
-        return clusters.create_clusters(
-            feature_type=feature_type,
-            ngram_range=ngram_range,
-            n_clusters=n_clusters,
-            method=method,
-            refit_cluster=refit_cluster,
-            targets=targets,
-            vector=vector,
-        )
+    @property
+    def clusters(self) -> Clusters:
+        if self.__clusters is None:
+            self.__clusters = Clusters(eventstream=self, user_clusters=None)
+        return self.__clusters

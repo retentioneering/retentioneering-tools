@@ -147,7 +147,7 @@ class Clusters:
         if ngram_range is None:
             ngram_range = (1, 1)
 
-        event_col = self.__eventstream.schema.event_id
+        event_col = self.__eventstream.schema.event_name
         index_col = self.__eventstream.schema.user_id
 
         if plot_type == "clusters":
@@ -307,7 +307,7 @@ class Clusters:
         if ngram_range is None:
             ngram_range = (1, 1)
         index_col = eventstream.schema.user_id
-        event_col = eventstream.schema.event_id
+        event_col = eventstream.schema.event_name
         time_col = eventstream.schema.event_timestamp
 
         events = eventstream.to_dataframe()
@@ -434,7 +434,7 @@ class Clusters:
 
     def _prepare_clusters(self, feature_type, method, n_clusters, ngram_range, refit_cluster, targets, vector):
         user_col = self.__eventstream.schema.user_id
-        event_col = self.__eventstream.schema.event_id
+        event_col = self.__eventstream.schema.event_name
         if feature_type == "external" and not isinstance(vector, pd.DataFrame):  # type: ignore
             raise ValueError("Vector is not a DataFrame!")
         if feature_type == "external" and vector is not None:

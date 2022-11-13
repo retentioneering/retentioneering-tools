@@ -9,7 +9,7 @@ import pandas as pd
 import seaborn as sns
 import umap.umap_ as umap
 from matplotlib import rcParams
-from numpy import ndarray
+from numpy import ndarray, unique
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.manifold import TSNE
@@ -27,14 +27,17 @@ PlotProjectionMethod = Literal["tsne", "umap"]
 
 class Clusters:
     __eventstream: EventstreamType
-    __clusters_list: dict[str | int, list[int]] | ndarray
+    __clusters_list: ndarray
     __segments: Segments | None
 
     def __init__(self, eventstream: EventstreamType, user_clusters: dict[str | int, list[int]] | None = None):
         self.__eventstream: EventstreamType = eventstream
         self.__segments = None
         self._user_clusters = user_clusters
-        self.__clusters_list = user_clusters if user_clusters else {}
+        if user_clusters:
+            self._set_user_clusters(user_clusters)
+        else:
+            self.__clusters_list = ndarray(shape=(0, 0))
         self.__projection = None
 
     # public API
@@ -82,6 +85,14 @@ class Clusters:
     @user_clusters.setter
     def user_clusters(self, user_clusters: dict[str | int, list[int]]):
         self._set_user_clusters(user_clusters=user_clusters)
+
+    @property
+    def calculated_clusters(self) -> dict:
+        clusters = unique(self.__clusters_list)
+        readable_data: dict[str | int, list[str | int]] = {x: list() for x in clusters}
+        for row_num, cluster in enumerate(self.__clusters_list):
+            readable_data[cluster].append(row_num)
+        return readable_data
 
     def narrow_eventstream(self, cluster: int | str) -> EventstreamType:
         from src.eventstream.eventstream import Eventstream
@@ -151,7 +162,7 @@ class Clusters:
         index_col = self.__eventstream.schema.user_id
 
         if plot_type == "clusters":
-            if self.__clusters_list:
+            if self.__clusters_list.any():
                 targets_mapping = self.__clusters_list
                 legend_title = "cluster number:"
             else:
@@ -285,6 +296,14 @@ class Clusters:
     def _set_user_clusters(self, user_clusters: dict[str | int, list[int]]) -> None:
         # @TODO: add some validation. Vladimir Makhanov
         self._user_clusters = user_clusters
+
+        correct_data = {}
+        for cluster, rows in user_clusters.items():
+            _ = {row: cluster for row in rows}
+            correct_data.update(_)
+
+        correct_data = dict(sorted(correct_data.items()))
+        self.__clusters_list = ndarray(list(correct_data.values()))
 
     def __get_vectorizer(
         self,

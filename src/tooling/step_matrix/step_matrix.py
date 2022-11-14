@@ -193,8 +193,8 @@ class StepMatrix:
         piv.columns.name = None
         piv.index.name = None
         # MAKE TERMINATED STATE ACCUMULATED:
-        if "end" in piv.index:
-            piv.loc["end"] = piv.loc["end"].cumsum().fillna(0)
+        if "path_end" in piv.index:
+            piv.loc["path_end"] = piv.loc["path_end"].cumsum().fillna(0)
         return piv
 
     def _process_targets(self, data: pd.DataFrame) -> tuple[pd.DataFrame | None, list[list[str]] | None]:
@@ -400,7 +400,7 @@ class StepMatrix:
             piv = self._sort_matrix(piv)
 
             keep_in_the_end = []
-            keep_in_the_end.append("end") if ("end" in piv.index) else None
+            keep_in_the_end.append("path_end") if ("path_end" in piv.index) else None
             keep_in_the_end.append(thresh_index) if (thresh_index in piv.index) else None
 
             events_order = [*(i for i in piv.index if i not in keep_in_the_end), *keep_in_the_end]

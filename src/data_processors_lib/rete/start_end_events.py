@@ -15,7 +15,7 @@ class StartEndEventsParams(ParamsModel):
 class StartEndEvents(DataProcessor):
     """
     Creates two synthetic events in each user's path:
-    ``start`` and ``end``
+    ``path_start`` and ``path_end``
 
     Returns
     -------
@@ -25,9 +25,9 @@ class StartEndEvents(DataProcessor):
         +----------------+----------------+----------------+
         | **event_name** | **event_type** | **timestamp**  |
         +----------------+----------------+----------------+
-        | start          | start          | first_event    |
+        | path_start     | path_start     | first_event    |
         +----------------+----------------+----------------+
-        | end            | end            | last_event     |
+        | path_end       | path_end       | last_event     |
         +----------------+----------------+----------------+
 
     Note

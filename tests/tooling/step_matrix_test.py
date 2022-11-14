@@ -27,7 +27,7 @@ def read_test_data(filename):
 @pytest.fixture
 def stream():
     def remove_start(df, schema):
-        return df["event_name"] != "start"
+        return df["event_name"] != "path_start"
 
     test_stream = datasets.load_simple_shop()
     graph = PGraph(source_stream=test_stream)

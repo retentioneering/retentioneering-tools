@@ -11,7 +11,37 @@ from src.eventstream.types import EventstreamType
 
 
 class Sankey:
-    # TODO: write the doc
+    """
+    Visualizes user paths in step-wise manner using sankey diagram.
+
+    Parameters
+    ----------
+    max_steps: int (optional, default 10)
+        Maximum number of steps in trajectories to include.
+    thresh: float | int (optional, default 0.05)
+        Used to remove rare events from the plot. An event is collapsed to ``thresholded_N`` artificial event if
+        its maximum frequency across all the steps is less or equal than ``thresh``. The frequency is considered
+        with respect to ``thresh`` type:
+        If ``int`` - the frequency is the number of unique users who had given event at given step.
+        If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
+        The events which are prohibited for collapsing could be enlisted in ``target`` parameter.
+    sorting: list of str | None (default None)
+        Tunes the order of the events visualized at each step. The events which are not represented in the list
+        will follow after the events from the list.
+    target: list of str | None (default None)
+        Contains the events which are prohibited for collapsing with ``thresh`` parameter.
+    autosize: bool (optional, default True)
+        Plotly autosize parameter. See https://plotly.com/python/reference/layout/#layout-autosize
+    width:
+        Plot's width (in px). See https://plotly.com/python/reference/layout/#layout-width
+    height:
+        Plot's height (in px). See https://plotly.com/python/reference/layout/#layout-height
+
+    See Also
+    --------
+    :py:func:`src.eventstream.step_matrix`
+    """
+
     def __init__(
         self,
         eventstream: EventstreamType,

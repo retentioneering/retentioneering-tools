@@ -36,7 +36,7 @@ class StepMatrix:
     Parameters
     ----------
     max_steps: int (optional, default 20)
-        Maximum number of steps in trajectory to include.
+        Maximum number of steps in trajectories to include.
     weight_col: str (optional, default None)
         Aggregation column for edge weighting. If None, specified index_col
         from retentioneering.config will be used as column name. For example,

@@ -6,12 +6,16 @@ import numpy as np
 
 from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.constants import DATETIME_UNITS
-from src.eventstream.eventstream import Eventstream
+from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
 from src.widget.widgets import ReteTimeWidget
 
 
 class DeleteUsersByPathLengthParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`DeleteUsersByPathLength`
+    """
+
     events_num: Optional[int]
     cutoff: Optional[Tuple[float, DATETIME_UNITS]]
 
@@ -21,12 +25,36 @@ class DeleteUsersByPathLengthParams(ParamsModel):
 
 
 class DeleteUsersByPathLength(DataProcessor):
+    """
+    Deletes entire user paths if they are shorter than the specified number of events or cut_off.
+
+    Parameters
+    ----------
+    events_num : int, optional
+        Minimum user path length
+
+    cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
+        Minimum user path length and its unit of measure.
+
+    Returns
+    -------
+    Eventstream
+        Eventstream with events that should be deleted from input Eventstream.
+
+    Raises
+    ------
+    ValueError
+        If both of ``events_num`` and ``cutoff`` are empty or both are given.
+    """
+
     params: DeleteUsersByPathLengthParams
 
     def __init__(self, params: DeleteUsersByPathLengthParams):
         super().__init__(params=params)
 
-    def apply(self, eventstream: Eventstream) -> Eventstream:
+    def apply(self, eventstream: EventstreamType) -> EventstreamType:
+        from src.eventstream.eventstream import Eventstream
+
         user_col = eventstream.schema.user_id
         time_col = eventstream.schema.event_timestamp
 

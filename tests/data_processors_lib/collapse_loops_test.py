@@ -5,39 +5,45 @@ import pandas as pd
 from src.data_processors_lib.rete import CollapseLoops, CollapseLoopsParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
-from src.graph.p_graph import EventsNode, PGraph
+from tests.data_processors_lib.common import (
+    ApplyTestBase,
+    GraphTestBase,
+    apply_processor,
+    apply_processor_with_graph,
+)
 
 
-class TestCollapseLoops:
-    def test_collapse_loops_apply__full_collapse_false__agg_min(self):
-        source_df = pd.DataFrame(
-            [
-                [1, "event1", "2022-01-01 00:01:00"],
-                [1, "event1", "2022-01-01 00:02:00"],
-                [1, "event2", "2022-01-01 00:01:02"],
-                [1, "event1", "2022-01-01 00:03:00"],
-                [1, "event1", "2022-01-01 00:04:00"],
-                [1, "event1", "2022-01-01 00:05:00"],
-                [2, "event1", "2022-01-02 00:00:00"],
-                [2, "event1", "2022-01-02 00:00:05"],
-                [2, "event2", "2022-01-02 00:00:05"],
-            ],
-            columns=["user_id", "event", "timestamp"],
+class TestCollapseLoops(ApplyTestBase):
+
+    _Processor = CollapseLoops
+    _source_df = pd.DataFrame(
+        [
+            [1, "event1", "2022-01-01 00:01:00"],
+            [1, "event1", "2022-01-01 00:02:00"],
+            [1, "event2", "2022-01-01 00:01:02"],
+            [1, "event1", "2022-01-01 00:03:00"],
+            [1, "event1", "2022-01-01 00:04:00"],
+            [1, "event1", "2022-01-01 00:05:00"],
+            [2, "event1", "2022-01-02 00:00:00"],
+            [2, "event1", "2022-01-02 00:00:05"],
+            [2, "event2", "2022-01-02 00:00:05"],
+        ],
+        columns=["user_id", "event", "timestamp"],
+    )
+    _raw_data_schema = RawDataSchema(
+        user_id="user_id",
+        event_name="event",
+        event_timestamp="timestamp",
+    )
+
+    def test_collapse_loops_apply__suffix_count__agg_min(self):
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="count",
+                timestamp_aggregation_type="min",
+            )
         )
-
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            schema=EventstreamSchema(),
-        )
-
-        params = {"full_collapse": False, "timestamp_aggregation_type": "min"}
-
-        collapsed = CollapseLoops(params=CollapseLoopsParams(**params))
-        result = collapsed.apply(source)
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp", "_deleted"]
-
-        correct_result_false_min_del = pd.DataFrame(
+        expected = pd.DataFrame(
             [
                 [1, "event1_loop_4", "group_alias", "2022-01-01 00:02:00", False],
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
@@ -48,43 +54,18 @@ class TestCollapseLoops:
                 [2, "event1", "raw", "2022-01-02 00:00:00", True],
                 [2, "event1", "raw", "2022-01-02 00:00:05", True],
             ],
-            columns=correct_result_columns,
+            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
         )
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-        result_df_all = result.to_dataframe(show_deleted=True)[correct_result_columns].reset_index(drop=True)
-
-        assert result_df_all.compare(correct_result_false_min_del).shape == (0, 0)
-
-    def test_collapse_loops_apply__full_collapse_false__agg_max(self):
-        source_df = pd.DataFrame(
-            [
-                [1, "event1", "2022-01-01 00:01:00"],
-                [1, "event1", "2022-01-01 00:02:00"],
-                [1, "event2", "2022-01-01 00:01:02"],
-                [1, "event1", "2022-01-01 00:03:00"],
-                [1, "event1", "2022-01-01 00:04:00"],
-                [1, "event1", "2022-01-01 00:05:00"],
-                [2, "event1", "2022-01-02 00:00:00"],
-                [2, "event1", "2022-01-02 00:00:05"],
-                [2, "event2", "2022-01-02 00:00:05"],
-            ],
-            columns=["user_id", "event", "timestamp"],
+    def test_collapse_loops_apply__suffix_count__agg_max(self):
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="count",
+                timestamp_aggregation_type="max",
+            )
         )
-
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            schema=EventstreamSchema(),
-        )
-
-        params = {"full_collapse": False, "timestamp_aggregation_type": "max"}
-
-        collapsed = CollapseLoops(params=CollapseLoopsParams(**params))
-        result = collapsed.apply(source)
-
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp", "_deleted"]
-
-        correct_result_false_max_del = pd.DataFrame(
+        expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
                 [1, "event1", "raw", "2022-01-01 00:03:00", True],
@@ -95,43 +76,18 @@ class TestCollapseLoops:
                 [2, "event1_loop_2", "group_alias", "2022-01-02 00:00:05", False],
                 [2, "event1", "raw", "2022-01-02 00:00:05", True],
             ],
-            columns=correct_result_columns,
+            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
         )
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-        result_df_all = result.to_dataframe(show_deleted=True)[correct_result_columns].reset_index(drop=True)
-
-        assert result_df_all.compare(correct_result_false_max_del).shape == (0, 0)
-
-    def test_collapse_loops_apply__full_collapse_true__agg_mean(self):
-        source_df = pd.DataFrame(
-            [
-                [1, "event1", "2022-01-01 00:01:00"],
-                [1, "event1", "2022-01-01 00:02:00"],
-                [1, "event2", "2022-01-01 00:01:02"],
-                [1, "event1", "2022-01-01 00:03:00"],
-                [1, "event1", "2022-01-01 00:04:00"],
-                [1, "event1", "2022-01-01 00:05:00"],
-                [2, "event1", "2022-01-02 00:00:00"],
-                [2, "event1", "2022-01-02 00:00:05"],
-                [2, "event2", "2022-01-02 00:00:05"],
-            ],
-            columns=["user_id", "event", "timestamp"],
+    def test_collapse_loops_apply__suffix_loop__agg_mean(self):
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="loop",
+                timestamp_aggregation_type="mean",
+            )
         )
-
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            schema=EventstreamSchema(),
-        )
-
-        params = {"full_collapse": True, "timestamp_aggregation_type": "mean"}
-
-        collapsed = CollapseLoops(params=CollapseLoopsParams(**params))
-        result = collapsed.apply(source)
-
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp", "_deleted"]
-
-        correct_result_true_mean_del = pd.DataFrame(
+        expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
                 [1, "event1", "raw", "2022-01-01 00:03:00", True],
@@ -142,16 +98,112 @@ class TestCollapseLoops:
                 [2, "event1_loop", "group_alias", "2022-01-02 00:00:02.5", False],
                 [2, "event1", "raw", "2022-01-02 00:00:05", True],
             ],
-            columns=correct_result_columns,
+            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
         )
-
-        result_df_all = result.to_dataframe(show_deleted=True)[correct_result_columns].reset_index(drop=True)
-
-        assert result_df_all.compare(correct_result_true_mean_del).shape == (0, 0)
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestCollapseLoopsGraph:
-    def test_collapse_loops_graph__full_collapse_false__agg_min(self):
+class TestCollapseLoopsGraph(GraphTestBase):
+    _Processor = CollapseLoops
+    _source_df = pd.DataFrame(
+        [
+            [1, "event1", "2022-01-01 00:01:00"],
+            [1, "event1", "2022-01-01 00:02:00"],
+            [1, "event2", "2022-01-01 00:01:02"],
+            [1, "event1", "2022-01-01 00:03:00"],
+            [1, "event1", "2022-01-01 00:04:00"],
+            [1, "event1", "2022-01-01 00:05:00"],
+            [2, "event1", "2022-01-02 00:00:00"],
+            [2, "event1", "2022-01-02 00:00:05"],
+            [2, "event2", "2022-01-02 00:00:05"],
+        ],
+        columns=["user_id", "event", "timestamp"],
+    )
+    _raw_data_schema = RawDataSchema(
+        user_id="user_id",
+        event_name="event",
+        event_timestamp="timestamp",
+    )
+
+    def test_collapse_loops_graph__suffix_count__agg_min(self):
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="count",
+                timestamp_aggregation_type="min",
+            )
+        )
+        expected = pd.DataFrame(
+            [
+                [1, "event1", "raw", "2022-01-01 00:01:00"],
+                [1, "event2", "raw", "2022-01-01 00:01:02"],
+                [1, "event1_loop_4", "group_alias", "2022-01-01 00:02:00"],
+                [2, "event1_loop_2", "group_alias", "2022-01-02 00:00:00"],
+                [2, "event2", "raw", "2022-01-02 00:00:05"],
+            ],
+            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+        )
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
+
+    def test_collapse_loops_graph__suffix_count__agg_max(self):
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="count",
+                timestamp_aggregation_type="max",
+            )
+        )
+        expected = pd.DataFrame(
+            [
+                [1, "event1", "raw", "2022-01-01 00:01:00"],
+                [1, "event2", "raw", "2022-01-01 00:01:02"],
+                [1, "event1_loop_4", "group_alias", "2022-01-01 00:05:00"],
+                [2, "event1_loop_2", "group_alias", "2022-01-02 00:00:05"],
+                [2, "event2", "raw", "2022-01-02 00:00:05"],
+            ],
+            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+        )
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
+
+    def test_collapse_loops_graph__suffix_loop__agg_mean(self):
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="loop",
+                timestamp_aggregation_type="mean",
+            )
+        )
+        expected = pd.DataFrame(
+            [
+                [1, "event1", "raw", "2022-01-01 00:01:00"],
+                [1, "event2", "raw", "2022-01-01 00:01:02"],
+                [1, "event1_loop", "group_alias", "2022-01-01 00:03:30"],
+                [2, "event1_loop", "group_alias", "2022-01-02 00:00:02.5"],
+                [2, "event2", "raw", "2022-01-02 00:00:05"],
+            ],
+            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+        )
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
+
+    def test_collapse_loops_graph__suffix_none__agg_mean(self):
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix=None,
+                timestamp_aggregation_type="mean",
+            )
+        )
+        expected = pd.DataFrame(
+            [
+                [1, "event1", "raw", "2022-01-01 00:01:00"],
+                [1, "event2", "raw", "2022-01-01 00:01:02"],
+                [1, "event1", "group_alias", "2022-01-01 00:03:30"],
+                [2, "event1", "group_alias", "2022-01-02 00:00:02.5"],
+                [2, "event2", "raw", "2022-01-02 00:00:05"],
+            ],
+            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+        )
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
+
+
+class TestCollapseLoopsHelper:
+    def test_collapse_loops_graph__suffix_count__agg_min(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -173,17 +225,11 @@ class TestCollapseLoopsGraph:
             schema=EventstreamSchema(),
         )
 
-        graph = PGraph(source_stream=source)
-
-        params = {"full_collapse": False, "timestamp_aggregation_type": "min"}
-
-        collapsed = EventsNode(CollapseLoops(params=CollapseLoopsParams(**params)))
-
-        graph.add_node(node=collapsed, parents=[graph.root])
+        params = {"suffix": "count", "timestamp_aggregation_type": "min"}
 
         correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
 
-        res = graph.combine(node=collapsed).to_dataframe()[correct_result_columns].reset_index(drop=True)
+        res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
         correct_result_false_min = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -197,7 +243,7 @@ class TestCollapseLoopsGraph:
 
         assert res.compare(correct_result_false_min).shape == (0, 0)
 
-    def test_collapse_loops_graph__full_collapse_false__agg_max(self):
+    def test_collapse_loops_graph__suffix_count__agg_max(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -219,17 +265,11 @@ class TestCollapseLoopsGraph:
             schema=EventstreamSchema(),
         )
 
-        graph = PGraph(source_stream=source)
-
-        params = {"full_collapse": False, "timestamp_aggregation_type": "max"}
-
-        collapsed = EventsNode(CollapseLoops(params=CollapseLoopsParams(**params)))
-
-        graph.add_node(node=collapsed, parents=[graph.root])
+        params = {"suffix": "count", "timestamp_aggregation_type": "max"}
 
         correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
 
-        res = graph.combine(node=collapsed).to_dataframe()[correct_result_columns].reset_index(drop=True)
+        res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
         correct_result_false_max = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -243,7 +283,7 @@ class TestCollapseLoopsGraph:
 
         assert res.compare(correct_result_false_max).shape == (0, 0)
 
-    def test_collapse_loops_graph__full_collapse_true__agg_mean(self):
+    def test_collapse_loops_graph__suffix_loop__agg_mean(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -265,23 +305,57 @@ class TestCollapseLoopsGraph:
             schema=EventstreamSchema(),
         )
 
-        graph = PGraph(source_stream=source)
-
-        params = {"full_collapse": True, "timestamp_aggregation_type": "mean"}
-
-        collapsed = EventsNode(CollapseLoops(params=CollapseLoopsParams(**params)))
-
-        graph.add_node(node=collapsed, parents=[graph.root])
+        params = {"suffix": "loop", "timestamp_aggregation_type": "mean"}
 
         correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
 
-        res = graph.combine(node=collapsed).to_dataframe()[correct_result_columns].reset_index(drop=True)
+        res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
         correct_result_true_mean = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "event1_loop", "group_alias", "2022-01-01 00:03:30"],
                 [2, "event1_loop", "group_alias", "2022-01-02 00:00:02.5"],
+                [2, "event2", "raw", "2022-01-02 00:00:05"],
+            ],
+            columns=correct_result_columns,
+        )
+
+        assert res.compare(correct_result_true_mean).shape == (0, 0)
+
+    def test_collapse_loops_graph__suffix_none__agg_mean(self):
+        source_df = pd.DataFrame(
+            [
+                [1, "event1", "2022-01-01 00:01:00"],
+                [1, "event1", "2022-01-01 00:02:00"],
+                [1, "event2", "2022-01-01 00:01:02"],
+                [1, "event1", "2022-01-01 00:03:00"],
+                [1, "event1", "2022-01-01 00:04:00"],
+                [1, "event1", "2022-01-01 00:05:00"],
+                [2, "event1", "2022-01-02 00:00:00"],
+                [2, "event1", "2022-01-02 00:00:05"],
+                [2, "event2", "2022-01-02 00:00:05"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+
+        source = Eventstream(
+            raw_data=source_df,
+            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
+            schema=EventstreamSchema(),
+        )
+
+        params = {"suffix": None, "timestamp_aggregation_type": "mean"}
+
+        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+
+        res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
+        correct_result_true_mean = pd.DataFrame(
+            [
+                [1, "event1", "raw", "2022-01-01 00:01:00"],
+                [1, "event2", "raw", "2022-01-01 00:01:02"],
+                [1, "event1", "group_alias", "2022-01-01 00:03:30"],
+                [2, "event1", "group_alias", "2022-01-02 00:00:02.5"],
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
             ],
             columns=correct_result_columns,

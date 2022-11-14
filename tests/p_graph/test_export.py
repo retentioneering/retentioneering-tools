@@ -245,7 +245,7 @@ class TestPGraphExportImport:
 
         node = EventsNode(
             processor=CollapseLoops(
-                params=CollapseLoopsParams(**{"full_collapse": False, "timestamp_aggregation_type": "min"})
+                params=CollapseLoopsParams(**{"suffix": "count", "timestamp_aggregation_type": "min"})
             )
         )
         graph.add_node(node=node, parents=[graph.root])
@@ -263,7 +263,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "CollapseLoops",
-                        "values": {"full_collapse": False, "timestamp_aggregation_type": "min"},
+                        "values": {"suffix": "count", "timestamp_aggregation_type": "min"},
                     },
                 },
             ],
@@ -281,7 +281,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "CollapseLoops",
-                            "values": {"full_collapse": False, "timestamp_aggregation_type": "min"},
+                            "values": {"suffix": "count", "timestamp_aggregation_type": "min"},
                         },
                     },
                 ],
@@ -304,7 +304,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "CollapseLoops",
-                        "values": {"full_collapse": False, "timestamp_aggregation_type": "min"},
+                        "values": {"suffix": "count", "timestamp_aggregation_type": "min"},
                     },
                 },
             ],
@@ -465,18 +465,36 @@ class TestPGraphExportImport:
                         "name": "NegativeTarget",
                         "values": {
                             "negative_target_events": ["event3", "event2"],
-                            "negative_function": "def _default_func_negative(eventstream, "
-                            "negative_target_events) -> pd.DataFrame:\n"
+                            "negative_function": "def _default_func_negative(eventstream: EventstreamType, "
+                            "negative_target_events: List[str]) -> pd.DataFrame:\n"
+                            '    """\n'
+                            "    Filters rows with target events from the input eventstream.\n"
+                            "\n"
+                            "    Parameters\n"
+                            "    ----------\n"
+                            "    eventstream : Eventstream\n"
+                            "        Source eventstream or output from previous nodes.\n"
+                            "\n"
+                            "    negative_target_events : List[str]\n"
+                            "        Each event from that list is associated with the bad result (scenario)\n"
+                            "        of user's behaviour (experience) in the product.\n"
+                            "        If there are several target events in user path - the event with minimum "
+                            "timestamp is taken.\n"
+                            "\n"
+                            "    Returns\n"
+                            "    -------\n"
+                            "    pd.DataFrame\n"
+                            "        Filtered DataFrame with negative_target_events and its timestamps.\n"
+                            '    """\n'
                             "    user_col = eventstream.schema.user_id\n"
                             "    time_col = eventstream.schema.event_timestamp\n"
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n"
                             "\n"
-                            "    negative_events_index = "
-                            "df[df[event_col].isin(negative_target_events)].groupby"
-                            "(user_col)[time_col].idxmin()\n"
-                            "\n"
-                            "    return df.iloc[negative_events_index]\n",
+                            "    negative_events_index = (\n"
+                            "        df[df[event_col].isin(negative_target_events)]."
+                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
+                            "    return df.iloc[negative_events_index]  # type: ignore\n",
                         },
                     },
                 },
@@ -576,11 +594,32 @@ class TestPGraphExportImport:
                         "values": {
                             "positive_target_events": ["event3", "event2"],
                             "positive_function": "def _default_func_positive("
-                            "eventstream: Eventstream, positive_target_events: list[str]) "
-                            "-> pd.DataFrame:\n    user_col = eventstream.schema.user_id"
-                            "\n    time_col = eventstream.schema.event_timestamp"
-                            "\n    event_col = eventstream.schema.event_name"
-                            "\n    df = eventstream.to_dataframe()\n\n    "
+                            "eventstream: EventstreamType, positive_target_events: list[str]) "
+                            "-> pd.DataFrame:\n"
+                            '    """\n'
+                            "    Filters rows with target events from the input eventstream.\n"
+                            "\n"
+                            "    Parameters\n"
+                            "    ----------\n"
+                            "    eventstream : Eventstream\n"
+                            "        Source eventstream or output from previous nodes.\n"
+                            "\n"
+                            "    positive_target_events : List[str]\n"
+                            "        Condition for eventstream filtering.\n"
+                            "        Each event from that list is associated with a conversion goal "
+                            "of the user behaviour in the product.\n"
+                            "        If there are several target events in user path - the event with minimum "
+                            "timestamp is taken.\n"
+                            "\n"
+                            "    Returns\n"
+                            "    -------\n"
+                            "    pd.DataFrame\n"
+                            "        Filtered DataFrame with positive_target_events and its timestamps.\n"
+                            '    """\n'
+                            "    user_col = eventstream.schema.user_id\n"
+                            "    time_col = eventstream.schema.event_timestamp\n"
+                            "    event_col = eventstream.schema.event_name\n"
+                            "    df = eventstream.to_dataframe()\n\n    "
                             "positive_events_index = (\n        "
                             "df[df[event_col].isin(positive_target_events)]."
                             "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
@@ -629,11 +668,32 @@ class TestPGraphExportImport:
                         "values": {
                             "positive_target_events": ["event3", "event2"],
                             "positive_function": "def _default_func_positive("
-                            "eventstream: Eventstream, positive_target_events: list[str]) "
-                            "-> pd.DataFrame:\n    user_col = eventstream.schema.user_id"
-                            "\n    time_col = eventstream.schema.event_timestamp"
-                            "\n    event_col = eventstream.schema.event_name"
-                            "\n    df = eventstream.to_dataframe()\n\n    "
+                            "eventstream: EventstreamType, positive_target_events: list[str]) "
+                            "-> pd.DataFrame:\n"
+                            '    """\n'
+                            "    Filters rows with target events from the input eventstream.\n"
+                            "\n"
+                            "    Parameters\n"
+                            "    ----------\n"
+                            "    eventstream : Eventstream\n"
+                            "        Source eventstream or output from previous nodes.\n"
+                            "\n"
+                            "    positive_target_events : List[str]\n"
+                            "        Condition for eventstream filtering.\n"
+                            "        Each event from that list is associated with a conversion goal "
+                            "of the user behaviour in the product.\n"
+                            "        If there are several target events in user path - the event with minimum "
+                            "timestamp is taken.\n"
+                            "\n"
+                            "    Returns\n"
+                            "    -------\n"
+                            "    pd.DataFrame\n"
+                            "        Filtered DataFrame with positive_target_events and its timestamps.\n"
+                            '    """\n'
+                            "    user_col = eventstream.schema.user_id\n"
+                            "    time_col = eventstream.schema.event_timestamp\n"
+                            "    event_col = eventstream.schema.event_name\n"
+                            "    df = eventstream.to_dataframe()\n\n    "
                             "positive_events_index = (\n        "
                             "df[df[event_col].isin(positive_target_events)]."
                             "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"

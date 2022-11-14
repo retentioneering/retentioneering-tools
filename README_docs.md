@@ -83,3 +83,30 @@ open index.html
 ```commandline
 make clean
 ```
+
+## Экспорт картинок в html для раздела "tools description"
+Код используется в ноутбуке, для сохранения plotly картинок в html
+Затем их нужно сохранить в docs/source/_static/tool_directory
+
+```
+import plotly.express as px
+
+fig = funnel.draw_plot()
+fig.write_html("funnel_0.html")
+```
+
+Далее на них можно ссылаться из нужного блока в rst файле
+
+```
+.. raw:: html
+
+
+            <iframe
+                width="700"
+                height="400"
+                src="_static/funnel/funnel_0.html"
+                frameborder="0"
+                align="left"
+                allowfullscreen
+            ></iframe>
+```

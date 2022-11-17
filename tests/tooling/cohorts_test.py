@@ -49,7 +49,7 @@ class TestCohorts:
             schema=EventstreamSchema(),
         )
 
-        cohorts = Cohorts(eventstream=source, cohort_start_round="M", cohort_period=(1, "M"), average=False)
+        cohorts = Cohorts(eventstream=source, cohort_start_unit="M", cohort_period=(1, "M"), average=False)
         res = cohorts.cohort_matrix().fillna(-999).reset_index()
         indx = ["2021-12", "2022-01", "2022-02", "2022-03"]
 
@@ -108,7 +108,7 @@ class TestCohorts:
             schema=EventstreamSchema(),
         )
 
-        cohorts = Cohorts(eventstream=source, cohort_start_round="M", cohort_period=(2, "M"), average=False)
+        cohorts = Cohorts(eventstream=source, cohort_start_unit="M", cohort_period=(2, "M"), average=False)
         res = cohorts.cohort_matrix().fillna(-999).reset_index()
         indx = ["2021-12", "2022-02"]
 
@@ -122,7 +122,7 @@ class TestCohorts:
         assert correct_res_df.reset_index().round(2).compare(res.round(2)).shape == (0, 0)
 
     def test_cohorts__matrix_D1M(self):
-        # @TODO - ошибка. dpanina
+        # @TODO - нужен ли тест на более информативную ошибку? dpanina
         pass
 
     def test_cohorts__matrix_D30D(self):
@@ -166,7 +166,7 @@ class TestCohorts:
             schema=EventstreamSchema(),
         )
 
-        cohorts = Cohorts(eventstream=source, cohort_start_round="D", cohort_period=(30, "D"), average=False)
+        cohorts = Cohorts(eventstream=source, cohort_start_unit="D", cohort_period=(30, "D"), average=False)
         res = cohorts.cohort_matrix().fillna(-999).reset_index()
         indx = ["2021-12-28", "2022-01-27", "2022-02-26"]
 
@@ -220,7 +220,7 @@ class TestCohorts:
             schema=EventstreamSchema(),
         )
 
-        cohorts = Cohorts(eventstream=source, cohort_start_round="W", cohort_period=(4, "W"), average=False)
+        cohorts = Cohorts(eventstream=source, cohort_start_unit="W", cohort_period=(4, "W"), average=False)
         res = cohorts.cohort_matrix().fillna(-999).reset_index()
         indx = ["2021-12-27", "2022-01-24", "2022-02-21"]
 
@@ -274,7 +274,7 @@ class TestCohorts:
             schema=EventstreamSchema(),
         )
 
-        cohorts = Cohorts(eventstream=source, cohort_start_round="D", cohort_period=(4, "W"), average=False)
+        cohorts = Cohorts(eventstream=source, cohort_start_unit="D", cohort_period=(4, "W"), average=False)
         res = cohorts.cohort_matrix().fillna(-999).reset_index()
         indx = ["2021-12-28", "2022-01-25", "2022-02-22"]
 
@@ -328,7 +328,7 @@ class TestCohorts:
             schema=EventstreamSchema(),
         )
 
-        cohorts = Cohorts(eventstream=source, cohort_start_round="W", cohort_period=(30, "D"), average=False)
+        cohorts = Cohorts(eventstream=source, cohort_start_unit="W", cohort_period=(30, "D"), average=False)
         res = cohorts.cohort_matrix().fillna(-999).reset_index()
         indx = ["2021-12-27", "2022-01-26", "2022-02-25"]
 

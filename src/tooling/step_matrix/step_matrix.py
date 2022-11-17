@@ -26,8 +26,6 @@ class CenteredParams:
 
 
 class StepMatrix:
-    __eventstream: EventstreamType
-
     """
     Plots heatmap with distribution of users over trajectory steps ordered by
     event name. Matrix rows are event names, columns are aligned user trajectory
@@ -91,6 +89,8 @@ class StepMatrix:
     -----------
     pd.DataFrame
     """
+
+    __eventstream: EventstreamType
 
     def __init__(
         self,

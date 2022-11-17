@@ -9,17 +9,12 @@ import seaborn as sns
 
 from src.eventstream.types import EventstreamType
 
-# https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units
+# @TODO в отдельный файл может надо такое вынести?
 DATETIME_UNITS = Literal["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
 DATETIME_UNITS_LIST = ["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
 
 
 class Cohorts:
-    __eventstream: EventstreamType
-    cohort_period: int
-    cohort_period_unit: DATETIME_UNITS
-    cohort_start_round: DATETIME_UNITS
-
     """
     Class which provides methods for cohort analysis based on time.
     Users divided on cohorts depending on the time of their
@@ -28,57 +23,61 @@ class Cohorts:
     of the cohort period and cohort group.
 
     Parameters
-        --------
-        cohort_start_round: :numpy_link:`DATETIME_UNITS<>`
-            The way of rounding and format of the moment from which the cohort count begins.
-            Minimum timestamp rounding down to the selected datetime unit.
+    --------
+    cohort_start_unit: :numpy_link:`DATETIME_UNITS<>`
+        The way of rounding and format of the moment from which the cohort count begins.
+        Minimum timestamp rounding down to the selected datetime unit.
 
-            For example:
-            We have eventstream with min timestamp - "2021-12-28 09:08:34.432456"
-            The result of roundings with different DATETIME_UNITS is in ithe table below:
+        For example:
+        We have eventstream with min timestamp - "2021-12-28 09:08:34.432456"
+        The result of roundings with different DATETIME_UNITS is in ithe table below:
 
-            +------------------------+-------------------------+
-            | **cohort_start_round** | **cohort_start_moment** |
-            +------------------------+-------------------------+
-            | Y                      |  2021-01-01 00:00:00    |
-            +------------------------+-------------------------+
-            | M                      |  2021-12-01 00:00:00    |
-            +------------------------+-------------------------+
-            | W                      |  2021-12-27 00:00:00    |
-            +------------------------+-------------------------+
-            | D                      |  2021-08-28 00:00:00    |
-            +------------------------+-------------------------+
+        +------------------------+-------------------------+
+        | **cohort_start_unit** | **cohort_start_moment** |
+        +------------------------+-------------------------+
+        | Y                      |  2021-01-01 00:00:00    |
+        +------------------------+-------------------------+
+        | M                      |  2021-12-01 00:00:00    |
+        +------------------------+-------------------------+
+        | W                      |  2021-12-27 00:00:00    |
+        +------------------------+-------------------------+
+        | D                      |  2021-08-28 00:00:00    |
+        +------------------------+-------------------------+
 
-        cohort_period: Tuple(int, :numpy_link:`DATETIME_UNITS<>`)
-            The cohort_period size and its ``DATETIME_UNIT``. This parameter is used in calculating:
-            1) Start moments for each cohort from the moment defined with the ``cohort_start_round`` parameter
-            2) Cohort periods for each cohort from ifs start moment.
-        Note
-        ----
-        Parameters ``start_cohort_measure`` and ``cohort_period`` should be consistent.
-        "Y" and "M" are non-fixed types and can be used only with each "W" and
-        ДОДЕЛАТЬ ДОДЕЛАТЬ ДОДЕЛАТЬ ДОДЕЛАТЬ ДОДЕЛАТЬ ДОДЕЛАТЬ ДОДЕЛАТЬ ДОДЕЛАТЬ ДОДЕЛАТЬ
+    cohort_period: Tuple(int, :numpy_link:`DATETIME_UNITS<>`)
+        The cohort_period size and its ``DATETIME_UNIT``. This parameter is used in calculating:
+        1) Start moments for each cohort from the moment defined with the ``cohort_start_unit`` parameter
+        2) Cohort periods for each cohort from ifs start moment.
+    average: bool, default=True
+        If ``True`` - calculating average for each cohort period.
+        If ``False`` - averaged values don't calculated.
+    cut_bottom: int
+        Drop from cohort_matrix 'n' rows from the bottom of the cohort matrix.
+        Average is recalculated.
+    cut_right: int
+        Drop from cohort_matrix 'n' columns from the right side.
+        Average is recalculated.
+    cut_diagonal: int
+        Drop from cohort_matrix diagonal with 'n' last period-group cells.
+        Average is recalculated.
 
-        average: bool, default=True
-            If ``True`` - calculating average for each cohort period.
-            If ``False`` - averaged values don't calculated.
-        cut_bottom: int
-            Drop from cohort_matrix 'n' rows from the bottom of the cohort matrix.
-            Average is recalculated.
-        cut_right: int
-            Drop from cohort_matrix 'n' columns from the right side.
-            Average is recalculated.
-        cut_diagonal: int
-            Drop from cohort_matrix diagonal with 'n' last period-group cells.
-            Average is recalculated.
-
+    Note
+    ----
+    Parameters ``start_cohort_measure`` and ``cohort_period`` should be consistent.
+    Due to "Y" and "M" are non-fixed types it can be used only with each other
+    or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``.
+    More information: :numpy_timedelta_link:`About timedelta`<>
     """
 
-    # @TODO Link on non-fixed types
+    __eventstream: EventstreamType
+    cohort_period: int
+    cohort_period_unit: DATETIME_UNITS
+    cohort_start_unit: DATETIME_UNITS
+
     def __init__(
         self,
         eventstream: EventstreamType,
-        cohort_start_round: DATETIME_UNITS,
+        cohort_start_unit: DATETIME_UNITS,
         cohort_period: Tuple[int, DATETIME_UNITS],
         average: bool = True,
         cut_bottom: int = 0,
@@ -90,7 +89,7 @@ class Cohorts:
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
         self.average = average
-        self.cohort_start_round = cohort_start_round
+        self.cohort_start_unit = cohort_start_unit
         self.cohort_period, self.cohort_period_unit = cohort_period
         self.cut_diagonal = cut_diagonal
         self.cut_bottom = cut_bottom
@@ -112,10 +111,14 @@ class Cohorts:
         -------
         pd.DataFrame
 
+        Note
+        ----
+        Only cohorts with at least 1 user are shown.
+
         """
         df = self._add_min_date(
             data=self.data,
-            cohort_start_round=self.cohort_start_round,
+            cohort_start_unit=self.cohort_start_unit,
             cohort_period=self.cohort_period,
             cohort_period_unit=self.cohort_period_unit,
         )
@@ -146,28 +149,26 @@ class Cohorts:
     def _add_min_date(
         self,
         data: pd.DataFrame,
-        cohort_start_round: DATETIME_UNITS,
+        cohort_start_unit: DATETIME_UNITS,
         cohort_period: int,
         cohort_period_unit: DATETIME_UNITS,
     ) -> pd.DataFrame:
 
-        freq = cohort_start_round
+        freq = cohort_start_unit
         data["user_min_date_gr"] = data.groupby(self.user_col)[self.time_col].transform(min)
         min_cohort_date = data["user_min_date_gr"].min().to_period(freq).start_time
-        max_cohort_date = data["user_min_date_gr"].max().to_period(freq).start_time
-        if DATETIME_UNITS_LIST.index(cohort_start_round) < DATETIME_UNITS_LIST.index(cohort_period_unit):
+        max_cohort_date = data["user_min_date_gr"].max()
+        if DATETIME_UNITS_LIST.index(cohort_start_unit) < DATETIME_UNITS_LIST.index(cohort_period_unit):
             freq = cohort_period_unit
 
-        if cohort_start_round == "W":
+        if freq == "W":
             freq = "D"
 
         data["user_min_date_gr"] = data["user_min_date_gr"].dt.to_period(freq)
 
         step = np.timedelta64(cohort_period, cohort_period_unit)
         start_point = np.datetime64(min_cohort_date, freq)
-        end_point = np.datetime64(max_cohort_date, cohort_start_round) + np.timedelta64(
-            cohort_period, cohort_period_unit
-        )
+        end_point = np.datetime64(max_cohort_date, freq) + np.timedelta64(cohort_period, cohort_period_unit)
 
         coh_groups_start_dates = np.arange(start_point, end_point, step)
         coh_groups_start_dates = pd.to_datetime(coh_groups_start_dates).to_period(freq)
@@ -183,23 +184,21 @@ class Cohorts:
         data["OrderPeriod"] = data[self.time_col].dt.to_period(freq)
         start_int = pd.Series(min_cohort_date.to_period(freq=freq)).view(int)[0]
 
-        converter = np.timedelta64(cohort_period, cohort_period_unit)
-        converter_cohort_group = converter.astype(f"timedelta64[{freq}]").view(int)
-        data["CohortGroupNum"] = (
-            data["user_min_date_gr"].view(int) - start_int + converter_cohort_group
-        ) // converter_cohort_group
+        converter_freq = np.timedelta64(cohort_period, cohort_period_unit)
+        converter_freq_ = converter_freq.astype(f"timedelta64[{freq}]").view(int)
+        data["CohortGroupNum"] = (data["user_min_date_gr"].view(int) - start_int + converter_freq_) // converter_freq_
 
         data = data.merge(cohorts_list, on="CohortGroupNum", how="left")
 
-        converter_freq = converter.astype(f"timedelta64[{freq}]").view(int)
         data["CohortPeriod"] = (
-            (data["OrderPeriod"].view(int) - (data["CohortGroup"].view(int) + converter_freq)) // converter_freq
+            (data["OrderPeriod"].view(int) - (data["CohortGroup"].view(int) + converter_freq_)) // converter_freq_
         ) + 1
 
         return data
 
+    @staticmethod
     def _cut_cohort_matrix(
-        self, df: pd.DataFrame, cut_bottom: int = 0, cut_right: int = 0, cut_diagonal: int = 0
+        df: pd.DataFrame, cut_bottom: int = 0, cut_right: int = 0, cut_diagonal: int = 0
     ) -> pd.DataFrame:
 
         for row in df.index:
@@ -211,6 +210,7 @@ class Cohorts:
         self,
         figsize: Tuple[float, float] = (10, 10),
     ) -> sns.heatmap:
+
         """
         Build the heatmap based on the calculated cohort_matrix.
 
@@ -221,13 +221,15 @@ class Cohorts:
 
         Returns
         --------
-        Heatmap plot
+        sns.heatmap
 
         """
         df = self.cohort_matrix_result
 
         plt.figure(figsize=figsize)
         sns.heatmap(df, annot=True, fmt=".1%", linewidths=1, linecolor="gray")
+        # @TODO нужен ли тут return? если с ним, то в ноутбуке 2 раза выводится график. dpanina
+        # @TODO такой же вопрос с lineplot ниже. dpanina
 
     def cohort_lineplot(
         self,
@@ -249,7 +251,7 @@ class Cohorts:
 
         Returns
         --------
-        lineplot
+        sns.lineplot
 
         """
         if show_plot not in ["cohorts", "average", "all"]:

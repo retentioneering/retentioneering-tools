@@ -458,7 +458,7 @@ class Eventstream(
         thresh: Union[int, float] = 0.05,
         sorting: list | None = None,
         target: Union[list[str], str] | None = None,
-        autosize: bool | None = True,
+        autosize: bool = True,
         width: int | None = None,
         height: int | None = None,
     ) -> go.Figure:

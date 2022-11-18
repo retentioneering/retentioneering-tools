@@ -49,7 +49,7 @@ class Sankey:
         thresh: Union[int, float] = 0.05,
         sorting: list | None = None,
         target: Union[list[str], str] | None = None,
-        autosize: bool | None = True,
+        autosize: bool = True,
         width: int | None = None,
         height: int | None = None,
     ) -> None:
@@ -57,7 +57,7 @@ class Sankey:
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
-        self.data = self.__eventstream.to_dataframe()
+        self.event_index_col = self.__eventstream.schema.event_index
         self.max_steps = max_steps
         self.thresh = thresh
         self.sorting = sorting
@@ -98,7 +98,8 @@ class Sankey:
         dec: float,
     ) -> float:
         """
-        It is decimal rounding up function
+        Rounds the value up to the nearest value assuming a grid with ``dec`` step.
+        E.g. ``_round_up(0.51, 0.05) = 0.55``, ``_round_up(0.55, 0.05) = 0.6``
 
         Parameters
         ----------
@@ -109,31 +110,25 @@ class Sankey:
 
         Returns
         -------
-        digit : float
-            A picked color for certain event
+        rounded value : float
         """
 
         return round(n - n % dec + dec, 2)
 
-    def _get_nodes_positions(
-        self,
-        df: pd.DataFrame,
-        event_col: str,
-    ) -> tuple[list[float], list[float]]:
+    def _get_nodes_positions(self, df: pd.DataFrame) -> tuple[list[float], list[float]]:
         """
-        It is function for placing nodes at the x and y positions of plotly lib plot surface
+        It is a function for placing nodes at the x and y coordinates of plotly lib plot canvas.
 
         Parameters
         ----------
         df : pandas Dataframe
-            A dataframe that consist aggregated information about nodes
+            A dataframe that contains aggregated information about the nodes.
 
         Returns
         -------
-        digit : numpy array
-            A picked color for certain event
+        x, y coordinates: tuple[list[float], list[float]]
+            Two lists with the corresponding coordinates x and y.
         """
-
         # NOTE get x axis length
         x_len = len(df["step"].unique())
 
@@ -147,11 +142,11 @@ class Sankey:
         for step in sorted(df["step"].unique()):
 
             # NOTE placing x-axis points as well
-            for _ in df[df["step"] == step][event_col]:
+            for _ in df[df["step"] == step][self.event_col]:
                 x_positions.append([round(x, 2) for x in np.linspace(0.05, 0.95, x_len)][step - 1])
 
             # NOTE it always works very well if you have less than 4 values at current rank
-            y_len = len(df[df["step"] == step][event_col])
+            y_len = len(df[df["step"] == step][self.event_col])
 
             # NOTE at this case using came positions as x-axis because we don't need to calculate something more
             if y_len < 4:
@@ -168,13 +163,13 @@ class Sankey:
                 # NOTE cumulative sum for understanding do we need use default step size or not
                 cumulative_sum = 0
                 # NOTE path_end action
-                ended_sum = df[(df["step"] == step) & (df[event_col] == "path_end")]["usr_cnt"].sum()
+                ended_sum = df[(df["step"] == step) & (df[self.event_col] == "path_end")]["usr_cnt"].sum()
                 last_point = self._round_up(ended_sum / total_sum, 0.05)
 
                 iterate_sum = 0
 
                 # NOTE going deeper inside each event
-                for n, event in enumerate(df[df["step"] == step][event_col]):
+                for n, event in enumerate(df[df["step"] == step][self.event_col]):
 
                     # NOTE placing first event at first possible position
                     if n == 0:
@@ -207,7 +202,7 @@ class Sankey:
                             )
 
                     # NOTE set sum for next step
-                    iterate_sum = df[(df["step"] == step) & (df[event_col] == event)]["usr_cnt"].to_numpy()[0]
+                    iterate_sum = df[(df["step"] == step) & (df[self.event_col] == event)]["usr_cnt"].to_numpy()[0]
                     # NOTE update cumulative sum
                     cumulative_sum += iterate_sum
 
@@ -219,36 +214,28 @@ class Sankey:
         multiplied path_end events. It is required for correct visualization of the trajectories which are
         shorter than self.max_steps.
         """
-        user_col = self.__eventstream.schema.user_id
-        event_col = self.__eventstream.schema.event_name
-        event_index_col = self.__eventstream.schema.event_index
         pad = (
-            data.groupby(user_col, as_index=False)[event_col]
+            data.groupby(self.user_col, as_index=False)[self.event_col]
             .count()
-            .loc[lambda df_: df_[event_col] < self.max_steps]  # type: ignore
-            .assign(repeat_number=lambda df_: self.max_steps - df_[event_col])
+            .loc[lambda df_: df_[self.event_col] < self.max_steps]  # type: ignore
+            .assign(repeat_number=lambda df_: self.max_steps - df_[self.event_col])
         )
-        repeats = pd.DataFrame({user_col: np.repeat(pad[user_col], pad["repeat_number"])})
-        padded_end_events = pd.merge(repeats, data[data[event_col] == "path_end"], on=user_col)
-        result = pd.concat([data, padded_end_events]).sort_values([user_col, event_index_col])
+        repeats = pd.DataFrame({self.user_col: np.repeat(pad[self.user_col], pad["repeat_number"])})
+        padded_end_events = pd.merge(repeats, data[data[self.event_col] == "path_end"], on=self.user_col)
+        result = pd.concat([data, padded_end_events]).sort_values([self.user_col, self.event_index_col])
         return result
 
     def _prepare_data(self, data: pd.DataFrame) -> pd.DataFrame:
-        event_col = self.__eventstream.schema.event_name
-        time_col = self.__eventstream.schema.event_timestamp
-        user_col = self.__eventstream.schema.user_id
-        event_index_col = self.__eventstream.schema.event_index
-
         data = self._pad_end_events(data)
         # NOTE set new columns using declared functions
-        data[time_col] = pd.to_datetime(data[time_col])
-        data["step"] = data.groupby(user_col)[event_index_col].rank(method="first").astype(int)
-        data = data.sort_values(by=["step", time_col]).reset_index(drop=True)
+        data[self.time_col] = pd.to_datetime(data[self.time_col])
+        data["step"] = data.groupby(self.user_col)[self.event_index_col].rank(method="first").astype(int)
+        data = data.sort_values(by=["step", self.time_col]).reset_index(drop=True)
         data = self._get_next_event_and_timedelta(data)
 
         # NOTE threshold
-        data["event_users"] = data.groupby(by=["step", event_col])[user_col].transform("nunique")
-        data["total_users"] = data.loc[data["step"] == 1, user_col].nunique()
+        data["event_users"] = data.groupby(by=["step", self.event_col])[self.user_col].transform("nunique")
+        data["total_users"] = data.loc[data["step"] == 1, self.user_col].nunique()
         data["perc"] = data["event_users"] / data["total_users"]
 
         if self.thresh is not None:
@@ -264,17 +251,17 @@ class Sankey:
 
             thresh_events = (
                 data.loc[data["step"] <= self.max_steps, :]
-                .groupby(by=event_col, as_index=False)[column_to_compare]
+                .groupby(by=self.event_col, as_index=False)[column_to_compare]
                 .max()
                 .loc[
-                    lambda df_: (df_[column_to_compare] <= self.thresh) & (~df_[event_col].isin(events_to_keep))
+                    lambda df_: (df_[column_to_compare] <= self.thresh) & (~df_[self.event_col].isin(events_to_keep))
                 ]  # type: ignore
-                .loc[:, event_col]
+                .loc[:, self.event_col]
             )
-            data.loc[data[event_col].isin(thresh_events), event_col] = f"thresholded_{len(thresh_events)}"
+            data.loc[data[self.event_col].isin(thresh_events), self.event_col] = f"thresholded_{len(thresh_events)}"
 
             # NOTE rearrange the data taking into account recently added thresholded events
-            data["step"] = data.groupby(user_col)[event_index_col].rank(method="first").astype(int)
+            data["step"] = data.groupby(self.user_col)[self.event_index_col].rank(method="first").astype(int)
             data = self._get_next_event_and_timedelta(data)
 
         # NOTE use max_steps for filtering data
@@ -286,15 +273,12 @@ class Sankey:
         return data
 
     def _render_plot(self, data_for_plot: dict, data_grp_nodes: pd.DataFrame) -> go.Figure:
-        event_col = self.__eventstream.schema.event_name
-
         # NOTE fill lists for plot
         targets = []
         sources = []
         values = []
         time_to_next = []
-        for source_key, _ in data_for_plot["links_dict"].items():
-
+        for source_key in data_for_plot["links_dict"].keys():
             for target_key, target_value in data_for_plot["links_dict"][source_key].items():
                 sources.append(source_key)
                 targets.append(target_key)
@@ -314,7 +298,7 @@ class Sankey:
         for idx, color in enumerate(colors):
             colors[idx] = "rgb" + str(color) + ""
         # NOTE get positions for plot
-        x, y = self._get_nodes_positions(df=data_grp_nodes, event_col=event_col)
+        x, y = self._get_nodes_positions(df=data_grp_nodes)
         # NOTE make plot
         fig = go.Figure(
             data=[
@@ -351,44 +335,35 @@ class Sankey:
     def _get_links(
         self, data: pd.DataFrame, data_for_plot: dict, data_grp_nodes: pd.DataFrame
     ) -> tuple[dict, pd.DataFrame]:
-        event_col = self.__eventstream.schema.event_name
-        user_col = self.__eventstream.schema.user_id
-
         # NOTE create links aggregated dataframe
         data_grp_links = (
             data[data["step"] <= self.max_steps - 1]
-            .groupby(by=["step", event_col, "next_event"])[[user_col, "time_to_next"]]
-            .agg({user_col: ["count"], "time_to_next": ["sum"]})
+            .groupby(by=["step", self.event_col, "next_event"])[[self.user_col, "time_to_next"]]
+            .agg({self.user_col: ["count"], "time_to_next": ["sum"]})
             .reset_index()
-            .rename(columns={user_col: "usr_cnt", "time_to_next": "time_to_next_sum"})
+            .rename(columns={self.user_col: "usr_cnt", "time_to_next": "time_to_next_sum"})
         )
         data_grp_links.columns = data_grp_links.columns.droplevel(1)
         data_grp_links = data_grp_links.merge(
-            data_grp_nodes[["step", event_col, "index"]],
+            data_grp_nodes[["step", self.event_col, "index"]],
             how="inner",
-            on=["step", event_col],
+            on=["step", self.event_col],
         )
         data_grp_links.loc[:, "next_step"] = data_grp_links["step"] + 1
         data_grp_links = data_grp_links.merge(
-            data_grp_nodes[["step", event_col, "index"]].rename(
-                columns={"step": "next_step", event_col: "next_event", "index": "next_index"}
+            data_grp_nodes[["step", self.event_col, "index"]].rename(
+                columns={"step": "next_step", self.event_col: "next_event", "index": "next_index"}
             ),
             how="inner",
             on=["next_step", "next_event"],
         )
-        data_grp_links.sort_values(
-            by=["index", "usr_cnt"],
-            ascending=[True, False],
-            inplace=True,
-        )
-        data_grp_links.reset_index(
-            drop=True,
-            inplace=True,
-        )
+
+        data_grp_links.sort_values(by=["index", "usr_cnt"], ascending=[True, False], inplace=True)
+        data_grp_links.reset_index(drop=True, inplace=True)
+
         # NOTE generating links plot dict
         data_for_plot.update({"links_dict": dict()})
         for index in data_grp_links["index"].unique():
-
             for next_index in data_grp_links[data_grp_links["index"] == index]["next_index"].unique():
 
                 _unique_users, _avg_time_to_next = (
@@ -401,62 +376,50 @@ class Sankey:
                 )
 
                 if index in data_for_plot["links_dict"]:
-
                     if next_index in data_for_plot["links_dict"][index]:
-
                         data_for_plot["links_dict"][index][next_index]["unique_users"] = _unique_users[0]
                         data_for_plot["links_dict"][index][next_index]["avg_time_to_next"] = np.timedelta64(
                             _avg_time_to_next[0]
                         )
-
                     else:
-
                         data_for_plot["links_dict"][index].update(
                             {
-                                next_index: dict(
-                                    {
-                                        "unique_users": _unique_users[0],
-                                        "avg_time_to_next": np.timedelta64(_avg_time_to_next[0]),
-                                    }
-                                )
+                                next_index: {
+                                    "unique_users": _unique_users[0],
+                                    "avg_time_to_next": np.timedelta64(_avg_time_to_next[0]),
+                                }
                             }
                         )
-
                 else:
-
                     data_for_plot["links_dict"].update(
                         {
-                            index: dict(
-                                {
-                                    next_index: dict(
-                                        {
-                                            "unique_users": _unique_users[0],
-                                            "avg_time_to_next": np.timedelta64(_avg_time_to_next[0]),
-                                        }
-                                    )
+                            index: {
+                                next_index: {
+                                    "unique_users": _unique_users[0],
+                                    "avg_time_to_next": np.timedelta64(_avg_time_to_next[0]),
                                 }
-                            )
+                            }
                         }
                     )
         return data_for_plot, data_grp_links
 
     def _get_nodes(self, data: pd.DataFrame) -> tuple[dict, pd.DataFrame]:
-        event_col = self.__eventstream.schema.event_name
-        user_col = self.__eventstream.schema.user_id
-
-        all_events = list(data[event_col].unique())
+        all_events = list(data[self.event_col].unique())
         palette = self._prepare_palette(all_events)
 
         # NOTE create nodes aggregate dataframe
         data_grp_nodes = (
-            data.groupby(by=["step", event_col])[user_col].nunique().reset_index().rename(columns={user_col: "usr_cnt"})
+            data.groupby(by=["step", self.event_col])[self.user_col]
+            .nunique()
+            .reset_index()
+            .rename(columns={self.user_col: "usr_cnt"})
         )
         data_grp_nodes.loc[:, "usr_cnt_total"] = data_grp_nodes.groupby(by=["step"])["usr_cnt"].transform("sum")
         data_grp_nodes.loc[:, "perc"] = np.round(
             (data_grp_nodes.loc[:, "usr_cnt"] / data_grp_nodes.loc[:, "usr_cnt_total"]) * 100, 2
         )
         data_grp_nodes.sort_values(
-            by=["step", "usr_cnt", event_col],
+            by=["step", "usr_cnt", self.event_col],
             ascending=[True, False, True],
             inplace=True,
         )
@@ -464,7 +427,7 @@ class Sankey:
             drop=True,
             inplace=True,
         )
-        data_grp_nodes.loc[:, "color"] = data_grp_nodes[event_col].apply(
+        data_grp_nodes.loc[:, "color"] = data_grp_nodes[self.event_col].apply(
             lambda x: self._make_color(x, all_events, palette)
         )
         data_grp_nodes.loc[:, "index"] = data_grp_nodes.index  # type: ignore
@@ -473,27 +436,27 @@ class Sankey:
             data_grp_nodes.loc[:, "sorting"] = 100
         else:
             for n, s in enumerate(self.sorting):
-                data_grp_nodes.loc[data_grp_nodes[event_col] == s, "sorting"] = n
+                data_grp_nodes.loc[data_grp_nodes[self.event_col] == s, "sorting"] = n
             data_grp_nodes.loc[:, "sorting"].fillna(100, inplace=True)
         # NOTE placing path_end at the end
-        data_grp_nodes.loc[data_grp_nodes[event_col] == "path_end", "sorting"] = 101
+        data_grp_nodes.loc[data_grp_nodes[self.event_col] == "path_end", "sorting"] = 101
         # NOTE using custom ordering
         data_grp_nodes.loc[:, "sorting"] = data_grp_nodes.loc[:, "sorting"].astype(int)
 
-        # TODO: step is not used inside the loop. Seems like the loop is invalid.
+        # @TODO: step variable is not used inside the loop. The loop might be invalid. Vladimir Kukushkin
         # NOTE doing loop for valid ranking
         for step in data_grp_nodes["step"].unique():
             # NOTE saving last level order
             data_grp_nodes.loc[:, "order_by"] = (
-                data_grp_nodes.groupby(by=[event_col])["index"].transform("shift").fillna(100).astype(int)
+                data_grp_nodes.groupby(by=[self.event_col])["index"].transform("shift").fillna(100).astype(int)
             )
 
             # NOTE placing path_end events at the end
-            data_grp_nodes.loc[data_grp_nodes[event_col] == "path_end", "sorting"] = 101
+            data_grp_nodes.loc[data_grp_nodes[self.event_col] == "path_end", "sorting"] = 101
 
             # NOTE creating new indexes
             data_grp_nodes.sort_values(
-                by=["step", "sorting", "order_by", "usr_cnt", event_col],
+                by=["step", "sorting", "order_by", "usr_cnt", self.event_col],
                 ascending=[True, True, True, False, True],
                 inplace=True,
             )
@@ -511,7 +474,9 @@ class Sankey:
         for step in data_grp_nodes["step"].unique():
             data_for_plot["nodes_dict"].update({step: dict()})
             _sources, _color, _sources_index, _percs = (
-                data_grp_nodes.loc[data_grp_nodes["step"] == step, [event_col, "color", "index", "perc"]].to_numpy().T
+                data_grp_nodes.loc[data_grp_nodes["step"] == step, [self.event_col, "color", "index", "perc"]]
+                .to_numpy()
+                .T
             )
 
             data_for_plot["nodes_dict"][step].update(
@@ -546,23 +511,17 @@ class Sankey:
         return palette
 
     def _get_next_event_and_timedelta(self, data):
-        user_col = self.__eventstream.schema.user_id
-        event_col = self.__eventstream.schema.event_name
-        time_col = self.__eventstream.schema.event_timestamp
-
-        grouped = data.groupby(user_col)
-        data["next_event"] = grouped[event_col].shift(-1)
-        data["next_timestamp"] = grouped[time_col].shift(-1)
-        data["time_to_next"] = data["next_timestamp"] - data[time_col]
+        grouped = data.groupby(self.user_col)
+        data["next_event"] = grouped[self.event_col].shift(-1)
+        data["next_timestamp"] = grouped[self.time_col].shift(-1)
+        data["time_to_next"] = data["next_timestamp"] - data[self.time_col]
         data = data.drop("next_timestamp", axis=1)
         return data
 
     def _get_plot_data(self) -> tuple[dict, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        user_col = self.__eventstream.schema.user_id
-        event_col = self.__eventstream.schema.event_name
-        time_col = self.__eventstream.schema.event_timestamp
-        event_index_col = self.__eventstream.schema.event_index
-        data = self.__eventstream.to_dataframe().copy()[[user_col, event_col, time_col, event_index_col]]
+        data = self.__eventstream.to_dataframe().copy()[
+            [self.user_col, self.event_col, self.time_col, self.event_index_col]
+        ]
         data = self._prepare_data(data)
         data_for_plot, data_grp_nodes = self._get_nodes(data)
         data_for_plot, data_grp_links = self._get_links(data, data_for_plot, data_grp_nodes)

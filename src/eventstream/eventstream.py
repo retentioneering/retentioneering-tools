@@ -10,8 +10,9 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.eventstream.schema import EventstreamSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
+from src.tooling.clusters import Clusters
 from src.tooling.funnel import Funnel
 from src.tooling.sankey import Sankey
 from src.tooling.step_matrix import StepMatrix
@@ -34,6 +35,11 @@ from .helpers import (
 )
 
 IndexOrder = List[Optional[str]]
+FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "external"]
+NgramRange = Tuple[int, int]
+Method = Literal["kmeans", "gmm"]
+PlotType = Literal["cluster_bar"]
+
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
     "profile",
@@ -87,6 +93,7 @@ class Eventstream(
     relations: List[Relation]
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
+    __clusters: Clusters | None = None
 
     def __init__(
         self,
@@ -97,6 +104,8 @@ class Eventstream(
         index_order: Optional[IndexOrder] = None,
         relations: Optional[List[Relation]] = None,
     ) -> None:
+        self.__clusters = None
+
         self.schema = schema if schema else EventstreamSchema()
 
         if not index_order:
@@ -426,6 +435,12 @@ class Eventstream(
         )
         plot = funnel.draw_plot()
         return plot
+
+    @property
+    def clusters(self) -> Clusters:
+        if self.__clusters is None:
+            self.__clusters = Clusters(eventstream=self, user_clusters=None)
+        return self.__clusters
 
     def step_matrix(
         self,

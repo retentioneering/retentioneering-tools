@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, MutableMapping, Sequence
+from typing import Any, MutableMapping, Sequence, cast
 
 import pandas as pd
 
 from backend import ServerManager
 from eventstream.types import EventstreamType
+import networkx as nx
 
-from .typing import AllowedColors, Edge, Node, PlotParamsType, TransitionGraphProtocol, PreparedNode
+from .typing import Edge, Node, PlotParamsType, TransitionGraphProtocol, PreparedNode
 
 Threshold = MutableMapping[str, float]
 NodeParams = MutableMapping[str, str]
@@ -190,8 +191,8 @@ class TransitionGraph(TransitionGraphProtocol):
         weight_col = edgelist.columns[2]
         source_col = edgelist.columns[0]
         target_col = edgelist.columns[1]
-        custom_cols = self.config.get_custom_cols()
-        edges: MutableSequence[PreparedLink] = []
+        custom_cols: list[str] = self.eventstream.schema.custom_cols
+        edges: MutableSequence+[PreparedLink] = []
 
         edgelist["weight_norm"] = edgelist[weight_col] / edgelist[weight_col].abs().max()
 

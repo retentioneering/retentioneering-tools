@@ -41,6 +41,41 @@ def stream():
     return stream
 
 
+@pytest.fixture
+def stream_simple():
+    source_df = pd.DataFrame(
+        [
+            [1, "event1", "2022-01-01 00:01:00"],
+            [1, "event2", "2022-01-01 00:01:02"],
+            [1, "event1", "2022-01-01 00:02:00"],
+            [1, "event1", "2022-01-01 00:03:00"],
+            [1, "event1", "2022-01-01 00:03:00"],
+            [1, "event3", "2022-01-01 00:03:30"],
+            [1, "event1", "2022-01-01 00:04:00"],
+            [1, "event3", "2022-01-01 00:04:30"],
+            [1, "event1", "2022-01-01 00:05:00"],
+            [2, "event1", "2022-01-02 00:00:00"],
+            [2, "event2", "2022-01-02 00:00:05"],
+            [2, "event2", "2022-01-02 00:01:05"],
+            [3, "event1", "2022-01-02 00:01:10"],
+            [3, "event1", "2022-01-02 00:02:05"],
+            [3, "event4", "2022-01-02 00:03:05"],
+            [4, "event1", "2022-01-02 00:01:10"],
+            [4, "event1", "2022-01-02 00:02:05"],
+            [4, "event1", "2022-01-02 00:03:05"],
+        ],
+        columns=["user_id", "event", "timestamp"],
+    )
+
+    source_stream = Eventstream(
+        raw_data=source_df,
+        raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
+        schema=EventstreamSchema(),
+    )
+
+    return source_stream
+
+
 def run_test(stream, filename, **kwargs):
     sm = StepMatrix(eventstream=stream, **kwargs)
     result, _, _, _ = sm._get_plot_data()
@@ -51,45 +86,43 @@ def run_test(stream, filename, **kwargs):
 
 
 class TestStepMatrix:
-    def test_step_matrix_simple(self):
-        source_df = pd.DataFrame(
-            [
-                [1, "event1", "2022-01-01 00:01:00"],
-                [1, "event2", "2022-01-01 00:01:02"],
-                [1, "event1", "2022-01-01 00:02:00"],
-                [1, "event1", "2022-01-01 00:03:00"],
-                [1, "event1", "2022-01-01 00:03:00"],
-                [1, "event3", "2022-01-01 00:03:30"],
-                [1, "event1", "2022-01-01 00:04:00"],
-                [1, "event3", "2022-01-01 00:04:30"],
-                [1, "event1", "2022-01-01 00:05:00"],
-                [2, "event1", "2022-01-02 00:00:00"],
-                [2, "event2", "2022-01-02 00:00:05"],
-                [2, "event2", "2022-01-02 00:01:05"],
-                [3, "event1", "2022-01-02 00:01:10"],
-                [3, "event1", "2022-01-02 00:02:05"],
-                [3, "event4", "2022-01-02 00:03:05"],
-                [4, "event1", "2022-01-02 00:01:10"],
-                [4, "event1", "2022-01-02 00:02:05"],
-                [4, "event1", "2022-01-02 00:03:05"],
-            ],
-            columns=["user_id", "event", "timestamp"],
-        )
+    def test_step_matrix__simple(self, stream_simple):
+        sm = StepMatrix(eventstream=stream_simple, max_steps=5)
+        result, _, _, _ = sm._get_plot_data()
 
         correct_result = pd.DataFrame(
             [[1.0, 0.5, 0.5, 0.25, 0.25], [0.0, 0.5, 0.25, 0.0, 0.0], [0.0, 0.0, 0.25, 0.0, 0.0]],
             index=["event1", "event2", "event4"],
             columns=[1, 2, 3, 4, 5],
         )
+        assert result.compare(correct_result).shape == (0, 0)
 
-        source_stream = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            schema=EventstreamSchema(),
-        )
-
-        sm = StepMatrix(eventstream=source_stream, max_steps=5)
+    def test_step_matrix__simple_thresh(self, stream_simple):
+        sm = StepMatrix(eventstream=stream_simple, max_steps=5, thresh=0.3)
         result, _, _, _ = sm._get_plot_data()
+
+        correct_result = pd.DataFrame(
+            [[1.0, 0.5, 0.5, 0.25, 0.25], [0.0, 0.5, 0.25, 0.0, 0.0], [0.0, 0.0, 0.25, 0.0, 0.0]],
+            index=["event1", "event2", "THRESHOLDED_1"],
+            columns=[1, 2, 3, 4, 5],
+        )
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__simple_target(self, stream_simple):
+        sm = StepMatrix(eventstream=stream_simple, max_steps=5, targets=["event3"])
+        result, targets_result, _, _ = sm._get_plot_data()
+        result = pd.concat([result, targets_result])
+
+        correct_result = pd.DataFrame(
+            [
+                [1.0, 0.5, 0.5, 0.25, 0.25],
+                [0.0, 0.5, 0.25, 0.0, 0.0],
+                [0.0, 0.0, 0.25, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+            ],
+            index=["event1", "event2", "event4", "event3"],
+            columns=[1, 2, 3, 4, 5],
+        )
         assert result.compare(correct_result).shape == (0, 0)
 
     def test_step_matrix__basic(self, stream):

@@ -22,7 +22,8 @@ from src.data_processors_lib.rete import (
     TruncatePath,
     TruncatePathParams,
 )
-from src.eventstream.eventstream import Eventstream, RawDataSchema
+from src.eventstream.eventstream import Eventstream
+from src.eventstream.schema import RawDataSchema
 from src.graph.nodes import EventsNode
 from src.graph.p_graph import PGraph
 

@@ -69,5 +69,5 @@ filterwarnings = [
     "ignore::pytest.PytestExperimentalApiWarning",
     "ignore::FutureWarning",
     "ignore::UserWarning",
-    "ignore::pandas.errors.SettingWithCopyWarning",
+#    "ignore::pandas.errors.SettingWithCopyWarning",
 ]

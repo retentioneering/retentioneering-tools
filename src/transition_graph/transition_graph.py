@@ -1,18 +1,29 @@
 from __future__ import annotations
 
-from typing import Any, MutableMapping, Sequence, cast
+import json
+from typing import Any, MutableMapping, MutableSequence, Sequence, TypedDict, cast
 
+import networkx as nx
 import pandas as pd
+from IPython.core.display import HTML
+from IPython.core.display_functions import display
 
 from backend import ServerManager
 from eventstream.types import EventstreamType
-import networkx as nx
+from src.templates.translition_graph import TransitionGraphRenderer
 
-from .typing import Edge, Node, PlotParamsType, TransitionGraphProtocol, PreparedNode
+from .typing import Edge, Node, PlotParamsType, PreparedNode
 
 Threshold = MutableMapping[str, float]
 NodeParams = MutableMapping[str, str]
 Position = MutableMapping[str, Sequence[float]]
+
+
+def clear_dict(d: dict):
+    for k, v in dict(d).items():
+        if v is None:
+            del d[k]
+    return d
 
 
 class PlotParams(PlotParamsType):
@@ -25,18 +36,33 @@ class PlotParams(PlotParamsType):
     links_threshold: Threshold
 
 
-class TransitionGraph(TransitionGraphProtocol):
+class Weight(TypedDict):
+    weight_norm: float
+    weight: float
 
+
+class PreparedLink(TypedDict):
+    sourceIndex: int
+    targetIndex: int
+    weights: MutableMapping[str, Weight]
+    type: str
+
+
+class TransitionGraph:
     def show_graph(self) -> Any:
         ...
 
     def __init__(
         self,
-        eventstream: EventstreamType,
-        # graph: dict,  # preprocessed graph
+        eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
         plot_params: PlotParams,
         nodes: list[Node],
-        edges: list[Edge],
+        edges: list[Edge],  # add to config
+        positive_target_event: str | None = None,
+        negative_target_event: str | None = None,
+        source_event: str | None = None,
+        edgelist_default_col: str = "edge_weight",
+        nodelist_default_col: str = "number_of_events",
     ) -> None:
         sm = ServerManager()
         self.env = sm.check_env()
@@ -50,34 +76,121 @@ class TransitionGraph(TransitionGraphProtocol):
         self.nodes = nodes
         self.edges = edges
 
+        self.event_col = self.eventstream.schema.event_name
+        self.event_time_col = self.eventstream.schema.event_timestamp
+        self.user_col = self.eventstream.schema.user_id
+        self.id_col = self.eventstream.schema.event_id
+
+        self.positive_target_event = positive_target_event
+        self.negative_target_event = negative_target_event
+        self.source_event = source_event
+        self.nodelist_default_col = nodelist_default_col
+        self.edgelist_default_col = edgelist_default_col
+        self.edgelist = pd.DataFrame()
+        self.nodelist = pd.DataFrame()
+
+        self.render: TransitionGraphRenderer = TransitionGraphRenderer()
+
+    def _get_shift(self) -> pd.DataFrame:
+
+        data = self.eventstream.to_dataframe().copy()
+        data.sort_values([self.user_col, self.id_col], inplace=True)
+        shift = data.groupby(self.user_col).shift(-1)
+
+        data["next_" + self.event_col] = shift[self.event_col]
+        data["next_" + str(self.id_col)] = shift[self.id_col]
+
+        return data
+
+    def __get_edgelist(self, weight_col=None, norm_type=None, edge_attributes="edge_weight") -> pd.DataFrame:
+        """
+        Creates weighted table of the transitions between events.
+
+        Parameters
+        ----------
+        weight_col: str (optional, default=None)
+            Aggregation column for transitions weighting. To calculate weights
+            as number of transion events use None. To calculate number
+            of unique users passed through given transition 'user_id'.
+             For any other aggreagtion, like number of sessions, pass the column name.
+
+        norm_type: {None, 'full', 'node'} (optional, default=None)
+            Type of normalization. If None return raw number of transtions
+            or other selected aggregation column. 'full' - normalized over
+            entire dataset. 'node' weight for edge A --> B normalized over
+            user in A
+
+        edge_attributes: str (optional, default 'edge_weight')
+            Name for edge_weight columns
+
+        Returns
+        -------
+        Dataframe with number of rows equal to all transitions with weight
+        non-zero weight
+
+        Return type
+        -----------
+        pd.DataFrame
+        """
+        if norm_type not in [None, "full", "node"]:
+            raise ValueError(f"unknown normalization type: {norm_type}")
+
+        cols = [self.event_col, "next_" + str(self.event_col)]
+
+        data = self._get_shift().copy()
+
+        # get aggregation:
+        if weight_col is None:
+            agg = data.groupby(cols)[self.event_time_col].count().reset_index()
+            agg.rename(columns={self.event_time_col: edge_attributes}, inplace=True)
+        else:
+            agg = data.groupby(cols)[weight_col].nunique().reset_index()
+            agg.rename(columns={weight_col: edge_attributes}, inplace=True)
+
+        # apply normalization:
+        if norm_type == "full":
+            if weight_col is None:
+                agg[edge_attributes] /= agg[edge_attributes].sum()
+            else:
+                agg[edge_attributes] /= data[weight_col].nunique()
+
+        if norm_type == "node":
+            if weight_col is None:
+                event_transitions_counter = data.groupby(self.event_col)[cols[1]].count().to_dict()
+                agg[edge_attributes] /= agg[cols[0]].map(event_transitions_counter)
+            else:
+                user_counter = data.groupby(cols[0])[weight_col].nunique().to_dict()
+                agg[edge_attributes] /= agg[cols[0]].map(user_counter)
+
+        return agg
+
     def _replace_grouped_events(self, grouped: pd.Series[Any], row):
-        event_col = self.eventstream.schema.event_name
-        event_name = row[event_col]
-        mathced = grouped[grouped[event_col] == event_name]
+        event_name = row[self.event_col]
+        mathced = grouped[grouped[self.event_col] == event_name]
 
         if len(mathced) > 0:
             parent_node_name = mathced.iloc[0]["parent"]
-            row[event_col] = parent_node_name
+            row[self.event_col] = parent_node_name
 
         return row
 
-    def _make_node_params(self, targets: MutableMapping[str, str] = None):
+    def _make_node_params(self, targets: MutableMapping[str, str] | None = None):
         if targets is not None:
             return targets
         else:
             node_params: NodeParams = {}
-            if self.config.positive_target_event is not None:
-                node_params[self.config.positive_target_event] = "nice"
-            if self.config.negative_target_event is not None:
-                node_params[self.config.negative_target_event] = "bad"
-            if self.config.source_event is not None:
-                node_params[self.config.source_event] = "source"
+            if self.positive_target_event is not None:
+                node_params[self.positive_target_event] = "nice"
+            if self.negative_target_event is not None:
+                node_params[self.negative_target_event] = "bad"
+            if self.source_event is not None:
+                node_params[self.source_event] = "source"
 
             return node_params
 
-    def _get_norm_link_threshold(self, links_threshold: Threshold = None):
-        nodelist_default_col = self.config.get_nodelist_default_col()
-        edgelist_default_col = self.config.get_edgelist_default_col()
+    def _get_norm_link_threshold(self, links_threshold: Threshold | None = None):
+        nodelist_default_col = self.nodelist_default_col
+        edgelist_default_col = self.edgelist_default_col
         scale = float(cast(float, self.edgelist[edgelist_default_col].abs().max()))
         norm_links_threshold = None
 
@@ -91,7 +204,7 @@ class TransitionGraph(TransitionGraphProtocol):
                     norm_links_threshold[key] = links_threshold[key] / s
         return norm_links_threshold
 
-    def _get_norm_node_threshold(self, nodes_threshold: Threshold = None):
+    def _get_norm_node_threshold(self, nodes_threshold: Threshold | None = None):
         norm_nodes_threshold = None
         if nodes_threshold is not None:
             norm_nodes_threshold = {}
@@ -138,15 +251,21 @@ class TransitionGraph(TransitionGraphProtocol):
         }
         return pos_new
 
-    def _prepare_nodes(self, nodelist: pd.DataFrame, node_params: NodeParams = None, pos: Position = None):
-        event_col = self.config.event_col
-        node_names = set(nodelist[event_col])
+    def get_nodelist_cols(self):
+        default_col = self.nodelist_default_col
+        custom_cols = self.eventstream.schema.custom_cols
+        return list([default_col]) + list(custom_cols)
 
-        cols = self.config.get_nodelist_cols()
+    def _prepare_nodes(
+        self, nodelist: pd.DataFrame, node_params: NodeParams | None = None, pos: Position | None = None
+    ) -> tuple[list, MutableMapping]:
+        node_names = set(nodelist[self.event_col])
+
+        cols = self.get_nodelist_cols()
 
         nodes_set: MutableMapping[str, PreparedNode] = {}
         for idx, node_name in enumerate(node_names):
-            row = nodelist.loc[nodelist[event_col] == node_name]
+            row = nodelist.loc[nodelist[self.event_col] == node_name]
             degree = {}
             for weight_col in cols:
                 max_degree = cast(float, nodelist[weight_col].max())
@@ -187,12 +306,12 @@ class TransitionGraph(TransitionGraphProtocol):
         return list(nodes_set.values()), nodes_set
 
     def _prepare_edges(self, edgelist: pd.DataFrame, nodes_set: MutableMapping[str, PreparedNode]):
-        default_col = self.config.get_nodelist_default_col()
-        weight_col = edgelist.columns[2]
+        default_col = self.nodelist_default_col
         source_col = edgelist.columns[0]
         target_col = edgelist.columns[1]
+        weight_col = edgelist.columns[2]
         custom_cols: list[str] = self.eventstream.schema.custom_cols
-        edges: MutableSequence+[PreparedLink] = []
+        edges: MutableSequence[PreparedLink] = []
 
         edgelist["weight_norm"] = edgelist[weight_col] / edgelist[weight_col].abs().max()
 
@@ -214,8 +333,8 @@ class TransitionGraph(TransitionGraphProtocol):
                 }
                 weights[custom_weight_col] = col_weight
 
-            source_node_name = cast(str, row[source_col])
-            target_node_name = cast(str, row[target_col])
+            source_node_name = str(row[source_col])
+            target_node_name = str(row[target_col])
 
             source_node = nodes_set.get(source_node_name)
             target_node = nodes_set.get(target_node_name)
@@ -273,11 +392,11 @@ class TransitionGraph(TransitionGraphProtocol):
 
     def _apply_settings(
         self,
-        show_weights: bool = None,
-        show_percents: bool = None,
-        show_nodes_names: bool = None,
-        show_all_edges_for_targets: bool = None,
-        show_nodes_without_links: bool = None,
+        show_weights: bool | None = None,
+        show_percents: bool | None = None,
+        show_nodes_names: bool | None = None,
+        show_all_edges_for_targets: bool | None = None,
+        show_nodes_without_links: bool | None = None,
     ):
         settings = {
             "show_weights": show_weights,
@@ -287,21 +406,21 @@ class TransitionGraph(TransitionGraphProtocol):
             "show_nodes_without_links": show_nodes_without_links,
         }
         merged = {**self.graph_settings, **clear_dict(settings)}
-        return cast(GraphSettings, merged)
+        return merged
 
     def plot_graph(
         self,
-        targets: MutableMapping[str, str] = None,
+        nodes_threshold: Threshold,
+        links_threshold: Threshold,
+        targets: MutableMapping[str, str],
         width: int = 960,
         height: int = 900,
-        weight_template: str = None,
-        show_weights: bool = None,
-        show_percents: bool = None,
-        show_nodes_names: bool = None,
-        show_all_edges_for_targets: bool = None,
-        show_nodes_without_links: bool = None,
-        nodes_threshold: Threshold = None,
-        links_threshold: Threshold = None,
+        weight_template: str | None = None,
+        show_weights: bool | None = None,
+        show_percents: bool | None = None,
+        show_nodes_names: bool | None = None,
+        show_all_edges_for_targets: bool | None = None,
+        show_nodes_without_links: bool | None = None,
     ):
 
         settings = self._apply_settings(
@@ -324,7 +443,7 @@ class TransitionGraph(TransitionGraphProtocol):
             if "links_threshold" in settings
             else self._get_norm_link_threshold(links_threshold)
         )
-        cols = self.config.get_nodelist_cols()
+        cols = self.get_nodelist_cols()
 
         nodes, links = self._make_template_data(
             node_params=node_params,
@@ -340,75 +459,81 @@ class TransitionGraph(TransitionGraphProtocol):
                 return self._to_json(settings[name])
             return "undefined"
 
-        init_graph_js = templates.__INIT_GRAPH__.format(
-            server_id="'" + self.server.id + "'",
-            env="'" + self.env + "'",
-            links=self._to_json(links),
-            node_params=self._to_json(node_params),
-            nodes=self._to_json(nodes),
-            layout_dump=1 if self.layout is not None else 0,
-            links_weights_names=cols,
-            node_cols_names=cols,
-            show_weights=get_option("show_weights"),
-            show_percents=get_option("show_percents"),
-            show_nodes_names=get_option("show_nodes_names"),
-            show_all_edges_for_targets=get_option("show_all_edges_for_targets"),
-            show_nodes_without_links=get_option("show_nodes_without_links"),
-            nodes_threshold=to_js_val(norm_nodes_threshold),
-            links_threshold=to_js_val(norm_links_threshold),
-            weight_template="'" + weight_template + "'" if weight_template is not None else "undefined",
+        init_graph_js = self.render.init(
+            **dict(
+                server_id="'" + self.server.pk + "'",
+                env="'" + self.env + "'",
+                links=self._to_json(links),
+                node_params=self._to_json(node_params),
+                nodes=self._to_json(nodes),
+                layout_dump=1 if self.layout is not None else 0,
+                links_weights_names=cols,
+                node_cols_names=cols,
+                show_weights=get_option("show_weights"),
+                show_percents=get_option("show_percents"),
+                show_nodes_names=get_option("show_nodes_names"),
+                show_all_edges_for_targets=get_option("show_all_edges_for_targets"),
+                show_nodes_without_links=get_option("show_nodes_without_links"),
+                nodes_threshold=to_js_val(norm_nodes_threshold),
+                links_threshold=to_js_val(norm_links_threshold),
+                weight_template="'" + weight_template + "'" if weight_template is not None else "undefined",
+            )
         )
 
-        graph_styles = templates.__GRAPH_STYLES__.format()
-        graph_body = templates.__GRAPH_BODY__.format()
+        graph_styles = self.render.graph_stype()
+        graph_body = self.render.body()
 
         graph_script_src = "https://static.server.retentioneering.com/viztools/graph/rete-graph.js"
 
-        init_graph_template = templates.__INIT_GRAPH__.format(
-            server_id="'" + self.server.id + "'",
-            env="'" + self.env + "'",
-            node_params=self._to_json(node_params),
-            links="<%= links %>",
-            nodes="<%= nodes %>",
-            layout_dump=1,
-            links_weights_names=cols,
-            node_cols_names=cols,
-            show_weights="<%= show_weights %>",
-            show_percents="<%= show_percents %>",
-            show_nodes_names="<%= show_nodes_names %>",
-            show_all_edges_for_targets="<%= show_all_edges_for_targets %>",
-            show_nodes_without_links="<%= show_nodes_without_links %>",
-            nodes_threshold="<%= nodes_threshold %>",
-            links_threshold="<%= links_threshold %>",
-            weight_template="undefined",
+        init_graph_template = self.render.init(
+            **dict(
+                server_id="'" + self.server.pk + "'",
+                env="'" + self.env + "'",
+                node_params=self._to_json(node_params),
+                links="<%= links %>",
+                nodes="<%= nodes %>",
+                layout_dump=1,
+                links_weights_names=cols,
+                node_cols_names=cols,
+                show_weights="<%= show_weights %>",
+                show_percents="<%= show_percents %>",
+                show_nodes_names="<%= show_nodes_names %>",
+                show_all_edges_for_targets="<%= show_all_edges_for_targets %>",
+                show_nodes_without_links="<%= show_nodes_without_links %>",
+                nodes_threshold="<%= nodes_threshold %>",
+                links_threshold="<%= links_threshold %>",
+                weight_template="undefined",
+            )
         )
 
-        html_template = templates.__FULL_HTML__.format(
-            content=templates.__RENDER_INNER_IFRAME__.format(
-                id=generateId(),
+        html_template = self.render.full(
+            **dict(
+                content=self.render.inner_iframe(
+                    **dict(
+                        id=self.server.pk,
+                        width=width,
+                        height=height,
+                        graph_body=graph_body,
+                        graph_styles=graph_styles,
+                        graph_script_src=graph_script_src,
+                        init_graph_js=init_graph_template,
+                        template="",
+                    )
+                ),
+            )
+        )
+
+        html = self.render.inner_iframe(
+            **dict(
+                id=self.server.pk,
                 width=width,
                 height=height,
                 graph_body=graph_body,
                 graph_styles=graph_styles,
                 graph_script_src=graph_script_src,
-                init_graph_js=init_graph_template,
-                template="",
-            ),
-        )
-
-        html = templates.__RENDER_INNER_IFRAME__.format(
-            id=generateId(),
-            width=width,
-            height=height,
-            graph_body=graph_body,
-            graph_styles=graph_styles,
-            graph_script_src=graph_script_src,
-            init_graph_js=init_graph_js,
-            template=html_template,
-        )
-
-        full_html_page = templates.__FULL_HTML__.format(
-            content=html,
+                init_graph_js=init_graph_js,
+                template=html_template,
+            )
         )
 
         display(HTML(html))

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, List, Literal, Protocol, TypedDict, MutableMapping
+from typing import Any, List, Literal, MutableMapping, Protocol, TypedDict
 
 from eventstream.types import EventstreamType
 

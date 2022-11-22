@@ -222,7 +222,7 @@ class TransitionGraph:
 
         G.add_weighted_edges_from(edgelist.loc[:, [source_col, target_col, weight_col]].values)
 
-        pos_new = nx.layout.spring_layout(
+        pos = nx.layout.spring_layout(
             G,
             k=self.spring_layout_config["k"],
             iterations=self.spring_layout_config["iterations"],
@@ -233,7 +233,7 @@ class TransitionGraph:
         all_x_coords: list[float] = []
         all_y_coords: list[float] = []
 
-        for j in pos_new.values():
+        for j in pos.values():
             all_x_coords.append(j[0])
             all_y_coords.append(j[1])
 
@@ -247,11 +247,11 @@ class TransitionGraph:
                 (j[0] - min_x) / (max_x - min_x) * (width - 150) + 75,
                 (j[1] - min_y) / (max_y - min_y) * (height - 100) + 50,
             ]
-            for i, j in pos_new.items()
+            for i, j in pos.items()
         }
         return pos_new
 
-    def get_nodelist_cols(self):
+    def __get_nodelist_cols(self):
         default_col = self.nodelist_default_col
         custom_cols = self.eventstream.schema.custom_cols
         return list([default_col]) + list(custom_cols)
@@ -261,7 +261,7 @@ class TransitionGraph:
     ) -> tuple[list, MutableMapping]:
         node_names = set(nodelist[self.event_col])
 
-        cols = self.get_nodelist_cols()
+        cols = self.__get_nodelist_cols()
 
         nodes_set: MutableMapping[str, PreparedNode] = {}
         for idx, node_name in enumerate(node_names):
@@ -318,7 +318,7 @@ class TransitionGraph:
         for _, row in edgelist.iterrows():
             default_col_weight: Weight = {
                 "weight_norm": row.weight_norm,
-                "weight": cast(float, row[weight_col]),
+                "weight": cast(float, row[weight_col]),  # type: ignore
             }
             weights = {
                 default_col: default_col_weight,
@@ -333,8 +333,8 @@ class TransitionGraph:
                 }
                 weights[custom_weight_col] = col_weight
 
-            source_node_name = str(row[source_col])
-            target_node_name = str(row[target_col])
+            source_node_name = str(row[source_col])  # type: ignore
+            target_node_name = str(row[target_col])  # type: ignore
 
             source_node = nodes_set.get(source_node_name)
             target_node = nodes_set.get(target_node_name)
@@ -405,8 +405,15 @@ class TransitionGraph:
             "show_all_edges_for_targets": show_all_edges_for_targets,
             "show_nodes_without_links": show_nodes_without_links,
         }
-        merged = {**self.graph_settings, **clear_dict(settings)}
-        return merged
+        return clear_dict(settings)
+
+    def _to_js_val(self, val=None) -> str:
+        return self._to_json(val) if val is not None else "undefined"
+
+    def _get_option(self, name: str, settings: dict[str, Any]) -> str:
+        if name in settings:
+            return self._to_json(settings[name])
+        return "undefined"
 
     def plot_graph(
         self,
@@ -443,21 +450,13 @@ class TransitionGraph:
             if "links_threshold" in settings
             else self._get_norm_link_threshold(links_threshold)
         )
-        cols = self.get_nodelist_cols()
+        cols = self.__get_nodelist_cols()
 
         nodes, links = self._make_template_data(
             node_params=node_params,
             width=width,
             height=height,
         )
-
-        def to_js_val(val=None):
-            return self._to_json(val) if val is not None else "undefined"
-
-        def get_option(name: str):
-            if name in settings:
-                return self._to_json(settings[name])
-            return "undefined"
 
         init_graph_js = self.render.init(
             **dict(
@@ -469,13 +468,13 @@ class TransitionGraph:
                 layout_dump=1 if self.layout is not None else 0,
                 links_weights_names=cols,
                 node_cols_names=cols,
-                show_weights=get_option("show_weights"),
-                show_percents=get_option("show_percents"),
-                show_nodes_names=get_option("show_nodes_names"),
-                show_all_edges_for_targets=get_option("show_all_edges_for_targets"),
-                show_nodes_without_links=get_option("show_nodes_without_links"),
-                nodes_threshold=to_js_val(norm_nodes_threshold),
-                links_threshold=to_js_val(norm_links_threshold),
+                show_weights=self._get_option("show_weights", settings),
+                show_percents=self._get_option("show_percents", settings),
+                show_nodes_names=self._get_option("show_nodes_names", settings),
+                show_all_edges_for_targets=self._get_option("show_all_edges_for_targets", settings),
+                show_nodes_without_links=self._get_option("show_nodes_without_links", settings),
+                nodes_threshold=self._to_js_val(norm_nodes_threshold),
+                links_threshold=self._to_js_val(norm_links_threshold),
                 weight_template="'" + weight_template + "'" if weight_template is not None else "undefined",
             )
         )

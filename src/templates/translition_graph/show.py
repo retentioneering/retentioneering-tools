@@ -33,4 +33,5 @@ class TransitionGraphRenderer:
 
     def graph_stype(self) -> str:
         from .graph_style import style
+
         return style

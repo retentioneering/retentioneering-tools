@@ -14,7 +14,7 @@ class Degree(TypedDict):
 class PreparedNode(TypedDict):
     index: int
     name: str
-    degree: MutableMapping[str, Degree]
+    degree: MutableMapping[str, Degree] | dict[str, Any]
     changed_name: str | None
     type: str
     x: float | None

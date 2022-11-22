@@ -206,10 +206,7 @@ class Cohorts:
 
         return df.iloc[: len(df) - cut_bottom, : len(df.columns) - cut_right]
 
-    def cohort_heatmap(
-        self,
-        figsize: Tuple[float, float] = (10, 10),
-    ) -> sns.heatmap:
+    def cohort_heatmap(self, figsize: Tuple[float, float] = (10, 10)) -> sns.heatmap:
 
         """
         Build the heatmap based on the calculated cohort_matrix.
@@ -224,6 +221,8 @@ class Cohorts:
         sns.heatmap
 
         """
+        if self.cohort_matrix_result.empty:
+            self.cohort_matrix()
         df = self.cohort_matrix_result
 
         plt.figure(figsize=figsize)
@@ -257,6 +256,8 @@ class Cohorts:
         if show_plot not in ["cohorts", "average", "all"]:
             raise ValueError("show_plot parameter should be 'cohorts', 'average' or 'all'!")
 
+        if self.cohort_matrix_result.empty:
+            self.cohort_matrix()
         df_matrix = self.cohort_matrix_result
         df_wo_average = df_matrix[df_matrix.index != "Average"]  # type: ignore
         if show_plot in ["all", "average"] and "Average" not in df_matrix.index:  # type: ignore

@@ -485,15 +485,14 @@ class Eventstream(
         :py:func:`src.tooling.cohorts.cohorts`
 
         """
-        if self.__cohorts is None:
-            self.__cohorts = Cohorts(
-                eventstream=self,
-                cohort_start_unit=cohort_start_unit,
-                cohort_period=cohort_period,
-                average=average,
-                cut_diagonal=cut_diagonal,
-                cut_bottom=cut_bottom,
-                cut_right=cut_right,
-            )
+        self.__cohorts = Cohorts(
+            eventstream=self,
+            cohort_start_unit=cohort_start_unit,
+            cohort_period=cohort_period,
+            average=average,
+            cut_diagonal=cut_diagonal,
+            cut_bottom=cut_bottom,
+            cut_right=cut_right,
+        )
 
         return self.__cohorts

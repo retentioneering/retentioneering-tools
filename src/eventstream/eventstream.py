@@ -18,6 +18,7 @@ from src.tooling.step_matrix import StepMatrix
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
+from ..tooling.cohorts import Cohorts
 from .helpers import (
     CollapseLoopsHelperMixin,
     DeleteUsersByPathLengthHelperMixin,
@@ -38,6 +39,8 @@ FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fra
 NgramRange = Tuple[int, int]
 Method = Literal["kmeans", "gmm"]
 PlotType = Literal["cluster_bar"]
+DATETIME_UNITS = Literal["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
+DATETIME_UNITS_LIST = ["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
 
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
@@ -93,6 +96,7 @@ class Eventstream(
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
     __clusters: Clusters | None = None
+    __cohorts: Cohorts | None = None
 
     def __init__(
         self,
@@ -465,3 +469,31 @@ class Eventstream(
             centered=centered,
             groups=groups,
         ).plot()
+
+    def cohorts(
+        self,
+        cohort_start_unit: DATETIME_UNITS,
+        cohort_period: Tuple[int, DATETIME_UNITS],
+        average: bool = True,
+        cut_bottom: int = 0,
+        cut_right: int = 0,
+        cut_diagonal: int = 0,
+    ) -> Cohorts:
+        """
+        See Also
+        --------
+        :py:func:`src.tooling.cohorts.cohorts`
+
+        """
+        if self.__cohorts is None:
+            self.__cohorts = Cohorts(
+                eventstream=self,
+                cohort_start_unit=cohort_start_unit,
+                cohort_period=cohort_period,
+                average=average,
+                cut_diagonal=cut_diagonal,
+                cut_bottom=cut_bottom,
+                cut_right=cut_right,
+            )
+
+        return self.__cohorts

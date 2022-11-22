@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, MutableMapping, MutableSequence, Sequence, TypedDict, cast
+from typing import Any, MutableMapping, MutableSequence, cast
 
 import networkx as nx
 import pandas as pd
@@ -12,11 +12,18 @@ from backend import ServerManager
 from eventstream.types import EventstreamType
 from src.templates.translition_graph import TransitionGraphRenderer
 
-from .typing import Edge, Node, PlotParamsType, PreparedNode
-
-Threshold = MutableMapping[str, float]
-NodeParams = MutableMapping[str, str]
-Position = MutableMapping[str, Sequence[float]]
+from .typing import (
+    Edge,
+    GraphSettings,
+    LayoutNode,
+    Node,
+    NodeParams,
+    Position,
+    PreparedLink,
+    PreparedNode,
+    Threshold,
+    Weight,
+)
 
 
 def clear_dict(d: dict):
@@ -26,36 +33,11 @@ def clear_dict(d: dict):
     return d
 
 
-class PlotParams(PlotParamsType):
-    show_weights: bool
-    show_percents: bool
-    show_nodes_names: bool
-    show_all_edges_for_targets: bool
-    show_nodes_without_links: bool
-    nodes_threshold: Threshold
-    links_threshold: Threshold
-
-
-class Weight(TypedDict):
-    weight_norm: float
-    weight: float
-
-
-class PreparedLink(TypedDict):
-    sourceIndex: int
-    targetIndex: int
-    weights: MutableMapping[str, Weight]
-    type: str
-
-
 class TransitionGraph:
-    def show_graph(self) -> Any:
-        ...
-
     def __init__(
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
-        plot_params: PlotParams,
+        graph_settings: GraphSettings,
         nodes: list[Node],
         edges: list[Edge],  # add to config
         positive_target_event: str | None = None,
@@ -67,12 +49,17 @@ class TransitionGraph:
         sm = ServerManager()
         self.env = sm.check_env()
         self.server = sm.create_server()
+
+        self.server.register_action("save-nodelist", lambda n: self._on_nodelist_updated(n))
+        self.server.register_action("save-layout", lambda n: self._on_layout_request(n))
+        self.server.register_action("save-graph-settings", lambda n: self._on_graph_settings_request(n))
+
         self.eventstream = eventstream
 
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
         self.layout: pd.DataFrame = eventstream.to_dataframe()
-        self.plot_params = plot_params
+        self.graph_settings = graph_settings
         self.nodes = nodes
         self.edges = edges
 
@@ -86,10 +73,45 @@ class TransitionGraph:
         self.source_event = source_event
         self.nodelist_default_col = nodelist_default_col
         self.edgelist_default_col = edgelist_default_col
-        self.edgelist = pd.DataFrame()
+        self.edgelist = self.__get_edgelist(norm_type="full")
         self.nodelist = pd.DataFrame()
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
+
+    def _on_graph_settings_request(self, settings: GraphSettings):
+        self.graph_settings = settings
+
+    def _on_layout_request(self, layout_nodes: MutableSequence[LayoutNode]):
+        self.graph_updates = layout_nodes
+        self.layout = pd.DataFrame(layout_nodes)
+
+    def _on_nodelist_updated(self, nodes: MutableSequence[PreparedNode]):
+        self.updates = nodes
+        # prepare data, map cols
+        mapped_nodes = []
+        for i, n in enumerate(nodes):
+            source_node = cast(dict, n)
+            mapped_node = {}
+            for key, source_value in source_node.items():
+                if key == "degree":
+                    for col_name, deg in source_value.items():
+                        mapped_node[col_name] = deg["source"]
+                    continue
+                if key == "name":
+                    mapped_node[self.event_col] = source_value
+                    continue
+                if key == "index":
+                    mapped_node["index"] = source_value
+                    continue
+                # filter fields
+                if key not in self.nodelist.columns:
+                    continue
+                mapped_node[key] = source_value
+            mapped_nodes.append(mapped_node)
+
+        self.nodelist = pd.DataFrame(data=mapped_nodes)
+        self.nodelist.set_index("index")
+        self.nodelist = self.nodelist.drop(columns=["index"])
 
     def _get_shift(self) -> pd.DataFrame:
 
@@ -305,7 +327,9 @@ class TransitionGraph:
 
         return list(nodes_set.values()), nodes_set
 
-    def _prepare_edges(self, edgelist: pd.DataFrame, nodes_set: MutableMapping[str, PreparedNode]):
+    def _prepare_edges(
+        self, edgelist: pd.DataFrame, nodes_set: MutableMapping[str, PreparedNode]
+    ) -> MutableSequence[PreparedLink]:
         default_col = self.nodelist_default_col
         source_col = edgelist.columns[0]
         target_col = edgelist.columns[1]
@@ -352,7 +376,9 @@ class TransitionGraph:
 
         return edges
 
-    def _make_template_data(self, node_params: NodeParams, width: int, height: int):
+    def _make_template_data(
+        self, node_params: NodeParams, width: int, height: int
+    ) -> tuple[MutableSequence, MutableSequence]:
         edgelist = self.edgelist.copy()
         nodelist = self.nodelist.copy()
 
@@ -375,7 +401,7 @@ class TransitionGraph:
 
         return nodes, links
 
-    def _use_layout(self, position: Position):
+    def _use_layout(self, position: Position) -> Position:
         if self.layout is None:
             return position
         for node_name in position:
@@ -387,7 +413,7 @@ class TransitionGraph:
 
         return position
 
-    def _to_json(self, data):
+    def _to_json(self, data) -> str:
         return json.dumps(data).encode("latin1").decode("utf-8")
 
     def _apply_settings(
@@ -397,7 +423,7 @@ class TransitionGraph:
         show_nodes_names: bool | None = None,
         show_all_edges_for_targets: bool | None = None,
         show_nodes_without_links: bool | None = None,
-    ):
+    ) -> dict[str, Any]:
         settings = {
             "show_weights": show_weights,
             "show_percents": show_percents,
@@ -405,7 +431,9 @@ class TransitionGraph:
             "show_all_edges_for_targets": show_all_edges_for_targets,
             "show_nodes_without_links": show_nodes_without_links,
         }
-        return clear_dict(settings)
+        merged = {**self.graph_settings, **clear_dict(settings)}
+
+        return clear_dict(merged)
 
     def _to_js_val(self, val=None) -> str:
         return self._to_json(val) if val is not None else "undefined"

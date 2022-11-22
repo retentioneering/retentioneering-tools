@@ -80,7 +80,7 @@ class CollapseLoops(DataProcessor):
         df = eventstream.to_dataframe(copy=True)
         df["ref"] = df[eventstream.schema.event_id]
 
-        df["grp"] = df.groupby(user_col)[event_col].shift(0) != df.groupby(user_col)[event_col].shift(1)
+        df["grp"] = df[event_col] != df.groupby(user_col)[event_col].shift(1)
         # Столбец в котором считается порядковый номер по группам одинаковых событий
         df["cumgroup"] = df.groupby(user_col)["grp"].cumsum()
         df["count"] = df.groupby([user_col, "cumgroup"]).cumcount() + 1

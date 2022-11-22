@@ -290,7 +290,7 @@ class Sankey:
         labels = []
         colors = []
         percs = []
-        for key, _ in data_for_plot["nodes_dict"].items():
+        for key in data_for_plot["nodes_dict"].keys():
             labels += list(data_for_plot["nodes_dict"][key]["sources"])
             colors += list(data_for_plot["nodes_dict"][key]["color"])
             percs += list(data_for_plot["nodes_dict"][key]["percs"])

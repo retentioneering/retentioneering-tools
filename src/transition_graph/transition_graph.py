@@ -18,6 +18,7 @@ from .typing import (
     LayoutNode,
     Node,
     NodeParams,
+    NormType,
     Position,
     PreparedLink,
     PreparedNode,
@@ -45,6 +46,7 @@ class TransitionGraph:
         source_event: str | None = None,
         edgelist_default_col: str = "edge_weight",
         nodelist_default_col: str = "number_of_events",
+        norm_type: NormType = None,
     ) -> None:
         sm = ServerManager()
         self.env = sm.check_env()
@@ -73,7 +75,8 @@ class TransitionGraph:
         self.source_event = source_event
         self.nodelist_default_col = nodelist_default_col
         self.edgelist_default_col = edgelist_default_col
-        self.edgelist = self.__get_edgelist(norm_type="full")
+        self.norm_type = norm_type
+        self.edgelist = self.__get_edgelist(norm_type=self.norm_type)
         self.nodelist = pd.DataFrame()
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()

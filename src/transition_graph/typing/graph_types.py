@@ -1,7 +1,16 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, List, Literal, MutableMapping, Protocol, Sequence, TypedDict
+from typing import (
+    Any,
+    List,
+    Literal,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    TypedDict,
+    Union,
+)
 
 from eventstream.types import EventstreamType
 
@@ -106,3 +115,6 @@ class LayoutNode(TypedDict):
     name: str
     x: float
     y: float
+
+
+NormType = Union[Literal["full", "node"], None]

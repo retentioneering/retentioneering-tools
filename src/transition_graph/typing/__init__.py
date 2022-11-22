@@ -4,6 +4,7 @@ from .graph_types import (
     LayoutNode,
     Node,
     NodeParams,
+    NormType,
     Position,
     PreparedLink,
     PreparedNode,

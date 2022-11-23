@@ -353,12 +353,8 @@ class Clusters:
         index_col = eventstream.schema.user_id
         event_col = eventstream.schema.event_name
         time_col = eventstream.schema.event_timestamp
-        event_index_col = eventstream.schema.event_index
 
         events = eventstream.to_dataframe()
-
-        corpus = events.groupby(index_col)[event_col].apply(lambda x: "~~".join([el.lower() for el in x]))
-
         vec_data = None
 
         if (
@@ -367,42 +363,12 @@ class Clusters:
             or feature_type == "tfidf"
             or feature_type == "binary"
         ):
-            vectorizer = self.__get_vectorizer(feature_type=feature_type, ngram_range=ngram_range, corpus=corpus)
-
-            vocabulary_items = sorted(vectorizer.vocabulary_.items(), key=lambda x: x[1])
-            cols: list[str] = [dict_key[0] for dict_key in vocabulary_items]
-            sorted_index_col = sorted(events[index_col].unique())
-
-            vec_data = pd.DataFrame(index=sorted_index_col, columns=cols, data=vectorizer.transform(corpus).todense())
-            vec_data.index.rename(index_col, inplace=True)
-
-            if feature_type == "frequency":
-                # @FIXME: legacy todo without explanation, idk why. Vladimir Makhanov
-                sum = cast(Any, vec_data.sum(axis=1))
-                vec_data = vec_data.div(sum, axis=0).fillna(0)
+            events, vec_data = self._sklearn_vectorization(
+                events, feature_type, ngram_range, index_col, eventstream.schema
+            )
 
         elif feature_type == "markov":
-            next_event_col = "next_" + event_col
-            next_time_col = "next_" + time_col
-
-            events = events.sort_values([index_col, event_index_col])
-            events[[next_event_col, next_time_col]] = events.groupby(index_col)[[event_col, time_col]].shift(-1)
-
-            vec_data = (
-                events.groupby([index_col, event_col, next_event_col])[event_index_col]
-                .count()
-                .reset_index()
-                .rename(columns={event_index_col: "count"})
-                .assign(bigram=lambda df_: df_[event_col] + "~" + df_[next_event_col])
-                .assign(left_event_count=lambda df_: df_.groupby([index_col, event_col])["count"].transform("sum"))
-                .assign(bigram_weight=lambda df_: df_["count"] / df_["left_event_count"])
-                .pivot(index=index_col, columns="bigram", values="bigram_weight")
-                .fillna(0)
-            )
-            vec_data.index.rename(index_col, inplace=True)
-
-            del events[next_event_col]
-            del events[next_time_col]
+            events, vec_data = self._markov_vectorization(events, index_col, eventstream.schema)
 
         if feature_type in ["time", "time_fraction"]:
             events.sort_values(by=[index_col, time_col], inplace=True)
@@ -426,6 +392,47 @@ class Clusters:
             vec_data.columns = [col + "_" + feature_type for col in vec_data.columns]
 
         return cast(pd.DataFrame, vec_data)
+
+    def _sklearn_vectorization(self, events, feature_type, ngram_range, index_col, schema):
+        event_col = schema.event_name
+        corpus = events.groupby(index_col)[event_col].apply(lambda x: "~~".join([el.lower() for el in x]))
+        vectorizer = self.__get_vectorizer(feature_type=feature_type, ngram_range=ngram_range, corpus=corpus)
+        vocabulary_items = sorted(vectorizer.vocabulary_.items(), key=lambda x: x[1])
+        cols: list[str] = [dict_key[0] for dict_key in vocabulary_items]
+        sorted_index_col = sorted(events[index_col].unique())
+        vec_data = pd.DataFrame(index=sorted_index_col, columns=cols, data=vectorizer.transform(corpus).todense())
+        vec_data.index.rename(index_col, inplace=True)
+        if feature_type == "frequency":
+            # @FIXME: legacy todo without explanation, idk why. Vladimir Makhanov
+            sum = cast(Any, vec_data.sum(axis=1))
+            vec_data = vec_data.div(sum, axis=0).fillna(0)
+        return vec_data
+
+    @staticmethod
+    def _markov_vectorization(events, index_col, schema):
+        event_col = schema.event_name
+        event_index_col = schema.event_index
+        time_col = schema.event_timestamp
+
+        next_event_col = "next_" + event_col
+        next_time_col = "next_" + time_col
+        events = events.sort_values([index_col, event_index_col])
+        events[[next_event_col, next_time_col]] = events.groupby(index_col)[[event_col, time_col]].shift(-1)
+        vec_data = (
+            events.groupby([index_col, event_col, next_event_col])[event_index_col]
+            .count()
+            .reset_index()
+            .rename(columns={event_index_col: "count"})
+            .assign(bigram=lambda df_: df_[event_col] + "~" + df_[next_event_col])
+            .assign(left_event_count=lambda df_: df_.groupby([index_col, event_col])["count"].transform("sum"))
+            .assign(bigram_weight=lambda df_: df_["count"] / df_["left_event_count"])
+            .pivot(index=index_col, columns="bigram", values="bigram_weight")
+            .fillna(0)
+        )
+        vec_data.index.rename(index_col, inplace=True)
+        del events[next_event_col]
+        del events[next_time_col]
+        return events, vec_data
 
     # TODO: add save
     def _cluster_bar(self, clusters: ndarray, target: list[list[bool]], target_names: list[str]):

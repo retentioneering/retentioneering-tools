@@ -393,7 +393,9 @@ class Clusters:
 
         return cast(pd.DataFrame, vec_data)
 
-    def _sklearn_vectorization(self, events, feature_type, ngram_range, index_col, schema):
+    def _sklearn_vectorization(
+        self, events, feature_type, ngram_range, index_col, schema
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         event_col = schema.event_name
         corpus = events.groupby(index_col)[event_col].apply(lambda x: "~~".join([el.lower() for el in x]))
         vectorizer = self.__get_vectorizer(feature_type=feature_type, ngram_range=ngram_range, corpus=corpus)
@@ -406,10 +408,10 @@ class Clusters:
             # @FIXME: legacy todo without explanation, idk why. Vladimir Makhanov
             sum = cast(Any, vec_data.sum(axis=1))
             vec_data = vec_data.div(sum, axis=0).fillna(0)
-        return vec_data
+        return events, vec_data
 
     @staticmethod
-    def _markov_vectorization(events, index_col, schema):
+    def _markov_vectorization(events, index_col, schema) -> tuple[pd.DataFrame, pd.DataFrame]:
         event_col = schema.event_name
         event_index_col = schema.event_index
         time_col = schema.event_timestamp

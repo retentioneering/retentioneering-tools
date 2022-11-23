@@ -1,20 +1,34 @@
 from __future__ import annotations
 
-from typing import Any, Callable, List
+from typing import Callable, List
 
 import pandas as pd
-from pandas import DataFrame
 
 from src.data_processor.data_processor import DataProcessor
-from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema
+from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
 from src.widget.widgets import ListOfString, ReteFunction
 
-EventstreamFilter = Callable[[DataFrame, EventstreamSchema], Any]
 
+def _default_func_positive(eventstream: EventstreamType, positive_target_events: list[str]) -> pd.DataFrame:
+    """
+    Filters rows with target events from the input eventstream.
 
-def _default_func_positive(eventstream: Eventstream, positive_target_events: list[str]) -> pd.DataFrame:
+    Parameters
+    ----------
+    eventstream : Eventstream
+        Source eventstream or output from previous nodes.
+
+    positive_target_events : List[str]
+        Condition for eventstream filtering.
+        Each event from that list is associated with a conversion goal of the user behaviour in the product.
+        If there are several target events in user path - the event with minimum timestamp is taken.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered DataFrame with positive_target_events and its timestamps.
+    """
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
@@ -28,6 +42,10 @@ def _default_func_positive(eventstream: Eventstream, positive_target_events: lis
 
 
 class PositiveTargetParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`PositiveTarget`
+    """
+
     positive_target_events: List[str]
     positive_function: Callable = _default_func_positive
 
@@ -35,16 +53,44 @@ class PositiveTargetParams(ParamsModel):
 
 
 class PositiveTarget(DataProcessor):
+    """
+    Creates new synthetic events for users who have had specified event(s) in their paths:
+
+
+    Parameters
+    ----------
+    positive_target_events : List[str]
+        Each event from that list is associated with a conversional user behaviour in the product.
+        If there are several target events in user path - the event with minimum timestamp taken.
+
+    positive_function : Callable, default=_default_func_positive
+        Filter rows with target events from the input eventstream.
+
+    Returns
+    -------
+    Eventstream
+        Eventstream with new synthetic events for users who fit the conditions.
+
+        +--------------------------------+-----------------+-----------------------------+
+        | **event_name**                 | **event_type**  | **timestamp**               |
+        +--------------------------------+-----------------+-----------------------------+
+        | positive_target_RAW_EVENT_NAME | positive_target | min(positive_target_events) |
+        +--------------------------------+-----------------+-----------------------------+
+
+    """
+
     params: PositiveTargetParams
 
     def __init__(self, params: PositiveTargetParams):
         super().__init__(params=params)
 
-    def apply(self, eventstream: Eventstream) -> Eventstream:
+    def apply(self, eventstream: EventstreamType) -> EventstreamType:
+        from src.eventstream.eventstream import Eventstream
+
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 
-        positive_function: Callable[[Eventstream, list[str]], pd.DataFrame] = self.params.positive_function
+        positive_function: Callable[[EventstreamType, list[str]], pd.DataFrame] = self.params.positive_function
         positive_target_events = self.params.positive_target_events
 
         positive_targets = positive_function(eventstream, positive_target_events)

@@ -3,23 +3,47 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection
-from typing import Any, List, Literal, Optional
+from typing import Any, List, Literal, Optional, Tuple, Union
 
+import matplotlib
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
-from src.eventstream.types import EventstreamType, Relation
+from src.eventstream.schema import EventstreamSchema
+from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
+from src.tooling.clusters import Clusters
 from src.tooling.funnel import Funnel
+from src.tooling.sankey import Sankey
+from src.tooling.step_matrix import StepMatrix
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
+from .helpers import (
+    CollapseLoopsHelperMixin,
+    DeleteUsersByPathLengthHelperMixin,
+    FilterHelperMixin,
+    GroupHelperMixin,
+    LostUsersHelperMixin,
+    NegativeTargetHelperMixin,
+    NewUsersHelperMixin,
+    PositiveTargetHelperMixin,
+    SplitSessionsHelperMixin,
+    StartEndHelperMixin,
+    TruncatedEventsHelperMixin,
+    TruncatePathHelperMixin,
+)
+
 IndexOrder = List[Optional[str]]
+FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "external"]
+NgramRange = Tuple[int, int]
+Method = Literal["kmeans", "gmm"]
+PlotType = Literal["cluster_bar"]
+
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
     "profile",
-    "start",
+    "path_start",
     "new_user",
     "existing_user",
     "truncated_left",
@@ -39,7 +63,7 @@ DEFAULT_INDEX_ORDER: IndexOrder = [
     "truncated_right",
     "absent_user",
     "lost_user",
-    "end",
+    "path_end",
 ]
 
 RAW_COL_PREFIX = "raw_"
@@ -49,22 +73,39 @@ DELETE_COL_NAME = "_deleted"
 # TODO проработать резервирование колонок
 
 
-class Eventstream(EventstreamType):
+class Eventstream(
+    CollapseLoopsHelperMixin,
+    DeleteUsersByPathLengthHelperMixin,
+    FilterHelperMixin,
+    GroupHelperMixin,
+    LostUsersHelperMixin,
+    NegativeTargetHelperMixin,
+    NewUsersHelperMixin,
+    PositiveTargetHelperMixin,
+    SplitSessionsHelperMixin,
+    StartEndHelperMixin,
+    TruncatedEventsHelperMixin,
+    TruncatePathHelperMixin,
+    EventstreamType,
+):
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]
-    __raw_data_schema: RawDataSchema
+    __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
+    __clusters: Clusters | None = None
 
     def __init__(
         self,
-        raw_data_schema: RawDataSchema,
+        raw_data_schema: RawDataSchemaType,
         raw_data: pd.DataFrame | pd.Series[Any],
         schema: EventstreamSchema | None = None,
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
         relations: Optional[List[Relation]] = None,
     ) -> None:
+        self.__clusters = None
+
         self.schema = schema if schema else EventstreamSchema()
 
         if not index_order:
@@ -377,6 +418,12 @@ class Eventstream(EventstreamType):
         segment_names: list[str] | None = None,
         sequence: bool = False,
     ) -> go.Figure:
+        """
+        See Also
+        --------
+        :py:func:`src.tooling.funnel.funnel`
+
+        """
         funnel = Funnel(
             eventstream=self,
             stages=stages,
@@ -388,3 +435,55 @@ class Eventstream(EventstreamType):
         )
         plot = funnel.draw_plot()
         return plot
+
+    @property
+    def clusters(self) -> Clusters:
+        if self.__clusters is None:
+            self.__clusters = Clusters(eventstream=self, user_clusters=None)
+        return self.__clusters
+
+    def step_matrix(
+        self,
+        max_steps: int = 20,
+        weight_col: Optional[str] = None,
+        precision: int = 2,
+        targets: Optional[list[str] | str] = None,
+        accumulated: Optional[Union[Literal["both", "only"], None]] = None,
+        sorting: Optional[list[str]] = None,
+        thresh: float = 0,
+        centered: Optional[dict] = None,
+        groups: Optional[Tuple[list, list]] = None,
+    ) -> matplotlib.figure.Figure:
+        return StepMatrix(
+            eventstream=self,
+            max_steps=max_steps,
+            weight_col=weight_col,
+            precision=precision,
+            targets=targets,
+            accumulated=accumulated,
+            sorting=sorting,
+            thresh=thresh,
+            centered=centered,
+            groups=groups,
+        ).plot()
+
+    def step_sankey(
+        self,
+        max_steps: int = 10,
+        thresh: Union[int, float] = 0.05,
+        sorting: list | None = None,
+        target: Union[list[str], str] | None = None,
+        autosize: bool = True,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> go.Figure:
+        return Sankey(
+            eventstream=self,
+            max_steps=max_steps,
+            thresh=thresh,
+            sorting=sorting,
+            target=target,
+            autosize=autosize,
+            width=width,
+            height=height,
+        ).plot()

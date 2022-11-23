@@ -1,33 +1,111 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
 
 from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.constants import DATETIME_UNITS
-from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import EventstreamSchema
+from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
 from src.widget.widgets import ReteTimeWidget
 
 
 class SplitSessionsParams(ParamsModel):
+    """
+    Class with parameters for class :py:func:`SplitSessions`
+
+    """
+
     session_cutoff: Tuple[float, DATETIME_UNITS]
-    mark_truncated: Optional[bool] = False
+    mark_truncated: bool = False
     session_col: str
 
     _widgets = {"session_cutoff": ReteTimeWidget}
 
 
 class SplitSessions(DataProcessor):
+    """
+    Creates new synthetic events, which divide user's paths on sessions:
+    ``session_start`` (or ``session_start_truncated``) and ``session_end`` (or ``session_end_truncated``).
+    Also creates and adds new column which contains session number for each event in input eventstream
+    Session number will take the form: ``{user_id}_{session_number through one user path}``
+
+    Parameters
+    ----------
+    session_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`)
+        Threshold value and its unit of measure.
+        ``session_start`` and ``session_end`` events are always placed before the first and after the last event
+        in each user's path.
+        But user can have more than one session, so that calculates timedelta between every two consecutive events in
+        each user's path.
+        If calculated timedelta is more than selected session_cutoff,
+        new synthetic events - ``session_start`` and ``session_end`` will occur in the middle of user path.
+
+    mark_truncated : bool, default=False
+        If ``True`` - calculates timedelta between:
+
+        - first event in each user's path and first event in whole Eventstream
+        - last event in each user's path and last event in whole Eventstream.
+
+        For users with timedelta less than selected ``session_cutoff``,
+        new synthetic event - ``session_start_truncated`` or ``session_end_truncated`` will be added.
+
+    session_col : str
+        The name of future ``session_col``
+
+    Returns
+    -------
+    Eventstream
+        Eventstream with new synthetic events and session_col
+
+        +-----------------------------+----------------------------+-----------------+
+        | **event_name**              | **event_type**             | **timestamp**   |
+        +-----------------------------+----------------------------+-----------------+
+        | session_start               | session_start              | first_event     |
+        +-----------------------------+----------------------------+-----------------+
+        | session_end                 | session_end                | last_event      |
+        +-----------------------------+----------------------------+-----------------+
+        | session_start_truncated     | session_start_truncated    | first_event     |
+        +-----------------------------+----------------------------+-----------------+
+        | session_end_truncated       | session_end_truncated      | last_event      |
+        +-----------------------------+----------------------------+-----------------+
+
+        The user will have more than one session if the delta between timestamps of two consecutive events
+        (raw_event_n and raw_event_n+1) is greater than the selected ``session_cutoff``:
+
+        +--------------+-------------------+------------------+-------------------+------------------+
+        |  **user_id** | **event_name**    | **event_type**   | **timestamp**     | **session_col**  |
+        +--------------+-------------------+------------------+-------------------+------------------+
+        |     1        | session_start     | session_start    | first_event       |     1_0          |
+        +--------------+-------------------+------------------+-------------------+------------------+
+        |     1        | session_end       | session_end      | raw_event_n       |     1_0          |
+        +--------------+-------------------+------------------+-------------------+------------------+
+        |     1        | session_start     | session_start    | raw_event_n+1     |     1_1          |
+        +--------------+-------------------+------------------+-------------------+------------------+
+        |     1        | session_end       | session_end      | last_event        |     1_1          |
+        +--------------+-------------------+------------------+-------------------+------------------+
+
+    Note
+    -------
+    Hists
+    Рекомендация - сплитовать на сессии после добавления всех синтетических ивентов и групп!
+
+    Examples
+    --------
+
+    """
+
     params: SplitSessionsParams
 
     def __init__(self, params: SplitSessionsParams) -> None:
         super().__init__(params=params)
 
-    def apply(self, eventstream: Eventstream) -> Eventstream:
+    def apply(self, eventstream: EventstreamType) -> EventstreamType:
+        from src.eventstream.eventstream import Eventstream
+
         user_col = eventstream.schema.user_id
         time_col = eventstream.schema.event_timestamp
         type_col = eventstream.schema.event_type

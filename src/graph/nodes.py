@@ -5,13 +5,13 @@ from typing import Any, Optional, Type, Union
 
 from src.data_processor.data_processor import DataProcessor
 from src.data_processor.registry import dataprocessor_registry
-from src.eventstream import Eventstream
+from src.eventstream.types import EventstreamType
 from src.params_model.registry import params_model_registry
 
 
 class BaseNode:
     processor: Optional[DataProcessor]
-    events: Optional[Eventstream]
+    events: Optional[EventstreamType]
     pk: str
 
     def __init__(self, **kwargs) -> None:
@@ -31,28 +31,28 @@ class BaseNode:
 
 
 class SourceNode(BaseNode):
-    events: Eventstream
+    events: EventstreamType
 
-    def __init__(self, source: Eventstream) -> None:
+    def __init__(self, source: EventstreamType) -> None:
         super().__init__()
         self.events = source
 
 
 class EventsNode(BaseNode):
     processor: DataProcessor
-    events: Optional[Eventstream]
+    events: Optional[EventstreamType]
 
     def __init__(self, processor: DataProcessor) -> None:
         super().__init__()
         self.processor = processor
         self.events = None
 
-    def calc_events(self, parent: Eventstream):
+    def calc_events(self, parent: EventstreamType):
         self.events = self.processor.apply(parent)
 
 
 class MergeNode(BaseNode):
-    events: Optional[Eventstream]
+    events: Optional[EventstreamType]
 
     def __init__(self) -> None:
         super().__init__()

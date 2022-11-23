@@ -11,17 +11,8 @@ from src.eventstream.types import EventstreamType
 
 
 class Funnel:
-    __eventstream: EventstreamType
-    __default_layout = dict(
-        margin={"l": 180, "r": 0, "t": 30, "b": 0, "pad": 0},
-        funnelmode="stack",
-        showlegend=True,
-        hovermode="closest",
-        legend=dict(orientation="v", bgcolor="#E2E2E2", xanchor="left", font=dict(size=12)),
-    )
-
     """
-    Plots convertion funnel with specified parameters.
+    Plots conversion funnel with specified parameters.
 
     Parameters
     ----------
@@ -31,26 +22,35 @@ class Funnel:
         plotted. Multiple events can be grouped together as individual state
         by combining them as sub list.
     stage_names: list of str | None (default None)
-        List of stage names, this is especially necessary for stages that include several events
+        List of stage names, this is especially necessary for stages that include several events.
     funnel_type: 'open' or 'closed' (optional, default 'open')
-        if 'open' - all users will be counted on each stage
-        if 'closed' - Each stage will include only users, who was on all previous stages.
+        if ``open`` - all users will be counted on each stage.
+        if ``closed`` - Each stage will include only users, who was on all previous stages.
     segments: Collection[Collection[int]] | None (default None)
         List of user_ids collections. Funnel for each user_id collection will be plotted.
-        If None - all users from dataset will be plotted. A user can only belong to one segment at a time.
+        If ``None`` - all users from dataset will be plotted. A user can only belong to one segment at a time.
     segment_names: list of strings | None (default None)
-        Names of segments. Should be a list from unique values of the segment_col.
-        If None and segment_col is given - all values from segment_col will be used
+        Names of segments. Should be a list from unique values of the ``segment_col``.
+        If ``None`` and ``segment_col`` is given - all values from ``segment_col`` will be used.
     sequence: Boolean (default False)
         Used for closed funnels only
-        If True, the sequence and timestamp of events is taken into account when constructing the funnel
-        In another case, the standart closed funnel rules is implemented
+        If ``True``, the sequence and timestamp of events is taken into account when constructing the funnel.
+        In another case, the standard closed funnel rules will be implemented.
 
-    Returns
-    -------
-    Funnel plot
+    See Also
+    --------
+    :py:func:`src.eventstream.funnel`
 
     """
+
+    __eventstream: EventstreamType
+    __default_layout = dict(
+        margin={"l": 180, "r": 0, "t": 30, "b": 0, "pad": 0},
+        funnelmode="stack",
+        showlegend=True,
+        hovermode="closest",
+        legend=dict(orientation="v", bgcolor="#E2E2E2", xanchor="left", font=dict(size=12)),
+    )
 
     def __init__(
         self,

@@ -12,7 +12,7 @@ class TestNegativeTarget(ApplyTestBase):
     _Processor = NegativeTarget
     _source_df = pd.DataFrame(
         [
-            [1, "start", "start", "2022-01-01 00:01:00"],
+            [1, "path_start", "path_start", "2022-01-01 00:01:00"],
             [1, "event1", "raw", "2022-01-01 00:01:00"],
             [1, "event2", "raw", "2022-01-01 00:01:02"],
             [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -26,11 +26,11 @@ class TestNegativeTarget(ApplyTestBase):
             [2, "event1", "raw", "2022-01-02 00:00:00"],
             [2, "event3", "raw", "2022-01-02 00:00:05"],
             [2, "event2", "raw", "2022-01-02 00:01:05"],
-            [2, "end", "end", "2022-01-02 00:01:05"],
+            [2, "path_end", "path_end", "2022-01-02 00:01:05"],
             [3, "event1", "raw", "2022-01-02 00:01:10"],
             [3, "event1", "raw", "2022-01-02 00:02:05"],
             [3, "event4", "raw", "2022-01-02 00:03:05"],
-            [3, "end", "end", "2022-01-02 00:03:05"],
+            [3, "path_end", "path_end", "2022-01-02 00:03:05"],
         ],
         columns=["user_id", "event", "event_type", "timestamp"],
     )
@@ -76,7 +76,7 @@ class TestNegativeTargetGraph(GraphTestBase):
     _Processor = NegativeTarget
     _source_df = pd.DataFrame(
         [
-            [1, "start", "start", "2022-01-01 00:01:00"],
+            [1, "path_start", "path_start", "2022-01-01 00:01:00"],
             [1, "event1", "raw", "2022-01-01 00:01:00"],
             [1, "event2", "raw", "2022-01-01 00:01:02"],
             [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -90,11 +90,11 @@ class TestNegativeTargetGraph(GraphTestBase):
             [2, "event1", "raw", "2022-01-02 00:00:00"],
             [2, "event3", "raw", "2022-01-02 00:00:05"],
             [2, "event2", "raw", "2022-01-02 00:01:05"],
-            [2, "end", "end", "2022-01-02 00:01:05"],
+            [2, "path_end", "path_end", "2022-01-02 00:01:05"],
             [3, "event1", "raw", "2022-01-02 00:01:10"],
             [3, "event1", "raw", "2022-01-02 00:02:05"],
             [3, "event4", "raw", "2022-01-02 00:03:05"],
-            [3, "end", "end", "2022-01-02 00:03:05"],
+            [3, "path_end", "path_end", "2022-01-02 00:03:05"],
         ],
         columns=["user_id", "event", "event_type", "timestamp"],
     )
@@ -113,7 +113,7 @@ class TestNegativeTargetGraph(GraphTestBase):
         )
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -129,11 +129,11 @@ class TestNegativeTargetGraph(GraphTestBase):
                 [2, "event3", "raw", "2022-01-02 00:00:05"],
                 [2, "negative_target_event3", "negative_target", "2022-01-02 00:00:05"],
                 [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "end", "end", "2022-01-02 00:01:05"],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
                 [3, "event1", "raw", "2022-01-02 00:01:10"],
                 [3, "event1", "raw", "2022-01-02 00:02:05"],
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
+                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp"],
         )
@@ -147,7 +147,7 @@ class TestNegativeTargetGraph(GraphTestBase):
         )
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "negative_target_event2", "negative_target", "2022-01-01 00:01:02"],
@@ -163,11 +163,11 @@ class TestNegativeTargetGraph(GraphTestBase):
                 [2, "event3", "raw", "2022-01-02 00:00:05"],
                 [2, "negative_target_event3", "negative_target", "2022-01-02 00:00:05"],
                 [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "end", "end", "2022-01-02 00:01:05"],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
                 [3, "event1", "raw", "2022-01-02 00:01:10"],
                 [3, "event1", "raw", "2022-01-02 00:02:05"],
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
+                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp"],
         )
@@ -179,7 +179,7 @@ class TestNegativeTargetHelper:
     def test_negative_target_graph__1_event(self):
         source_df = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -193,11 +193,11 @@ class TestNegativeTargetHelper:
                 [2, "event1", "raw", "2022-01-02 00:00:00"],
                 [2, "event3", "raw", "2022-01-02 00:00:05"],
                 [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "end", "end", "2022-01-02 00:01:05"],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
                 [3, "event1", "raw", "2022-01-02 00:01:10"],
                 [3, "event1", "raw", "2022-01-02 00:02:05"],
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
+                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=["user_id", "event", "event_type", "timestamp"],
         )
@@ -205,7 +205,7 @@ class TestNegativeTargetHelper:
 
         correct_result = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -221,11 +221,11 @@ class TestNegativeTargetHelper:
                 [2, "event3", "raw", "2022-01-02 00:00:05"],
                 [2, "negative_target_event3", "negative_target", "2022-01-02 00:00:05"],
                 [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "end", "end", "2022-01-02 00:01:05"],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
                 [3, "event1", "raw", "2022-01-02 00:01:10"],
                 [3, "event1", "raw", "2022-01-02 00:02:05"],
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
+                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=correct_result_columns,
         )
@@ -246,7 +246,7 @@ class TestNegativeTargetHelper:
     def test_negative_target_graph__2_events(self):
         source_df = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -260,11 +260,11 @@ class TestNegativeTargetHelper:
                 [2, "event1", "raw", "2022-01-02 00:00:00"],
                 [2, "event3", "raw", "2022-01-02 00:00:05"],
                 [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "end", "end", "2022-01-02 00:01:05"],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
                 [3, "event1", "raw", "2022-01-02 00:01:10"],
                 [3, "event1", "raw", "2022-01-02 00:02:05"],
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
+                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=["user_id", "event", "event_type", "timestamp"],
         )
@@ -273,7 +273,7 @@ class TestNegativeTargetHelper:
 
         correct_result = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "negative_target_event2", "negative_target", "2022-01-01 00:01:02"],
@@ -289,11 +289,11 @@ class TestNegativeTargetHelper:
                 [2, "event3", "raw", "2022-01-02 00:00:05"],
                 [2, "negative_target_event3", "negative_target", "2022-01-02 00:00:05"],
                 [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "end", "end", "2022-01-02 00:01:05"],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
                 [3, "event1", "raw", "2022-01-02 00:01:10"],
                 [3, "event1", "raw", "2022-01-02 00:02:05"],
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
+                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=correct_result_columns,
         )

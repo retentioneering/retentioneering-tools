@@ -12,7 +12,7 @@ from src.eventstream.types import EventstreamType
 
 class Funnel:
     """
-    Plots convertion funnel with specified parameters.
+    Plots conversion funnel with specified parameters.
 
     Parameters
     ----------
@@ -35,7 +35,7 @@ class Funnel:
     sequence: Boolean (default False)
         Used for closed funnels only
         If ``True``, the sequence and timestamp of events is taken into account when constructing the funnel.
-        In another case, the standart closed funnel rules will be implemented.
+        In another case, the standard closed funnel rules will be implemented.
 
     See Also
     --------

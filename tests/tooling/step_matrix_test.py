@@ -18,7 +18,9 @@ FLOAT_PRECISION = 6
 
 
 def read_test_data(filename):
-    filepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "step_matrix_test_data", filename)
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    test_data_dir = os.path.join(current_dir, "../datasets/tooling/step_matrix")
+    filepath = os.path.join(test_data_dir, filename)
     df = pd.read_csv(filepath, index_col=0).round(FLOAT_PRECISION)
     df.columns = df.columns.astype(int)
     return df
@@ -27,7 +29,7 @@ def read_test_data(filename):
 @pytest.fixture
 def stream():
     def remove_start(df, schema):
-        return df["event_name"] != "start"
+        return df["event_name"] != "path_start"
 
     test_stream = datasets.load_simple_shop()
     graph = PGraph(source_stream=test_stream)

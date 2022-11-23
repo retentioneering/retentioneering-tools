@@ -9,9 +9,8 @@ import seaborn as sns
 
 from src.eventstream.types import EventstreamType
 
-# @TODO в отдельный файл может надо такое вынести?
+# @TODO В отдельный файл может надо такое вынести? Или может для когорт сократить список? dpanina
 DATETIME_UNITS = Literal["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
-DATETIME_UNITS_LIST = ["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
 
 
 class Cohorts:
@@ -63,46 +62,43 @@ class Cohorts:
 
     Note
     ----
-    Parameters ``start_cohort_measure`` and ``cohort_period`` should be consistent.
+    Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
     Due to "Y" and "M" are non-fixed types it can be used only with each other
     or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``.
     More information: :numpy_timedelta_link:`About timedelta`<>
     """
 
     __eventstream: EventstreamType
-    cohort_period: int
-    cohort_period_unit: DATETIME_UNITS
-    cohort_start_unit: DATETIME_UNITS
+    cohort_period: int | None
+    cohort_period_unit: DATETIME_UNITS | None
+    cohort_start_unit: DATETIME_UNITS | None
+    DATETIME_UNITS_LIST = ["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
 
-    def __init__(
+    def __init__(self, eventstream: EventstreamType):
+        self.__eventstream = eventstream
+        self.user_col = self.__eventstream.schema.user_id
+        self.event_col = self.__eventstream.schema.event_name
+        self.time_col = self.__eventstream.schema.event_timestamp
+        self.average = True
+        self.cohort_start_unit = None
+        self.cohort_period, self.cohort_period_unit = None, None
+        self.cut_diagonal = 0
+        self.cut_bottom = 0
+        self.cut_right = 0
+
+        data = self.__eventstream.to_dataframe()
+        self.data = data
+        self._cohort_matrix_result = pd.DataFrame
+
+    def fit_cohorts(
         self,
-        eventstream: EventstreamType,
         cohort_start_unit: DATETIME_UNITS,
         cohort_period: Tuple[int, DATETIME_UNITS],
         average: bool = True,
         cut_bottom: int = 0,
         cut_right: int = 0,
         cut_diagonal: int = 0,
-    ) -> None:
-        self.__eventstream = eventstream
-        self.user_col = self.__eventstream.schema.user_id
-        self.event_col = self.__eventstream.schema.event_name
-        self.time_col = self.__eventstream.schema.event_timestamp
-        self.average = average
-        self.cohort_start_unit = cohort_start_unit
-        self.cohort_period, self.cohort_period_unit = cohort_period
-        self.cut_diagonal = cut_diagonal
-        self.cut_bottom = cut_bottom
-        self.cut_right = cut_right
-
-        data = self.__eventstream.to_dataframe()
-        self.data = data
-        self.cohort_matrix_result = pd.DataFrame
-
-        if self.cohort_period <= 0:
-            raise ValueError("cohort_period should be positive integer!")
-
-    def cohort_matrix(self) -> pd.DataFrame:
+    ):
         """
         Calculates cohort matrix with retention rate of active users in coordinates
         of the cohort period and cohort group.
@@ -116,6 +112,24 @@ class Cohorts:
         Only cohorts with at least 1 user are shown.
 
         """
+        self.average = average
+        self.cohort_start_unit = cohort_start_unit
+        self.cohort_period, self.cohort_period_unit = cohort_period
+        self.cut_diagonal = cut_diagonal
+        self.cut_bottom = cut_bottom
+        self.cut_right = cut_right
+
+        if self.cohort_period <= 0:
+            raise ValueError("cohort_period should be positive integer!")
+
+        # @TODO добавить ссылку на numpy с объяснением. dpanina
+        if self.cohort_period_unit in ["Y", "M"] and self.cohort_start_unit not in ["Y", "M"]:
+            raise ValueError(
+                """Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
+                                 Due to "Y" and "M" are non-fixed types it can be used only with each other
+                                 or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``.!"""
+            )
+
         df = self._add_min_date(
             data=self.data,
             cohort_start_unit=self.cohort_start_unit,
@@ -143,8 +157,7 @@ class Cohorts:
         if self.average:
             user_retention.loc["Average"] = user_retention.mean()
 
-        self.cohort_matrix_result = user_retention
-        return self.cohort_matrix_result
+        self._cohort_matrix_result = user_retention
 
     def _add_min_date(
         self,
@@ -158,7 +171,7 @@ class Cohorts:
         data["user_min_date_gr"] = data.groupby(self.user_col)[self.time_col].transform(min)
         min_cohort_date = data["user_min_date_gr"].min().to_period(freq).start_time
         max_cohort_date = data["user_min_date_gr"].max()
-        if DATETIME_UNITS_LIST.index(cohort_start_unit) < DATETIME_UNITS_LIST.index(cohort_period_unit):
+        if Cohorts.DATETIME_UNITS_LIST.index(cohort_start_unit) < Cohorts.DATETIME_UNITS_LIST.index(cohort_period_unit):
             freq = cohort_period_unit
 
         if freq == "W":
@@ -206,7 +219,22 @@ class Cohorts:
 
         return df.iloc[: len(df) - cut_bottom, : len(df.columns) - cut_right]
 
-    def cohort_heatmap(self, figsize: Tuple[float, float] = (10, 10)) -> sns.heatmap:
+    @property
+    def get_values(self):
+        return self._cohort_matrix_result
+
+    @property
+    def get_params(self):
+        return {
+            "cohort_start_unit": self.cohort_start_unit,
+            "cohort_period": (self.cohort_period, self.cohort_period_unit),
+            "average": self.average,
+            "cut_bottom": self.cut_bottom,
+            "cut_right": self.cut_right,
+            "cut_diagonal": self.cut_diagonal,
+        }
+
+    def get_heatmap(self, figsize: Tuple[float, float] = (10, 10)) -> sns.heatmap:
 
         """
         Build the heatmap based on the calculated cohort_matrix.
@@ -221,16 +249,13 @@ class Cohorts:
         sns.heatmap
 
         """
-        if self.cohort_matrix_result.empty:
-            self.cohort_matrix()
-        df = self.cohort_matrix_result
+
+        df = self._cohort_matrix_result
 
         plt.figure(figsize=figsize)
         sns.heatmap(df, annot=True, fmt=".1%", linewidths=1, linecolor="gray")
-        # @TODO нужен ли тут return? если с ним, то в ноутбуке 2 раза выводится график. dpanina
-        # @TODO такой же вопрос с lineplot ниже. dpanina
 
-    def cohort_lineplot(
+    def get_lineplot(
         self,
         show_plot: Literal["cohorts", "average", "all"] = "cohorts",
         figsize: Tuple[float, float] = (10, 10),
@@ -256,9 +281,7 @@ class Cohorts:
         if show_plot not in ["cohorts", "average", "all"]:
             raise ValueError("show_plot parameter should be 'cohorts', 'average' or 'all'!")
 
-        if self.cohort_matrix_result.empty:
-            self.cohort_matrix()
-        df_matrix = self.cohort_matrix_result
+        df_matrix = self._cohort_matrix_result
         df_wo_average = df_matrix[df_matrix.index != "Average"]  # type: ignore
         if show_plot in ["all", "average"] and "Average" not in df_matrix.index:  # type: ignore
             df_matrix.loc["Average"] = df_matrix.mean()  # type: ignore

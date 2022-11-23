@@ -41,7 +41,6 @@ NgramRange = Tuple[int, int]
 Method = Literal["kmeans", "gmm"]
 PlotType = Literal["cluster_bar"]
 DATETIME_UNITS = Literal["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
-DATETIME_UNITS_LIST = ["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
 
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
@@ -492,29 +491,15 @@ class Eventstream(
             height=height,
         ).plot()
 
-    def cohorts(
-        self,
-        cohort_start_unit: DATETIME_UNITS,
-        cohort_period: Tuple[int, DATETIME_UNITS],
-        average: bool = True,
-        cut_bottom: int = 0,
-        cut_right: int = 0,
-        cut_diagonal: int = 0,
-    ) -> Cohorts:
+    @property
+    def cohorts(self) -> Cohorts:
         """
         See Also
         --------
         :py:func:`src.tooling.cohorts.cohorts`
 
         """
-        self.__cohorts = Cohorts(
-            eventstream=self,
-            cohort_start_unit=cohort_start_unit,
-            cohort_period=cohort_period,
-            average=average,
-            cut_diagonal=cut_diagonal,
-            cut_bottom=cut_bottom,
-            cut_right=cut_right,
-        )
+        if self.__cohorts is None:
+            self.__cohorts = Cohorts(eventstream=self)
 
         return self.__cohorts

@@ -36,7 +36,7 @@ class StepMatrix:
     Parameters
     ----------
     max_steps: int (optional, default 20)
-        Maximum number of steps in trajectory to include.
+        Maximum number of steps in trajectories to include.
     weight_col: str (optional, default None)
         Aggregation column for edge weighting. If None, specified index_col
         from retentioneering.config will be used as column name. For example,
@@ -193,8 +193,8 @@ class StepMatrix:
         piv.columns.name = None
         piv.index.name = None
         # MAKE TERMINATED STATE ACCUMULATED:
-        if "end" in piv.index:
-            piv.loc["end"] = piv.loc["end"].cumsum().fillna(0)
+        if "path_end" in piv.index:
+            piv.loc["path_end"] = piv.loc["path_end"].cumsum().fillna(0)
         return piv
 
     def _process_targets(self, data: pd.DataFrame) -> tuple[pd.DataFrame | None, list[list[str]] | None]:
@@ -400,7 +400,7 @@ class StepMatrix:
             piv = self._sort_matrix(piv)
 
             keep_in_the_end = []
-            keep_in_the_end.append("end") if ("end" in piv.index) else None
+            keep_in_the_end.append("path_end") if ("path_end" in piv.index) else None
             keep_in_the_end.append(thresh_index) if (thresh_index in piv.index) else None
 
             events_order = [*(i for i in piv.index if i not in keep_in_the_end), *keep_in_the_end]

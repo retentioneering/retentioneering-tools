@@ -14,6 +14,7 @@ from src.eventstream.schema import EventstreamSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.clusters import Clusters
 from src.tooling.funnel import Funnel
+from src.tooling.sankey import Sankey
 from src.tooling.step_matrix import StepMatrix
 from src.utils import get_merged_col
 from src.utils.list import find_index
@@ -42,7 +43,7 @@ PlotType = Literal["cluster_bar"]
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
     "profile",
-    "start",
+    "path_start",
     "new_user",
     "existing_user",
     "truncated_left",
@@ -62,7 +63,7 @@ DEFAULT_INDEX_ORDER: IndexOrder = [
     "truncated_right",
     "absent_user",
     "lost_user",
-    "end",
+    "path_end",
 ]
 
 RAW_COL_PREFIX = "raw_"
@@ -464,4 +465,25 @@ class Eventstream(
             thresh=thresh,
             centered=centered,
             groups=groups,
+        ).plot()
+
+    def step_sankey(
+        self,
+        max_steps: int = 10,
+        thresh: Union[int, float] = 0.05,
+        sorting: list | None = None,
+        target: Union[list[str], str] | None = None,
+        autosize: bool = True,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> go.Figure:
+        return Sankey(
+            eventstream=self,
+            max_steps=max_steps,
+            thresh=thresh,
+            sorting=sorting,
+            target=target,
+            autosize=autosize,
+            width=width,
+            height=height,
         ).plot()

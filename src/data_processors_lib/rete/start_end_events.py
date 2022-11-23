@@ -15,7 +15,7 @@ class StartEndEventsParams(ParamsModel):
 class StartEndEvents(DataProcessor):
     """
     Creates two synthetic events in each user's path:
-    ``start`` and ``end``
+    ``path_start`` and ``path_end``
 
     Returns
     -------
@@ -25,9 +25,9 @@ class StartEndEvents(DataProcessor):
         +----------------+----------------+----------------+
         | **event_name** | **event_type** | **timestamp**  |
         +----------------+----------------+----------------+
-        | start          | start          | first_event    |
+        | path_start     | path_start     | first_event    |
         +----------------+----------------+----------------+
-        | end            | end            | last_event     |
+        | path_end       | path_end       | last_event     |
         +----------------+----------------+----------------+
 
     Note
@@ -57,13 +57,13 @@ class StartEndEvents(DataProcessor):
         event_col = eventstream.schema.event_name
 
         matched_events_start: DataFrame = events.groupby(user_col, as_index=False)[time_col].min()  # type: ignore
-        matched_events_start[type_col] = "start"
-        matched_events_start[event_col] = "start"
+        matched_events_start[type_col] = "path_start"
+        matched_events_start[event_col] = "path_start"
         matched_events_start["ref"] = None
 
         matched_events_end: DataFrame = events.groupby(user_col, as_index=False)[time_col].max()  # type: ignore
-        matched_events_end[type_col] = "end"
-        matched_events_end[event_col] = "end"
+        matched_events_end[type_col] = "path_end"
+        matched_events_end[event_col] = "path_end"
         matched_events_end["ref"] = None
 
         matched_events = pd.concat([matched_events_start, matched_events_end])

@@ -96,6 +96,7 @@ class Eventstream(
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
     __clusters: Clusters | None = None
+    __funnel: Funnel | None = None
     __cohorts: Cohorts | None = None
 
     def __init__(
@@ -108,7 +109,7 @@ class Eventstream(
         relations: Optional[List[Relation]] = None,
     ) -> None:
         self.__clusters = None
-
+        self.__funnel = None
         self.schema = schema if schema else EventstreamSchema()
 
         if not index_order:
@@ -420,14 +421,9 @@ class Eventstream(
         segments: Collection[Collection[int]] | None = None,
         segment_names: list[str] | None = None,
         sequence: bool = False,
-    ) -> go.Figure:
-        """
-        See Also
-        --------
-        :py:func:`src.tooling.funnel.funnel`
+    ) -> Funnel:
 
-        """
-        funnel = Funnel(
+        self.__funnel = Funnel(
             eventstream=self,
             stages=stages,
             stage_names=stage_names,
@@ -436,8 +432,8 @@ class Eventstream(
             segment_names=segment_names,
             sequence=sequence,
         )
-        plot = funnel.draw_plot()
-        return plot
+
+        return self.__funnel
 
     @property
     def clusters(self) -> Clusters:

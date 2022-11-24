@@ -5,8 +5,8 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
+from src.constants.constants import DATETIME_UNITS
 from src.data_processor.data_processor import DataProcessor
-from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
 from src.widget.widgets import ListOfInt, ReteTimeWidget

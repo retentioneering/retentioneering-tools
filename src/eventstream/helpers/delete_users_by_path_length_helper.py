@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from src.data_processors_lib.rete.constants import DATETIME_UNITS
+from src.constants.constants import DATETIME_UNITS
 
 from ..types import EventstreamType
 

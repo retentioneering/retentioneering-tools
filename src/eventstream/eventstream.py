@@ -40,7 +40,6 @@ FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fra
 NgramRange = Tuple[int, int]
 Method = Literal["kmeans", "gmm"]
 PlotType = Literal["cluster_bar"]
-DATETIME_UNITS = Literal["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
 
 
 DEFAULT_INDEX_ORDER: IndexOrder = [

@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from src.constants.constants import DATETIME_UNITS
 from src.eventstream.types import EventstreamType
 
-# @TODO В отдельный файл может надо такое вынести? Или может для когорт сократить список? dpanina
-DATETIME_UNITS = Literal["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
+# @TODO Подумать над сокращением списка поддерживаемых типов для когорт? dpanina
 
 
 class Cohorts:
@@ -220,11 +220,11 @@ class Cohorts:
         return df.iloc[: len(df) - cut_bottom, : len(df.columns) - cut_right]
 
     @property
-    def get_values(self):
+    def values(self):
         return self._cohort_matrix_result
 
     @property
-    def get_params(self):
+    def params(self):
         return {
             "cohort_start_unit": self.cohort_start_unit,
             "cohort_period": (self.cohort_period, self.cohort_period_unit),
@@ -234,7 +234,7 @@ class Cohorts:
             "cut_diagonal": self.cut_diagonal,
         }
 
-    def get_heatmap(self, figsize: Tuple[float, float] = (10, 10)) -> sns.heatmap:
+    def heatmap(self, figsize: Tuple[float, float] = (10, 10)) -> sns.heatmap:
 
         """
         Build the heatmap based on the calculated cohort_matrix.
@@ -255,7 +255,7 @@ class Cohorts:
         plt.figure(figsize=figsize)
         sns.heatmap(df, annot=True, fmt=".1%", linewidths=1, linecolor="gray")
 
-    def get_lineplot(
+    def lineplot(
         self,
         show_plot: Literal["cohorts", "average", "all"] = "cohorts",
         figsize: Tuple[float, float] = (10, 10),

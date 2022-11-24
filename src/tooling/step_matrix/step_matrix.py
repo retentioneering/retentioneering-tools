@@ -200,15 +200,21 @@ class StepMatrix:
     def _process_targets(self, data: pd.DataFrame) -> tuple[pd.DataFrame | None, list[list[str]] | None]:
         if self.targets is None:
             return None, None
-        # obtain flatten list of targets:
-        targets_flatten = list(itertools.chain(*self.targets))
-        # format targets to list of lists:
+
+        # format targets to list of lists. E.g. [['a', 'b'], 'c'] -> [['a', 'b'], ['c']]
         targets = []
-        for t in self.targets:
-            if isinstance(t, list):
-                targets.append(t)
-            else:
-                targets.append([t])
+        if isinstance(self.targets, list):
+            for t in self.targets:
+                if isinstance(t, list):
+                    targets.append(t)
+                else:
+                    targets.append([t])
+        else:
+            targets.append([self.targets])
+
+        # obtain flatten list of targets. E.g. [['a', 'b'], 'c'] -> ['a', 'b', 'c']
+        targets_flatten = list(itertools.chain(*targets))
+
         agg_targets = data.groupby(["event_rank", self.event_col])[self.time_col].count().reset_index()
         agg_targets[self.time_col] /= data[self.weight_col].nunique()
         agg_targets.columns = ["event_rank", "event_name", "freq"]  # type: ignore
@@ -284,7 +290,7 @@ class StepMatrix:
         order.extend(list(set(step_matrix.index) - set(order)))
         return step_matrix.loc[order]
 
-    def _render_plot(self, data, fraction_title, targets, targets_list) -> matplotlib.figure.Figure:
+    def _render_plot(self, data, fraction_title, targets, targets_list) -> matplotlib.axes.Axes:
         n_rows = 1 + (len(targets_list) if targets_list else 0)
         n_cols = 1
         title_part1 = "centered" if self.centered else ""
@@ -355,7 +361,7 @@ class StepMatrix:
                 axs.vlines(
                     [centered_position - 0.02, centered_position + 0.98], *axs.get_ylim(), colors="Black", linewidth=0.7
                 )
-        return f
+        return axs
 
     def _get_plot_data(self) -> tuple[pd.DataFrame, pd.DataFrame | None, str | None, list[list[str]] | None]:
         weight_col = self.weight_col or self.user_col
@@ -390,9 +396,9 @@ class StepMatrix:
         thresh_index = "THRESHOLDED_"
         if self.thresh != 0:
             # find if there are any rows to threshold:
-            thresholded = piv.loc[(piv.abs() < self.thresh).all(axis=0)].copy()
+            thresholded = piv.loc[(piv.abs() < self.thresh).all(axis=1)].copy()
             if len(thresholded) > 0:
-                piv = piv.loc[(piv.abs() >= self.thresh).any(axis=0)].copy()
+                piv = piv.loc[(piv.abs() >= self.thresh).any(axis=1)].copy()
                 thresh_index = f"THRESHOLDED_{len(thresholded)}"
                 piv.loc[thresh_index] = thresholded.sum()
 
@@ -423,6 +429,6 @@ class StepMatrix:
 
         return piv, piv_targets, fraction_title, targets_plot
 
-    def plot(self) -> None:
+    def plot(self) -> matplotlib.axes.Axes:
         data, targets, fraction_title, targets_list = self._get_plot_data()
         return self._render_plot(data, fraction_title, targets, targets_list)

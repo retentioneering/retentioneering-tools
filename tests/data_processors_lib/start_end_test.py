@@ -29,8 +29,8 @@ class TestStartEndEvents(ApplyTestBase):
         actual = self._apply(StartEndEventsParams())
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2021-10-26 12:00:00"],
-                [1, "end", "end", "2021-10-26 12:04:00"],
+                [1, "path_start", "path_start", "2021-10-26 12:00:00"],
+                [1, "path_end", "path_end", "2021-10-26 12:04:00"],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp"],
         )
@@ -58,14 +58,14 @@ class TestStartEndEventsGraph(GraphTestBase):
         actual = self._apply(StartEndEventsParams())
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:00:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:00:00"],
                 [1, "event1", "raw", "2022-01-01 00:00:00"],
                 [1, "event2", "raw", "2022-01-01 00:00:01"],
                 [1, "event3", "raw", "2022-01-01 00:00:02"],
-                [1, "end", "end", "2022-01-01 00:00:02"],
-                [2, "start", "start", "2022-01-02 00:00:00"],
+                [1, "path_end", "path_end", "2022-01-01 00:00:02"],
+                [2, "path_start", "path_start", "2022-01-02 00:00:00"],
                 [2, "event4", "raw", "2022-01-02 00:00:00"],
-                [2, "end", "end", "2022-01-02 00:00:00"],
+                [2, "path_end", "path_end", "2022-01-02 00:00:00"],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp"],
         )
@@ -87,14 +87,14 @@ class TestStartEndEventsHelper:
         correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
         correct_result = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:00:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:00:00"],
                 [1, "event1", "raw", "2022-01-01 00:00:00"],
                 [1, "event2", "raw", "2022-01-01 00:00:01"],
                 [1, "event3", "raw", "2022-01-01 00:00:02"],
-                [1, "end", "end", "2022-01-01 00:00:02"],
-                [2, "start", "start", "2022-01-02 00:00:00"],
+                [1, "path_end", "path_end", "2022-01-01 00:00:02"],
+                [2, "path_start", "path_start", "2022-01-02 00:00:00"],
                 [2, "event4", "raw", "2022-01-02 00:00:00"],
-                [2, "end", "end", "2022-01-02 00:00:00"],
+                [2, "path_end", "path_end", "2022-01-02 00:00:00"],
             ],
             columns=correct_result_columns,
         )

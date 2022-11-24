@@ -12,7 +12,7 @@ class TestTruncatePath(ApplyTestBase):
     _Processor = TruncatePath
     _source_df_1 = pd.DataFrame(
         [
-            [1, "start", "start", "2022-01-01 00:01:00"],
+            [1, "path_start", "path_start", "2022-01-01 00:01:00"],
             [1, "event1", "raw", "2022-01-01 00:01:00"],
             [1, "event2", "raw", "2022-01-01 00:01:02"],
             [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -27,17 +27,17 @@ class TestTruncatePath(ApplyTestBase):
             [2, "event1", "raw", "2022-01-02 00:00:00"],
             [2, "event3", "raw", "2022-01-02 00:00:05"],
             [2, "event2", "raw", "2022-01-02 00:01:05"],
-            [2, "end", "end", "2022-01-02 00:01:05"],
+            [2, "path_end", "path_end", "2022-01-02 00:01:05"],
             [3, "event1", "raw", "2022-01-02 00:01:10"],
             [3, "event1", "raw", "2022-01-02 00:02:05"],
             [3, "event4", "raw", "2022-01-02 00:03:05"],
-            [3, "end", "end", "2022-01-02 00:03:05"],
+            [3, "path_end", "path_end", "2022-01-02 00:03:05"],
         ],
         columns=["user_id", "event", "event_type", "timestamp"],
     )
     _source_df_2 = pd.DataFrame(
         [
-            [1, "start", "start", "2022-01-01 00:01:00"],
+            [1, "path_start", "path_start", "2022-01-01 00:01:00"],
             [1, "event1", "raw", "2022-01-01 00:01:00"],
             [1, "event2", "raw", "2022-01-01 00:01:02"],
             [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -52,11 +52,11 @@ class TestTruncatePath(ApplyTestBase):
             [1, "event1", "raw", "2022-01-02 00:00:00"],
             [1, "event3", "raw", "2022-01-02 00:00:05"],
             [1, "event5", "raw", "2022-01-02 00:01:05"],
-            [1, "end", "end", "2022-01-02 00:01:05"],
+            [1, "path_end", "path_end", "2022-01-02 00:01:05"],
             [1, "event1", "raw", "2022-01-02 00:01:10"],
             [1, "event1", "raw", "2022-01-02 00:02:05"],
             [1, "event4", "raw", "2022-01-02 00:03:05"],
-            [1, "end", "end", "2022-01-02 00:03:05"],
+            [1, "path_end", "path_end", "2022-01-02 00:03:05"],
         ],
         columns=["user_id", "event", "event_type", "timestamp"],
     )
@@ -76,7 +76,7 @@ class TestTruncatePath(ApplyTestBase):
         )
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00", True],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00", True],
                 [1, "event1", "raw", "2022-01-01 00:01:00", True],
                 [1, "event2", "raw", "2022-01-01 00:01:02", True],
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
@@ -98,7 +98,7 @@ class TestTruncatePath(ApplyTestBase):
         )
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00", True],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00", True],
                 [1, "event1", "raw", "2022-01-01 00:01:00", True],
                 [1, "event2", "raw", "2022-01-01 00:01:02", True],
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
@@ -124,7 +124,7 @@ class TestTruncatePath(ApplyTestBase):
         )
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00", True],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00", True],
                 [1, "event1", "raw", "2022-01-01 00:01:00", True],
                 [1, "event2", "raw", "2022-01-01 00:01:02", True],
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
@@ -137,7 +137,7 @@ class TestTruncatePath(ApplyTestBase):
                 [2, "event1", "raw", "2022-01-02 00:00:00", True],
                 [2, "event3", "raw", "2022-01-02 00:00:05", True],
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
-                [2, "end", "end", "2022-01-02 00:01:05", True],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
         )
@@ -153,7 +153,7 @@ class TestTruncatePath(ApplyTestBase):
         )
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00", True],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00", True],
                 [1, "event1", "raw", "2022-01-01 00:01:00", True],
                 [1, "event2", "raw", "2022-01-01 00:01:02", True],
             ],
@@ -172,7 +172,7 @@ class TestTruncatePath(ApplyTestBase):
         )
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00", True],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00", True],
                 [1, "event1", "raw", "2022-01-01 00:01:00", True],
                 [1, "event2", "raw", "2022-01-01 00:01:02", True],
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
@@ -187,7 +187,7 @@ class TestTruncatePath(ApplyTestBase):
                 [2, "event1", "raw", "2022-01-02 00:00:00", True],
                 [2, "event3", "raw", "2022-01-02 00:00:05", True],
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
-                [2, "end", "end", "2022-01-02 00:01:05", True],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
         )
@@ -204,7 +204,7 @@ class TestTruncatePath(ApplyTestBase):
         )
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00", True],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00", True],
                 [1, "event1", "raw", "2022-01-01 00:01:00", True],
                 [1, "event2", "raw", "2022-01-01 00:01:02", True],
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
@@ -228,7 +228,7 @@ class TestTruncatePath(ApplyTestBase):
                 [1, "event3", "raw", "2022-01-01 00:04:30", True],
                 [1, "event1", "raw", "2022-01-01 00:05:00", True],
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
-                [2, "end", "end", "2022-01-02 00:01:05", True],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
         )
@@ -246,7 +246,7 @@ class TestTruncatePath(ApplyTestBase):
             [
                 [1, "event1", "raw", "2022-01-01 00:05:00", True],
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
-                [2, "end", "end", "2022-01-02 00:01:05", True],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
         )
@@ -289,7 +289,7 @@ class TestTruncatePath(ApplyTestBase):
                 [2, "event1", "raw", "2022-01-02 00:00:00", True],
                 [2, "event3", "raw", "2022-01-02 00:00:05", True],
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
-                [2, "end", "end", "2022-01-02 00:01:05", True],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
         )
@@ -324,7 +324,7 @@ class TestTruncatePath(ApplyTestBase):
                 [2, "event1", "raw", "2022-01-02 00:00:00", True],
                 [2, "event3", "raw", "2022-01-02 00:00:05", True],
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
-                [2, "end", "end", "2022-01-02 00:01:05", True],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
         )
@@ -340,7 +340,7 @@ class TestTruncatePath(ApplyTestBase):
         )
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00", True],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00", True],
                 [1, "event1", "raw", "2022-01-01 00:01:00", True],
                 [1, "event2", "raw", "2022-01-01 00:01:02", True],
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
@@ -349,7 +349,7 @@ class TestTruncatePath(ApplyTestBase):
                 [1, "event1", "raw", "2022-01-02 00:01:10", True],
                 [1, "event1", "raw", "2022-01-02 00:02:05", True],
                 [1, "event4", "raw", "2022-01-02 00:03:05", True],
-                [1, "end", "end", "2022-01-02 00:03:05", True],
+                [1, "path_end", "path_end", "2022-01-02 00:03:05", True],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
         )
@@ -360,7 +360,7 @@ class TestTruncatePathGraph(GraphTestBase):
     _Processor = TruncatePath
     _source_df_1 = pd.DataFrame(
         [
-            [1, "start", "start", "2022-01-01 00:01:00"],
+            [1, "path_start", "path_start", "2022-01-01 00:01:00"],
             [1, "event1", "raw", "2022-01-01 00:01:00"],
             [1, "event2", "raw", "2022-01-01 00:01:02"],
             [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -375,15 +375,15 @@ class TestTruncatePathGraph(GraphTestBase):
             [1, "event1", "raw", "2022-01-02 00:00:00"],
             [1, "event3", "raw", "2022-01-02 00:00:05"],
             [1, "event5", "raw", "2022-01-02 00:01:05"],
-            [1, "end", "end", "2022-01-02 00:01:05"],
+            [1, "path_end", "path_end", "2022-01-02 00:01:05"],
             [1, "event1", "raw", "2022-01-02 00:01:10"],
             [1, "event1", "raw", "2022-01-02 00:02:05"],
             [1, "event4", "raw", "2022-01-02 00:03:05"],
-            [1, "end", "end", "2022-01-02 00:03:05"],
+            [1, "path_end", "path_end", "2022-01-02 00:03:05"],
             [2, "event1", "raw", "2022-01-02 00:01:10"],
             [2, "event1", "raw", "2022-01-02 00:02:05"],
             [2, "event4", "raw", "2022-01-02 00:03:05"],
-            [2, "end", "end", "2022-01-02 00:03:05"],
+            [2, "path_end", "path_end", "2022-01-02 00:03:05"],
         ],
         columns=["user_id", "event", "event_type", "timestamp"],
     )
@@ -424,11 +424,11 @@ class TestTruncatePathGraph(GraphTestBase):
                 [1, "event1", "raw", "2022-01-02 00:00:00"],
                 [1, "event3", "raw", "2022-01-02 00:00:05"],
                 [1, "event5", "raw", "2022-01-02 00:01:05"],
-                [1, "end", "end", "2022-01-02 00:01:05"],
+                [1, "path_end", "path_end", "2022-01-02 00:01:05"],
                 [2, "event1", "raw", "2022-01-02 00:01:10"],
                 [2, "event1", "raw", "2022-01-02 00:02:05"],
                 [2, "event4", "raw", "2022-01-02 00:03:05"],
-                [2, "end", "end", "2022-01-02 00:03:05"],
+                [2, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp"],
         )
@@ -494,7 +494,7 @@ class TestTruncatePathHelper:
     def test_truncate_path_graph__before_after_first(self):
         source_df = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -509,15 +509,15 @@ class TestTruncatePathHelper:
                 [1, "event1", "raw", "2022-01-02 00:00:00"],
                 [1, "event3", "raw", "2022-01-02 00:00:05"],
                 [1, "event5", "raw", "2022-01-02 00:01:05"],
-                [1, "end", "end", "2022-01-02 00:01:05"],
+                [1, "path_end", "path_end", "2022-01-02 00:01:05"],
                 [1, "event1", "raw", "2022-01-02 00:01:10"],
                 [1, "event1", "raw", "2022-01-02 00:02:05"],
                 [1, "event4", "raw", "2022-01-02 00:03:05"],
-                [1, "end", "end", "2022-01-02 00:03:05"],
+                [1, "path_end", "path_end", "2022-01-02 00:03:05"],
                 [2, "event1", "raw", "2022-01-02 00:01:10"],
                 [2, "event1", "raw", "2022-01-02 00:02:05"],
                 [2, "event4", "raw", "2022-01-02 00:03:05"],
-                [2, "end", "end", "2022-01-02 00:03:05"],
+                [2, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=["user_id", "event", "event_type", "timestamp"],
         )
@@ -535,11 +535,11 @@ class TestTruncatePathHelper:
                 [1, "event1", "raw", "2022-01-02 00:00:00"],
                 [1, "event3", "raw", "2022-01-02 00:00:05"],
                 [1, "event5", "raw", "2022-01-02 00:01:05"],
-                [1, "end", "end", "2022-01-02 00:01:05"],
+                [1, "path_end", "path_end", "2022-01-02 00:01:05"],
                 [2, "event1", "raw", "2022-01-02 00:01:10"],
                 [2, "event1", "raw", "2022-01-02 00:02:05"],
                 [2, "event4", "raw", "2022-01-02 00:03:05"],
-                [2, "end", "end", "2022-01-02 00:03:05"],
+                [2, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=correct_result_columns,
         )

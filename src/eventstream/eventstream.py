@@ -502,10 +502,10 @@ class Eventstream(
 
     def unpaired_group_test(
         self, groups, function, test, group_names=("group_1", "group_2"), alpha=0.05, plot_groups=True
-    ):
+    ) -> dict:
         test_setup = UnpairedGroupTest(
             eventstream=self, groups=groups, function=function, test=test, group_names=group_names, alpha=alpha
         )
         if plot_groups:
             test_setup.plot_groups()
-        return test_setup.print_test_results()
+        return test_setup.get_test_results()

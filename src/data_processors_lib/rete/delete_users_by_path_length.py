@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from src.constants.constants import DATETIME_UNITS
+from src.constants import DATETIME_UNITS
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel

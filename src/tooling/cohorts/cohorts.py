@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src.constants.constants import DATETIME_UNITS
+from src.constants import DATETIME_UNITS
 from src.eventstream.types import EventstreamType
 
 # @TODO Подумать над сокращением списка поддерживаемых типов для когорт? dpanina

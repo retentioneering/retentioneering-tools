@@ -4,7 +4,7 @@ import numpy as np
 from scipy.stats import chi2_contingency, fisher_exact, ks_2samp, mannwhitneyu
 from scipy.stats.contingency import crosstab
 from statsmodels.stats.power import TTestIndPower
-from statsmodels.stats.weightstats import ttest_ind
+from statsmodels.stats.weightstats import ttest_ind, ztest
 
 from src.tooling.group_tests.test_plots import plot_test_groups
 
@@ -22,7 +22,7 @@ class UnpairedGroupTest:
         single user trajectory and returns a single numerical value.
     group_names: tuple (optional, default: ('group_1', 'group_2'))
         Names for selected groups g_1 and g_2.
-    test: {‘mannwhitneyu’, 'ttest', ‘ks_2samp’, 'chi2_contingency', 'fisher_exact'}
+    test: {‘mannwhitneyu’, 'ttest', 'ztest', ‘ks_2samp’, 'chi2_contingency', 'fisher_exact'}
         Test the null hypothesis that 2 independent samples are drawn from the same
         distribution. One-sided tests are used, meaning that distributions are compared
         'less' or 'greater'. Rule of thumbs is: for discrete variables (like convertions
@@ -85,6 +85,8 @@ class UnpairedGroupTest:
             p_val = mannwhitneyu(data_max, data_min, alternative="greater")[1]
         elif self.test == "ttest":
             p_val = ttest_ind(data_max, data_min, alternative="larger")[1]
+        elif self.test == "ztest":
+            p_val = ttest_ind(data_max, data_min, alternative="larger")[1]
         elif self.test == "chi2_contingency":
             freq_table = self._get_freq_table(data_max, data_min)
             p_val = chi2_contingency(freq_table)[1]
@@ -137,5 +139,5 @@ class UnpairedGroupTest:
             f"{self.group_names[1]} (mean \u00B1 SD): {self.g2_data.mean():.3f} \u00B1 {self.g2_data.std():.3f}, n = {len(self.g2_data)}"
         )
         print(f"'{self.label_max}' is greater than '{self.label_min}' with P-value: {self.p_val:.5f}")
-        if self.test in ["ttest", "mannwhitneyu", "ks_2samp"]:
+        if self.test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
             print(f"Estimated power of the test(for t-test and alpha = {self.alpha}): {100 * self.power:.2f}%")

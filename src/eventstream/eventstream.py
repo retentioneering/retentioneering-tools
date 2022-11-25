@@ -13,6 +13,7 @@ import plotly.graph_objects as go
 from src.eventstream.schema import EventstreamSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.clusters import Clusters
+from src.tooling.cohorts import Cohorts
 from src.tooling.funnel import Funnel
 from src.tooling.sankey import Sankey
 from src.tooling.step_matrix import StepMatrix
@@ -95,6 +96,7 @@ class Eventstream(
     __events: pd.DataFrame | pd.Series[Any]
     __clusters: Clusters | None = None
     __funnel: Funnel | None = None
+    __cohorts: Cohorts | None = None
 
     def __init__(
         self,
@@ -483,3 +485,16 @@ class Eventstream(
             width=width,
             height=height,
         ).plot()
+
+    @property
+    def cohorts(self) -> Cohorts:
+        """
+        See Also
+        --------
+        :py:func:`src.tooling.cohorts.cohorts`
+
+        """
+        if self.__cohorts is None:
+            self.__cohorts = Cohorts(eventstream=self)
+
+        return self.__cohorts

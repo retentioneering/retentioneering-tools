@@ -4,8 +4,8 @@ from typing import Optional, Tuple
 
 import numpy as np
 
+from src.constants import DATETIME_UNITS
 from src.data_processor.data_processor import DataProcessor
-from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
 from src.widget.widgets import ReteTimeWidget

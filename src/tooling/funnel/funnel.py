@@ -12,7 +12,7 @@ from src.eventstream.types import EventstreamType
 
 class Funnel:
     """
-    Plots convertion funnel with specified parameters.
+    Plots conversion funnel with specified parameters.
 
     Parameters
     ----------
@@ -35,7 +35,7 @@ class Funnel:
     sequence: Boolean (default False)
         Used for closed funnels only
         If ``True``, the sequence and timestamp of events is taken into account when constructing the funnel.
-        In another case, the standart closed funnel rules will be implemented.
+        In another case, the standard closed funnel rules will be implemented.
 
     See Also
     --------
@@ -62,10 +62,12 @@ class Funnel:
         segment_names: list[str] | None = None,
         sequence: bool = False,
     ) -> None:
+
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
+
         self.stages = stages
         self.stage_names = stage_names
         self.funnel_type: Literal["open", "closed"] = funnel_type
@@ -106,7 +108,7 @@ class Funnel:
         -------
         Funnel plot
         """
-        plot_params = self._calculate(
+        result_dict = self._calculate(
             data=self.data,
             stages=self.stages,
             stage_names=self.stage_names,
@@ -115,9 +117,45 @@ class Funnel:
             segment_names=self.segment_names,
             sequence=self.sequence,
         )
-        data = self._calculate_plot_data(plot_params=plot_params)
+
+        data = self._calculate_plot_data(plot_params=result_dict)
         plot = self._plot_stacked_funnel(data=data)
         return plot
+
+    def get_values(self) -> pd.DataFrame:
+        """
+        Creates pd.DataFrame with funnel values
+
+        Returns
+        -------
+            pd.DataFrame
+        """
+
+        result_dict = self._calculate(
+            data=self.data,
+            stages=self.stages,
+            stage_names=self.stage_names,
+            funnel_type=self.funnel_type,
+            segments=self.segments,
+            segment_names=self.segment_names,
+            sequence=self.sequence,
+        )
+
+        result_list = []
+        for key in result_dict:
+            result_ = pd.DataFrame(result_dict[key])
+            result_.columns = ["stages", "unique_users"]  # type: ignore
+            result_["segment_name"] = key
+            result_ = result_[["segment_name", "stages", "unique_users"]]
+            result_["shift"] = result_["unique_users"].shift(periods=1, fill_value=result_["unique_users"][0])
+            result_["%_of_initial"] = (result_["unique_users"] / result_["shift"] * 100).round(2)
+            result_["%_of_total"] = (result_["unique_users"] / result_["unique_users"][0] * 100).round(2)
+            result_.drop(columns="shift", inplace=True)
+            result_list.append(result_)
+
+        result_df = pd.concat(result_list).set_index(["segment_name", "stages"])
+
+        return result_df
 
     def _calculate(
         self,

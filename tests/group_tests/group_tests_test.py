@@ -1,7 +1,9 @@
 # this is a mock test - probably need to make more sophisticated tests later
 import numpy as np
 import pandas as pd
+
 from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
+
 
 class TestTest:
     def test_test__first(self):
@@ -87,12 +89,16 @@ class TestTest:
             ),
             schema=EventstreamSchema(),
         )
-        source.unpaired_group_test(groups=([1,2,3,4], [5,6,7,8]),
-                                function=lambda x: x.shape[0],
-                                group_names=('group_1', 'group_2'),
-                                test='ttest')
-        source.unpaired_group_test(groups=([1,2,3,4], [5,6,7,8]),
-                                function=lambda x: x.shape[0],
-                                group_names=('group_1', 'group_2'),
-                                test='chi2_contingency')
+        source.unpaired_group_test(
+            groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+            function=lambda x: x.shape[0],
+            group_names=("group_1", "group_2"),
+            test="ttest",
+        )
+        source.unpaired_group_test(
+            groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+            function=lambda x: x.shape[0],
+            group_names=("group_1", "group_2"),
+            test="chi2_contingency",
+        )
         assert True

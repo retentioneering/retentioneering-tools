@@ -14,8 +14,8 @@ from src.eventstream.schema import EventstreamSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.clusters import Clusters
 from src.tooling.funnel import Funnel
-from src.tooling.step_matrix import StepMatrix
 from src.tooling.group_tests import UnpairedGroupTest
+from src.tooling.step_matrix import StepMatrix
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
@@ -468,20 +468,11 @@ class Eventstream(
         ).plot()
 
     def unpaired_group_test(
-                self,
-                groups,
-                function,
-                test,
-                group_names=('group_1', 'group_2'),
-                alpha=0.05,
-                plot_groups=True):
+        self, groups, function, test, group_names=("group_1", "group_2"), alpha=0.05, plot_groups=True
+    ):
         test_setup = UnpairedGroupTest(
-             eventstream=self,
-             groups=groups,
-             function=function,
-             test=test,
-             group_names=group_names,
-             alpha=alpha)
+            eventstream=self, groups=groups, function=function, test=test, group_names=group_names, alpha=alpha
+        )
         if plot_groups:
             test_setup.plot_groups()
         return test_setup.print_test_results()

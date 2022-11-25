@@ -1,11 +1,12 @@
-from scipy.stats import ks_2samp, mannwhitneyu, chi2_contingency, fisher_exact
-from scipy.stats.contingency import crosstab
+import math
 
-from src.tooling.group_tests.test_plots import plot_test_groups
+import numpy as np
+from scipy.stats import chi2_contingency, fisher_exact, ks_2samp, mannwhitneyu
+from scipy.stats.contingency import crosstab
 from statsmodels.stats.power import TTestIndPower
 from statsmodels.stats.weightstats import ttest_ind
-import numpy as np
-import math
+
+from src.tooling.group_tests.test_plots import plot_test_groups
 
 
 class UnpairedGroupTest:
@@ -35,13 +36,7 @@ class UnpairedGroupTest:
     plot_groups: Returns plots with distribution for selected metrics for two groups
     """
 
-    def __init__(self,
-                 eventstream,
-                 groups,
-                 function,
-                 test,
-                 group_names=('group_1', 'group_2'),
-                 alpha=0.05) -> None:
+    def __init__(self, eventstream, groups, function, test, group_names=("group_1", "group_2"), alpha=0.05) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
@@ -68,10 +63,7 @@ class UnpairedGroupTest:
 
     def _get_test_results(self, data_max, data_min):
         # calculate effect size
-        if (max(data_max) <= 1 and
-                min(data_max) >= 0 and
-                max(data_min) <= 1 and
-                min(data_min) >= 0):
+        if max(data_max) <= 1 and min(data_max) >= 0 and max(data_min) <= 1 and min(data_min) >= 0:
             # if analyze proportions use Cohen's h:
             effect_size = self._cohenh(data_max, data_min)
         else:
@@ -79,28 +71,30 @@ class UnpairedGroupTest:
             effect_size = self._cohend(data_max, data_min)
 
         # calculate power
-        power = TTestIndPower().power(effect_size=effect_size,
-                                      nobs1=len(data_max),
-                                      ratio=len(data_min) / len(data_max),
-                                      alpha=self.alpha,
-                                      alternative='larger')
+        power = TTestIndPower().power(
+            effect_size=effect_size,
+            nobs1=len(data_max),
+            ratio=len(data_min) / len(data_max),
+            alpha=self.alpha,
+            alternative="larger",
+        )
 
-        if self.test == 'ks_2samp':
-            p_val = ks_2samp(data_max, data_min, alternative='less')[1]
-        elif self.test == 'mannwhitneyu':
-            p_val = mannwhitneyu(data_max, data_min, alternative='greater')[1]
-        elif self.test == 'ttest':
-            p_val = ttest_ind(data_max, data_min, alternative='larger')[1]
-        elif self.test == 'chi2_contingency':
+        if self.test == "ks_2samp":
+            p_val = ks_2samp(data_max, data_min, alternative="less")[1]
+        elif self.test == "mannwhitneyu":
+            p_val = mannwhitneyu(data_max, data_min, alternative="greater")[1]
+        elif self.test == "ttest":
+            p_val = ttest_ind(data_max, data_min, alternative="larger")[1]
+        elif self.test == "chi2_contingency":
             freq_table = self._get_freq_table(data_max, data_min)
             p_val = chi2_contingency(freq_table)[1]
-        elif self.test == 'fisher_exact':
+        elif self.test == "fisher_exact":
             freq_table = self._get_freq_table(data_max, data_min)
-            p_val = fisher_exact(freq_table, alternative='greater')[1]
+            p_val = fisher_exact(freq_table, alternative="greater")[1]
         return p_val, power
 
     def _get_freq_table(self, a, b):
-        labels = ['A' for i in a] + ['B' for i in b]
+        labels = ["A" for i in a] + ["B" for i in b]
         values = np.concatenate([a, b])
         return crosstab(labels, values)[1]
 
@@ -130,18 +124,18 @@ class UnpairedGroupTest:
     # function to calculate Cohen's h:
     def _cohenh(self, d1, d2):
         u1, u2 = np.mean(d1), np.mean(d2)
-        return 2 * (math.asin(math.sqrt(u1)) -
-                    math.asin(math.sqrt(u2)))
+        return 2 * (math.asin(math.sqrt(u1)) - math.asin(math.sqrt(u2)))
 
     def plot_groups(self):
-        return plot_test_groups(num_data=(self.g1_data, self.g2_data),
-                                group_names=self.group_names)
+        return plot_test_groups(num_data=(self.g1_data, self.g2_data), group_names=self.group_names)
 
     def print_test_results(self):
         print(
-            f"{self.group_names[0]} (mean \u00B1 SD): {self.g1_data.mean():.3f} \u00B1 {self.g1_data.std():.3f}, n = {len(self.g1_data)}")
+            f"{self.group_names[0]} (mean \u00B1 SD): {self.g1_data.mean():.3f} \u00B1 {self.g1_data.std():.3f}, n = {len(self.g1_data)}"
+        )
         print(
-            f"{self.group_names[1]} (mean \u00B1 SD): {self.g2_data.mean():.3f} \u00B1 {self.g2_data.std():.3f}, n = {len(self.g2_data)}")
+            f"{self.group_names[1]} (mean \u00B1 SD): {self.g2_data.mean():.3f} \u00B1 {self.g2_data.std():.3f}, n = {len(self.g2_data)}"
+        )
         print(f"'{self.label_max}' is greater than '{self.label_min}' with P-value: {self.p_val:.5f}")
-        if self.test in ['ttest', 'mannwhitneyu', 'ks_2samp']:
+        if self.test in ["ttest", "mannwhitneyu", "ks_2samp"]:
             print(f"Estimated power of the test(for t-test and alpha = {self.alpha}): {100 * self.power:.2f}%")

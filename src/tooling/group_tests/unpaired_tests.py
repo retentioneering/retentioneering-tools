@@ -5,6 +5,7 @@ from scipy.stats import chi2_contingency, fisher_exact, ks_2samp, mannwhitneyu
 from scipy.stats.contingency import crosstab
 from statsmodels.stats.power import TTestIndPower
 from statsmodels.stats.weightstats import ttest_ind, ztest
+TEST_NAMES = ('mannwhitneyu', 'ttest', 'ztest', 'ks_2samp', 'chi2_contingency', 'fisher_exact')
 
 from src.tooling.group_tests.test_plots import plot_test_groups
 
@@ -44,7 +45,7 @@ class UnpairedGroupTest:
         # self.data = self.__eventstream.to_dataframe()
         self.groups = groups
         self.function = function
-        self.test = test
+        self.test: TEST_NAMES = test
         self.group_names = group_names
         self.alpha = alpha
         self.g1_data, self.g2_data = self._get_group_values()
@@ -79,6 +80,7 @@ class UnpairedGroupTest:
             alternative="larger",
         )
 
+        p_val = None
         if self.test == "ks_2samp":
             p_val = ks_2samp(data_max, data_min, alternative="less")[1]
         elif self.test == "mannwhitneyu":
@@ -96,7 +98,7 @@ class UnpairedGroupTest:
         return p_val, power
 
     def _get_freq_table(self, a, b):
-        labels = ["A" for i in a] + ["B" for i in b]
+        labels = ["A"]*len(a) + ["B"]*len(b)
         values = np.concatenate([a, b])
         return crosstab(labels, values)[1]
 
@@ -133,13 +135,13 @@ class UnpairedGroupTest:
 
     def get_test_results(self):
         res_dict = dict()
-        res_dict['group_one_name'], res_dict['group_one_size'] = self.group_names[0], len(self.g1_data)
-        res_dict['group_one_mean'], res_dict['group_one_SD'] = self.g1_data.mean(), self.g1_data.std()
-        res_dict['group_two_name'], res_dict['group_two_size'] = self.group_names[1], len(self.g2_data)
-        res_dict['group_two_mean'], res_dict['group_two_SD'] = self.g2_data.mean(), self.g2_data.std()
-        res_dict['greatest_group_name'] = self.label_max
-        res_dict['is_group_one_greatest'] = self.label_max == self.group_names[0]
-        res_dict['p_val'] = self.p_val
+        res_dict["group_one_name"], res_dict["group_one_size"] = self.group_names[0], len(self.g1_data)
+        res_dict["group_one_mean"], res_dict["group_one_SD"] = self.g1_data.mean(), self.g1_data.std()
+        res_dict["group_two_name"], res_dict["group_two_size"] = self.group_names[1], len(self.g2_data)
+        res_dict["group_two_mean"], res_dict["group_two_SD"] = self.g2_data.mean(), self.g2_data.std()
+        res_dict["greatest_group_name"] = self.label_max
+        res_dict["is_group_one_greatest"] = self.label_max == self.group_names[0]
+        res_dict["p_val"] = self.p_val
         if self.test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
-            res_dict['power_estimated'] = self.power
+            res_dict["power_estimated"] = self.power
         return res_dict

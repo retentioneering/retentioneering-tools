@@ -37,17 +37,27 @@ release = "3.0.0"
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "numpydoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.extlinks",
+    # "sphinx.ext.autosummary",
+    # "sphinx.ext.doctest",
+    # "sphinx.ext.intersphinx",
+    # "sphinx.ext.todo",
+    # "sphinx.ext.ifconfig",
+    # "sphinx.ext.imgmath",
 ]
 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-
+numpydoc_show_inherited_class_members = False
+numpydoc_class_members_toctree = False
+numpydoc_show_class_members = False
 html_theme = "sphinx_rtd_theme"
+# html_theme = "pydata_sphinx_theme"
 
 html_logo = "rete_logo.png"
 html_theme_options = {
@@ -60,7 +70,7 @@ html_theme_options = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
-
+pygments_style = "sphinx"
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
@@ -76,4 +86,18 @@ source_suffix = ".rst"
 # The master toctree document.
 master_doc = "index"
 
-extlinks = {"numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units", "")}
+extlinks = {
+    "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units", ""),
+    "sklearn_tfidf": (
+        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html",
+        "",
+    ),
+    "sklearn_countvec": (
+        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html",
+        "",
+    ),
+    "name": ("link", ""),
+    "name": ("link", ""),
+    "name": ("link", ""),
+    "name": ("link", ""),
+}

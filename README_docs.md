@@ -18,6 +18,10 @@ Parameters
     ----------
     param1 : type, optional
         Описание первого параметра
+        Если нужен bullet list:
+
+        - point 1
+        - point 2
 
     param2 : type, default="group_alias"
 

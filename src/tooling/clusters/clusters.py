@@ -26,6 +26,17 @@ PlotProjectionMethod = Literal["tsne", "umap"]
 
 
 class Clusters:
+    """
+    Class gathers tools for cluster analysis.
+
+    Attributes
+    ----------
+    eventstream: EventstreamType
+    user_clusters: dict[str | int, list[int]] | None = None
+        If ```dict``` Clusters can work with results of external clustering.
+        If ```None``` with the method ```create_clusters``` :py:func:`src.tooling.clusters.clusters.create_clusters`
+    """
+
     __eventstream: EventstreamType
     __clusters_list: ndarray
     __segments: Segments | None
@@ -47,17 +58,18 @@ class Clusters:
 
         Parameters
         ----------
-        feature_type: {"tfidf", "count", "frequency", "binary", "markov"}, default="tfidf"
-            ``tfidf`` - https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html
-            ``count`` - https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html
-            ``frequency`` - An alias for ``count``.
-            ``binary`` - Uses the same CountVectorizer as ``count``, but with ``binary=True`` flag.
-            ``markov`` - Available for bigrams only. The vectorized values are associated with the transition
-            probabilities in the corresponding Markov chain. Here's an example. Assume a users has the following
-            transitions: A->B 3 times, A->C 1 time, and A->A 4 times. Then the vectorized values for these bigrams
-            are 0.375, 0.125, 0.5.
 
-        ngram_range: Tuple(int, int), default=(1, 1)
+        feature_type : {"tfidf", "count", "frequency", "binary", "markov"}, default="tfidf"
+
+            - ``tfidf`` see details in :sklearn_tfidf:`sklearn documentation<>`
+            - ``count`` see details in :sklearn_countvec:`sklearn documentation<>`
+            - ``frequency`` an alias for ``count``.
+            - ``binary`` uses the same CountVectorizer as ``count``, but with ``binary=True`` flag.
+            - | ``markov`` available for bigrams only. The vectorized values are
+              | associated with the transition probabilities in the corresponding Markov chain.
+              | For Example: Assume a users has the following transitions: A->B 3 times, A->C 1 time, and A->A 4 times.
+              | Then the vectorized values for these bigrams are 0.375, 0.125, 0.5.
+        ngram_range : Tuple(int, int), default=(1, 1)
             The lower and upper boundary of the range of n-values for different word n-grams or char n-grams to be
             extracted. For example, ngram_range=(1, 1) means only single events, (1, 2) means single events
             and bigrams. Doesn't work for ``markov`` feature_type.
@@ -148,6 +160,7 @@ class Clusters:
     ):
         """
         Does dimension reduction of user trajectories and draws projection plane.
+
         Parameters
         ----------
         method: {'umap', 'tsne'} (optional, default 'tsne')

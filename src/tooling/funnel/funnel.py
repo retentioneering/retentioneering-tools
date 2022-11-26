@@ -14,8 +14,9 @@ class Funnel:
     """
     Plots conversion funnel with specified parameters.
 
-    Parameters
+    Attributes
     ----------
+    eventstream: EventstreamType
     stages: list of str
         List of events used as stages for the funnel. Absolute and relative
         number of users who reached specified events at least once will be

@@ -466,6 +466,16 @@ class Eventstream(
             groups=groups,
         ).plot()
 
+    def unpaired_group_test(
+        self, groups, function, test, group_names=("group_1", "group_2"), alpha=0.05, plot_groups=True
+    ):
+        test_setup = UnpairedGroupTest(
+            eventstream=self, groups=groups, function=function, test=test, group_names=group_names, alpha=alpha
+        )
+        if plot_groups:
+            test_setup.plot_groups()
+        return test_setup.get_test_results()
+
     def step_sankey(
         self,
         max_steps: int = 10,
@@ -493,18 +503,9 @@ class Eventstream(
         See Also
         --------
         :py:func:`src.tooling.cohorts.cohorts`
+
         """
         if self.__cohorts is None:
             self.__cohorts = Cohorts(eventstream=self)
 
         return self.__cohorts
-
-    def unpaired_group_test(
-        self, groups, function, test, group_names=("group_1", "group_2"), alpha=0.05, plot_groups=True
-    ) -> dict:
-        test_setup = UnpairedGroupTest(
-            eventstream=self, groups=groups, function=function, test=test, group_names=group_names, alpha=alpha
-        )
-        if plot_groups:
-            test_setup.plot_groups()
-        return test_setup.get_test_results()

@@ -1,11 +1,13 @@
 import math
+from typing import Literal
 
 import numpy as np
 from scipy.stats import chi2_contingency, fisher_exact, ks_2samp, mannwhitneyu
 from scipy.stats.contingency import crosstab
 from statsmodels.stats.power import TTestIndPower
 from statsmodels.stats.weightstats import ttest_ind, ztest
-TEST_NAMES = ('mannwhitneyu', 'ttest', 'ztest', 'ks_2samp', 'chi2_contingency', 'fisher_exact')
+
+TEST_NAMES = Literal["mannwhitneyu", "ttest", "ztest", "ks_2samp", "chi2_contingency", "fisher_exact"]
 
 from src.tooling.group_tests.test_plots import plot_test_groups
 
@@ -80,7 +82,6 @@ class UnpairedGroupTest:
             alternative="larger",
         )
 
-        p_val = None
         if self.test == "ks_2samp":
             p_val = ks_2samp(data_max, data_min, alternative="less")[1]
         elif self.test == "mannwhitneyu":
@@ -95,10 +96,13 @@ class UnpairedGroupTest:
         elif self.test == "fisher_exact":
             freq_table = self._get_freq_table(data_max, data_min)
             p_val = fisher_exact(freq_table, alternative="greater")[1]
+        else:
+            raise ValueError("The argument test is not supported. Supported tests are: {}".format(*TEST_NAMES))
+
         return p_val, power
 
     def _get_freq_table(self, a, b):
-        labels = ["A"]*len(a) + ["B"]*len(b)
+        labels = ["A"] * len(a) + ["B"] * len(b)
         values = np.concatenate([a, b])
         return crosstab(labels, values)[1]
 

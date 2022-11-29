@@ -131,15 +131,13 @@ class UnpairedGroupTest:
     def plot_groups(self):
         return plot_test_groups(num_data=(self.g1_data, self.g2_data), group_names=self.group_names)
 
-    def get_test_results(self):
-        res_dict = dict()
-        res_dict['group_one_name'], res_dict['group_one_size'] = self.group_names[0], len(self.g1_data)
-        res_dict['group_one_mean'], res_dict['group_one_SD'] = self.g1_data.mean(), self.g1_data.std()
-        res_dict['group_two_name'], res_dict['group_two_size'] = self.group_names[1], len(self.g2_data)
-        res_dict['group_two_mean'], res_dict['group_two_SD'] = self.g2_data.mean(), self.g2_data.std()
-        res_dict['greatest_group_name'] = self.label_max
-        res_dict['is_group_one_greatest'] = self.label_max == self.group_names[0]
-        res_dict['p_val'] = self.p_val
+    def print_test_results(self):
+        print(
+            f"{self.group_names[0]} (mean \u00B1 SD): {self.g1_data.mean():.3f} \u00B1 {self.g1_data.std():.3f}, n = {len(self.g1_data)}"
+        )
+        print(
+            f"{self.group_names[1]} (mean \u00B1 SD): {self.g2_data.mean():.3f} \u00B1 {self.g2_data.std():.3f}, n = {len(self.g2_data)}"
+        )
+        print(f"'{self.label_max}' is greater than '{self.label_min}' with P-value: {self.p_val:.5f}")
         if self.test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
-            res_dict['power_estimated'] = self.power
-        return res_dict
+            print(f"Estimated power of the test(for t-test and alpha = {self.alpha}): {100 * self.power:.2f}%")

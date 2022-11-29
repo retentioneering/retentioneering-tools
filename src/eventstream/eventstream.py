@@ -13,7 +13,9 @@ import plotly.graph_objects as go
 from src.eventstream.schema import EventstreamSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.clusters import Clusters
+from src.tooling.cohorts import Cohorts
 from src.tooling.funnel import Funnel
+from src.tooling.sankey import Sankey
 from src.tooling.step_matrix import StepMatrix
 from src.utils import get_merged_col
 from src.utils.list import find_index
@@ -42,7 +44,7 @@ PlotType = Literal["cluster_bar"]
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
     "profile",
-    "start",
+    "path_start",
     "new_user",
     "existing_user",
     "truncated_left",
@@ -62,7 +64,7 @@ DEFAULT_INDEX_ORDER: IndexOrder = [
     "truncated_right",
     "absent_user",
     "lost_user",
-    "end",
+    "path_end",
 ]
 
 RAW_COL_PREFIX = "raw_"
@@ -93,6 +95,8 @@ class Eventstream(
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
     __clusters: Clusters | None = None
+    __funnel: Funnel | None = None
+    __cohorts: Cohorts | None = None
 
     def __init__(
         self,
@@ -104,7 +108,7 @@ class Eventstream(
         relations: Optional[List[Relation]] = None,
     ) -> None:
         self.__clusters = None
-
+        self.__funnel = None
         self.schema = schema if schema else EventstreamSchema()
 
         if not index_order:
@@ -416,14 +420,9 @@ class Eventstream(
         segments: Collection[Collection[int]] | None = None,
         segment_names: list[str] | None = None,
         sequence: bool = False,
-    ) -> go.Figure:
-        """
-        See Also
-        --------
-        :py:func:`src.tooling.funnel.funnel`
+    ) -> Funnel:
 
-        """
-        funnel = Funnel(
+        self.__funnel = Funnel(
             eventstream=self,
             stages=stages,
             stage_names=stage_names,
@@ -432,8 +431,8 @@ class Eventstream(
             segment_names=segment_names,
             sequence=sequence,
         )
-        plot = funnel.draw_plot()
-        return plot
+
+        return self.__funnel
 
     @property
     def clusters(self) -> Clusters:
@@ -465,3 +464,37 @@ class Eventstream(
             centered=centered,
             groups=groups,
         ).plot()
+
+    def step_sankey(
+        self,
+        max_steps: int = 10,
+        thresh: Union[int, float] = 0.05,
+        sorting: list | None = None,
+        target: Union[list[str], str] | None = None,
+        autosize: bool = True,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> go.Figure:
+        return Sankey(
+            eventstream=self,
+            max_steps=max_steps,
+            thresh=thresh,
+            sorting=sorting,
+            target=target,
+            autosize=autosize,
+            width=width,
+            height=height,
+        ).plot()
+
+    @property
+    def cohorts(self) -> Cohorts:
+        """
+        See Also
+        --------
+        :py:func:`src.tooling.cohorts.cohorts`
+
+        """
+        if self.__cohorts is None:
+            self.__cohorts = Cohorts(eventstream=self)
+
+        return self.__cohorts

@@ -5,10 +5,8 @@ import uuid
 from collections.abc import Collection
 from typing import Any, List, Literal, Optional, Tuple, Union
 
-import matplotlib
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 
 from src.constants import DATETIME_UNITS
 from src.eventstream.schema import EventstreamSchema
@@ -98,6 +96,8 @@ class Eventstream(
     __clusters: Clusters | None = None
     __funnel: Funnel | None = None
     __cohorts: Cohorts | None = None
+    __step_matrix: StepMatrix | None = None
+    __sankey: Sankey | None = None
 
     def __init__(
         self,
@@ -406,7 +406,7 @@ class Eventstream(
             if create:
                 return np.nan
             else:
-                raise ValueError(f'invald raw data. Column "{colname}" does not exists!')
+                raise ValueError(f'invalid raw data. Column "{colname}" does not exists!')
 
     def __get_event_priority(self, event_type: Optional[str]) -> int:
         if event_type in self.index_order:
@@ -423,7 +423,6 @@ class Eventstream(
         sequence: bool = False,
     ) -> Funnel:
 
-        # if self.__funnel is None:
         self.__funnel = Funnel(
             eventstream=self,
             stages=stages,
@@ -453,8 +452,15 @@ class Eventstream(
         thresh: float = 0,
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
-    ) -> matplotlib.figure.Figure:
+    ) -> StepMatrix:
+        """
+        Calculates step_matrix
 
+        Parameters
+        ----------
+        :py:func:`src.tooling.step_matrix.step_matrix`
+
+        """
         self.__step_matrix = StepMatrix(
             eventstream=self,
             max_steps=max_steps,
@@ -480,7 +486,7 @@ class Eventstream(
         autosize: bool = True,
         width: int | None = None,
         height: int | None = None,
-    ) -> go.Figure:
+    ) -> Sankey:
 
         self.__sankey = Sankey(
             eventstream=self,
@@ -505,16 +511,13 @@ class Eventstream(
         cut_right: int = 0,
         cut_diagonal: int = 0,
     ) -> Cohorts:
+
         """
         Calculates cohort matrix
+
         Parameters
         ----------
         :py:func:`src.tooling.cohorts.cohorts`
-
-
-        Note
-        ----
-        When you call
 
         """
 

@@ -81,13 +81,7 @@ class StepMatrix:
         in differential step matrix will sum up to 0 (since columns in both M1
         and M2 always sum up to 1).
 
-    Returns
-    -------
-    Dataframe with max_steps number of columns and len(event_col.unique)
-    number of rows at max, or less if used thr > 0.
-    Return type
-    -----------
-    pd.DataFrame
+
     """
 
     __eventstream: EventstreamType
@@ -152,7 +146,7 @@ class StepMatrix:
         df - dataframe
         Returns
         -------
-        returns Dataframe with columns from 0 to max_steps
+            pd.Dataframe with columns from 0 to max_steps
         """
         df = df.copy()
         if max(df.columns) < self.max_steps:
@@ -447,4 +441,13 @@ class StepMatrix:
 
     @property
     def values(self) -> tuple[pd.DataFrame, pd.DataFrame | None]:
+
+        """
+        Dataframe with max_steps number of columns and len(event_col.unique)
+        number of rows at max, or less if used thr > 0.
+
+        Returns
+        -------
+            pd.DataFrame
+        """
         return self.result_data, self.result_targets

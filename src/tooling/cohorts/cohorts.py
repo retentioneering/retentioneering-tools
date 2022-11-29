@@ -20,14 +20,17 @@ class Cohorts:
     first appearance in eventstream.
     Retention rate of active users calculated in coordinates
     of the cohort period and cohort group.
+
     Parameters
     --------
     cohort_start_unit: :numpy_link:`DATETIME_UNITS<>`
         The way of rounding and format of the moment from which the cohort count begins.
         Minimum timestamp rounding down to the selected datetime unit.
+
         For example:
         We have eventstream with min timestamp - "2021-12-28 09:08:34.432456"
         The result of roundings with different DATETIME_UNITS is in ithe table below:
+
         +------------------------+-------------------------+
         | **cohort_start_unit** | **cohort_start_moment** |
         +------------------------+-------------------------+
@@ -39,6 +42,7 @@ class Cohorts:
         +------------------------+-------------------------+
         | D                      |  2021-08-28 00:00:00    |
         +------------------------+-------------------------+
+
     cohort_period: Tuple(int, :numpy_link:`DATETIME_UNITS<>`)
         The cohort_period size and its ``DATETIME_UNIT``. This parameter is used in calculating:
         1) Start moments for each cohort from the moment defined with the ``cohort_start_unit`` parameter
@@ -55,6 +59,7 @@ class Cohorts:
     cut_diagonal: int
         Drop from cohort_matrix diagonal with 'n' last period-group cells.
         Average is recalculated.
+
     Note
     ----
     Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
@@ -97,12 +102,15 @@ class Cohorts:
         """
         Calculates cohort matrix with retention rate of active users in coordinates
         of the cohort period and cohort group.
+
         Returns
         -------
         pd.DataFrame
+
         Note
         ----
         Only cohorts with at least 1 user are shown.
+
         """
         self.average = average
         self.cohort_start_unit = cohort_start_unit
@@ -230,13 +238,16 @@ class Cohorts:
 
         """
         Build the heatmap based on the calculated cohort_matrix.
+
         Parameters
         --------
         figsize: Tuple[float, float], default = (10, 10)
         Is a tuple of the width and height of the figure in inches.
+
         Returns
         --------
         sns.heatmap
+
         """
 
         df = self._cohort_matrix_result
@@ -252,6 +263,7 @@ class Cohorts:
 
         """
         Build lineplots for each cohort and/or for averaged values for each cohort_period
+
         Parameters
         --------
         show_plot: 'cohorts', 'average' or 'all'
@@ -260,9 +272,11 @@ class Cohorts:
             if 'all' - shows lineplot for each cohort and also for their average values
         figsize: Tuple[float, float], default = (10, 10)
             Is a tuple of the width and height of the figure in inches.
+
         Returns
         --------
         sns.lineplot
+
         """
         if show_plot not in ["cohorts", "average", "all"]:
             raise ValueError("show_plot parameter should be 'cohorts', 'average' or 'all'!")

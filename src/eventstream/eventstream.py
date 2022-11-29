@@ -493,6 +493,7 @@ class Eventstream(
         See Also
         --------
         :py:func:`src.tooling.cohorts.cohorts`
+
         """
         if self.__cohorts is None:
             self.__cohorts = Cohorts(eventstream=self)

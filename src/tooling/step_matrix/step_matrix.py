@@ -18,7 +18,7 @@ class CenteredParams:
     left_gap: int
     occurrence: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.occurrence < 1:
             raise ValueError("Occurrence in 'centered' dictionary must be >=1")
         if self.left_gap < 1:
@@ -140,10 +140,10 @@ class StepMatrix:
         return df_
 
     @staticmethod
-    def _align_index(df1, df2) -> tuple[pd.DataFrame, pd.DataFrame]:
-        df1 = df1.align(df2)[0].fillna(0)
-        df2 = df2.align(df1)[0].fillna(0)
-        return df1, df2
+    def _align_index(df1: pd.DataFrame, df2: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+        df1 = df1.align(df2)[0].fillna(0)  # type: ignore
+        df2 = df2.align(df1)[0].fillna(0)  # type: ignore
+        return df1, df2  # type: ignore
 
     def _pad_cols(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -283,7 +283,7 @@ class StepMatrix:
         return data, fraction_title
 
     @staticmethod
-    def _sort_matrix(step_matrix) -> pd.DataFrame:
+    def _sort_matrix(step_matrix: pd.DataFrame) -> pd.DataFrame:
         x = step_matrix.copy()
         order = []
         for i in x.columns:
@@ -295,7 +295,13 @@ class StepMatrix:
         order.extend(list(set(step_matrix.index) - set(order)))
         return step_matrix.loc[order]
 
-    def _render_plot(self, data, fraction_title, targets, targets_list) -> matplotlib.axes.Axes:
+    def _render_plot(
+        self,
+        data: pd.DataFrame,
+        fraction_title: str | None,
+        targets: pd.DataFrame | None,
+        targets_list: list[list[str]] | None,
+    ) -> matplotlib.axes.Axes:
         n_rows = 1 + (len(targets_list) if targets_list else 0)
         n_cols = 1
         title_part1 = "centered" if self.centered else ""
@@ -366,7 +372,6 @@ class StepMatrix:
                 axs.vlines(
                     [centered_position - 0.02, centered_position + 0.98], *axs.get_ylim(), colors="Black", linewidth=0.7
                 )
-        # return axs
 
     def fit(self) -> None:
         weight_col = self.weight_col or self.user_col

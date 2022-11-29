@@ -98,7 +98,7 @@ class Cohorts:
 
         data = self.__eventstream.to_dataframe()
         self.data = data
-        self._cohort_matrix_result = pd.DataFrame
+        self._cohort_matrix_result: pd.DataFrame = pd.DataFrame()
 
         if self.cohort_period <= 0:
             raise ValueError("cohort_period should be positive integer!")
@@ -191,16 +191,16 @@ class Cohorts:
         cohorts_list["CohortGroupNum"] += 1
 
         data["OrderPeriod"] = data[self.time_col].dt.to_period(freq)
-        start_int = pd.Series(min_cohort_date.to_period(freq=freq)).view(int)[0]
+        start_int = pd.Series(min_cohort_date.to_period(freq=freq)).astype(int)[0]
 
         converter_freq = np.timedelta64(cohort_period, cohort_period_unit)
-        converter_freq_ = converter_freq.astype(f"timedelta64[{freq}]").view(int)
-        data["CohortGroupNum"] = (data["user_min_date_gr"].view(int) - start_int + converter_freq_) // converter_freq_
+        converter_freq_ = converter_freq.astype(f"timedelta64[{freq}]").astype(int)
+        data["CohortGroupNum"] = (data["user_min_date_gr"].astype(int) - start_int + converter_freq_) // converter_freq_
 
         data = data.merge(cohorts_list, on="CohortGroupNum", how="left")
 
         data["CohortPeriod"] = (
-            (data["OrderPeriod"].view(int) - (data["CohortGroup"].view(int) + converter_freq_)) // converter_freq_
+            (data["OrderPeriod"].astype(int) - (data["CohortGroup"].astype(int) + converter_freq_)) // converter_freq_
         ) + 1
 
         return data
@@ -216,11 +216,11 @@ class Cohorts:
         return df.iloc[: len(df) - cut_bottom, : len(df.columns) - cut_right]
 
     @property
-    def values(self):
+    def values(self) -> pd.DataFrame:
         return self._cohort_matrix_result
 
     @property
-    def params(self):
+    def params(self) -> dict[str, DATETIME_UNITS | tuple | bool | int | None]:
         return {
             "cohort_start_unit": self.cohort_start_unit,
             "cohort_period": (self.cohort_period, self.cohort_period_unit),

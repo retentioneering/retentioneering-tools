@@ -250,19 +250,19 @@ class Eventstream(
         self.schema.custom_cols = self._get_both_custom_cols(eventstream)
         self.index_events()
 
-    def _get_both_custom_cols(self, eventstream):
+    def _get_both_custom_cols(self, eventstream: Eventstream) -> list[str]:
         self_custom_cols = set(self.schema.custom_cols)
         eventstream_custom_cols = set(eventstream.schema.custom_cols)
         all_custom_cols = self_custom_cols.union(eventstream_custom_cols)
         return list(all_custom_cols)
 
-    def _get_both_cols(self, eventstream):
+    def _get_both_cols(self, eventstream: Eventstream) -> list[str]:
         self_cols = set(self.schema.get_cols())
         eventstream_cols = set(eventstream.schema.get_cols())
         all_cols = self_cols.union(eventstream_cols)
         return list(all_cols)
 
-    def to_dataframe(self, raw_cols=False, show_deleted=False, copy=False) -> pd.DataFrame:
+    def to_dataframe(self, raw_cols: bool = False, show_deleted: bool = False, copy: bool = False) -> pd.DataFrame:
         cols = self.schema.get_cols() + self.get_relation_cols()
 
         if raw_cols:
@@ -398,7 +398,7 @@ class Eventstream(
         return events
 
     def __get_col_from_raw_data(
-        self, raw_data: pd.DataFrame | pd.Series[Any], colname: str, create=False
+        self, raw_data: pd.DataFrame | pd.Series[Any], colname: str, create: bool = False
     ) -> pd.Series | float:
         if colname in raw_data.columns:
             return raw_data[colname]

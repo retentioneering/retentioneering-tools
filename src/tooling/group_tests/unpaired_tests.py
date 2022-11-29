@@ -133,13 +133,13 @@ class UnpairedGroupTest:
 
     def get_test_results(self):
         res_dict = dict()
-        res_dict["group_one_name"], res_dict["group_one_size"] = self.group_names[0], len(self.g1_data)
-        res_dict["group_one_mean"], res_dict["group_one_SD"] = self.g1_data.mean(), self.g1_data.std()
-        res_dict["group_two_name"], res_dict["group_two_size"] = self.group_names[1], len(self.g2_data)
-        res_dict["group_two_mean"], res_dict["group_two_SD"] = self.g2_data.mean(), self.g2_data.std()
-        res_dict["greatest_group_name"] = self.label_max
-        res_dict["is_group_one_greatest"] = self.label_max == self.group_names[0]
-        res_dict["p_val"] = self.p_val
+        res_dict['group_one_name'], res_dict['group_one_size'] = self.group_names[0], len(self.g1_data)
+        res_dict['group_one_mean'], res_dict['group_one_SD'] = self.g1_data.mean(), self.g1_data.std()
+        res_dict['group_two_name'], res_dict['group_two_size'] = self.group_names[1], len(self.g2_data)
+        res_dict['group_two_mean'], res_dict['group_two_SD'] = self.g2_data.mean(), self.g2_data.std()
+        res_dict['greatest_group_name'] = self.label_max
+        res_dict['is_group_one_greatest'] = self.label_max == self.group_names[0]
+        res_dict['p_val'] = self.p_val
         if self.test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
-            res_dict["power_estimated"] = self.power
+            res_dict['power_estimated'] = self.power
         return res_dict

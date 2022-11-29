@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection
-from typing import Any, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, List, Literal, Optional, Tuple, Union
 
 import matplotlib
 import numpy as np
@@ -16,6 +16,7 @@ from src.tooling.clusters import Clusters
 from src.tooling.cohorts import Cohorts
 from src.tooling.funnel import Funnel
 from src.tooling.sankey import Sankey
+from src.tooling.stattests import TEST_NAMES, Stattests
 from src.tooling.step_matrix import StepMatrix
 from src.utils import get_merged_col
 from src.utils.list import find_index
@@ -465,10 +466,16 @@ class Eventstream(
             groups=groups,
         ).plot()
 
-    def unpaired_group_test(
-        self, groups, function, test, group_names=("group_1", "group_2"), alpha=0.05, plot_groups=True
-    ):
-        test_setup = UnpairedGroupTest(
+    def stattests(
+        self,
+        groups: Tuple[list[str], list[str]] = ([], []),
+        function: Callable = lambda x: x.shape[0],
+        test: TEST_NAMES = "ttest",
+        group_names: Tuple[str, str] = ("group_1", "group_2"),
+        alpha: float = 0.05,
+        plot_groups: bool = True,
+    ) -> dict:
+        test_setup = Stattests(
             eventstream=self, groups=groups, function=function, test=test, group_names=group_names, alpha=alpha
         )
         if plot_groups:

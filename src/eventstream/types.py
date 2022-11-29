@@ -26,11 +26,11 @@ class EventstreamType(Protocol):
         ...
 
     @abstractmethod
-    def append_eventstream(self, eventstream: EventstreamType):
+    def append_eventstream(self, eventstream: EventstreamType) -> None:
         ...
 
     @abstractmethod
-    def join_eventstream(self, eventstream: EventstreamType):
+    def join_eventstream(self, eventstream: EventstreamType) -> None:
         ...
 
     @abstractmethod
@@ -68,7 +68,7 @@ class EventstreamSchemaType(Protocol):
         ...
 
     @abstractmethod
-    def is_equal(self, schema) -> bool:
+    def is_equal(self, schema: EventstreamSchemaType) -> bool:
         ...
 
     @abstractmethod

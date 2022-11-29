@@ -8,24 +8,24 @@ if typing.TYPE_CHECKING:
     from .params_model import ParamsModel
 
 
-class ParamsModelRegistry(ReteRegistry):
-    REGISTRY: dict = {}  # type: ignore
+class ParamsModelRegistry:
+    REGISTRY: dict[str, "ParamsModel"] = {}  # type: ignore
 
     objects = "ParamsModel"
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: "ParamsModel") -> None:
         if key not in self.REGISTRY:
             self.REGISTRY[key] = value
         else:
             raise RegistryValidationError("%s <%s> already exists" % (self.objects, key))
 
     @classmethod
-    def get_registry(cls) -> dict:
+    def get_registry(cls: typing.Type[ParamsModelRegistry]) -> dict:
         return cls.REGISTRY
 
 
 params_model_registry = ParamsModelRegistry()
 
 
-def register_params_model(cls: ParamsModel):
+def register_params_model(cls: ParamsModel) -> None:
     params_model_registry[cls.__class__.__name__] = cls

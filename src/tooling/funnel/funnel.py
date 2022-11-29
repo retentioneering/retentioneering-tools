@@ -195,7 +195,7 @@ class Funnel:
             )
         return res_dict
 
-    def _plot_stacked_funnel(self, data) -> go.Figure:
+    def _plot_stacked_funnel(self, data: list[go.Funnel]) -> go.Figure:
         layout = go.Layout(**self.__default_layout)
         fig = go.Figure(data, layout)
 
@@ -229,7 +229,7 @@ class Funnel:
         segments: Collection[Collection[int]],
         segment_names: list[str],
         sequence: bool = False,
-    ):
+    ) -> dict[str, dict]:
 
         min_time_0stage = (
             data[data[self.event_col].isin(stages[0])].groupby(self.user_col)[[self.time_col]].min().reset_index()
@@ -254,7 +254,7 @@ class Funnel:
         stage_names: list[str],
         segments: Collection[Collection[int]],
         segment_names: list[str],
-    ):
+    ) -> dict[str, dict]:
         res_dict = {}
         for segment, name in zip(segments, segment_names):
             # isolate users from group
@@ -263,7 +263,9 @@ class Funnel:
             res_dict[name] = {"stages": stage_names, "values": vals}
         return res_dict
 
-    def _crop_df(self, df: pd.DataFrame, stages: list[str], segment: Collection[int], sequence: bool = False):
+    def _crop_df(
+        self, df: pd.DataFrame, stages: list[str], segment: Collection[int], sequence: bool = False
+    ) -> tuple[list[int], pd.DataFrame]:
         first_stage = stages[0]
         next_stages = stages[1:]
 

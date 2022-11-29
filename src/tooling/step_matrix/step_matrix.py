@@ -421,11 +421,11 @@ class StepMatrix:
 
             piv = piv.loc[self.sorting]
 
-        if self.centered and piv_targets:
+        if self.centered:
             window = self.centered.left_gap
-            piv.columns = [f"{int(i) - window - 1}" for i in piv.columns]  # type: ignore
-            if self.targets:
-                piv_targets.columns = [f"{int(i) - window - 1}" for i in piv_targets.columns]  # type: ignore
+            piv.columns = [(int(i) - window - 1) for i in piv.columns]  # type: ignore
+            if self.targets and piv_targets is not None:
+                piv_targets.columns = [(int(i) - window - 1) for i in piv_targets.columns]  # type: ignore
 
         return piv, piv_targets, fraction_title, targets_plot
 

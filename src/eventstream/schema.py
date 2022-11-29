@@ -37,7 +37,7 @@ class EventstreamSchema(EventstreamSchemaType):
             custom_cols=self.custom_cols.copy(),
         )
 
-    def is_equal(self, schema: EventstreamSchema) -> bool:
+    def is_equal(self, schema: EventstreamSchemaType) -> bool:
         return (
             self.event_id == schema.event_id
             and self.event_type == schema.event_type

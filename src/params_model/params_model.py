@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import asdict
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, Union
 
 from pydantic import BaseModel, ValidationError, validator
 from typing_extensions import TypedDict
@@ -25,7 +25,7 @@ class ParamsModel(BaseModel):
     _widgets: dict = {}
 
     @classmethod
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls: Type[ParamsModel], **kwargs: Any):
         super().__init_subclass__(**kwargs)
         obj = cls.__new__(cls)
         register_params_model(obj)

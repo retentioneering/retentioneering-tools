@@ -19,11 +19,11 @@ class UserList:
         self.__eventstream = eventstream
         self.__users: pd.Series[Any] | pd.DataFrame = self.__make_userlist()
 
-    def get_eventstream(self):
+    def get_eventstream(self) -> EventstreamType:
         return self.__eventstream
 
-    def to_dataframe(self):
-        return self.__users.copy()
+    def to_dataframe(self) -> pd.DataFrame:
+        return self.__users.copy()  # type: ignore
 
     def add_classes(self, colname: str, classes: pd.DataFrame | pd.Series[Any]) -> None:
         user_col = self.__eventstream.schema.user_id
@@ -45,7 +45,7 @@ class UserList:
         r = self.__users.groupby([colname])[usercol].count().reset_index()
         return r  # type: ignore
 
-    def mark_eventstream(self, colname: str, inplace: bool = False):
+    def mark_eventstream(self, colname: str, inplace: bool = False) -> EventstreamType:
         eventstream = self.__eventstream if inplace else self.__eventstream.copy()
 
         usercol = eventstream.schema.user_id

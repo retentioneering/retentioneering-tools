@@ -491,7 +491,7 @@ class Sankey:
         return data_for_plot, data_grp_nodes
 
     @staticmethod
-    def _prepare_palette(all_events):
+    def _prepare_palette(all_events: list) -> list[tuple]:
         # NOTE default color palette
         palette_hex = ["50BE97", "E4655C", "FCC865", "BFD6DE", "3E5066", "353A3E", "E6E6E6"]
         # NOTE convert HEX to RGB
@@ -510,7 +510,7 @@ class Sankey:
 
         return palette
 
-    def _get_next_event_and_timedelta(self, data):
+    def _get_next_event_and_timedelta(self, data: pd.DataFrame) -> pd.DataFrame:
         grouped = data.groupby(self.user_col)
         data["next_event"] = grouped[self.event_col].shift(-1)
         data["next_timestamp"] = grouped[self.time_col].shift(-1)

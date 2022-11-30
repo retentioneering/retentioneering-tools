@@ -72,6 +72,7 @@ class Cohorts:
     cohort_period: int | None
     cohort_period_unit: DATETIME_UNITS | None
     cohort_start_unit: DATETIME_UNITS | None
+    _cohort_matrix_result: pd.DataFrame
     DATETIME_UNITS_LIST = ["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
 
     def __init__(self, eventstream: EventstreamType):
@@ -88,7 +89,6 @@ class Cohorts:
 
         data = self.__eventstream.to_dataframe()
         self.data = data
-        self._cohort_matrix_result = pd.DataFrame
 
     def fit_cohorts(
         self,
@@ -98,7 +98,7 @@ class Cohorts:
         cut_bottom: int = 0,
         cut_right: int = 0,
         cut_diagonal: int = 0,
-    ):
+    ) -> None:
         """
         Calculates cohort matrix with retention rate of active users in coordinates
         of the cohort period and cohort group.
@@ -220,11 +220,11 @@ class Cohorts:
         return df.iloc[: len(df) - cut_bottom, : len(df.columns) - cut_right]
 
     @property
-    def values(self):
+    def values(self) -> pd.DataFrame:
         return self._cohort_matrix_result
 
     @property
-    def params(self):
+    def params(self) -> dict[str, DATETIME_UNITS | tuple | bool | int | None]:
         return {
             "cohort_start_unit": self.cohort_start_unit,
             "cohort_period": (self.cohort_period, self.cohort_period_unit),

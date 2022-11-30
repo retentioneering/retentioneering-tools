@@ -3,7 +3,6 @@ from __future__ import annotations
 import pandas as pd
 
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
 
 
 class TestChainHelper:
@@ -18,7 +17,7 @@ class TestChainHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = pd.DataFrame(
             [
                 [1, "path_start", "path_start", "2022-01-01 00:00:00"],
@@ -35,11 +34,7 @@ class TestChainHelper:
             columns=correct_result_columns,
         )
 
-        stream = Eventstream(
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
+        stream = Eventstream(source_df)
 
         result = stream.add_start_end().add_new_users(new_users_list="all")
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)

@@ -8,7 +8,7 @@ from src.data_processors_lib.rete import (
     StartEndEvents,
     StartEndEventsParams,
 )
-from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
+from src.eventstream import Eventstream
 from src.graph.p_graph import EventsNode, PGraph
 
 
@@ -38,11 +38,7 @@ def stream_simple():
         columns=["user_id", "event", "timestamp"],
     )
 
-    source_stream = Eventstream(
-        raw_data=source_df,
-        raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-        schema=EventstreamSchema(),
-    )
+    source_stream = Eventstream(source_df)
 
     return source_stream
 
@@ -50,7 +46,7 @@ def stream_simple():
 @pytest.fixture
 def stream_simple_shop():
     def remove_start(df, schema):
-        return df["event_name"] != "path_start"
+        return df[schema.event_name] != "path_start"
 
     test_stream = datasets.load_simple_shop()
     graph = PGraph(source_stream=test_stream)

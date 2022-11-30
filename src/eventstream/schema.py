@@ -21,8 +21,8 @@ class EventstreamSchema(EventstreamSchemaType):
     event_id: str = "event_id"
     event_type: str = "event_type"
     event_index: str = "event_index"
-    event_name: str = "event_name"
-    event_timestamp: str = "event_timestamp"
+    event_name: str = "event"
+    event_timestamp: str = "timestamp"
     user_id: str = "user_id"
     custom_cols: List[str] = field(default_factory=list)
 
@@ -75,8 +75,8 @@ class EventstreamSchema(EventstreamSchemaType):
 
 @dataclass
 class RawDataSchema(RawDataSchemaType):
-    event_name: str = "event_name"
-    event_timestamp: str = "event_timestamp"
+    event_name: str = "event"
+    event_timestamp: str = "timestamp"
     user_id: str = "user_id"
     event_type: Optional[str] = None
     custom_cols: List[RawDataCustomColSchema] = field(default_factory=list)

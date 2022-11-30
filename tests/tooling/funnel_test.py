@@ -86,13 +86,7 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
         stage_names = None
@@ -102,7 +96,7 @@ class TestFunnel:
         funnel = Funnel(eventstream=source, stages=stages)
 
         data = source.to_dataframe()
-        data = data[data["event_name"].isin(list(flatten(stages)))]
+        data = data[data["event"].isin(list(flatten(stages)))]
 
         segments = [data["user_id"].unique()]
         segment_names = ["all users"]
@@ -199,13 +193,7 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
         stage_names = ["catalog", "product", "cart", "payment_done"]
@@ -213,7 +201,7 @@ class TestFunnel:
         sequence = False
 
         data = source.to_dataframe()
-        data = data[data["event_name"].isin(list(flatten(stages)))]
+        data = data[data["event"].isin(list(flatten(stages)))]
 
         segments = [data["user_id"].unique()]
         segment_names = ["all users"]
@@ -312,13 +300,7 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
         stage_names = None
@@ -326,7 +308,7 @@ class TestFunnel:
         sequence = False
 
         data = source.to_dataframe()
-        data = data[data["event_name"].isin(list(flatten(stages)))]
+        data = data[data["event"].isin(list(flatten(stages)))]
 
         segments = [data["user_id"].unique()]
         segment_names = ["all users"]
@@ -425,13 +407,7 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
         stage_names = None
@@ -439,7 +415,7 @@ class TestFunnel:
         sequence = True
 
         data = source.to_dataframe()
-        data = data[data["event_name"].isin(list(flatten(stages)))]
+        data = data[data["event"].isin(list(flatten(stages)))]
 
         segments = [data["user_id"].unique()]
         segment_names = ["all users"]
@@ -537,13 +513,7 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
         conv_users = [1, 2, 3, 7]
         non_conv_users = [4, 5, 6, 8]
 
@@ -556,7 +526,7 @@ class TestFunnel:
         funnel = Funnel(eventstream=source, stages=stages)
 
         data = source.to_dataframe()
-        data = data[data["event_name"].isin(list(flatten(stages)))]
+        data = data[data["event"].isin(list(flatten(stages)))]
 
         segment_names = [f"group {i}" for i in range(len(segments))]
 
@@ -652,13 +622,7 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         conv_users = [1, 2, 3, 7]
         non_conv_users = [4, 5, 6, 8]
@@ -672,7 +636,7 @@ class TestFunnel:
         funnel = Funnel(eventstream=source, stages=stages)
 
         data = source.to_dataframe()
-        data = data[data["event_name"].isin(list(flatten(stages)))]
+        data = data[data["event"].isin(list(flatten(stages)))]
 
         res_dict = funnel._calculate(
             data=data,
@@ -711,13 +675,7 @@ class TestFunnel:
                 columns=["user_id", "event", "event_type", "timestamp"],
             )
 
-            source = Eventstream(
-                raw_data=source_df,
-                raw_data_schema=RawDataSchema(
-                    event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-                ),
-                schema=EventstreamSchema(),
-            )
+            source = Eventstream(source_df)
 
             stages = ["catalog", "cart", "payment_done"]
 

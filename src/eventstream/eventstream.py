@@ -98,6 +98,7 @@ class Eventstream(
     __clusters: Clusters | None = None
     __funnel: Funnel | None = None
     __cohorts: Cohorts | None = None
+    __stattests: Stattests | None = None
 
     def __init__(
         self,
@@ -468,19 +469,17 @@ class Eventstream(
 
     def stattests(
         self,
-        groups: Tuple[list[str], list[str]] = ([], []),
+        test: TEST_NAMES,
+        groups: Tuple[list[str | int], list[str | int]],
         function: Callable = lambda x: x.shape[0],
-        test: TEST_NAMES = "ttest",
         group_names: Tuple[str, str] = ("group_1", "group_2"),
         alpha: float = 0.05,
-        plot_groups: bool = True,
-    ) -> dict:
-        test_setup = Stattests(
+    ) -> Stattests:
+        self.__stattests = Stattests(
             eventstream=self, groups=groups, function=function, test=test, group_names=group_names, alpha=alpha
         )
-        if plot_groups:
-            test_setup.plot_groups()
-        return test_setup.get_test_results()
+        self.__stattests.fit()
+        return self.__stattests
 
     def step_sankey(
         self,

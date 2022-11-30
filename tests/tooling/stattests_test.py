@@ -1,4 +1,3 @@
-# this is a mock test - probably need to make more sophisticated tests later
 import numpy as np
 import pandas as pd
 
@@ -89,22 +88,12 @@ class TestTest:
             ),
             schema=EventstreamSchema(),
         )
-        source.stattests(
+        test_results = source.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             function=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
             test="ttest",
         )
-        source.stattests(
-            groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-            function=lambda x: x.shape[0],
-            group_names=("group_1", "group_2"),
-            test="ztest",
-        )
-        source.stattests(
-            groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-            function=lambda x: x.shape[0],
-            group_names=("group_1", "group_2"),
-            test="chi2_contingency",
-        )
-        assert True
+        res_p_val = test_results.values()["p_val"]
+        assert (res_p_val >= 0.1354) and (res_p_val <= 0.1355)
+        assert test_results.values()["is_group_one_greatest"]

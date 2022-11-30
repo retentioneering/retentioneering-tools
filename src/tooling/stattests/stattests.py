@@ -34,24 +34,25 @@ class Stattests:
         Names for selected groups g_1 and g_2.
     test: {‘mannwhitneyu’, 'ttest', 'ztest', ‘ks_2samp’, 'chi2_contingency', 'fisher_exact'}
         Test the null hypothesis that 2 independent samples are drawn from the same
-        distribution. One-sided tests are used, meaning that distributions are compared
-        'less' or 'greater'. Rule of thumbs is: for discrete variables (like convertions
+        distribution. All tests present, except for 'chi2_contingency', are one-sided - meaning that
+        distributions are compared 'less' or 'greater'. Rule of thumbs is: for discrete variables (like convertions
         or number of purchase) use Mann-Whitney (‘mannwhitneyu’) test or t-test (‘ttest’).
          For continious variables (like average_check) use Kolmogorov-Smirnov test ('ks_2samp').
     alpha: float (optional, default 0.05)
         Selected level of significance.
     Methods
     -------
-    print_test_results: Prints statistical comparison between two groups over selected metric and test
-    plot_groups: Returns plots with distribution for selected metrics for two groups
+    fit: computes specified test statistic, along with test result description
+    values: returns a dict with results of statistical comparison between two groups over selected metric and test
+    plot: returns plots with distribution for selected metrics for two groups
     """
 
     def __init__(
         self,
         eventstream: EventstreamType,
-        groups: Tuple[list[str], list[str]] = ([], []),
+        test: TEST_NAMES,
+        groups: Tuple[list[str | int], list[str | int]],
         function: Callable = lambda x: x.shape[0],
-        test: TEST_NAMES = "ttest",
         group_names: Tuple[str, str] = ("group_1", "group_2"),
         alpha: float = 0.05,
     ) -> None:
@@ -59,12 +60,13 @@ class Stattests:
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
-        # self.data = self.__eventstream.to_dataframe()
         self.groups = groups
         self.function = function
         self.test = test
         self.group_names = group_names
         self.alpha = alpha
+
+    def fit(self) -> None:
         self.g1_data, self.g2_data = self._get_group_values()
         self.p_val, self.power, self.label_min, self.label_max = self._get_sorted_test_results()
 
@@ -149,10 +151,10 @@ class Stattests:
         u1, u2 = np.mean(d1), np.mean(d2)
         return 2 * (math.asin(math.sqrt(u1)) - math.asin(math.sqrt(u2)))
 
-    def plot_groups(self) -> Tuple[go.Figure, str]:
+    def plot(self) -> Tuple[go.Figure, str]:
         data1 = pd.DataFrame(data={"data": self.g1_data, "groups": self.group_names[0]})
         data2 = pd.DataFrame(data={"data": self.g2_data, "groups": self.group_names[1]})
-        combined_stats = pd.concat([data1, data2])
+        combined_stats = pd.concat([data1, data2]).reset_index()
 
         compare_plot = sns.displot(data=combined_stats, x="data", hue="groups", multiple="dodge")
 
@@ -166,7 +168,7 @@ class Stattests:
         # return compare_plot, plot_name, None, _.rete.
         return compare_plot, plot_name
 
-    def get_test_results(
+    def values(
         self,
     ) -> dict:
         res_dict = {

@@ -13,7 +13,9 @@ import plotly.graph_objects as go
 from src.eventstream.schema import EventstreamSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.clusters import Clusters
+from src.tooling.cohorts import Cohorts
 from src.tooling.funnel import Funnel
+from src.tooling.sankey import Sankey
 from src.tooling.step_matrix import StepMatrix
 from src.utils import get_merged_col
 from src.utils.list import find_index
@@ -42,7 +44,7 @@ PlotType = Literal["cluster_bar"]
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
     "profile",
-    "start",
+    "path_start",
     "new_user",
     "existing_user",
     "truncated_left",
@@ -62,7 +64,7 @@ DEFAULT_INDEX_ORDER: IndexOrder = [
     "truncated_right",
     "absent_user",
     "lost_user",
-    "end",
+    "path_end",
 ]
 
 RAW_COL_PREFIX = "raw_"
@@ -93,6 +95,8 @@ class Eventstream(
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
     __clusters: Clusters | None = None
+    __funnel: Funnel | None = None
+    __cohorts: Cohorts | None = None
 
     def __init__(
         self,
@@ -104,7 +108,7 @@ class Eventstream(
         relations: Optional[List[Relation]] = None,
     ) -> None:
         self.__clusters = None
-
+        self.__funnel = None
         self.schema = schema if schema else EventstreamSchema()
 
         if not index_order:
@@ -245,19 +249,19 @@ class Eventstream(
         self.schema.custom_cols = self._get_both_custom_cols(eventstream)
         self.index_events()
 
-    def _get_both_custom_cols(self, eventstream):
+    def _get_both_custom_cols(self, eventstream: Eventstream) -> list[str]:
         self_custom_cols = set(self.schema.custom_cols)
         eventstream_custom_cols = set(eventstream.schema.custom_cols)
         all_custom_cols = self_custom_cols.union(eventstream_custom_cols)
         return list(all_custom_cols)
 
-    def _get_both_cols(self, eventstream):
+    def _get_both_cols(self, eventstream: Eventstream) -> list[str]:
         self_cols = set(self.schema.get_cols())
         eventstream_cols = set(eventstream.schema.get_cols())
         all_cols = self_cols.union(eventstream_cols)
         return list(all_cols)
 
-    def to_dataframe(self, raw_cols=False, show_deleted=False, copy=False) -> pd.DataFrame:
+    def to_dataframe(self, raw_cols: bool = False, show_deleted: bool = False, copy: bool = False) -> pd.DataFrame:
         cols = self.schema.get_cols() + self.get_relation_cols()
 
         if raw_cols:
@@ -393,7 +397,7 @@ class Eventstream(
         return events
 
     def __get_col_from_raw_data(
-        self, raw_data: pd.DataFrame | pd.Series[Any], colname: str, create=False
+        self, raw_data: pd.DataFrame | pd.Series[Any], colname: str, create: bool = False
     ) -> pd.Series | float:
         if colname in raw_data.columns:
             return raw_data[colname]
@@ -416,14 +420,9 @@ class Eventstream(
         segments: Collection[Collection[int]] | None = None,
         segment_names: list[str] | None = None,
         sequence: bool = False,
-    ) -> go.Figure:
-        """
-        See Also
-        --------
-        :py:func:`src.tooling.funnel.funnel`
+    ) -> Funnel:
 
-        """
-        funnel = Funnel(
+        self.__funnel = Funnel(
             eventstream=self,
             stages=stages,
             stage_names=stage_names,
@@ -432,8 +431,8 @@ class Eventstream(
             segment_names=segment_names,
             sequence=sequence,
         )
-        plot = funnel.draw_plot()
-        return plot
+
+        return self.__funnel
 
     @property
     def clusters(self) -> Clusters:
@@ -465,3 +464,37 @@ class Eventstream(
             centered=centered,
             groups=groups,
         ).plot()
+
+    def step_sankey(
+        self,
+        max_steps: int = 10,
+        thresh: Union[int, float] = 0.05,
+        sorting: list | None = None,
+        target: Union[list[str], str] | None = None,
+        autosize: bool = True,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> go.Figure:
+        return Sankey(
+            eventstream=self,
+            max_steps=max_steps,
+            thresh=thresh,
+            sorting=sorting,
+            target=target,
+            autosize=autosize,
+            width=width,
+            height=height,
+        ).plot()
+
+    @property
+    def cohorts(self) -> Cohorts:
+        """
+        See Also
+        --------
+        :py:func:`src.tooling.cohorts.cohorts`
+
+        """
+        if self.__cohorts is None:
+            self.__cohorts = Cohorts(eventstream=self)
+
+        return self.__cohorts

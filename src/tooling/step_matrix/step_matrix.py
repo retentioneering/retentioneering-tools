@@ -18,7 +18,7 @@ class CenteredParams:
     left_gap: int
     occurrence: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.occurrence < 1:
             raise ValueError("Occurrence in 'centered' dictionary must be >=1")
         if self.left_gap < 1:
@@ -26,8 +26,6 @@ class CenteredParams:
 
 
 class StepMatrix:
-    __eventstream: EventstreamType
-
     """
     Plots heatmap with distribution of users over trajectory steps ordered by
     event name. Matrix rows are event names, columns are aligned user trajectory
@@ -36,7 +34,7 @@ class StepMatrix:
     Parameters
     ----------
     max_steps: int (optional, default 20)
-        Maximum number of steps in trajectory to include.
+        Maximum number of steps in trajectories to include.
     weight_col: str (optional, default None)
         Aggregation column for edge weighting. If None, specified index_col
         from retentioneering.config will be used as column name. For example,
@@ -92,6 +90,8 @@ class StepMatrix:
     pd.DataFrame
     """
 
+    __eventstream: EventstreamType
+
     def __init__(
         self,
         eventstream: EventstreamType,
@@ -135,10 +135,10 @@ class StepMatrix:
         return df_
 
     @staticmethod
-    def _align_index(df1, df2) -> tuple[pd.DataFrame, pd.DataFrame]:
-        df1 = df1.align(df2)[0].fillna(0)
-        df2 = df2.align(df1)[0].fillna(0)
-        return df1, df2
+    def _align_index(df1: pd.DataFrame, df2: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+        df1 = df1.align(df2)[0].fillna(0)  # type: ignore
+        df2 = df2.align(df1)[0].fillna(0)  # type: ignore
+        return df1, df2  # type: ignore
 
     def _pad_cols(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -193,22 +193,28 @@ class StepMatrix:
         piv.columns.name = None
         piv.index.name = None
         # MAKE TERMINATED STATE ACCUMULATED:
-        if "end" in piv.index:
-            piv.loc["end"] = piv.loc["end"].cumsum().fillna(0)
+        if "path_end" in piv.index:
+            piv.loc["path_end"] = piv.loc["path_end"].cumsum().fillna(0)
         return piv
 
     def _process_targets(self, data: pd.DataFrame) -> tuple[pd.DataFrame | None, list[list[str]] | None]:
         if self.targets is None:
             return None, None
-        # obtain flatten list of targets:
-        targets_flatten = list(itertools.chain(*self.targets))
-        # format targets to list of lists:
+
+        # format targets to list of lists. E.g. [['a', 'b'], 'c'] -> [['a', 'b'], ['c']]
         targets = []
-        for t in self.targets:
-            if isinstance(t, list):
-                targets.append(t)
-            else:
-                targets.append([t])
+        if isinstance(self.targets, list):
+            for t in self.targets:
+                if isinstance(t, list):
+                    targets.append(t)
+                else:
+                    targets.append([t])
+        else:
+            targets.append([self.targets])
+
+        # obtain flatten list of targets. E.g. [['a', 'b'], 'c'] -> ['a', 'b', 'c']
+        targets_flatten = list(itertools.chain(*targets))
+
         agg_targets = data.groupby(["event_rank", self.event_col])[self.time_col].count().reset_index()
         agg_targets[self.time_col] /= data[self.weight_col].nunique()
         agg_targets.columns = ["event_rank", "event_name", "freq"]  # type: ignore
@@ -272,7 +278,7 @@ class StepMatrix:
         return data, fraction_title
 
     @staticmethod
-    def _sort_matrix(step_matrix) -> pd.DataFrame:
+    def _sort_matrix(step_matrix: pd.DataFrame) -> pd.DataFrame:
         x = step_matrix.copy()
         order = []
         for i in x.columns:
@@ -284,7 +290,13 @@ class StepMatrix:
         order.extend(list(set(step_matrix.index) - set(order)))
         return step_matrix.loc[order]
 
-    def _render_plot(self, data, fraction_title, targets, targets_list) -> matplotlib.figure.Figure:
+    def _render_plot(
+        self,
+        data: pd.DataFrame,
+        fraction_title: str | None,
+        targets: pd.DataFrame | None,
+        targets_list: list[list[str]] | None,
+    ) -> matplotlib.axes.Axes:
         n_rows = 1 + (len(targets_list) if targets_list else 0)
         n_cols = 1
         title_part1 = "centered" if self.centered else ""
@@ -355,9 +367,11 @@ class StepMatrix:
                 axs.vlines(
                     [centered_position - 0.02, centered_position + 0.98], *axs.get_ylim(), colors="Black", linewidth=0.7
                 )
-        return f
+        return axs
 
-    def _get_plot_data(self) -> tuple[pd.DataFrame, pd.DataFrame | None, str | None, list[list[str]] | None]:
+    def _get_plot_data(
+        self,
+    ) -> tuple[pd.DataFrame, pd.DataFrame | None, str | None, list[list[str]] | None]:
         weight_col = self.weight_col or self.user_col
         data = self.__eventstream.to_dataframe()
         data["event_rank"] = data.groupby(weight_col).cumcount() + 1
@@ -390,9 +404,9 @@ class StepMatrix:
         thresh_index = "THRESHOLDED_"
         if self.thresh != 0:
             # find if there are any rows to threshold:
-            thresholded = piv.loc[(piv.abs() < self.thresh).all(axis=0)].copy()
+            thresholded = piv.loc[(piv.abs() < self.thresh).all(axis=1)].copy()
             if len(thresholded) > 0:
-                piv = piv.loc[(piv.abs() >= self.thresh).any(axis=0)].copy()
+                piv = piv.loc[(piv.abs() >= self.thresh).any(axis=1)].copy()
                 thresh_index = f"THRESHOLDED_{len(thresholded)}"
                 piv.loc[thresh_index] = thresholded.sum()
 
@@ -400,7 +414,7 @@ class StepMatrix:
             piv = self._sort_matrix(piv)
 
             keep_in_the_end = []
-            keep_in_the_end.append("end") if ("end" in piv.index) else None
+            keep_in_the_end.append("path_end") if ("path_end" in piv.index) else None
             keep_in_the_end.append(thresh_index) if (thresh_index in piv.index) else None
 
             events_order = [*(i for i in piv.index if i not in keep_in_the_end), *keep_in_the_end]
@@ -423,6 +437,6 @@ class StepMatrix:
 
         return piv, piv_targets, fraction_title, targets_plot
 
-    def plot(self) -> None:
+    def plot(self) -> matplotlib.axes.Axes:
         data, targets, fraction_title, targets_list = self._get_plot_data()
         return self._render_plot(data, fraction_title, targets, targets_list)

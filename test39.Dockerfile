@@ -4,5 +4,7 @@ RUN apt-get update && apt-get upgrade -y
 RUN pip install poetry
 COPY pyproject.toml /app/pyproject.toml
 WORKDIR /app
-RUN poetry install
+RUN poetry export -f requirements.txt --output /app/requirements.txt
+RUN python -m pip install -r requirements.txt
 RUN python -m pip install pytest
+RUN python -m pip install pre-commit

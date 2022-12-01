@@ -6,6 +6,7 @@ from typing import Any, List, Literal, Tuple, cast
 import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import seaborn as sns
 import umap.umap_ as umap
 from matplotlib import rcParams
@@ -15,10 +16,10 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 
-from src.eventstream.types import EventstreamType
+from src.eventstream.types import EventstreamSchemaType, EventstreamType
 from src.tooling.clusters.segments import Segments
 
-FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "external"]
+FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "external", "markov"]
 NgramRange = Tuple[int, int]
 Method = Literal["kmeans", "gmm"]
 PlotType = Literal["cluster_bar"]
@@ -41,7 +42,34 @@ class Clusters:
         self.__projection = None
 
     # public API
-    def extract_features(self, feature_type: FeatureType = "tfidf", ngram_range: NgramRange | None = None):
+    def extract_features(
+        self, feature_type: FeatureType = "tfidf", ngram_range: NgramRange | None = None
+    ) -> pd.DataFrame:
+        """
+        Calculates vectorized user paths.
+
+        Parameters
+        ----------
+        feature_type: {"tfidf", "count", "frequency", "binary", "markov"}, default="tfidf"
+            ``tfidf`` - https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html
+            ``count`` - https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html
+            ``frequency`` - An alias for ``count``.
+            ``binary`` - Uses the same CountVectorizer as ``count``, but with ``binary=True`` flag.
+            ``markov`` - Available for bigrams only. The vectorized values are associated with the transition
+            probabilities in the corresponding Markov chain. Here's an example. Assume a users has the following
+            transitions: A->B 3 times, A->C 1 time, and A->A 4 times. Then the vectorized values for these bigrams
+            are 0.375, 0.125, 0.5.
+
+        ngram_range: Tuple(int, int), default=(1, 1)
+            The lower and upper boundary of the range of n-values for different word n-grams or char n-grams to be
+            extracted. For example, ngram_range=(1, 1) means only single events, (1, 2) means single events
+            and bigrams. Doesn't work for ``markov`` feature_type.
+
+        Returns
+        -------
+        pd.DataFrame
+            A DataFrame with the vectorized values. Index contains user_id, columns contain n-grams.
+        """
         extract_features_partial = partial(self._extract_features, eventstream=self.__eventstream)
         return extract_features_partial(feature_type=feature_type, ngram_range=ngram_range)
 
@@ -54,7 +82,7 @@ class Clusters:
         refit_cluster: bool = True,
         targets: list[str] | None = None,
         vector: pd.DataFrame | None = None,
-    ):
+    ) -> go.Figure:
         if self._user_clusters:
             targets_bool = [[True] * x for x in [len(y) for y in self._user_clusters.values()]]
             target_names: list[str] = list(map(str, list(self._user_clusters.keys())))
@@ -83,7 +111,7 @@ class Clusters:
         return self._user_clusters
 
     @user_clusters.setter
-    def user_clusters(self, user_clusters: dict[str | int, list[int]]):
+    def user_clusters(self, user_clusters: dict[str | int, list[int]]) -> None:
         self._set_user_clusters(user_clusters=user_clusters)
 
     @property
@@ -118,11 +146,11 @@ class Clusters:
         targets: list[str] | None = None,
         ngram_range: NgramRange | None = None,
         feature_type: FeatureType = "tfidf",
-        plot_type=None,
-        **kwargs,
-    ):
+        plot_type: Literal["targets", "clusters"] | None = None,
+        **kwargs: Any,
+    ) -> pd.DataFrame:
         """
-        Does dimention reduction of user trajectories and draws projection plane.
+        Does dimension reduction of user trajectories and draws projection plane.
         Parameters
         ----------
         method: {'umap', 'tsne'} (optional, default 'tsne')
@@ -139,12 +167,12 @@ class Clusters:
             to this user will be highlighted as converted on the resulting projection plot
         feature_type: str, (optional, default 'tfidf')
             Type of vectorizer to use before dimension-reduction. Available vectorization methods:
-            {'tfidf', 'count', 'binary', 'frequency'}
+            {'tfidf', 'count', 'binary', 'frequency', 'markov'}
         ngram_range: tuple, (optional, default (1,1))
-            The lower and upper boundary of the range of n-values for different
+            The lower and upper boundaries of the range of n-values for different
             word n-grams or char n-grams to be extracted before dimension-reduction.
             For example ngram_range=(1, 1) means only single events, (1, 2) means single events
-            and bigrams.
+            and bigrams. Doesn't work for ``markov`` feature_type.
         Returns
         --------
         Dataframe with data in the low-dimensional space for user trajectories indexed by user IDs.
@@ -206,7 +234,7 @@ class Clusters:
 
         self._plot_projection(
             projection=projection.values,
-            targets=targets_mapping,
+            targets=targets_mapping,  # type: ignore
             legend_title=legend_title,
         )
 
@@ -214,7 +242,7 @@ class Clusters:
 
     # inner functions
 
-    def _plot_projection(self, projection, targets, legend_title):
+    def _plot_projection(self, projection: ndarray, targets: ndarray, legend_title: str) -> tuple:
         rcParams["figure.figsize"] = 8, 6
 
         scatter = sns.scatterplot(
@@ -234,7 +262,7 @@ class Clusters:
             projection,
         )
 
-    def _learn_tsne(self, data, **kwargs):
+    def _learn_tsne(self, data: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
         """
         Calculates TSNE transformation for given matrix features.
         Parameters
@@ -271,7 +299,7 @@ class Clusters:
         res = TSNE(random_state=0, **kwargs).fit_transform(data.values)
         return pd.DataFrame(res, index=data.index.values)
 
-    def _learn_umap(self, data, **kwargs):
+    def _learn_umap(self, data: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
         """
         Calculates UMAP transformation for given matrix features.
         Parameters
@@ -307,9 +335,9 @@ class Clusters:
 
     def __get_vectorizer(
         self,
-        feature_type: Literal["count", "frequency", "tfidf", "binary"],
+        feature_type: Literal["count", "frequency", "tfidf", "binary", "markov"],
         ngram_range: NgramRange,
-        corpus,
+        corpus: pd.DataFrame | pd.Series[Any],
     ) -> TfidfVectorizer | CountVectorizer:
         if feature_type == "tfidf":
             return TfidfVectorizer(ngram_range=ngram_range, token_pattern="[^~]+").fit(corpus)  # type: ignore
@@ -322,7 +350,7 @@ class Clusters:
 
     def _extract_features(
         self, eventstream: EventstreamType, feature_type: FeatureType = "tfidf", ngram_range: NgramRange | None = None
-    ):
+    ) -> pd.DataFrame:
         if ngram_range is None:
             ngram_range = (1, 1)
         index_col = eventstream.schema.user_id
@@ -330,9 +358,6 @@ class Clusters:
         time_col = eventstream.schema.event_timestamp
 
         events = eventstream.to_dataframe()
-
-        corpus = events.groupby(index_col)[event_col].apply(lambda x: "~~".join([el.lower() for el in x]))
-
         vec_data = None
 
         if (
@@ -341,19 +366,12 @@ class Clusters:
             or feature_type == "tfidf"
             or feature_type == "binary"
         ):
-            vectorizer = self.__get_vectorizer(feature_type=feature_type, ngram_range=ngram_range, corpus=corpus)
+            events, vec_data = self._sklearn_vectorization(
+                events, feature_type, ngram_range, index_col, eventstream.schema
+            )
 
-            vocabulary_items = sorted(vectorizer.vocabulary_.items(), key=lambda x: x[1])
-            cols: list[str] = [dict_key[0] for dict_key in vocabulary_items]
-            sorted_index_col = sorted(events[index_col].unique())
-
-            vec_data = pd.DataFrame(index=sorted_index_col, columns=cols, data=vectorizer.transform(corpus).todense())
-            vec_data.index.rename(index_col, inplace=True)
-
-            if feature_type == "frequency":
-                # @FIXME: lecacy todo without explanation, idk why. Vladimir Makhanov
-                sum = cast(Any, vec_data.sum(axis=1))
-                vec_data = vec_data.div(sum, axis=0).fillna(0)
+        elif feature_type == "markov":
+            events, vec_data = self._markov_vectorization(events, index_col, eventstream.schema)
 
         if feature_type in ["time", "time_fraction"]:
             events.sort_values(by=[index_col, time_col], inplace=True)
@@ -378,8 +396,58 @@ class Clusters:
 
         return cast(pd.DataFrame, vec_data)
 
+    def _sklearn_vectorization(
+        self,
+        events: pd.DataFrame,
+        feature_type: Literal["count", "frequency", "tfidf", "binary", "markov"],
+        ngram_range: NgramRange,
+        index_col: str,
+        schema: EventstreamSchemaType,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        event_col = schema.event_name
+        corpus = events.groupby(index_col)[event_col].apply(lambda x: "~~".join([el.lower() for el in x]))
+        vectorizer = self.__get_vectorizer(feature_type=feature_type, ngram_range=ngram_range, corpus=corpus)
+        vocabulary_items = sorted(vectorizer.vocabulary_.items(), key=lambda x: x[1])
+        cols: list[str] = [dict_key[0] for dict_key in vocabulary_items]
+        sorted_index_col = sorted(events[index_col].unique())
+        vec_data = pd.DataFrame(index=sorted_index_col, columns=cols, data=vectorizer.transform(corpus).todense())
+        vec_data.index.rename(index_col, inplace=True)
+        if feature_type == "frequency":
+            # @FIXME: legacy todo without explanation, idk why. Vladimir Makhanov
+            sum = cast(Any, vec_data.sum(axis=1))
+            vec_data = vec_data.div(sum, axis=0).fillna(0)
+        return events, vec_data
+
+    @staticmethod
+    def _markov_vectorization(
+        events: pd.DataFrame, index_col: str, schema: EventstreamSchemaType
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        event_col = schema.event_name
+        event_index_col = schema.event_index
+        time_col = schema.event_timestamp
+
+        next_event_col = "next_" + event_col
+        next_time_col = "next_" + time_col
+        events = events.sort_values([index_col, event_index_col])
+        events[[next_event_col, next_time_col]] = events.groupby(index_col)[[event_col, time_col]].shift(-1)
+        vec_data = (
+            events.groupby([index_col, event_col, next_event_col])[event_index_col]
+            .count()
+            .reset_index()
+            .rename(columns={event_index_col: "count"})
+            .assign(bigram=lambda df_: df_[event_col] + "~" + df_[next_event_col])
+            .assign(left_event_count=lambda df_: df_.groupby([index_col, event_col])["count"].transform("sum"))
+            .assign(bigram_weight=lambda df_: df_["count"] / df_["left_event_count"])
+            .pivot(index=index_col, columns="bigram", values="bigram_weight")
+            .fillna(0)
+        )
+        vec_data.index.rename(index_col, inplace=True)
+        del events[next_event_col]
+        del events[next_time_col]
+        return events, vec_data
+
     # TODO: add save
-    def _cluster_bar(self, clusters: ndarray, target: list[list[bool]], target_names: list[str]):
+    def _cluster_bar(self, clusters: ndarray, target: list[list[bool]], target_names: list[str]) -> go.Figure:
         """
         Plots bar charts with cluster sizes and average target conversion rate.
         Parameters
@@ -451,7 +519,16 @@ class Clusters:
 
         return cl
 
-    def _prepare_clusters(self, feature_type, method, n_clusters, ngram_range, refit_cluster, targets, vector):
+    def _prepare_clusters(
+        self,
+        feature_type: FeatureType,
+        method: Method,
+        n_clusters: int,
+        ngram_range: NgramRange,
+        refit_cluster: bool,
+        targets: list[str] | None,
+        vector: pd.DataFrame | None,
+    ) -> tuple[list[str], list[ndarray]]:
         user_col = self.__eventstream.schema.user_id
         event_col = self.__eventstream.schema.event_name
         if feature_type == "external" and not isinstance(vector, pd.DataFrame):  # type: ignore
@@ -493,19 +570,21 @@ class Clusters:
             )
         events = self.__eventstream.to_dataframe()
         grouped_events = events.groupby(user_col)[event_col]
-        target_names, targets_bool = self._prepare_targets(event_col, grouped_events, targets)
+        target_names, targets_bool = self._prepare_targets(event_col, grouped_events, targets)  # type: ignore
         return target_names, targets_bool
 
-    def _prepare_targets(self, event_col, grouped_events, targets):
+    def _prepare_targets(
+        self, event_col: str, grouped_events: pd.DataFrame, targets: list[str] | list[list[str]] | None
+    ) -> tuple[list[str], list[ndarray]]:
         if targets is not None:
             targets_bool = []
             target_names = []
 
-            formated_targets = []
+            formated_targets: list[list[str]] = []
             # format targets to list of lists:
             for n, i in enumerate(targets):
                 if type(i) != list:  # type: ignore
-                    formated_targets.append([i])
+                    formated_targets.append([i])  # type: ignore
                 else:
                     formated_targets.append(i)  # type: ignore
 

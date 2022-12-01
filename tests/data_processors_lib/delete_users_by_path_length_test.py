@@ -15,7 +15,7 @@ class TestDeleteUsersByPathLength(ApplyTestBase):
     _Processor = DeleteUsersByPathLength
     _source_df = pd.DataFrame(
         [
-            [1, "start", "start", "2022-01-01 00:01:00"],
+            [1, "path_start", "path_start", "2022-01-01 00:01:00"],
             [1, "event1", "raw", "2022-01-01 00:01:00"],
             [1, "event2", "raw", "2022-01-01 00:01:02"],
             [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -30,11 +30,11 @@ class TestDeleteUsersByPathLength(ApplyTestBase):
             [2, "event1", "raw", "2022-01-02 00:00:00"],
             [2, "event3", "raw", "2022-01-02 00:00:05"],
             [2, "event2", "raw", "2022-01-02 00:01:05"],
-            [2, "end", "end", "2022-01-02 00:01:05"],
+            [2, "path_end", "path_end", "2022-01-02 00:01:05"],
             [3, "event1", "raw", "2022-01-02 00:01:10"],
             [3, "event1", "raw", "2022-01-02 00:02:05"],
             [3, "event4", "raw", "2022-01-02 00:03:05"],
-            [3, "end", "end", "2022-01-02 00:03:05"],
+            [3, "path_end", "path_end", "2022-01-02 00:03:05"],
         ],
         columns=["user_id", "event", "event_type", "timestamp"],
     )
@@ -56,11 +56,11 @@ class TestDeleteUsersByPathLength(ApplyTestBase):
                 [2, "event1", "raw", "2022-01-02 00:00:00", True],
                 [2, "event3", "raw", "2022-01-02 00:00:05", True],
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
-                [2, "end", "end", "2022-01-02 00:01:05", True],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
                 [3, "event1", "raw", "2022-01-02 00:01:10", True],
                 [3, "event1", "raw", "2022-01-02 00:02:05", True],
                 [3, "event4", "raw", "2022-01-02 00:03:05", True],
-                [3, "end", "end", "2022-01-02 00:03:05", True],
+                [3, "path_end", "path_end", "2022-01-02 00:03:05", True],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
         )
@@ -77,7 +77,7 @@ class TestDeleteUsersByPathLength(ApplyTestBase):
                 [2, "event1", "raw", "2022-01-02 00:00:00", True],
                 [2, "event3", "raw", "2022-01-02 00:00:05", True],
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
-                [2, "end", "end", "2022-01-02 00:01:05", True],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
         )
@@ -88,7 +88,7 @@ class TestDeleteUsersByPathLengthGraph(GraphTestBase):
     _Processor = DeleteUsersByPathLength
     _source_df = pd.DataFrame(
         [
-            [1, "start", "start", "2022-01-01 00:01:00"],
+            [1, "path_start", "path_start", "2022-01-01 00:01:00"],
             [1, "event1", "raw", "2022-01-01 00:01:00"],
             [1, "event2", "raw", "2022-01-01 00:01:02"],
             [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -103,11 +103,11 @@ class TestDeleteUsersByPathLengthGraph(GraphTestBase):
             [2, "event1", "raw", "2022-01-02 00:00:00"],
             [2, "event3", "raw", "2022-01-02 00:00:05"],
             [2, "event2", "raw", "2022-01-02 00:01:05"],
-            [2, "end", "end", "2022-01-02 00:01:05"],
+            [2, "path_end", "path_end", "2022-01-02 00:01:05"],
             [3, "event1", "raw", "2022-01-02 00:01:10"],
             [3, "event1", "raw", "2022-01-02 00:02:05"],
             [3, "event4", "raw", "2022-01-02 00:03:05"],
-            [3, "end", "end", "2022-01-02 00:03:05"],
+            [3, "path_end", "path_end", "2022-01-02 00:03:05"],
         ],
         columns=["user_id", "event", "event_type", "timestamp"],
     )
@@ -126,7 +126,7 @@ class TestDeleteUsersByPathLengthGraph(GraphTestBase):
         )
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -151,7 +151,7 @@ class TestDeleteUsersByPathLengthGraph(GraphTestBase):
         )
         expected = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -166,7 +166,7 @@ class TestDeleteUsersByPathLengthGraph(GraphTestBase):
                 [3, "event1", "raw", "2022-01-02 00:01:10"],
                 [3, "event1", "raw", "2022-01-02 00:02:05"],
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
+                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=["user_id", "event_name", "event_type", "event_timestamp"],
         )
@@ -177,7 +177,7 @@ class TestDeleteUsersByPathLengthHelper:
     def test_delete_users_by_path_length_graph__by_event_4(self):
         source_df = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -192,11 +192,11 @@ class TestDeleteUsersByPathLengthHelper:
                 [2, "event1", "raw", "2022-01-02 00:00:00"],
                 [2, "event3", "raw", "2022-01-02 00:00:05"],
                 [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "end", "end", "2022-01-02 00:01:05"],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
                 [3, "event1", "raw", "2022-01-02 00:01:10"],
                 [3, "event1", "raw", "2022-01-02 00:02:05"],
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
+                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=["user_id", "event", "event_type", "timestamp"],
         )
@@ -205,7 +205,7 @@ class TestDeleteUsersByPathLengthHelper:
 
         correct_result = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -237,7 +237,7 @@ class TestDeleteUsersByPathLengthHelper:
     def test_delete_users_by_path_length_graph__by_cutoff(self):
         source_df = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -252,11 +252,11 @@ class TestDeleteUsersByPathLengthHelper:
                 [2, "event1", "raw", "2022-01-02 00:00:00"],
                 [2, "event3", "raw", "2022-01-02 00:00:05"],
                 [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "end", "end", "2022-01-02 00:01:05"],
+                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
                 [3, "event1", "raw", "2022-01-02 00:01:10"],
                 [3, "event1", "raw", "2022-01-02 00:02:05"],
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
+                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=["user_id", "event", "event_type", "timestamp"],
         )
@@ -265,7 +265,7 @@ class TestDeleteUsersByPathLengthHelper:
 
         correct_result = pd.DataFrame(
             [
-                [1, "start", "start", "2022-01-01 00:01:00"],
+                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
                 [1, "event1", "raw", "2022-01-01 00:02:00"],
@@ -280,7 +280,7 @@ class TestDeleteUsersByPathLengthHelper:
                 [3, "event1", "raw", "2022-01-02 00:01:10"],
                 [3, "event1", "raw", "2022-01-02 00:02:05"],
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "end", "end", "2022-01-02 00:03:05"],
+                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
             columns=correct_result_columns,
         )

@@ -5,13 +5,14 @@ from typing import Any, MutableMapping, MutableSequence, cast
 
 import networkx as nx
 import pandas as pd
-from IPython.core.display import HTML
-from IPython.core.display_functions import display
+from IPython.display import HTML, display
 
 from src.backend import ServerManager
 from src.eventstream.types import EventstreamType
 from src.templates.translition_graph import TransitionGraphRenderer
 
+from .edgelist import Edgelist
+from .nodelist import Nodelist
 from .typing import (
     GraphSettings,
     LayoutNode,
@@ -56,22 +57,38 @@ class TransitionGraph:
 
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
-        self.layout: pd.DataFrame = eventstream.to_dataframe()
+        self._data: pd.DataFrame = eventstream.to_dataframe()
         self.graph_settings = graph_settings
 
         self.event_col = self.eventstream.schema.event_name
         self.event_time_col = self.eventstream.schema.event_timestamp
         self.user_col = self.eventstream.schema.user_id
         self.id_col = self.eventstream.schema.event_id
+        self.custom_cols = self.eventstream.schema.custom_cols
 
         self.positive_target_event = positive_target_event
         self.negative_target_event = negative_target_event
         self.source_event = source_event
         self.nodelist_default_col = nodelist_default_col
-        self.edgelist_default_col = edgelist_default_col
         self.norm_type = norm_type
-        self.edgelist = self.__get_edgelist(norm_type=self.norm_type)
-        self.nodelist = pd.DataFrame()
+
+        self.nodelist: Nodelist = Nodelist(
+            nodelist_default_col=self.nodelist_default_col,
+            custom_cols=self.custom_cols,
+            time_col=self.event_time_col,
+            event_col=self.event_col,
+        )
+
+        self.nodelist.create_nodelist(data=self._data)
+
+        self.edgelist_default_col = edgelist_default_col
+        self.edgelist: Edgelist = Edgelist(
+            event_col=self.event_col,
+            time_col=self.event_time_col,
+            default_weight_col=self.edgelist_default_col,
+            nodelist=self.nodelist.data,
+        )
+        self.edgelist.create_edgelist(norm_type=self.norm_type, custom_cols=self.custom_cols, data=self._data)
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
 
@@ -80,7 +97,7 @@ class TransitionGraph:
 
     def _on_layout_request(self, layout_nodes: MutableSequence[LayoutNode]):
         self.graph_updates = layout_nodes
-        self.layout = pd.DataFrame(layout_nodes)
+        self._data = pd.DataFrame(layout_nodes)
 
     def _on_nodelist_updated(self, nodes: MutableSequence[PreparedNode]):
         self.updates = nodes
@@ -101,14 +118,14 @@ class TransitionGraph:
                     mapped_node["index"] = source_value
                     continue
                 # filter fields
-                if key not in self.nodelist.columns:
+                if key not in self.nodelist.data.columns:
                     continue
                 mapped_node[key] = source_value
             mapped_nodes.append(mapped_node)
 
-        self.nodelist = pd.DataFrame(data=mapped_nodes)
-        self.nodelist.set_index("index")
-        self.nodelist = self.nodelist.drop(columns=["index"])
+        self.nodelist.data = pd.DataFrame(data=mapped_nodes)
+        self.nodelist.data.set_index("index")
+        self.nodelist.data = self.nodelist.data.drop(columns=["index"])
 
     def _get_shift(self) -> pd.DataFrame:
 
@@ -120,68 +137,6 @@ class TransitionGraph:
         data["next_" + str(self.id_col)] = shift[self.id_col]
 
         return data
-
-    def __get_edgelist(self, weight_col=None, norm_type=None, edge_attributes="edge_weight") -> pd.DataFrame:
-        """
-        Creates weighted table of the transitions between events.
-
-        Parameters
-        ----------
-        weight_col: str (optional, default=None)
-            Aggregation column for transitions weighting. To calculate weights
-            as number of transion events use None. To calculate number
-            of unique users passed through given transition 'user_id'.
-             For any other aggreagtion, like number of sessions, pass the column name.
-
-        norm_type: {None, 'full', 'node'} (optional, default=None)
-            Type of normalization. If None return raw number of transtions
-            or other selected aggregation column. 'full' - normalized over
-            entire dataset. 'node' weight for edge A --> B normalized over
-            user in A
-
-        edge_attributes: str (optional, default 'edge_weight')
-            Name for edge_weight columns
-
-        Returns
-        -------
-        Dataframe with number of rows equal to all transitions with weight
-        non-zero weight
-
-        Return type
-        -----------
-        pd.DataFrame
-        """
-        if norm_type not in [None, "full", "node"]:
-            raise ValueError(f"unknown normalization type: {norm_type}")
-
-        cols = [self.event_col, "next_" + str(self.event_col)]
-
-        data = self._get_shift().copy()
-
-        # get aggregation:
-        if weight_col is None:
-            agg = data.groupby(cols)[self.event_time_col].count().reset_index()
-            agg.rename(columns={self.event_time_col: edge_attributes}, inplace=True)
-        else:
-            agg = data.groupby(cols)[weight_col].nunique().reset_index()
-            agg.rename(columns={weight_col: edge_attributes}, inplace=True)
-
-        # apply normalization:
-        if norm_type == "full":
-            if weight_col is None:
-                agg[edge_attributes] /= agg[edge_attributes].sum()
-            else:
-                agg[edge_attributes] /= data[weight_col].nunique()
-
-        if norm_type == "node":
-            if weight_col is None:
-                event_transitions_counter = data.groupby(self.event_col)[cols[1]].count().to_dict()
-                agg[edge_attributes] /= agg[cols[0]].map(event_transitions_counter)
-            else:
-                user_counter = data.groupby(cols[0])[weight_col].nunique().to_dict()
-                agg[edge_attributes] /= agg[cols[0]].map(user_counter)
-
-        return agg
 
     def _replace_grouped_events(self, grouped: pd.Series[Any], row):
         event_name = row[self.event_col]
@@ -210,7 +165,7 @@ class TransitionGraph:
     def _get_norm_link_threshold(self, links_threshold: Threshold | None = None):
         nodelist_default_col = self.nodelist_default_col
         edgelist_default_col = self.edgelist_default_col
-        scale = float(cast(float, self.edgelist[edgelist_default_col].abs().max()))
+        scale = float(cast(float, self.edgelist.data[edgelist_default_col].abs().max()))
         norm_links_threshold = None
 
         if links_threshold is not None:
@@ -219,7 +174,7 @@ class TransitionGraph:
                 if key == nodelist_default_col:
                     norm_links_threshold[nodelist_default_col] = links_threshold[nodelist_default_col] / scale
                 else:
-                    s = float(cast(float, self.edgelist[key].abs().max()))
+                    s = float(cast(float, self.edgelist.data[key].abs().max()))
                     norm_links_threshold[key] = links_threshold[key] / s
         return norm_links_threshold
 
@@ -228,7 +183,7 @@ class TransitionGraph:
         if nodes_threshold is not None:
             norm_nodes_threshold = {}
             for key in nodes_threshold:
-                scale = float(cast(float, self.nodelist[key].abs().max()))
+                scale = float(cast(float, self.nodelist.data[key].abs().max()))
                 norm_nodes_threshold[key] = nodes_threshold[key] / scale
 
         return norm_nodes_threshold
@@ -376,8 +331,8 @@ class TransitionGraph:
     def _make_template_data(
         self, node_params: NodeParams, width: int, height: int
     ) -> tuple[MutableSequence, MutableSequence]:
-        edgelist = self.edgelist.copy()
-        nodelist = self.nodelist.copy()
+        edgelist = self.edgelist.data.copy()
+        nodelist = self.nodelist.data.copy()
 
         source_col = edgelist.columns[0]
         target_col = edgelist.columns[1]
@@ -399,10 +354,10 @@ class TransitionGraph:
         return nodes, links
 
     def _use_layout(self, position: Position) -> Position:
-        if self.layout is None:
+        if self._data is None:
             return position
         for node_name in position:
-            matched = self.layout[self.layout["name"] == node_name]
+            matched = self._data[self._data["name"] == node_name]
             if not matched.empty:
                 x = cast(float, matched["x"].item())
                 y = cast(float, matched["y"].item())
@@ -485,7 +440,7 @@ class TransitionGraph:
                 links=self._to_json(links),
                 node_params=self._to_json(node_params),
                 nodes=self._to_json(nodes),
-                layout_dump=1 if self.layout is not None else 0,
+                layout_dump=1 if self._data is not None else 0,
                 links_weights_names=cols,
                 node_cols_names=cols,
                 show_weights=self._get_option("show_weights", settings),

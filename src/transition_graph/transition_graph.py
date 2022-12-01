@@ -142,7 +142,7 @@ class TransitionGraph:
 
             return node_params
 
-    def _get_norm_link_threshold(self, links_threshold: Threshold | None = None) -> dict[str, float]:
+    def _get_norm_link_threshold(self, links_threshold: Threshold | None = None) -> dict[str, float] | None:
         nodelist_default_col = self.nodelist_default_col
         edgelist_default_col = self.edgelist_default_col
         scale = float(cast(float, self.edgelist.data[edgelist_default_col].abs().max()))
@@ -158,7 +158,7 @@ class TransitionGraph:
                     norm_links_threshold[key] = links_threshold[key] / s
         return norm_links_threshold
 
-    def _get_norm_node_threshold(self, nodes_threshold: Threshold | None = None) -> Threshold:
+    def _get_norm_node_threshold(self, nodes_threshold: Threshold | None = None) -> Threshold | None:
         norm_nodes_threshold = None
         if nodes_threshold is not None:
             norm_nodes_threshold = {}

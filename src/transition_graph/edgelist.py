@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Callable, MutableMapping, MutableSequence
 
 import pandas as pd
@@ -21,7 +23,7 @@ class Edgelist:
         self.index_col = index_col
 
     def create_edgelist(
-        self, norm_type: NormType = None, data: pd.DataFrame = None, custom_cols: MutableSequence[str] = None
+        self, data: pd.DataFrame, norm_type: NormType = None, custom_cols: MutableSequence[str] | None = None
     ) -> None:
 
         if norm_type not in [None, "full", "node"]:

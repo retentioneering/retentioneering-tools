@@ -1,6 +1,7 @@
+import math
+
 import numpy as np
 import pandas as pd
-import math
 
 from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
 

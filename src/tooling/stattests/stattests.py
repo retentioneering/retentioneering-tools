@@ -155,17 +155,9 @@ class Stattests:
         data1 = pd.DataFrame(data={"data": self.g1_data, "groups": self.group_names[0]})
         data2 = pd.DataFrame(data={"data": self.g2_data, "groups": self.group_names[1]})
         combined_stats = pd.concat([data1, data2]).reset_index()
-
         compare_plot = sns.displot(data=combined_stats, x="data", hue="groups", multiple="dodge")
-
         compare_plot.set(xlabel=None)
-
-        # move legend outside the box
-        # compare_plot.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-
         plot_name = "test_groups_plot_{}".format(datetime.now()).replace(":", "_").replace(".", "_") + ".svg"
-        # plot_name = _.rete.retention_config['experiments_folder'] + '/' + plot_name
-        # return compare_plot, plot_name, None, _.rete.
         return compare_plot, plot_name
 
     def values(

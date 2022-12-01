@@ -57,7 +57,7 @@ class TransitionGraph:
 
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
-        self._data: pd.DataFrame = eventstream.to_dataframe()
+        self.layout: pd.DataFrame | None = None
         self.graph_settings = graph_settings
 
         self.event_col = self.eventstream.schema.event_name
@@ -79,7 +79,7 @@ class TransitionGraph:
             event_col=self.event_col,
         )
 
-        self.nodelist.create_nodelist(data=self._data)
+        self.nodelist.create_nodelist(data=self.eventstream.to_dataframe())
 
         self.edgelist_default_col = edgelist_default_col
         self.edgelist: Edgelist = Edgelist(
@@ -89,7 +89,9 @@ class TransitionGraph:
             nodelist=self.nodelist.data,
             index_col=self.user_col,
         )
-        self.edgelist.create_edgelist(norm_type=self.norm_type, custom_cols=self.custom_cols, data=self._data)
+        self.edgelist.create_edgelist(
+            norm_type=self.norm_type, custom_cols=self.custom_cols, data=self.eventstream.to_dataframe()
+        )
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
 
@@ -98,7 +100,7 @@ class TransitionGraph:
 
     def _on_layout_request(self, layout_nodes: MutableSequence[LayoutNode]) -> None:
         self.graph_updates = layout_nodes
-        self._data = pd.DataFrame(layout_nodes)
+        self.layout = pd.DataFrame(layout_nodes)
 
     def _on_nodelist_updated(self, nodes: MutableSequence[PreparedNode]) -> None:
         self.updates = nodes
@@ -334,10 +336,10 @@ class TransitionGraph:
         return nodes, links
 
     def _use_layout(self, position: Position) -> Position:
-        if self._data is None:
+        if self.layout is None:
             return position
         for node_name in position:
-            matched = self._data[self._data["name"] == node_name]
+            matched = self.layout[self.layout["name"] == node_name]
             if not matched.empty:
                 x = cast(float, matched["x"].item())
                 y = cast(float, matched["y"].item())
@@ -415,14 +417,14 @@ class TransitionGraph:
 
         init_graph_js = self.render.init(
             **dict(
-                server_id="'" + self.server.pk + "'",
-                env="'" + self.env + "'",
+                server_id=self.server.pk,
+                env=self.env,
                 links=self._to_json(links),
                 node_params=self._to_json(node_params),
                 nodes=self._to_json(nodes),
-                layout_dump=1 if self._data is not None else 0,
-                links_weights_names=cols,
-                node_cols_names=cols,
+                layout_dump=1 if self.layout is not None else 0,
+                links_weights_names=self._to_js_val(cols),
+                node_cols_names=self._to_js_val(cols),
                 show_weights=self._get_option("show_weights", settings),
                 show_percents=self._get_option("show_percents", settings),
                 show_nodes_names=self._get_option("show_nodes_names", settings),
@@ -430,7 +432,7 @@ class TransitionGraph:
                 show_nodes_without_links=self._get_option("show_nodes_without_links", settings),
                 nodes_threshold=self._to_js_val(norm_nodes_threshold),
                 links_threshold=self._to_js_val(norm_links_threshold),
-                weight_template="'" + weight_template + "'" if weight_template is not None else "undefined",
+                weight_template=weight_template if weight_template is not None else "undefined",
             )
         )
 
@@ -441,8 +443,8 @@ class TransitionGraph:
 
         init_graph_template = self.render.init(
             **dict(
-                server_id="'" + self.server.pk + "'",
-                env="'" + self.env + "'",
+                server_id=self.server.pk,
+                env=self.env,
                 node_params=self._to_json(node_params),
                 links="<%= links %>",
                 nodes="<%= nodes %>",
@@ -470,7 +472,7 @@ class TransitionGraph:
                         graph_body=graph_body,
                         graph_styles=graph_styles,
                         graph_script_src=graph_script_src,
-                        init_graph_js=init_graph_template,
+                        init_graph_js=init_graph_js,
                         template="",
                     )
                 ),
@@ -486,7 +488,36 @@ class TransitionGraph:
                 graph_styles=graph_styles,
                 graph_script_src=graph_script_src,
                 init_graph_js=init_graph_js,
-                template=html_template,
+                # template=html_template,
+                template="",
+            )
+        )
+        html = self.render.all_in_one(
+            **dict(
+                id=self.server.pk,
+                width=width,
+                height=height,
+                graph_body=graph_body,
+                graph_styles=graph_styles,
+                graph_script_src=graph_script_src,
+                init_graph_js=init_graph_js,
+                template="",
+                server_id=self.server.pk,
+                env=self.env,
+                links=links,
+                node_params=node_params,
+                nodes=nodes,
+                layout_dump=1 if self.layout is not None else 0,
+                links_weights_names=cols,
+                node_cols_names=cols,
+                show_weights=self._get_option("show_weights", settings),
+                show_percents=self._get_option("show_percents", settings),
+                show_nodes_names=self._get_option("show_nodes_names", settings),
+                show_all_edges_for_targets=self._get_option("show_all_edges_for_targets", settings),
+                show_nodes_without_links=self._get_option("show_nodes_without_links", settings),
+                nodes_threshold=self._to_js_val(norm_nodes_threshold),
+                links_threshold=self._to_js_val(norm_links_threshold),
+                weight_template=weight_template if weight_template is not None else "undefined",
             )
         )
 

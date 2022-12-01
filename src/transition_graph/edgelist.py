@@ -4,23 +4,30 @@ from typing import Callable, MutableMapping, MutableSequence
 
 import pandas as pd
 
-from transition_graph.typing import NormType
+from src.transition_graph.typing import NormType
 
 NormFunc = Callable[[pd.DataFrame, pd.DataFrame, pd.DataFrame], pd.Series]
 
 
 class Edgelist:
-    edgelist_norm_functions: MutableMapping[str, NormFunc]
+    edgelist_norm_functions: MutableMapping[str, NormFunc] | None
     data: pd.DataFrame
 
     def __init__(
-        self, event_col: str, time_col: str, default_weight_col: str, index_col: str, nodelist: pd.DataFrame
+        self,
+        event_col: str,
+        time_col: str,
+        default_weight_col: str,
+        index_col: str,
+        nodelist: pd.DataFrame,
+        edgelist_norm_functions: MutableMapping[str, NormFunc] | None = None,
     ) -> None:
         self.event_col = event_col
         self.time_col = time_col
         self.default_weight_col = default_weight_col
         self.nodelist = nodelist
         self.index_col = index_col
+        self.edgelist_norm_functions = edgelist_norm_functions
 
     def create_edgelist(
         self, data: pd.DataFrame, norm_type: NormType = None, custom_cols: MutableSequence[str] | None = None
@@ -59,15 +66,16 @@ class Edgelist:
 
         # @TODO: подумать над этим (legacy from private by Alexey). Vladimir Makhanov
         # apply custom norm func for event col
-        if self.default_weight_col in self.edgelist_norm_functions:
-            edgelist[self.default_weight_col] = self.edgelist_norm_functions[self.default_weight_col](
-                data, self.nodelist, edgelist
-            )
+        if self.edgelist_norm_functions is not None:
+            if self.default_weight_col in self.edgelist_norm_functions:
+                edgelist[self.default_weight_col] = self.edgelist_norm_functions[self.default_weight_col](
+                    data, self.nodelist, edgelist
+                )
 
-        if custom_cols is not None:
-            for weight_col in custom_cols:
-                if weight_col in self.edgelist_norm_functions:
-                    edgelist[weight_col] = self.edgelist_norm_functions[weight_col](data, self.nodelist, edgelist)
+            if custom_cols is not None:
+                for weight_col in custom_cols:
+                    if weight_col in self.edgelist_norm_functions:
+                        edgelist[weight_col] = self.edgelist_norm_functions[weight_col](data, self.nodelist, edgelist)
 
         self.data = edgelist
 

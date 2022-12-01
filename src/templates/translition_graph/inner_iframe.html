@@ -1,30 +1,27 @@
-<iframe id="{{ id }}" src="about:blank" width="{{ width }}" height="{{ height }}"
-        onload="window.reteLoadedIframes =  window.reteLoadedIframes || []; window.reteLoadedIframes.push({{ id }})">
+<iframe id="{{ id }}" src="about:blank" width="{{ width }}" height="{{ height }}" onload="window.reteLoadedIframes = window.reteLoadedIframes || []; window.reteLoadedIframes.push('{{ id }}')">
 </iframe>
 <script>
     (function () {
         console.log('init graph iframe')
-        const iframe = document.getElementById({{id}})
-        const iframeLoaded = window.reteLoadedIframes && window.reteLoadedIframes.includes({{id}})
+        const iframe = document.getElementById("{{ id }}")
+        const iframeLoaded = window.reteLoadedIframes && window.reteLoadedIframes.includes("{{ id }}")
         const init = () => {
             console.log('graph iframe loaded')
-            const iframeDocument = document.getElementById({{id}}).contentDocument
-            iframeDocument.body.innerHTML =
-            {{graph_body}}
+            const iframeDocument = document.getElementById("{{ id }}").contentDocument
+            iframeDocument.body.innerHTML = '{{ graph_body }}'
             const styles = iframeDocument.createElement("style")
-            styles.innerHTML =
-            {{graph_styles}}
+            styles.innerHTML = '{{ graph_styles }}'
             const graphScript = iframeDocument.createElement("script")
-            graphScript.src = {{graph_script_src}}
-                graphScript.addEventListener("load", () => {
-                    console.log('graph lib loaded')
-                    const initGraph = iframeDocument.createElement("script")
-                    initGraph.innerHTML = {{init_graph_js}}
-                        iframeDocument.body.appendChild(initGraph)
-                })
+            graphScript.src = '{{ graph_script_src }}'
+            graphScript.addEventListener("load", () => {
+                console.log('graph lib loaded')
+                const initGraph = iframeDocument.createElement("script")
+                initGraph.innerHTML = '{{ init_graph_js }}'
+                iframeDocument.body.appendChild(initGraph)
+            })
             iframeDocument.head.appendChild(styles)
             iframeDocument.head.appendChild(graphScript)
-            iframeDocument.body.dataset.templateId = '{id}_template'
+            iframeDocument.body.dataset.templateId = "{{ id }}_template"
             console.log('init graph iframe end')
         }
         console.log(`iframe loaded: ` + iframeLoaded)
@@ -34,10 +31,10 @@
         }
         iframe.onload = () => {
             init()
-            window.reteLoadedIframes.push({{id}})
+            window.reteLoadedIframes.push("{{ id }}")
         }
     })()
 </script>
-<template id="{id}_template">
-    {template}
+<template id="{{ id }}_template">
+    {{ template }}
 </template>

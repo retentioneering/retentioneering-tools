@@ -1,3 +1,5 @@
+from typing import Any
+
 from jinja2 import Environment, FileSystemLoader, Template
 
 
@@ -19,16 +21,16 @@ class TransitionGraphRenderer:
         self.__init = self.__environment.get_template("init.html")
         self.__inner_iframe = self.__environment.get_template("inner_iframe.html")
 
-    def body(self, **kwargs) -> str:
+    def body(self, **kwargs: Any) -> str:
         return self.__body_template.render(**kwargs)
 
-    def full(self, **kwargs) -> str:
+    def full(self, **kwargs: Any) -> str:
         return self.__full.render(**kwargs)
 
-    def init(self, **kwargs) -> str:
+    def init(self, **kwargs: Any) -> str:
         return self.__init.render(**kwargs)
 
-    def inner_iframe(self, **kwargs) -> str:
+    def inner_iframe(self, **kwargs: Any) -> str:
         return self.__inner_iframe.render(**kwargs)
 
     def graph_stype(self) -> str:

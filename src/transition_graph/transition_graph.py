@@ -26,7 +26,7 @@ from .typing import (
 )
 
 
-def clear_dict(d: dict):
+def clear_dict(d: dict) -> dict:
     for k, v in dict(d).items():
         if v is None:
             del d[k]
@@ -87,19 +87,20 @@ class TransitionGraph:
             time_col=self.event_time_col,
             default_weight_col=self.edgelist_default_col,
             nodelist=self.nodelist.data,
+            index_col=self.user_col,
         )
         self.edgelist.create_edgelist(norm_type=self.norm_type, custom_cols=self.custom_cols, data=self._data)
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
 
-    def _on_graph_settings_request(self, settings: GraphSettings):
+    def _on_graph_settings_request(self, settings: GraphSettings) -> None:
         self.graph_settings = settings
 
-    def _on_layout_request(self, layout_nodes: MutableSequence[LayoutNode]):
+    def _on_layout_request(self, layout_nodes: MutableSequence[LayoutNode]) -> None:
         self.graph_updates = layout_nodes
         self._data = pd.DataFrame(layout_nodes)
 
-    def _on_nodelist_updated(self, nodes: MutableSequence[PreparedNode]):
+    def _on_nodelist_updated(self, nodes: MutableSequence[PreparedNode]) -> None:
         self.updates = nodes
         # prepare data, map cols
         mapped_nodes = []
@@ -127,28 +128,7 @@ class TransitionGraph:
         self.nodelist.data.set_index("index")
         self.nodelist.data = self.nodelist.data.drop(columns=["index"])
 
-    def _get_shift(self) -> pd.DataFrame:
-
-        data = self.eventstream.to_dataframe().copy()
-        data.sort_values([self.user_col, self.id_col], inplace=True)
-        shift = data.groupby(self.user_col).shift(-1)
-
-        data["next_" + self.event_col] = shift[self.event_col]
-        data["next_" + str(self.id_col)] = shift[self.id_col]
-
-        return data
-
-    def _replace_grouped_events(self, grouped: pd.Series[Any], row):
-        event_name = row[self.event_col]
-        mathced = grouped[grouped[self.event_col] == event_name]
-
-        if len(mathced) > 0:
-            parent_node_name = mathced.iloc[0]["parent"]
-            row[self.event_col] = parent_node_name
-
-        return row
-
-    def _make_node_params(self, targets: MutableMapping[str, str] | None = None):
+    def _make_node_params(self, targets: MutableMapping[str, str] | None = None) -> MutableMapping[str, str]:
         if targets is not None:
             return targets
         else:
@@ -162,7 +142,7 @@ class TransitionGraph:
 
             return node_params
 
-    def _get_norm_link_threshold(self, links_threshold: Threshold | None = None):
+    def _get_norm_link_threshold(self, links_threshold: Threshold | None = None) -> dict[str, float]:
         nodelist_default_col = self.nodelist_default_col
         edgelist_default_col = self.edgelist_default_col
         scale = float(cast(float, self.edgelist.data[edgelist_default_col].abs().max()))
@@ -178,7 +158,7 @@ class TransitionGraph:
                     norm_links_threshold[key] = links_threshold[key] / s
         return norm_links_threshold
 
-    def _get_norm_node_threshold(self, nodes_threshold: Threshold | None = None):
+    def _get_norm_node_threshold(self, nodes_threshold: Threshold | None = None) -> Threshold:
         norm_nodes_threshold = None
         if nodes_threshold is not None:
             norm_nodes_threshold = {}
@@ -188,7 +168,7 @@ class TransitionGraph:
 
         return norm_nodes_threshold
 
-    def _calc_layout(self, edgelist: pd.DataFrame, width: int, height: int):
+    def _calc_layout(self, edgelist: pd.DataFrame, width: int, height: int) -> Position:
         G = nx.DiGraph()
         source_col = edgelist.columns[0]
         target_col = edgelist.columns[1]
@@ -225,7 +205,7 @@ class TransitionGraph:
         }
         return pos_new
 
-    def __get_nodelist_cols(self):
+    def __get_nodelist_cols(self) -> list[str]:
         default_col = self.nodelist_default_col
         custom_cols = self.eventstream.schema.custom_cols
         return list([default_col]) + list(custom_cols)
@@ -365,7 +345,7 @@ class TransitionGraph:
 
         return position
 
-    def _to_json(self, data) -> str:
+    def _to_json(self, data: Any) -> str:
         return json.dumps(data).encode("latin1").decode("utf-8")
 
     def _apply_settings(
@@ -387,7 +367,7 @@ class TransitionGraph:
 
         return clear_dict(merged)
 
-    def _to_js_val(self, val=None) -> str:
+    def _to_js_val(self, val: Any = None) -> str:
         return self._to_json(val) if val is not None else "undefined"
 
     def plot_graph(
@@ -403,7 +383,7 @@ class TransitionGraph:
         show_nodes_names: bool | None = None,
         show_all_edges_for_targets: bool | None = None,
         show_nodes_without_links: bool | None = None,
-    ):
+    ) -> None:
 
         settings = self._apply_settings(
             show_weights=show_weights,

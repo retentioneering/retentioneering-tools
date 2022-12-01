@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import math
 
 from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
 
@@ -95,5 +96,5 @@ class TestTest:
             test="ttest",
         )
         res_p_val = test_results.values()["p_val"]
-        assert (res_p_val >= 0.1354) and (res_p_val <= 0.1355)
+        assert math.isclose(res_p_val, 0.13545, abs_tol=0.0001)
         assert test_results.values()["is_group_one_greatest"]

@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from src.tooling.cohorts import Cohorts
 from tests.tooling.fixtures.cohorts import test_stream
 
+ROUND_PRECISION = 3
 
 def run_test(stream, test_prefix, **kwargs):
     c = Cohorts(eventstream=stream)
@@ -47,3 +48,19 @@ class TestCohorts:
     def test_cohorts__matrix_D1M(self, test_stream):
         with pytest.raises(ValueError):
             p = run_test(test_stream, "04_matrix_W4W", cohort_start_unit="D", cohort_period=(1, "M"), average=False)
+
+    def test_cohorts__matrix_avg(self, test_stream):
+        assert run_test(test_stream, "07_matrix_average.csv", cohort_start_unit='D',
+                 cohort_period=(21, 'D'),
+                 average=True,
+                 cut_bottom=0,
+                 cut_right=0,
+                 cut_diagonal=0)
+
+    def test_cohorts__matrix_cut(self, test_stream):
+        assert run_test(test_stream, "08_matrix_cut.csv", cohort_start_unit='D',
+                 cohort_period=(21, 'D'),
+                 average=False,
+                 cut_bottom=3,
+                 cut_right=3,
+                 cut_diagonal=0)

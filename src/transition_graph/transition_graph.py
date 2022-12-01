@@ -8,15 +8,13 @@ import pandas as pd
 from IPython.core.display import HTML
 from IPython.core.display_functions import display
 
-from backend import ServerManager
-from eventstream.types import EventstreamType
+from src.backend import ServerManager
+from src.eventstream.types import EventstreamType
 from src.templates.translition_graph import TransitionGraphRenderer
 
 from .typing import (
-    Edge,
     GraphSettings,
     LayoutNode,
-    Node,
     NodeParams,
     NormType,
     Position,
@@ -39,8 +37,6 @@ class TransitionGraph:
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
         graph_settings: GraphSettings,
-        nodes: list[Node],
-        edges: list[Edge],  # add to config
         positive_target_event: str | None = None,
         negative_target_event: str | None = None,
         source_event: str | None = None,
@@ -62,8 +58,6 @@ class TransitionGraph:
 
         self.layout: pd.DataFrame = eventstream.to_dataframe()
         self.graph_settings = graph_settings
-        self.nodes = nodes
-        self.edges = edges
 
         self.event_col = self.eventstream.schema.event_name
         self.event_time_col = self.eventstream.schema.event_timestamp
@@ -441,16 +435,11 @@ class TransitionGraph:
     def _to_js_val(self, val=None) -> str:
         return self._to_json(val) if val is not None else "undefined"
 
-    def _get_option(self, name: str, settings: dict[str, Any]) -> str:
-        if name in settings:
-            return self._to_json(settings[name])
-        return "undefined"
-
     def plot_graph(
         self,
-        nodes_threshold: Threshold,
-        links_threshold: Threshold,
-        targets: MutableMapping[str, str],
+        nodes_threshold: Threshold | None,
+        links_threshold: Threshold | None,
+        targets: MutableMapping[str, str] | None,
         width: int = 960,
         height: int = 900,
         weight_template: str | None = None,
@@ -567,3 +556,8 @@ class TransitionGraph:
         )
 
         display(HTML(html))
+
+    def _get_option(self, name: str, settings: dict[str, Any]) -> str:
+        if name in settings:
+            return self._to_json(settings[name])
+        return "undefined"

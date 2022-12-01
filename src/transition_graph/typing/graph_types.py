@@ -3,7 +3,6 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import (
     Any,
-    List,
     Literal,
     MutableMapping,
     Protocol,
@@ -12,7 +11,7 @@ from typing import (
     Union,
 )
 
-from eventstream.types import EventstreamType
+from src.eventstream.types import EventstreamType
 
 
 class Degree(TypedDict):
@@ -50,14 +49,6 @@ class TransitionGraphPlotProtocol(Protocol):
 AllowedColors = Literal["red", "green", "yellow", "blue", "magenta", "cyan"]
 
 
-class Node:
-    pass
-
-
-class Edge:
-    pass
-
-
 class TransitionGraphProtocol(Protocol):
     graph_template: str = ""
 
@@ -67,8 +58,6 @@ class TransitionGraphProtocol(Protocol):
         eventstream: EventstreamType,
         # graph: dict,  # preprocessed graph
         plot_params: PlotParamsType | None,
-        nodes: List[Node],
-        edges: List[Edge],
     ) -> None:
         ...
 

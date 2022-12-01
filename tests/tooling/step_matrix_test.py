@@ -66,7 +66,7 @@ class TestStepMatrix:
         )
         assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__simple_cantered_and_target(self, stream_simple):
+    def test_step_matrix__simple_centered_and_target(self, stream_simple):
         sm = StepMatrix(
             eventstream=stream_simple,
             max_steps=5,

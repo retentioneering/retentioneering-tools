@@ -86,13 +86,7 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         funnel = Funnel(eventstream=source, stages=["catalog", ["product1", "product2"], "cart", "payment_done"])
         funnel.fit()
@@ -180,13 +174,7 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         funnel = Funnel(
             eventstream=source,
@@ -279,13 +267,7 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         funnel = Funnel(
             eventstream=source,
@@ -377,13 +359,7 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         funnel = Funnel(
             eventstream=source,
@@ -478,13 +454,7 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
         conv_users = [1, 2, 3, 7]
         non_conv_users = [4, 5, 6, 8]
 
@@ -581,13 +551,7 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         conv_users = [1, 2, 3, 7]
         non_conv_users = [4, 5, 6, 8]
@@ -631,12 +595,6 @@ class TestFunnel:
                 columns=["user_id", "event", "event_type", "timestamp"],
             )
 
-            source = Eventstream(
-                raw_data=source_df,
-                raw_data_schema=RawDataSchema(
-                    event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-                ),
-                schema=EventstreamSchema(),
-            )
+            source = Eventstream(source_df)
 
             p = Funnel(eventstream=source, stages=["catalog", "cart", "payment_done"], funnel_type="check_me")

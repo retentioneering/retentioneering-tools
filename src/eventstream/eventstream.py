@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from src.constants import DATETIME_UNITS
-from src.eventstream.schema import EventstreamSchema
+from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.clusters import Clusters
 from src.tooling.cohorts import Cohorts
@@ -101,8 +101,8 @@ class Eventstream(
 
     def __init__(
         self,
-        raw_data_schema: RawDataSchemaType,
         raw_data: pd.DataFrame | pd.Series[Any],
+        raw_data_schema: RawDataSchemaType | None = None,
         schema: EventstreamSchema | None = None,
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
@@ -112,6 +112,12 @@ class Eventstream(
         self.__funnel = None
         self.schema = schema if schema else EventstreamSchema()
 
+        if not raw_data_schema:
+            raw_data_schema = RawDataSchema()
+            if "event_type" in raw_data.columns:
+                raw_data_schema.event_type = "event_type"
+        self.__raw_data_schema = raw_data_schema
+
         if not index_order:
             self.index_order = DEFAULT_INDEX_ORDER
         else:
@@ -120,7 +126,6 @@ class Eventstream(
             self.relations = []
         else:
             self.relations = relations
-        self.__raw_data_schema = raw_data_schema
         self.__events = self.__prepare_events(raw_data) if prepare else raw_data
         self.index_events()
 

@@ -43,7 +43,7 @@ class StepMatrix:
         Number of decimal digits after 0 to show as fractions in the heatmap.
     thresh: float (optional, default 0)
         Used to remove rare events. Aggregates all rows where all values are
-        less then specified threshold.
+        less than specified threshold.
     targets: list (optional, default None)
         List of events names (as str) to include in the bottom of
         step_matrix as individual rows. Each specified target will have
@@ -292,9 +292,9 @@ class StepMatrix:
     def _render_plot(
         self,
         data: pd.DataFrame,
-        fraction_title: str | None,
         targets: pd.DataFrame | None,
         targets_list: list[list[str]] | None,
+        fraction_title: str | None,
     ) -> matplotlib.axes.Axes:
         n_rows = 1 + (len(targets_list) if targets_list else 0)
         n_cols = 1
@@ -338,8 +338,8 @@ class StepMatrix:
                     ax=axs[1 + n],
                     cmap=next(target_cmaps),
                     center=0,
-                    vmin=min(itertools.chain(targets.loc[i])),
-                    vmax=max(itertools.chain(targets.loc[i])) or 1,
+                    vmin=targets.loc[i].values.min(),
+                    vmax=targets.loc[i].values.max() or 1,
                     cbar=False,
                 )
 
@@ -425,10 +425,10 @@ class StepMatrix:
 
             piv = piv.loc[self.sorting]
 
-        if self.centered and piv_targets:
+        if self.centered:
             window = self.centered.left_gap
             piv.columns = [f"{int(i) - window - 1}" for i in piv.columns]  # type: ignore
-            if self.targets:
+            if self.targets and piv_targets is not None:
                 piv_targets.columns = [f"{int(i) - window - 1}" for i in piv_targets.columns]  # type: ignore
 
         self.result_data = piv
@@ -437,7 +437,7 @@ class StepMatrix:
         self.targets_list = targets_plot
 
     def plot(self) -> sns.heatmap:
-        return self._render_plot(self.result_data, self.fraction_title, self.result_targets, self.targets_list)
+        return self._render_plot(self.result_data, self.result_targets, self.targets_list, self.fraction_title)
 
     @property
     def values(self) -> tuple[pd.DataFrame, pd.DataFrame | None]:

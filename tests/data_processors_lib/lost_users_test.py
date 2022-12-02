@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from src.data_processors_lib.rete import LostUsersEvents, LostUsersParams
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
@@ -44,7 +44,7 @@ class TestLostUsers(ApplyTestBase):
                 [1, "absent_user", "absent_user", "2022-01-01 00:05:00"],
                 [2, "lost_user", "lost_user", "2022-01-02 00:00:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -60,7 +60,7 @@ class TestLostUsers(ApplyTestBase):
                 [1, "lost_user", "lost_user", "2022-01-01 00:05:00"],
                 [2, "absent_user", "absent_user", "2022-01-02 00:00:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -112,7 +112,7 @@ class TestLostUsersGraph(GraphTestBase):
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
                 [2, "lost_user", "lost_user", "2022-01-02 00:00:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -137,7 +137,7 @@ class TestLostUsersGraph(GraphTestBase):
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
                 [2, "absent_user", "absent_user", "2022-01-02 00:00:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
 
         assert actual[expected.columns].compare(expected).shape == (0, 0)
@@ -159,14 +159,9 @@ class TestLostUsersHelper:
             ],
             columns=["user_id", "event", "timestamp"],
         )
+        source = Eventstream(source_df)
 
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
-
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -204,14 +199,9 @@ class TestLostUsersHelper:
             ],
             columns=["user_id", "event", "timestamp"],
         )
+        source = Eventstream(source_df)
 
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
-
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],

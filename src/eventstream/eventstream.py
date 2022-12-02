@@ -403,7 +403,7 @@ class Eventstream(
             if create:
                 return np.nan
             else:
-                raise ValueError(f'invald raw data. Column "{colname}" does not exists!')
+                raise ValueError(f'invalid raw data. Column "{colname}" does not exists!')
 
     def __get_event_priority(self, event_type: Optional[str]) -> int:
         if event_type in self.index_order:
@@ -419,7 +419,10 @@ class Eventstream(
         segment_names: list[str] | None = None,
         sequence: bool = False,
     ) -> Funnel:
+        """
+        See :py:func:`src.tooling.funnel.funnel`
 
+        """
         self.__funnel = Funnel(
             eventstream=self,
             stages=stages,
@@ -434,6 +437,10 @@ class Eventstream(
 
     @property
     def clusters(self) -> Clusters:
+        """
+        See :py:func:`src.tooling.clusters.clusters`
+
+        """
         if self.__clusters is None:
             self.__clusters = Clusters(eventstream=self, user_clusters=None)
         return self.__clusters
@@ -450,6 +457,10 @@ class Eventstream(
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
     ) -> matplotlib.figure.Figure:
+        """
+        See :py:func:`src.tooling.step_matrix.step_matrix`
+
+        """
         return StepMatrix(
             eventstream=self,
             max_steps=max_steps,
@@ -473,6 +484,10 @@ class Eventstream(
         width: int | None = None,
         height: int | None = None,
     ) -> go.Figure:
+        """
+        See :py:func:`src.tooling.step_sankey.step_sankey`
+
+        """
         return Sankey(
             eventstream=self,
             max_steps=max_steps,

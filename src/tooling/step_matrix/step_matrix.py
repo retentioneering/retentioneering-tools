@@ -26,8 +26,6 @@ class CenteredParams:
 
 
 class StepMatrix:
-    __eventstream: EventstreamType
-
     """
     Plots heatmap with distribution of users over trajectory steps ordered by
     event name. Matrix rows are event names, columns are aligned user trajectory
@@ -35,18 +33,18 @@ class StepMatrix:
     and event j means at i'th step fraction of users X  have specific event j.
     Parameters
     ----------
-    max_steps: int (optional, default 20)
+    max_steps : int, default=20
         Maximum number of steps in trajectories to include.
-    weight_col: str (optional, default None)
+    weight_col : str, optional
         Aggregation column for edge weighting. If None, specified index_col
         from retentioneering.config will be used as column name. For example,
         can be specified as `session_id` if dataframe has such column.
-    precision: int (optional, default 2)
+    precision : int, default=2
         Number of decimal digits after 0 to show as fractions in the heatmap.
-    thresh: float (optional, default 0)
+    thresh : float, default=0
         Used to remove rare events. Aggregates all rows where all values are
-        less then specified threshold.
-    targets: list (optional, default None)
+        less than specified threshold.
+    targets : list, optional
         List of events names (as str) to include in the bottom of
         step_matrix as individual rows. Each specified target will have
         separate color-coding space for clear visualization. Example:
@@ -54,27 +52,27 @@ class StepMatrix:
         be compared and plotted using same color-coding scale, such targets
         must be combined in sub-list.
         Examples: ['product_page', ['cart', 'payment']]
-    accumulated: string (optional, default None)
+    accumulated : str, optional
         Option to include accumulated values for targets. Valid values are
         None (do not show accumulated tartes), 'both' (show step values and
         accumulated values), 'only' (show targets only as accumulated).
-    centered: dict (optional, default None)
+    centered : dict, optional
         Parameter used to align user trajectories at specific event at specific
         step. Has to contain three keys:
-            'event': str, name of event to align
-            'left_gap': int, number of events to include before specified event
-            'occurrence': int which occurrence of event to align (typical 1)
+            ``event``: str, name of event to align
+            ``left_gap``: int, number of events to include before specified event
+            ``occurrence`` : int which occurrence of event to align (typical 1)
         When this parameter is not None only users which have specified i'th
         'occurrence' of selected event preset in their trajectories will
         be included. Fraction of such remaining users is specified in the title of
         centered step_matrix. Example:
         {'event': 'cart', 'left_gap': 8, 'occurrence': 1}
-    sorting: list (optional, default None)
+    sorting : list, optional
         List of events_names (as string) can be passed to plot step_matrix with
         specified ordering of events. If None rows will be ordered according
         to i`th value (first row, where 1st element is max, second row, where
         second element is max, etc)
-    groups: tuple (optional, default None)
+    groups : tuple, optional
         Can be specified to plot step differential step_matrix. Must contain
         tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
         of user_id`s (list, tuple or set). Two separate step_matrices M1 and M2
@@ -85,12 +83,13 @@ class StepMatrix:
 
     Returns
     -------
-    Dataframe with max_steps number of columns and len(event_col.unique)
-    number of rows at max, or less if used thr > 0.
-    Return type
-    -----------
     pd.DataFrame
+        Matrix with max_steps number of columns and len(event_col.unique)
+        number of rows at max, or less if used thr > 0.
+
     """
+
+    __eventstream: EventstreamType
 
     def __init__(
         self,

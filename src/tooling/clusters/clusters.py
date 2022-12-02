@@ -29,12 +29,13 @@ class Clusters:
     """
     Class gathers tools for cluster analysis.
 
-    Attributes
+    Parameters
     ----------
-    eventstream: EventstreamType
-    user_clusters: dict[str | int, list[int]] | None = None
-        If ```dict``` Clusters can work with results of external clustering.
-        If ```None``` with the method ```create_clusters``` :py:func:`src.tooling.clusters.clusters.create_clusters`
+    eventstream : EventstreamType
+    user_clusters : dict[str | int, list[int]] | None = None
+        - If ``dict`` Clusters can work with results of external clustering.
+        - If ``None`` with the method :py:func:`create_clusters`
+
     """
 
     __eventstream: EventstreamType
@@ -58,7 +59,6 @@ class Clusters:
 
         Parameters
         ----------
-
         feature_type : {"tfidf", "count", "frequency", "binary", "markov"}, default="tfidf"
 
             - ``tfidf`` see details in :sklearn_tfidf:`sklearn documentation<>`
@@ -91,7 +91,30 @@ class Clusters:
         refit_cluster: bool = True,
         targets: list[str] | None = None,
         vector: pd.DataFrame | None = None,
-    ):
+    ) -> sns.barplot:
+        """
+
+        Plots bar charts with cluster sizes.
+
+        Parameters
+        ----------
+        feature_type : {"tfidf", "count", "frequency", "binary", "markov"}, default="tfidf"
+            See :py:func:`extract_features`
+        ngram_range : Tuple(int, int), default=(1, 1)
+            See :py:func:`extract_features`
+        n_clusters : int, default=8
+        method : {"kmeans", "gmm"}, default="kmeans"
+            Clustarisation algorithm
+        refit_cluster : bool, default=True
+        targets : list[str], optional
+        vector : pd.DataFrame, optional
+
+        Returns
+        -------
+        sns.barplot
+
+        """
+
         if self._user_clusters:
             targets_bool = [[True] * x for x in [len(y) for y in self._user_clusters.values()]]
             target_names: list[str] = list(map(str, list(self._user_clusters.keys())))
@@ -131,13 +154,27 @@ class Clusters:
             readable_data[cluster].append(row_num)
         return readable_data
 
-    def narrow_eventstream(self, cluster: int | str) -> EventstreamType:
+    def filter_clusters(self, cluster_id: int | str) -> EventstreamType:
+        """
+        Filters eventstream against one or several clusters.
+
+        Parameters
+        ----------
+        cluster_id : int or str
+            Cluster ID or list of cluster IDs for filtering.
+
+        Returns
+        -------
+        EventstreamType
+            Filtered eventstream with users from specified clusters.
+
+        """
         from src.eventstream.eventstream import Eventstream
 
         eventstream: Eventstream = self.__eventstream  # type: ignore
         cluster_events = []
         if self._user_clusters:
-            cluster_events = self._user_clusters[cluster]
+            cluster_events = self._user_clusters[cluster_id]
         else:
             pass
         df = self.__eventstream.to_dataframe()
@@ -157,38 +194,37 @@ class Clusters:
         feature_type: FeatureType = "tfidf",
         plot_type=None,
         **kwargs,
-    ):
+    ) -> pd.DataFrame:
         """
         Does dimension reduction of user trajectories and draws projection plane.
 
         Parameters
         ----------
-        method: {'umap', 'tsne'} (optional, default 'tsne')
+        method : {'umap', 'tsne'} (optional, default 'tsne')
             Type of manifold transformation.
-        plot_type: {'targets', 'clusters', None} (optional, default None)
-            Type of color-coding used for projection visualization:
-                - 'clusters': colors trajectories with different colors depending on cluster number.
-                IMPORTANT: must do .rete.get_clusters() before to obtain cluster mapping.
-                - 'targets': color trajectories based on reach to any event provided in 'targets' parameter.
-                Must provide 'targets' parameter in this case.
-            If None, then only calculates TSNE without visualization.
-        targets: list or tuple of str (optional, default  ())
+        targets : list or tuple of str (optional, default  ())
             Vector of event_names as str. If user reach any of the specified events, the dot corresponding
             to this user will be highlighted as converted on the resulting projection plot
-        feature_type: str, (optional, default 'tfidf')
-            Type of vectorizer to use before dimension-reduction. Available vectorization methods:
-            {'tfidf', 'count', 'binary', 'frequency', 'markov'}
-        ngram_range: tuple, (optional, default (1,1))
+        ngram_range : tuple, (optional, default (1,1))
             The lower and upper boundaries of the range of n-values for different
             word n-grams or char n-grams to be extracted before dimension-reduction.
             For example ngram_range=(1, 1) means only single events, (1, 2) means single events
             and bigrams. Doesn't work for ``markov`` feature_type.
+        feature_type : {'tfidf', 'count', 'binary', 'frequency', 'markov'}, default='tfidf'
+            Type of vectorizer to use before dimension-reduction. Available vectorization methods:
+        plot_type : {'targets', 'clusters', None} (optional, default None)
+            Type of color-coding used for projection visualization:
+
+            - ``clusters`` colors trajectories with different colors depending on cluster number.
+            - | ``targets`` colors trajectories based on reach to any event provided in 'targets' parameter.
+              | Must provide ``targets`` parameter in this case.
+            - If ``None``, then only calculates TSNE without visualization.
+        **kwargs :
+
         Returns
         --------
-        Dataframe with data in the low-dimensional space for user trajectories indexed by user IDs.
-        Return type
-        --------
-        pd.DataFrame
+        pd.Dataframe, numpy.ndarray
+            Values and plot in the low-dimensional space for user trajectories indexed by user IDs.
         """
 
         if targets is None:
@@ -275,6 +311,7 @@ class Clusters:
     def _learn_tsne(self, data, **kwargs):
         """
         Calculates TSNE transformation for given matrix features.
+
         Parameters
         --------
         data: np.array
@@ -453,6 +490,7 @@ class Clusters:
     def _cluster_bar(self, clusters: ndarray, target: list[list[bool]], target_names: list[str]):
         """
         Plots bar charts with cluster sizes and average target conversion rate.
+
         Parameters
         ----------
         data : pd.DataFrame
@@ -468,8 +506,7 @@ class Clusters:
         Returns
         -------
         Saves plot to ``retention_config.experiments_folder``
-        Return type
-        -------
+
         PNG
         """
         cl = pd.DataFrame([clusters, *target], index=["clusters", *target_names]).T

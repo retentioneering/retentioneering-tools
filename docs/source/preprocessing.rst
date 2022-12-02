@@ -1,9 +1,10 @@
 
 Preprocessing
-======================================
+=============
 
 Eventstream
-----------------
+-----------
+
 start_end_events
 ~~~~~~~~~~~~~~~~
 .. automodule::
@@ -20,24 +21,24 @@ lost_users
     :members:
 
 truncated_events
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 .. automodule::
     :members:
 
 positive_target
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 .. automodule::
     :members:
     :private-members:
 
 negative_target
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 .. automodule::
     :members:
     :private-members:
 
 split_sessions
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 .. automodule::
     :members:
 
@@ -67,7 +68,7 @@ delete_users_by_path_length
     :members:
 
 
-Dataprocessors
+Data processors
 --------------
 start_end_events
 ~~~~~~~~~~~~~~~~

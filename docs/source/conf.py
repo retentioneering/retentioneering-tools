@@ -56,8 +56,8 @@ extensions = [
 numpydoc_show_inherited_class_members = False
 numpydoc_class_members_toctree = False
 numpydoc_show_class_members = False
-html_theme = "sphinx_rtd_theme"
-# html_theme = "pydata_sphinx_theme"
+# html_theme = "sphinx_rtd_theme"
+html_theme = "pydata_sphinx_theme"
 
 html_logo = "rete_logo.png"
 html_theme_options = {

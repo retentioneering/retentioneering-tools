@@ -14,9 +14,8 @@ class Funnel:
     """
     Plots conversion funnel with specified parameters.
 
-    Attributes
+    Parameters
     ----------
-    eventstream: EventstreamType
     stages: list of str
         List of events used as stages for the funnel. Absolute and relative
         number of users who reached specified events at least once will be
@@ -40,7 +39,8 @@ class Funnel:
 
     See Also
     --------
-    :py:func:`src.eventstream.funnel`
+    :py:func:`src.eventstream.eventstream.funnel`
+    :py:func:`src.tooling.clusters.clusters`
 
     """
 

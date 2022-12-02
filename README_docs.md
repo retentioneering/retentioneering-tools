@@ -7,12 +7,10 @@
 ### Cтруктура:
 
 ```
-"""
-Parameters
-----------
-
+def func(param1, param2):
 """
     Краткое описание, что делает класс/функция.
+    Должно идти сразу после кода без пропуска строчки. Иначе не спарсится.
 
     Parameters
     ----------
@@ -22,6 +20,10 @@ Parameters
 
         - point 1
         - point 2
+
+        Multiline bullet list:
+        - | poin 1 текст
+          | текст на 2 строке
 
     param2 : type, default="group_alias"
 

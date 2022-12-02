@@ -10,13 +10,13 @@
             const iframeDocument = document.getElementById("{{ id }}").contentDocument
             iframeDocument.body.innerHTML = '{{ graph_body }}'
             const styles = iframeDocument.createElement("style")
-            styles.innerHTML = '{{ graph_styles }}'
+            styles.innerHTML = `{{ graph_styles }}`
             const graphScript = iframeDocument.createElement("script")
-            graphScript.src = '{{ graph_script_src }}'
+            graphScript.src = `{{ graph_script_src }}`
             graphScript.addEventListener("load", () => {
                 console.log('graph lib loaded')
                 const initGraph = iframeDocument.createElement("script")
-                initGraph.innerHTML = '{{ init_graph_js }}'
+                initGraph.innerHTML = `{{ init_graph_js }}`
                 iframeDocument.body.appendChild(initGraph)
             })
             iframeDocument.head.appendChild(styles)

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import random
+import string
 from typing import Any, MutableMapping, MutableSequence, cast
 
 import networkx as nx
@@ -372,6 +374,10 @@ class TransitionGraph:
     def _to_js_val(self, val: Any = None) -> str:
         return self._to_json(val) if val is not None else "undefined"
 
+    @staticmethod
+    def generateId(size: int = 6, chars: str = string.ascii_uppercase + string.digits) -> str:
+        return "el" + "".join(random.choice(chars) for _ in range(size))
+
     def plot_graph(
         self,
         nodes_threshold: Threshold | None,
@@ -420,11 +426,11 @@ class TransitionGraph:
                 server_id=self.server.pk,
                 env=self.env,
                 links=self._to_json(links),
-                node_params=self._to_json(node_params),
                 nodes=self._to_json(nodes),
+                node_params=self._to_json(node_params),
                 layout_dump=1 if self.layout is not None else 0,
-                links_weights_names=self._to_js_val(cols),
-                node_cols_names=self._to_js_val(cols),
+                links_weights_names=cols,
+                node_cols_names=cols,
                 show_weights=self._get_option("show_weights", settings),
                 show_percents=self._get_option("show_percents", settings),
                 show_nodes_names=self._get_option("show_nodes_names", settings),
@@ -436,7 +442,7 @@ class TransitionGraph:
             )
         )
 
-        graph_styles = self.render.graph_stype()
+        graph_styles = self.render.graph_style()
         graph_body = self.render.body()
 
         graph_script_src = "https://static.server.retentioneering.com/viztools/graph/rete-graph.js"
@@ -466,13 +472,13 @@ class TransitionGraph:
             **dict(
                 content=self.render.inner_iframe(
                     **dict(
-                        id=self.server.pk,
+                        id=self.generateId(),
                         width=width,
                         height=height,
                         graph_body=graph_body,
                         graph_styles=graph_styles,
                         graph_script_src=graph_script_src,
-                        init_graph_js=init_graph_js,
+                        init_graph_js=init_graph_template,
                         template="",
                     )
                 ),
@@ -481,43 +487,14 @@ class TransitionGraph:
 
         html = self.render.inner_iframe(
             **dict(
-                id=self.server.pk,
+                id=self.generateId(),
                 width=width,
                 height=height,
                 graph_body=graph_body,
                 graph_styles=graph_styles,
                 graph_script_src=graph_script_src,
                 init_graph_js=init_graph_js,
-                # template=html_template,
-                template="",
-            )
-        )
-        html = self.render.all_in_one(
-            **dict(
-                id=self.server.pk,
-                width=width,
-                height=height,
-                graph_body=graph_body,
-                graph_styles=graph_styles,
-                graph_script_src=graph_script_src,
-                init_graph_js=init_graph_js,
-                template="",
-                server_id=self.server.pk,
-                env=self.env,
-                links=links,
-                node_params=node_params,
-                nodes=nodes,
-                layout_dump=1 if self.layout is not None else 0,
-                links_weights_names=cols,
-                node_cols_names=cols,
-                show_weights=self._get_option("show_weights", settings),
-                show_percents=self._get_option("show_percents", settings),
-                show_nodes_names=self._get_option("show_nodes_names", settings),
-                show_all_edges_for_targets=self._get_option("show_all_edges_for_targets", settings),
-                show_nodes_without_links=self._get_option("show_nodes_without_links", settings),
-                nodes_threshold=self._to_js_val(norm_nodes_threshold),
-                links_threshold=self._to_js_val(norm_links_threshold),
-                weight_template=weight_template if weight_template is not None else "undefined",
+                template=html_template,
             )
         )
 

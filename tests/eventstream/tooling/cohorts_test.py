@@ -13,7 +13,7 @@ FLOAT_PRECISION = 2
 def correct_res_test(test_prefix):
 
     current_dir = os.path.dirname(os.path.realpath(__file__))
-    test_data_dir = os.path.join(current_dir, "../../datasets/tooling/cohorts")
+    test_data_dir = os.path.join(current_dir, "../../datasets/eventstream/tooling/cohorts")
     correct_res_df = pd.read_csv(os.path.join(test_data_dir, f"{test_prefix}.csv"))
     correct_res_df.columns.name = "CohortPeriod"
     correct_res_df.drop(columns="CohortPeriod", inplace=True)

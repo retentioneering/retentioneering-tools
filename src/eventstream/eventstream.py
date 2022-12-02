@@ -16,7 +16,7 @@ from src.tooling.clusters import Clusters
 from src.tooling.cohorts import Cohorts
 from src.tooling.funnel import Funnel
 from src.tooling.sankey import Sankey
-from src.tooling.stattests import TEST_NAMES, Stattests
+from src.tooling.stattests import TEST_NAMES, StatTests
 from src.tooling.step_matrix import StepMatrix
 from src.utils import get_merged_col
 from src.utils.list import find_index
@@ -98,7 +98,7 @@ class Eventstream(
     __clusters: Clusters | None = None
     __funnel: Funnel | None = None
     __cohorts: Cohorts | None = None
-    __stattests: Stattests | None = None
+    __stattests: StatTests | None = None
 
     def __init__(
         self,
@@ -471,12 +471,12 @@ class Eventstream(
         self,
         test: TEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
-        function: Callable = lambda x: x.shape[0],
+        objective: Callable = lambda x: x.shape[0],
         group_names: Tuple[str, str] = ("group_1", "group_2"),
         alpha: float = 0.05,
-    ) -> Stattests:
-        self.__stattests = Stattests(
-            eventstream=self, groups=groups, function=function, test=test, group_names=group_names, alpha=alpha
+    ) -> StatTests:
+        self.__stattests = StatTests(
+            eventstream=self, groups=groups, objective=objective, test=test, group_names=group_names, alpha=alpha
         )
         self.__stattests.fit()
         return self.__stattests

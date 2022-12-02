@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime
 from typing import Callable, Tuple
 
 import numpy as np
 import pandas as pd
-
-# from .plot_utils import __save_plot__
 import plotly.graph_objects as go
 import seaborn as sns
 from scipy.stats import chi2_contingency, fisher_exact, ks_2samp, mannwhitneyu
@@ -19,7 +16,7 @@ from src.eventstream.types import EventstreamType
 from src.tooling.stattests.constants import TEST_NAMES
 
 
-class Stattests:
+class StatTests:
     """
     Tests selected metric between two groups of users.
     Parameters
@@ -27,7 +24,7 @@ class Stattests:
     groups: tuple (optional, default None)
         Must contain tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
         of user_id`s (list, tuple or set).
-    function: function(x) -> number
+    objective: function(x) -> number
         Selected metrics. Must contain a function which takes as an argument dataset for
         single user trajectory and returns a single numerical value.
     group_names: tuple (optional, default: ('group_1', 'group_2'))
@@ -52,7 +49,7 @@ class Stattests:
         eventstream: EventstreamType,
         test: TEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
-        function: Callable = lambda x: x.shape[0],
+        objective: Callable = lambda x: x.shape[0],
         group_names: Tuple[str, str] = ("group_1", "group_2"),
         alpha: float = 0.05,
     ) -> None:
@@ -61,14 +58,19 @@ class Stattests:
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
         self.groups = groups
-        self.function = function
+        self.objective = objective
         self.test = test
         self.group_names = group_names
         self.alpha = alpha
+        self.g1_data: list[str | int] = list()
+        self.g2_data: list[str | int] = list()
+        self.p_val, self.power, self.label_min, self.label_max = 0.0, 0.0, "", ""
+        self.is_fitted = False
 
     def fit(self) -> None:
         self.g1_data, self.g2_data = self._get_group_values()
         self.p_val, self.power, self.label_min, self.label_max = self._get_sorted_test_results()
+        self.is_fitted = True
 
     def _get_group_values(self) -> Tuple[list, list]:
         data = self.__eventstream.to_dataframe()
@@ -77,11 +79,11 @@ class Stattests:
         g2 = data[data[self.user_col].isin(self.groups[1])].copy()
 
         # obtain two distributions:
-        g1_data = list(g1.groupby(self.user_col).apply(self.function).dropna().astype(float).values)
-        g2_data = list(g2.groupby(self.user_col).apply(self.function).dropna().astype(float).values)
+        g1_data = list(g1.groupby(self.user_col).apply(self.objective).dropna().astype(float).values)
+        g2_data = list(g2.groupby(self.user_col).apply(self.objective).dropna().astype(float).values)
         return g1_data, g2_data
 
-    def _get_test_results(self, data_max: list = [], data_min: list = []) -> Tuple[float, float]:
+    def _get_test_results(self, data_max: list, data_min: list) -> Tuple[float, float]:
         # calculate effect size
         if max(data_max) <= 1 and min(data_max) >= 0 and max(data_min) <= 1 and min(data_min) >= 0:
             # if analyze proportions use Cohen's h:
@@ -118,7 +120,7 @@ class Stattests:
 
         return p_val, power
 
-    def _get_freq_table(self, a: list = [], b: list = []) -> list:
+    def _get_freq_table(self, a: list, b: list) -> list:
         labels = ["A"] * len(a) + ["B"] * len(b)
         values = np.concatenate([a, b])
         return crosstab(labels, values)[1]
@@ -139,7 +141,7 @@ class Stattests:
         return p_val, power, label_max, label_min
 
     # function to calculate Cohen's d:
-    def _cohend(self, d1: list = [], d2: list = []) -> float:
+    def _cohend(self, d1: list, d2: list) -> float:
         n1, n2 = len(d1), len(d2)
         s1, s2 = np.var(d1, ddof=1), np.var(d2, ddof=1)
         s = float(math.sqrt(((n1 - 1) * s1 + (n2 - 1) * s2) / (n1 + n2 - 2)))
@@ -147,7 +149,7 @@ class Stattests:
         return (u1 - u2) / s
 
     # function to calculate Cohen's h:
-    def _cohenh(self, d1: list = [], d2: list = []) -> float:
+    def _cohenh(self, d1: list, d2: list) -> float:
         u1, u2 = np.mean(d1), np.mean(d2)
         return 2 * (math.asin(math.sqrt(u1)) - math.asin(math.sqrt(u2)))
 
@@ -157,12 +159,12 @@ class Stattests:
         combined_stats = pd.concat([data1, data2]).reset_index()
         compare_plot = sns.displot(data=combined_stats, x="data", hue="groups", multiple="dodge")
         compare_plot.set(xlabel=None)
-        plot_name = "test_groups_plot_{}".format(datetime.now()).replace(":", "_").replace(".", "_") + ".svg"
-        return compare_plot, plot_name
+        return compare_plot
 
     def values(
         self,
     ) -> dict:
+        assert self.is_fitted
         res_dict = {
             "group_one_name": "group_1",
             "group_one_size": 0,

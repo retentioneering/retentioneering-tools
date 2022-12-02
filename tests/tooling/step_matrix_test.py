@@ -66,6 +66,27 @@ class TestStepMatrix:
         )
         assert result.compare(correct_result).shape == (0, 0)
 
+    def test_step_matrix__simple_centered_and_target(self, stream_simple):
+        sm = StepMatrix(
+            eventstream=stream_simple,
+            max_steps=5,
+            centered={"event": "event2", "left_gap": 2, "occurrence": 1},
+            targets=["event2"],
+        )
+        result, targets_result, _, _ = sm._get_plot_data()
+        result = pd.concat([result, targets_result])
+
+        correct_result = pd.DataFrame(
+            [
+                [0.0, 1.0, 0.0, 0.5, 0.5],
+                [0.0, 0.0, 1.0, 0.5, 0.0],
+                [0.0, 0.0, 1.0, 0.5, 0.0],
+            ],
+            index=["event1", "event2", "event2"],
+            columns=["-2", "-1", "0", "1", "2"],
+        )
+        assert result.compare(correct_result).shape == (0, 0)
+
     def test_step_matrix__basic(self, stream_simple_shop):
         assert run_test(stream_simple_shop, "01_basic.csv")
 

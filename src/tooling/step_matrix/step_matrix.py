@@ -31,55 +31,67 @@ class StepMatrix:
     event name. Matrix rows are event names, columns are aligned user trajectory
     step numbers and the values are shares of users. A given entry X at column i
     and event j means at i'th step fraction of users X  have specific event j.
+
     Parameters
     ----------
     max_steps : int, default=20
-        Maximum number of steps in trajectories to include.
+        Maximum number of steps in ``user path`` to include.
     weight_col : str, optional
-        Aggregation column for edge weighting. If None, specified index_col
-        from retentioneering.config will be used as column name. For example,
-        can be specified as `session_id` if dataframe has such column.
+        Aggregation column for edge weighting. If ``None``, specified ``user_id``
+        from ``eventstream.schema`` will be used. For example, can be specified as
+        ``session_id`` if ``eventstream`` has such ``custom_col``.
     precision : int, default=2
-        Number of decimal digits after 0 to show as fractions in the heatmap.
+        Number of decimal digits after 0 to show as fractions in the ``heatmap``.
+    targets : list of str or str, optional
+        List of event names to include in the bottom of ``step_matrix`` as individual rows.
+        Each specified target will have separate color-coding space for clear visualization.
+        `Example: ['product_page', 'cart', 'payment']`
+
+        If multiple targets need to be compared and plotted using same color-coding scale,
+        such targets must be combined in sub-list.
+        `Examples: ['product_page', ['cart', 'payment']]`
+    accumulated : {"both", "only"}, optional
+        Option to include accumulated values for targets.
+
+        - If ``None`` accumulated tartes  do not show.
+        - If ``both`` show step values and accumulated values.
+        - If ``only`` show targets only as accumulated.
+    sorting : list of str, optional
+        - | If list of event names specified - lines in the heatmap will be shown in
+          | passed order.
+        - If ``None`` - rows will be ordered according to i`th value (first row,
+         where 1st element is max, second row, where second element is max, etc)
     thresh : float, default=0
         Used to remove rare events. Aggregates all rows where all values are
         less than specified threshold.
-    targets : list, optional
-        List of events names (as str) to include in the bottom of
-        step_matrix as individual rows. Each specified target will have
-        separate color-coding space for clear visualization. Example:
-        ['product_page', 'cart', 'payment']. If multiple targets need to
-        be compared and plotted using same color-coding scale, such targets
-        must be combined in sub-list.
-        Examples: ['product_page', ['cart', 'payment']]
-    accumulated : str, optional
-        Option to include accumulated values for targets. Valid values are
-        None (do not show accumulated tartes), 'both' (show step values and
-        accumulated values), 'only' (show targets only as accumulated).
     centered : dict, optional
-        Parameter used to align user trajectories at specific event at specific
-        step. Has to contain three keys:
-            ``event``: str, name of event to align
-            ``left_gap``: int, number of events to include before specified event
-            ``occurrence`` : int which occurrence of event to align (typical 1)
-        When this parameter is not None only users which have specified i'th
-        'occurrence' of selected event preset in their trajectories will
-        be included. Fraction of such remaining users is specified in the title of
-        centered step_matrix. Example:
-        {'event': 'cart', 'left_gap': 8, 'occurrence': 1}
-    sorting : list, optional
-        List of events_names (as string) can be passed to plot step_matrix with
-        specified ordering of events. If None rows will be ordered according
-        to i`th value (first row, where 1st element is max, second row, where
-        second element is max, etc)
-    groups : tuple, optional
-        Can be specified to plot step differential step_matrix. Must contain
+        Parameter used to align user paths at specific event at specific step.
+        Has to contain three keys:
+            - ``event``: str, name of event to align
+            - ``left_gap``: int, number of events to include before specified event
+            - ``occurrence`` : int which occurrence of event to align (typical 1)
+
+        If not ``None`` - only users who have selected events with specified
+        ``occurrence`` in their paths will be included.
+        ``Fraction`` of such remaining users is specified in the title of centered
+        step_matrix.
+        `Example: {'event': 'cart', 'left_gap': 8, 'occurrence': 1}`
+    groups : tuple[list, list], optional
+        Can be specified to plot differential step_matrix. Must contain
         tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
-        of user_id`s (list, tuple or set). Two separate step_matrices M1 and M2
-        will be calculated for users from g_1 and g_2, respectively. Resulting
-        matrix will be the matrix M = M1-M2. Note, that values in each column
-        in differential step matrix will sum up to 0 (since columns in both M1
-        and M2 always sum up to 1).
+        of user_id`s. Two separate step_matrices M1 and M2 will be calculated
+        for users from g_1 and g_2, respectively. Resulting matrix will be the matrix
+        M = M1-M2.
+
+    Note
+    ----
+    If during preprocessing ``path_end`` synthetic event will be added to user's paths
+    (for example using :py:func:`src.data_processors_lib.start_end_event` data processor)
+    Event ``path_end`` always will be passed in the last line of ``step_matrix`` and fraction
+    of users will be accumulated from first step to the last. Because of that - values in each
+    column of step_matrix will sum up to 1.
+
+    And in differential step_matrix values in columns will sum up to 0.
 
     Returns
     -------
@@ -89,6 +101,7 @@ class StepMatrix:
 
     """
 
+    # @TODO нужна ли проверка, что у всех пользователей есть path_end в траектории? dpanina
     __eventstream: EventstreamType
 
     def __init__(

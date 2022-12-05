@@ -11,6 +11,8 @@ from tests.tooling.fixtures.step_matrix import (
 )
 
 FLOAT_PRECISION = 3
+RES_MAPPING = {'matrix': 0,
+               'targets_table': 1}
 
 
 def read_test_data(filename):
@@ -24,41 +26,24 @@ def read_test_data(filename):
 
 def run_test(stream, correct, output, **kwargs):
     sm = StepMatrix(eventstream=stream, **kwargs)
-    result = None
-    if isinstance(correct, str):
-        try:
-            result_correct = read_test_data(correct)
-        except:
-            result_correct = correct
+    sm.fit()
+    if correct[0] == "file":
+        result_correct = read_test_data(correct[1])
     else:
-        result_correct = correct
-    if output == "matrix":
-        result = sm._get_plot_data()[0].round(FLOAT_PRECISION)
-    elif output == "targets_table":
-        result = sm._get_plot_data()[1].round(FLOAT_PRECISION)
-    elif output == "users_fraction":
-        result = sm._get_plot_data()[2]
-    elif output == "targets_list":
-        result = pd.DataFrame(sm._get_plot_data()[3])
-    if isinstance(result, str):
+        result_correct = correct[1]
+    if output == 'fraction_title':
+        result = sm.fraction_title
+        test_is_correct = result == result_correct
+    elif output == 'targets_list':
+        result = sm.targets_list
         test_is_correct = result == result_correct
     else:
+        result = sm.values[RES_MAPPING[output]].round(FLOAT_PRECISION)
         test_is_correct = result.compare(result_correct).shape == (0, 0)
-    #new
-    sm.fit()
-    result, _ = sm.values
-    result = result.round(FLOAT_PRECISION)
-    result_correct = read_test_data(filename)
-    test_is_correct = result.compare(result_correct).shape == (0, 0)
     return test_is_correct
 
 
 class TestStepMatrix:
-    def test_step_matrix__simple(self, stream_simple):
-        sm = StepMatrix(eventstream=stream_simple, max_steps=5)
-        sm.fit()
-        result, _ = sm.values
-
     def test_step_matrix_simple(self, test_stream):
         correct_result = pd.DataFrame(
             [
@@ -70,14 +55,14 @@ class TestStepMatrix:
             index=["event1", "event2", "event3", "event5"],
             columns=[1, 2, 3, 4, 5],
         )
-        assert run_test(test_stream, correct_result, "matrix", max_steps=5)
+        assert run_test(test_stream, ('var', correct_result), "matrix", max_steps=5)
 
     def test_step_matrix__max_steps_100(self, stream_simple_shop):
-        assert run_test(stream_simple_shop, "03_100_steps.csv", "matrix", max_steps=100, precision=3)
+        assert run_test(stream_simple_shop, ('file', "03_100_steps.csv"), "matrix", max_steps=100, precision=3)
 
     def test_step_matrix__max_steps_one(self, test_stream):
         correct_result = pd.DataFrame([[1.0]], index=["event1"], columns=[1])
-        run_test(test_stream, correct_result, "matrix", max_steps=1)
+        run_test(test_stream, ('var', correct_result), "matrix", max_steps=1)
 
     def test_step_matrix__thresh(self, test_stream):
         correct_result = pd.DataFrame(
@@ -89,7 +74,7 @@ class TestStepMatrix:
             index=["event1", "event2", "THRESHOLDED_2"],
             columns=[1, 2, 3, 4, 5, 6],
         )
-        assert run_test(test_stream, correct_result, "matrix", max_steps=6, thresh=0.3)
+        assert run_test(test_stream, ('var', correct_result), "matrix", max_steps=6, thresh=0.3)
 
     def test_step_matrix__thresh_1(self, test_stream):
         correct_result = pd.DataFrame(
@@ -100,7 +85,7 @@ class TestStepMatrix:
             index=["event1", "THRESHOLDED_3"],
             columns=[1, 2, 3, 4, 5, 6],
         )
-        assert run_test(test_stream, correct_result, "matrix", max_steps=6, thresh=1.0)
+        assert run_test(test_stream, ('var', correct_result), "matrix", max_steps=6, thresh=1.0)
 
     def test_step_matrix__targets_plot(self, test_stream):
         correct_result = pd.DataFrame(
@@ -108,7 +93,7 @@ class TestStepMatrix:
             index=["event3"],
             columns=[1, 2, 3, 4, 5, 6],
         )
-        assert run_test(test_stream, correct_result, "targets_table", max_steps=6, targets=["event3"])
+        assert run_test(test_stream, ('var', correct_result), "targets_table", max_steps=6, targets=["event3"])
 
     def test_step_matrix__targets_thresh_plot(self, test_stream):
         correct_result = pd.DataFrame(
@@ -117,12 +102,12 @@ class TestStepMatrix:
             columns=[1, 2, 3, 4, 5, 6],
         )
         assert run_test(
-            test_stream, correct_result, "targets_table", max_steps=6, targets=["event3", "event5"], thresh=0.5
+            test_stream, ('var', correct_result), "targets_table", max_steps=6, targets=["event3", "event5"], thresh=0.5
         )
 
     def test_step_matrix__targets_grouping(self, test_stream):
-        correct_result = pd.DataFrame([["event3", "event5"]])
-        assert run_test(test_stream, correct_result, "targets_list", max_steps=6, targets=[["event3", "event5"]])
+        correct_result = [["event3", "event5"]]
+        assert run_test(test_stream, ('var', correct_result), "targets_list", max_steps=6, targets=[["event3", "event5"]])
 
     def test_step_matrix__accumulated_only_targets_plot(self, test_stream):
         correct_result = pd.DataFrame(
@@ -131,7 +116,7 @@ class TestStepMatrix:
             columns=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         )
         assert run_test(
-            test_stream, correct_result, "targets_table", max_steps=10, targets=["event5"], accumulated="only"
+            test_stream, ('var', correct_result), "targets_table", max_steps=10, targets=["event5"], accumulated="only"
         )
 
     def test_step_matrix__accumulated_both_targets_plot(self, test_stream):
@@ -147,7 +132,7 @@ class TestStepMatrix:
         )
 
         assert run_test(
-            test_stream, correct_result, "targets_table", max_steps=10, targets=["event4", "event5"], accumulated="both"
+            test_stream, ('var', correct_result), "targets_table", max_steps=10, targets=["event4", "event5"], accumulated="both"
         )
 
     def test_step_matrix__centered(self, test_stream):
@@ -160,7 +145,7 @@ class TestStepMatrix:
                 [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.5, 0.0, 0.0, 0.0],
             ],
             index=(["event2", "event1", "event3", "event4", "event5"]),
-            columns=[-4, -3, -2, -1, 0, 1, 2, 3, 4, 5],
+            columns=['-4', '-3', '-2', '-1', '0', '1', '2', '3', '4', '5'],
         )
 
         correct_result.columns.name = None
@@ -168,7 +153,7 @@ class TestStepMatrix:
 
         assert run_test(
             test_stream,
-            correct_result,
+            ('var', correct_result),
             "matrix",
             max_steps=10,
             centered={"event": "event5", "left_gap": 4, "occurrence": 1},
@@ -182,12 +167,12 @@ class TestStepMatrix:
                 [0.5, 1.0, 1.0, 1.0, 0.0, 1.0, 0.5, 0.5, 0.0, 0.0],
             ],
             index=(["event5", "THRESHOLDED_4"]),
-            columns=[-4, -3, -2, -1, 0, 1, 2, 3, 4, 5],
+            columns=['-4', '-3', '-2', '-1', '0', '1', '2', '3', '4', '5'],
         )
 
         assert run_test(
             test_stream,
-            correct_result,
+            ('var', correct_result),
             "matrix",
             max_steps=10,
             centered={"event": "event5", "left_gap": 4, "occurrence": 1},
@@ -201,12 +186,12 @@ class TestStepMatrix:
                 [0.0, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0],
             ],
             index=(["event4"]),
-            columns=[-4, -3, -2, -1, 0, 1, 2, 3, 4, 5],
+            columns=['-4', '-3', '-2', '-1', '0', '1', '2', '3', '4', '5'],
         )
 
         assert run_test(
             test_stream,
-            correct_result,
+            ('var', correct_result),
             "targets_table",
             max_steps=10,
             centered={"event": "event5", "left_gap": 4, "occurrence": 1},
@@ -218,8 +203,8 @@ class TestStepMatrix:
         correct_result = "(33.3% of total records)"
         assert run_test(
             test_stream,
-            correct_result,
-            "users_fraction",
+            ('var', correct_result),
+            "fraction_title",
             max_steps=10,
             centered={"event": "event5", "left_gap": 4, "occurrence": 1},
             thresh=0.6,
@@ -237,7 +222,7 @@ class TestStepMatrix:
             columns=[1, 2, 3, 4, 5, 6],
         )
         new_order = ["event5", "event3", "event2", "event1"]
-        assert run_test(test_stream, correct_result, "matrix", sorting=new_order, max_steps=6)
+        assert run_test(test_stream, ('var', correct_result), "matrix", sorting=new_order, max_steps=6)
 
     def test_step_matrix__differential(self, test_stream):
         g1 = [3, 6]
@@ -251,11 +236,11 @@ class TestStepMatrix:
                 [0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
             ],
             index=(["event1", "event2", "event3", "event4", "event5"]),
-            columns=[-5, -4, -3, -2, -1, 0, 1, 2, 3, 4],
+            columns=['-5', '-4', '-3', '-2', '-1', '0', '1', '2', '3', '4'],
         )
         assert run_test(
             test_stream,
-            correct_result,
+            ('var', correct_result),
             "matrix",
             max_steps=10,
             centered={"event": "event3", "left_gap": 5, "occurrence": 1},
@@ -268,8 +253,8 @@ class TestStepMatrix:
         correct_result = "(33.3% of total records)"
         assert run_test(
             test_stream,
-            correct_result,
-            "users_fraction",
+            ('var', correct_result),
+            "fraction_title",
             max_steps=10,
             centered={"event": "event3", "left_gap": 5, "occurrence": 1},
             groups=(g1, g2),
@@ -288,7 +273,7 @@ class TestStepMatrix:
             index=(["event1", "event2", "event3", "event5", "event4", "path_end"]),
             columns=[1, 2, 3, 4, 5],
         )
-        assert run_test(test_stream_end_path, correct_result, "matrix", max_steps=5)
+        assert run_test(test_stream_end_path, ('var', correct_result), "matrix", max_steps=5)
 
     def test_step_matrix__weight_col(self, test_weight_col):
         correct_result = pd.DataFrame(
@@ -302,27 +287,6 @@ class TestStepMatrix:
             index=(["event1", "event2", "event5", "event3", "event4"]),
             columns=[1, 2, 3, 4, 5],
         )
-        assert run_test(test_weight_col, correct_result, "matrix", max_steps=5, weight_col=['session_id'])
+        assert run_test(test_weight_col, ('var', correct_result), "matrix", max_steps=5, weight_col=['session_id'])
 
-    def test_step_matrix__simple_centered_and_target(self, stream_simple):
-        sm = StepMatrix(
-            eventstream=stream_simple,
-            max_steps=5,
-            centered={"event": "event2", "left_gap": 2, "occurrence": 1},
-            targets=["event2"],
-        )
-        sm.fit()
-        result, targets_result = sm.values
-        result = pd.concat([result, targets_result])
-
-        correct_result = pd.DataFrame(
-            [
-                [0.0, 1.0, 0.0, 0.5, 0.5],
-                [0.0, 0.0, 1.0, 0.5, 0.0],
-                [0.0, 0.0, 1.0, 0.5, 0.0],
-            ],
-            index=["event1", "event2", "event2"],
-            columns=["-2", "-1", "0", "1", "2"],
-        )
-        assert result.compare(correct_result).shape == (0, 0)
 

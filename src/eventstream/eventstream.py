@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection
-from typing import Any, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -15,6 +15,7 @@ from src.tooling.clusters import Clusters
 from src.tooling.cohorts import Cohorts
 from src.tooling.funnel import Funnel
 from src.tooling.sankey import Sankey
+from src.tooling.stattests import TEST_NAMES, StatTests
 from src.tooling.step_matrix import StepMatrix
 from src.utils import get_merged_col
 from src.utils.list import find_index
@@ -98,6 +99,7 @@ class Eventstream(
     __cohorts: Cohorts | None = None
     __step_matrix: StepMatrix | None = None
     __sankey: Sankey | None = None
+    __stattests: StatTests | None = None
 
     def __init__(
         self,
@@ -481,6 +483,20 @@ class Eventstream(
 
         self.__step_matrix.fit()
         return self.__step_matrix
+
+    def stattests(
+        self,
+        test: TEST_NAMES,
+        groups: Tuple[list[str | int], list[str | int]],
+        objective: Callable = lambda x: x.shape[0],
+        group_names: Tuple[str, str] = ("group_1", "group_2"),
+        alpha: float = 0.05,
+    ) -> StatTests:
+        self.__stattests = StatTests(
+            eventstream=self, groups=groups, objective=objective, test=test, group_names=group_names, alpha=alpha
+        )
+        self.__stattests.fit()
+        return self.__stattests
 
     def step_sankey(
         self,

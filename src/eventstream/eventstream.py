@@ -5,11 +5,10 @@ import uuid
 from collections.abc import Collection
 from typing import Any, Callable, List, Literal, Optional, Tuple, Union
 
-import matplotlib
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 
+from src.constants import DATETIME_UNITS
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.clusters import Clusters
@@ -98,6 +97,8 @@ class Eventstream(
     __clusters: Clusters | None = None
     __funnel: Funnel | None = None
     __cohorts: Cohorts | None = None
+    __step_matrix: StepMatrix | None = None
+    __sankey: Sankey | None = None
     __stattests: StatTests | None = None
 
     def __init__(
@@ -412,7 +413,7 @@ class Eventstream(
             if create:
                 return np.nan
             else:
-                raise ValueError(f'invald raw data. Column "{colname}" does not exists!')
+                raise ValueError(f'invalid raw data. Column "{colname}" does not exists!')
 
     def __get_event_priority(self, event_type: Optional[str]) -> int:
         if event_type in self.index_order:
@@ -438,7 +439,7 @@ class Eventstream(
             segment_names=segment_names,
             sequence=sequence,
         )
-
+        self.__funnel.fit()
         return self.__funnel
 
     @property
@@ -458,8 +459,16 @@ class Eventstream(
         thresh: float = 0,
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
-    ) -> matplotlib.figure.Figure:
-        return StepMatrix(
+    ) -> StepMatrix:
+        """
+        Calculates step_matrix
+
+        Parameters
+        ----------
+        :py:func:`src.tooling.step_matrix.step_matrix`
+
+        """
+        self.__step_matrix = StepMatrix(
             eventstream=self,
             max_steps=max_steps,
             weight_col=weight_col,
@@ -470,7 +479,10 @@ class Eventstream(
             thresh=thresh,
             centered=centered,
             groups=groups,
-        ).plot()
+        )
+
+        self.__step_matrix.fit()
+        return self.__step_matrix
 
     def stattests(
         self,
@@ -495,8 +507,9 @@ class Eventstream(
         autosize: bool = True,
         width: int | None = None,
         height: int | None = None,
-    ) -> go.Figure:
-        return Sankey(
+    ) -> Sankey:
+
+        self.__sankey = Sankey(
             eventstream=self,
             max_steps=max_steps,
             thresh=thresh,
@@ -505,17 +518,39 @@ class Eventstream(
             autosize=autosize,
             width=width,
             height=height,
-        ).plot()
+        )
 
-    @property
-    def cohorts(self) -> Cohorts:
+        self.__sankey.fit()
+        return self.__sankey
+
+    def cohorts(
+        self,
+        cohort_start_unit: DATETIME_UNITS,
+        cohort_period: Tuple[int, DATETIME_UNITS],
+        average: bool = True,
+        cut_bottom: int = 0,
+        cut_right: int = 0,
+        cut_diagonal: int = 0,
+    ) -> Cohorts:
+
         """
-        See Also
-        --------
+        Calculates cohort matrix
+
+        Parameters
+        ----------
         :py:func:`src.tooling.cohorts.cohorts`
 
         """
-        if self.__cohorts is None:
-            self.__cohorts = Cohorts(eventstream=self)
 
+        self.__cohorts = Cohorts(
+            eventstream=self,
+            cohort_start_unit=cohort_start_unit,
+            cohort_period=cohort_period,
+            average=average,
+            cut_bottom=cut_bottom,
+            cut_right=cut_right,
+            cut_diagonal=cut_diagonal,
+        )
+
+        self.__cohorts.fit()
         return self.__cohorts

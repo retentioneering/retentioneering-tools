@@ -1,0 +1,23 @@
+step,event,next_event,usr_cnt,time_to_next_sum,index,next_step,next_index
+1,event1,event2,2,0 days 00:00:02,0,2,2
+1,event1,event3,2,0 days 00:00:02,0,2,3
+1,event1,event1,1,0 days 00:00:01,0,2,1
+2,event1,event1,1,0 days 00:00:01,1,3,4
+2,event2,event1,1,0 days 00:00:01,2,3,4
+2,event2,event3,1,0 days 00:00:01,2,3,5
+2,event3,event3,1,0 days 00:00:02,3,3,5
+2,event3,thresholded_2,1,0 days 00:00:02,3,3,6
+3,event1,event1,1,0 days 00:00:01,4,4,8
+3,event1,event2,1,0 days 00:00:01,4,4,7
+3,event3,event3,1,0 days 00:00:01,5,4,9
+3,event3,path_end,1,0 days 00:00:00,5,4,11
+3,thresholded_2,thresholded_2,1,0 days 00:00:01,6,4,10
+4,event2,event1,1,0 days 00:00:01,7,5,12
+4,event1,event1,1,0 days 00:00:01,8,5,12
+4,event3,event3,1,0 days 00:00:01,9,5,13
+4,thresholded_2,path_end,1,0 days 00:00:00,10,5,14
+4,path_end,path_end,1,0 days 00:00:00,11,5,14
+5,event1,event1,1,0 days 00:00:01,12,6,16
+5,event1,event2,1,0 days 00:00:01,12,6,15
+5,event3,event3,1,0 days 00:00:01,13,6,17
+5,path_end,path_end,2,0 days 00:00:00,14,6,18

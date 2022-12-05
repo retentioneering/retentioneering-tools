@@ -8,6 +8,7 @@ from tests.tooling.fixtures.step_matrix import (
     stream_simple_shop,
     test_stream,
     test_stream_end_path,
+    test_weight_col
 )
 
 FLOAT_PRECISION = 3
@@ -265,7 +266,6 @@ class TestStepMatrix:
         )
 
     def test_step_matrix__path_end(self, test_stream_end_path):
-
         correct_result = pd.DataFrame(
             [
                 [1.0, 0.5, 0.333, 0.167, 0.167],
@@ -279,3 +279,18 @@ class TestStepMatrix:
             columns=[1, 2, 3, 4, 5],
         )
         assert run_test(test_stream_end_path, correct_result, "matrix", max_steps=5)
+
+    def test_step_matrix__weight_col(self, test_weight_col):
+        correct_result = pd.DataFrame(
+            [
+                [0.667, 0.0, 0.0, 1.0, 0.333],
+                [0.333, 0.333, 0.0, 0.0, 0.667],
+                [0, 0.0, 0.667, 0.0, 0.0],
+                [0, 0.333, 0.0, 0.0, 0.0],
+                [0, 0.333, 0.333, 0.0, 0.0],
+            ],
+            index=(["event1", "event2", "event5", "event3", "event4"]),
+            columns=[1, 2, 3, 4, 5],
+        )
+        assert run_test(test_weight_col, correct_result, "matrix", max_steps=5, weight_col=['session_id'])
+

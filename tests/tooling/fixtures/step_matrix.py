@@ -125,5 +125,42 @@ def test_stream():
         raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
         schema=EventstreamSchema(),
     )
-
     return source_stream
+
+@pytest.fixture
+def test_weight_col():
+    df = pd.DataFrame([
+        [1, 1, "event1", "2022-01-01 00:01:00"],
+        [1, 1, "event2", "2022-01-01 00:01:02"],
+        [1, 2, "event1", "2022-01-01 00:02:00"],
+        [1, 2, "event3", "2022-01-01 00:04:30"],
+        [2, 1, "event1", "2022-01-02 00:00:00"],
+        [3, 3, "event1", "2022-01-02 00:01:10"],
+        [3, 1, "event3", "2022-01-02 00:02:05"],
+        [3, 1, "event4", "2022-01-02 00:03:05"],
+        [4, 1, "event1", "2022-01-02 00:03:05"],
+        [6, 1, "event1", "2019-11-12 10:03:06"],
+        [6, 3, "event2", "2019-11-12 10:03:36"],
+        [6, 1, "event4", "2019-11-12 10:03:39"],
+        [6, 1, "event5", "2019-11-12 10:03:40"],
+        [5, 2, "event1", "2020-04-17 12:18:50"],
+        [6, 3, "event1", "2019-11-12 10:03:07"],
+        [6, 2, "event2", "2019-11-12 10:03:34"],
+        [6, 2, "event3", "2019-11-12 10:03:37"],
+        [6, 2, "event4", "2019-11-12 10:03:41"],
+        [6, 3, "event5", "2019-11-12 10:03:42"],
+        [4, 2, "event2", "2020-02-28 07:59:40"],
+        [4, 2, "event1", "2020-01-29 09:10:04"],
+        [3, 3, "event1", "2019-12-15 02:25:03"],
+    ],
+    columns = ["user_id", "session_id", "event", "timestamp"],
+        )
+    raw_data_schema = RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id",
+                                    custom_cols=[{'custom_col': 'session_id', 'raw_data_col': 'session_id'}])
+    source_stream = Eventstream(
+        schema=EventstreamSchema(custom_cols=['session_id'], event_name="event", event_timestamp="timestamp",
+                                 user_id="user_id"),
+        raw_data_schema=raw_data_schema,
+        raw_data=df)
+    return source_stream
+

@@ -8,9 +8,9 @@ from src.params_model.params_model import ParamsModel
 
 _default_raw_data_schema = RawDataSchema(
     user_id="user_id",
-    event_name="event_name",
+    event_name="event",
     event_type="event_type",
-    event_timestamp="event_timestamp",
+    event_timestamp="timestamp",
 )
 
 

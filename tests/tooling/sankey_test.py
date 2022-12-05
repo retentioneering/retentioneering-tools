@@ -10,7 +10,8 @@ from tests.tooling.fixtures.sankey import test_stream
 
 def run_test(stream, test_prefix, **kwargs):
     s = Sankey(eventstream=stream, **kwargs)
-    _, res_nodes, res_edges, _ = s._get_plot_data()
+    s.fit()
+    res_nodes, res_edges = s.values
 
     current_dir = os.path.dirname(os.path.realpath(__file__))
     test_data_dir = os.path.join(current_dir, "../datasets/tooling/sankey")

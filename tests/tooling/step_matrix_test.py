@@ -1,7 +1,6 @@
 import os
 
 import pandas as pd
-import pytest
 
 from src.tooling.step_matrix import StepMatrix
 from tests.tooling.fixtures.step_matrix import (
@@ -45,10 +44,21 @@ def run_test(stream, correct, output, **kwargs):
         test_is_correct = result == result_correct
     else:
         test_is_correct = result.compare(result_correct).shape == (0, 0)
+    #new
+    sm.fit()
+    result, _ = sm.values
+    result = result.round(FLOAT_PRECISION)
+    result_correct = read_test_data(filename)
+    test_is_correct = result.compare(result_correct).shape == (0, 0)
     return test_is_correct
 
 
 class TestStepMatrix:
+    def test_step_matrix__simple(self, stream_simple):
+        sm = StepMatrix(eventstream=stream_simple, max_steps=5)
+        sm.fit()
+        result, _ = sm.values
+
     def test_step_matrix_simple(self, test_stream):
         correct_result = pd.DataFrame(
             [
@@ -293,4 +303,26 @@ class TestStepMatrix:
             columns=[1, 2, 3, 4, 5],
         )
         assert run_test(test_weight_col, correct_result, "matrix", max_steps=5, weight_col=['session_id'])
+
+    def test_step_matrix__simple_centered_and_target(self, stream_simple):
+        sm = StepMatrix(
+            eventstream=stream_simple,
+            max_steps=5,
+            centered={"event": "event2", "left_gap": 2, "occurrence": 1},
+            targets=["event2"],
+        )
+        sm.fit()
+        result, targets_result = sm.values
+        result = pd.concat([result, targets_result])
+
+        correct_result = pd.DataFrame(
+            [
+                [0.0, 1.0, 0.0, 0.5, 0.5],
+                [0.0, 0.0, 1.0, 0.5, 0.0],
+                [0.0, 0.0, 1.0, 0.5, 0.0],
+            ],
+            index=["event1", "event2", "event2"],
+            columns=["-2", "-1", "0", "1", "2"],
+        )
+        assert result.compare(correct_result).shape == (0, 0)
 

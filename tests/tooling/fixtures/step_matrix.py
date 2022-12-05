@@ -73,11 +73,7 @@ def test_stream_end_path():
         columns=["user_id", "event", "timestamp"],
     )
 
-    source_stream = Eventstream(
-        raw_data=df,
-        raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-        schema=EventstreamSchema(),
-    )
+    source_stream = Eventstream(df)
 
     return source_stream
 
@@ -120,11 +116,7 @@ def test_stream():
         columns=["user_id", "event", "timestamp"],
     )
 
-    source_stream = Eventstream(
-        raw_data=df,
-        raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-        schema=EventstreamSchema(),
-    )
+    source_stream = Eventstream(df)
     return source_stream
 
 @pytest.fixture

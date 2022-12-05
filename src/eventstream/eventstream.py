@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from src.eventstream.schema import EventstreamSchema
+from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.clusters import Clusters
 from src.tooling.cohorts import Cohorts
@@ -102,8 +102,8 @@ class Eventstream(
 
     def __init__(
         self,
-        raw_data_schema: RawDataSchemaType,
         raw_data: pd.DataFrame | pd.Series[Any],
+        raw_data_schema: RawDataSchemaType | None = None,
         schema: EventstreamSchema | None = None,
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
@@ -113,6 +113,12 @@ class Eventstream(
         self.__funnel = None
         self.schema = schema if schema else EventstreamSchema()
 
+        if not raw_data_schema:
+            raw_data_schema = RawDataSchema()
+            if "event_type" in raw_data.columns:
+                raw_data_schema.event_type = "event_type"
+        self.__raw_data_schema = raw_data_schema
+
         if not index_order:
             self.index_order = DEFAULT_INDEX_ORDER
         else:
@@ -121,7 +127,6 @@ class Eventstream(
             self.relations = []
         else:
             self.relations = relations
-        self.__raw_data_schema = raw_data_schema
         self.__events = self.__prepare_events(raw_data) if prepare else raw_data
         self.index_events()
 
@@ -251,19 +256,19 @@ class Eventstream(
         self.schema.custom_cols = self._get_both_custom_cols(eventstream)
         self.index_events()
 
-    def _get_both_custom_cols(self, eventstream):
+    def _get_both_custom_cols(self, eventstream: Eventstream) -> list[str]:
         self_custom_cols = set(self.schema.custom_cols)
         eventstream_custom_cols = set(eventstream.schema.custom_cols)
         all_custom_cols = self_custom_cols.union(eventstream_custom_cols)
         return list(all_custom_cols)
 
-    def _get_both_cols(self, eventstream):
+    def _get_both_cols(self, eventstream: Eventstream) -> list[str]:
         self_cols = set(self.schema.get_cols())
         eventstream_cols = set(eventstream.schema.get_cols())
         all_cols = self_cols.union(eventstream_cols)
         return list(all_cols)
 
-    def to_dataframe(self, raw_cols=False, show_deleted=False, copy=False) -> pd.DataFrame:
+    def to_dataframe(self, raw_cols: bool = False, show_deleted: bool = False, copy: bool = False) -> pd.DataFrame:
         cols = self.schema.get_cols() + self.get_relation_cols()
 
         if raw_cols:
@@ -399,7 +404,7 @@ class Eventstream(
         return events
 
     def __get_col_from_raw_data(
-        self, raw_data: pd.DataFrame | pd.Series[Any], colname: str, create=False
+        self, raw_data: pd.DataFrame | pd.Series[Any], colname: str, create: bool = False
     ) -> pd.Series | float:
         if colname in raw_data.columns:
             return raw_data[colname]

@@ -194,5 +194,5 @@ data: list[dict] = [
 ]
 
 
-def list_dataprocessor_mock(payload) -> list[dict[str, Any]]:
+def list_dataprocessor_mock(payload: dict) -> list[dict[str, Any]]:
     return data

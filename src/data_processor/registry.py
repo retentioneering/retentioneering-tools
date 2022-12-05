@@ -15,22 +15,20 @@ class DataprocessorViewRegistry(ReteRegistry):
 
 class DataprocessorRegistry(ReteRegistry):
 
-    REGISTRY: dict[str, typing.Type["DataProcessor"]] = {}  # type: ignore
+    REGISTRY: dict[str, "DataProcessor"] = {}  # type: ignore
+    objects = "Dataprocessor"
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: "DataProcessor") -> None:
         if key not in self.REGISTRY:
             self.REGISTRY[key] = value
         else:
             raise RegistryValidationError("%s <%s> already exists" % (self.objects, key))
-
-    objects = "Dataprocessor"
-    pass
 
 
 dataprocessor_view_registry = DataprocessorViewRegistry()
 dataprocessor_registry = DataprocessorRegistry()
 
 
-def register_dataprocessor(cls: DataProcessor):
+def register_dataprocessor(cls: DataProcessor) -> None:
     dataprocessor_view_registry[cls.__class__.__name__] = cls.get_view()
     dataprocessor_registry[cls.__class__.__name__] = cls

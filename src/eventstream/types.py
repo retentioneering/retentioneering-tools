@@ -26,11 +26,11 @@ class EventstreamType(Protocol):
         ...
 
     @abstractmethod
-    def append_eventstream(self, eventstream: EventstreamType):
+    def append_eventstream(self, eventstream: EventstreamType) -> None:
         ...
 
     @abstractmethod
-    def join_eventstream(self, eventstream: EventstreamType):
+    def join_eventstream(self, eventstream: EventstreamType) -> None:
         ...
 
     @abstractmethod
@@ -68,7 +68,7 @@ class EventstreamSchemaType(Protocol):
         ...
 
     @abstractmethod
-    def is_equal(self, schema) -> bool:
+    def is_equal(self, schema: EventstreamSchemaType) -> bool:
         ...
 
     @abstractmethod
@@ -86,8 +86,8 @@ class RawDataCustomColSchema(TypedDict):
 
 
 class RawDataSchemaType(Protocol):
-    event_name: str = "event_name"
-    event_timestamp: str = "event_timestamp"
+    event_name: str = "event"
+    event_timestamp: str = "timestamp"
     user_id: str = "user_id"
     event_type: Optional[str] = None
     custom_cols: List[RawDataCustomColSchema] = field(default_factory=list)

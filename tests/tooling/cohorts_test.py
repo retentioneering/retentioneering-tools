@@ -11,8 +11,8 @@ from tests.tooling.fixtures.cohorts import test_stream
 
 
 def run_test(stream, test_prefix, **kwargs):
-    c = Cohorts(eventstream=stream)
-    c.fit_cohorts(**kwargs)
+    c = Cohorts(eventstream=stream, **kwargs)
+    c.fit()
     res = c.values.fillna(-999).reset_index().round(2)
 
     current_dir = os.path.dirname(os.path.realpath(__file__))

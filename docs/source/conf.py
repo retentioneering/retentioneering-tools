@@ -14,6 +14,7 @@ import datetime
 #
 import os
 import sys
+from typing import Any
 
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -83,3 +84,7 @@ extlinks = {
         "",
     ),
 }
+
+
+def setup(app: Any) -> None:
+    app.add_stylesheet("css/custom.css")

@@ -26,6 +26,7 @@ from .helpers import (
     FilterHelperMixin,
     GroupHelperMixin,
     LostUsersHelperMixin,
+    MergeHelperMixin,
     NegativeTargetHelperMixin,
     NewUsersHelperMixin,
     PositiveTargetHelperMixin,
@@ -87,6 +88,7 @@ class Eventstream(
     StartEndHelperMixin,
     TruncatedEventsHelperMixin,
     TruncatePathHelperMixin,
+    MergeHelperMixin,
     EventstreamType,
 ):
     schema: EventstreamSchema

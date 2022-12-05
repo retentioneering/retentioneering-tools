@@ -3,6 +3,7 @@ from .delete_users_by_path_length_helper import DeleteUsersByPathLengthHelperMix
 from .filter_helper import FilterHelperMixin
 from .group_helper import GroupHelperMixin
 from .lost_users_helper import LostUsersHelperMixin
+from .merge_helper import MergeHelperMixin
 from .negative_target import NegativeTargetHelperMixin
 from .new_users_helper import NewUsersHelperMixin
 from .positive_target import PositiveTargetHelperMixin

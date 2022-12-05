@@ -27,10 +27,8 @@ class TestEventstreamSankey:
 
         correct_nodes, correct_edges = correct_res_test("02_threshold_float")
 
-        nodes_are_correct = res_nodes.compare(correct_nodes).shape == (0, 0)
-        edges_are_correct = res_edges.compare(correct_edges).shape == (0, 0)
-
-        assert nodes_are_correct and edges_are_correct
+        assert res_nodes.compare(correct_nodes).shape == (0, 0), "Nodes calculation"
+        assert res_edges.compare(correct_edges).shape == (0, 0), "Edges calculation"
 
     def test_sankey_eventstream__refit(self, test_stream):
         params_1 = {"max_steps": 6, "thresh": 0.25}
@@ -44,13 +42,11 @@ class TestEventstreamSankey:
         correct_nodes_1, correct_edges_1 = correct_res_test("02_threshold_float")
         correct_nodes_2, correct_edges_2 = correct_res_test("04_target")
 
-        nodes_are_correct_1 = res_nodes_1.compare(correct_nodes_1).shape == (0, 0)
-        edges_are_correct_1 = res_edges_1.compare(correct_edges_1).shape == (0, 0)
+        assert res_nodes_1.compare(correct_nodes_1).shape == (0, 0), "First nodes calculation"
+        assert res_edges_1.compare(correct_edges_1).shape == (0, 0), "First edges calculation"
 
-        nodes_are_correct_2 = res_nodes_2.compare(correct_nodes_2).shape == (0, 0)
-        edges_are_correct_2 = res_edges_2.compare(correct_edges_2).shape == (0, 0)
-
-        assert nodes_are_correct_1 and edges_are_correct_1 and nodes_are_correct_2 and edges_are_correct_2
+        assert res_nodes_2.compare(correct_nodes_2).shape == (0, 0), "Nodes calculation after refit"
+        assert res_edges_2.compare(correct_edges_2).shape == (0, 0), "Edges calculation after refit"
 
     def test_sankey_eventstream__fit_hash_check(self, test_stream):
         params = {}

@@ -40,10 +40,8 @@ class TestEventstreamStepMatrix:
         res_1, _ = test_stream.step_matrix(**params_1).values
         res_2, _ = test_stream.step_matrix(**params_2).values
 
-        calc_is_correct = correct_res_1.round(FLOAT_PRECISION).compare(res_1).shape == (0, 0)
-        recalc_is_correct = correct_res_2.round(FLOAT_PRECISION).compare(res_2).shape == (0, 0)
-
-        assert calc_is_correct and recalc_is_correct
+        assert correct_res_1.round(FLOAT_PRECISION).compare(res_1).shape == (0, 0), "First calculation"
+        assert correct_res_2.round(FLOAT_PRECISION).compare(res_2).shape == (0, 0), "Refit"
 
     def test_step_matrix_eventstream__fit_hash_check(self, test_stream):
         params = {"max_steps": 5}

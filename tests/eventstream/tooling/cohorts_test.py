@@ -38,10 +38,8 @@ class TestEventstreamCohorts:
 
         res_1 = test_stream.cohorts(**params_1).values.fillna(-999).reset_index().round(FLOAT_PRECISION)
         res_2 = test_stream.cohorts(**params_2).values.fillna(-999).reset_index().round(FLOAT_PRECISION)
-        calc_is_correct = correct_res_1.round(FLOAT_PRECISION).compare(res_1).shape == (0, 0)
-        recalc_is_correct = correct_res_2.round(FLOAT_PRECISION).compare(res_2).shape == (0, 0)
-
-        assert calc_is_correct and recalc_is_correct
+        assert correct_res_1.round(FLOAT_PRECISION).compare(res_1).shape == (0, 0), "First calculation"
+        assert correct_res_2.round(FLOAT_PRECISION).compare(res_2).shape == (0, 0), "Refit"
 
     def test_cohorts_eventstream__fit_hash_check(self, test_stream):
         params = {"cohort_start_unit": "M", "cohort_period": (1, "M"), "average": False}

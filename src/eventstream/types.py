@@ -86,8 +86,8 @@ class RawDataCustomColSchema(TypedDict):
 
 
 class RawDataSchemaType(Protocol):
-    event_name: str = "event_name"
-    event_timestamp: str = "event_timestamp"
+    event_name: str = "event"
+    event_timestamp: str = "timestamp"
     user_id: str = "user_id"
     event_type: Optional[str] = None
     custom_cols: List[RawDataCustomColSchema] = field(default_factory=list)

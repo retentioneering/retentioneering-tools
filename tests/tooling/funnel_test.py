@@ -86,36 +86,11 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
-        stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
-        stage_names = None
-        funnel_type = "open"
-        sequence = False
-
-        funnel = Funnel(eventstream=source, stages=stages)
-
-        data = source.to_dataframe()
-        data = data[data["event_name"].isin(list(flatten(stages)))]
-
-        segments = [data["user_id"].unique()]
-        segment_names = ["all users"]
-
-        res_dict = funnel._calculate(
-            data=data,
-            stages=stages,
-            stage_names=stage_names,
-            funnel_type=funnel_type,
-            segments=segments,
-            segment_names=segment_names,
-            sequence=sequence,
-        )
+        funnel = Funnel(eventstream=source, stages=["catalog", ["product1", "product2"], "cart", "payment_done"])
+        funnel.fit()
+        res_dict = funnel.res_dict
 
         correct_result = {
             "all users": {"stages": ["catalog", "product1 | product2", "cart", "payment_done"], "values": [6, 8, 8, 8]}
@@ -199,36 +174,16 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
+        source = Eventstream(source_df)
+
+        funnel = Funnel(
+            eventstream=source,
+            stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
+            stage_names=["catalog", "product", "cart", "payment_done"],
         )
 
-        stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
-        stage_names = ["catalog", "product", "cart", "payment_done"]
-        funnel_type = "open"
-        sequence = False
-
-        data = source.to_dataframe()
-        data = data[data["event_name"].isin(list(flatten(stages)))]
-
-        segments = [data["user_id"].unique()]
-        segment_names = ["all users"]
-
-        funnel = Funnel(eventstream=source, stages=stages)
-
-        res_dict = funnel._calculate(
-            data=data,
-            stages=stages,
-            stage_names=stage_names,
-            funnel_type=funnel_type,
-            segments=segments,
-            segment_names=segment_names,
-            sequence=sequence,
-        )
+        funnel.fit()
+        res_dict = funnel.res_dict
 
         correct_result = {
             "all users": {"stages": ["catalog", "product", "cart", "payment_done"], "values": [6, 8, 8, 8]}
@@ -312,36 +267,15 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
+        source = Eventstream(source_df)
+
+        funnel = Funnel(
+            eventstream=source,
+            stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
+            funnel_type="closed",
         )
-
-        stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
-        stage_names = None
-        funnel_type = "closed"
-        sequence = False
-
-        data = source.to_dataframe()
-        data = data[data["event_name"].isin(list(flatten(stages)))]
-
-        segments = [data["user_id"].unique()]
-        segment_names = ["all users"]
-
-        funnel = Funnel(eventstream=source, stages=stages)
-
-        res_dict = funnel._calculate(
-            data=data,
-            stages=stages,
-            stage_names=stage_names,
-            funnel_type=funnel_type,
-            segments=segments,
-            segment_names=segment_names,
-            sequence=sequence,
-        )
+        funnel.fit()
+        res_dict = funnel.res_dict
 
         correct_result = {
             "all users": {"stages": ["catalog", "product1 | product2", "cart", "payment_done"], "values": [6, 4, 4, 4]}
@@ -425,35 +359,18 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
+        source = Eventstream(source_df)
+
+        funnel = Funnel(
+            eventstream=source,
+            stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
+            stage_names=None,
+            funnel_type="closed",
+            sequence=True,
         )
 
-        stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
-        stage_names = None
-        funnel_type = "closed"
-        sequence = True
-
-        data = source.to_dataframe()
-        data = data[data["event_name"].isin(list(flatten(stages)))]
-
-        segments = [data["user_id"].unique()]
-        segment_names = ["all users"]
-
-        funnel = Funnel(eventstream=source, stages=stages)
-        res_dict = funnel._calculate(
-            data=data,
-            stages=stages,
-            stage_names=stage_names,
-            funnel_type=funnel_type,
-            segments=segments,
-            segment_names=segment_names,
-            sequence=sequence,
-        )
+        funnel.fit()
+        res_dict = funnel.res_dict
 
         correct_result = {
             "all users": {"stages": ["catalog", "product1 | product2", "cart", "payment_done"], "values": [6, 4, 4, 2]}
@@ -537,38 +454,20 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
         conv_users = [1, 2, 3, 7]
         non_conv_users = [4, 5, 6, 8]
 
-        stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
-        stage_names = None
-        funnel_type = "closed"
-        segments = (conv_users, non_conv_users)
-        sequence = False
-
-        funnel = Funnel(eventstream=source, stages=stages)
-
-        data = source.to_dataframe()
-        data = data[data["event_name"].isin(list(flatten(stages)))]
-
-        segment_names = [f"group {i}" for i in range(len(segments))]
-
-        res_dict = funnel._calculate(
-            data=data,
-            stages=stages,
-            stage_names=stage_names,
-            funnel_type=funnel_type,
-            segments=segments,
-            segment_names=segment_names,
-            sequence=sequence,
+        funnel = Funnel(
+            eventstream=source,
+            stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
+            funnel_type="closed",
+            segments=(conv_users, non_conv_users),
+            sequence=False,
         )
+
+        funnel.fit()
+        res_dict = funnel.res_dict
 
         correct_result = {
             "group 0": {"stages": ["catalog", "product1 | product2", "cart", "payment_done"], "values": [3, 2, 2, 2]},
@@ -652,37 +551,22 @@ class TestFunnel:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         conv_users = [1, 2, 3, 7]
         non_conv_users = [4, 5, 6, 8]
-        stages = ["catalog", ["product1", "product2"], "cart", "payment_done"]
-        stage_names = None
-        funnel_type = "closed"
-        segments = (conv_users, non_conv_users)
-        segment_names = ["conv_users", "non_conv_users"]
-        sequence = True
 
-        funnel = Funnel(eventstream=source, stages=stages)
-
-        data = source.to_dataframe()
-        data = data[data["event_name"].isin(list(flatten(stages)))]
-
-        res_dict = funnel._calculate(
-            data=data,
-            stages=stages,
-            stage_names=stage_names,
-            funnel_type=funnel_type,
-            segments=segments,
-            segment_names=segment_names,
-            sequence=sequence,
+        funnel = Funnel(
+            eventstream=source,
+            stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
+            funnel_type="closed",
+            segments=(conv_users, non_conv_users),
+            segment_names=["conv_users", "non_conv_users"],
+            sequence=True,
         )
+
+        funnel.fit()
+        res_dict = funnel.res_dict
 
         correct_result = {
             "conv_users": {
@@ -711,14 +595,6 @@ class TestFunnel:
                 columns=["user_id", "event", "event_type", "timestamp"],
             )
 
-            source = Eventstream(
-                raw_data=source_df,
-                raw_data_schema=RawDataSchema(
-                    event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-                ),
-                schema=EventstreamSchema(),
-            )
+            source = Eventstream(source_df)
 
-            stages = ["catalog", "cart", "payment_done"]
-
-            p = Funnel(eventstream=source, stages=stages, funnel_type="check_me")
+            p = Funnel(eventstream=source, stages=["catalog", "cart", "payment_done"], funnel_type="check_me")

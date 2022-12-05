@@ -14,7 +14,7 @@ class BaseNode:
     events: Optional[EventstreamType]
     pk: str
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         self.pk = str(uuid.uuid4())
 
     def __str__(self) -> str:
@@ -47,7 +47,7 @@ class EventsNode(BaseNode):
         self.processor = processor
         self.events = None
 
-    def calc_events(self, parent: EventstreamType):
+    def calc_events(self, parent: EventstreamType) -> None:
         self.events = self.processor.apply(parent)
 
 

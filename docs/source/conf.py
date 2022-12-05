@@ -100,4 +100,8 @@ extlinks = {
     "name": ("link", ""),
     "name": ("link", ""),
     "name": ("link", ""),
+    "numpy_timedelta_link": (
+        "https://numpy.org/doc/stable/reference/" "arrays.datetime.html#:~:text=There%20are%20two,numbers%20of%20days.",
+        "",
+    ),
 }

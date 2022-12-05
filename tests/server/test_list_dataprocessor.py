@@ -272,7 +272,7 @@ class TestListDataprocessors:
                 "params": [{"default": None, "name": "A", "optional": False, "widget": "array"}],
             },
         ]
-
+        correct_data = sorted(correct_data, key=lambda x: x["name"])
         assert json.dumps(correct_data, sort_keys=True, indent=4, separators=(",", ": ")) == json.dumps(
             list_dataprocessor(payload={}), sort_keys=True, indent=4, separators=(",", ": ")
         )

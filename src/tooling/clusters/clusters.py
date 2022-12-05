@@ -6,6 +6,7 @@ from typing import Any, List, Literal, Tuple, cast
 import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import seaborn as sns
 import umap.umap_ as umap
 from matplotlib import rcParams
@@ -15,7 +16,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 
-from src.eventstream.types import EventstreamType
+from src.eventstream.types import EventstreamSchemaType, EventstreamType
 from src.tooling.clusters.segments import Segments
 
 FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "external", "markov"]
@@ -53,7 +54,9 @@ class Clusters:
         self.__projection = None
 
     # public API
-    def extract_features(self, feature_type: FeatureType = "tfidf", ngram_range: NgramRange | None = None):
+    def extract_features(
+        self, feature_type: FeatureType = "tfidf", ngram_range: NgramRange | None = None
+    ) -> pd.DataFrame:
         """
         Calculates vectorized user paths.
 
@@ -143,7 +146,7 @@ class Clusters:
         return self._user_clusters
 
     @user_clusters.setter
-    def user_clusters(self, user_clusters: dict[str | int, list[int]]):
+    def user_clusters(self, user_clusters: dict[str | int, list[int]]) -> None:
         self._set_user_clusters(user_clusters=user_clusters)
 
     @property
@@ -192,8 +195,8 @@ class Clusters:
         targets: list[str] | None = None,
         ngram_range: NgramRange | None = None,
         feature_type: FeatureType = "tfidf",
-        plot_type=None,
-        **kwargs,
+        plot_type: Literal["targets", "clusters"] | None = None,
+        **kwargs: Any,
     ) -> pd.DataFrame:
         """
         Does dimension reduction of user trajectories and draws projection plane.
@@ -280,7 +283,7 @@ class Clusters:
 
         self._plot_projection(
             projection=projection.values,
-            targets=targets_mapping,
+            targets=targets_mapping,  # type: ignore
             legend_title=legend_title,
         )
 
@@ -288,7 +291,7 @@ class Clusters:
 
     # inner functions
 
-    def _plot_projection(self, projection, targets, legend_title):
+    def _plot_projection(self, projection: ndarray, targets: ndarray, legend_title: str) -> tuple:
         rcParams["figure.figsize"] = 8, 6
 
         scatter = sns.scatterplot(
@@ -308,7 +311,7 @@ class Clusters:
             projection,
         )
 
-    def _learn_tsne(self, data, **kwargs):
+    def _learn_tsne(self, data: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
         """
         Calculates TSNE transformation for given matrix features.
 
@@ -346,7 +349,7 @@ class Clusters:
         res = TSNE(random_state=0, **kwargs).fit_transform(data.values)
         return pd.DataFrame(res, index=data.index.values)
 
-    def _learn_umap(self, data, **kwargs):
+    def _learn_umap(self, data: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
         """
         Calculates UMAP transformation for given matrix features.
         Parameters
@@ -384,7 +387,7 @@ class Clusters:
         self,
         feature_type: Literal["count", "frequency", "tfidf", "binary", "markov"],
         ngram_range: NgramRange,
-        corpus,
+        corpus: pd.DataFrame | pd.Series[Any],
     ) -> TfidfVectorizer | CountVectorizer:
         if feature_type == "tfidf":
             return TfidfVectorizer(ngram_range=ngram_range, token_pattern="[^~]+").fit(corpus)  # type: ignore
@@ -397,7 +400,7 @@ class Clusters:
 
     def _extract_features(
         self, eventstream: EventstreamType, feature_type: FeatureType = "tfidf", ngram_range: NgramRange | None = None
-    ):
+    ) -> pd.DataFrame:
         if ngram_range is None:
             ngram_range = (1, 1)
         index_col = eventstream.schema.user_id
@@ -444,7 +447,12 @@ class Clusters:
         return cast(pd.DataFrame, vec_data)
 
     def _sklearn_vectorization(
-        self, events, feature_type, ngram_range, index_col, schema
+        self,
+        events: pd.DataFrame,
+        feature_type: Literal["count", "frequency", "tfidf", "binary", "markov"],
+        ngram_range: NgramRange,
+        index_col: str,
+        schema: EventstreamSchemaType,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         event_col = schema.event_name
         corpus = events.groupby(index_col)[event_col].apply(lambda x: "~~".join([el.lower() for el in x]))
@@ -461,7 +469,9 @@ class Clusters:
         return events, vec_data
 
     @staticmethod
-    def _markov_vectorization(events, index_col, schema) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def _markov_vectorization(
+        events: pd.DataFrame, index_col: str, schema: EventstreamSchemaType
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         event_col = schema.event_name
         event_index_col = schema.event_index
         time_col = schema.event_timestamp
@@ -487,7 +497,7 @@ class Clusters:
         return events, vec_data
 
     # TODO: add save
-    def _cluster_bar(self, clusters: ndarray, target: list[list[bool]], target_names: list[str]):
+    def _cluster_bar(self, clusters: ndarray, target: list[list[bool]], target_names: list[str]) -> go.Figure:
         """
         Plots bar charts with cluster sizes and average target conversion rate.
 
@@ -559,7 +569,16 @@ class Clusters:
 
         return cl
 
-    def _prepare_clusters(self, feature_type, method, n_clusters, ngram_range, refit_cluster, targets, vector):
+    def _prepare_clusters(
+        self,
+        feature_type: FeatureType,
+        method: Method,
+        n_clusters: int,
+        ngram_range: NgramRange,
+        refit_cluster: bool,
+        targets: list[str] | None,
+        vector: pd.DataFrame | None,
+    ) -> tuple[list[str], list[ndarray]]:
         user_col = self.__eventstream.schema.user_id
         event_col = self.__eventstream.schema.event_name
         if feature_type == "external" and not isinstance(vector, pd.DataFrame):  # type: ignore
@@ -601,19 +620,21 @@ class Clusters:
             )
         events = self.__eventstream.to_dataframe()
         grouped_events = events.groupby(user_col)[event_col]
-        target_names, targets_bool = self._prepare_targets(event_col, grouped_events, targets)
+        target_names, targets_bool = self._prepare_targets(event_col, grouped_events, targets)  # type: ignore
         return target_names, targets_bool
 
-    def _prepare_targets(self, event_col, grouped_events, targets):
+    def _prepare_targets(
+        self, event_col: str, grouped_events: pd.DataFrame, targets: list[str] | list[list[str]] | None
+    ) -> tuple[list[str], list[ndarray]]:
         if targets is not None:
             targets_bool = []
             target_names = []
 
-            formated_targets = []
+            formated_targets: list[list[str]] = []
             # format targets to list of lists:
             for n, i in enumerate(targets):
                 if type(i) != list:  # type: ignore
-                    formated_targets.append([i])
+                    formated_targets.append([i])  # type: ignore
                 else:
                     formated_targets.append(i)  # type: ignore
 

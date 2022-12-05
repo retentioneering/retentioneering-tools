@@ -3,18 +3,19 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection
-from typing import Any, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, List, Literal, Optional, Tuple, Union
 
-import matplotlib
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 
-from src.eventstream.schema import EventstreamSchema
+from src.constants import DATETIME_UNITS
+from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.clusters import Clusters
+from src.tooling.cohorts import Cohorts
 from src.tooling.funnel import Funnel
 from src.tooling.sankey import Sankey
+from src.tooling.stattests import TEST_NAMES, StatTests
 from src.tooling.step_matrix import StepMatrix
 from src.utils import get_merged_col
 from src.utils.list import find_index
@@ -95,11 +96,15 @@ class Eventstream(
     __events: pd.DataFrame | pd.Series[Any]
     __clusters: Clusters | None = None
     __funnel: Funnel | None = None
+    __cohorts: Cohorts | None = None
+    __step_matrix: StepMatrix | None = None
+    __sankey: Sankey | None = None
+    __stattests: StatTests | None = None
 
     def __init__(
         self,
-        raw_data_schema: RawDataSchemaType,
         raw_data: pd.DataFrame | pd.Series[Any],
+        raw_data_schema: RawDataSchemaType | None = None,
         schema: EventstreamSchema | None = None,
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
@@ -109,6 +114,12 @@ class Eventstream(
         self.__funnel = None
         self.schema = schema if schema else EventstreamSchema()
 
+        if not raw_data_schema:
+            raw_data_schema = RawDataSchema()
+            if "event_type" in raw_data.columns:
+                raw_data_schema.event_type = "event_type"
+        self.__raw_data_schema = raw_data_schema
+
         if not index_order:
             self.index_order = DEFAULT_INDEX_ORDER
         else:
@@ -117,7 +128,6 @@ class Eventstream(
             self.relations = []
         else:
             self.relations = relations
-        self.__raw_data_schema = raw_data_schema
         self.__events = self.__prepare_events(raw_data) if prepare else raw_data
         self.index_events()
 
@@ -247,19 +257,19 @@ class Eventstream(
         self.schema.custom_cols = self._get_both_custom_cols(eventstream)
         self.index_events()
 
-    def _get_both_custom_cols(self, eventstream):
+    def _get_both_custom_cols(self, eventstream: Eventstream) -> list[str]:
         self_custom_cols = set(self.schema.custom_cols)
         eventstream_custom_cols = set(eventstream.schema.custom_cols)
         all_custom_cols = self_custom_cols.union(eventstream_custom_cols)
         return list(all_custom_cols)
 
-    def _get_both_cols(self, eventstream):
+    def _get_both_cols(self, eventstream: Eventstream) -> list[str]:
         self_cols = set(self.schema.get_cols())
         eventstream_cols = set(eventstream.schema.get_cols())
         all_cols = self_cols.union(eventstream_cols)
         return list(all_cols)
 
-    def to_dataframe(self, raw_cols=False, show_deleted=False, copy=False) -> pd.DataFrame:
+    def to_dataframe(self, raw_cols: bool = False, show_deleted: bool = False, copy: bool = False) -> pd.DataFrame:
         cols = self.schema.get_cols() + self.get_relation_cols()
 
         if raw_cols:
@@ -395,7 +405,7 @@ class Eventstream(
         return events
 
     def __get_col_from_raw_data(
-        self, raw_data: pd.DataFrame | pd.Series[Any], colname: str, create=False
+        self, raw_data: pd.DataFrame | pd.Series[Any], colname: str, create: bool = False
     ) -> pd.Series | float:
         if colname in raw_data.columns:
             return raw_data[colname]
@@ -432,7 +442,7 @@ class Eventstream(
             segment_names=segment_names,
             sequence=sequence,
         )
-
+        self.__funnel.fit()
         return self.__funnel
 
     @property
@@ -456,12 +466,12 @@ class Eventstream(
         thresh: float = 0,
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
-    ) -> matplotlib.figure.Figure:
+    ) -> StepMatrix:
         """
         See :py:func:`src.tooling.step_matrix.step_matrix`
 
         """
-        return StepMatrix(
+        self.__step_matrix = StepMatrix(
             eventstream=self,
             max_steps=max_steps,
             weight_col=weight_col,
@@ -472,7 +482,24 @@ class Eventstream(
             thresh=thresh,
             centered=centered,
             groups=groups,
-        ).plot()
+        )
+
+        self.__step_matrix.fit()
+        return self.__step_matrix
+
+    def stattests(
+        self,
+        test: TEST_NAMES,
+        groups: Tuple[list[str | int], list[str | int]],
+        objective: Callable = lambda x: x.shape[0],
+        group_names: Tuple[str, str] = ("group_1", "group_2"),
+        alpha: float = 0.05,
+    ) -> StatTests:
+        self.__stattests = StatTests(
+            eventstream=self, groups=groups, objective=objective, test=test, group_names=group_names, alpha=alpha
+        )
+        self.__stattests.fit()
+        return self.__stattests
 
     def step_sankey(
         self,
@@ -483,12 +510,12 @@ class Eventstream(
         autosize: bool = True,
         width: int | None = None,
         height: int | None = None,
-    ) -> go.Figure:
+    ) -> Sankey:
         """
         See :py:func:`src.tooling.step_sankey.step_sankey`
 
         """
-        return Sankey(
+        self.__sankey = Sankey(
             eventstream=self,
             max_steps=max_steps,
             thresh=thresh,
@@ -497,4 +524,39 @@ class Eventstream(
             autosize=autosize,
             width=width,
             height=height,
-        ).plot()
+        )
+
+        self.__sankey.fit()
+        return self.__sankey
+
+    def cohorts(
+        self,
+        cohort_start_unit: DATETIME_UNITS,
+        cohort_period: Tuple[int, DATETIME_UNITS],
+        average: bool = True,
+        cut_bottom: int = 0,
+        cut_right: int = 0,
+        cut_diagonal: int = 0,
+    ) -> Cohorts:
+
+        """
+        Calculates cohort matrix
+
+        Parameters
+        ----------
+        :py:func:`src.tooling.cohorts.cohorts`
+
+        """
+
+        self.__cohorts = Cohorts(
+            eventstream=self,
+            cohort_start_unit=cohort_start_unit,
+            cohort_period=cohort_period,
+            average=average,
+            cut_bottom=cut_bottom,
+            cut_right=cut_right,
+            cut_diagonal=cut_diagonal,
+        )
+
+        self.__cohorts.fit()
+        return self.__cohorts

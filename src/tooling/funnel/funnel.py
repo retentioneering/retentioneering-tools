@@ -70,15 +70,15 @@ class Funnel:
         self.time_col = self.__eventstream.schema.event_timestamp
 
         self.stages = stages
-        self.stage_names = stage_names
         self.funnel_type: Literal["open", "closed"] = funnel_type
         self.sequence = sequence
 
         data = self.__eventstream.to_dataframe()
         data = data[data[self.event_col].isin([i for i in flatten(stages)])]  # type: ignore
         self.data = data
+        self.res_dict: dict = {}
 
-        if self.stages and self.stage_names and len(self.stages) != len(self.stage_names):
+        if self.stages and stage_names and len(self.stages) != len(stage_names):
             raise ValueError("stages and stage_names must be the same length!")
 
         if segments is None:
@@ -102,28 +102,30 @@ class Funnel:
         if funnel_type not in ["open", "closed"]:
             raise ValueError("funnel_type should be 'open' or 'closed'!")
 
-    def draw_plot(self) -> go.Figure:
-        """
+        for idx, stage in enumerate(self.stages):
+            if type(stage) is not list:
+                self.stages[idx] = [stage]  # type: ignore
 
+        if stage_names is None:
+            stage_names = []
+            for t in self.stages:
+                # get name
+                stage_names.append(" | ".join(t).strip(" | "))
+        self.stage_names = stage_names
+
+    def plot(self) -> go.Figure:
+        """
         Returns
         -------
-        Funnel plot
+            Funnel plot
         """
-        result_dict = self._calculate(
-            data=self.data,
-            stages=self.stages,
-            stage_names=self.stage_names,
-            funnel_type=self.funnel_type,
-            segments=self.segments,
-            segment_names=self.segment_names,
-            sequence=self.sequence,
-        )
-
+        result_dict = self.res_dict
         data = self._calculate_plot_data(plot_params=result_dict)
         plot = self._plot_stacked_funnel(data=data)
         return plot
 
-    def get_values(self) -> pd.DataFrame:
+    @property
+    def values(self) -> pd.DataFrame:
         """
         Creates pd.DataFrame with funnel values
 
@@ -132,16 +134,7 @@ class Funnel:
             pd.DataFrame
         """
 
-        result_dict = self._calculate(
-            data=self.data,
-            stages=self.stages,
-            stage_names=self.stage_names,
-            funnel_type=self.funnel_type,
-            segments=self.segments,
-            segment_names=self.segment_names,
-            sequence=self.sequence,
-        )
-
+        result_dict = self.res_dict
         result_list = []
         for key in result_dict:
             result_ = pd.DataFrame(result_dict[key])
@@ -158,45 +151,28 @@ class Funnel:
 
         return result_df
 
-    def _calculate(
-        self,
-        data: pd.DataFrame,
-        stages: list[str],
-        stage_names: list[str] | None,
-        funnel_type: Literal["open", "closed"],
-        segments: Collection[Collection[int]],
-        segment_names: list[str],
-        sequence: bool = False,
-    ) -> dict[str, Any]:
+    def fit(self) -> None:
 
-        res_dict = {}
-        for idx, stage in enumerate(stages):
-            if type(stage) is not list:
-                stages[idx] = [stage]  # type: ignore
-
-        if stage_names is None:
-            stage_names = []
-            for t in stages:
-                # get name
-                stage_names.append(" | ".join(t).strip(" | "))
-
-        if funnel_type == "closed":
-            res_dict = self._prepare_data_for_closed_funnel(
-                data=data,
-                stages=stages,
-                segments=segments,
-                segment_names=segment_names,
-                stage_names=stage_names,
-                sequence=sequence,
+        if self.funnel_type == "closed":
+            self.res_dict = self._prepare_data_for_closed_funnel(
+                data=self.data,
+                stages=self.stages,
+                segments=self.segments,
+                segment_names=self.segment_names,
+                stage_names=self.stage_names,
+                sequence=self.sequence,
             )
 
-        elif funnel_type == "open":
-            res_dict = self._prepare_data_for_open_funnel(
-                data=data, stages=stages, segments=segments, segment_names=segment_names, stage_names=stage_names
+        elif self.funnel_type == "open":
+            self.res_dict = self._prepare_data_for_open_funnel(
+                data=self.data,
+                stages=self.stages,
+                segments=self.segments,
+                segment_names=self.segment_names,
+                stage_names=self.stage_names,
             )
-        return res_dict
 
-    def _plot_stacked_funnel(self, data) -> go.Figure:
+    def _plot_stacked_funnel(self, data: list[go.Funnel]) -> go.Figure:
         layout = go.Layout(**self.__default_layout)
         fig = go.Figure(data, layout)
 
@@ -206,7 +182,6 @@ class Funnel:
         # _tmpfile = tempfile.NamedTemporaryFile()
         # path = _tmpfile.name
         # fig.write_html(path)
-
         return fig
 
     def _calculate_plot_data(self, plot_params: dict[str, Any]) -> list[go.Funnel]:
@@ -230,7 +205,7 @@ class Funnel:
         segments: Collection[Collection[int]],
         segment_names: list[str],
         sequence: bool = False,
-    ):
+    ) -> dict[str, dict]:
 
         min_time_0stage = (
             data[data[self.event_col].isin(stages[0])].groupby(self.user_col)[[self.time_col]].min().reset_index()
@@ -255,7 +230,7 @@ class Funnel:
         stage_names: list[str],
         segments: Collection[Collection[int]],
         segment_names: list[str],
-    ):
+    ) -> dict[str, dict]:
         res_dict = {}
         for segment, name in zip(segments, segment_names):
             # isolate users from group
@@ -264,7 +239,9 @@ class Funnel:
             res_dict[name] = {"stages": stage_names, "values": vals}
         return res_dict
 
-    def _crop_df(self, df: pd.DataFrame, stages: list[str], segment: Collection[int], sequence: bool = False):
+    def _crop_df(
+        self, df: pd.DataFrame, stages: list[str], segment: Collection[int], sequence: bool = False
+    ) -> tuple[list[int], pd.DataFrame]:
         first_stage = stages[0]
         next_stages = stages[1:]
 

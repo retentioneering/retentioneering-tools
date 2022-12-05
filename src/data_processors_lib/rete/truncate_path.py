@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
+import pandas as pd
+
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
@@ -102,7 +104,7 @@ class TruncatePath(DataProcessor):
                 if occurrence == "first":
                     df[f"{col_mark}_cumsum"] = df.groupby([user_col])[f"{col_mark}_mark_target"].cumsum()
 
-                def count_groups(x):
+                def count_groups(x: pd.DataFrame) -> int:
                     return x.to_frame(name=time_col).groupby(time_col).ngroup()
 
                 df[f"{col_mark}_group_num_in_user"] = df.groupby([user_col], group_keys=False)[time_col].transform(

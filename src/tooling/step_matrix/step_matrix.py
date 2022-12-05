@@ -18,7 +18,7 @@ class CenteredParams:
     left_gap: int
     occurrence: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.occurrence < 1:
             raise ValueError("Occurrence in 'centered' dictionary must be >=1")
         if self.left_gap < 1:
@@ -132,6 +132,11 @@ class StepMatrix:
         self.centered: CenteredParams | None = CenteredParams(**centered) if centered else None
         self.groups = groups
 
+        self.result_data: pd.DataFrame = pd.DataFrame()
+        self.result_targets: pd.DataFrame | None = None
+        self.fraction_title: str | None = None
+        self.targets_list: list[list[str]] | None = None
+
     def _pad_to_center(self, df_: pd.DataFrame) -> pd.DataFrame | None:
         if self.centered is None:
             return None
@@ -147,10 +152,10 @@ class StepMatrix:
         return df_
 
     @staticmethod
-    def _align_index(df1, df2) -> tuple[pd.DataFrame, pd.DataFrame]:
-        df1 = df1.align(df2)[0].fillna(0)
-        df2 = df2.align(df1)[0].fillna(0)
-        return df1, df2
+    def _align_index(df1: pd.DataFrame, df2: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+        df1 = df1.align(df2)[0].fillna(0)  # type: ignore
+        df2 = df2.align(df1)[0].fillna(0)  # type: ignore
+        return df1, df2  # type: ignore
 
     def _pad_cols(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -159,7 +164,7 @@ class StepMatrix:
         df - dataframe
         Returns
         -------
-        returns Dataframe with columns from 0 to max_steps
+            pd.Dataframe with columns from 0 to max_steps
         """
         df = df.copy()
         if max(df.columns) < self.max_steps:
@@ -212,15 +217,21 @@ class StepMatrix:
     def _process_targets(self, data: pd.DataFrame) -> tuple[pd.DataFrame | None, list[list[str]] | None]:
         if self.targets is None:
             return None, None
-        # obtain flatten list of targets:
-        targets_flatten = list(itertools.chain(*self.targets))
-        # format targets to list of lists:
+
+        # format targets to list of lists. E.g. [['a', 'b'], 'c'] -> [['a', 'b'], ['c']]
         targets = []
-        for t in self.targets:
-            if isinstance(t, list):
-                targets.append(t)
-            else:
-                targets.append([t])
+        if isinstance(self.targets, list):
+            for t in self.targets:
+                if isinstance(t, list):
+                    targets.append(t)
+                else:
+                    targets.append([t])
+        else:
+            targets.append([self.targets])
+
+        # obtain flatten list of targets. E.g. [['a', 'b'], 'c'] -> ['a', 'b', 'c']
+        targets_flatten = list(itertools.chain(*targets))
+
         agg_targets = data.groupby(["event_rank", self.event_col])[self.time_col].count().reset_index()
         agg_targets[self.time_col] /= data[self.weight_col].nunique()
         agg_targets.columns = ["event_rank", "event_name", "freq"]  # type: ignore
@@ -284,7 +295,7 @@ class StepMatrix:
         return data, fraction_title
 
     @staticmethod
-    def _sort_matrix(step_matrix) -> pd.DataFrame:
+    def _sort_matrix(step_matrix: pd.DataFrame) -> pd.DataFrame:
         x = step_matrix.copy()
         order = []
         for i in x.columns:
@@ -296,7 +307,13 @@ class StepMatrix:
         order.extend(list(set(step_matrix.index) - set(order)))
         return step_matrix.loc[order]
 
-    def _render_plot(self, data, fraction_title, targets, targets_list) -> matplotlib.figure.Figure:
+    def _render_plot(
+        self,
+        data: pd.DataFrame,
+        targets: pd.DataFrame | None,
+        targets_list: list[list[str]] | None,
+        fraction_title: str | None,
+    ) -> matplotlib.axes.Axes:
         n_rows = 1 + (len(targets_list) if targets_list else 0)
         n_cols = 1
         title_part1 = "centered" if self.centered else ""
@@ -339,8 +356,8 @@ class StepMatrix:
                     ax=axs[1 + n],
                     cmap=next(target_cmaps),
                     center=0,
-                    vmin=min(itertools.chain(targets.loc[i])),
-                    vmax=max(itertools.chain(targets.loc[i])) or 1,
+                    vmin=targets.loc[i].values.min(),
+                    vmax=targets.loc[i].values.max() or 1,
                     cbar=False,
                 )
 
@@ -367,9 +384,8 @@ class StepMatrix:
                 axs.vlines(
                     [centered_position - 0.02, centered_position + 0.98], *axs.get_ylim(), colors="Black", linewidth=0.7
                 )
-        return f
 
-    def _get_plot_data(self) -> tuple[pd.DataFrame, pd.DataFrame | None, str | None, list[list[str]] | None]:
+    def fit(self) -> None:
         weight_col = self.weight_col or self.user_col
         data = self.__eventstream.to_dataframe()
         data["event_rank"] = data.groupby(weight_col).cumcount() + 1
@@ -402,9 +418,9 @@ class StepMatrix:
         thresh_index = "THRESHOLDED_"
         if self.thresh != 0:
             # find if there are any rows to threshold:
-            thresholded = piv.loc[(piv.abs() < self.thresh).all(axis=0)].copy()
+            thresholded = piv.loc[(piv.abs() < self.thresh).all(axis=1)].copy()
             if len(thresholded) > 0:
-                piv = piv.loc[(piv.abs() >= self.thresh).any(axis=0)].copy()
+                piv = piv.loc[(piv.abs() >= self.thresh).any(axis=1)].copy()
                 thresh_index = f"THRESHOLDED_{len(thresholded)}"
                 piv.loc[thresh_index] = thresholded.sum()
 
@@ -427,14 +443,29 @@ class StepMatrix:
 
             piv = piv.loc[self.sorting]
 
-        if self.centered and piv_targets:
+        if self.centered:
             window = self.centered.left_gap
             piv.columns = [f"{int(i) - window - 1}" for i in piv.columns]  # type: ignore
-            if self.targets:
+            if self.targets and piv_targets is not None:
                 piv_targets.columns = [f"{int(i) - window - 1}" for i in piv_targets.columns]  # type: ignore
 
-        return piv, piv_targets, fraction_title, targets_plot
+        self.result_data = piv
+        self.result_targets = piv_targets
+        self.fraction_title = fraction_title
+        self.targets_list = targets_plot
 
-    def plot(self) -> None:
-        data, targets, fraction_title, targets_list = self._get_plot_data()
-        return self._render_plot(data, fraction_title, targets, targets_list)
+    def plot(self) -> sns.heatmap:
+        return self._render_plot(self.result_data, self.result_targets, self.targets_list, self.fraction_title)
+
+    @property
+    def values(self) -> tuple[pd.DataFrame, pd.DataFrame | None]:
+
+        """
+        Dataframe with max_steps number of columns and len(event_col.unique)
+        number of rows at max, or less if used thr > 0.
+
+        Returns
+        -------
+            pd.DataFrame
+        """
+        return self.result_data, self.result_targets

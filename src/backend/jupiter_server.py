@@ -29,7 +29,7 @@ class JupyterServer:
     def register_action(self, method: str, callback: Callable) -> None:
         self.actions[method] = Action(method, callback)
 
-    def dispatch_method(self, method: str, payload: dict):
+    def dispatch_method(self, method: str, payload: dict) -> Callable:
         action = self._find_action(method)
         if action is not None:
             return action.callback(payload)

@@ -13,13 +13,7 @@ class TestTest:
         test_data_dir = os.path.join(current_dir, "../datasets/tooling/stattests")
         source_df = pd.read_csv(os.path.join(test_data_dir, "01_simple_data.csv"))
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
         test_results = source.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             objective=lambda x: x.shape[0],

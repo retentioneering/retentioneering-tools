@@ -90,8 +90,8 @@ class TestGraphAddColumn:
             "event_id",
             "event_type",
             "event_index",
-            "event_name",
-            "event_timestamp",
+            "event",
+            "timestamp",
             "user_id",
             "bucket",
         ]
@@ -128,8 +128,8 @@ class TestGraphAddColumn:
             "event_id",
             "event_type",
             "event_index",
-            "event_name",
-            "event_timestamp",
+            "event",
+            "timestamp",
             "user_id",
             "bucket",
         ]

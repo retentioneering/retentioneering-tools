@@ -34,7 +34,7 @@ class TestFilterEvents(ApplyTestBase):
                 [1, "pageview", "2021-10-26 12:00:00"],
                 [1, "pageview", "2021-10-26 12:03:00"],
             ],
-            columns=["user_id", "event_name", "event_timestamp"],
+            columns=["user_id", "event", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -50,7 +50,7 @@ class TestFilterEvents(ApplyTestBase):
                 [1, "pageview", "2021-10-26 12:03"],
                 [2, "plus_icon_click", "2021-10-26 12:04"],
             ],
-            columns=["user_id", "event_name", "event_timestamp"],
+            columns=["user_id", "event", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -59,7 +59,7 @@ class TestFilterEvents(ApplyTestBase):
             return df[schema.event_name].isin(["pageview", "cart_btn_click", "plus_icon_click"])
 
         original, actual = self._apply(FilterEventsParams(filter=_filter), return_with_original=True)
-        expected = pd.DataFrame([], columns=["user_id", "event_name", "event_timestamp"])
+        expected = pd.DataFrame([], columns=["user_id", "event", "timestamp"])
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
@@ -82,7 +82,7 @@ class TestFilterEventsGraph(GraphTestBase):
 
     def test_filter_events_graph_1_some_filtered(self) -> None:
         def _filter(df: pd.DataFrame, schema: EventstreamSchema):
-            return (df[schema.user_id].isin([2])) | (df.event_name.str.contains("cart_btn_click"))
+            return (df[schema.user_id].isin([2])) | (df.event.str.contains("cart_btn_click"))
 
         original, actual = self._apply(FilterEventsParams(filter=_filter), return_with_original=True)
         expected = pd.DataFrame(
@@ -90,7 +90,7 @@ class TestFilterEventsGraph(GraphTestBase):
                 [1, "cart_btn_click", "raw", "2021-10-26 12:02:00"],
                 [2, "plus_icon_click", "raw", "2021-10-26 12:04:00"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -101,7 +101,7 @@ class TestFilterEventsGraph(GraphTestBase):
         original, actual = self._apply(FilterEventsParams(filter=_filter), return_with_original=True)
         expected = pd.DataFrame(
             [],
-            columns=["user_id", "event_name", "event_timestamp"],
+            columns=["user_id", "event", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -117,6 +117,6 @@ class TestFilterEventsGraph(GraphTestBase):
                 [1, "pageview", "2021-10-26 12:03"],
                 [2, "plus_icon_click", "2021-10-26 12:04"],
             ],
-            columns=["user_id", "event_name", "event_timestamp"],
+            columns=["user_id", "event", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)

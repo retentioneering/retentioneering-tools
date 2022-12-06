@@ -430,9 +430,13 @@ class Eventstream(
         user_sample_size: Optional[int | float] = None,
         user_sample_seed: Optional[int] = None,
     ) -> pd.DataFrame | pd.Series[Any]:
+        if type(user_sample_size) is not float and type(user_sample_size) is not int:
+            raise TypeError('"user_sample_size" has to be a number(float for user share or int for user amount)')
+        if user_sample_size < 0:
+            raise ValueError("User sample size/share cannot be negative!")
         if type(user_sample_size) is float:
-            if not 0 < user_sample_size < 1:
-                raise ValueError("User sample share cannot be negative or exceed 1!")
+            if user_sample_size > 1:
+                raise ValueError("User sample share cannot exceed 1!")
         user_col_name = raw_data_schema.user_id
         unique_users = raw_data[user_col_name].unique()
         if type(user_sample_size) is int:

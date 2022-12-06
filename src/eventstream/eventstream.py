@@ -108,6 +108,7 @@ class Eventstream(
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
         relations: Optional[List[Relation]] = None,
+        user_sample_size: Optional[int] = None,
         user_sample_share: Optional[float] = None,
         user_sample_seed: Optional[int] = None,
     ) -> None:
@@ -121,8 +122,10 @@ class Eventstream(
                 raw_data_schema.event_type = "event_type"
         self.__raw_data_schema = raw_data_schema
 
-        if user_sample_share is not None:
-            raw_data = self.__get_data_sampled(raw_data, raw_data_schema, user_sample_share, user_sample_seed)
+        if (user_sample_share is not None) or (user_sample_size is not None):
+            raw_data = self.__sample_user_paths(
+                raw_data, raw_data_schema, user_sample_size, user_sample_share, user_sample_seed
+            )
         if not index_order:
             self.index_order = DEFAULT_INDEX_ORDER
         else:
@@ -423,30 +426,31 @@ class Eventstream(
             return self.index_order.index(event_type)
         return len(self.index_order)
 
-    def __get_data_sampled(
+    def __sample_user_paths(
         self,
         raw_data: pd.DataFrame | pd.Series[Any],
-        raw_data_schema: RawDataSchemaType | None = None,
-        user_sample_share: float = 0,
+        raw_data_schema: RawDataSchemaType,
+        user_sample_size: Optional[int] = None,
+        user_sample_share: Optional[float] = None,
         user_sample_seed: Optional[int] = None,
     ) -> pd.DataFrame | pd.Series[Any]:
-        if user_sample_share < 0 or user_sample_share > 1:
-            raise ValueError("User sample share cannot be negative or exceed 1!")
-        if raw_data_schema is None:
-            user_col_name = "user_id"
+        if user_sample_size is not None and user_sample_share is not None:
+            raise ValueError('Only one of "user_sample_size" and "user_sample_share" can be specified!')
+        if user_sample_share is not None:
+            if not 0 < user_sample_share < 1:
+                raise ValueError("User sample share cannot be negative or exceed 1!")
+        user_col_name = raw_data_schema.user_id
+        unique_users = raw_data[user_col_name].unique()
+        if user_sample_size is not None:
+            sample_size = user_sample_size
+        elif user_sample_share is not None:
+            sample_size = int(user_sample_share * len(unique_users))
         else:
-            user_col_name = raw_data_schema.user_id
+            return raw_data
         if user_sample_seed is not None:
-            default_random_state = np.random.get_state()
             np.random.seed(user_sample_seed)
-            unique_users = raw_data[user_col_name].unique()
-            sample_users = np.random.choice(unique_users, int(user_sample_share * len(unique_users)), replace=False)
-            raw_data_sampled = raw_data.loc[raw_data[user_col_name].isin(sample_users), :]  # type: ignore
-            np.random.set_state(default_random_state)
-        else:
-            unique_users = raw_data[user_col_name].unique()
-            sample_users = np.random.choice(unique_users, int(user_sample_share * len(unique_users)), replace=False)
-            raw_data_sampled = raw_data.loc[raw_data[user_col_name].isin(sample_users), :]  # type: ignore
+        sample_users = np.random.choice(unique_users, sample_size, replace=False)
+        raw_data_sampled = raw_data.loc[raw_data[user_col_name].isin(sample_users), :]  # type: ignore
         return raw_data_sampled
 
     def funnel(

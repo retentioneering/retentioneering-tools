@@ -11,9 +11,9 @@ from tests.tooling.fixtures.cohorts import test_stream
 
 
 def run_test(stream, correct_res, **kwargs):
-    c = Cohorts(eventstream=stream)
-    c.fit_cohorts(**kwargs)
-    res = c.values.fillna(-999).round(2)
+    c = Cohorts(eventstream=stream, **kwargs)
+    c.fit()
+    res = c.values.fillna(-999).round(2)пше
     correct_res = correct_res.round(2)
     return correct_res.compare(res).shape == (0, 0)
 

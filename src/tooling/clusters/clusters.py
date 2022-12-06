@@ -116,6 +116,7 @@ class Clusters:
         -------
         sns.barplot
 
+
         """
 
         if self._user_clusters:
@@ -151,6 +152,12 @@ class Clusters:
 
     @property
     def calculated_clusters(self) -> dict:
+        """
+        Returns
+        -------
+        dict
+            Result of clusterization where key - number of cluster and values - user's ids.
+        """
         clusters = unique(self.__clusters_list)
         readable_data: dict[str | int, list[str | int]] = {x: list() for x in clusters}
         for row_num, cluster in enumerate(self.__clusters_list):
@@ -222,14 +229,15 @@ class Clusters:
             - | ``targets`` colors trajectories based on reach to any event provided in 'targets' parameter.
               | Must provide ``targets`` parameter in this case.
             - If ``None``, then only calculates TSNE without visualization.
-        **kwargs :
+        **kwargs : optional
+            Parameters for ``sklearn.manifold.TSNE()`` and ``umap.UMAP()``
 
         Returns
-        --------
-        pd.Dataframe, numpy.ndarray
+        -------
+        pd.Dataframe, sns.scatterplot
             Values and plot in the low-dimensional space for user trajectories indexed by user IDs.
         """
-
+        # @TODO Если plot_type = None - сейчас ошибка выпадает
         if targets is None:
             targets = []
         if ngram_range is None:
@@ -321,12 +329,12 @@ class Clusters:
             Array of features.
         kwargs: optional
             Parameters for ``sklearn.manifold.TSNE()``
+
         Returns
         -------
-        Calculated TSNE transform
-        Return type
-        -------
-        np.ndarray
+        pd.DataFrame
+            Calculated TSNE transform
+
         """
 
         TSNE_PARAMS = [
@@ -358,12 +366,12 @@ class Clusters:
             Array of features.
         kwargs: optional
             Parameters for ``umap.UMAP()``
+
         Returns
         -------
-        Calculated UMAP transform
-        Return type
-        -------
-        np.ndarray
+        pd.DataFrame
+            Calculated UMAP transform
+
         """
         reducer = umap.UMAP()
         _umap_filter = reducer.get_params()
@@ -498,27 +506,7 @@ class Clusters:
 
     # TODO: add save
     def _cluster_bar(self, clusters: ndarray, target: list[list[bool]], target_names: list[str]) -> go.Figure:
-        """
-        Plots bar charts with cluster sizes and average target conversion rate.
 
-        Parameters
-        ----------
-        data : pd.DataFrame
-            Feature matrix.
-        clusters : "np.array"
-            Array of cluster IDs.
-        target: "np.array"
-            Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
-        target: list[np.ndarray]
-            Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
-        kwargs: optional
-            Width and height of plot.
-        Returns
-        -------
-        Saves plot to ``retention_config.experiments_folder``
-
-        PNG
-        """
         cl = pd.DataFrame([clusters, *target], index=["clusters", *target_names]).T
         cl["cluster size"] = 1
         for t_n in target_names:

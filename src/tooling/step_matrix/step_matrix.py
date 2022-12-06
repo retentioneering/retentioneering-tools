@@ -27,13 +27,14 @@ class CenteredParams:
 
 class StepMatrix:
     """
-    Plots heatmap with distribution of users over trajectory steps ordered by
+    Calculates step_matrix with distribution of users over trajectory steps ordered by
     event name. Matrix rows are event names, columns are aligned user trajectory
     step numbers and the values are shares of users. A given entry X at column i
     and event j means at i'th step fraction of users X  have specific event j.
 
     Parameters
     ----------
+    eventstream : EventstreamType
     max_steps : int, default=20
         Maximum number of steps in ``user path`` to include.
     weight_col : str, optional
@@ -59,17 +60,17 @@ class StepMatrix:
     sorting : list of str, optional
         - | If list of event names specified - lines in the heatmap will be shown in
           | passed order.
-        - If ``None`` - rows will be ordered according to i`th value (first row,
-         where 1st element is max, second row, where second element is max, etc)
+        - | If ``None`` - rows will be ordered according to i`th value (first row,
+          | where 1st element is max, second row, where second element is max, etc)
     thresh : float, default=0
         Used to remove rare events. Aggregates all rows where all values are
         less than specified threshold.
     centered : dict, optional
         Parameter used to align user paths at specific event at specific step.
         Has to contain three keys:
-            - ``event``: str, name of event to align
-            - ``left_gap``: int, number of events to include before specified event
-            - ``occurrence`` : int which occurrence of event to align (typical 1)
+        - ``event``: str, name of event to align
+        - ``left_gap``: int, number of events to include before specified event
+        - ``occurrence`` : int which occurrence of event to align (typical 1)
 
         If not ``None`` - only users who have selected events with specified
         ``occurrence`` in their paths will be included.
@@ -83,8 +84,8 @@ class StepMatrix:
         for users from g_1 and g_2, respectively. Resulting matrix will be the matrix
         M = M1-M2.
 
-    Note
-    ----
+    Notes
+    -----
     If during preprocessing ``path_end`` synthetic event will be added to user's paths
     (for example using :py:func:`src.data_processors_lib.start_end_event` data processor)
     Event ``path_end`` always will be passed in the last line of ``step_matrix`` and fraction
@@ -92,12 +93,6 @@ class StepMatrix:
     column of step_matrix will sum up to 1.
 
     And in differential step_matrix values in columns will sum up to 0.
-
-    Returns
-    -------
-    pd.DataFrame
-        Matrix with max_steps number of columns and len(event_col.unique)
-        number of rows at max, or less if used thr > 0.
 
     """
 
@@ -161,10 +156,12 @@ class StepMatrix:
         """
         Parameters
         ----------
-        df - dataframe
+        df : pd.Dataframe
+
         Returns
         -------
-            pd.Dataframe with columns from 0 to max_steps
+        pd.Dataframe
+            With columns from 0 to ``max_steps``
         """
         df = df.copy()
         if max(df.columns) < self.max_steps:
@@ -386,6 +383,14 @@ class StepMatrix:
                 )
 
     def fit(self) -> None:
+        """
+        Calculates step_matrix with specified parameters.
+        Result of calculation could be presented using:
+
+        - :py:func:`values`
+        - :py:func:`plot`
+
+        """
         weight_col = self.weight_col or self.user_col
         data = self.__eventstream.to_dataframe()
         data["event_rank"] = data.groupby(weight_col).cumcount() + 1
@@ -455,17 +460,28 @@ class StepMatrix:
         self.targets_list = targets_plot
 
     def plot(self) -> sns.heatmap:
+        """
+        Creates heatmap on the base of calculated step_matrix.
+        Should be used after :py:func:`fit`.
+
+        Returns
+        -------
+        sns.heatmap
+
+        """
         return self._render_plot(self.result_data, self.result_targets, self.targets_list, self.fraction_title)
 
     @property
     def values(self) -> tuple[pd.DataFrame, pd.DataFrame | None]:
 
         """
-        Dataframe with max_steps number of columns and len(event_col.unique)
+        Creates pd.DataFrame with ``max_steps`` number of columns and ``len(event_col.unique)``
         number of rows at max, or less if used thr > 0.
+
+        Should be used after :py:func:`fit`.
 
         Returns
         -------
-            pd.DataFrame
+        pd.DataFrame
         """
         return self.result_data, self.result_targets

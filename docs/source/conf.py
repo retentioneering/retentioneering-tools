@@ -41,12 +41,6 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.extlinks",
-    # "sphinx.ext.autosummary",
-    # "sphinx.ext.doctest",
-    # "sphinx.ext.intersphinx",
-    # "sphinx.ext.todo",
-    # "sphinx.ext.ifconfig",
-    # "sphinx.ext.imgmath",
 ]
 
 # -- Options for HTML output -------------------------------------------------
@@ -56,16 +50,10 @@ extensions = [
 numpydoc_show_inherited_class_members = False
 numpydoc_class_members_toctree = False
 numpydoc_show_class_members = False
-# html_theme = "sphinx_rtd_theme"
 html_theme = "pydata_sphinx_theme"
 
 html_logo = "rete_logo.png"
-html_theme_options = {
-    "analytics_id": "UA-143266385-2",
-    "logo_only": True,
-    "display_version": False,
-    "style_nav_header_background": "#343131",  # colour of the left-side panel
-}
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
@@ -87,21 +75,20 @@ source_suffix = ".rst"
 master_doc = "index"
 
 extlinks = {
-    "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units", ""),
+    "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units", None),
     "sklearn_tfidf": (
         "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html",
-        "",
+        None,
     ),
     "sklearn_countvec": (
         "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html",
-        "",
+        None,
     ),
-    "name": ("link", ""),
-    "name": ("link", ""),
-    "name": ("link", ""),
-    "name": ("link", ""),
     "numpy_timedelta_link": (
-        "https://numpy.org/doc/stable/reference/" "arrays.datetime.html#:~:text=There%20are%20two,numbers%20of%20days.",
-        "",
+        "https://numpy.org/doc/stable/reference/arrays.datetime.html#:~:text=There%20are%20two,numbers%20of%20days.",
+        None,
     ),
+    "plotly_autosize": ("https://plotly.com/python/reference/layout/#layout-autosize", None),
+    "plotly_width": ("https://plotly.com/python/reference/layout/#layout-width", None),
+    "plotly_height": ("https://plotly.com/python/reference/layout/#layout-height", None),
 }

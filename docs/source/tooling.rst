@@ -8,18 +8,7 @@ Eventstream tooling methods
 .. autoclass:: src.eventstream.eventstream.Eventstream
     :members: funnel, clusters, step_matrix, sankey
 
-
-cohorts
-~~~~~~~
-.. autoclass::
-    :members:
-
 graph
-~~~~~~~~~~~~~~~~
-.. autoclass::
-    :members:
-
-compare
 ~~~~~~~~~~~~~~~~
 .. autoclass::
     :members:
@@ -49,7 +38,7 @@ sankey
 
 cohorts
 ~~~~~~~
-.. automodule::
+.. automodule:: src.tooling.cohorts.cohorts
     :members:
 
 graph
@@ -57,7 +46,7 @@ graph
 .. automodule::
     :members:
 
-compare
-~~~~~~~
-.. automodule::
+stattests
+~~~~~~~~~
+.. automodule:: src.tooling.stattests.stattests
     :members:

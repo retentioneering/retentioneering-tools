@@ -122,7 +122,23 @@ class Clusters:
             readable_data[cluster].append(row_num)
         return readable_data
 
-    def filter(self, cluster_id: int | str) -> EventstreamType:
+    def select_cluster(self, cluster_id: int | str) -> EventstreamType:
+        """
+        Truncates the eventstream and leaves the trajectories of the users who belong to the selected cluster.
+
+        Parameters
+        ----------
+        cluster_id: int or str
+            Cluster identifier to be selected. If ``Clusters.create_clusters`` was used for cluster generation, then
+             0, 1, ... values are possible.
+        Returns
+        --------
+        Eventstream with the users belonging to the selected cluster only.
+
+        Return type
+        --------
+        EventstreamType
+        """
         from src.eventstream.eventstream import Eventstream
 
         eventstream: Eventstream = self.__eventstream  # type: ignore

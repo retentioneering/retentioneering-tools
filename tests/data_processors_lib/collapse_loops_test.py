@@ -4,13 +4,8 @@ import pandas as pd
 
 from src.data_processors_lib.rete import CollapseLoops, CollapseLoopsParams
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
-from tests.data_processors_lib.common import (
-    ApplyTestBase,
-    GraphTestBase,
-    apply_processor,
-    apply_processor_with_graph,
-)
+from src.eventstream.schema import RawDataSchema
+from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
 class TestCollapseLoops(ApplyTestBase):
@@ -54,7 +49,7 @@ class TestCollapseLoops(ApplyTestBase):
                 [2, "event1", "raw", "2022-01-02 00:00:00", True],
                 [2, "event1", "raw", "2022-01-02 00:00:05", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -76,7 +71,7 @@ class TestCollapseLoops(ApplyTestBase):
                 [2, "event1_loop_2", "group_alias", "2022-01-02 00:00:05", False],
                 [2, "event1", "raw", "2022-01-02 00:00:05", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -98,7 +93,7 @@ class TestCollapseLoops(ApplyTestBase):
                 [2, "event1_loop", "group_alias", "2022-01-02 00:00:02.5", False],
                 [2, "event1", "raw", "2022-01-02 00:00:05", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -140,7 +135,7 @@ class TestCollapseLoopsGraph(GraphTestBase):
                 [2, "event1_loop_2", "group_alias", "2022-01-02 00:00:00"],
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -159,7 +154,7 @@ class TestCollapseLoopsGraph(GraphTestBase):
                 [2, "event1_loop_2", "group_alias", "2022-01-02 00:00:05"],
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -178,7 +173,7 @@ class TestCollapseLoopsGraph(GraphTestBase):
                 [2, "event1_loop", "group_alias", "2022-01-02 00:00:02.5"],
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -197,7 +192,7 @@ class TestCollapseLoopsGraph(GraphTestBase):
                 [2, "event1", "group_alias", "2022-01-02 00:00:02.5"],
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -219,15 +214,11 @@ class TestCollapseLoopsHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         params = {"suffix": "count", "timestamp_aggregation_type": "min"}
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 
         res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
         correct_result_false_min = pd.DataFrame(
@@ -259,15 +250,11 @@ class TestCollapseLoopsHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         params = {"suffix": "count", "timestamp_aggregation_type": "max"}
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 
         res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
         correct_result_false_max = pd.DataFrame(
@@ -299,15 +286,11 @@ class TestCollapseLoopsHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         params = {"suffix": "loop", "timestamp_aggregation_type": "mean"}
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 
         res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
         correct_result_true_mean = pd.DataFrame(
@@ -339,15 +322,11 @@ class TestCollapseLoopsHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        source = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         params = {"suffix": None, "timestamp_aggregation_type": "mean"}
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 
         res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
         correct_result_true_mean = pd.DataFrame(

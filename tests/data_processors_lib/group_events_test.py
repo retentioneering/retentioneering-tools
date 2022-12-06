@@ -41,7 +41,7 @@ class TestGroupEvents(ApplyTestBase):
                 [1, "add_to_cart", "group_alias", "2021-10-26 12:02", original["event_id"].iat[1]],
                 [2, "add_to_cart", "group_alias", "2021-10-26 12:04", original["event_id"].iat[3]],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "ref_0"],
+            columns=["user_id", "event", "event_type", "timestamp", "ref_0"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -57,7 +57,7 @@ class TestGroupEvents(ApplyTestBase):
             ),
             return_with_original=True,
         )
-        expected = pd.DataFrame([], columns=["user_id", "event_name", "event_type", "event_timestamp", "ref_0"])
+        expected = pd.DataFrame([], columns=["user_id", "event", "event_type", "timestamp", "ref_0"])
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_group_events_apply_3_all_grouped(self) -> None:
@@ -79,7 +79,7 @@ class TestGroupEvents(ApplyTestBase):
                 [1, "anything", "group_alias", "2021-10-26 12:03", original["event_id"].iat[2]],
                 [2, "anything", "group_alias", "2021-10-26 12:04", original["event_id"].iat[3]],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "ref_0"],
+            columns=["user_id", "event", "event_type", "timestamp", "ref_0"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -103,7 +103,7 @@ class TestGroupEventsGraph(GraphTestBase):
 
     def test_group_events_graph_1(self) -> None:
         def _filter(df: pd.DataFrame, schema: EventstreamSchema):
-            return (df[schema.user_id].isin([2])) | (df.event_name.str.contains("cart_btn_click"))
+            return (df[schema.user_id].isin([2])) | (df.event.str.contains("cart_btn_click"))
 
         original, actual = self._apply(
             GroupEventsParams(
@@ -120,7 +120,7 @@ class TestGroupEventsGraph(GraphTestBase):
                 [1, "pageview", "raw", "2021-10-26 12:03"],
                 [2, "event_new", "group_alias", "2021-10-26 12:04"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -143,7 +143,7 @@ class TestGroupEventsGraph(GraphTestBase):
                 [1, "pageview", "raw", "2021-10-26 12:03"],
                 [2, "plus_icon_click", "raw", "2021-10-26 12:04"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -166,6 +166,6 @@ class TestGroupEventsGraph(GraphTestBase):
                 [1, "anything", "group_alias", "2021-10-26 12:03"],
                 [2, "anything", "group_alias", "2021-10-26 12:04"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)

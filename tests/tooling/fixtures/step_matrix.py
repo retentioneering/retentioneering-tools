@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import pytest
 
@@ -10,6 +12,16 @@ from src.data_processors_lib.rete import (
 )
 from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
 from src.graph.p_graph import EventsNode, PGraph
+
+FLOAT_PRECISION = 3
+
+
+def read_test_data(filename):
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    test_data_dir = os.path.join(current_dir, "../../datasets/tooling/step_matrix")
+    filepath = os.path.join(test_data_dir, filename)
+    df = pd.read_csv(filepath, index_col=0).round(FLOAT_PRECISION)
+    return df
 
 
 @pytest.fixture
@@ -31,124 +43,22 @@ def stream_simple_shop():
 
 @pytest.fixture
 def test_stream_end_path():
-    df = pd.DataFrame(
-        [
-            [1, "event1", "2022-01-01 00:01:00"],
-            [1, "event2", "2022-01-01 00:01:02"],
-            [1, "event1", "2022-01-01 00:02:00"],
-            [1, "event3", "2022-01-01 00:04:30"],
-            [1, "path_end", "2022-01-01 00:04:30"],
-            [2, "event1", "2022-01-02 00:00:00"],
-            [2, "event2", "2022-01-02 00:00:05"],
-            [2, "event2", "2022-01-02 00:01:05"],
-            [2, "path_end", "2022-01-02 00:01:05"],
-            [3, "event1", "2019-12-15 02:25:03"],
-            [3, "event1", "2020-02-21 14:19:53"],
-            [3, "event1", "2020-02-21 14:23:25"],
-            [3, "event5", "2020-02-21 14:26:28"],
-            [3, "event1", "2022-01-02 00:01:10"],
-            [3, "event1", "2022-01-02 00:02:05"],
-            [3, "event4", "2022-01-02 00:03:05"],
-            [3, "path_end", "2022-01-02 00:03:05"],
-            [4, "event1", "2019-11-21 16:19:55"],
-            [4, "event2", "2020-02-28 07:59:40"],
-            [4, "event1", "2020-01-29 09:10:04"],
-            [4, "event1", "2022-01-02 00:03:05"],
-            [4, "path_end", "2022-01-02 00:03:05"],
-            [5, "event1", "2020-04-17 12:18:49"],
-            [5, "event1", "2020-04-17 12:18:50"],
-            [5, "path_end", "2020-04-17 12:18:50"],
-            [6, "event1", "2019-11-12 10:02:06"],
-            [6, "event2", "2019-11-12 10:02:34"],
-            [6, "event3", "2019-11-12 10:02:36"],
-            [6, "event4", "2019-11-12 10:02:39"],
-            [6, "event5", "2019-11-12 10:03:04"],
-            [6, "event1", "2019-11-12 10:03:06"],
-            [6, "event2", "2019-11-12 10:03:34"],
-            [6, "event3", "2019-11-12 10:03:38"],
-            [6, "event4", "2019-11-12 10:03:39"],
-            [6, "event5", "2019-11-12 10:04:40"],
-            [6, "path_end", "2019-11-12 10:04:40"],
-        ],
-        columns=["user_id", "event", "timestamp"],
-    )
-
+    df = read_test_data("test_stream_end_path.csv")
     source_stream = Eventstream(df)
-
     return source_stream
 
 
 @pytest.fixture
 def test_stream():
-    df = pd.DataFrame(
-        [
-            [1, "event1", "2022-01-01 00:01:00"],
-            [1, "event2", "2022-01-01 00:01:02"],
-            [1, "event1", "2022-01-01 00:02:00"],
-            [1, "event3", "2022-01-01 00:04:30"],
-            [2, "event1", "2022-01-02 00:00:00"],
-            [2, "event2", "2022-01-02 00:00:05"],
-            [2, "event2", "2022-01-02 00:01:05"],
-            [3, "event1", "2022-01-02 00:01:10"],
-            [3, "event1", "2022-01-02 00:02:05"],
-            [3, "event4", "2022-01-02 00:03:05"],
-            [4, "event1", "2022-01-02 00:03:05"],
-            [5, "event1", "2020-04-17 12:18:49"],
-            [6, "event1", "2019-11-12 10:03:06"],
-            [6, "event2", "2019-11-12 10:03:36"],
-            [6, "event3", "2019-11-12 10:03:36"],
-            [6, "event4", "2019-11-12 10:03:39"],
-            [6, "event5", "2019-11-12 10:03:40"],
-            [5, "event1", "2020-04-17 12:18:50"],
-            [6, "event1", "2019-11-12 10:03:07"],
-            [6, "event2", "2019-11-12 10:03:34"],
-            [6, "event3", "2019-11-12 10:03:38"],
-            [6, "event4", "2019-11-12 10:03:41"],
-            [6, "event5", "2019-11-12 10:03:42"],
-            [4, "event1", "2019-11-21 16:19:55"],
-            [4, "event2", "2020-02-28 07:59:40"],
-            [4, "event1", "2020-01-29 09:10:04"],
-            [3, "event1", "2019-12-15 02:25:03"],
-            [3, "event5", "2020-02-21 14:26:28"],
-            [3, "event1", "2020-02-21 14:19:53"],
-            [3, "event1", "2020-02-21 14:23:25"],
-        ],
-        columns=["user_id", "event", "timestamp"],
-    )
-
+    df = read_test_data("test_stream.csv")
     source_stream = Eventstream(df)
     return source_stream
 
 
 @pytest.fixture
 def test_weight_col():
-    df = pd.DataFrame(
-        [
-            [1, 1, "event1", "2022-01-01 00:01:00"],
-            [1, 1, "event2", "2022-01-01 00:01:02"],
-            [1, 2, "event1", "2022-01-01 00:02:00"],
-            [1, 2, "event3", "2022-01-01 00:04:30"],
-            [2, 1, "event1", "2022-01-02 00:00:00"],
-            [3, 3, "event1", "2022-01-02 00:01:10"],
-            [3, 1, "event3", "2022-01-02 00:02:05"],
-            [3, 1, "event4", "2022-01-02 00:03:05"],
-            [4, 1, "event1", "2022-01-02 00:03:05"],
-            [6, 1, "event1", "2019-11-12 10:03:06"],
-            [6, 3, "event2", "2019-11-12 10:03:36"],
-            [6, 1, "event4", "2019-11-12 10:03:39"],
-            [6, 1, "event5", "2019-11-12 10:03:40"],
-            [5, 2, "event1", "2020-04-17 12:18:50"],
-            [6, 3, "event1", "2019-11-12 10:03:07"],
-            [6, 2, "event2", "2019-11-12 10:03:34"],
-            [6, 2, "event3", "2019-11-12 10:03:37"],
-            [6, 2, "event4", "2019-11-12 10:03:41"],
-            [6, 3, "event5", "2019-11-12 10:03:42"],
-            [4, 2, "event2", "2020-02-28 07:59:40"],
-            [4, 2, "event1", "2020-01-29 09:10:04"],
-            [3, 3, "event1", "2019-12-15 02:25:03"],
-        ],
-        columns=["user_id", "session_id", "event", "timestamp"],
-    )
+    df = read_test_data("test_weight_col.csv")
+
     raw_data_schema = RawDataSchema(
         event_name="event",
         event_timestamp="timestamp",

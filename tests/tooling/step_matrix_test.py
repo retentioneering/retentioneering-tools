@@ -43,7 +43,7 @@ def run_test(stream, correct, output, **kwargs):
 
 
 class TestStepMatrix:
-    def test_step_matrix_simple(self, test_stream):
+    def test_step_matrix__max_steps(self, test_stream):
         correct_result = pd.DataFrame(
             [
                 [1.0, 0.667, 0.333, 0.167, 0.167],
@@ -153,9 +153,6 @@ class TestStepMatrix:
             index=(["event2", "event1", "event3", "event4", "event5"]),
             columns=["-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5"],
         )
-
-        correct_result.columns.name = None
-        correct_result.index.name = None
 
         assert run_test(
             test_stream,

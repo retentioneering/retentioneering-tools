@@ -108,8 +108,7 @@ class Eventstream(
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
         relations: Optional[List[Relation]] = None,
-        user_sample_size: Optional[int] = None,
-        user_sample_share: Optional[float] = None,
+        user_sample_size: Optional[int | float] = None,
         user_sample_seed: Optional[int] = None,
     ) -> None:
         self.__clusters = None
@@ -122,10 +121,8 @@ class Eventstream(
                 raw_data_schema.event_type = "event_type"
         self.__raw_data_schema = raw_data_schema
 
-        if (user_sample_share is not None) or (user_sample_size is not None):
-            raw_data = self.__sample_user_paths(
-                raw_data, raw_data_schema, user_sample_size, user_sample_share, user_sample_seed
-            )
+        if user_sample_size is not None:
+            raw_data = self.__sample_user_paths(raw_data, raw_data_schema, user_sample_size, user_sample_seed)
         if not index_order:
             self.index_order = DEFAULT_INDEX_ORDER
         else:
@@ -430,21 +427,18 @@ class Eventstream(
         self,
         raw_data: pd.DataFrame | pd.Series[Any],
         raw_data_schema: RawDataSchemaType,
-        user_sample_size: Optional[int] = None,
-        user_sample_share: Optional[float] = None,
+        user_sample_size: Optional[int | float] = None,
         user_sample_seed: Optional[int] = None,
     ) -> pd.DataFrame | pd.Series[Any]:
-        if user_sample_size is not None and user_sample_share is not None:
-            raise ValueError('Only one of "user_sample_size" and "user_sample_share" can be specified!')
-        if user_sample_share is not None:
-            if not 0 < user_sample_share < 1:
+        if type(user_sample_size) is float:
+            if not 0 < user_sample_size < 1:
                 raise ValueError("User sample share cannot be negative or exceed 1!")
         user_col_name = raw_data_schema.user_id
         unique_users = raw_data[user_col_name].unique()
-        if user_sample_size is not None:
+        if type(user_sample_size) is int:
             sample_size = user_sample_size
-        elif user_sample_share is not None:
-            sample_size = int(user_sample_share * len(unique_users))
+        elif type(user_sample_size) is float:
+            sample_size = int(user_sample_size * len(unique_users))
         else:
             return raw_data
         if user_sample_seed is not None:

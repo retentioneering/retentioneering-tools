@@ -322,11 +322,11 @@ class TransitionGraph:
         target_col = edgelist.columns[1]
 
         # calc edge type
-        edgelist["type"] = edgelist.apply(
+        edgelist["type"] = edgelist.apply(  # type: ignore
             lambda x: node_params.get(x[source_col])
             if node_params.get(x[source_col]) == "source"
             else node_params.get(x[target_col]) or "suit",
-            1,
+            1,  # type: ignore
         )
 
         pos = self._use_layout(self._calc_layout(edgelist=edgelist, width=width, height=height))

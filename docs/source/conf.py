@@ -14,6 +14,7 @@ import datetime
 #
 import os
 import sys
+from typing import Any
 
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -92,3 +93,7 @@ extlinks = {
     "plotly_width": ("https://plotly.com/python/reference/layout/#layout-width", None),
     "plotly_height": ("https://plotly.com/python/reference/layout/#layout-height", None),
 }
+
+
+def setup(app: Any) -> None:
+    app.add_stylesheet("css/custom.css")

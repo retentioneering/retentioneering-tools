@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from typing import List
+
+from pydantic.dataclasses import dataclass
 
 from src.data_processor.data_processor import DataProcessor, ParamsModel
 from src.eventstream.types import EventstreamType
@@ -9,7 +11,7 @@ from src.eventstream.types import EventstreamType
 @dataclass
 class RenameRule:
     group_name: str
-    child_events: list[str]
+    child_events: List[str]
 
 
 class MergeParams(ParamsModel):
@@ -20,7 +22,7 @@ class MergeParams(ParamsModel):
     }]
     """
 
-    rules: list[RenameRule]
+    rules: List[RenameRule]
 
 
 class MergeProcessor(DataProcessor):

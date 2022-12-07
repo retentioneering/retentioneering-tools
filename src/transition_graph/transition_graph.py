@@ -322,8 +322,8 @@ class TransitionGraph:
         target_col = edgelist.columns[1]
 
         # calc edge type
-        edgelist["type"] = edgelist.apply(  # type: ignore
-            lambda x: node_params.get(x[source_col])
+        edgelist["type"] = edgelist.apply(
+            lambda x: node_params.get(x[source_col])  # type: ignore
             if node_params.get(x[source_col]) == "source"
             else node_params.get(x[target_col]) or "suit",
             1,  # type: ignore

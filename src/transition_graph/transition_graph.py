@@ -10,11 +10,11 @@ import pandas as pd
 from IPython.display import HTML, display
 
 from src.backend import ServerManager
+from src.edgelist import Edgelist
 from src.eventstream.types import EventstreamType
+from src.nodelist import Nodelist
 from src.templates.translition_graph import TransitionGraphRenderer
 
-from .edgelist import Edgelist
-from .nodelist import Nodelist
 from .typing import (
     GraphSettings,
     LayoutNode,
@@ -81,17 +81,17 @@ class TransitionGraph:
             event_col=self.event_col,
         )
 
-        self.nodelist.create_nodelist(data=self.eventstream.to_dataframe())
+        self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
 
         self.edgelist_default_col = edgelist_default_col
         self.edgelist: Edgelist = Edgelist(
             event_col=self.event_col,
             time_col=self.event_time_col,
             default_weight_col=self.edgelist_default_col,
-            nodelist=self.nodelist.data,
+            nodelist=self.nodelist.nodelist_df,
             index_col=self.user_col,
         )
-        self.edgelist.create_edgelist(
+        self.edgelist.calculate_edgelist(
             norm_type=self.norm_type, custom_cols=self.custom_cols, data=self.eventstream.to_dataframe()
         )
 
@@ -123,14 +123,14 @@ class TransitionGraph:
                     mapped_node["index"] = source_value
                     continue
                 # filter fields
-                if key not in self.nodelist.data.columns:
+                if key not in self.nodelist.nodelist_df.columns:
                     continue
                 mapped_node[key] = source_value
             mapped_nodes.append(mapped_node)
 
-        self.nodelist.data = pd.DataFrame(data=mapped_nodes)
-        self.nodelist.data.set_index("index")
-        self.nodelist.data = self.nodelist.data.drop(columns=["index"])
+        self.nodelist.nodelist_df = pd.DataFrame(data=mapped_nodes)
+        self.nodelist.nodelist_df.set_index("index")
+        self.nodelist.nodelist_df = self.nodelist.nodelist_df.drop(columns=["index"])
 
     def _make_node_params(self, targets: MutableMapping[str, str] | None = None) -> MutableMapping[str, str]:
         if targets is not None:
@@ -149,7 +149,7 @@ class TransitionGraph:
     def _get_norm_link_threshold(self, links_threshold: Threshold | None = None) -> dict[str, float] | None:
         nodelist_default_col = self.nodelist_default_col
         edgelist_default_col = self.edgelist_default_col
-        scale = float(cast(float, self.edgelist.data[edgelist_default_col].abs().max()))
+        scale = float(cast(float, self.edgelist.edgelist_df[edgelist_default_col].abs().max()))
         norm_links_threshold = None
 
         if links_threshold is not None:
@@ -158,7 +158,7 @@ class TransitionGraph:
                 if key == nodelist_default_col:
                     norm_links_threshold[nodelist_default_col] = links_threshold[nodelist_default_col] / scale
                 else:
-                    s = float(cast(float, self.edgelist.data[key].abs().max()))
+                    s = float(cast(float, self.edgelist.edgelist_df[key].abs().max()))
                     norm_links_threshold[key] = links_threshold[key] / s
         return norm_links_threshold
 
@@ -167,7 +167,7 @@ class TransitionGraph:
         if nodes_threshold is not None:
             norm_nodes_threshold = {}
             for key in nodes_threshold:
-                scale = float(cast(float, self.nodelist.data[key].abs().max()))
+                scale = float(cast(float, self.nodelist.nodelist_df[key].abs().max()))
                 norm_nodes_threshold[key] = nodes_threshold[key] / scale
 
         return norm_nodes_threshold
@@ -315,8 +315,8 @@ class TransitionGraph:
     def _make_template_data(
         self, node_params: NodeParams, width: int, height: int
     ) -> tuple[MutableSequence, MutableSequence]:
-        edgelist = self.edgelist.data.copy()
-        nodelist = self.nodelist.data.copy()
+        edgelist = self.edgelist.edgelist_df.copy()
+        nodelist = self.nodelist.nodelist_df.copy()
 
         source_col = edgelist.columns[0]
         target_col = edgelist.columns[1]

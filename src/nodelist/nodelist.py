@@ -5,7 +5,7 @@ import pandas as pd
 
 class Nodelist:
 
-    data: pd.DataFrame
+    nodelist_df: pd.DataFrame
 
     def __init__(self, event_col: str, time_col: str, nodelist_default_col: str, custom_cols: list[str]) -> None:
         self.event_col = event_col
@@ -13,7 +13,7 @@ class Nodelist:
         self.nodelist_default_col = nodelist_default_col
         self.custom_cols = custom_cols
 
-    def create_nodelist(self, data: pd.DataFrame) -> None:
+    def calculate_nodelist(self, data: pd.DataFrame) -> None:
 
         res: pd.DataFrame = data.groupby([self.event_col])[self.time_col].count().reset_index()
 
@@ -30,4 +30,4 @@ class Nodelist:
         res["parent"] = None
         res["changed_name"] = None
 
-        self.data = res
+        self.nodelist_df = res

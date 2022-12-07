@@ -11,7 +11,7 @@ NormFunc = Callable[[pd.DataFrame, pd.DataFrame, pd.DataFrame], pd.Series]
 
 class Edgelist:
     edgelist_norm_functions: MutableMapping[str, NormFunc] | None
-    data: pd.DataFrame
+    edgelist_df: pd.DataFrame
 
     def __init__(
         self,
@@ -29,7 +29,7 @@ class Edgelist:
         self.index_col = index_col
         self.edgelist_norm_functions = edgelist_norm_functions
 
-    def create_edgelist(
+    def calculate_edgelist(
         self, data: pd.DataFrame, norm_type: NormType = None, custom_cols: MutableSequence[str] | None = None
     ) -> None:
 
@@ -77,7 +77,7 @@ class Edgelist:
                     if weight_col in self.edgelist_norm_functions:
                         edgelist[weight_col] = self.edgelist_norm_functions[weight_col](data, self.nodelist, edgelist)
 
-        self.data = edgelist
+        self.edgelist_df = edgelist
 
     def _get_shift(self, data: pd.DataFrame, index_col: str, event_col: str, time_col: str) -> pd.DataFrame:
         data.sort_values([index_col, time_col], inplace=True)

@@ -475,32 +475,12 @@ class Eventstream(
         ``eventstream.funnel(**params).plot()`` method ``fit()`` will be called each time
         and recalculation as well.
 
-        Parameters
-        ----------
-        stages: list of str
-            List of events used as stages for the funnel. Absolute and relative
-            number of users who reached specified events at least once will be
-            plotted. Multiple events can be grouped together as individual state
-            by combining them as sub list.
-        stage_names: list of str | None (default None)
-            List of stage names, this is especially necessary for stages that include several events.
-        funnel_type: 'open' or 'closed' (optional, default 'open')
-            if ``open`` - all users will be counted on each stage.
-            if ``closed`` - Each stage will include only users, who was on all previous stages.
-        segments: Collection[Collection[int]] | None (default None)
-            List of user_ids collections. Funnel for each user_id collection will be plotted.
-            If ``None`` - all users from dataset will be plotted. A user can only belong to one segment at a time.
-        segment_names: list of strings | None (default None)
-            Names of segments. Should be a list from unique values of the ``segment_col``.
-            If ``None`` and ``segment_col`` is given - all values from ``segment_col`` will be used.
-        sequence: Boolean (default False)
-            Used for closed funnels only
-            If ``True``, the sequence and timestamp of events is taken into account when constructing the funnel.
-            In another case, the standard closed funnel rules will be implemented.
+        See Parameters description :py:func:`src.tooling.funnel.funnel`
 
         Returns
         -------
-        Funnel.fit()
+        Funnel
+            Fitted ``Funnel`` object.
 
         """
         self.__funnel = Funnel(
@@ -520,6 +500,9 @@ class Eventstream(
         """
         See :py:func:`src.tooling.clusters.clusters`
 
+        Returns
+        -------
+        Clusters
         """
         if self.__clusters is None:
             self.__clusters = Clusters(eventstream=self, user_clusters=None)
@@ -550,70 +533,12 @@ class Eventstream(
         ``eventstream.step_matrix(**params).plot()`` method ``fit()`` will be called each time
         and recalculation as well.
 
-        Parameters
-        ----------
-        max_steps : int, default=20
-            Maximum number of steps in ``user path`` to include.
-        weight_col : str, optional
-            Aggregation column for edge weighting. If ``None``, specified ``user_id``
-            from ``eventstream.schema`` will be used. For example, can be specified as
-            ``session_id`` if ``eventstream`` has such ``custom_col``.
-        precision : int, default=2
-            Number of decimal digits after 0 to show as fractions in the ``heatmap``.
-        targets : list of str or str, optional
-            List of event names to include in the bottom of ``step_matrix`` as individual rows.
-            Each specified target will have separate color-coding space for clear visualization.
-            `Example: ['product_page', 'cart', 'payment']`
-
-            If multiple targets need to be compared and plotted using same color-coding scale,
-            such targets must be combined in sub-list.
-            `Examples: ['product_page', ['cart', 'payment']]`
-        accumulated : {"both", "only"}, optional
-            Option to include accumulated values for targets.
-
-            - If ``None`` accumulated tartes  do not show.
-            - If ``both`` show step values and accumulated values.
-            - If ``only`` show targets only as accumulated.
-        sorting : list of str, optional
-            - | If list of event names specified - lines in the heatmap will be shown in
-              | passed order.
-            - | If ``None`` - rows will be ordered according to i`th value (first row,
-              | where 1st element is max, second row, where second element is max, etc)
-        thresh : float, default=0
-            Used to remove rare events. Aggregates all rows where all values are
-            less than specified threshold.
-        centered : dict, optional
-            Parameter used to align user paths at specific event at specific step.
-            Has to contain three keys:
-            - ``event``: str, name of event to align
-            - ``left_gap``: int, number of events to include before specified event
-            - ``occurrence`` : int which occurrence of event to align (typical 1)
-
-            If not ``None`` - only users who have selected events with specified
-            ``occurrence`` in their paths will be included.
-            ``Fraction`` of such remaining users is specified in the title of centered
-            step_matrix.
-            `Example: {'event': 'cart', 'left_gap': 8, 'occurrence': 1}`
-        groups : tuple[list, list], optional
-            Can be specified to plot differential step_matrix. Must contain
-            tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
-            of user_id`s. Two separate step_matrices M1 and M2 will be calculated
-            for users from g_1 and g_2, respectively. Resulting matrix will be the matrix
-            M = M1-M2.
+        See Parameters description :py:func:`src.tooling.step_matrix.step_matrix`
 
         Returns
         -------
-        StepMatrix.fit()
-
-        Notes
-        -----
-        If during preprocessing ``path_end`` synthetic event will be added to user's paths
-        (for example using :py:func:`src.data_processors_lib.start_end_event` data processor)
-        Event ``path_end`` always will be passed in the last line of ``step_matrix`` and fraction
-        of users will be accumulated from first step to the last. Because of that - values in each
-        column of step_matrix will sum up to 1.
-
-        And in differential step_matrix values in columns will sum up to 0.
+        StepMatrix
+            Fitted ``StepMatrix`` object.
 
         """
         self.__step_matrix = StepMatrix(

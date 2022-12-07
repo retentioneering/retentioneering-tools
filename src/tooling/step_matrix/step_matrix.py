@@ -81,13 +81,7 @@ class StepMatrix:
         in differential step matrix will sum up to 0 (since columns in both M1
         and M2 always sum up to 1).
 
-    Returns
-    -------
-    Dataframe with max_steps number of columns and len(event_col.unique)
-    number of rows at max, or less if used thr > 0.
-    Return type
-    -----------
-    pd.DataFrame
+
     """
 
     __eventstream: EventstreamType
@@ -120,6 +114,11 @@ class StepMatrix:
         self.centered: CenteredParams | None = CenteredParams(**centered) if centered else None
         self.groups = groups
 
+        self.result_data: pd.DataFrame = pd.DataFrame()
+        self.result_targets: pd.DataFrame | None = None
+        self.fraction_title: str | None = None
+        self.targets_list: list[list[str]] | None = None
+
     def _pad_to_center(self, df_: pd.DataFrame) -> pd.DataFrame | None:
         if self.centered is None:
             return None
@@ -147,7 +146,7 @@ class StepMatrix:
         df - dataframe
         Returns
         -------
-        returns Dataframe with columns from 0 to max_steps
+            pd.Dataframe with columns from 0 to max_steps
         """
         df = df.copy()
         if max(df.columns) < self.max_steps:
@@ -367,11 +366,8 @@ class StepMatrix:
                 axs.vlines(
                     [centered_position - 0.02, centered_position + 0.98], *axs.get_ylim(), colors="Black", linewidth=0.7
                 )
-        return axs
 
-    def _get_plot_data(
-        self,
-    ) -> tuple[pd.DataFrame, pd.DataFrame | None, str | None, list[list[str]] | None]:
+    def fit(self) -> None:
         weight_col = self.weight_col or self.user_col
         data = self.__eventstream.to_dataframe()
         data["event_rank"] = data.groupby(weight_col).cumcount() + 1
@@ -435,8 +431,23 @@ class StepMatrix:
             if self.targets and piv_targets is not None:
                 piv_targets.columns = [f"{int(i) - window - 1}" for i in piv_targets.columns]  # type: ignore
 
-        return piv, piv_targets, fraction_title, targets_plot
+        self.result_data = piv
+        self.result_targets = piv_targets
+        self.fraction_title = fraction_title
+        self.targets_list = targets_plot
 
-    def plot(self) -> matplotlib.axes.Axes:
-        data, targets, fraction_title, targets_list = self._get_plot_data()
-        return self._render_plot(data, targets, targets_list, fraction_title)
+    def plot(self) -> sns.heatmap:
+        return self._render_plot(self.result_data, self.result_targets, self.targets_list, self.fraction_title)
+
+    @property
+    def values(self) -> tuple[pd.DataFrame, pd.DataFrame | None]:
+
+        """
+        Dataframe with max_steps number of columns and len(event_col.unique)
+        number of rows at max, or less if used thr > 0.
+
+        Returns
+        -------
+            pd.DataFrame
+        """
+        return self.result_data, self.result_targets

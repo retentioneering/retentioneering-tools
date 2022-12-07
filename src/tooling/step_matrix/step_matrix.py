@@ -27,10 +27,11 @@ class CenteredParams:
 
 class StepMatrix:
     """
-    Plots heatmap with distribution of users over trajectory steps ordered by
+    Plots a heatmap with the distribution of users over trajectory steps ordered by
     event name. Matrix rows are event names, columns are aligned user trajectory
     step numbers and the values are shares of users. A given entry X at column i
-    and event j means at i'th step fraction of users X  have specific event j.
+    and event j means at i'th step fraction of users X have specific event j.
+
     Parameters
     ----------
     max_steps: int (optional, default 20)
@@ -38,7 +39,7 @@ class StepMatrix:
     weight_col: str (optional, default None)
         Aggregation column for edge weighting. If None, specified index_col
         from retentioneering.config will be used as column name. For example,
-        can be specified as `session_id` if dataframe has such column.
+        can be specified as ``session_id`` if dataframe has such column.
     precision: int (optional, default 2)
         Number of decimal digits after 0 to show as fractions in the heatmap.
     thresh: float (optional, default 0)
@@ -71,7 +72,7 @@ class StepMatrix:
         List of events_names (as string) can be passed to plot step_matrix with
         specified ordering of events. If None rows will be ordered according
         to i`th value (first row, where 1st element is max, second row, where
-        second element is max, etc)
+        second element is max, etc.)
     groups: tuple (optional, default None)
         Can be specified to plot step differential step_matrix. Must contain
         tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
@@ -80,7 +81,6 @@ class StepMatrix:
         matrix will be the matrix M = M1-M2. Note, that values in each column
         in differential step matrix will sum up to 0 (since columns in both M1
         and M2 always sum up to 1).
-
 
     """
 

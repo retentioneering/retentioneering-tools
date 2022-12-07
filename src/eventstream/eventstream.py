@@ -109,6 +109,8 @@ class Eventstream(
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
         relations: Optional[List[Relation]] = None,
+        user_sample_size: Optional[int | float] = None,
+        user_sample_seed: Optional[int] = None,
     ) -> None:
         self.__clusters = None
         self.__funnel = None
@@ -120,6 +122,8 @@ class Eventstream(
                 raw_data_schema.event_type = "event_type"
         self.__raw_data_schema = raw_data_schema
 
+        if user_sample_size is not None:
+            raw_data = self.__sample_user_paths(raw_data, raw_data_schema, user_sample_size, user_sample_seed)
         if not index_order:
             self.index_order = DEFAULT_INDEX_ORDER
         else:
@@ -419,6 +423,34 @@ class Eventstream(
         if event_type in self.index_order:
             return self.index_order.index(event_type)
         return len(self.index_order)
+
+    def __sample_user_paths(
+        self,
+        raw_data: pd.DataFrame | pd.Series[Any],
+        raw_data_schema: RawDataSchemaType,
+        user_sample_size: Optional[int | float] = None,
+        user_sample_seed: Optional[int] = None,
+    ) -> pd.DataFrame | pd.Series[Any]:
+        if type(user_sample_size) is not float and type(user_sample_size) is not int:
+            raise TypeError('"user_sample_size" has to be a number(float for user share or int for user amount)')
+        if user_sample_size < 0:
+            raise ValueError("User sample size/share cannot be negative!")
+        if type(user_sample_size) is float:
+            if user_sample_size > 1:
+                raise ValueError("User sample share cannot exceed 1!")
+        user_col_name = raw_data_schema.user_id
+        unique_users = raw_data[user_col_name].unique()
+        if type(user_sample_size) is int:
+            sample_size = user_sample_size
+        elif type(user_sample_size) is float:
+            sample_size = int(user_sample_size * len(unique_users))
+        else:
+            return raw_data
+        if user_sample_seed is not None:
+            np.random.seed(user_sample_seed)
+        sample_users = np.random.choice(unique_users, sample_size, replace=False)
+        raw_data_sampled = raw_data.loc[raw_data[user_col_name].isin(sample_users), :]  # type: ignore
+        return raw_data_sampled
 
     def funnel(
         self,

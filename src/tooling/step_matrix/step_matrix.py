@@ -27,7 +27,7 @@ class CenteredParams:
 
 class StepMatrix:
     """
-    Plots heatmap with distribution of users over trajectory steps ordered by
+    Plots a heatmap with the distribution of users over trajectory steps ordered by
     event name. Matrix rows are event names, columns are aligned user trajectory
     step numbers and the values are shares of users. A given entry X at column i
     and event j means at i'th step fraction of users X have specific event j.

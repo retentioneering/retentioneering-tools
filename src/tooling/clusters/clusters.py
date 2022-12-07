@@ -122,17 +122,33 @@ class Clusters:
             readable_data[cluster].append(row_num)
         return readable_data
 
-    def narrow_eventstream(self, cluster: int | str) -> EventstreamType:
+    def select_cluster(self, cluster_id: int | str) -> EventstreamType:
+        """
+        Truncates the eventstream and leaves the trajectories of the users who belong to the selected cluster.
+
+        Parameters
+        ----------
+        cluster_id: int or str
+            Cluster identifier to be selected. If ``Clusters.create_clusters`` was used for cluster generation, then
+             0, 1, ... values are possible.
+        Returns
+        --------
+        Eventstream with the users belonging to the selected cluster only.
+
+        Return type
+        --------
+        EventstreamType
+        """
         from src.eventstream.eventstream import Eventstream
 
         eventstream: Eventstream = self.__eventstream  # type: ignore
-        cluster_events = []
-        if self._user_clusters:
-            cluster_events = self._user_clusters[cluster]
+        if self.__segments is None:
+            raise ValueError("Can't find user_id -> cluster_id mapping. Consider to run 'create_clusters' method.")
         else:
-            pass
+            cluster_users = self.__segments.get_users(segment=cluster_id)
+
         df = self.__eventstream.to_dataframe()
-        df = df[df[self.__eventstream.schema.event_id].isin(cluster_events)]
+        df = df[df[self.__eventstream.schema.user_id].isin(cluster_users)]
         es = Eventstream(
             raw_data=df,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),

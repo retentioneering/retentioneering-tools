@@ -8,3 +8,4 @@ typings
 .tox
 src/retentioneering_tools.egg-info/
 .coverage
+.spyproject/

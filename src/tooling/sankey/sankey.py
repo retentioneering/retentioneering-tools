@@ -66,6 +66,11 @@ class Sankey:
         self.width = width
         self.height = height
 
+        self.data_grp_nodes: pd.DataFrame = pd.DataFrame()
+        self.data: pd.DataFrame = pd.DataFrame()
+        self.data_grp_links: pd.DataFrame = pd.DataFrame()
+        self.data_for_plot: dict = {}
+
     @staticmethod
     def _make_color(
         event: str,
@@ -518,16 +523,18 @@ class Sankey:
         data = data.drop("next_timestamp", axis=1)
         return data
 
-    def _get_plot_data(self) -> tuple[dict, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    def fit(self) -> None:
         data = self.__eventstream.to_dataframe().copy()[
             [self.user_col, self.event_col, self.time_col, self.event_index_col]
         ]
-        data = self._prepare_data(data)
-        data_for_plot, data_grp_nodes = self._get_nodes(data)
-        data_for_plot, data_grp_links = self._get_links(data, data_for_plot, data_grp_nodes)
-        return data_for_plot, data_grp_nodes, data_grp_links, data
+        self.data = self._prepare_data(data)
+        data_for_plot, self.data_grp_nodes = self._get_nodes(self.data)
+        self.data_for_plot, self.data_grp_links = self._get_links(self.data, data_for_plot, self.data_grp_nodes)
 
     def plot(self) -> go.Figure:
-        data_for_plot, data_grp_nodes, data_grp_links, _ = self._get_plot_data()
-        figure = self._render_plot(data_for_plot, data_grp_nodes)
+        figure = self._render_plot(self.data_for_plot, self.data_grp_nodes)
         return figure
+
+    @property
+    def values(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        return self.data_grp_nodes, self.data_grp_links

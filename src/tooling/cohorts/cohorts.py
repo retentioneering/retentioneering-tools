@@ -69,36 +69,49 @@ class Cohorts:
     """
 
     __eventstream: EventstreamType
-    cohort_period: int | None
-    cohort_period_unit: DATETIME_UNITS | None
-    cohort_start_unit: DATETIME_UNITS | None
-    _cohort_matrix_result: pd.DataFrame
+    cohort_period: int
+    cohort_period_unit: DATETIME_UNITS
+    cohort_start_unit: DATETIME_UNITS
     DATETIME_UNITS_LIST = ["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
 
-    def __init__(self, eventstream: EventstreamType):
-        self.__eventstream = eventstream
-        self.user_col = self.__eventstream.schema.user_id
-        self.event_col = self.__eventstream.schema.event_name
-        self.time_col = self.__eventstream.schema.event_timestamp
-        self.average = True
-        self.cohort_start_unit = None
-        self.cohort_period, self.cohort_period_unit = None, None
-        self.cut_diagonal = 0
-        self.cut_bottom = 0
-        self.cut_right = 0
-
-        data = self.__eventstream.to_dataframe()
-        self.data = data
-
-    def fit_cohorts(
+    def __init__(
         self,
+        eventstream: EventstreamType,
         cohort_start_unit: DATETIME_UNITS,
         cohort_period: Tuple[int, DATETIME_UNITS],
         average: bool = True,
         cut_bottom: int = 0,
         cut_right: int = 0,
         cut_diagonal: int = 0,
-    ) -> None:
+    ):
+
+        self.__eventstream = eventstream
+        self.user_col = self.__eventstream.schema.user_id
+        self.event_col = self.__eventstream.schema.event_name
+        self.time_col = self.__eventstream.schema.event_timestamp
+        self.average = average
+        self.cohort_start_unit = cohort_start_unit
+        self.cohort_period, self.cohort_period_unit = cohort_period
+        self.cut_bottom = cut_bottom
+        self.cut_right = cut_right
+        self.cut_diagonal = cut_diagonal
+
+        data = self.__eventstream.to_dataframe()
+        self.data = data
+        self._cohort_matrix_result: pd.DataFrame = pd.DataFrame()
+
+        if self.cohort_period <= 0:
+            raise ValueError("cohort_period should be positive integer!")
+
+        # @TODO добавить ссылку на numpy с объяснением. dpanina
+        if self.cohort_period_unit in ["Y", "M"] and self.cohort_start_unit not in ["Y", "M"]:
+            raise ValueError(
+                """Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
+                                 Due to "Y" and "M" are non-fixed types it can be used only with each other
+                                 or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``.!"""
+            )
+
+    def fit(self) -> None:
         """
         Calculates cohort matrix with retention rate of active users in coordinates
         of the cohort period and cohort group.
@@ -112,23 +125,6 @@ class Cohorts:
         Only cohorts with at least 1 user are shown.
 
         """
-        self.average = average
-        self.cohort_start_unit = cohort_start_unit
-        self.cohort_period, self.cohort_period_unit = cohort_period
-        self.cut_diagonal = cut_diagonal
-        self.cut_bottom = cut_bottom
-        self.cut_right = cut_right
-
-        if self.cohort_period <= 0:
-            raise ValueError("cohort_period should be positive integer!")
-
-        # @TODO добавить ссылку на numpy с объяснением. dpanina
-        if self.cohort_period_unit in ["Y", "M"] and self.cohort_start_unit not in ["Y", "M"]:
-            raise ValueError(
-                """Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
-                                 Due to "Y" and "M" are non-fixed types it can be used only with each other
-                                 or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``.!"""
-            )
 
         df = self._add_min_date(
             data=self.data,

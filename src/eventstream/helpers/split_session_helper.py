@@ -11,7 +11,7 @@ class SplitSessionsHelperMixin:
     def split_sessions(
         self,
         session_cutoff: Tuple[float, DATETIME_UNITS],
-        session_col: str,
+        session_col: str = "session_id",
         mark_truncated: Optional[bool] = False,
     ) -> EventstreamType:
 

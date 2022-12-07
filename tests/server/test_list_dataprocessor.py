@@ -171,7 +171,7 @@ class TestListDataprocessors:
                         "widget": "time_widget",
                     },
                     {"name": "mark_truncated", "optional": True, "widget": "boolean"},
-                    {"name": "session_col", "optional": False, "widget": "string"},
+                    {"name": "session_col", "optional": True, "widget": "string"},
                 ],
             },
             {"name": "StartEndEvents", "params": []},

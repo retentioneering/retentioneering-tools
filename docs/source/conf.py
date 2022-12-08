@@ -53,7 +53,7 @@ numpydoc_show_class_members = False
 html_theme = "pydata_sphinx_theme"
 
 html_logo = "rete_logo.png"
-
+autodoc_typehints = "none"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".

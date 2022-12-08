@@ -25,17 +25,17 @@ class StatTests:
     groups : tuple, optional
         Must contain tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
         of user_id`s (list, tuple or set).
-    objective : function(x) -> number
+    objective : Callable, default lambda x: x.shape[0]
         Selected metrics. Must contain a function which takes as an argument dataset for
         single user trajectory and returns a single numerical value.
     group_names : tuple (optional, default: ('group_1', 'group_2'))
         Names for selected groups g_1 and g_2.
-    test : {‘mannwhitneyu’, 'ttest', 'ztest', ‘ks_2samp’, 'chi2_contingency', 'fisher_exact'}
+    test : {'mannwhitneyu', 'ttest', 'ztest', 'ks_2samp', 'chi2_contingency', 'fisher_exact'}
         Test the null hypothesis that 2 independent samples are drawn from the same
-        distribution. All tests present, except for 'chi2_contingency', are one-sided - meaning that
+        distribution. All tests present, except for ``chi2_contingency``, are one-sided - meaning that
         distributions are compared 'less' or 'greater'. Rule of thumbs is: for discrete variables (like convertions
-        or number of purchase) use Mann-Whitney (‘mannwhitneyu’) test or t-test (‘ttest’).
-         For continious variables (like average_check) use Kolmogorov-Smirnov test ('ks_2samp').
+        or number of purchase) use Mann-Whitney (``mannwhitneyu``) test or t-test (``ttest``).
+        For continious variables (like average_check) use Kolmogorov-Smirnov test (``ks_2samp``).
     alpha : float (optional, default 0.05)
         Selected level of significance.
 
@@ -66,7 +66,10 @@ class StatTests:
 
     def fit(self) -> None:
         """
-        Computes specified test statistic, along with test result description
+        Computes specified test statistic, along with test result description.
+
+        - :py:func:`values`
+        - :py:func:`plot`
 
         """
         self.g1_data, self.g2_data = self._get_group_values()
@@ -157,6 +160,7 @@ class StatTests:
     def plot(self) -> Tuple[go.Figure, str]:
         """
         Plots with distribution for selected metrics for two groups.
+        Should be used after :py:func:`fit`.
 
         Returns
         -------
@@ -174,6 +178,7 @@ class StatTests:
     ) -> dict:
         """
         Results of statistical comparison between two groups over selected metric and test.
+        Should be used after :py:func:`fit`.
 
         Returns
         -------

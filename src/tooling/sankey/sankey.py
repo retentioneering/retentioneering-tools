@@ -12,34 +12,33 @@ from src.eventstream.types import EventstreamType
 
 class Sankey:
     """
-    Visualizes user paths in step-wise manner using sankey diagram.
+    Class for visualization of user's paths in step-wise manner using sankey diagram.
 
     Parameters
     ----------
-    max_steps: int (optional, default 10)
+    max_steps : int, default 10
         Maximum number of steps in trajectories to include.
-    thresh: float | int (optional, default 0.05)
+    thresh : float | int, default 0.05
         Used to remove rare events from the plot. An event is collapsed to ``thresholded_N`` artificial event if
-        its maximum frequency across all the steps is less or equal than ``thresh``. The frequency is considered
+        its maximum frequency across all the steps is less than or equal to ``thresh``. The frequency is considered
         with respect to ``thresh`` type:
-        If ``int`` - the frequency is the number of unique users who had given event at given step.
-        If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
+
+        - If ``int`` - the frequency is the number of unique users who had given event at given step.
+        - | If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
+
         The events which are prohibited for collapsing could be enlisted in ``target`` parameter.
-    sorting: list of str | None (default None)
+    sorting : list of str, optional
         Tunes the order of the events visualized at each step. The events which are not represented in the list
         will follow after the events from the list.
-    target: list of str | None (default None)
+    target : list of str, optional
         Contains the events which are prohibited for collapsing with ``thresh`` parameter.
-    autosize: bool (optional, default True)
-        Plotly autosize parameter. See https://plotly.com/python/reference/layout/#layout-autosize
-    width:
-        Plot's width (in px). See https://plotly.com/python/reference/layout/#layout-width
-    height:
-        Plot's height (in px). See https://plotly.com/python/reference/layout/#layout-height
+    autosize : bool, default True
+        Plotly autosize parameter. See :plotly_autosize:`plotly documentation<>`
+    width : int, optional
+        Plot's width (in px). See :plotly_width:`plotly documentation<>`
+    height : int, optional
+        Plot's height (in px). See :plotly_height:`plotly documentation<>`
 
-    See Also
-    --------
-    :py:func:`src.eventstream.step_matrix`
     """
 
     def __init__(
@@ -91,7 +90,7 @@ class Sankey:
 
         Returns
         -------
-        picked color : str
+        str
             A picked color for certain event
         """
 
@@ -115,7 +114,8 @@ class Sankey:
 
         Returns
         -------
-        rounded value : float
+        float
+            Rounded value
         """
 
         return round(n - n % dec + dec, 2)
@@ -131,7 +131,7 @@ class Sankey:
 
         Returns
         -------
-        x, y coordinates: tuple[list[float], list[float]]
+        tuple[list[float], list[float]]
             Two lists with the corresponding coordinates x and y.
         """
         # NOTE get x axis length
@@ -524,6 +524,14 @@ class Sankey:
         return data
 
     def fit(self) -> None:
+        """
+        Calculates values for sankey plot.
+        Result of calculation could be presented using:
+
+        - :py:func:`values`
+        - :py:func:`plot`
+
+        """
         data = self.__eventstream.to_dataframe().copy()[
             [self.user_col, self.event_col, self.time_col, self.event_index_col]
         ]
@@ -532,9 +540,30 @@ class Sankey:
         self.data_for_plot, self.data_grp_links = self._get_links(self.data, data_for_plot, self.data_grp_nodes)
 
     def plot(self) -> go.Figure:
+        """
+        Creates sankey interactive plot.
+        Should be used after :py:func:`fit`.
+
+        Returns
+        -------
+        go.Figure
+
+        """
         figure = self._render_plot(self.data_for_plot, self.data_grp_nodes)
         return figure
 
     @property
     def values(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Creates two pd.DataFrames on the base of calculated values.
+
+        1. Info about nodes on each step.
+        2. Info about edges.
+
+        Should be used after :py:func:`fit`.
+
+        Returns
+        -------
+        tuple[pd.DataFrame, pd.DataFrame]
+        """
         return self.data_grp_nodes, self.data_grp_links

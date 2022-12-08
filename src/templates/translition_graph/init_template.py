@@ -1,5 +1,5 @@
 init_code = """
-    initialize({{
+    initalize({{
     serverId: '{server_id}',
     env: '{env}',
     configNodes: {nodes},

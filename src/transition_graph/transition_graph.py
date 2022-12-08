@@ -445,7 +445,9 @@ class TransitionGraph:
         graph_styles = self.render.graph_style()
         graph_body = self.render.body()
 
-        graph_script_src = "https://static.server.retentioneering.com/viztools/graph/rete-graph.js"
+        graph_script_src = (
+            "https://static.server.retentioneering.com/viztools/transition-graph/v3/transition-graph.umd.js"
+        )
 
         init_graph_template = self.render.init(
             **dict(

@@ -46,14 +46,13 @@ extensions = [
 
 # -- Options for HTML output -------------------------------------------------
 
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes.
 numpydoc_show_inherited_class_members = False
 numpydoc_class_members_toctree = False
 numpydoc_show_class_members = False
 html_theme = "pydata_sphinx_theme"
 
-html_logo = "rete_logo.png"
+html_theme_options = {"logo": {"image_light": "rete_logo.svg", "image_dark": "rete_logo_white.svg"}}
+
 autodoc_typehints = "none"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -76,33 +75,33 @@ source_suffix = ".rst"
 master_doc = "index"
 
 extlinks = {
-    "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units", None),
+    "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units/%s", None),
     "sklearn_tfidf": (
-        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html",
+        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html/%s",
         None,
     ),
     "sklearn_countvec": (
-        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html",
+        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html/%s",
         None,
     ),
     "numpy_timedelta_link": (
-        "https://numpy.org/doc/stable/reference/arrays.datetime.html#:~:text=There%20are%20two,numbers%20of%20days.",
+        "https://numpy.org/doc/stable/reference/arrays.datetime.html#:~:text=There%20are%20two,numbers%20of%20days./%s",
         None,
     ),
-    "plotly_autosize": ("https://plotly.com/python/reference/layout/#layout-autosize", None),
-    "plotly_width": ("https://plotly.com/python/reference/layout/#layout-width", None),
-    "plotly_height": ("https://plotly.com/python/reference/layout/#layout-height", None),
-    "mannwhitneyu": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.mannwhitneyu.html", None),
-    "scipy_chi2": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.chi2_contingency.html", None),
-    "scipy_fisher": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.fisher_exact.html", None),
-    "scipy_ks": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html", None),
+    "plotly_autosize": ("https://plotly.com/python/reference/layout/#layout-autosize/%s", None),
+    "plotly_width": ("https://plotly.com/python/reference/layout/#layout-width/%s", None),
+    "plotly_height": ("https://plotly.com/python/reference/layout/#layout-height/%s", None),
+    "mannwhitneyu": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.mannwhitneyu.html/%s", None),
+    "scipy_chi2": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.chi2_contingency.html/%s", None),
+    "scipy_fisher": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.fisher_exact.html/%s", None),
+    "scipy_ks": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html/%s", None),
     "statsmodel_ttest": (
-        "https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ttest_ind.html",
+        "https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ttest_ind.html/%s",
         None,
     ),
-    "statsmodel_ztest": ("https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ztest.html", None),
+    "statsmodel_ztest": ("https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ztest.html/%s", None),
 }
 
 
 def setup(app: Any) -> None:
-    app.add_stylesheet("css/custom.css")
+    app.add_css_file("css/custom.css")

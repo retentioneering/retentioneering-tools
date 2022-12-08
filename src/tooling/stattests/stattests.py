@@ -41,6 +41,7 @@ class StatTests:
 
     Parameters
     ----------
+    eventstream : EventstreamType
     groups : tuple of list
         Must contain tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
         of user_id`s.
@@ -62,6 +63,10 @@ class StatTests:
 
     alpha : float, default 0.05
         Selected level of significance.
+
+    See Also
+    --------
+    :py:func:`src.eventstream.eventstream.Eventstream.stattests`
 
     """
 

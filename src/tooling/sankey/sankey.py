@@ -16,6 +16,7 @@ class Sankey:
 
     Parameters
     ----------
+    eventstream : EventstreamType
     max_steps : int, default 10
         Maximum number of steps in trajectories to include.
     thresh : float | int, default 0.05
@@ -38,6 +39,11 @@ class Sankey:
         Plot's width (in px). See :plotly_width:`plotly documentation<>`
     height : int, optional
         Plot's height (in px). See :plotly_height:`plotly documentation<>`
+
+
+    See Also
+    --------
+    :py:func:`src.eventstream.eventstream.Eventstream.step_sankey`
 
     """
 

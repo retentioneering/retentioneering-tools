@@ -21,6 +21,7 @@ class Cohorts:
 
     Parameters
     ----------
+    eventstream : EventstreamType
     cohort_start_unit : :numpy_link:`DATETIME_UNITS<>`
         The way of rounding and format of the moment from which the cohort count begins.
         Minimum timestamp rounding down to the selected datetime unit.
@@ -68,6 +69,10 @@ class Cohorts:
 
 
     Only cohorts with at least 1 user in any period - are shown.
+
+    See Also
+    --------
+    :py:func:`src.eventstream.eventstream.Eventstream.cohorts`
     """
 
     __eventstream: EventstreamType

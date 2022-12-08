@@ -37,6 +37,9 @@ class Clusters:
         - If ``dict`` Clusters can work with results of external clustering.
         - If ``None`` with the method :py:func:`create_clusters`
 
+    See Also
+    --------
+    :py:func:`src.eventstream.eventstream.Eventstream.clusters`
     """
 
     __eventstream: EventstreamType

@@ -98,9 +98,9 @@ param4 : bool, default False
 ```commandline
 pip install sphinx
 ```
-Установить тему `sphinx-rtd-theme`
+Установить тему `pydata_sphinx_theme`
 ```commandline
-pip install sphinx-rtd-theme
+pip install pydata_sphinx_theme
 ```
 ```commandline
 cd docs

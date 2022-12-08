@@ -96,6 +96,10 @@ class StepMatrix:
 
     If during preprocessing users paths were truncated it is recommended to add event ``path_end``
     once again in order to guarantee that each user has such event
+
+    See Also
+    --------
+    :py:func:`src.eventstream.eventstream.Eventstream.step_matrix`
     """
 
     # @TODO Нужно проработать поведение при наличии в траектории события path_end. Завела баг PLAT-342. dpanina

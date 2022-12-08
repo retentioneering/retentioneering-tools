@@ -22,21 +22,26 @@ class StatTests:
 
     Parameters
     ----------
-    groups : tuple, optional
+    groups : tuple of list
         Must contain tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
-        of user_id`s (list, tuple or set).
+        of user_id`s.
     objective : Callable, default lambda x: x.shape[0]
         Selected metrics. Must contain a function which takes as an argument dataset for
         single user trajectory and returns a single numerical value.
-    group_names : tuple (optional, default: ('group_1', 'group_2'))
+    group_names : tuple, default ('group_1', 'group_2')
         Names for selected groups g_1 and g_2.
     test : {'mannwhitneyu', 'ttest', 'ztest', 'ks_2samp', 'chi2_contingency', 'fisher_exact'}
         Test the null hypothesis that 2 independent samples are drawn from the same
-        distribution. All tests present, except for ``chi2_contingency``, are one-sided - meaning that
-        distributions are compared 'less' or 'greater'. Rule of thumbs is: for discrete variables (like convertions
-        or number of purchase) use Mann-Whitney (``mannwhitneyu``) test or t-test (``ttest``).
-        For continious variables (like average_check) use Kolmogorov-Smirnov test (``ks_2samp``).
-    alpha : float (optional, default 0.05)
+        distribution. Supported tests are:
+
+        - ``mannwhitneyu`` see :plotly_autosize:`scipy documentation<>`
+        - ``ttest`` see :statsmodel_ttest:`statsmodels documentation<>`
+        - ``ztest`` see :statsmodel_ztest:`statsmodels documentation<>`
+        - ``ks_2samp`` see :scipy_ks:`scipy documentation<>`
+        - ``chi2_contingency`` see :scipy_chi2:`scipy documentation<>`
+        - ``fisher_exact`` see :scipy_fisher:`scipy documentation<>`
+
+    alpha : float, default 0.05
         Selected level of significance.
 
     """

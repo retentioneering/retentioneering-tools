@@ -25,7 +25,7 @@ def func(param1, param2):
         - | poin 1 текст
           | текст на 2 строке
 
-    param2 : type, default="group_alias"
+    param2 : type, default <default_value>
 
     Returns
     -------
@@ -49,6 +49,24 @@ def func(param1, param2):
    Тут важно, чтобы подчеркивание было не меньше текста
 """
 ```
+
+### Типы:
+```
+def func(
+        param1: list[str]
+        param2: list[str] | None = None
+        param3: Literal["open", "closed"] = "open",
+        param4: bool = False
+):
+
+param1 : list of str
+param2 : list of str, optional
+param3 : {"open", "closed"}, default "open"
+param4 : bool, default False
+
+```
+
+
 ---
 ### Используемая разметка текста:
 ```

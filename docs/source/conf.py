@@ -91,4 +91,13 @@ extlinks = {
     "plotly_autosize": ("https://plotly.com/python/reference/layout/#layout-autosize", None),
     "plotly_width": ("https://plotly.com/python/reference/layout/#layout-width", None),
     "plotly_height": ("https://plotly.com/python/reference/layout/#layout-height", None),
+    "mannwhitneyu": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.mannwhitneyu.html", None),
+    "scipy_chi2": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.chi2_contingency.html", None),
+    "scipy_fisher": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.fisher_exact.html", None),
+    "scipy_ks": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html", None),
+    "statsmodel_ttest": (
+        "https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ttest_ind.html",
+        None,
+    ),
+    "statsmodel_ztest": ("https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ztest.html", None),
 }

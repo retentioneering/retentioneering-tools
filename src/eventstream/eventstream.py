@@ -17,6 +17,12 @@ from src.tooling.funnel import Funnel
 from src.tooling.sankey import Sankey
 from src.tooling.stattests import TEST_NAMES, StatTests
 from src.tooling.step_matrix import StepMatrix
+from src.tooling.transition_time_hist import (
+    AGGREGATION_NAMES,
+    HIST_TYPE_NAMES,
+    TIMEDELTA_UNIT_NAMES,
+    TransitionTimeHist,
+)
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
@@ -100,6 +106,7 @@ class Eventstream(
     __step_matrix: StepMatrix | None = None
     __sankey: Sankey | None = None
     __stattests: StatTests | None = None
+    __transition_time_hist: TransitionTimeHist | None = None
 
     def __init__(
         self,
@@ -586,3 +593,29 @@ class Eventstream(
 
         self.__cohorts.fit()
         return self.__cohorts
+
+    def transition_time_hist(
+        self,
+        hist_type: HIST_TYPE_NAMES = "adjacent",
+        event_pair: Optional[Tuple[str, str] | List[str]] = None,
+        only_adjacent_event_pairs: bool = True,
+        aggregation: Optional[AGGREGATION_NAMES] = None,
+        timedelta_units: TIMEDELTA_UNIT_NAMES = "seconds",
+        log_scale: bool = False,
+        lower_cutoff_quantile: Optional[float] = None,
+        upper_cutoff_quantile: Optional[float] = None,
+        bins: int = 20,
+    ) -> TransitionTimeHist:
+        self.__transition_time_hist = TransitionTimeHist(
+            eventstream=self,
+            hist_type=hist_type,
+            event_pair=event_pair,
+            only_adjacent_event_pairs=only_adjacent_event_pairs,
+            aggregation=aggregation,
+            timedelta_units=timedelta_units,
+            log_scale=log_scale,
+            lower_cutoff_quantile=lower_cutoff_quantile,
+            upper_cutoff_quantile=upper_cutoff_quantile,
+            bins=bins,
+        )
+        return self.__transition_time_hist

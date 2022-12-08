@@ -86,17 +86,19 @@ class StepMatrix:
 
     Notes
     -----
-    If during preprocessing ``path_end`` synthetic event will be added to user's paths
+    If during preprocessing ``path_end`` synthetic event was added to user's paths
     (for example using :py:func:`src.data_processors_lib.start_end_event` data processor)
-    Event ``path_end`` always will be passed in the last line of ``step_matrix`` and fraction
-    of users will be accumulated from first step to the last. Because of that - values in each
-    column of step_matrix will sum up to 1.
+    Event ``path_end`` will always be passed in the last line of ``step_matrix`` and fraction
+    of users will be accumulated from first step to the last. If each user in the ``eventstream``
+    has``path_end`` event - values in each column of step_matrix will sum up to 1.
 
     And in differential step_matrix values in columns will sum up to 0.
 
+    If during preprocessing users paths were truncated it is recommended to add event ``path_end``
+    once again in order to guarantee that each user has such event
     """
 
-    # @TODO нужна ли проверка, что у всех пользователей есть path_end в траектории? dpanina
+    # @TODO Нужно проработать поведение при наличии в траектории события path_end. Завела баг PLAT-342. dpanina
     __eventstream: EventstreamType
 
     def __init__(

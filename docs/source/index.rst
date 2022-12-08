@@ -17,7 +17,7 @@ Contents
     Funnel analysis <funnel_tutorial.rst>
 
 .. toctree::
-    :caption: Tutorial:
+    :caption: Tutorials:
     :maxdepth: 2
 
     Preprocessing scenario <tutorial.rst>

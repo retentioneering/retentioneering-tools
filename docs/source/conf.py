@@ -14,6 +14,7 @@ import datetime
 #
 import os
 import sys
+from typing import Any
 
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -101,3 +102,7 @@ extlinks = {
     ),
     "statsmodel_ztest": ("https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ztest.html", None),
 }
+
+
+def setup(app: Any) -> None:
+    app.add_stylesheet("css/custom.css")

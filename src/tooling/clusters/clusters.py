@@ -241,7 +241,6 @@ class Clusters:
         pd.Dataframe, sns.scatterplot
             Values and plot in the low-dimensional space for user trajectories indexed by user IDs.
         """
-        # @TODO Если plot_type = None - сейчас ошибка выпадает
         if targets is None:
             targets = []
         if ngram_range is None:

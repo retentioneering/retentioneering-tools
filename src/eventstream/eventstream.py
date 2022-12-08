@@ -462,6 +462,27 @@ class Eventstream(
         sequence: bool = False,
     ) -> Funnel:
 
+        """
+        Creates an object of Class ``Funnel`` and fits it with specified parameters.
+        See :py:func:`src.tooling.funnel.funnel.Funnel.fit`
+
+        Should be used with:
+
+        - method :py:func:`src.tooling.funnel.funnel.Funnel.plot`
+        - attribute :py:func:`src.tooling.funnel.funnel.Funnel.values`
+
+        As ``plot`` or ``values`` are called without creating variable for Class object
+        ``eventstream.funnel(**params).plot()`` method ``fit()`` will be called each time
+        and recalculation as well.
+
+        See Parameters description :py:func:`src.tooling.funnel.funnel`
+
+        Returns
+        -------
+        Funnel
+            Fitted ``Funnel`` object.
+
+        """
         self.__funnel = Funnel(
             eventstream=self,
             stages=stages,
@@ -476,6 +497,13 @@ class Eventstream(
 
     @property
     def clusters(self) -> Clusters:
+        """
+        See :py:func:`src.tooling.clusters.clusters`
+
+        Returns
+        -------
+        Clusters
+        """
         if self.__clusters is None:
             self.__clusters = Clusters(eventstream=self, user_clusters=None)
         return self.__clusters
@@ -493,11 +521,24 @@ class Eventstream(
         groups: Optional[Tuple[list, list]] = None,
     ) -> StepMatrix:
         """
-        Calculates step_matrix
+        Creates an object of Class ``StepMatrix`` and fits it with specified parameters.
+        See :py:func:`src.tooling.step_matrix.step_matrix.StepMatrix.fit`
 
-        Parameters
-        ----------
-        :py:func:`src.tooling.step_matrix.step_matrix`
+        Should be used with:
+
+        - method :py:func:`src.tooling.step_matrix.step_matrix.StepMatrix.plot`
+        - attribute :py:func:`src.tooling.step_matrix.step_matrix.StepMatrix.values`
+
+        As ``plot`` or ``values`` are called without creating variable for Class object
+        ``eventstream.step_matrix(**params).plot()`` method ``fit()`` will be called each time
+        and recalculation as well.
+
+        See Parameters description :py:func:`src.tooling.step_matrix.step_matrix`
+
+        Returns
+        -------
+        StepMatrix
+            Fitted ``StepMatrix`` object.
 
         """
         self.__step_matrix = StepMatrix(
@@ -540,7 +581,10 @@ class Eventstream(
         width: int | None = None,
         height: int | None = None,
     ) -> Sankey:
+        """
+        See :py:func:`src.tooling.step_sankey.step_sankey`
 
+        """
         self.__sankey = Sankey(
             eventstream=self,
             max_steps=max_steps,

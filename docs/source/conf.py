@@ -38,6 +38,7 @@ release = "3.0.0"
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "numpydoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.extlinks",
@@ -47,21 +48,18 @@ extensions = [
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-
-html_theme = "sphinx_rtd_theme"
+numpydoc_show_inherited_class_members = False
+numpydoc_class_members_toctree = False
+numpydoc_show_class_members = False
+html_theme = "pydata_sphinx_theme"
 
 html_logo = "rete_logo.png"
-html_theme_options = {
-    "analytics_id": "UA-143266385-2",
-    "logo_only": True,
-    "display_version": False,
-    "style_nav_header_background": "#343131",  # colour of the left-side panel
-}
+
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
-
+pygments_style = "sphinx"
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
@@ -78,11 +76,22 @@ source_suffix = ".rst"
 master_doc = "index"
 
 extlinks = {
-    "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units", ""),
-    "numpy_timedelta_link": (
-        "https://numpy.org/doc/stable/reference/" "arrays.datetime.html#:~:text=There%20are%20two,numbers%20of%20days.",
-        "",
+    "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units", None),
+    "sklearn_tfidf": (
+        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html",
+        None,
     ),
+    "sklearn_countvec": (
+        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html",
+        None,
+    ),
+    "numpy_timedelta_link": (
+        "https://numpy.org/doc/stable/reference/arrays.datetime.html#:~:text=There%20are%20two,numbers%20of%20days.",
+        None,
+    ),
+    "plotly_autosize": ("https://plotly.com/python/reference/layout/#layout-autosize", None),
+    "plotly_width": ("https://plotly.com/python/reference/layout/#layout-width", None),
+    "plotly_height": ("https://plotly.com/python/reference/layout/#layout-height", None),
 }
 
 

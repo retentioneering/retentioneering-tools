@@ -38,29 +38,26 @@ def _cohenh(d1: list, d2: list) -> float:
 class StatTests:
     """
     Tests selected metric between two groups of users.
+
     Parameters
     ----------
-    groups: tuple (optional, default None)
+    groups : tuple, optional
         Must contain tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
         of user_id`s (list, tuple or set).
-    objective: function(x) -> number
+    objective : function(x) -> number
         Selected metrics. Must contain a function which takes as an argument dataset for
         single user trajectory and returns a single numerical value.
-    group_names: tuple (optional, default: ('group_1', 'group_2'))
+    group_names : tuple (optional, default: ('group_1', 'group_2'))
         Names for selected groups g_1 and g_2.
-    test: {‘mannwhitneyu’, 'ttest', 'ztest', ‘ks_2samp’, 'chi2_contingency', 'fisher_exact'}
+    test : {‘mannwhitneyu’, 'ttest', 'ztest', ‘ks_2samp’, 'chi2_contingency', 'fisher_exact'}
         Test the null hypothesis that 2 independent samples are drawn from the same
         distribution. All tests present, except for 'chi2_contingency', are one-sided - meaning that
         distributions are compared 'less' or 'greater'. Rule of thumbs is: for discrete variables (like convertions
         or number of purchase) use Mann-Whitney (‘mannwhitneyu’) test or t-test (‘ttest’).
          For continious variables (like average_check) use Kolmogorov-Smirnov test ('ks_2samp').
-    alpha: float (optional, default 0.05)
+    alpha : float (optional, default 0.05)
         Selected level of significance.
-    Methods
-    -------
-    fit: computes specified test statistic, along with test result description
-    values: returns a dict with results of statistical comparison between two groups over selected metric and test
-    plot: returns plots with distribution for selected metrics for two groups
+
     """
 
     def __init__(
@@ -87,6 +84,10 @@ class StatTests:
         self.is_fitted = False
 
     def fit(self) -> None:
+        """
+        Computes specified test statistic, along with test result description
+
+        """
         self.g1_data, self.g2_data = self._get_group_values()
         self.p_val, self.power, self.label_min, self.label_max = self._get_sorted_test_results()
         self.is_fitted = True
@@ -155,6 +156,13 @@ class StatTests:
         return p_val, power, label_max, label_min
 
     def plot(self) -> Tuple[go.Figure, str]:
+        """
+        Plots with distribution for selected metrics for two groups.
+
+        Returns
+        -------
+        go.Figure
+        """
         data1 = pd.DataFrame(data={"data": self.g1_data, "groups": self.group_names[0]})
         data2 = pd.DataFrame(data={"data": self.g2_data, "groups": self.group_names[1]})
         combined_stats = pd.concat([data1, data2]).reset_index()
@@ -165,6 +173,14 @@ class StatTests:
     def values(
         self,
     ) -> dict:
+        """
+        Results of statistical comparison between two groups over selected metric and test.
+
+        Returns
+        -------
+        dict
+
+        """
         assert self.is_fitted
         res_dict = {
             "group_one_name": self.group_names[0],

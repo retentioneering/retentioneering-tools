@@ -1,9 +1,26 @@
-import os
-
-import pandas as pd
-
 from src.tooling.step_matrix import StepMatrix
-from tests.tooling.fixtures.step_matrix import (
+from tests.tooling.fixtures.step_matrix_corr import (
+    accumulated_both_targets_plot_cor,
+    accumulated_only_targets_plot_cor,
+    centered_cor,
+    centered_name_cor,
+    centered_target_thresh_cor,
+    centered_target_thresh_plot_cor,
+    differential_cor,
+    differential_name_cor,
+    events_sorting_cor,
+    max_steps_100_cor,
+    max_steps_cor,
+    max_steps_one_cor,
+    path_end_cor,
+    targets_grouping_cor,
+    targets_plot_cor,
+    targets_thresh_plot_cor,
+    thresh_1_cor,
+    thresh_cor,
+    weight_col_cor,
+)
+from tests.tooling.fixtures.step_matrix_input import (
     stream_simple_shop,
     test_stream,
     test_stream_end_path,
@@ -11,283 +28,162 @@ from tests.tooling.fixtures.step_matrix import (
 )
 
 FLOAT_PRECISION = 3
-RES_MAPPING = {"matrix": 0, "targets_table": 1}
-
-
-def read_test_data(filename):
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    test_data_dir = os.path.join(current_dir, "../datasets/tooling/step_matrix")
-    filepath = os.path.join(test_data_dir, filename)
-    df = pd.read_csv(filepath, index_col=0).round(FLOAT_PRECISION)
-    df.columns = df.columns.astype(int)
-    return df
-
-
-def run_test(stream, correct, output, **kwargs):
-    sm = StepMatrix(eventstream=stream, **kwargs)
-    sm.fit()
-    if correct[0] == "file":
-        result_correct = read_test_data(correct[1])
-    else:
-        result_correct = correct[1]
-    if output == "fraction_title":
-        result = sm.fraction_title
-        test_is_correct = result == result_correct
-    elif output == "targets_list":
-        result = sm.targets_list
-        test_is_correct = result == result_correct
-    else:
-        result = sm.values[RES_MAPPING[output]].round(FLOAT_PRECISION)
-        test_is_correct = result.compare(result_correct).shape == (0, 0)
-    return test_is_correct
 
 
 class TestStepMatrix:
-    def test_step_matrix__max_steps(self, test_stream):
-        correct_result = pd.DataFrame(
-            [
-                [1.0, 0.667, 0.333, 0.167, 0.167],
-                [0.0, 0.333, 0.5, 0.167, 0.0],
-                [0.0, 0.0, 0.0, 0.167, 0.167],
-                [0.0, 0.0, 0.0, 0.167, 0.0],
-            ],
-            index=["event1", "event2", "event3", "event5"],
-            columns=[1, 2, 3, 4, 5],
-        )
-        assert run_test(test_stream, ("var", correct_result), "matrix", max_steps=5)
+    def test_step_matrix__max_steps(self, test_stream, max_steps_cor):
+        correct_result = max_steps_cor
+        sm = test_stream.step_matrix(max_steps=5)
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__max_steps_100(self, stream_simple_shop):
-        assert run_test(stream_simple_shop, ("file", "03_100_steps.csv"), "matrix", max_steps=100, precision=3)
+    def test_step_matrix__max_steps_100(self, stream_simple_shop, max_steps_100_cor):
+        sm = StepMatrix(eventstream=stream_simple_shop, max_steps=100)
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        correct_result = max_steps_100_cor.round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__max_steps_one(self, test_stream):
-        correct_result = pd.DataFrame([[1.0]], index=["event1"], columns=[1])
-        run_test(test_stream, ("var", correct_result), "matrix", max_steps=1)
+    def test_step_matrix__max_steps_one(self, test_stream, max_steps_one_cor):
+        result = test_stream.step_matrix(max_steps=1).values[0].round(FLOAT_PRECISION)
+        correct_result = max_steps_one_cor
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__thresh(self, test_stream):
-        correct_result = pd.DataFrame(
-            [
-                [1.0, 0.667, 0.333, 0.167, 0.167, 0.167],
-                [0.0, 0.333, 0.5, 0.167, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.333, 0.167, 0.167],
-            ],
-            index=["event1", "event2", "THRESHOLDED_2"],
-            columns=[1, 2, 3, 4, 5, 6],
-        )
-        assert run_test(test_stream, ("var", correct_result), "matrix", max_steps=6, thresh=0.3)
+    def test_step_matrix__thresh(self, test_stream, thresh_cor):
+        correct_result = thresh_cor
+        result = test_stream.step_matrix(max_steps=6, thresh=0.3).values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__thresh_1(self, test_stream):
-        correct_result = pd.DataFrame(
-            [
-                [1.0, 0.667, 0.333, 0.167, 0.167, 0.167],
-                [0.0, 0.333, 0.5, 0.5, 0.167, 0.167],
-            ],
-            index=["event1", "THRESHOLDED_3"],
-            columns=[1, 2, 3, 4, 5, 6],
-        )
-        assert run_test(test_stream, ("var", correct_result), "matrix", max_steps=6, thresh=1.0)
+    def test_step_matrix__thresh_1(self, test_stream, thresh_1_cor):
+        correct_result = thresh_1_cor
+        result = test_stream.step_matrix(max_steps=6, thresh=1.0).values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__targets_plot(self, test_stream):
-        correct_result = pd.DataFrame(
-            [[0.0, 0.0, 0.0, 0.167, 0.167, 0.167]],
-            index=["event3"],
-            columns=[1, 2, 3, 4, 5, 6],
-        )
-        assert run_test(test_stream, ("var", correct_result), "targets_table", max_steps=6, targets=["event3"])
+    def test_step_matrix__targets_plot(self, test_stream, targets_plot_cor):
+        correct_result = targets_plot_cor
+        result = test_stream.step_matrix(max_steps=6, targets=["event3"]).values[1].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__targets_thresh_plot(self, test_stream):
-        correct_result = pd.DataFrame(
-            [[0.0, 0.0, 0.0, 0.167, 0.167, 0.167], [0.0, 0.0, 0.0, 0.167, 0.0, 0.0]],
-            index=["event3", "event5"],
-            columns=[1, 2, 3, 4, 5, 6],
+    def test_step_matrix__targets_thresh_plot(self, test_stream, targets_thresh_plot_cor):
+        correct_result = targets_thresh_plot_cor
+        result = (
+            test_stream.step_matrix(max_steps=6, targets=["event3", "event5"], thresh=0.5)
+            .values[1]
+            .round(FLOAT_PRECISION)
         )
-        assert run_test(
-            test_stream, ("var", correct_result), "targets_table", max_steps=6, targets=["event3", "event5"], thresh=0.5
-        )
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__targets_grouping(self, test_stream):
-        correct_result = [["event3", "event5"]]
-        assert run_test(
-            test_stream, ("var", correct_result), "targets_list", max_steps=6, targets=[["event3", "event5"]]
-        )
+    def test_step_matrix__targets_grouping(self, test_stream, targets_grouping_cor):
+        correct_result = targets_grouping_cor
+        result = test_stream.step_matrix(max_steps=6, targets=[["event3", "event5"]]).targets_list
+        assert correct_result == result
 
-    def test_step_matrix__accumulated_only_targets_plot(self, test_stream):
-        correct_result = pd.DataFrame(
-            [[0.0, 0.0, 0.0, 0.167, 0.167, 0.167, 0.167, 0.333, 0.333, 0.5]],
-            index=["ACC_event5"],
-            columns=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    def test_step_matrix__accumulated_only_targets_plot(self, test_stream, accumulated_only_targets_plot_cor):
+        correct_result = accumulated_only_targets_plot_cor
+        result = (
+            test_stream.step_matrix(max_steps=10, targets=["event5"], accumulated="only")
+            .values[1]
+            .round(FLOAT_PRECISION)
         )
-        assert run_test(
-            test_stream, ("var", correct_result), "targets_table", max_steps=10, targets=["event5"], accumulated="only"
-        )
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__accumulated_both_targets_plot(self, test_stream):
-        correct_result = pd.DataFrame(
-            [
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.333, 0.0, 0.167, 0.0],
-                [0.0, 0.0, 0.0, 0.167, 0.0, 0.0, 0.0, 0.167, 0.0, 0.167],
-                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.333, 0.333, 0.5, 0.5],
-                [0.0, 0.0, 0.0, 0.167, 0.167, 0.167, 0.167, 0.333, 0.333, 0.5],
-            ],
-            index=["event4", "event5", "ACC_event4", "ACC_event5"],
-            columns=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    def test_step_matrix__accumulated_both_targets_plot(self, test_stream, accumulated_both_targets_plot_cor):
+        correct_result = accumulated_both_targets_plot_cor
+        result = (
+            test_stream.step_matrix(max_steps=10, targets=["event4", "event5"], accumulated="both")
+            .values[1]
+            .round(FLOAT_PRECISION)
         )
+        assert result.compare(correct_result).shape == (0, 0)
 
-        assert run_test(
-            test_stream,
-            ("var", correct_result),
-            "targets_table",
-            max_steps=10,
-            targets=["event4", "event5"],
-            accumulated="both",
+    def test_step_matrix__centered(self, test_stream, centered_cor):
+        correct_result = centered_cor
+        result = (
+            test_stream.step_matrix(max_steps=10, centered={"event": "event5", "left_gap": 4, "occurrence": 1})
+            .values[0]
+            .round(FLOAT_PRECISION)
+        )
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__centered_target_thresh(self, test_stream, centered_target_thresh_cor):
+
+        correct_result = centered_target_thresh_cor
+        result = (
+            test_stream.step_matrix(
+                max_steps=10,
+                centered={"event": "event5", "left_gap": 4, "occurrence": 1},
+                targets=["event4"],
+                thresh=0.6,
+            )
+            .values[0]
+            .round(FLOAT_PRECISION)
         )
 
-    def test_step_matrix__centered(self, test_stream):
-        correct_result = pd.DataFrame(
-            [
-                [0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.5, 0.5, 0.5, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0],
-                [0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.5, 0.0, 0.0, 0.0],
-            ],
-            index=(["event2", "event1", "event3", "event4", "event5"]),
-            columns=["-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5"],
-        )
+        assert result.compare(correct_result).shape == (0, 0)
 
-        assert run_test(
-            test_stream,
-            ("var", correct_result),
-            "matrix",
-            max_steps=10,
-            centered={"event": "event5", "left_gap": 4, "occurrence": 1},
+    def test_step_matrix__centered_target_thresh_plot(self, test_stream, centered_target_thresh_plot_cor):
+        correct_result = centered_target_thresh_plot_cor
+        result = (
+            test_stream.step_matrix(
+                max_steps=10,
+                centered={"event": "event5", "left_gap": 4, "occurrence": 1},
+                targets=["event4"],
+                thresh=0.6,
+            )
+            .values[1]
+            .round(FLOAT_PRECISION)
         )
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__centered_target_thresh(self, test_stream):
+    def test_step_matrix__centered_name(self, test_stream, centered_name_cor):
+        correct_result = centered_name_cor
+        result = test_stream.step_matrix(
+            max_steps=10, centered={"event": "event5", "left_gap": 4, "occurrence": 1}, thresh=0.6
+        ).fraction_title
+        assert correct_result == result
 
-        correct_result = pd.DataFrame(
-            [
-                [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.5, 0.0, 0.0, 0.0],
-                [0.5, 1.0, 1.0, 1.0, 0.0, 1.0, 0.5, 0.5, 0.0, 0.0],
-            ],
-            index=(["event5", "THRESHOLDED_4"]),
-            columns=["-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5"],
-        )
-
-        assert run_test(
-            test_stream,
-            ("var", correct_result),
-            "matrix",
-            max_steps=10,
-            centered={"event": "event5", "left_gap": 4, "occurrence": 1},
-            targets=["event4"],
-            thresh=0.6,
-        )
-
-    def test_step_matrix__centered_target_thresh_plot(self, test_stream):
-        correct_result = pd.DataFrame(
-            [
-                [0.0, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0],
-            ],
-            index=(["event4"]),
-            columns=["-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5"],
-        )
-
-        assert run_test(
-            test_stream,
-            ("var", correct_result),
-            "targets_table",
-            max_steps=10,
-            centered={"event": "event5", "left_gap": 4, "occurrence": 1},
-            targets=["event4"],
-            thresh=0.6,
-        )
-
-    def test_step_matrix__centered_name(self, test_stream):
-        correct_result = "(33.3% of total records)"
-        assert run_test(
-            test_stream,
-            ("var", correct_result),
-            "fraction_title",
-            max_steps=10,
-            centered={"event": "event5", "left_gap": 4, "occurrence": 1},
-            thresh=0.6,
-        )
-
-    def test_step_matrix__events_sorting(self, test_stream):
-        correct_result = pd.DataFrame(
-            [
-                [0.0, 0.0, 0.0, 0.167, 0.0, 0.0],  # event5
-                [0.0, 0.0, 0.0, 0.167, 0.167, 0.167],  # event3
-                [0.0, 0.333, 0.50, 0.167, 0.0, 0.0],  # event2
-                [1.0, 0.667, 0.333, 0.167, 0.167, 0.167],  # event1
-            ],
-            index=(["event5", "event3", "event2", "event1"]),
-            columns=[1, 2, 3, 4, 5, 6],
-        )
+    def test_step_matrix__events_sorting(self, test_stream, events_sorting_cor):
         new_order = ["event5", "event3", "event2", "event1"]
-        assert run_test(test_stream, ("var", correct_result), "matrix", sorting=new_order, max_steps=6)
+        correct_result = events_sorting_cor
+        result = test_stream.step_matrix(sorting=new_order, max_steps=6).values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__differential(self, test_stream):
+    def test_step_matrix__differential(self, test_stream, differential_cor):
         g1 = [3, 6]
         g2 = [1, 2, 5]
-        correct_result = pd.DataFrame(
-            [
-                [0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
-                [0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0],
-                [0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-            ],
-            index=(["event1", "event2", "event3", "event4", "event5"]),
-            columns=["-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4"],
+        correct_result = differential_cor
+        result = (
+            test_stream.step_matrix(
+                max_steps=10, centered={"event": "event3", "left_gap": 5, "occurrence": 1}, groups=(g1, g2)
+            )
+            .values[0]
+            .round(FLOAT_PRECISION)
         )
-        assert run_test(
-            test_stream,
-            ("var", correct_result),
-            "matrix",
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__differential_name(self, test_stream, differential_name_cor):
+        g1 = [3, 6]
+        g2 = [1, 2, 5]
+        correct_result = differential_name_cor
+        sm = StepMatrix(
+            eventstream=test_stream,
             max_steps=10,
             centered={"event": "event3", "left_gap": 5, "occurrence": 1},
             groups=(g1, g2),
         )
+        sm.fit()
+        result = sm.fraction_title
+        assert correct_result == result
 
-    def test_step_matrix__differential_name(self, test_stream):
-        g1 = [3, 6]
-        g2 = [1, 2, 5]
-        correct_result = "(33.3% of total records)"
-        assert run_test(
-            test_stream,
-            ("var", correct_result),
-            "fraction_title",
-            max_steps=10,
-            centered={"event": "event3", "left_gap": 5, "occurrence": 1},
-            groups=(g1, g2),
-        )
+    def test_step_matrix__path_end(self, test_stream_end_path, path_end_cor):
+        correct_result = path_end_cor
+        result = test_stream_end_path.step_matrix(max_steps=5).values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__path_end(self, test_stream_end_path):
-        correct_result = pd.DataFrame(
-            [
-                [1.0, 0.5, 0.333, 0.167, 0.167],
-                [0, 0.5, 0.333, 0.0, 0.0],
-                [0, 0.0, 0.167, 0.167, 0.0],
-                [0, 0.0, 0.0, 0.167, 0.167],
-                [0, 0.0, 0.0, 0.167, 0.0],
-                [0, 0.0, 0.167, 0.333, 0.667],
-            ],
-            index=(["event1", "event2", "event3", "event5", "event4", "path_end"]),
-            columns=[1, 2, 3, 4, 5],
-        )
-        assert run_test(test_stream_end_path, ("var", correct_result), "matrix", max_steps=5)
-
-    def test_step_matrix__weight_col(self, test_weight_col):
-        correct_result = pd.DataFrame(
-            [
-                [0.667, 0.0, 0.0, 1.0, 0.333],
-                [0.333, 0.333, 0.0, 0.0, 0.667],
-                [0, 0.0, 0.667, 0.0, 0.0],
-                [0, 0.333, 0.0, 0.0, 0.0],
-                [0, 0.333, 0.333, 0.0, 0.0],
-            ],
-            index=(["event1", "event2", "event5", "event3", "event4"]),
-            columns=[1, 2, 3, 4, 5],
-        )
-        assert run_test(test_weight_col, ("var", correct_result), "matrix", max_steps=5, weight_col=["session_id"])
+    def test_step_matrix__weight_col(self, test_weight_col, weight_col_cor):
+        correct_result = weight_col_cor
+        sm = StepMatrix(eventstream=test_weight_col, max_steps=5, weight_col=["session_id"])
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)

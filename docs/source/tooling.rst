@@ -6,7 +6,7 @@ Eventstream tooling methods
 ---------------------------
 
 .. autoclass:: src.eventstream.eventstream.Eventstream
-    :members: funnel, clusters, step_matrix, sankey
+    :members: funnel, clusters, step_matrix, step_sankey, cohorts
 
 graph
 ~~~~~~~~~~~~~~~~

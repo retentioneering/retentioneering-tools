@@ -17,17 +17,18 @@ class Cohorts:
     """
     Class which provides methods for cohort analysis based on time.
     Users divided on cohorts depending on the time of their first appearance in eventstream.
-    Retention rate of active users calculated in coordinates of the cohort period and cohort group.
+    Retention rate of active users calculated in coordinates of the ``cohort_period`` and ``cohort_group``.
 
     Parameters
     ----------
+    eventstream : EventstreamType
     cohort_start_unit : :numpy_link:`DATETIME_UNITS<>`
         The way of rounding and format of the moment from which the cohort count begins.
         Minimum timestamp rounding down to the selected datetime unit.
 
         For example:
-        We have eventstream with min timestamp - "2021-12-28 09:08:34.432456"
-        The result of roundings with different DATETIME_UNITS is in the table below:
+        We have eventstream with minimum timestamp - "2021-12-28 09:08:34.432456"
+        The result of roundings with different ``DATETIME_UNITS`` is in the table below:
 
         +------------------------+-------------------------+
         | **cohort_start_unit**  | **cohort_start_moment** |
@@ -43,19 +44,20 @@ class Cohorts:
 
     cohort_period : Tuple(int, :numpy_link:`DATETIME_UNITS<>`)
         The cohort_period size and its ``DATETIME_UNIT``. This parameter is used in calculating:
-        1) Start moments for each cohort from the moment defined with the ``cohort_start_unit`` parameter
-        2) Cohort periods for each cohort from ifs start moment.
-    average : bool, default=True
-        If ``True`` - calculating average for each cohort period.
-        If ``False`` - averaged values don't calculated.
+
+        - Start moments for each cohort from the moment defined with the ``cohort_start_unit`` parameter
+        - Cohort periods for each cohort from ifs start moment.
+    average : bool, default True
+        - If ``True`` - calculating average for each cohort period.
+        - If ``False`` - averaged values don't calculated.
     cut_bottom : int
-        Drop from cohort_matrix 'n' rows from the bottom of the cohort matrix.
+        Drop 'n' rows from the bottom of the cohort matrix.
         Average is recalculated.
     cut_right : int
-        Drop from cohort_matrix 'n' columns from the right side.
+        Drop 'n' columns from the right side of the cohort matrix.
         Average is recalculated.
     cut_diagonal : int
-        Drop from cohort_matrix diagonal with 'n' last period-group cells.
+        Replace values in 'n' diagonals (last period-group cells) with ``np.nan``.
         Average is recalculated.
 
     Notes
@@ -63,8 +65,14 @@ class Cohorts:
     Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
     Due to "Y" and "M" are non-fixed types it can be used only with each other
     or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``.
-    More information - :numpy_timedelta_link:`About timedelta<>`
+    More information - :numpy_timedelta_link:`about numpy timedelta<>`
 
+
+    Only cohorts with at least 1 user in any period - are shown.
+
+    See Also
+    --------
+    :py:func:`src.eventstream.eventstream.Eventstream.cohorts`
     """
 
     __eventstream: EventstreamType
@@ -113,15 +121,12 @@ class Cohorts:
     def fit(self) -> None:
         """
         Calculates cohort matrix with retention rate of active users in coordinates
-        of the cohort period and cohort group.
+        of the ``cohort_period`` and ``cohort_group``.
+        Result of calculation could be presented using:
 
-        Returns
-        -------
-        pd.DataFrame
-
-        Notes
-        -----
-        Only cohorts with at least 1 user are shown.
+        - :py:func:`values`
+        - :py:func:`heatmap`
+        - :py:func:`lineplot`
 
         """
 
@@ -216,10 +221,24 @@ class Cohorts:
 
     @property
     def values(self) -> pd.DataFrame:
+        """
+        Creates pd.DataFrame on the base of calculated ``cohort_matrix`` values.
+        Should be used after :py:func:`fit`.
+
+        Returns
+        -------
+        pd.DataFrame
+
+        """
         return self._cohort_matrix_result
 
     @property
     def params(self) -> dict[str, DATETIME_UNITS | tuple | bool | int | None]:
+        """
+        Returns parameters used for last fitting.
+        Should be used after :py:func:`fit`.
+
+        """
         return {
             "cohort_start_unit": self.cohort_start_unit,
             "cohort_period": (self.cohort_period, self.cohort_period_unit),
@@ -232,17 +251,17 @@ class Cohorts:
     def heatmap(self, figsize: Tuple[float, float] = (10, 10)) -> sns.heatmap:
 
         """
-        Build the heatmap based on the calculated cohort_matrix.
+        Builds the heatmap based on the calculated cohort_matrix values.
+        Should be used after :py:func:`fit`.
 
         Parameters
         ----------
-        figsize: Tuple[float, float], default = (10, 10)
+        figsize: Tuple[float, float], default (10, 10)
             Is a tuple of the width and height of the figure in inches.
 
         Returns
         -------
         sns.heatmap
-
         """
 
         df = self._cohort_matrix_result
@@ -257,15 +276,16 @@ class Cohorts:
     ) -> sns.lineplot:
 
         """
-        Build lineplots for each cohort and/or for averaged values for each cohort_period
+        Builds lineplots for each cohort and/or for averaged values for each cohort_period
+        Should be used after :py:func:`fit`.
 
         Parameters
         ----------
         show_plot: 'cohorts', 'average' or 'all'
-            if 'cohorts' - shows lineplot for each cohort
-            if 'average' - shows lineplot only for all cohorts average values
-            if 'all' - shows lineplot for each cohort and also for their average values
-        figsize: Tuple[float, float], default = (10, 10)
+            - if ``cohorts`` - shows lineplot for each cohort
+            - if ``average`` - shows lineplot only for all cohorts average values
+            - if ``all`` - shows lineplot for each cohort and also for their average values
+        figsize: Tuple[float, float], default (10, 10)
             Is a tuple of the width and height of the figure in inches.
 
         Returns

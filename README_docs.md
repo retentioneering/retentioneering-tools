@@ -10,7 +10,7 @@
 def func(param1, param2):
 """
     Краткое описание, что делает класс/функция.
-    Должно идти сразу после кода без пропуска строчки. Иначе не спарсится.
+    Должно идти сразу после объявления функции без пропуска строчки. Иначе не спарсится.
 
     Parameters
     ----------
@@ -25,7 +25,7 @@ def func(param1, param2):
         - | poin 1 текст
           | текст на 2 строке
 
-    param2 : type, default="group_alias"
+    param2 : type, default <default_value>
 
     Returns
     -------
@@ -34,21 +34,44 @@ def func(param1, param2):
 
     See Also
     --------
-        Надо выработать правила для этого блока
+    Надо выработать правила для этого блока
 
     Notes
-    -------
-        Надо выработать правила для этого блока
+    -----
+    Надо выработать правила для этого блока
 
     Raises
     ------
-        Описание, когда выбрасывается ошибка.
-        Пока не получилось сделать список внутри этого блока
-        Парсится только первый буллит или номер пункта
+    Описание, когда выбрасывается ошибка.
+    Пока не получилось сделать список внутри этого блока
+    Парсится только первый буллит или номер пункта
 
    Тут важно, чтобы подчеркивание было не меньше текста
 """
 ```
+
+### Типы:
+```
+def func(
+        param1: list[str]
+        param2: list[str] | None = None
+        param3: Literal["open", "closed"] = "open",
+        param4: bool = False
+):
+"""
+    Description
+
+    Parameters
+    ----------
+    param1 : list of str
+    param2 : list of str, optional
+    param3 : {"open", "closed"}, default "open"
+    param4 : bool, default False
+
+"""
+```
+
+
 ---
 ### Используемая разметка текста:
 ```
@@ -56,10 +79,22 @@ def func(param1, param2):
     *italic*
     **bold**
     ``inline code/object``
-    :py:func:`func path` - internal ref
-    `text <url>`__ - external link
-
 """
+```
+
+### Внутренние ссылки:
+
+```
+    :py:func:`func path`
+```
+### Внешние ссылки:
+
+```
+    :numpy_link:`DATETIME_UNITS<>`
+    numpy_link - короткое название ссылки
+    DATETIME_UNITS - текст, который будет отражаться в доке
+    Полные ссылки хранятся в словаре в conf.py
+
 ```
 
 ## Сбор доки и основные команды
@@ -68,9 +103,9 @@ def func(param1, param2):
 ```commandline
 pip install sphinx
 ```
-Установить тему `sphinx-rtd-theme`
+Установить тему `pydata_sphinx_theme`
 ```commandline
-pip install sphinx-rtd-theme
+pip install pydata_sphinx_theme
 ```
 ```commandline
 cd docs

@@ -565,6 +565,24 @@ class Eventstream(
         group_names: Tuple[str, str] = ("group_1", "group_2"),
         alpha: float = 0.05,
     ) -> StatTests:
+        """
+        Creates an object of Class ``StatTests`` and fits it with specified parameters.
+        See :py:func:`src.tooling.stattests.stattests.StatTests.fit`
+
+        Should be used with:
+
+        - method :py:func:`src.tooling.stattests.stattests.StatTests.plot`
+        - attribute :py:func:`src.tooling.stattests.stattests.StatTests.values`
+
+        As  ``heatmap``, ``lineplot`` and ``values`` are called without creating variable for Class object
+        ``eventstream.stattests(**params).plot()`` - method ``fit()`` will be called each time
+        and recalculation as well.
+
+        Returns
+        -------
+        StatTests
+            Fitted StatTests object.
+        """
         self.__stattests = StatTests(
             eventstream=self, groups=groups, objective=objective, test=test, group_names=group_names, alpha=alpha
         )
@@ -582,7 +600,23 @@ class Eventstream(
         height: int | None = None,
     ) -> Sankey:
         """
-        See :py:func:`src.tooling.step_sankey.step_sankey`
+        Creates an object of Class ``StepMatrix`` and fits it with specified parameters.
+        See :py:func:`src.tooling.step_sankey.step_sankey.Sankey.fit`
+
+        Should be used with:
+
+        - method :py:func:`src.tooling.step_sankey.step_sankey.Sankey.plot`
+        - attribute :py:func:`src.tooling.step_sankey.step_sankey.Sankey.values`
+
+        As ``plot`` or ``values`` are called without creating variable for Class object
+        ``eventstream.step_sankey(**params).plot()`` method ``fit()`` will be called each time
+        and recalculation as well.
+
+        Returns
+        -------
+        Sankey
+            Fitted ``Sankey`` object.
+
 
         """
         self.__sankey = Sankey(
@@ -610,12 +644,28 @@ class Eventstream(
     ) -> Cohorts:
 
         """
-        Calculates cohort matrix
+        Creates an object of Class ``StepMatrix`` and fits it with specified parameters.
+        See :py:func:`src.tooling.cohorts.cohorts.Cohorts.fit`
 
-        Parameters
-        ----------
-        :py:func:`src.tooling.cohorts.cohorts`
+        Should be used with:
 
+        **Methods**
+
+        - :py:func:`src.tooling.cohorts.cohorts.Cohorts.heatmap`
+        - :py:func:`src.tooling.cohorts.cohorts.Cohorts.lineplot`
+
+        Or **attribute**
+
+        - py:func:`src.tooling.cohorts.cohorts.Cohorts.values`
+
+        As  ``heatmap``, ``lineplot`` and ``values`` are called without creating variable for Class object
+        ``eventstream.cohorts(**params).heatmap()`` - method ``fit()`` will be called each time
+        and recalculation as well.
+
+        Returns
+        -------
+        Cohorts
+            Fitted Cohorts object.
         """
 
         self.__cohorts = Cohorts(

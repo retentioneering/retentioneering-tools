@@ -58,12 +58,17 @@ def func(
         param3: Literal["open", "closed"] = "open",
         param4: bool = False
 ):
+"""
+    Description
 
-param1 : list of str
-param2 : list of str, optional
-param3 : {"open", "closed"}, default "open"
-param4 : bool, default False
+    Parameters
+    ----------
+    param1 : list of str
+    param2 : list of str, optional
+    param3 : {"open", "closed"}, default "open"
+    param4 : bool, default False
 
+"""
 ```
 
 

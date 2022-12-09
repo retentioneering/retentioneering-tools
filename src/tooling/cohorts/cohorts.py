@@ -57,7 +57,7 @@ class Cohorts:
         Drop 'n' columns from the right side of the cohort matrix.
         Average is recalculated.
     cut_diagonal : int
-        Replace values in 'n' diagonals (last period-group cells) with ``np.Nan``.
+        Replace values in 'n' diagonals (last period-group cells) with ``np.nan``.
         Average is recalculated.
 
     Notes

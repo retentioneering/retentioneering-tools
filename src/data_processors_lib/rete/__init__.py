@@ -6,6 +6,7 @@ from .delete_users_by_path_length import (
 from .filter_events import FilterEvents, FilterEventsParams
 from .group_events import GroupEvents, GroupEventsParams
 from .lost_users import LostUsersEvents, LostUsersParams
+from .merge import MergeParams, MergeProcessor
 from .negative_target import NegativeTarget, NegativeTargetParams
 from .new_users import NewUsersEvents, NewUsersParams
 from .positive_target import PositiveTarget, PositiveTargetParams

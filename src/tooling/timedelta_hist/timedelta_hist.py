@@ -110,7 +110,7 @@ class TimedeltaHist:
         # removes all diffs where the timedelta is computed between different grouping units
         # e.g. if grouping unit is user, removes all cases where timedelta is between events of different users
         # example: ['user1_action', 'user1_action', 'user2_action'] - diff between middle and last event is excluded
-        return data[data[self.agg_col] == data[self.agg_col].shift()] # type: ignore
+        return data[data[self.agg_col] == data[self.agg_col].shift()]  # type: ignore
 
     def _aggregate_data(self, data: pd.DataFrame) -> pd.DataFrame:
         if self.aggregation is not None:

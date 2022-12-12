@@ -40,10 +40,10 @@ class TimedeltaHist:
         column.
     aggregation: {None, "mean", "median"}, default None
         Specifies the aggregation policy for the time distances. Aggregates based on passed weight_col. None means no
-        aggregation; "mean" and "median" plots distributions of weight_col unit mean and weight_col unit median time
-        between events. For example, if session id is specified in weight_col, one observation per
-        session(for example, session median) will be provided.
-    timedelta_units: {"Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"}, default "s"
+        aggregation; "mean" and "median" plots distributions of weight_col unit mean and weight_col unit median
+        timedeltas. For example, if session id is specified in weight_col, one observation per
+        session(for example, session median) will be provided for the histogram.
+    timedelta_units: :numpy_link:`DATETIME_UNITS<>`, default "s"
         Specifies the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
     log_scale: bool, default False
@@ -106,6 +106,12 @@ class TimedeltaHist:
         data = data[select_ids]
         return data
 
+    def _exclude_multiunit_events(self, data: pd.DataFrame) -> pd.DataFrame:
+        # removes all diffs where the timedelta is computed between different grouping units
+        # e.g. if grouping unit is user, removes all cases where timedelta is between events of different users
+        # example: ['user1_action', 'user1_action', 'user2_action'] - diff between middle and last event is excluded
+        return data[data[self.agg_col] == data[self.agg_col].shift()] # type: ignore
+
     def _aggregate_data(self, data: pd.DataFrame) -> pd.DataFrame:
         if self.aggregation is not None:
             data = data.groupby(self.agg_col)["time_passed"].agg(self.aggregation).reset_index()
@@ -128,7 +134,8 @@ class TimedeltaHist:
         if self.event_pair is not None:
             data = self._prepare_event_pair_data(data)
         data["time_passed"] = data[self.time_col].diff() / np.timedelta64(1, self.timedelta_units)
-        data = data[data[self.agg_col] == data[self.agg_col].shift()]
+        # the next line removes "invalid" events(events not inside one unit(user/session))
+        data = self._exclude_multiunit_events(data)
         data = self._aggregate_data(data)
         values_to_plot = data["time_passed"].reset_index(drop=True)
         values_to_plot = self._remove_cutoff_values(values_to_plot)
@@ -140,5 +147,5 @@ class TimedeltaHist:
         if self.log_scale:
             logbins = np.logspace(np.log10(values_to_plot.min()), np.log10(values_to_plot.max()), self.bins)
             plt.xscale("log")
-            return plt.hist(values_to_plot, bins=logbins)
-        return plt.hist(values_to_plot, bins=self.bins)
+            return plt.hist(values_to_plot, bins=logbins, rwidth=0.9)
+        return plt.hist(values_to_plot, bins=self.bins, rwidth=0.9)

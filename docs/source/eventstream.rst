@@ -1,5 +1,0 @@
-
-.. title:: Eventstream
-
-Eventstream
-======================================

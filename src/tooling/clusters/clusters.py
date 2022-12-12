@@ -26,7 +26,19 @@ PlotProjectionMethod = Literal["tsne", "umap"]
 
 
 class Clusters:
-    def __init__(self, eventstream: EventstreamType) -> None:
+    """
+    Class gathers tools for cluster analysis.
+
+    Parameters
+    ----------
+    eventstream : EventstreamType
+
+    See Also
+    --------
+    :py:func:`src.eventstream.eventstream.Eventstream.clusters`
+    """
+
+    def __init__(self, eventstream: EventstreamType):
         self.__eventstream: EventstreamType = eventstream
         self.__segments: Segments | None = None
         self.__features: pd.DataFrame | None = None
@@ -59,19 +71,10 @@ class Clusters:
             ``gmm`` stands for Gaussian mixture model. https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html
         n_clusters: int
             The expected number of clusters to be passed to a clustering algorithm.
-        feature_type: {"tfidf", "count", "frequency", "binary", "markov"}, default=None
-            ``tfidf`` - https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html
-            ``count`` - https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html
-            ``frequency`` - An alias for ``count``.
-            ``binary`` - Uses the same CountVectorizer as ``count``, but with ``binary=True`` flag.
-            ``markov`` - Available for bigrams only. The vectorized values are associated with the transition
-            probabilities in the corresponding Markov chain. Here's an example. Assume a users has the following
-            transitions: ``A->B`` 3 times, ``A->C`` 1 time, and ``A->A`` 4 times. Then the vectorized values
-            for these bigrams are 3/8, 1/8, 1/2.
-        ngram_range: Tuple(int, int), default=None
-            The lower and upper boundary of the range of n-values for different word n-grams or char n-grams to be
-            extracted. For example, ngram_range=(1, 1) means only single events, (1, 2) means single events
-            and bigrams. Doesn't work for ``markov`` feature_type.
+                feature_type : {"tfidf", "count", "frequency", "binary", "markov"}, default="tfidf"
+            See :py:func:`extract_features`
+        ngram_range : Tuple(int, int), default=(1, 1)
+            See :py:func:`extract_features`
         vector: pd.Dataframe, default=None
             ``pd.Dataframe`` representing custom vectorization of the user paths. The index corresponds to user_ids,
             the columns are vectorized values of the path.
@@ -212,12 +215,12 @@ class Clusters:
     @property
     def cluster_mapping(self) -> dict:
         """
-        Returns ``cluster_id -> list[user_ids]`` mapping. I.e. the dictionary where the keys are cluster_ids,
-        the values are the lists of the user_ids related to the corresponding cluster.
+        Returns ``cluster_id -> list[user_ids]`` mapping.
 
         Returns
         -------
         dict
+            The keys are cluster_ids, the values are the lists of the user_ids related to the corresponding cluster.
         """
         if not self.__segments:
             raise RuntimeError("Can't find the clustering results. Consider to run 'fit' method first.")
@@ -259,15 +262,17 @@ class Clusters:
         Parameters
         ----------
         cluster_id: int or str
-            Cluster identifier to be selected. If ``Clusters.create_clusters`` was used for cluster generation, then
+            Cluster identifier to be selected.
+
+            If :py:func:`create_clusters` was used for cluster generation, then
              0, 1, ... values are possible.
         Returns
         --------
-        Eventstream with the users belonging to the selected cluster only.
-
-        Return type
-        --------
         EventstreamType
+            Eventstream with the users belonging to the selected cluster only.
+
+
+
         """
         from src.eventstream.eventstream import Eventstream
 
@@ -292,17 +297,18 @@ class Clusters:
 
         Parameters
         ----------
-        feature_type: {"tfidf", "count", "frequency", "binary", "markov"}
-            ``tfidf`` - https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html
-            ``count`` - https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html
-            ``frequency`` - An alias for ``count``.
-            ``binary`` - Uses the same CountVectorizer as ``count``, but with ``binary=True`` flag.
-            ``markov`` - Available for bigrams only. The vectorized values are associated with the transition
-            probabilities in the corresponding Markov chain. Here's an example. Assume a users has the following
-            transitions: ``A->B`` 3 times, ``A->C`` 1 time, and ``A->A`` 4 times. Then the vectorized values
-            for these bigrams are 3/8, 1/8, 1/2.
+        feature_type : {"tfidf", "count", "frequency", "binary", "markov"}
 
-        ngram_range: Tuple(int, int) | None, default=None
+            - ``tfidf`` see details in :sklearn_tfidf:`sklearn documentation<>`
+            - ``count`` see details in :sklearn_countvec:`sklearn documentation<>`
+            - ``frequency`` an alias for ``count``.
+            - ``binary`` uses the same CountVectorizer as ``count``, but with ``binary=True`` flag.
+            - | ``markov`` available for bigrams only. The vectorized values are
+              | associated with the transition probabilities in the corresponding Markov chain.
+              | For Example: Assume a users has the following transitions: ``A->B`` 3 times,
+              | ``A->C`` 1 time, and ``A->A`` 4 times. Then the vectorized values for these bigrams are
+              | 3/8, 1/8, 1/2.
+        ngram_range: Tuple(int, int), default=None
             The lower and upper boundary of the range of n-values for different word n-grams or char n-grams to be
             extracted. For example, ngram_range=(1, 1) means only single events, (1, 2) means single events
             and bigrams. Doesn't work for ``markov`` feature_type.
@@ -363,27 +369,43 @@ class Clusters:
         targets: list[str] | None = None,
         plot_type: Literal["targets", "clusters"] = "clusters",
         **kwargs: Any,
-    ) -> None:
+    ) -> go.Figure:
         """
         Does the dimension reduction of user trajectories and draws projection plane.
+
         Parameters
         ----------
-        method: {'umap', 'tsne'} (optional, default 'tsne')
+        method : {'umap', 'tsne'} (optional, default 'tsne')
             Type of manifold transformation.
-        plot_type: {'targets', 'clusters'} (optional, default 'clusters')
+        plot_type : {'targets', 'clusters'} (optional, default 'clusters')
             Type of color-coding used for projection visualization:
                 - 'clusters': colors trajectories with different colors depending on cluster number.
                 - 'targets': color trajectories based on reach to any event provided in 'targets' parameter.
                 Must provide 'targets' parameter in this case.
-        targets: list or tuple of str (optional, default  ())
+        targets : list or tuple of str (optional, default  ())
             Vector of event_names as str. If user reach any of the specified events, the dot corresponding
             to this user will be highlighted as converted on the resulting projection plot
+        ngram_range : tuple, (optional, default (1,1))
+            The lower and upper boundaries of the range of n-values for different
+            word n-grams or char n-grams to be extracted before dimension-reduction.
+            For example ngram_range=(1, 1) means only single events, (1, 2) means single events
+            and bigrams. Doesn't work for ``markov`` feature_type.
+        feature_type : {'tfidf', 'count', 'binary', 'frequency', 'markov'}, default='tfidf'
+            Type of vectorizer to use before dimension-reduction. Available vectorization methods:
+        plot_type : {'targets', 'clusters', None} (optional, default None)
+            Type of color-coding used for projection visualization:
+
+            - ``clusters`` colors trajectories with different colors depending on cluster number.
+            - | ``targets`` colors trajectories based on reach to any event provided in 'targets' parameter.
+              | Must provide ``targets`` parameter in this case.
+            - If ``None``, then only calculates TSNE without visualization.
+        **kwargs : optional
+            Parameters for ``sklearn.manifold.TSNE()`` and ``umap.UMAP()``
+
         Returns
-        --------
-        Dataframe with data in the low-dimensional space for user trajectories indexed by user IDs.
-        Return type
-        --------
-        None
+        -------
+        sns.scatterplot
+            Plot in the low-dimensional space for user trajectories indexed by user IDs.
         """
 
         if self.__features is None or self.__cluster_result is None:
@@ -435,13 +457,13 @@ class Clusters:
 
         self.__projection = projection
 
-        self._plot_projection(
+        plot, _ = self._plot_projection(
             projection=projection.values,
             targets=targets_mapping,  # type: ignore
             legend_title=legend_title,
         )
 
-        return None
+        return plot
 
     # inner functions
     def __validate_input(
@@ -530,18 +552,19 @@ class Clusters:
     def _learn_tsne(data: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
         """
         Calculates TSNE transformation for given matrix features.
+
         Parameters
         --------
         data: np.array
             Array of features.
         kwargs: optional
             Parameters for ``sklearn.manifold.TSNE()``
+
         Returns
         -------
-        Calculated TSNE transform
-        Return type
-        -------
-        np.ndarray
+        pd.DataFrame
+            Calculated TSNE transform
+
         """
 
         TSNE_PARAMS = [
@@ -574,12 +597,12 @@ class Clusters:
             Array of features.
         kwargs: optional
             Parameters for ``umap.UMAP()``
+
         Returns
         -------
-        Calculated UMAP transform
-        Return type
-        -------
-        np.ndarray
+        pd.DataFrame
+            Calculated UMAP transform
+
         """
         reducer = umap.UMAP()
         _umap_filter = reducer.get_params()
@@ -654,27 +677,7 @@ class Clusters:
 
     # TODO: add save
     def _cluster_bar(self, clusters: ndarray, target: list[list[bool]], target_names: list[str]) -> go.Figure:
-        """
-        Plots bar charts with cluster sizes and average target conversion rate.
-        Parameters
-        ----------
-        data : pd.DataFrame
-            Feature matrix.
-        clusters : "np.array"
-            Array of cluster IDs.
-        target: "np.array"
-            Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
-        target: list[np.ndarray]
-            Boolean vector, if ``True``, then user has `positive_target_event` in trajectory.
-        kwargs: optional
-            Width and height of plot.
-        Returns
-        -------
-        Saves plot to ``retention_config.experiments_folder``
-        Return type
-        -------
-        PNG
-        """
+
         cl = pd.DataFrame([clusters, *target], index=["clusters", *target_names]).T
         cl["cluster size"] = 1
         for t_n in target_names:

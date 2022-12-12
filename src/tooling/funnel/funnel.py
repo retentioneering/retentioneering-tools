@@ -16,6 +16,7 @@ class Funnel:
 
     Parameters
     ----------
+    eventstream : EventstreamType
     stages: list of str
         List of events used as stages for the funnel. Absolute and relative
         number of users who reached specified events at least once will be
@@ -39,7 +40,7 @@ class Funnel:
 
     See Also
     --------
-    :py:func:`src.eventstream.funnel`
+    :py:func:`src.eventstream.eventstream.Eventstream.funnel`
 
     """
 
@@ -114,9 +115,13 @@ class Funnel:
 
     def plot(self) -> go.Figure:
         """
+        Creates Funnel plot on the base of calculated funnel values.
+        Should be used after :py:func:`fit`.
+
         Returns
         -------
-            Funnel plot
+        go.Figure
+
         """
         result_dict = self.res_dict
         data = self._calculate_plot_data(plot_params=result_dict)
@@ -126,11 +131,19 @@ class Funnel:
     @property
     def values(self) -> pd.DataFrame:
         """
-        Creates pd.DataFrame with funnel values
+        Creates pd.DataFrame on the base of calculated funnel values.
+        Should be used after :py:func:`fit`.
 
         Returns
         -------
-            pd.DataFrame
+        pd.DataFrame
+
+            +------------------+-------------+-----------------+-------------------+-----------------+
+            | **segment_name** |  **stages** | **unique_users**|  **%_of_initial** |  **%_of_total** |
+            +------------------+-------------+-----------------+-------------------+-----------------+
+            | segment_1        |  stage_1    |            2000 |            100.00 |          100.00 |
+            +------------------+-------------+-----------------+-------------------+-----------------+
+
         """
 
         result_dict = self.res_dict
@@ -151,6 +164,14 @@ class Funnel:
         return result_df
 
     def fit(self) -> None:
+        """
+        Calculates funnel values with specified parameters.
+        Result of calculation could be presented using:
+
+        - :py:func:`values`
+        - :py:func:`plot`
+
+        """
 
         if self.funnel_type == "closed":
             self.res_dict = self._prepare_data_for_closed_funnel(

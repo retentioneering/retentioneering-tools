@@ -148,7 +148,7 @@ class Clusters:
         events_to_keep = top_cluster[lambda x: ~x.index.isin(targets)].iloc[:top_n].index.tolist()  # type: ignore
         target_separator_position = len(events_to_keep)
         events_to_keep += list(targets)
-        top_cluster = top_cluster.loc[events_to_keep].reset_index()
+        top_cluster = top_cluster.loc[events_to_keep].reset_index()  # type: ignore
 
         if cluster_id2 is None:
             cluster2 = self.__eventstream.to_dataframe()
@@ -168,7 +168,7 @@ class Clusters:
             top_all.loc[event] = 0
 
         # keep only top_n events from cluster1
-        top_all = top_all.loc[top_cluster["index"]].reset_index()
+        top_all = top_all.loc[top_cluster["index"]].reset_index()  # type: ignore
 
         top_all.columns = [event_col, "freq"]  # type: ignore
         top_cluster.columns = [event_col, "freq"]  # type: ignore
@@ -503,7 +503,7 @@ class Clusters:
 
     def _prepare_clusters(self) -> tuple[pd.DataFrame, pd.Series]:
         features = pd.DataFrame()
-        user_clusters = pd.Series()
+        user_clusters = pd.Series(dtype=np.int64)
 
         if self._user_clusters is not None:
             user_clusters = self._user_clusters.copy()

@@ -457,13 +457,13 @@ class Clusters:
 
         self.__projection = projection
 
-        plot, _ = self._plot_projection(
+        figure, _ = self._plot_projection(
             projection=projection.values,
             targets=targets_mapping,  # type: ignore
             legend_title=legend_title,
         )
 
-        return plot
+        return figure
 
     # inner functions
     def __validate_input(

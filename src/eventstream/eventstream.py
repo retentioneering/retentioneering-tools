@@ -477,7 +477,7 @@ class Eventstream(
     @property
     def clusters(self) -> Clusters:
         if self.__clusters is None:
-            self.__clusters = Clusters(eventstream=self, user_clusters=None)
+            self.__clusters = Clusters(eventstream=self)
         return self.__clusters
 
     def step_matrix(

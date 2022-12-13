@@ -6,13 +6,13 @@ from pydantic import ValidationError
 
 from src.tooling.cohorts import Cohorts
 from tests.tooling.fixtures.cohorts_corr import (
-    MM_corr,
     matrix_avg_corr,
     matrix_cut_corr,
     matrix_D1M_corr,
     matrix_D4W_corr,
     matrix_D30D_corr,
     matrix_M2M_corr,
+    matrix_MM_corr,
     matrix_W4W_corr,
     matrix_W30D_corr,
 )
@@ -28,8 +28,8 @@ def run_test(stream, correct_res, **kwargs):
 
 
 class TestCohorts:
-    def test_cohorts__matrix_MM(self, test_stream, MM_corr):
-        correct_res = MM_corr
+    def test_cohorts__matrix_MM(self, test_stream, matrix_MM_corr):
+        correct_res = matrix_MM_corr
         assert run_test(test_stream, correct_res, cohort_start_unit="M", cohort_period=(1, "M"), average=False)
 
     def test_cohorts__matrix_M2M(self, test_stream, matrix_M2M_corr):

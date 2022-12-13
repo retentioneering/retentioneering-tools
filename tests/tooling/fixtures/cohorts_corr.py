@@ -3,7 +3,7 @@ import pytest
 
 
 @pytest.fixture
-def MM_corr():
+def matrix_MM_corr():
     correct_res = pd.DataFrame(
         [
             [1.0, 1.0, 1.0, -999.0, 0.5],

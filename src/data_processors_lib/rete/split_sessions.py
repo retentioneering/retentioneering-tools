@@ -21,7 +21,7 @@ class SplitSessionsParams(ParamsModel):
 
     session_cutoff: Tuple[float, DATETIME_UNITS]
     mark_truncated: bool = False
-    session_col: str
+    session_col: str = "session_id"
 
     _widgets = {"session_cutoff": ReteTimeWidget}
 
@@ -53,7 +53,7 @@ class SplitSessions(DataProcessor):
         For users with timedelta less than selected ``session_cutoff``,
         new synthetic event - ``session_start_truncated`` or ``session_end_truncated`` will be added.
 
-    session_col : str
+    session_col : str, default="session_id"
         The name of future ``session_col``
 
     Returns

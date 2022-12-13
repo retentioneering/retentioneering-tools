@@ -109,6 +109,8 @@ class Eventstream(
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
         relations: Optional[List[Relation]] = None,
+        user_sample_size: Optional[int | float] = None,
+        user_sample_seed: Optional[int] = None,
     ) -> None:
         self.__clusters = None
         self.__funnel = None
@@ -120,6 +122,8 @@ class Eventstream(
                 raw_data_schema.event_type = "event_type"
         self.__raw_data_schema = raw_data_schema
 
+        if user_sample_size is not None:
+            raw_data = self.__sample_user_paths(raw_data, raw_data_schema, user_sample_size, user_sample_seed)
         if not index_order:
             self.index_order = DEFAULT_INDEX_ORDER
         else:
@@ -420,6 +424,34 @@ class Eventstream(
             return self.index_order.index(event_type)
         return len(self.index_order)
 
+    def __sample_user_paths(
+        self,
+        raw_data: pd.DataFrame | pd.Series[Any],
+        raw_data_schema: RawDataSchemaType,
+        user_sample_size: Optional[int | float] = None,
+        user_sample_seed: Optional[int] = None,
+    ) -> pd.DataFrame | pd.Series[Any]:
+        if type(user_sample_size) is not float and type(user_sample_size) is not int:
+            raise TypeError('"user_sample_size" has to be a number(float for user share or int for user amount)')
+        if user_sample_size < 0:
+            raise ValueError("User sample size/share cannot be negative!")
+        if type(user_sample_size) is float:
+            if user_sample_size > 1:
+                raise ValueError("User sample share cannot exceed 1!")
+        user_col_name = raw_data_schema.user_id
+        unique_users = raw_data[user_col_name].unique()
+        if type(user_sample_size) is int:
+            sample_size = user_sample_size
+        elif type(user_sample_size) is float:
+            sample_size = int(user_sample_size * len(unique_users))
+        else:
+            return raw_data
+        if user_sample_seed is not None:
+            np.random.seed(user_sample_seed)
+        sample_users = np.random.choice(unique_users, sample_size, replace=False)
+        raw_data_sampled = raw_data.loc[raw_data[user_col_name].isin(sample_users), :]  # type: ignore
+        return raw_data_sampled
+
     def funnel(
         self,
         stages: list[str],
@@ -430,6 +462,27 @@ class Eventstream(
         sequence: bool = False,
     ) -> Funnel:
 
+        """
+        Creates an object of Class ``Funnel`` and fits it with specified parameters.
+        See :py:func:`src.tooling.funnel.funnel.Funnel.fit`
+
+        Should be used with:
+
+        - method :py:func:`src.tooling.funnel.funnel.Funnel.plot`
+        - attribute :py:func:`src.tooling.funnel.funnel.Funnel.values`
+
+        As ``plot`` or ``values`` are called without creating variable for Class object
+        ``eventstream.funnel(**params).plot()`` method ``fit()`` will be called each time
+        and recalculation as well.
+
+        See Parameters description :py:func:`src.tooling.funnel.funnel`
+
+        Returns
+        -------
+        Funnel
+            Fitted ``Funnel`` object.
+
+        """
         self.__funnel = Funnel(
             eventstream=self,
             stages=stages,
@@ -444,6 +497,13 @@ class Eventstream(
 
     @property
     def clusters(self) -> Clusters:
+        """
+        See :py:func:`src.tooling.clusters.clusters`
+
+        Returns
+        -------
+        Clusters
+        """
         if self.__clusters is None:
             self.__clusters = Clusters(eventstream=self, user_clusters=None)
         return self.__clusters
@@ -461,11 +521,24 @@ class Eventstream(
         groups: Optional[Tuple[list, list]] = None,
     ) -> StepMatrix:
         """
-        Calculates step_matrix
+        Creates an object of Class ``StepMatrix`` and fits it with specified parameters.
+        See :py:func:`src.tooling.step_matrix.step_matrix.StepMatrix.fit`
 
-        Parameters
-        ----------
-        :py:func:`src.tooling.step_matrix.step_matrix`
+        Should be used with:
+
+        - method :py:func:`src.tooling.step_matrix.step_matrix.StepMatrix.plot`
+        - attribute :py:func:`src.tooling.step_matrix.step_matrix.StepMatrix.values`
+
+        As ``plot`` or ``values`` are called without creating variable for Class object
+        ``eventstream.step_matrix(**params).plot()`` method ``fit()`` will be called each time
+        and recalculation as well.
+
+        See Parameters description :py:func:`src.tooling.step_matrix.step_matrix`
+
+        Returns
+        -------
+        StepMatrix
+            Fitted ``StepMatrix`` object.
 
         """
         self.__step_matrix = StepMatrix(
@@ -492,6 +565,24 @@ class Eventstream(
         group_names: Tuple[str, str] = ("group_1", "group_2"),
         alpha: float = 0.05,
     ) -> StatTests:
+        """
+        Creates an object of Class ``StatTests`` and fits it with specified parameters.
+        See :py:func:`src.tooling.stattests.stattests.StatTests.fit`
+
+        Should be used with:
+
+        - method :py:func:`src.tooling.stattests.stattests.StatTests.plot`
+        - attribute :py:func:`src.tooling.stattests.stattests.StatTests.values`
+
+        As  ``heatmap``, ``lineplot`` and ``values`` are called without creating variable for Class object
+        ``eventstream.stattests(**params).plot()`` - method ``fit()`` will be called each time
+        and recalculation as well.
+
+        Returns
+        -------
+        StatTests
+            Fitted StatTests object.
+        """
         self.__stattests = StatTests(
             eventstream=self, groups=groups, objective=objective, test=test, group_names=group_names, alpha=alpha
         )
@@ -508,7 +599,26 @@ class Eventstream(
         width: int | None = None,
         height: int | None = None,
     ) -> Sankey:
+        """
+        Creates an object of Class ``StepMatrix`` and fits it with specified parameters.
+        See :py:func:`src.tooling.step_sankey.step_sankey.Sankey.fit`
 
+        Should be used with:
+
+        - method :py:func:`src.tooling.step_sankey.step_sankey.Sankey.plot`
+        - attribute :py:func:`src.tooling.step_sankey.step_sankey.Sankey.values`
+
+        As ``plot`` or ``values`` are called without creating variable for Class object
+        ``eventstream.step_sankey(**params).plot()`` method ``fit()`` will be called each time
+        and recalculation as well.
+
+        Returns
+        -------
+        Sankey
+            Fitted ``Sankey`` object.
+
+
+        """
         self.__sankey = Sankey(
             eventstream=self,
             max_steps=max_steps,
@@ -534,12 +644,28 @@ class Eventstream(
     ) -> Cohorts:
 
         """
-        Calculates cohort matrix
+        Creates an object of Class ``StepMatrix`` and fits it with specified parameters.
+        See :py:func:`src.tooling.cohorts.cohorts.Cohorts.fit`
 
-        Parameters
-        ----------
-        :py:func:`src.tooling.cohorts.cohorts`
+        Should be used with:
 
+        **Methods**
+
+        - :py:func:`src.tooling.cohorts.cohorts.Cohorts.heatmap`
+        - :py:func:`src.tooling.cohorts.cohorts.Cohorts.lineplot`
+
+        Or **attribute**
+
+        - py:func:`src.tooling.cohorts.cohorts.Cohorts.values`
+
+        As  ``heatmap``, ``lineplot`` and ``values`` are called without creating variable for Class object
+        ``eventstream.cohorts(**params).heatmap()`` - method ``fit()`` will be called each time
+        and recalculation as well.
+
+        Returns
+        -------
+        Cohorts
+            Fitted Cohorts object.
         """
 
         self.__cohorts = Cohorts(

@@ -54,6 +54,7 @@ class TransitionGraph:
         self.server.register_action("save-nodelist", lambda n: self._on_nodelist_updated(n))
         self.server.register_action("save-layout", lambda n: self._on_layout_request(n))
         self.server.register_action("save-graph-settings", lambda n: self._on_graph_settings_request(n))
+        self.server.register_action("recalculate", lambda n: self._on_recalc_request(n))
 
         self.eventstream = eventstream
 
@@ -96,6 +97,70 @@ class TransitionGraph:
         )
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
+
+    def _on_recalc_request(self, nodes: MutableSequence[PreparedNode]):
+        try:
+            self.updates = nodes
+            self._on_nodelist_updated(nodes)
+            self._recalculate()
+
+            self.edgelist.edgelist_df["type"] = "suit"
+
+            nodes, nodes_set = self._prepare_nodes(
+                nodelist=self.nodelist.nodelist_df,
+            )
+            links = self._prepare_edges(edgelist=self.edgelist.edgelist_df, nodes_set=nodes_set)
+            result = {
+                "nodes": nodes,
+                "links": links,
+            }
+
+            return result
+        except Exception as err:
+            self.error = err
+            raise ValueError("error!")
+
+    def _recalculate(self):
+        curr_nodelist = self.nodelist.nodelist_df
+        active = curr_nodelist[curr_nodelist["active"] == True]
+        grouped = curr_nodelist[~curr_nodelist["parent"].isnull() & curr_nodelist["active"] == True]
+
+        updated_clickstream: pd.DataFrame = self.eventstream.to_dataframe().copy()
+        # remove disabled events
+        updated_clickstream = updated_clickstream[updated_clickstream[self.event_col].isin(active[self.event_col])]
+        # recalculate
+        updated_clickstream = updated_clickstream.apply(lambda x: self._replace_grouped_events(grouped, x), axis=1)
+
+        # save norm type
+        recalculated_nodelist = self.nodelist.calculate_nodelist(data=updated_clickstream)
+        recalculated_edgelist = self.edgelist.calculate_edgelist(
+            norm_type=self.norm_type, custom_cols=self.custom_cols, data=updated_clickstream
+        )
+
+        self.nodelist = curr_nodelist.apply(lambda x: self._update_node_after_recalc(recalculated_nodelist, x), axis=1)
+        self.edgelist = recalculated_edgelist
+
+    def _replace_grouped_events(self, grouped: pd.Series, row):
+        event_name = row[self.event_col]
+        mathced = grouped[grouped[self.event_col] == event_name]
+
+        if len(mathced) > 0:
+            parent_node_name = mathced.iloc[0]["parent"]
+            row[self.event_col] = parent_node_name
+
+        return row
+
+    def _update_node_after_recalc(self, recalculated_nodelist: pd.DataFrame, row):
+        cols = self.config.get_nodelist_cols()
+        event_col = self.config.event_col
+        node_name = row[event_col]
+        mathced: pd.Series[Any] = recalculated_nodelist[recalculated_nodelist[event_col] == node_name]
+
+        if len(mathced) > 0:
+            recalculated_node = mathced.iloc[0]
+            for col in cols:
+                row[col] = recalculated_node[col]
+        return row.copy()
 
     def _on_graph_settings_request(self, settings: GraphSettings) -> None:
         self.graph_settings = settings

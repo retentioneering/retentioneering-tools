@@ -16,7 +16,7 @@ class Sankey:
 
     Parameters
     ----------
-    max_steps: int (optional, default 10)
+    max_steps: int > 1 (optional, default 10)
         Maximum number of steps in trajectories to include.
     thresh: float | int (optional, default 0.05)
         Used to remove rare events from the plot. An event is collapsed to ``thresholded_N`` artificial event if

@@ -39,3 +39,14 @@ class TestSankey:
 
     def test_sankey__target(self, test_stream):
         assert run_test(test_stream, "04_target", max_steps=6, thresh=0.25, target=["event4"])
+
+    def test_sankey__two_steps(self, test_stream):
+        assert run_test(test_stream, "05_two_step", max_steps=2)
+
+    def test_sankey__sorting(self, test_stream):
+        assert run_test(
+            test_stream, "06_sorting", max_steps=5, sorting=["event5", "event4", "event3", "event2", "event1"]
+        )
+
+    def test_sankey__test_sankey__threshold_float_one(self, test_stream):
+        assert run_test(test_stream, "07_thresh_float_one", max_steps=3, thresh=1.0)

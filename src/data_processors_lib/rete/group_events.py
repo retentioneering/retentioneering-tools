@@ -49,7 +49,7 @@ class GroupEvents(DataProcessor):
         +-----------------+----------------+-------------------+----------------+
 
     See Also
-    -------
+    --------
     src.graph.p_graph.PGraph
     src.graph.p_graph.EventsNode
     src.graph.p_graph.PGraph.add_node

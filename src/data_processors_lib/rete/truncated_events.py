@@ -61,7 +61,7 @@ class TruncatedEvents(DataProcessor):
         +-------------------+-------------------+------------------+
 
     See Also
-    -------
+    --------
     Hists
 
     Raises

@@ -27,7 +27,7 @@ class CollapseLoops(DataProcessor):
 
     Parameters
     ----------
-    suffix: {"loop", "count", None}, default="loop"
+    suffix : {"loop", "count", None}, default="loop"
         If ``loop`` event_name will be event_name_loop.\n
         For example *"event1 - event1 - event1"* --> event1_loop
 
@@ -42,7 +42,7 @@ class CollapseLoops(DataProcessor):
 
     Returns
     -------
-    Eventstream
+    EventstreamType
         Eventstream with:
         raw events: that should be soft-deleted from original Eventstream
         new synthetic events: that can be added to the original Eventstream with columns below.
@@ -58,7 +58,7 @@ class CollapseLoops(DataProcessor):
         +------------------------+----------------+--------------------------------------------+
 
     See Also
-    -------
+    --------
 
     """
 

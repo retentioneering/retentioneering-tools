@@ -20,19 +20,24 @@ class FilterEventsParams(ParamsModel):
 
 class FilterEvents(DataProcessor):
     """
-    Filters input Eventstream on the basis of custom conditions
+    Filters input Eventstream on the basis of custom conditions.
+    Should be used with EventsNode()
+    graph.add_node
+    graph.combine
 
     Parameters
     ----------
     filter : Callable[[DataFrame, EventstreamSchema], bool]
-        Custom function which returns boolean mask the same length as input Eventstream
-        If ``True`` - row will be remained
-        If ``False`` - row will be deleted
+        Custom function which returns boolean mask the same length as input Eventstream.
+
+        - If ``True`` - row will be remained
+        - If ``False`` - row will be deleted
 
     Returns
     -------
-    Eventstream
+    EventstreamType
         Eventstream with events that should be deleted from input Eventstream.
+
 
     """
 

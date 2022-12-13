@@ -118,16 +118,12 @@ class TimedeltaHist:
         return data
 
     def _remove_cutoff_values(self, series: pd.Series) -> pd.Series:
-        if self.upper_cutoff_quantile is not None and self.lower_cutoff_quantile is not None:
-            return series[
-                (series <= series.quantile(self.upper_cutoff_quantile))
-                & (series >= series.quantile(self.lower_cutoff_quantile))
-            ]
-        elif self.upper_cutoff_quantile is not None:
-            return series[series <= series.quantile(self.upper_cutoff_quantile)]
-        elif self.lower_cutoff_quantile is not None:
-            return series[series >= series.quantile(self.lower_cutoff_quantile)]
-        return series
+        idx = [True] * len(series)
+        if self.upper_cutoff_quantile is not None:
+            idx &= series <= series.quantile(self.upper_cutoff_quantile)
+        if self.lower_cutoff_quantile is not None:
+            idx &= series >= series.quantile(self.lower_cutoff_quantile)
+        return series[idx]
 
     def plot(self) -> go.Figure:
         data = self.__eventstream.to_dataframe().sort_values([self.agg_col, self.time_col])

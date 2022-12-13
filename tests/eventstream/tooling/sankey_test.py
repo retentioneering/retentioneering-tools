@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import pytest
 
-from tests.tooling.fixtures.sankey import test_stream
+from tests.eventstream.tooling.fixtures.sankey import test_stream
 
 
 def correct_res_test(test_prefix):

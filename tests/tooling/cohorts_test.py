@@ -4,7 +4,6 @@ import os
 
 import pandas as pd
 import pytest
-from pydantic import ValidationError
 
 from src.tooling.cohorts import Cohorts
 from tests.tooling.fixtures.cohorts import test_stream

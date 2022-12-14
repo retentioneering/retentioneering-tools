@@ -37,7 +37,7 @@ def _cohenh(d1: list, d2: list) -> float:
 
 class StatTests:
     """
-    Tests selected metric between two groups of users.
+    A class for the determining statistical difference between two groups of users.
 
     Parameters
     ----------
@@ -45,7 +45,7 @@ class StatTests:
     groups : tuple of list
         Must contain tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
         of user_id`s.
-    objective : Callable, default lambda x: x.shape[0]
+    function : Callable, default lambda x: x.shape[0]
         Selected metrics. Must contain a function which takes as an argument dataset for
         single user trajectory and returns a single numerical value.
     group_names : tuple, default ('group_1', 'group_2')
@@ -75,7 +75,7 @@ class StatTests:
         eventstream: EventstreamType,
         test: TEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
-        objective: Callable = lambda x: x.shape[0],
+        function: Callable,
         group_names: Tuple[str, str] = ("group_1", "group_2"),
         alpha: float = 0.05,
     ) -> None:
@@ -84,7 +84,7 @@ class StatTests:
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
         self.groups = groups
-        self.objective = objective
+        self.function = function
         self.test = test
         self.group_names = group_names
         self.alpha = alpha
@@ -93,18 +93,6 @@ class StatTests:
         self.p_val, self.power, self.label_min, self.label_max = 0.0, 0.0, "", ""
         self.is_fitted = False
 
-    def fit(self) -> None:
-        """
-        Computes specified test statistic, along with test result description.
-
-        - :py:func:`values`
-        - :py:func:`plot`
-
-        """
-        self.g1_data, self.g2_data = self._get_group_values()
-        self.p_val, self.power, self.label_min, self.label_max = self._get_sorted_test_results()
-        self.is_fitted = True
-
     def _get_group_values(self) -> Tuple[list, list]:
         data = self.__eventstream.to_dataframe()
         # obtain two populations for each group
@@ -112,8 +100,8 @@ class StatTests:
         g2 = data[data[self.user_col].isin(self.groups[1])].copy()
 
         # obtain two distributions:
-        g1_data = list(g1.groupby(self.user_col).apply(self.objective).dropna().astype(float).values)
-        g2_data = list(g2.groupby(self.user_col).apply(self.objective).dropna().astype(float).values)
+        g1_data = list(g1.groupby(self.user_col).apply(self.function).dropna().astype(float).values)
+        g2_data = list(g2.groupby(self.user_col).apply(self.function).dropna().astype(float).values)
         return g1_data, g2_data
 
     def _get_test_results(self, data_max: list, data_min: list) -> Tuple[float, float]:
@@ -168,9 +156,20 @@ class StatTests:
             label_min = self.group_names[0]
         return p_val, power, label_max, label_min
 
+    def fit(self) -> None:
+        """
+        Calculates the cohort internal values with the defined parameters.
+        Applying ``fit`` method is mandatory for the following usage
+        of any visualization or descriptive ``StatTests`` methods.
+
+        """
+        self.g1_data, self.g2_data = self._get_group_values()
+        self.p_val, self.power, self.label_min, self.label_max = self._get_sorted_test_results()
+        self.is_fitted = True
+
     def plot(self) -> Tuple[go.Figure, str]:
         """
-        Plots with distribution for selected metrics for two groups.
+        Plots a barplot comparing the metric values between two groups.
         Should be used after :py:func:`fit`.
 
         Returns
@@ -184,11 +183,10 @@ class StatTests:
         compare_plot.set(xlabel=None)
         return compare_plot
 
-    def values(
-        self,
-    ) -> dict:
+    @property
+    def values(self) -> dict:
         """
-        Results of statistical comparison between two groups over selected metric and test.
+        Returns the comprehensive results of the comparison between the two groups.
         Should be used after :py:func:`fit`.
 
         Returns
@@ -207,6 +205,7 @@ class StatTests:
             "group_two_mean": np.array(self.g2_data).mean(),
             "group_two_SD": np.array(self.g2_data).std(),
             "greatest_group_name": self.label_max,
+            "least_group_name": self.label_min,
             "is_group_one_greatest": self.label_max == self.group_names[0],
             "p_val": self.p_val,
             "power_estimated": 0.0,
@@ -214,3 +213,18 @@ class StatTests:
         if self.test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
             res_dict["power_estimated"] = self.power
         return res_dict
+
+    @property
+    def params(self) -> dict:
+        """
+        Returns the parameters used for the last fitting.
+        Should be used after :py:func:`fit`.
+
+        """
+        return {
+            "test": self.test,
+            "groups": self.groups,
+            "function": self.function,
+            "group_names": self.group_names,
+            "alpha": self.alpha,
+        }

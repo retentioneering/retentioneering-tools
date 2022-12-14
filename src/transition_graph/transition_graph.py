@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import random
 import string
-from typing import Any, MutableMapping, MutableSequence, cast
+from typing import Any, MutableMapping, MutableSequence, cast, TypedDict
 
 import networkx as nx
 import pandas as pd
@@ -27,6 +27,9 @@ from .typing import (
     Weight,
 )
 
+class RenameRule(TypedDict):
+    group_name: str
+    child_events: list[str]
 
 def clear_dict(d: dict) -> dict:
     for k, v in dict(d).items():
@@ -47,6 +50,9 @@ class TransitionGraph:
         nodelist_default_col: str = "number_of_events",
         norm_type: NormType = None,
     ) -> None:
+
+        from src.eventstream.eventstream import Eventstream
+
         sm = ServerManager()
         self.env = sm.check_env()
         self.server = sm.create_server()
@@ -56,7 +62,7 @@ class TransitionGraph:
         self.server.register_action("save-graph-settings", lambda n: self._on_graph_settings_request(n))
         self.server.register_action("recalculate", lambda n: self._on_recalc_request(n))
 
-        self.eventstream = eventstream
+        self.eventstream: Eventstream = eventstream     # type: ignore
 
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
@@ -98,10 +104,11 @@ class TransitionGraph:
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
 
-    def _on_recalc_request(self, nodes: MutableSequence[PreparedNode]):
+    def _on_recalc_request(self, rename_rules: list[RenameRule]):
         try:
-            self.updates = nodes
-            self._on_nodelist_updated(nodes)
+            self.eventstream.merge(rules=rename_rules)
+            self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
+            self._on_nodelist_updated(self.nodelist.nodelist_df)
             self._recalculate()
 
             self.edgelist.edgelist_df["type"] = "suit"
@@ -170,7 +177,6 @@ class TransitionGraph:
         self.layout = pd.DataFrame(layout_nodes)
 
     def _on_nodelist_updated(self, nodes: MutableSequence[PreparedNode]) -> None:
-        self.updates = nodes
         # prepare data, map cols
         mapped_nodes = []
         for i, n in enumerate(nodes):

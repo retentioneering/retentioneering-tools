@@ -43,7 +43,7 @@ class TimedeltaHist:
         aggregation; "mean" and "median" plots distributions of weight_col unit mean and weight_col unit median
         timedeltas. For example, if session id is specified in weight_col, one observation per
         session(for example, session median) will be provided for the histogram.
-    timedelta_units: :numpy_link:`DATETIME_UNITS<>`, default "s"
+    timedelta_unit: :numpy_link:`DATETIME_UNITS<>`, default "s"
         Specifies the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
     log_scale: bool, default False
@@ -64,7 +64,7 @@ class TimedeltaHist:
         only_adjacent_event_pairs: bool = True,
         weight_col: Optional[str] = None,
         aggregation: Optional[AGGREGATION_NAMES] = None,
-        timedelta_units: DATETIME_UNITS = "s",
+        timedelta_unit: DATETIME_UNITS = "s",
         log_scale: bool = False,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
@@ -87,7 +87,7 @@ class TimedeltaHist:
         else:
             self.agg_col = weight_col
         self.aggregation = aggregation
-        self.timedelta_units = timedelta_units
+        self.timedelta_unit = timedelta_unit
         if lower_cutoff_quantile is not None:
             if not 0 < lower_cutoff_quantile < 1:
                 raise ValueError("lower_cutoff_quantile should be a fraction between 0 and 1.")
@@ -129,7 +129,7 @@ class TimedeltaHist:
         data = self.__eventstream.to_dataframe().sort_values([self.agg_col, self.time_col])
         if self.event_pair is not None:
             data = self._prepare_event_pair_data(data)
-        data["time_passed"] = data[self.time_col].diff() / np.timedelta64(1, self.timedelta_units)
+        data["time_passed"] = data[self.time_col].diff() / np.timedelta64(1, self.timedelta_unit)
         # the next line removes "invalid" events(events not inside one unit(user/session))
         data = self._exclude_multiunit_events(data)
         data = self._aggregate_data(data)
@@ -139,7 +139,7 @@ class TimedeltaHist:
             f"Timedelta histogram, event pair {self.event_pair}, weight column {self.weight_col}"
             f"{', group ' + self.aggregation if self.aggregation is not None else ''}"
         )
-        plt.xlabel(f"Time units: {self.timedelta_units}")
+        plt.xlabel(f"Time units: {self.timedelta_unit}")
         if self.log_scale:
             logbins = np.logspace(np.log10(values_to_plot.min()), np.log10(values_to_plot.max()), self.bins)
             plt.xscale("log")

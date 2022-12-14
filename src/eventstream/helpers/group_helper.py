@@ -16,6 +16,21 @@ class GroupHelperMixin:
         filter: EventstreamFilter,
         event_type: str | None = "group_alias",
     ) -> EventstreamType:
+        """
+        Method of ``Eventstream Class`` which filteres and replaces raw events with new synthetic events.
+        Where ``timestamp``, ``user_id`` are the same, but ``event_name`` is new.
+
+        Returns
+        -------
+        EventstreamType
+             Input ``eventstream`` with replaced events.
+
+        Notes
+        -----
+        See parameters and details of dataprocessor functionality
+        :py:func:`src.data_processors_lib.rete.group_events.GroupEvents`
+
+        """
 
         # avoid circular import
         from src.data_processors_lib.rete import GroupEvents, GroupEventsParams

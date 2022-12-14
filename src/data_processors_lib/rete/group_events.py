@@ -21,7 +21,8 @@ class GroupEventsParams(ParamsModel):
 
 class GroupEvents(DataProcessor):
     """
-    Creates new events which rename input events on the basis of specified conditions
+    Filters specified events from input ``eventstream`` and creates on their basis
+    new synthetic events with new name.
 
     Parameters
     ----------
@@ -37,8 +38,11 @@ class GroupEvents(DataProcessor):
 
     Returns
     -------
-    Eventstream
-        Eventstream with new events and raw events marked ``_deleted=True``
+    EventstreamType
+        ``Eventstream`` with:
+
+         - new synthetic events with ``group_alias`` or custom type
+         - raw events marked ``_deleted=True``
 
         +-----------------+----------------+-------------------+----------------+
         | **event_name**  | **event_type** | **timestamp**     |  **_deleted**  |
@@ -48,13 +52,6 @@ class GroupEvents(DataProcessor):
         | new_event_name  | group_alias    | raw_event         |  False         |
         +-----------------+----------------+-------------------+----------------+
 
-    See Also
-    --------
-    src.graph.p_graph.PGraph
-    src.graph.p_graph.EventsNode
-    src.graph.p_graph.PGraph.add_node
-    :py:func:`src.graph.p_graph.PGraph.combine`
-    DEFAULT_INDEX_ORDER
     """
 
     params: GroupEventsParams

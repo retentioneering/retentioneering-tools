@@ -9,6 +9,18 @@ from ..types import EventstreamSchemaType, EventstreamType
 
 class FilterHelperMixin:
     def filter(self, filter: Callable[[DataFrame, EventstreamSchemaType], Any]) -> EventstreamType:
+        """
+        Method of ``Eventstream Class`` which filters input ``eventstream`` on the basis of custom conditions.
+
+        Returns
+        -------
+        EventstreamType
+            Filtered ``eventstream``.
+
+        See Also
+        --------
+        :py:func:`src.data_processors_lib.rete.filter_events.FilterEvents`
+        """
         # avoid circular import
         from src.data_processors_lib.rete import FilterEvents, FilterEventsParams
         from src.graph.nodes import EventsNode

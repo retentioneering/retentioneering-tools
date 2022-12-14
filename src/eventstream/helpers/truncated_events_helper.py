@@ -13,7 +13,21 @@ class TruncatedEventsHelperMixin:
         left_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]],
         right_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]],
     ) -> EventstreamType:
+        """
+        Method of ``Eventstream Class`` which creates new synthetic event(s) for each user on the
+        base of timeout threshold: ``truncated_left`` and ``truncated_right``.
+        And adds them to the input ``eventstream``.
 
+        Returns
+        -------
+        EventstreamType
+            Input ``eventstream`` with new synthetic events.
+
+        Notes
+        -----
+        See parameters and details of dataprocessor functionality
+        :py:func:`src.data_processors_lib.rete.truncated_events.TruncatedEvents`
+        """
         # avoid circular import
         from src.data_processors_lib.rete import TruncatedEvents, TruncatedEventsParams
         from src.graph.nodes import EventsNode

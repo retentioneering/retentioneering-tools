@@ -14,13 +14,13 @@ class StartEndEventsParams(ParamsModel):
 
 class StartEndEvents(DataProcessor):
     """
-    Creates two synthetic events to each user's path:
+    Creates two synthetic events in each user's path:
     ``path_start`` and ``path_end``.
 
     Returns
     -------
     EventstreamType
-        ``Eventstream`` with new synthetic events - two for each user:
+        ``Eventstream`` with new synthetic events only - two for each user:
 
         +----------------+----------------+----------------+
         | **event_name** | **event_type** | **timestamp**  |
@@ -30,12 +30,6 @@ class StartEndEvents(DataProcessor):
         | path_end       | path_end       | last_event     |
         +----------------+----------------+----------------+
 
-    Notes
-    -----
-    :py:func:`src.graph.p_graph.PGraph`
-    :py:func:`src.graph.p_graph.EventsNode`
-    :py:func:`src.graph.p_graph.PGraph.add_node`
-    :py:func:`src.graph.p_graph.PGraph.combine`
 
     """
 

@@ -11,6 +11,22 @@ class LostUsersHelperMixin:
     def lost_users(
         self, lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]], lost_users_list: Optional[List[int]]
     ) -> EventstreamType:
+        """
+        Method of ``Eventstream Class`` which creates one of synthetic events in each user's path:
+        ``lost_user`` or ``absent_user``. And adds them to the input ``eventstream``.
+
+        Returns
+        -------
+        EventstreamType
+             Input ``eventstream`` with new synthetic events.
+
+        Notes
+        -----
+        See parameters and details of dataprocessor functionality
+        :py:func:`src.data_processors_lib.rete.lost_users.LostUsersEvents`
+
+        """
+
         # avoid circular import
         from src.data_processors_lib.rete import LostUsersEvents, LostUsersParams
         from src.graph.nodes import EventsNode

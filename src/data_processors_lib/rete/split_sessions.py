@@ -30,7 +30,7 @@ class SplitSessions(DataProcessor):
     """
     Creates new synthetic events, which divide user's paths on sessions:
     ``session_start`` (or ``session_start_truncated``) and ``session_end`` (or ``session_end_truncated``).
-    Also creates and adds new column which contains session number for each event in input eventstream
+    Also creates new column which contains session number for each event in input eventstream
     Session number will take the form: ``{user_id}_{session_number through one user path}``
 
     Parameters
@@ -44,22 +44,22 @@ class SplitSessions(DataProcessor):
         If calculated timedelta is more than selected session_cutoff,
         new synthetic events - ``session_start`` and ``session_end`` will occur in the middle of user path.
 
-    mark_truncated : bool, default=False
+    mark_truncated : bool, default False
         If ``True`` - calculates timedelta between:
 
-        - first event in each user's path and first event in whole Eventstream
-        - last event in each user's path and last event in whole Eventstream.
+        - first event in each user's path and first event in whole ``eventstream``.
+        - last event in each user's path and last event in whole ``eventstream``.
 
         For users with timedelta less than selected ``session_cutoff``,
         new synthetic event - ``session_start_truncated`` or ``session_end_truncated`` will be added.
 
-    session_col : str, default="session_id"
+    session_col : str, default "session_id"
         The name of future ``session_col``
 
     Returns
     -------
-    Eventstream
-        Eventstream with new synthetic events and session_col
+    EventstreamType
+        ``Eventstream`` with new synthetic events and ``session_col``.
 
         +-----------------------------+----------------------------+-----------------+
         | **event_name**              | **event_type**             | **timestamp**   |
@@ -91,10 +91,6 @@ class SplitSessions(DataProcessor):
     Notes
     -----
     Hists
-    Рекомендация - сплитовать на сессии после добавления всех синтетических ивентов и групп!
-
-    Examples
-    --------
 
     """
 

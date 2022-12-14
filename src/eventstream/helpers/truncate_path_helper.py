@@ -15,6 +15,20 @@ class TruncatePathHelperMixin:
         shift_before: int = 0,
         shift_after: int = 0,
     ) -> EventstreamType:
+        """
+        Method of ``Eventstream Class`` which truncates each user's path on the base of
+        specified event(s) and selected parameters.
+
+        Returns
+        -------
+        EventstreamType
+             Input ``eventstream`` with truncated paths.
+
+        Notes
+        -----
+        See parameters and details of dataprocessor functionality
+        :py:func:`src.data_processors_lib.rete.truncate_path.TruncatePath`
+        """
         # avoid circular import
         from src.data_processors_lib.rete import TruncatePath, TruncatePathParams
         from src.graph.nodes import EventsNode

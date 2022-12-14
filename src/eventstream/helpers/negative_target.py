@@ -9,7 +9,22 @@ class NegativeTargetHelperMixin:
     def negative_target(
         self, negative_target_events: List[str], negative_function: Optional[Callable] = None
     ) -> EventstreamType:
+        """
+        Method of ``Eventstream Class`` which creates new synthetic events in each user's path
+        who have specified event(s) - ``negative_target_RAW_EVENT_NAME``.
+        And adds them to the input ``eventstream``.
 
+        Returns
+        -------
+        EventstreamType
+            Input ``eventstream`` with new synthetic events.
+
+        Notes
+        -----
+        See parameters and details of dataprocessor functionality
+        :py:func:`src.data_processors_lib.rete.negative_target.PositiveTarget`
+
+        """
         # avoid circular import
         from src.data_processors_lib.rete import NegativeTarget, NegativeTargetParams
         from src.graph.nodes import EventsNode

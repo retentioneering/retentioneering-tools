@@ -5,7 +5,20 @@ from ..types import EventstreamType
 
 class StartEndHelperMixin:
     def add_start_end(self) -> EventstreamType:
+        """
+        Method of ``Eventstream Class`` which creates two synthetic events in each user's path:
+        ``path_start`` and ``path_end``. And adds them to the input ``eventstream``.
 
+        Returns
+        -------
+        EventstreamType
+            Input ``eventstream`` with new synthetic events.
+
+        Notes
+        -----
+        See parameters and details of dataprocessor functionality
+        :py:func:`src.data_processors_lib.rete.start_end_events.StartEndEvents`
+        """
         # avoid circular import
         from src.data_processors_lib.rete import StartEndEvents, StartEndEventsParams
         from src.graph.nodes import EventsNode

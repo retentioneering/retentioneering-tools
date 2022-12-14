@@ -20,32 +20,34 @@ class CollapseLoopsParams(ParamsModel):
 
 class CollapseLoops(DataProcessor):
     """
-    Groups and replaces loops in each user's path with new synthetic events.
+    Finds ``loops`` and creates new synthetic events in each user's path who have such sequences.
 
-    Loop - is the sequence of repetitive events in user's path.
+    ``Loop`` - is the sequence of repetitive events in user's path.
     For example *"event1 -> event1"*
 
     Parameters
     ----------
-    suffix : {"loop", "count", None}, default="loop"
-        If ``loop`` event_name will be event_name_loop.\n
+    suffix : {"loop", "count", None}, default "loop"
+
+        - If ``loop`` event_name will be event_name_loop.\n
         For example *"event1 - event1 - event1"* --> event1_loop
 
-        If ``count`` event_name will be event_name_loop_{number of events}.\n
+        - If ``count`` event_name will be event_name_loop_{number of events}.\n
         For example *"event1 - event1 - event1"* --> event1_loop_3
 
-        If ``None`` event_name will be - event_name without any changes.\n
+        - If ``None`` event_name will be - event_name without any changes.\n
         For example *"event1 - event1 - event1"* --> event1
 
-    timestamp_aggregation_type : {"max", "min", "mean"}, default="max"
-        Aggregation method to define timestamp for new group.
+    timestamp_aggregation_type : {"max", "min", "mean"}, default "max"
+        Aggregation method to define ``timestamp`` for new group.
 
     Returns
     -------
     EventstreamType
-        Eventstream with:
-        raw events: that should be soft-deleted from original Eventstream
-        new synthetic events: that can be added to the original Eventstream with columns below.
+        ``Eventstream`` with:
+
+        - raw events: that will be soft-deleted from input ``eventstream`` marked ``_deleted=True``.
+        - new synthetic events: that can be added to the input ``eventstream`` with columns below.
 
         +------------------------+----------------+--------------------------------------------+
         | **event_name**         | **event_type** | **timestamp**                              |
@@ -56,9 +58,6 @@ class CollapseLoops(DataProcessor):
         +------------------------+----------------+--------------------------------------------+
         | event_name             | group_alias    | (min/max/mean(group of repetitive events)) |
         +------------------------+----------------+--------------------------------------------+
-
-    See Also
-    --------
 
     """
 

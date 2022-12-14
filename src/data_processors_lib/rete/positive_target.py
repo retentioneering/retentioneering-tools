@@ -19,7 +19,7 @@ def _default_func_positive(eventstream: EventstreamType, positive_target_events:
     eventstream : Eventstream
         Source eventstream or output from previous nodes.
 
-    positive_target_events : List[str]
+    positive_target_events : list of str
         Condition for eventstream filtering.
         Each event from that list is associated with a conversion goal of the user behaviour in the product.
         If there are several target events in user path - the event with minimum timestamp is taken.
@@ -54,22 +54,22 @@ class PositiveTargetParams(ParamsModel):
 
 class PositiveTarget(DataProcessor):
     """
-    Creates new synthetic events for users who have had specified event(s) in their paths:
-
+    Creates new synthetic events in each user's path who have specified event(s):
+    ``positive_target_RAW_EVENT_NAME``
 
     Parameters
     ----------
-    positive_target_events : List[str]
+    positive_target_events : list of str
         Each event from that list is associated with a conversional user behaviour in the product.
         If there are several target events in user path - the event with minimum timestamp taken.
 
-    positive_function : Callable, default=_default_func_positive
+    positive_function : Callable, default _default_func_positive
         Filter rows with target events from the input eventstream.
 
     Returns
     -------
-    Eventstream
-        Eventstream with new synthetic events for users who fit the conditions.
+    EventstreamType
+        ``Eventstream`` with new synthetic events only added to users who fit the conditions.
 
         +--------------------------------+-----------------+-----------------------------+
         | **event_name**                 | **event_type**  | **timestamp**               |

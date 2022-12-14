@@ -49,8 +49,7 @@ class FilterEvents(DataProcessor):
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from src.eventstream.eventstream import Eventstream
 
-        filter_: Callable[[DataFrame, EventstreamSchemaType],
-                          bool] = self.params.filter  # type: ignore
+        filter_: Callable[[DataFrame, EventstreamSchemaType], bool] = self.params.filter  # type: ignore
         events: pd.DataFrame = eventstream.to_dataframe()
         mask = filter_(events, eventstream.schema)
         events_to_delete = events[~mask]

@@ -76,8 +76,7 @@ class ReteTimeWidget:
     def from_dict(cls, **kwargs) -> "ReteTimeWidget":
         kwargs["params"] = [
             {"widget": "float"},
-            {"widget": "enum", "params": [
-                "Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]},
+            {"widget": "enum", "params": ["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]},
         ]
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
@@ -189,10 +188,9 @@ WIDGET_TYPE = Union[
     Type[ArrayWidget],
     Type[BooleanWidget],
     Type[ReteTimeWidget],
-    Type[ReteFunction]
+    Type[ReteFunction],
 ]
-WIDGET = Union[StringWidget, IntegerWidget, EnumWidget,
-               ArrayWidget, BooleanWidget, ReteTimeWidget, ReteFunction]
+WIDGET = Union[StringWidget, IntegerWidget, EnumWidget, ArrayWidget, BooleanWidget, ReteTimeWidget, ReteFunction]
 
 # @TODO: make default dict
 WIDGET_MAPPING: dict[str, WIDGET_TYPE] = {

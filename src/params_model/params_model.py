@@ -84,18 +84,15 @@ class ParamsModel(BaseModel):
             widget = None
             default = params.get("default")
             if name in custom_widgets:  # type: ignore
-                widget = cls._parse_custom_widget(
-                    name=name, optional=optionals[name])
+                widget = cls._parse_custom_widget(name=name, optional=optionals[name])
             elif "$ref" in params or "allOf" in params:
-                widget = cls._parse_schema_definition(
-                    params, definitions, default=default, optional=optionals[name])
+                widget = cls._parse_schema_definition(params, definitions, default=default, optional=optionals[name])
             elif "anyOf" in params:
                 widget = cls._parse_anyof_schema_definition(
                     params, definitions, default=default, optional=optionals[name]
                 )
             else:
-                widget = cls._parse_simple_widget(
-                    name, params, optional=optionals[name], default=default)
+                widget = cls._parse_simple_widget(name, params, optional=optionals[name], default=default)
 
             if widget:
                 widgets[name] = asdict(widget)
@@ -109,13 +106,11 @@ class ParamsModel(BaseModel):
         default: Any | None = None,
         optional: bool = True,
     ) -> WIDGET:
-        ref: str = params.get("$ref", "") or params.get(
-            "allOf", [{}])[0].get("$ref", "")  # type: ignore
+        ref: str = params.get("$ref", "") or params.get("allOf", [{}])[0].get("$ref", "")  # type: ignore
         definition_name = ref.split("/")[-1]
         definition = definitions[definition_name]
         params = definition.get("enum", [])
-        kwargs = {"name": definition_name, "widget": "enum",
-                  "default": default, "optional": optional, "params": params}
+        kwargs = {"name": definition_name, "widget": "enum", "default": default, "optional": optional, "params": params}
         return WIDGET_MAPPING["enum"].from_dict(**kwargs)
 
     @classmethod
@@ -127,8 +122,7 @@ class ParamsModel(BaseModel):
         optional: bool = True,
     ) -> WIDGET:
         definition_name = params.get("title")
-        kwargs = {"name": definition_name, "widget": "array",
-                  "default": default, "optional": optional}
+        kwargs = {"name": definition_name, "widget": "array", "default": default, "optional": optional}
         return WIDGET_MAPPING["array"].from_dict(**kwargs)
 
     @classmethod
@@ -152,16 +146,13 @@ class ParamsModel(BaseModel):
             return widget.from_dict(**widget_params)
 
         except KeyError:
-            raise Exception(
-                "Not found widget. Define new widget for <%s> and add it to mapping." % widget_type)
+            raise Exception("Not found widget. Define new widget for <%s> and add it to mapping." % widget_type)
 
     @classmethod
     def _parse_custom_widget(cls, name: str, optional: bool = False) -> WIDGET:
         custom_widget = cls._widgets[name]  # type: ignore
-        _widget = WIDGET_MAPPING[custom_widget["widget"]] if isinstance(
-            custom_widget, dict) else custom_widget
-        widget_type = custom_widget["widget"] if isinstance(
-            custom_widget, dict) else custom_widget.widget
+        _widget = WIDGET_MAPPING[custom_widget["widget"]] if isinstance(custom_widget, dict) else custom_widget
+        widget_type = custom_widget["widget"] if isinstance(custom_widget, dict) else custom_widget.widget
         return _widget.from_dict(**dict(optional=optional, name=name, widget=widget_type, value=None))
 
     @classmethod
@@ -171,10 +162,8 @@ class ParamsModel(BaseModel):
     def dict(
         self,
         *,
-        include: Optional[Union["AbstractSetIntStr",
-                                "MappingIntStrAny"]] = None,
-        exclude: Optional[Union["AbstractSetIntStr",
-                                "MappingIntStrAny"]] = None,
+        include: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
+        exclude: Optional[Union["AbstractSetIntStr", "MappingIntStrAny"]] = None,
         by_alias: bool = False,
         skip_defaults: Optional[bool] = None,
         exclude_unset: bool = False,

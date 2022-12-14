@@ -178,10 +178,8 @@ class TestListDataprocessors:
                 "params": [
                     {"name": "drop_before", "optional": True, "widget": "string"},
                     {"name": "drop_after", "optional": True, "widget": "string"},
-                    {"name": "occurrence_before",
-                        "optional": True, "widget": "string"},
-                    {"name": "occurrence_after",
-                        "optional": True, "widget": "string"},
+                    {"name": "occurrence_before", "optional": True, "widget": "string"},
+                    {"name": "occurrence_after", "optional": True, "widget": "string"},
                     {"name": "shift_before", "optional": True, "widget": "integer"},
                     {"name": "shift_after", "optional": True, "widget": "integer"},
                 ],

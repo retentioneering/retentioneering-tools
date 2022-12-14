@@ -16,8 +16,6 @@ class ParamsModelRegistry(ReteRegistry):
     def __setitem__(self, key, value):
         if key not in self.REGISTRY:
             self.REGISTRY[key] = value
-        else:
-            raise RegistryValidationError("%s <%s> already exists" % (self.objects, key))
 
     @classmethod
     def get_registry(cls) -> dict:

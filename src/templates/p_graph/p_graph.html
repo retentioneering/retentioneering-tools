@@ -17,10 +17,15 @@
     container.id = "root"
 
     const script = fDocument.createElement("script")
-    script.src = "https://static.server.retentioneering.com/viztools/preprocessing-graph/preprocessing-graph.js"
+    script.src = "http://localhost:8080/preprocessing-graph.umd.js?id={{block_id}}"
     script.type = "text/javascript"
+
+    const link = fDocument.createElement("link")
+    link.rel = "stylesheet"
+    link.href = "http://localhost:8080/style.css?id={{block_id}}"
 
     fDocument.body.appendChild(container)
     fDocument.body.appendChild(script)
+    fDocument.body.appendChild(link)
   })()
 </script>

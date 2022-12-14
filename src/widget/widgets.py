@@ -76,13 +76,14 @@ class ReteTimeWidget:
     def from_dict(cls, **kwargs) -> "ReteTimeWidget":
         kwargs["params"] = [
             {"widget": "float"},
-            {"widget": "enum", "params": ["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]},
+            {"widget": "enum", "params": [
+                "Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]},
         ]
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
     @classmethod
-    def _serialize(cls, value: tuple[float, str]) -> str:
-        return ",".join([str(x) for x in value])
+    def _serialize(cls, value: tuple[float, str]) -> tuple[float, str]:
+        return value
 
     @classmethod
     def _parse(cls, value: str) -> tuple[float, str]:  # type: ignore
@@ -101,7 +102,6 @@ class ReteFunction:
     name: str
     optional: bool
     widget: str = "function"
-    _source_code: str = ""
 
     @classmethod
     def from_dict(cls, **kwargs) -> "ReteFunction":
@@ -111,16 +111,14 @@ class ReteFunction:
     def _serialize(cls, value: Callable) -> str:
         try:
             code = inspect.getsource(value)
-            cls._source_code = code
             return code
         except OSError:
-            return cls._source_code
+            return ""
 
     @classmethod
     def _parse(cls, value: str) -> Callable:  # type: ignore
         code_obj = compile(value, "<string>", "exec")
         new_func_type = types.FunctionType(code_obj.co_consts[2], {})
-        cls._source_code = value
         return new_func_type
 
 
@@ -191,8 +189,10 @@ WIDGET_TYPE = Union[
     Type[ArrayWidget],
     Type[BooleanWidget],
     Type[ReteTimeWidget],
+    Type[ReteFunction]
 ]
-WIDGET = Union[StringWidget, IntegerWidget, EnumWidget, ArrayWidget, BooleanWidget, ReteTimeWidget]
+WIDGET = Union[StringWidget, IntegerWidget, EnumWidget,
+               ArrayWidget, BooleanWidget, ReteTimeWidget, ReteFunction]
 
 # @TODO: make default dict
 WIDGET_MAPPING: dict[str, WIDGET_TYPE] = {
@@ -202,4 +202,5 @@ WIDGET_MAPPING: dict[str, WIDGET_TYPE] = {
     "array": ArrayWidget,
     "boolean": BooleanWidget,
     "tuple": ReteTimeWidget,
+    "callable": ReteFunction,
 }

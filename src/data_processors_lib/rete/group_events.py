@@ -5,6 +5,7 @@ import pandas as pd
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.types import EventstreamSchemaType, EventstreamType
 from src.params_model import ParamsModel
+from src.widget.widgets import ReteFunction
 
 EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchemaType], Any]
 
@@ -17,6 +18,10 @@ class GroupEventsParams(ParamsModel):
     event_name: str
     filter: EventstreamFilter
     event_type: Optional[str] = "group_alias"
+
+    _widgets = {
+        "filter": ReteFunction,
+    }
 
 
 class GroupEvents(DataProcessor):

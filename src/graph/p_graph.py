@@ -49,7 +49,8 @@ class PGraph:
             self.__validate_schema(node.events)
 
         if not isinstance(node, MergeNode) and len(parents) > 1:
-            raise ValueError("multiple parents are only allowed for merge nodes!")
+            raise ValueError(
+                "multiple parents are only allowed for merge nodes!")
 
         self._ngraph.add_node(node)
 
@@ -107,7 +108,8 @@ class PGraph:
     def get_events_node_parent(self, node: EventsNode) -> Node:
         parents = self.get_parents(node)
         if len(parents) > 1:
-            raise ValueError("invalid graph: events node has more than 1 parent")
+            raise ValueError(
+                "invalid graph: events node has more than 1 parent")
 
         return parents[0]
 
@@ -129,8 +131,10 @@ class PGraph:
 
         if not self.__server:
             self.__server = self.__server_manager.create_server()
-            self.__server.register_action("list-dataprocessor-mock", list_dataprocessor_mock)
-            self.__server.register_action("list-dataprocessor", list_dataprocessor)
+            self.__server.register_action(
+                "list-dataprocessor-mock", list_dataprocessor_mock)
+            self.__server.register_action(
+                "list-dataprocessor", list_dataprocessor)
             self.__server.register_action("set-graph", self._set_graph)
             self.__server.register_action("get-graph", self.export)
 
@@ -194,18 +198,24 @@ class PGraph:
         self._ngraph = networkx.DiGraph()
         self._ngraph.add_node(self.root)
 
-        for node in payload["nodes"]:
-            node_pk = node["pk"]
-            if actual_node := build_node(
-                node_name=node["name"],
-                processor_name=node.get("processor", {}).get("name", None),  # type: ignore
-                processor_params=node.get("processor", {}).get("values", None),  # type: ignore
-            ):
-                actual_node.pk = node_pk
-                parents = self._find_parents_by_links(target_node=node_pk, link_list=payload["links"])
-                self.add_node(parents=parents, node=actual_node)
-            if node["name"] == "SourceNode":
-                self.root.pk = node["pk"]
+        try:
+            for node in payload["nodes"]:
+                node_pk = node["pk"]
+                if actual_node := build_node(
+                    node_name=node["name"],
+                    processor_name=node.get("processor", {}).get(
+                        "name", None),  # type: ignore
+                    processor_params=node.get("processor", {}).get(
+                        "values", None),  # type: ignore
+                ):
+                    actual_node.pk = node_pk
+                    parents = self._find_parents_by_links(
+                        target_node=node_pk, link_list=payload["links"])
+                    self.add_node(parents=parents, node=actual_node)
+                if node["name"] == "SourceNode":
+                    self.root.pk = node["pk"]
+        except Exception as err:
+            self.save_err = err
 
     def _find_parents_by_links(self, target_node: str, link_list: list[NodeLink]) -> list[Node]:
         parents: list[str] = []

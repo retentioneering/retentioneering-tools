@@ -7,6 +7,7 @@ from src.data_processor.data_processor import DataProcessor
 from src.eventstream.schema import EventstreamSchema
 from src.eventstream.types import EventstreamSchemaType, EventstreamType
 from src.params_model import ParamsModel
+from src.widget.widgets import ReteFunction
 
 
 class FilterEventsParams(ParamsModel):
@@ -16,6 +17,10 @@ class FilterEventsParams(ParamsModel):
     """
 
     filter: Callable[[DataFrame, EventstreamSchema], bool]
+
+    _widgets = {
+        "filter": ReteFunction,
+    }
 
 
 class FilterEvents(DataProcessor):
@@ -44,7 +49,8 @@ class FilterEvents(DataProcessor):
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from src.eventstream.eventstream import Eventstream
 
-        filter_: Callable[[DataFrame, EventstreamSchemaType], bool] = self.params.filter  # type: ignore
+        filter_: Callable[[DataFrame, EventstreamSchemaType],
+                          bool] = self.params.filter  # type: ignore
         events: pd.DataFrame = eventstream.to_dataframe()
         mask = filter_(events, eventstream.schema)
         events_to_delete = events[~mask]

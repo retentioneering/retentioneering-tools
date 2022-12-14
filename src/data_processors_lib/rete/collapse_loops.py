@@ -14,7 +14,7 @@ class CollapseLoopsParams(ParamsModel):
     Class with parameters for class :py:func:`CollapseLoops`.
     """
 
-    suffix: Union[Literal["loop", "count"], None] = "loop"
+    suffix: Union[Literal["loop"], Literal["count"]] = "loop"
     timestamp_aggregation_type: Literal["max", "min", "mean"] = "max"
 
 
@@ -84,8 +84,10 @@ class CollapseLoops(DataProcessor):
         # Столбец в котором считается порядковый номер по группам одинаковых событий
         df["cumgroup"] = df.groupby(user_col)["grp"].cumsum()
         df["count"] = df.groupby([user_col, "cumgroup"]).cumcount() + 1
-        df["collapsed"] = df.groupby([user_col, "cumgroup", event_col])["count"].transform(max)
-        df["collapsed"] = df["collapsed"].apply(lambda x: False if x == 1 else True)
+        df["collapsed"] = df.groupby([user_col, "cumgroup", event_col])[
+            "count"].transform(max)
+        df["collapsed"] = df["collapsed"].apply(
+            lambda x: False if x == 1 else True)
 
         loops = (
             df[df["collapsed"] == 1]
@@ -97,7 +99,8 @@ class CollapseLoops(DataProcessor):
         if suffix == "loop":
             loops[event_col] = loops[event_col].map(str) + "_loop"
         elif suffix == "count":
-            loops[event_col] = loops[event_col].map(str) + "_loop_" + loops["count"].map(str)
+            loops[event_col] = loops[event_col].map(
+                str) + "_loop_" + loops["count"].map(str)
         loops[type_col] = "group_alias"
         loops["ref"] = None
 

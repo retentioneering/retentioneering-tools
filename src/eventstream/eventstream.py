@@ -17,6 +17,7 @@ from src.tooling.funnel import Funnel
 from src.tooling.sankey import Sankey
 from src.tooling.stattests import TEST_NAMES, StatTests
 from src.tooling.step_matrix import StepMatrix
+from src.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
@@ -100,6 +101,7 @@ class Eventstream(
     __step_matrix: StepMatrix | None = None
     __sankey: Sankey | None = None
     __stattests: StatTests | None = None
+    __timedelta_hist: TimedeltaHist | None = None
 
     def __init__(
         self,
@@ -680,3 +682,29 @@ class Eventstream(
 
         self.__cohorts.fit()
         return self.__cohorts
+
+    def timedelta_hist(
+        self,
+        event_pair: Optional[Tuple[str, str] | List[str]] = None,
+        only_adjacent_event_pairs: bool = True,
+        weight_col: Optional[str] = None,
+        aggregation: Optional[AGGREGATION_NAMES] = None,
+        timedelta_unit: DATETIME_UNITS = "s",
+        log_scale: bool = False,
+        lower_cutoff_quantile: Optional[float] = None,
+        upper_cutoff_quantile: Optional[float] = None,
+        bins: int = 20,
+    ) -> TimedeltaHist:
+        self.__timedelta_hist = TimedeltaHist(
+            eventstream=self,
+            event_pair=event_pair,
+            only_adjacent_event_pairs=only_adjacent_event_pairs,
+            aggregation=aggregation,
+            weight_col=weight_col,
+            timedelta_unit=timedelta_unit,
+            log_scale=log_scale,
+            lower_cutoff_quantile=lower_cutoff_quantile,
+            upper_cutoff_quantile=upper_cutoff_quantile,
+            bins=bins,
+        )
+        return self.__timedelta_hist

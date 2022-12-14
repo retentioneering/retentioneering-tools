@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 
 import pandas as pd
+import pytest
+from pydantic import ValidationError
 
 from src.tooling.sankey import Sankey
 from tests.tooling.fixtures.sankey import test_stream
@@ -50,3 +52,7 @@ class TestSankey:
 
     def test_sankey__threshold_float_one(self, test_stream):
         assert run_test(test_stream, "07_thresh_float_one", max_steps=3, thresh=1.0)
+
+    def test_sankey__incorrect_max_steps(self, test_stream):
+        with pytest.raises(ValueError):
+            s = Sankey(eventstream=test_stream, max_steps=1)

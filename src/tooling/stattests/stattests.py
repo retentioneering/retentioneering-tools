@@ -16,12 +16,6 @@ from src.eventstream.types import EventstreamType
 from src.tooling.stattests.constants import TEST_NAMES
 
 
-def _get_freq_table(a: list, b: list) -> list:
-    labels = ["A"] * len(a) + ["B"] * len(b)
-    values = np.concatenate([a, b])
-    return crosstab(labels, values)[1]
-
-
 def _cohend(d1: list, d2: list) -> float:
     n1, n2 = len(d1), len(d2)
     s1, s2 = np.var(d1, ddof=1), np.var(d2, ddof=1)
@@ -104,6 +98,13 @@ class StatTests:
         g2_data = list(g2.groupby(self.user_col).apply(self.function).dropna().astype(float).values)
         return g1_data, g2_data
 
+    def _get_freq_table(self, a: list, b: list) -> list:
+        labels = ["A"] * len(a) + ["B"] * len(b)
+        values = np.concatenate([a, b])
+        if self.test == "fisher_exact" and np.unique(values).shape[0] != 2:
+            raise ValueError("For Fisher exact test, there should be exactly 2 categories of observations in the data")
+        return crosstab(labels, values)[1]
+
     def _get_test_results(self, data_max: list, data_min: list) -> Tuple[float, float]:
         # calculate effect size
         if max(data_max) <= 1 and min(data_max) >= 0 and max(data_min) <= 1 and min(data_min) >= 0:
@@ -131,10 +132,10 @@ class StatTests:
         elif self.test == "ztest":
             p_val = ztest(data_max, data_min, alternative="larger")[1]
         elif self.test == "chi2_contingency":
-            freq_table = _get_freq_table(data_max, data_min)
+            freq_table = self._get_freq_table(data_max, data_min)
             p_val = chi2_contingency(freq_table)[1]
         elif self.test == "fisher_exact":
-            freq_table = _get_freq_table(data_max, data_min)
+            freq_table = self._get_freq_table(data_max, data_min)
             p_val = fisher_exact(freq_table, alternative="greater")[1]
         else:
             raise ValueError("The argument test is not supported. Supported tests are: {}".format(*TEST_NAMES))
@@ -195,23 +196,32 @@ class StatTests:
 
         """
         assert self.is_fitted
-        res_dict = {
-            "group_one_name": self.group_names[0],
-            "group_one_size": len(self.g1_data),
-            "group_one_mean": np.array(self.g1_data).mean(),
-            "group_one_SD": np.array(self.g1_data).std(),
-            "group_two_name": self.group_names[1],
-            "group_two_size": len(self.g2_data),
-            "group_two_mean": np.array(self.g2_data).mean(),
-            "group_two_SD": np.array(self.g2_data).std(),
-            "greatest_group_name": self.label_max,
-            "least_group_name": self.label_min,
-            "is_group_one_greatest": self.label_max == self.group_names[0],
-            "p_val": self.p_val,
-            "power_estimated": 0.0,
-        }
         if self.test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
-            res_dict["power_estimated"] = self.power
+            res_dict = {
+                "group_one_name": self.group_names[0],
+                "group_one_size": len(self.g1_data),
+                "group_one_mean": np.array(self.g1_data).mean(),
+                "group_one_SD": np.array(self.g1_data).std(),
+                "group_two_name": self.group_names[1],
+                "group_two_size": len(self.g2_data),
+                "group_two_mean": np.array(self.g2_data).mean(),
+                "group_two_SD": np.array(self.g2_data).std(),
+                "greatest_group_name": self.label_max,
+                "least_group_name": self.label_min,
+                "is_group_one_greatest": self.label_max == self.group_names[0],
+                "p_val": self.p_val,
+                "power_estimated": self.power,
+            }
+        elif self.test in ["chi2_contingency", "fisher_exact"]:
+            res_dict = {
+                "group_one_name": self.group_names[0],
+                "group_one_size": len(self.g1_data),
+                "group_two_name": self.group_names[1],
+                "group_two_size": len(self.g2_data),
+                "p_val": self.p_val,
+            }
+        else:
+            raise ValueError("Wrong test passed")
         return res_dict
 
     @property

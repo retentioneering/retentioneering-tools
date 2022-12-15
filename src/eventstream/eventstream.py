@@ -622,8 +622,7 @@ class Eventstream(
 
         self.__cohorts.fit()
         if show_plot:
-            figure = self.__cohorts.heatmap(figsize)
-            figure.show()
+            self.__cohorts.heatmap(figsize)
         return self.__cohorts
 
     def stattest(

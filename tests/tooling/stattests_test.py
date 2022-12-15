@@ -78,7 +78,7 @@ class TestStatTest:
         assert math.isclose(result, correct, abs_tol=0.001)
 
     def test_stattest__chi2_contingency(self, simple_data, chi2_contingency_corr):
-        correct = chi2_contingency_corr
+        correct = chi2_contingency_corr["p_val"]
         st = simple_data.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             objective=lambda x: "payment_done" in x["event"].values,
@@ -86,8 +86,8 @@ class TestStatTest:
             test="chi2_contingency",
         )
         st.fit()
-        result = st.values()
-        assert correct == result
+        result = st.values()["p_val"]
+        assert math.isclose(result, correct, abs_tol=0.1)
 
     def test_stattest__ztest(self, simple_data, ztest_corr):
         correct = ztest_corr["p_val"]

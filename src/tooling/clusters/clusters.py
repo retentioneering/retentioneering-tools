@@ -19,6 +19,7 @@ from src.eventstream.types import EventstreamSchemaType, EventstreamType
 from src.tooling.clusters.segments import Segments
 
 FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "markov"]
+SklearnFeatureType = Literal["count", "frequency", "tfidf", "binary"]
 NgramRange = Tuple[int, int]
 Method = Literal["kmeans", "gmm"]
 PlotType = Literal["cluster_bar"]
@@ -27,7 +28,7 @@ PlotProjectionMethod = Literal["tsne", "umap"]
 
 class Clusters:
     """
-    Class gathers tools for cluster analysis.
+    A class that holds the methods for cluster analysis.
 
     Parameters
     ----------
@@ -40,10 +41,17 @@ class Clusters:
 
     def __init__(self, eventstream: EventstreamType):
         self.__eventstream: EventstreamType = eventstream
+        self.user_col = eventstream.schema.user_id
+        self.event_col = eventstream.schema.event_name
+        self.time_col = eventstream.schema.event_timestamp
+        self.event_index_col = eventstream.schema.event_index
+
         self.__segments: Segments | None = None
         self.__features: pd.DataFrame | None = None
         self.__cluster_result: pd.Series | None = None
         self.__projection: pd.DataFrame | None = None
+        self.__is_fitted: bool = False
+
         self._method: Method | None = None
         self._n_clusters: int | None = None
         self._user_clusters: pd.Series | None = None
@@ -62,7 +70,7 @@ class Clusters:
         vector: pd.DataFrame | None = None,
     ) -> None:
         """
-        Fits the clusters to the eventstream data.
+        Fits clusters to the eventstream data.
 
         Parameters
         ----------
@@ -71,7 +79,7 @@ class Clusters:
             ``gmm`` stands for Gaussian mixture model. https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html
         n_clusters: int
             The expected number of clusters to be passed to a clustering algorithm.
-                feature_type : {"tfidf", "count", "frequency", "binary", "markov"}, default="tfidf"
+        feature_type : {"tfidf", "count", "frequency", "binary", "markov"}, default="tfidf"
             See :py:func:`extract_features`
         ngram_range : Tuple(int, int), default=(1, 1)
             See :py:func:`extract_features`
@@ -91,6 +99,8 @@ class Clusters:
             eventstream=self.__eventstream,
             segments_df=self.__cluster_result.to_frame("segment").reset_index(),
         )
+
+        self.__is_fitted = True
 
     def event_dist(
         self,
@@ -125,8 +135,8 @@ class Clusters:
         -------
         Plots the distribution barchart.
         """
-        event_col = self.__eventstream.schema.event_name
-        index_col = self.__eventstream.schema.user_id
+        if not self.__is_fitted:
+            raise RuntimeError("Clusters are not defined. Consider to run 'fit()' or `set_clusters()` methods.")
 
         cluster1 = self.filter_cluster(cluster_id1).to_dataframe()
 
@@ -134,11 +144,11 @@ class Clusters:
             targets = []
 
         if weight_col is not None:
-            cluster1 = cluster1.drop_duplicates(subset=[event_col, weight_col])
-            top_cluster = cluster1[event_col].value_counts() / cluster1[weight_col].nunique()
+            cluster1 = cluster1.drop_duplicates(subset=[self.event_col, weight_col])
+            top_cluster = cluster1[self.event_col].value_counts() / cluster1[weight_col].nunique()
 
         else:
-            top_cluster = cluster1[event_col].value_counts(normalize=True)
+            top_cluster = cluster1[self.event_col].value_counts(normalize=True)
 
         # add zero events for missing targets
         for event in set(targets) - set(top_cluster.index):
@@ -156,12 +166,12 @@ class Clusters:
             cluster2 = self.filter_cluster(cluster_id2).to_dataframe()
 
         if weight_col is not None:
-            cluster2 = cluster2.drop_duplicates(subset=[event_col, weight_col])
+            cluster2 = cluster2.drop_duplicates(subset=[self.event_col, weight_col])
             # get events distribution from cluster 2:
-            top_all = cluster2[event_col].value_counts() / cluster2[weight_col].nunique()
+            top_all = cluster2[self.event_col].value_counts() / cluster2[weight_col].nunique()
         else:
             # get events distribution from cluster 2:
-            top_all = cluster2[event_col].value_counts(normalize=True)
+            top_all = cluster2[self.event_col].value_counts(normalize=True)
 
         # make sure top_all has all events from cluster 1
         for event in set(top_cluster["index"]) - set(top_all.index):
@@ -170,19 +180,19 @@ class Clusters:
         # keep only top_n events from cluster1
         top_all = top_all.loc[top_cluster["index"]].reset_index()  # type: ignore
 
-        top_all.columns = [event_col, "freq"]  # type: ignore
-        top_cluster.columns = [event_col, "freq"]  # type: ignore
+        top_all.columns = [self.event_col, "freq"]  # type: ignore
+        top_cluster.columns = [self.event_col, "freq"]  # type: ignore
 
         top_all["hue"] = "all" if cluster_id2 is None else f"cluster {cluster_id2}"
         top_cluster["hue"] = f"cluster {cluster_id1}"
 
-        total_size = self.__eventstream.to_dataframe()[index_col].nunique()
+        total_size = self.__eventstream.to_dataframe()[self.user_col].nunique()
         figure = self._plot_event_dist(
             top_all.append(top_cluster, ignore_index=True, sort=False),
             cl1=cluster_id1,
             sizes=[
-                cluster1[index_col].nunique() / total_size,
-                cluster2[index_col].nunique() / total_size,
+                cluster1[self.user_col].nunique() / total_size,
+                cluster2[self.user_col].nunique() / total_size,
             ],
             weight_col=weight_col,
             target_pos=target_separator_position,
@@ -193,6 +203,9 @@ class Clusters:
         return figure
 
     def plot(self, targets: list[str] | list[list[str]] | None = None) -> go.Figure:
+        if not self.__is_fitted:
+            raise RuntimeError("Clusters are not defined. Consider to run 'fit()' or `set_clusters()` methods.")
+
         target_names, targets_bool = self._prepare_targets(targets)  # type: ignore
         return self._cluster_bar(
             clusters=self.__cluster_result.values,  # type: ignore
@@ -210,6 +223,9 @@ class Clusters:
         -------
         pd.Series
         """
+        if not self.__is_fitted:
+            raise RuntimeError("Clusters are not defined. Consider to run 'fit()' or `set_clusters()` methods.")
+
         return self.__cluster_result
 
     @property
@@ -222,10 +238,10 @@ class Clusters:
         dict
             The keys are cluster_ids, the values are the lists of the user_ids related to the corresponding cluster.
         """
-        if not self.__segments:
-            raise RuntimeError("Can't find the clustering results. Consider to run 'fit' method first.")
+        if not self.__is_fitted or self.__cluster_result is None:
+            raise RuntimeError("Clusters are not defined. Consider to run 'fit()' or `set_clusters()` methods.")
 
-        df = self.__segments.show_segments()
+        df = self.__cluster_result.to_frame("cluster_id").reset_index()
         user_col, cluster_col = df.columns
         cluster_map = df.groupby(cluster_col)[user_col].apply(list)
         return cluster_map.to_dict()
@@ -240,6 +256,9 @@ class Clusters:
         -------
         pd.DataFrame
         """
+        if not self.__features:
+            raise RuntimeError("The features are not calculated. Consider to run 'extract_features()` method.")
+
         return self.__features
 
     def set_clusters(self, user_clusters: pd.Series) -> None:
@@ -253,6 +272,7 @@ class Clusters:
         """
         self._user_clusters = user_clusters
         self.__cluster_result = user_clusters.copy()
+        self.__is_fitted = True
         return
 
     def filter_cluster(self, cluster_id: int | str) -> EventstreamType:
@@ -276,13 +296,13 @@ class Clusters:
         """
         from src.eventstream.eventstream import Eventstream
 
+        if not self.__is_fitted:
+            raise RuntimeError("Clusters are not defined. Consider to run 'fit()' or `set_clusters()` methods.")
+
         eventstream: Eventstream = self.__eventstream  # type: ignore
-        if self.__cluster_result is None or self.__segments is None:
-            raise RuntimeError("Can't find the clustering results. Consider to run 'fit' method first.")
 
         cluster_users = self.__cluster_result[lambda s: s == cluster_id].index  # type: ignore
-        user_col = eventstream.schema.user_id
-        df = eventstream.to_dataframe()[lambda df_: df_[user_col].isin(cluster_users)]  # type: ignore
+        df = eventstream.to_dataframe()[lambda df_: df_[self.user_col].isin(cluster_users)]  # type: ignore
 
         es = Eventstream(
             raw_data=df,
@@ -318,43 +338,32 @@ class Clusters:
         pd.DataFrame
             A DataFrame with the vectorized values. Index contains user_id, columns contain n-grams.
         """
-
         eventstream = self.__eventstream
-        index_col = eventstream.schema.user_id
-        event_col = eventstream.schema.event_name
-        time_col = eventstream.schema.event_timestamp
-
         events = eventstream.to_dataframe()
         vec_data = None
 
-        if (
-            feature_type == "count"
-            or feature_type == "frequency"
-            or feature_type == "tfidf"
-            or feature_type == "binary"
-        ) and ngram_range is not None:
-            events, vec_data = self._sklearn_vectorization(
-                events, feature_type, ngram_range, index_col, eventstream.schema
-            )
+        if feature_type in ["count", "frequency", "tfidf", "binary"] and ngram_range is not None:
+            feature_type = cast(SklearnFeatureType, feature_type)
+            events, vec_data = self._sklearn_vectorization(events, feature_type, ngram_range, self.user_col)
 
         elif feature_type == "markov":
-            events, vec_data = self._markov_vectorization(events, index_col, eventstream.schema)
+            events, vec_data = self._markov_vectorization(events, self.user_col)
 
         if feature_type in ["time", "time_fraction"]:
-            events.sort_values(by=[index_col, time_col], inplace=True)
+            events.sort_values(by=[self.user_col, self.time_col], inplace=True)
             events.reset_index(inplace=True)
-            events["time_diff"] = events.groupby(index_col)[time_col].diff().dt.total_seconds()  # type: ignore
+            events["time_diff"] = events.groupby(user_col)[time_col].diff().dt.total_seconds()  # type: ignore
             events["time_length"] = events["time_diff"].shift(-1)
             if feature_type == "time_fraction":
                 vec_data = (
-                    events.groupby([index_col])
-                    .apply(lambda x: x.groupby(event_col)["time_length"].sum() / x["time_length"].sum())
+                    events.groupby([self.user_col])
+                    .apply(lambda x: x.groupby(self.event_col)["time_length"].sum() / x["time_length"].sum())
                     .unstack(fill_value=0)
                 )
             elif feature_type == "time":
                 vec_data = (
-                    events.groupby([index_col])
-                    .apply(lambda x: x.groupby(event_col)["time_length"].sum())
+                    events.groupby([self.user_col])
+                    .apply(lambda x: x.groupby(self.event_col)["time_length"].sum())
                     .unstack(fill_value=0)
                 )
 
@@ -385,13 +394,6 @@ class Clusters:
         targets : list or tuple of str (optional, default  ())
             Vector of event_names as str. If user reach any of the specified events, the dot corresponding
             to this user will be highlighted as converted on the resulting projection plot
-        ngram_range : tuple, (optional, default (1,1))
-            The lower and upper boundaries of the range of n-values for different
-            word n-grams or char n-grams to be extracted before dimension-reduction.
-            For example ngram_range=(1, 1) means only single events, (1, 2) means single events
-            and bigrams. Doesn't work for ``markov`` feature_type.
-        feature_type : {'tfidf', 'count', 'binary', 'frequency', 'markov'}, default='tfidf'
-            Type of vectorizer to use before dimension-reduction. Available vectorization methods:
         plot_type : {'targets', 'clusters', None} (optional, default None)
             Type of color-coding used for projection visualization:
 
@@ -408,39 +410,34 @@ class Clusters:
             Plot in the low-dimensional space for user trajectories indexed by user IDs.
         """
 
-        if self.__features is None or self.__cluster_result is None:
-            raise RuntimeError("Can't find clustering results. Consider to run 'fit' method first.")
+        if self.__features is None or self.__is_fitted is False:
+            raise RuntimeError("Clusters and features must be defined. Consider to run 'fit()' method.")
 
         if targets is None:
             targets = []
-
-        event_col = self.__eventstream.schema.event_name
-        index_col = self.__eventstream.schema.user_id
 
         if plot_type == "clusters":
             if self.__cluster_result is not None:
                 targets_mapping = self.__cluster_result.values
                 legend_title = "cluster number:"
             else:
-                raise AttributeError(
-                    "Run .rete.get_clusters() before using plot_type='clusters' to obtain clusters mapping"
-                )
+                raise RuntimeError("Clusters are not defined. Consider to run 'fit()' or `set_clusters()` methods.")
 
         elif plot_type == "targets":
             if (not targets) and (len(targets) < 1):
                 raise ValueError(
-                    "When plot_type ='targets' must provide parameter targets as list of target event names"
+                    "When plot_type='targets' is set, 'targets' must be defined as list of target event names"
                 )
             else:
                 targets = [list(pd.core.common.flatten(targets))]  # type: ignore
                 legend_title = "conversion to (" + " | ".join(targets[0]).strip(" | ") + "):"  # type: ignore
-                # @TODO: fix groupby + apply inefficient combination. Vladimir Kukushkin
+                # @TODO: fix 'groupby + apply' inefficient combination. Vladimir Kukushkin
                 targets_mapping = (
                     self.__eventstream.to_dataframe()
-                    .groupby(index_col)[event_col]
+                    .groupby(self.user_col)[self.event_col]
                     .apply(lambda x: bool(set(*targets) & set(x)))
                     .to_frame()
-                    .sort_index()[event_col]
+                    .sort_index()[self.event_col]
                     .values
                 )
         else:
@@ -509,7 +506,6 @@ class Clusters:
             user_clusters = self._user_clusters.copy()
         else:
             if self._vector is not None:
-                # @TODO: Do we really need to copy the features excessively? Vladimir Kukushkin
                 features = self._vector.copy()
             else:
                 if self._feature_type is not None and self._ngram_range is not None:
@@ -567,7 +563,7 @@ class Clusters:
 
         """
 
-        TSNE_PARAMS = [
+        tsne_params = [
             "angle",
             "early_exaggeration",
             "init",
@@ -583,7 +579,7 @@ class Clusters:
             "verbose",
         ]
 
-        kwargs = {k: v for k, v in kwargs.items() if k in TSNE_PARAMS}
+        kwargs = {k: v for k, v in kwargs.items() if k in tsne_params}
         res = TSNE(random_state=0, **kwargs).fit_transform(data.values)
         return pd.DataFrame(res, index=data.index.values)
 
@@ -628,49 +624,40 @@ class Clusters:
     def _sklearn_vectorization(
         self,
         events: pd.DataFrame,
-        feature_type: Literal["count", "frequency", "tfidf", "binary", "markov"],
+        feature_type: SklearnFeatureType,
         ngram_range: NgramRange,
-        index_col: str,
-        schema: EventstreamSchemaType,
+        weight_col: str,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
-        event_col = schema.event_name
-        corpus = events.groupby(index_col)[event_col].apply(lambda x: "~~".join([el.lower() for el in x]))
+        corpus = events.groupby(weight_col)[self.event_col].apply(lambda x: "~~".join([el.lower() for el in x]))
         vectorizer = self.__get_vectorizer(feature_type=feature_type, ngram_range=ngram_range, corpus=corpus)
         vocabulary_items = sorted(vectorizer.vocabulary_.items(), key=lambda x: x[1])
         cols: list[str] = [dict_key[0] for dict_key in vocabulary_items]
-        sorted_index_col = sorted(events[index_col].unique())
+        sorted_index_col = sorted(events[weight_col].unique())
         vec_data = pd.DataFrame(index=sorted_index_col, columns=cols, data=vectorizer.transform(corpus).todense())
-        vec_data.index.rename(index_col, inplace=True)
+        vec_data.index.rename(weight_col, inplace=True)
         if feature_type == "frequency":
             # @FIXME: legacy todo without explanation, idk why. Vladimir Makhanov
             sum = cast(Any, vec_data.sum(axis=1))
             vec_data = vec_data.div(sum, axis=0).fillna(0)
         return events, vec_data
 
-    @staticmethod
-    def _markov_vectorization(
-        events: pd.DataFrame, index_col: str, schema: EventstreamSchemaType
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
-        event_col = schema.event_name
-        event_index_col = schema.event_index
-        time_col = schema.event_timestamp
-
-        next_event_col = "next_" + event_col
-        next_time_col = "next_" + time_col
-        events = events.sort_values([index_col, event_index_col])
-        events[[next_event_col, next_time_col]] = events.groupby(index_col)[[event_col, time_col]].shift(-1)
+    def _markov_vectorization(self, events: pd.DataFrame, weight_col: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+        next_event_col = "next_" + self.event_col
+        next_time_col = "next_" + self.time_col
+        events = events.sort_values([weight_col, self.event_index_col])
+        events[[next_event_col, next_time_col]] = events.groupby(weight_col)[[self.event_col, self.time_col]].shift(-1)
         vec_data = (
-            events.groupby([index_col, event_col, next_event_col])[event_index_col]
+            events.groupby([weight_col, self.event_col, next_event_col])[self.event_index_col]
             .count()
             .reset_index()
-            .rename(columns={event_index_col: "count"})
-            .assign(bigram=lambda df_: df_[event_col] + "~" + df_[next_event_col])
-            .assign(left_event_count=lambda df_: df_.groupby([index_col, event_col])["count"].transform("sum"))
+            .rename(columns={self.event_index_col: "count"})
+            .assign(bigram=lambda df_: df_[self.event_col] + "~" + df_[next_event_col])
+            .assign(left_event_count=lambda df_: df_.groupby([weight_col, self.event_col])["count"].transform("sum"))
             .assign(bigram_weight=lambda df_: df_["count"] / df_["left_event_count"])
-            .pivot(index=index_col, columns="bigram", values="bigram_weight")
+            .pivot(index=weight_col, columns="bigram", values="bigram_weight")
             .fillna(0)
         )
-        vec_data.index.rename(index_col, inplace=True)
+        vec_data.index.rename(weight_col, inplace=True)
         del events[next_event_col]
         del events[next_time_col]
         return events, vec_data
@@ -707,31 +694,23 @@ class Clusters:
 
     @staticmethod
     def _kmeans(features: pd.DataFrame, n_clusters: int = 8, random_state: int = 0) -> np.ndarray:
-
-        km = KMeans(random_state=random_state, n_clusters=n_clusters)
-
+        km = KMeans(random_state=random_state, n_clusters=n_clusters, n_init="auto")
         cl = km.fit_predict(features.values)
-
         return cl
 
     @staticmethod
     def _gmm(features: pd.DataFrame, n_clusters: int = 8, random_state: int = 0) -> np.ndarray:
-
         km = GaussianMixture(random_state=random_state, n_components=n_clusters)
-
         cl = km.fit_predict(features.values)
-
         return cl
 
     def _prepare_targets(self, targets: list[str] | list[list[str]] | None) -> tuple[list[str], list[ndarray]]:
-        user_col = self.__eventstream.schema.user_id
-        event_col = self.__eventstream.schema.event_name
         events = self.__eventstream.to_dataframe()
 
         if self.__cluster_result is None:
             raise RuntimeError("Can't find the clustering results. Consider to run 'fit' method first.")
 
-        grouped_events = events.groupby(user_col)[event_col]
+        grouped_events = events.groupby(self.user_col)[self.event_col]
 
         if targets is not None:
             targets_bool = []
@@ -750,7 +729,7 @@ class Clusters:
                 target_names.append("CR: " + " ".join(t))
                 # get bool vector
                 targets_bool.append(
-                    grouped_events.apply(lambda x: bool(set(t) & set(x))).to_frame().sort_index()[event_col].values
+                    grouped_events.apply(lambda x: bool(set(t) & set(x))).to_frame().sort_index()[self.event_col].values
                 )
 
         else:

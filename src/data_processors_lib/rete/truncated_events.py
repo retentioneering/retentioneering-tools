@@ -48,7 +48,7 @@ class TruncatedEvents(DataProcessor):
 
     Returns
     -------
-    EventstreamType
+    Eventstream
         ``Eventstream`` with new synthetic events only, for users whose paths satisfy the specified cut-offs.
 
         +-------------------+-------------------+------------------+

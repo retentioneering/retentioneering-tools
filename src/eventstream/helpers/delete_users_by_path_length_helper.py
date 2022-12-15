@@ -17,7 +17,7 @@ class DeleteUsersByPathLengthHelperMixin:
 
         Returns
         -------
-        EventstreamType
+        Eventstream
              Input ``eventstream`` with deleted short user's paths.
 
         Notes

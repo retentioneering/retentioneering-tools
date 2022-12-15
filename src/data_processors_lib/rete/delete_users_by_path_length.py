@@ -38,7 +38,7 @@ class DeleteUsersByPathLength(DataProcessor):
 
     Returns
     -------
-    EventstreamType
+    Eventstream
         ``Eventstream`` with events that should be deleted from input ``eventstream`` marked ``_deleted=True``.
 
     Raises

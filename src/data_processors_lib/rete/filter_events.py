@@ -24,7 +24,7 @@ class FilterEvents(DataProcessor):
 
     Parameters
     ----------
-    filter : Callable[[DataFrame, EventstreamSchema], bool]
+    func : Callable[[DataFrame, EventstreamSchema], bool]
         Custom function which returns boolean mask the same length as input ``eventstream``.
 
         - If ``True`` - row will be remained
@@ -32,7 +32,7 @@ class FilterEvents(DataProcessor):
 
     Returns
     -------
-    EventstreamType
+    Eventstream
         ``Eventstream`` with events that should be deleted from input ``eventstream``.
 
 
@@ -46,9 +46,9 @@ class FilterEvents(DataProcessor):
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from src.eventstream.eventstream import Eventstream
 
-        filter_: Callable[[DataFrame, EventstreamSchemaType], bool] = self.params.filter  # type: ignore
+        func: Callable[[DataFrame, EventstreamSchemaType], bool] = self.params.filter  # type: ignore
         events: pd.DataFrame = eventstream.to_dataframe()
-        mask = filter_(events, eventstream.schema)
+        mask = func(events, eventstream.schema)
         events_to_delete = events[~mask]
 
         with pd.option_context("mode.chained_assignment", None):

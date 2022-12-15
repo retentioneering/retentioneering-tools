@@ -20,7 +20,7 @@ class CollapseLoopsHelperMixin:
 
         Returns
         -------
-        EventstreamType
+        Eventstream
              Input ``eventstream`` with ``loops`` replaced by new synthetic events.
 
         Notes

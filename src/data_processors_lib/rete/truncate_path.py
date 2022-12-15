@@ -48,7 +48,7 @@ class TruncatePath(DataProcessor):
 
     Returns
     -------
-    EventstreamType
+    Eventstream
         ``Eventstream`` with events that should be deleted from input ``eventstream``.
 
 

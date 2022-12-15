@@ -68,7 +68,7 @@ class PositiveTarget(DataProcessor):
 
     Returns
     -------
-    EventstreamType
+    Eventstream
         ``Eventstream`` with new synthetic events only added to users who fit the conditions.
 
         +--------------------------------+-----------------+-----------------------------+

@@ -58,7 +58,7 @@ class SplitSessions(DataProcessor):
 
     Returns
     -------
-    EventstreamType
+    Eventstream
         ``Eventstream`` with new synthetic events and ``session_col``.
 
         +-----------------------------+----------------------------+-----------------+

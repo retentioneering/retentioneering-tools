@@ -16,7 +16,7 @@ class NegativeTargetHelperMixin:
 
         Returns
         -------
-        EventstreamType
+        Eventstream
             Input ``eventstream`` with new synthetic events.
 
         Notes

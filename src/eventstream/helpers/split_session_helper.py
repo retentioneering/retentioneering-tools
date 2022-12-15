@@ -24,7 +24,7 @@ class SplitSessionsHelperMixin:
 
         Returns
         -------
-        EventstreamType
+        Eventstream
              Input ``eventstream`` with new synthetic events and ``session_col``.
 
         Notes

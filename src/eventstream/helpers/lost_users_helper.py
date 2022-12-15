@@ -17,7 +17,7 @@ class LostUsersHelperMixin:
 
         Returns
         -------
-        EventstreamType
+        Eventstream
              Input ``eventstream`` with new synthetic events.
 
         Notes

@@ -43,7 +43,7 @@ class CollapseLoops(DataProcessor):
 
     Returns
     -------
-    EventstreamType
+    Eventstream
         ``Eventstream`` with:
 
         - raw events: that will be soft-deleted from input ``eventstream`` marked ``_deleted=True``.

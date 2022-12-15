@@ -21,7 +21,7 @@ class TruncatePathHelperMixin:
 
         Returns
         -------
-        EventstreamType
+        Eventstream
              Input ``eventstream`` with truncated paths.
 
         Notes

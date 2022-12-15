@@ -28,7 +28,7 @@ class GroupEvents(DataProcessor):
     ----------
     event_name : str
         Name of new, grouped event
-    filter : Callable[[DataFrame, EventstreamSchema], Any]
+    func : Callable[[DataFrame, EventstreamSchema], Any]
         Custom function which returns boolean mask the same length as input Eventstream
         If ``True`` - events, that will be grouped
         If ``False`` - events, that will be remained
@@ -38,7 +38,7 @@ class GroupEvents(DataProcessor):
 
     Returns
     -------
-    EventstreamType
+    Eventstream
         ``Eventstream`` with:
 
          - new synthetic events with ``group_alias`` or custom type
@@ -63,11 +63,11 @@ class GroupEvents(DataProcessor):
         from src.eventstream.eventstream import Eventstream
 
         event_name = self.params.event_name
-        filter_: Callable = self.params.filter
+        func: Callable = self.params.filter
         event_type = self.params.event_type
 
         events = eventstream.to_dataframe()
-        mask = filter_(events, eventstream.schema)
+        mask = func(events, eventstream.schema)
         matched_events = events[mask]
 
         with pd.option_context("mode.chained_assignment", None):

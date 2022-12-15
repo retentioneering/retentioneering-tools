@@ -19,7 +19,7 @@ class StartEndEvents(DataProcessor):
 
     Returns
     -------
-    EventstreamType
+    Eventstream
         ``Eventstream`` with new synthetic events only - two for each user:
 
         +----------------+----------------+----------------+

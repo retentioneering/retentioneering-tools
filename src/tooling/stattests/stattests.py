@@ -39,7 +39,7 @@ class StatTests:
     groups : tuple of list
         Must contain tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
         of user_id`s.
-    function : Callable, default lambda x: x.shape[0]
+    func : Callable, default lambda x: x.shape[0]
         Selected metrics. Must contain a function which takes as an argument dataset for
         single user trajectory and returns a single numerical value.
     group_names : tuple, default ('group_1', 'group_2')
@@ -69,7 +69,7 @@ class StatTests:
         eventstream: EventstreamType,
         test: TEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
-        function: Callable,
+        func: Callable,
         group_names: Tuple[str, str] = ("group_1", "group_2"),
         alpha: float = 0.05,
     ) -> None:
@@ -78,7 +78,7 @@ class StatTests:
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
         self.groups = groups
-        self.function = function
+        self.func = func
         self.test = test
         self.group_names = group_names
         self.alpha = alpha
@@ -94,8 +94,8 @@ class StatTests:
         g2 = data[data[self.user_col].isin(self.groups[1])].copy()
 
         # obtain two distributions:
-        g1_data = list(g1.groupby(self.user_col).apply(self.function).dropna().astype(float).values)
-        g2_data = list(g2.groupby(self.user_col).apply(self.function).dropna().astype(float).values)
+        g1_data = list(g1.groupby(self.user_col).apply(self.func).dropna().astype(float).values)
+        g2_data = list(g2.groupby(self.user_col).apply(self.func).dropna().astype(float).values)
         return g1_data, g2_data
 
     def _get_freq_table(self, a: list, b: list) -> list:
@@ -234,7 +234,7 @@ class StatTests:
         return {
             "test": self.test,
             "groups": self.groups,
-            "function": self.function,
+            "function": self.func,
             "group_names": self.group_names,
             "alpha": self.alpha,
         }

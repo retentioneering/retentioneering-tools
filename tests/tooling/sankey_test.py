@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 
 import pandas as pd
+import pytest
+from pydantic import ValidationError
 
 from src.tooling.sankey import Sankey
 from tests.tooling.fixtures.sankey import test_stream
@@ -39,3 +41,18 @@ class TestSankey:
 
     def test_sankey__target(self, test_stream):
         assert run_test(test_stream, "04_target", max_steps=6, thresh=0.25, target=["event4"])
+
+    def test_sankey__two_steps(self, test_stream):
+        assert run_test(test_stream, "05_two_step", max_steps=2)
+
+    def test_sankey__sorting(self, test_stream):
+        assert run_test(
+            test_stream, "06_sorting", max_steps=5, sorting=["event5", "event4", "event3", "event2", "event1"]
+        )
+
+    def test_sankey__threshold_float_one(self, test_stream):
+        assert run_test(test_stream, "07_thresh_float_one", max_steps=3, thresh=1.0)
+
+    def test_sankey__incorrect_max_steps(self, test_stream):
+        with pytest.raises(ValueError):
+            s = Sankey(eventstream=test_stream, max_steps=1)

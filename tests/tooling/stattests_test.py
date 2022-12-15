@@ -14,8 +14,6 @@ from tests.tooling.fixtures.stattests_corr import (
     ztest_corr,
 )
 
-FLOAT_PRECISION = 4
-
 
 class TestStatTest:
     def test_stattest__ttest_p_val(self, simple_data):
@@ -77,7 +75,7 @@ class TestStatTest:
         )
         st.fit()
         result = st.values()["p_val"]
-        assert correct == result
+        assert math.isclose(result, correct, abs_tol=0.001)
 
     def test_stattest__chi2_contingency(self, simple_data, chi2_contingency_corr):
         correct = chi2_contingency_corr
@@ -100,8 +98,8 @@ class TestStatTest:
             test="ztest",
         )
         st.fit()
-        result = round(st.values()["p_val"], FLOAT_PRECISION)
-        assert correct == result
+        result = st.values()["p_val"]
+        assert math.isclose(result, correct, abs_tol=0.001)
 
     def test_stattest__fisher_exact(self, cutted_data, fisher_exact_corr):
         correct = fisher_exact_corr["p_val"]
@@ -113,7 +111,7 @@ class TestStatTest:
         )
         st.fit()
         result = st.values()["p_val"]
-        assert correct == result
+        assert math.isclose(result, correct, abs_tol=0.001)
 
     def test_stattest__alpha(self, simple_data):
         correct = 0.4390

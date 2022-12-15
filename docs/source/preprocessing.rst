@@ -1,4 +1,4 @@
-source/preprocessing.rstPreprocessing
+Preprocessing
 =============
 .. toctree::
    :caption: Preprocessing

@@ -4,7 +4,7 @@ from ..types import EventstreamType
 
 
 class MergeHelperMixin:
-    def merge(self, rules: list[dict[str, str]]) -> EventstreamType:
+    def merge(self, rules: list[dict[str, list[str]]]) -> EventstreamType:
 
         # avoid circular import
         from src.data_processors_lib.rete import MergeParams, MergeProcessor

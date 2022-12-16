@@ -30,7 +30,7 @@ class Edgelist:
         self.edgelist_norm_functions = edgelist_norm_functions
 
     def calculate_edgelist(
-        self, data: pd.DataFrame, norm_type: NormType = None, custom_cols: MutableSequence[str] | None = None
+        self, data: pd.DataFrame, norm_type: NormType | None = None, custom_cols: MutableSequence[str] | None = None
     ) -> pd.DataFrame:
 
         if norm_type not in [None, "full", "node"]:

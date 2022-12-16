@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import random
 import string
-from typing import Any, MutableMapping, MutableSequence, cast, TypedDict
+from typing import Any, Dict, List, MutableMapping, MutableSequence, cast
 
 import networkx as nx
 import pandas as pd
@@ -27,9 +27,8 @@ from .typing import (
     Weight,
 )
 
-class RenameRule(TypedDict):
-    group_name: str
-    child_events: list[str]
+RenameRule = Dict[str, List[str]]
+
 
 def clear_dict(d: dict) -> dict:
     for k, v in dict(d).items():
@@ -48,7 +47,7 @@ class TransitionGraph:
         source_event: str | None = None,
         edgelist_default_col: str = "edge_weight",
         nodelist_default_col: str = "number_of_events",
-        norm_type: NormType = None,
+        norm_type: NormType | None = None,
     ) -> None:
 
         from src.eventstream.eventstream import Eventstream
@@ -62,7 +61,7 @@ class TransitionGraph:
         self.server.register_action("save-graph-settings", lambda n: self._on_graph_settings_request(n))
         self.server.register_action("recalculate", lambda n: self._on_recalc_request(n))
 
-        self.eventstream: Eventstream = eventstream     # type: ignore
+        self.eventstream: Eventstream = eventstream  # type: ignore
 
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
@@ -79,7 +78,7 @@ class TransitionGraph:
         self.negative_target_event = negative_target_event
         self.source_event = source_event
         self.nodelist_default_col = nodelist_default_col
-        self.norm_type = norm_type
+        self.norm_type: NormType | None = norm_type
 
         self.nodelist: Nodelist = Nodelist(
             nodelist_default_col=self.nodelist_default_col,
@@ -104,50 +103,47 @@ class TransitionGraph:
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
 
-    def _on_recalc_request(self, rename_rules: list[RenameRule]):
+    def _on_recalc_request(
+        self, rename_rules: list[RenameRule]
+    ) -> dict[str, MutableSequence[PreparedNode] | MutableSequence[PreparedLink] | list]:
         try:
-            self.eventstream.merge(rules=rename_rules)
+            self._recalculate(rename_rules=rename_rules)
             self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
-            self._on_nodelist_updated(self.nodelist.nodelist_df)
-            self._recalculate()
-
-            self.edgelist.edgelist_df["type"] = "suit"
 
             nodes, nodes_set = self._prepare_nodes(
                 nodelist=self.nodelist.nodelist_df,
             )
+            self._on_nodelist_updated(nodes)
+
+            self.edgelist.edgelist_df["type"] = "suit"
             links = self._prepare_edges(edgelist=self.edgelist.edgelist_df, nodes_set=nodes_set)
-            result = {
+            result: dict[str, MutableSequence[PreparedNode] | MutableSequence[PreparedLink] | list] = {
                 "nodes": nodes,
                 "links": links,
             }
 
             return result
         except Exception as err:
-            self.error = err
-            raise ValueError("error!")
+            raise ValueError("error! %s" % err)
 
-    def _recalculate(self):
+    def _recalculate(self, rename_rules: list[RenameRule]) -> None:
+        renamed_df = self.eventstream.merge(rules=rename_rules).to_dataframe()
+        self.nodelist.calculate_nodelist(data=renamed_df)
+
         curr_nodelist = self.nodelist.nodelist_df
-        active = curr_nodelist[curr_nodelist["active"] == True]
-        grouped = curr_nodelist[~curr_nodelist["parent"].isnull() & curr_nodelist["active"] == True]
-
-        updated_clickstream: pd.DataFrame = self.eventstream.to_dataframe().copy()
-        # remove disabled events
-        updated_clickstream = updated_clickstream[updated_clickstream[self.event_col].isin(active[self.event_col])]
-        # recalculate
-        updated_clickstream = updated_clickstream.apply(lambda x: self._replace_grouped_events(grouped, x), axis=1)
 
         # save norm type
-        recalculated_nodelist = self.nodelist.calculate_nodelist(data=updated_clickstream)
+        recalculated_nodelist = self.nodelist.calculate_nodelist(data=renamed_df)
         recalculated_edgelist = self.edgelist.calculate_edgelist(
-            norm_type=self.norm_type, custom_cols=self.custom_cols, data=updated_clickstream
+            norm_type=self.norm_type, custom_cols=self.custom_cols, data=renamed_df
         )
 
-        self.nodelist = curr_nodelist.apply(lambda x: self._update_node_after_recalc(recalculated_nodelist, x), axis=1)
-        self.edgelist = recalculated_edgelist
+        self.nodelist.nodelist_df = curr_nodelist.apply(
+            lambda x: self._update_node_after_recalc(recalculated_nodelist, x), axis=1
+        )
+        self.edgelist.edgelist_df = recalculated_edgelist
 
-    def _replace_grouped_events(self, grouped: pd.Series, row):
+    def _replace_grouped_events(self, grouped: pd.Series, row: pd.Series) -> pd.Series:
         event_name = row[self.event_col]
         mathced = grouped[grouped[self.event_col] == event_name]
 
@@ -157,14 +153,13 @@ class TransitionGraph:
 
         return row
 
-    def _update_node_after_recalc(self, recalculated_nodelist: pd.DataFrame, row):
-        cols = self.config.get_nodelist_cols()
-        event_col = self.config.event_col
-        node_name = row[event_col]
-        mathced: pd.Series[Any] = recalculated_nodelist[recalculated_nodelist[event_col] == node_name]
+    def _update_node_after_recalc(self, recalculated_nodelist: pd.DataFrame, row: pd.Series) -> pd.Series:
+        cols = self.__get_nodelist_cols()
+        node_name = row[self.event_col]
+        matched: pd.Series[Any] = recalculated_nodelist[recalculated_nodelist[self.event_col] == node_name]
 
-        if len(mathced) > 0:
-            recalculated_node = mathced.iloc[0]
+        if len(matched) > 0:
+            recalculated_node = matched.iloc[0]
             for col in cols:
                 row[col] = recalculated_node[col]
         return row.copy()

@@ -10,36 +10,41 @@ import seaborn as sns
 from src.eventstream.types import EventstreamType
 
 
-class Sankey:
+class StepSankey:
     """
-    Visualizes user paths in step-wise manner using sankey diagram.
+    A class for the visualization of user paths in step-wise manner using Sankey diagram.
 
     Parameters
     ----------
-    max_steps: int (optional, default 10)
+    eventstream : EventstreamType
+    max_steps : int, default 10
         Maximum number of steps in trajectories to include.
-    thresh: float | int (optional, default 0.05)
+    thresh : float | int, default 0.05
         Used to remove rare events from the plot. An event is collapsed to ``thresholded_N`` artificial event if
-        its maximum frequency across all the steps is less or equal than ``thresh``. The frequency is considered
+        its maximum frequency across all the steps is less than or equal to ``thresh``. The frequency is considered
         with respect to ``thresh`` type:
-        If ``int`` - the frequency is the number of unique users who had given event at given step.
-        If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
+
+        - If ``int`` - the frequency is the number of unique users who had given event at given step.
+        - | If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
+
         The events which are prohibited for collapsing could be enlisted in ``target`` parameter.
-    sorting: list of str | None (default None)
+    sorting : list of str, optional
         Tunes the order of the events visualized at each step. The events which are not represented in the list
         will follow after the events from the list.
-    target: list of str | None (default None)
+    target : list of str, optional
         Contains the events which are prohibited for collapsing with ``thresh`` parameter.
-    autosize: bool (optional, default True)
-        Plotly autosize parameter. See https://plotly.com/python/reference/layout/#layout-autosize
-    width:
-        Plot's width (in px). See https://plotly.com/python/reference/layout/#layout-width
-    height:
-        Plot's height (in px). See https://plotly.com/python/reference/layout/#layout-height
+    autosize : bool, default True
+        Plotly autosize parameter. See :plotly_autosize:`plotly documentation<>`
+    width : int, optional
+        Plot's width (in px). See :plotly_width:`plotly documentation<>`
+    height : int, optional
+        Plot's height (in px). See :plotly_height:`plotly documentation<>`
+
 
     See Also
     --------
-    :py:func:`src.eventstream.step_matrix`
+    :py:func:`src.eventstream.eventstream.Eventstream.step_sankey`
+
     """
 
     def __init__(
@@ -91,7 +96,7 @@ class Sankey:
 
         Returns
         -------
-        picked color : str
+        str
             A picked color for certain event
         """
 
@@ -115,7 +120,8 @@ class Sankey:
 
         Returns
         -------
-        rounded value : float
+        float
+            Rounded value
         """
 
         return round(n - n % dec + dec, 2)
@@ -131,7 +137,7 @@ class Sankey:
 
         Returns
         -------
-        x, y coordinates: tuple[list[float], list[float]]
+        tuple[list[float], list[float]]
             Two lists with the corresponding coordinates x and y.
         """
         # NOTE get x axis length
@@ -524,6 +530,12 @@ class Sankey:
         return data
 
     def fit(self) -> None:
+        """
+        Calculates the sankey diagram internal values with the defined parameters.
+        Applying ``fit`` method is mandatory for the following usage
+        of any visualization or descriptive ``StepSankey`` methods.
+
+        """
         data = self.__eventstream.to_dataframe().copy()[
             [self.user_col, self.event_col, self.time_col, self.event_index_col]
         ]
@@ -532,9 +544,47 @@ class Sankey:
         self.data_for_plot, self.data_grp_links = self._get_links(self.data, data_for_plot, self.data_grp_nodes)
 
     def plot(self) -> go.Figure:
+        """
+        Creates a Sankey interactive plot base on the calculated values.
+        Should be used after :py:func:`fit`.
+
+        Returns
+        -------
+        plotly.graph_objects.Figure
+
+        """
         figure = self._render_plot(self.data_for_plot, self.data_grp_nodes)
         return figure
 
     @property
     def values(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Returns two pd.DataFrames which the Sankey diagram is based on.
+
+        Should be used after :py:func:`fit`.
+
+        Returns
+        -------
+        tuple[pd.DataFrame, pd.DataFrame]
+            1. Contains the nodes of the diagram.
+            2. Contains the edges of the diagram.
+
+        """
         return self.data_grp_nodes, self.data_grp_links
+
+    @property
+    def params(self) -> dict:
+        """
+        Returns the parameters used for the last fitting.
+        Should be used after :py:func:`fit`.
+
+        """
+        return {
+            "max_steps": self.max_steps,
+            "thresh": self.thresh,
+            "sorting": self.sorting,
+            "target": self.target,
+            "autosize": self.autosize,
+            "width": self.width,
+            "height": self.height,
+        }

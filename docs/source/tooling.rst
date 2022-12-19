@@ -1,23 +1,52 @@
 
 Core Tools
-======================================
+==============
 
+Eventstream tooling methods
+---------------------------
+
+.. autoclass:: src.eventstream.eventstream.Eventstream
+    :members: funnel, clusters, step_matrix, step_sankey, cohorts
+
+graph
+~~~~~~~~~~~~~~~~
+.. autoclass::
+    :members:
+
+
+Tooling
+-------
 funnel
---------------
+~~~~~~
 .. automodule:: src.tooling.funnel.funnel
     :members:
 
-cohorts
----------------------------
-.. automodule:: src.tooling.cohorts.cohorts
+clusters
+~~~~~~~~
+.. automodule:: src.tooling.clusters.clusters
     :members:
 
 step-matrix
----------------------------
+~~~~~~~~~~~
 .. automodule:: src.tooling.step_matrix.step_matrix
     :members:
 
-clusters
----------------------------
-.. automodule:: src.tooling.clusters.clusters
+sankey
+~~~~~~
+.. automodule:: src.tooling.sankey.sankey
+    :members:
+
+cohorts
+~~~~~~~
+.. automodule:: src.tooling.cohorts.cohorts
+    :members:
+
+graph
+~~~~~
+.. automodule::
+    :members:
+
+stattests
+~~~~~~~~~
+.. automodule:: src.tooling.stattests.stattests
     :members:

@@ -1,0 +1,7 @@
+,name,event_timestamp,user_id,type
+0,click_1,2021-10-26 12:02,1,raw
+1,pageview,2021-10-26 12:00,1,raw
+2,absent_user,2021-10-26 12:03,1,absent_user
+3,click_2,2021-10-26 12:03,1,raw
+4,path_end,2021-10-26 12:03,1,path_end
+5,path_start,2021-10-26 12:03,1,path_start

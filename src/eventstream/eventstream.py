@@ -14,9 +14,10 @@ from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.clusters import Clusters
 from src.tooling.cohorts import Cohorts
 from src.tooling.funnel import Funnel
-from src.tooling.sankey import Sankey
 from src.tooling.stattests import TEST_NAMES, StatTests
 from src.tooling.step_matrix import StepMatrix
+from src.tooling.step_sankey import StepSankey
+from src.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
@@ -39,7 +40,6 @@ IndexOrder = List[Optional[str]]
 FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "external"]
 NgramRange = Tuple[int, int]
 Method = Literal["kmeans", "gmm"]
-PlotType = Literal["cluster_bar"]
 
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
@@ -98,8 +98,9 @@ class Eventstream(
     __funnel: Funnel | None = None
     __cohorts: Cohorts | None = None
     __step_matrix: StepMatrix | None = None
-    __sankey: Sankey | None = None
+    __sankey: StepSankey | None = None
     __stattests: StatTests | None = None
+    __timedelta_hist: TimedeltaHist | None = None
 
     def __init__(
         self,
@@ -109,6 +110,8 @@ class Eventstream(
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
         relations: Optional[List[Relation]] = None,
+        user_sample_size: Optional[int | float] = None,
+        user_sample_seed: Optional[int] = None,
     ) -> None:
         self.__clusters = None
         self.__funnel = None
@@ -120,6 +123,8 @@ class Eventstream(
                 raw_data_schema.event_type = "event_type"
         self.__raw_data_schema = raw_data_schema
 
+        if user_sample_size is not None:
+            raw_data = self.__sample_user_paths(raw_data, raw_data_schema, user_sample_size, user_sample_seed)
         if not index_order:
             self.index_order = DEFAULT_INDEX_ORDER
         else:
@@ -420,6 +425,34 @@ class Eventstream(
             return self.index_order.index(event_type)
         return len(self.index_order)
 
+    def __sample_user_paths(
+        self,
+        raw_data: pd.DataFrame | pd.Series[Any],
+        raw_data_schema: RawDataSchemaType,
+        user_sample_size: Optional[int | float] = None,
+        user_sample_seed: Optional[int] = None,
+    ) -> pd.DataFrame | pd.Series[Any]:
+        if type(user_sample_size) is not float and type(user_sample_size) is not int:
+            raise TypeError('"user_sample_size" has to be a number(float for user share or int for user amount)')
+        if user_sample_size < 0:
+            raise ValueError("User sample size/share cannot be negative!")
+        if type(user_sample_size) is float:
+            if user_sample_size > 1:
+                raise ValueError("User sample share cannot exceed 1!")
+        user_col_name = raw_data_schema.user_id
+        unique_users = raw_data[user_col_name].unique()
+        if type(user_sample_size) is int:
+            sample_size = user_sample_size
+        elif type(user_sample_size) is float:
+            sample_size = int(user_sample_size * len(unique_users))
+        else:
+            return raw_data
+        if user_sample_seed is not None:
+            np.random.seed(user_sample_seed)
+        sample_users = np.random.choice(unique_users, sample_size, replace=False)
+        raw_data_sampled = raw_data.loc[raw_data[user_col_name].isin(sample_users), :]  # type: ignore
+        return raw_data_sampled
+
     def funnel(
         self,
         stages: list[str],
@@ -428,8 +461,20 @@ class Eventstream(
         segments: Collection[Collection[int]] | None = None,
         segment_names: list[str] | None = None,
         sequence: bool = False,
+        show_plot: bool = True,
     ) -> Funnel:
 
+        """
+        Shows a visualization of the user sequential events represented as a funnel.
+
+        See parameters description :py:func:`src.tooling.funnel.funnel`
+
+        Returns
+        -------
+        Funnel
+            A ``Funnel`` class instance fitted to the given parameters.
+
+        """
         self.__funnel = Funnel(
             eventstream=self,
             stages=stages,
@@ -440,10 +485,22 @@ class Eventstream(
             sequence=sequence,
         )
         self.__funnel.fit()
+        if show_plot:
+            figure = self.__funnel.plot()
+            figure.show()
         return self.__funnel
 
     @property
     def clusters(self) -> Clusters:
+        """
+        Returns an instance of ``Cluster`` class to be used for cluster analysis.
+
+        See :py:func:`src.tooling.clusters.clusters`
+
+        Returns
+        -------
+        Clusters
+        """
         if self.__clusters is None:
             self.__clusters = Clusters(eventstream=self, user_clusters=None)
         return self.__clusters
@@ -459,13 +516,17 @@ class Eventstream(
         thresh: float = 0,
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
+        show_plot: bool = True,
     ) -> StepMatrix:
         """
-        Calculates step_matrix
+        Shows a heatmap visualization of the step matrix.
 
-        Parameters
-        ----------
-        :py:func:`src.tooling.step_matrix.step_matrix`
+        See parameters description :py:func:`src.tooling.step_matrix.step_matrix`
+
+        Returns
+        -------
+        StepMatrix
+            A ``StepMatrix`` class instance fitted to the given parameters.
 
         """
         self.__step_matrix = StepMatrix(
@@ -482,21 +543,10 @@ class Eventstream(
         )
 
         self.__step_matrix.fit()
+        if show_plot:
+            figure = self.__step_matrix.plot()
+            figure.show()
         return self.__step_matrix
-
-    def stattests(
-        self,
-        test: TEST_NAMES,
-        groups: Tuple[list[str | int], list[str | int]],
-        objective: Callable = lambda x: x.shape[0],
-        group_names: Tuple[str, str] = ("group_1", "group_2"),
-        alpha: float = 0.05,
-    ) -> StatTests:
-        self.__stattests = StatTests(
-            eventstream=self, groups=groups, objective=objective, test=test, group_names=group_names, alpha=alpha
-        )
-        self.__stattests.fit()
-        return self.__stattests
 
     def step_sankey(
         self,
@@ -507,9 +557,20 @@ class Eventstream(
         autosize: bool = True,
         width: int | None = None,
         height: int | None = None,
-    ) -> Sankey:
+        show_plot: bool = True,
+    ) -> StepSankey:
+        """
+        Shows a Sankey diagram visualizing the user paths in step-wise manner.
 
-        self.__sankey = Sankey(
+        See parameters description :py:func:`src.tooling.step_sankey.step_sankey`
+
+        Returns
+        -------
+        StepSankey
+            A ``StepSankey`` class instance fitted to the given parameters.
+
+        """
+        self.__sankey = StepSankey(
             eventstream=self,
             max_steps=max_steps,
             thresh=thresh,
@@ -521,6 +582,9 @@ class Eventstream(
         )
 
         self.__sankey.fit()
+        if show_plot:
+            figure = self.__sankey.plot()
+            figure.show()
         return self.__sankey
 
     def cohorts(
@@ -531,15 +595,19 @@ class Eventstream(
         cut_bottom: int = 0,
         cut_right: int = 0,
         cut_diagonal: int = 0,
+        figsize: Tuple[float, float] = (10, 10),
+        show_plot: bool = True,
     ) -> Cohorts:
 
         """
-        Calculates cohort matrix
+        Shows a heatmap visualization of the user appearance grouped by cohorts.
 
-        Parameters
-        ----------
-        :py:func:`src.tooling.cohorts.cohorts`
+        See parameters description :py:func:`src.tooling.cohorts.cohorts`
 
+        Returns
+        -------
+        Cohorts
+            A ``Cohorts`` class instance fitted to the given parameters.
         """
 
         self.__cohorts = Cohorts(
@@ -553,4 +621,76 @@ class Eventstream(
         )
 
         self.__cohorts.fit()
+        if show_plot:
+            self.__cohorts.heatmap(figsize)
         return self.__cohorts
+
+    def stattest(
+        self,
+        test: TEST_NAMES,
+        groups: Tuple[list[str | int], list[str | int]],
+        function: Callable,
+        group_names: Tuple[str, str] = ("group_1", "group_2"),
+        alpha: float = 0.05,
+    ) -> StatTests:
+        """
+        Determines the statistical difference between the metric values in two user groups.
+
+        See parameters description :py:func:`src.tooling.stattests.stattests`
+
+        Returns
+        -------
+        StatTests
+            A ``StatTest`` class instance fitted to the given parameters.
+        """
+        self.__stattests = StatTests(
+            eventstream=self, groups=groups, func=function, test=test, group_names=group_names, alpha=alpha
+        )
+        self.__stattests.fit()
+        values = self.__stattests.values
+        str_template = "{0} (mean ± SD): {1:.3f} ± {2:.3f}, n = {3}"
+
+        print(
+            str_template.format(
+                values["group_one_name"], values["group_one_mean"], values["group_one_std"], values["group_one_size"]
+            )
+        )
+        print(
+            str_template.format(
+                values["group_two_name"], values["group_two_mean"], values["group_two_std"], values["group_two_size"]
+            )
+        )
+        print(
+            "'{0}' is greater than '{1}' with P-value: {2:.5f}".format(
+                values["greatest_group_name"], values["least_group_name"], values["p_val"]
+            )
+        )
+        print("power of the test: {0:.2f}%".format(100 * values["power_estimated"]))
+
+        return self.__stattests
+
+    def timedelta_hist(
+        self,
+        event_pair: Optional[Tuple[str, str] | List[str]] = None,
+        only_adjacent_event_pairs: bool = True,
+        weight_col: Optional[str] = None,
+        aggregation: Optional[AGGREGATION_NAMES] = None,
+        timedelta_unit: DATETIME_UNITS = "s",
+        log_scale: bool = False,
+        lower_cutoff_quantile: Optional[float] = None,
+        upper_cutoff_quantile: Optional[float] = None,
+        bins: int = 20,
+    ) -> TimedeltaHist:
+        self.__timedelta_hist = TimedeltaHist(
+            eventstream=self,
+            event_pair=event_pair,
+            only_adjacent_event_pairs=only_adjacent_event_pairs,
+            aggregation=aggregation,
+            weight_col=weight_col,
+            timedelta_unit=timedelta_unit,
+            log_scale=log_scale,
+            lower_cutoff_quantile=lower_cutoff_quantile,
+            upper_cutoff_quantile=upper_cutoff_quantile,
+            bins=bins,
+        )
+        return self.__timedelta_hist

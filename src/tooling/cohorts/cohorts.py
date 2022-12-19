@@ -15,24 +15,24 @@ from src.eventstream.types import EventstreamType
 
 class Cohorts:
     """
-    Class which provides methods for cohort analysis based on time.
-    Users divided on cohorts depending on the time of their
-    first appearance in eventstream.
-    Retention rate of active users calculated in coordinates
-    of the cohort period and cohort group.
+    A class which provides methods for cohort analysis. The users are spit into groups
+    depending on the time of their first appearance in the eventstream so each user is
+    associated with some ``cohort_group``. The retention rate of the active users
+    belonging to each ``cohort_group`` is  calculated within each ``cohort_period``.
 
     Parameters
-    --------
-    cohort_start_unit: :numpy_link:`DATETIME_UNITS<>`
+    ----------
+    eventstream : EventstreamType
+    cohort_start_unit : :numpy_link:`DATETIME_UNITS<>`
         The way of rounding and format of the moment from which the cohort count begins.
         Minimum timestamp rounding down to the selected datetime unit.
 
         For example:
-        We have eventstream with min timestamp - "2021-12-28 09:08:34.432456"
-        The result of roundings with different DATETIME_UNITS is in ithe table below:
+        We have eventstream with minimum timestamp - "2021-12-28 09:08:34.432456"
+        The result of roundings with different ``DATETIME_UNITS`` is in the table below:
 
         +------------------------+-------------------------+
-        | **cohort_start_unit** | **cohort_start_moment** |
+        | **cohort_start_unit**  | **cohort_start_moment** |
         +------------------------+-------------------------+
         | Y                      |  2021-01-01 00:00:00    |
         +------------------------+-------------------------+
@@ -43,29 +43,37 @@ class Cohorts:
         | D                      |  2021-08-28 00:00:00    |
         +------------------------+-------------------------+
 
-    cohort_period: Tuple(int, :numpy_link:`DATETIME_UNITS<>`)
+    cohort_period : Tuple(int, :numpy_link:`DATETIME_UNITS<>`)
         The cohort_period size and its ``DATETIME_UNIT``. This parameter is used in calculating:
-        1) Start moments for each cohort from the moment defined with the ``cohort_start_unit`` parameter
-        2) Cohort periods for each cohort from ifs start moment.
-    average: bool, default=True
-        If ``True`` - calculating average for each cohort period.
-        If ``False`` - averaged values don't calculated.
-    cut_bottom: int
-        Drop from cohort_matrix 'n' rows from the bottom of the cohort matrix.
+
+        - Start moments for each cohort from the moment defined with the ``cohort_start_unit`` parameter
+        - Cohort periods for each cohort from ifs start moment.
+    average : bool, default True
+        - If ``True`` - calculating average for each cohort period.
+        - If ``False`` - averaged values don't calculated.
+    cut_bottom : int
+        Drop 'n' rows from the bottom of the cohort matrix.
         Average is recalculated.
-    cut_right: int
-        Drop from cohort_matrix 'n' columns from the right side.
+    cut_right : int
+        Drop 'n' columns from the right side of the cohort matrix.
         Average is recalculated.
-    cut_diagonal: int
-        Drop from cohort_matrix diagonal with 'n' last period-group cells.
+    cut_diagonal : int
+        Replace values in 'n' diagonals (last period-group cells) with ``np.nan``.
         Average is recalculated.
 
-    Note
-    ----
+    Notes
+    -----
     Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
     Due to "Y" and "M" are non-fixed types it can be used only with each other
     or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``.
-    More information: :numpy_timedelta_link:`About timedelta`<>
+    More information - :numpy_timedelta_link:`about numpy timedelta<>`
+
+
+    Only cohorts with at least 1 user in any period - are shown.
+
+    See Also
+    --------
+    :py:func:`src.eventstream.eventstream.Eventstream.cohorts`
     """
 
     __eventstream: EventstreamType
@@ -108,52 +116,8 @@ class Cohorts:
             raise ValueError(
                 """Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
                                  Due to "Y" and "M" are non-fixed types it can be used only with each other
-                                 or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``.!"""
+                                 or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``!"""
             )
-
-    def fit(self) -> None:
-        """
-        Calculates cohort matrix with retention rate of active users in coordinates
-        of the cohort period and cohort group.
-
-        Returns
-        -------
-        pd.DataFrame
-
-        Note
-        ----
-        Only cohorts with at least 1 user are shown.
-
-        """
-
-        df = self._add_min_date(
-            data=self.data,
-            cohort_start_unit=self.cohort_start_unit,
-            cohort_period=self.cohort_period,
-            cohort_period_unit=self.cohort_period_unit,
-        )
-
-        cohorts = df.groupby(["CohortGroup", "CohortPeriod"])[[self.user_col]].nunique()
-        cohorts.reset_index(inplace=True)
-
-        cohorts.rename(columns={self.user_col: "TotalUsers"}, inplace=True)
-        cohorts.set_index(["CohortGroup", "CohortPeriod"], inplace=True)
-        cohort_group_size = cohorts["TotalUsers"].groupby(level=0).first()
-        cohorts.reset_index(inplace=True)
-        user_retention = (
-            cohorts.pivot(index="CohortPeriod", columns="CohortGroup", values="TotalUsers").divide(
-                cohort_group_size, axis=1
-            )
-        ).T
-
-        user_retention = self._cut_cohort_matrix(
-            df=user_retention, cut_diagonal=self.cut_diagonal, cut_bottom=self.cut_bottom, cut_right=self.cut_right
-        )
-        user_retention.index = user_retention.index.astype(str)
-        if self.average:
-            user_retention.loc["Average"] = user_retention.mean()
-
-        self._cohort_matrix_result = user_retention
 
     def _add_min_date(
         self,
@@ -215,62 +179,84 @@ class Cohorts:
 
         return df.iloc[: len(df) - cut_bottom, : len(df.columns) - cut_right]
 
-    @property
-    def values(self) -> pd.DataFrame:
-        return self._cohort_matrix_result
-
-    @property
-    def params(self) -> dict[str, DATETIME_UNITS | tuple | bool | int | None]:
-        return {
-            "cohort_start_unit": self.cohort_start_unit,
-            "cohort_period": (self.cohort_period, self.cohort_period_unit),
-            "average": self.average,
-            "cut_bottom": self.cut_bottom,
-            "cut_right": self.cut_right,
-            "cut_diagonal": self.cut_diagonal,
-        }
-
-    def heatmap(self, figsize: Tuple[float, float] = (10, 10)) -> sns.heatmap:
+    def fit(self) -> None:
+        """
+        Calculates the cohort internal values with the defined parameters.
+        Applying ``fit`` method is mandatory for the following usage
+        of any visualization or descriptive ``Cohorts`` methods.
 
         """
-        Build the heatmap based on the calculated cohort_matrix.
+
+        df = self._add_min_date(
+            data=self.data,
+            cohort_start_unit=self.cohort_start_unit,
+            cohort_period=self.cohort_period,
+            cohort_period_unit=self.cohort_period_unit,
+        )
+
+        cohorts = df.groupby(["CohortGroup", "CohortPeriod"])[[self.user_col]].nunique()
+        cohorts.reset_index(inplace=True)
+
+        cohorts.rename(columns={self.user_col: "TotalUsers"}, inplace=True)
+        cohorts.set_index(["CohortGroup", "CohortPeriod"], inplace=True)
+        cohort_group_size = cohorts["TotalUsers"].groupby(level=0).first()
+        cohorts.reset_index(inplace=True)
+        user_retention = (
+            cohorts.pivot(index="CohortPeriod", columns="CohortGroup", values="TotalUsers").divide(
+                cohort_group_size, axis=1
+            )
+        ).T
+
+        user_retention = self._cut_cohort_matrix(
+            df=user_retention, cut_diagonal=self.cut_diagonal, cut_bottom=self.cut_bottom, cut_right=self.cut_right
+        )
+        user_retention.index = user_retention.index.astype(str)
+        if self.average:
+            user_retention.loc["Average"] = user_retention.mean()
+
+        self._cohort_matrix_result = user_retention
+
+    def heatmap(self, figsize: Tuple[float, float] = (10, 10)) -> sns.heatmap:
+        """
+        Builds a heatmap based on the calculated cohort matrix values.
+        Should be used after :py:func:`fit`.
 
         Parameters
-        --------
-        figsize: Tuple[float, float], default = (10, 10)
-        Is a tuple of the width and height of the figure in inches.
+        ----------
+        figsize: Tuple[float, float], default (10, 10)
+            Is a tuple of the width and height of the figure in inches.
 
         Returns
-        --------
+        -------
         sns.heatmap
-
         """
 
         df = self._cohort_matrix_result
 
-        plt.figure(figsize=figsize)
+        figure = plt.figure(figsize=figsize)
         sns.heatmap(df, annot=True, fmt=".1%", linewidths=1, linecolor="gray")
+        return figure
 
     def lineplot(
         self,
         show_plot: Literal["cohorts", "average", "all"] = "cohorts",
         figsize: Tuple[float, float] = (10, 10),
     ) -> sns.lineplot:
-
         """
-        Build lineplots for each cohort and/or for averaged values for each cohort_period
+        Creates a chart representing each cohort dynamics over time.
+        Should be used after :py:func:`fit`.
 
         Parameters
-        --------
+        ----------
         show_plot: 'cohorts', 'average' or 'all'
-            if 'cohorts' - shows lineplot for each cohort
-            if 'average' - shows lineplot only for all cohorts average values
-            if 'all' - shows lineplot for each cohort and also for their average values
-        figsize: Tuple[float, float], default = (10, 10)
+            - if ``cohorts`` - shows a lineplot for each cohort,
+            - if ``average`` - shows a lineplot only for the average values over all the cohorts,
+            - if ``all`` - shows a lineplot for each cohort and also for their average values.
+        figsize: Tuple[float, float], default (10, 10)
             Is a tuple of the width and height of the figure in inches.
 
         Returns
-        --------
+        -------
         sns.lineplot
 
         """
@@ -282,7 +268,7 @@ class Cohorts:
         if show_plot in ["all", "average"] and "Average" not in df_matrix.index:  # type: ignore
             df_matrix.loc["Average"] = df_matrix.mean()  # type: ignore
         df_average = df_matrix[df_matrix.index == "Average"]  # type: ignore
-        plt.figure(figsize=figsize)
+        figure = plt.figure(figsize=figsize)
         if show_plot == "all":
             sns.lineplot(df_wo_average.T, lw=1.5)
             sns.lineplot(df_average.T, lw=2.5, palette=["red"], marker="X", markersize=8, alpha=0.6)
@@ -296,3 +282,33 @@ class Cohorts:
         plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
         plt.xlabel("Period from the start of observation")
         plt.ylabel("Share of active users")
+        return figure
+
+    @property
+    def values(self) -> pd.DataFrame:
+        """
+        Returns a pd.DataFrame representing the calculated cohort matrix values.
+        Should be used after :py:func:`fit`.
+
+        Returns
+        -------
+        pd.DataFrame
+
+        """
+        return self._cohort_matrix_result
+
+    @property
+    def params(self) -> dict[str, DATETIME_UNITS | tuple | bool | int | None]:
+        """
+        Returns the parameters used for the last fitting.
+        Should be used after :py:func:`fit`.
+
+        """
+        return {
+            "cohort_start_unit": self.cohort_start_unit,
+            "cohort_period": (self.cohort_period, self.cohort_period_unit),
+            "average": self.average,
+            "cut_bottom": self.cut_bottom,
+            "cut_right": self.cut_right,
+            "cut_diagonal": self.cut_diagonal,
+        }

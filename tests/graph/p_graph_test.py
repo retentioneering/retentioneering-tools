@@ -85,7 +85,7 @@ class EventstreamTest(unittest.TestCase):
             parents=added_nodes,
         )
 
-        merge_node_parents = graph.get_merge_node_parents(merge_node)
+        merge_node_parents = graph._get_merge_node_parents(merge_node)
         self.assertEqual(len(merge_node_parents), len(added_nodes))
 
         for node in merge_node_parents:

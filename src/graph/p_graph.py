@@ -63,19 +63,19 @@ class PGraph:
             return node.events.copy()
 
         if isinstance(node, EventsNode):
-            return self.combine_events_node(node)
+            return self._combine_events_node(node)
 
-        return self.combine_merge_node(node)
+        return self._combine_merge_node(node)
 
-    def combine_events_node(self, node: EventsNode) -> EventstreamType:
-        parent = self.get_events_node_parent(node)
+    def _combine_events_node(self, node: EventsNode) -> EventstreamType:
+        parent = self._get_events_node_parent(node)
         parent_events = self.combine(parent)
         events = node.processor.apply(parent_events)
         parent_events._join_eventstream(events)
         return parent_events
 
-    def combine_merge_node(self, node: MergeNode) -> EventstreamType:
-        parents = self.get_merge_node_parents(node)
+    def _combine_merge_node(self, node: MergeNode) -> EventstreamType:
+        parents = self._get_merge_node_parents(node)
         curr_eventstream: Optional[EventstreamType] = None
 
         for parent_node in parents:
@@ -97,14 +97,14 @@ class PGraph:
             parents.append(parent)
         return parents
 
-    def get_merge_node_parents(self, node: MergeNode) -> List[Node]:
+    def _get_merge_node_parents(self, node: MergeNode) -> List[Node]:
         parents = self.get_parents(node)
         if len(parents) == 0:
             raise ValueError("orphan merge node!")
 
         return parents
 
-    def get_events_node_parent(self, node: EventsNode) -> Node:
+    def _get_events_node_parent(self, node: EventsNode) -> Node:
         parents = self.get_parents(node)
         if len(parents) > 1:
             raise ValueError("invalid graph: events node has more than 1 parent")

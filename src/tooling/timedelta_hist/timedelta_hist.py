@@ -129,7 +129,7 @@ class TimedeltaHist:
         data = self.__eventstream.to_dataframe().sort_values([self.agg_col, self.time_col])
         if self.event_pair is not None:
             data = self._prepare_event_pair_data(data)
-        data["time_passed"] = data[self.time_col].diff() / np.timedelta64(1, self.timedelta_unit)
+        data["time_passed"] = data[self.time_col].diff() / np.timedelta64(1, self.timedelta_unit)  # type: ignore
         # the next line removes "invalid" events(events not inside one unit(user/session))
         data = self._exclude_multiunit_events(data)
         data = self._aggregate_data(data)

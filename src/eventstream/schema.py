@@ -75,6 +75,20 @@ class EventstreamSchema(EventstreamSchemaType):
 
 @dataclass
 class RawDataSchema(RawDataSchemaType):
+    """
+    Create schema for ``raw_data`` columns names.
+    If names of the columns are different from default names they should be
+    specified.
+
+    Parameters
+    ----------
+    event_name : str, default "event"
+    event_timestamp : str, default "timestamp"
+    user_id : str, default "user_id"
+    event_type : str, optional
+    custom_cols : list, optional
+    """
+
     event_name: str = "event"
     event_timestamp: str = "timestamp"
     user_id: str = "user_id"

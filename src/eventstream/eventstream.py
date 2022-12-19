@@ -90,6 +90,42 @@ class Eventstream(
     TruncatePathHelperMixin,
     EventstreamType,
 ):
+    """
+    Core class of retentioneering.
+    Container for storing and processing clickstream data.
+
+    Parameters
+    ----------
+    raw_data : pd.DataFrame or pd.Series
+        Raw clickstream data.
+    raw_data_schema : dict, optional
+        Default schema is: ```event_name="event"```
+                           ```event_timestamp="timestamp"```
+                           ```user_id="user_id"```
+        Should be specified as an instance of class :py:func:`src.eventstream.schema.RawDataSchema`:
+
+         - ``raw_data`` column names are different from default RawDataSchema.
+         - There is at least one ```custom_col```
+
+    schema : EventstreamSchema, optional
+
+    prepare : bool, default True
+
+        - If ``True`` input data will be transformed in the following way:
+
+            - converts column ``event_timestamp`` to pandas datetime format.
+            - | Adds ``event_type`` column and fills with ``raw`` value.
+              | if that column already exists it will remain unchanged.
+
+        - If ``False`` - ``raw_data`` will be remained as is.
+
+    index_order : IndexOrder
+    relations : list, optional
+    user_sample_size : int of float, optional
+    user_sample_seed : int, optional
+
+    """
+
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]
@@ -138,6 +174,14 @@ class Eventstream(
         self.index_events()
 
     def copy(self) -> Eventstream:
+        """
+        Make a copy of input ``eventstream``.
+
+        Returns
+        -------
+        Eventstream
+
+        """
         return Eventstream(
             raw_data_schema=self.__raw_data_schema.copy(),
             raw_data=self.__events.copy(),
@@ -148,6 +192,16 @@ class Eventstream(
         )
 
     def append_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
+        """
+
+        Parameters
+        ----------
+        eventstream
+
+        Returns
+        -------
+
+        """
         if not self.schema.is_equal(eventstream.schema):
             raise ValueError("invalid schema: joined eventstream")
 
@@ -171,8 +225,8 @@ class Eventstream(
         left_events = merged_events[(merged_events["_merge"] == "left_only") | (merged_events["_merge"] == "both")]
         right_events = merged_events[(merged_events["_merge"] == "right_only")]
 
-        left_raw_cols = self.get_raw_cols()
-        right_raw_cols = eventstream.get_raw_cols()
+        left_raw_cols = self._get_raw_cols()
+        right_raw_cols = eventstream._get_raw_cols()
         cols = self.schema.get_cols()
 
         result_left_part = pd.DataFrame()
@@ -192,10 +246,10 @@ class Eventstream(
         result_right_part[DELETE_COL_NAME] = get_merged_col(df=right_events, colname=DELETE_COL_NAME, suffix="_y")
 
         self.__events = pd.concat([result_left_part, result_right_part])
-        self.soft_delete(deleted_events)
+        self._soft_delete(deleted_events)
         self.index_events()
 
-    def join_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
+    def _join_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
         if not self.schema.is_equal(eventstream.schema):
             raise ValueError("invalid schema: joined eventstream")
 
@@ -231,8 +285,8 @@ class Eventstream(
             (merged_events["_merge"] == "both") | (merged_events[left_id_colname].isin(not_related_events_ids))
         ]
 
-        left_raw_cols = self.get_raw_cols()
-        right_raw_cols = eventstream.get_raw_cols()
+        left_raw_cols = self._get_raw_cols()
+        right_raw_cols = eventstream._get_raw_cols()
         cols = self._get_both_cols(eventstream)
 
         result_left_part = pd.DataFrame()
@@ -276,10 +330,22 @@ class Eventstream(
         return list(all_cols)
 
     def to_dataframe(self, raw_cols: bool = False, show_deleted: bool = False, copy: bool = False) -> pd.DataFrame:
-        cols = self.schema.get_cols() + self.get_relation_cols()
+        """
+
+        Parameters
+        ----------
+        raw_cols
+        show_deleted
+        copy
+
+        Returns
+        -------
+
+        """
+        cols = self.schema.get_cols() + self._get_relation_cols()
 
         if raw_cols:
-            cols += self.get_raw_cols()
+            cols += self._get_raw_cols()
 
         if show_deleted:
             cols.append(DELETE_COL_NAME)
@@ -289,6 +355,12 @@ class Eventstream(
         return view
 
     def index_events(self) -> None:
+        """
+
+        Returns
+        -------
+
+        """
         order_temp_col_name = "order"
         indexed = self.__events
 
@@ -300,7 +372,7 @@ class Eventstream(
         indexed[self.schema.event_index] = indexed.index
         self.__events = indexed
 
-    def get_raw_cols(self) -> list[str]:
+    def _get_raw_cols(self) -> list[str]:
         cols = self.__events.columns
         raw_cols: list[str] = []
         for col in cols:
@@ -308,7 +380,7 @@ class Eventstream(
                 raw_cols.append(col)
         return raw_cols
 
-    def get_relation_cols(self) -> list[str]:
+    def _get_relation_cols(self) -> list[str]:
         cols = self.__events.columns
         relation_cols: list[str] = []
         for col in cols:
@@ -317,11 +389,22 @@ class Eventstream(
         return relation_cols
 
     def add_custom_col(self, name: str, data: pd.Series[Any] | None) -> None:
+        """
+
+        Parameters
+        ----------
+        name
+        data
+
+        Returns
+        -------
+
+        """
         self.__raw_data_schema.custom_cols.extend([{"custom_col": name, "raw_data_col": name}])
         self.schema.custom_cols.extend([name])
         self.__events[name] = data
 
-    def soft_delete(self, events: pd.DataFrame) -> None:
+    def _soft_delete(self, events: pd.DataFrame) -> None:
         """
         method deletes events either by event_id or by the last relation
         :param events:
@@ -337,7 +420,7 @@ class Eventstream(
             indicator=True,
             how="left",
         )
-        if relation_cols := self.get_relation_cols():
+        if relation_cols := self._get_relation_cols():
             last_relation_col = relation_cols[-1]
             self.__events[DELETE_COL_NAME] = self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
             merged = pd.merge(

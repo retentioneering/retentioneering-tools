@@ -155,6 +155,6 @@ class TruncatePath(DataProcessor):
             relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         if not df.empty:
-            eventstream.soft_delete(events=df)
+            eventstream._soft_delete(events=df)
 
         return eventstream

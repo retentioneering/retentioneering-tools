@@ -109,6 +109,6 @@ class CollapseLoops(DataProcessor):
             relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
         if not df_to_del.empty:
-            eventstream.soft_delete(df_to_del)
+            eventstream._soft_delete(df_to_del)
 
         return eventstream

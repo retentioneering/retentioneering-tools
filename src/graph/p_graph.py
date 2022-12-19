@@ -71,7 +71,7 @@ class PGraph:
         parent = self.get_events_node_parent(node)
         parent_events = self.combine(parent)
         events = node.processor.apply(parent_events)
-        parent_events.join_eventstream(events)
+        parent_events._join_eventstream(events)
         return parent_events
 
     def combine_merge_node(self, node: MergeNode) -> EventstreamType:

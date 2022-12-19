@@ -93,6 +93,11 @@ extlinks = {
         None,
     ),
     "statsmodel_ztest": ("https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ztest.html/%s", None),
+    "numpy_random_choice": (
+        "https://numpy.org/doc/stable/reference/random/generated/numpy.random.RandomState.choice.html/%s",
+        None,
+    ),
+    "numpy_random_seed": ("https://numpy.org/doc/stable/reference/random/generated/numpy.random.seed.htm/%sl", None),
 }
 
 

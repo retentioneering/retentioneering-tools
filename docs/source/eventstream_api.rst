@@ -1,6 +1,17 @@
+Eventstream
+===========
+
 Eventstream Core
-==================
-
-
+----------------
 .. autoclass:: src.eventstream.eventstream.Eventstream
-    :members: to_dataframe, copy
+    :undoc-members: funnel, clusters, step_matrix, step_sankey, cohorts, graph, stattests
+
+Schema
+------
+.. autoclass:: src.eventstream.schema.RawDataSchema
+    :members:
+
+PGraph
+------
+.. autoclass:: src.graph.p_graph.PGraph
+    :members:

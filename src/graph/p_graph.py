@@ -31,6 +31,10 @@ class Payload(TypedDict):
 
 
 class PGraph:
+    """
+    Collection of methods for preprocessing graph construction and calculation.
+    """
+
     root: SourceNode
     _ngraph: networkx.DiGraph
     __server_manager: ServerManager | None = None
@@ -42,6 +46,28 @@ class PGraph:
         self._ngraph.add_node(self.root)
 
     def add_node(self, node: Node, parents: List[Node]) -> None:
+        """
+        Add node to ``PGraph`` instance.
+
+        Parameters
+        ----------
+        node : Node
+            Instance of class ``EventsNode`` or ``MergeNode``.
+        parents : list of Node
+
+            - If ``node`` is ``EventsNode`` - it should be only 1 parent
+            - If ``node`` is ``MergeNode`` - it should be at least 2 parents
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Adding node doesn't run calculations.
+        See :py:func:`combine`.
+
+        """
         self.__valiate_already_exists(node)
         self.__validate_not_found(parents)
 
@@ -57,6 +83,19 @@ class PGraph:
             self._ngraph.add_edge(parent, node)
 
     def combine(self, node: Node) -> EventstreamType:
+        """
+        Run calculation from the ``SourceNode`` up to specified ``node``.
+
+        Parameters
+        ----------
+        node : Node
+            Instance of the class SourceNode, EventsNode or MergeNode
+
+        Returns
+        -------
+        EventstreamType
+            ``Eventstream`` with
+        """
         self.__validate_not_found([node])
 
         if isinstance(node, SourceNode):
@@ -90,6 +129,15 @@ class PGraph:
         return cast(EventstreamType, curr_eventstream)
 
     def get_parents(self, node: Node) -> List[Node]:
+        """
+        Show parents of specified ``node``.
+
+        Parameters
+        ----------
+        node : Node
+            Instance of the class SourceNode, EventsNode or MergeNode
+
+        """
         self.__validate_not_found([node])
         parents: List[Node] = []
 
@@ -124,6 +172,10 @@ class PGraph:
                 raise ValueError("node not found!")
 
     def display(self) -> DisplayHandle:
+        """
+        Show constructed ``PGraph``.
+
+        """
         if not self.__server_manager:
             self.__server_manager = ServerManager()
 
@@ -138,6 +190,18 @@ class PGraph:
         return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))
 
     def export(self, payload: dict[str, Any]) -> dict:
+        """
+        Show ``PGraph`` as config.
+
+        Parameters
+        ----------
+        payload : dict
+
+        Returns
+        -------
+        dict
+
+        """
         source, target, link = "source", "target", "links"
         graph = self._ngraph
         data = {

@@ -18,6 +18,23 @@ from src.eventstream.types import (
 
 @dataclass
 class EventstreamSchema(EventstreamSchemaType):
+    """
+    Create schema for ``eventstream`` columns names.
+    If names of the columns are different from default names they should be
+    specified.
+
+    Parameters
+    ----------
+    event_id : str, default "event_id"
+    event_type : str, default "event_type"
+    event_index : str, default "event_index"
+    event_name : str, default "event"
+    event_timestamp : str, default "timestamp"
+    user_id : str, default "user_id"
+    custom_cols : list, optional
+
+    """
+
     event_id: str = "event_id"
     event_type: str = "event_type"
     event_index: str = "event_index"

@@ -91,38 +91,38 @@ class Eventstream(
     EventstreamType,
 ):
     """
-    Core class of retentioneering.
-    Container for storing and processing clickstream data.
+    Collection of tools for storing and processing clickstream data.
 
     Parameters
     ----------
     raw_data : pd.DataFrame or pd.Series
         Raw clickstream data.
-    raw_data_schema : dict, optional
-        Default schema is: ```event_name="event"```
-                           ```event_timestamp="timestamp"```
-                           ```user_id="user_id"```
-        Should be specified as an instance of class :py:func:`src.eventstream.schema.RawDataSchema`:
+    raw_data_schema : RawDataSchema, optional
+        Should be specified as an instance of class ``RawDataSchema``:
 
-         - ``raw_data`` column names are different from default RawDataSchema.
-         - There is at least one ```custom_col```
+        - If ``raw_data`` column names are different from default :py:func:`src.eventstream.schema.RawDataSchema`.
+        - If there is at least one ``custom_col`` in ``raw_data``.
 
     schema : EventstreamSchema, optional
-
+        Schema of created ``eventstream``.
+        See default schema% :py:func:`src.eventstream.schema.EventstreamSchema`.
     prepare : bool, default True
 
         - If ``True`` input data will be transformed in the following way:
-
-            - converts column ``event_timestamp`` to pandas datetime format.
+            - Convert column ``event_timestamp`` to pandas datetime format.
             - | Adds ``event_type`` column and fills with ``raw`` value.
               | if that column already exists it will remain unchanged.
-
         - If ``False`` - ``raw_data`` will be remained as is.
 
-    index_order : IndexOrder
+    index_order : list of str, default DEFAULT_INDEX_ORDER
+        Sorting order for ``event_type`` column.
     relations : list, optional
     user_sample_size : int of float, optional
+        Number of users trajectories which will be randomly chosen and remained in final sample.
+        See :numpy_random_choice:`numpy documentation<>`.
     user_sample_seed : int, optional
+        Random seed value to generate repeated random users sample.
+        See :numpy_random_seed:`numpy documentation<>`.
 
     """
 
@@ -193,14 +193,20 @@ class Eventstream(
 
     def append_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
         """
+        Append ``eventstream`` with the same schema.
 
         Parameters
         ----------
-        eventstream
+        eventstream : Eventstream
 
         Returns
         -------
+        eventstream
 
+        Raises
+        ------
+        ValueError
+            If ``EventstreamSchemas`` of two ``eventstreams`` are not equal.
         """
         if not self.schema.is_equal(eventstream.schema):
             raise ValueError("invalid schema: joined eventstream")
@@ -331,12 +337,16 @@ class Eventstream(
 
     def to_dataframe(self, raw_cols: bool = False, show_deleted: bool = False, copy: bool = False) -> pd.DataFrame:
         """
+        Convert ``eventstream`` to ``pd.Dataframe``
 
         Parameters
         ----------
-        raw_cols
-        show_deleted
-        copy
+        raw_cols : bool, default False
+            If ``True`` - original columns of the input ``raw_data`` will be shown.
+        show_deleted : bool, default
+            If ``True`` - show all rows in ``eventstream``
+        copy : bool, default False
+
 
         Returns
         -------
@@ -356,9 +366,11 @@ class Eventstream(
 
     def index_events(self) -> None:
         """
+        Sort and index eventstream using DEFAULT_INDEX_ORDER
 
         Returns
         -------
+        None
 
         """
         order_temp_col_name = "order"
@@ -390,15 +402,18 @@ class Eventstream(
 
     def add_custom_col(self, name: str, data: pd.Series[Any] | None) -> None:
         """
+        Add custom column to existing ``eventstream``.
 
         Parameters
         ----------
-        name
-        data
+        name : str
+            New column name.
+        data : pd.Series
+            Array with new column values.
 
         Returns
         -------
-
+        Eventstream
         """
         self.__raw_data_schema.custom_cols.extend([{"custom_col": name, "raw_data_col": name}])
         self.schema.custom_cols.extend([name])
@@ -406,9 +421,7 @@ class Eventstream(
 
     def _soft_delete(self, events: pd.DataFrame) -> None:
         """
-        method deletes events either by event_id or by the last relation
-        :param events:
-        :return:
+        Method deletes events either by event_id or by the last relation.
         """
         deleted_events = events.copy()
         deleted_events[DELETE_COL_NAME] = True

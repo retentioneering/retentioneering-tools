@@ -694,7 +694,7 @@ class Clusters:
 
     @staticmethod
     def _kmeans(features: pd.DataFrame, n_clusters: int = 8, random_state: int = 0) -> np.ndarray:
-        km = KMeans(random_state=random_state, n_clusters=n_clusters, n_init="auto")
+        km = KMeans(random_state=random_state, n_clusters=n_clusters)
         cl = km.fit_predict(features.values)
         return cl
 

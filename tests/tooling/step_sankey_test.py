@@ -4,14 +4,13 @@ import os
 
 import pandas as pd
 import pytest
-from pydantic import ValidationError
 
-from src.tooling.sankey import Sankey
-from tests.tooling.fixtures.sankey import test_stream
+from src.tooling.step_sankey import StepSankey
+from tests.tooling.fixtures.step_sankey import test_stream
 
 
 def run_test(stream, test_prefix, **kwargs):
-    s = Sankey(eventstream=stream, **kwargs)
+    s = StepSankey(eventstream=stream, **kwargs)
     s.fit()
     res_nodes, res_edges = s.values
 
@@ -55,4 +54,4 @@ class TestSankey:
 
     def test_sankey__incorrect_max_steps(self, test_stream):
         with pytest.raises(ValueError):
-            s = Sankey(eventstream=test_stream, max_steps=1)
+            s = StepSankey(eventstream=test_stream, max_steps=1)

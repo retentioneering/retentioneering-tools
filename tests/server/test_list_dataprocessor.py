@@ -7,6 +7,10 @@ class TestListDataprocessors:
     def test_list_dataprocessors(self) -> None:
         correct_data = [
             {
+                "name": "RenameProcessor",
+                "params": [{"default": None, "name": "rules", "optional": False, "widget": "array"}],
+            },
+            {
                 "name": "CollapseLoops",
                 "params": [
                     {"name": "suffix", "optional": True, "widget": "string"},

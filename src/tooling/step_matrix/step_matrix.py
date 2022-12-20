@@ -27,10 +27,9 @@ class CenteredParams:
 
 class StepMatrix:
     """
-    Calculates step_matrix with distribution of users over trajectory steps ordered by
-    event name. Matrix rows are event names, columns are aligned user trajectory
-    step numbers and the values are shares of users. A given entry X at column i
-    and event j means at i'th step fraction of users X  have specific event j.
+    Step matrix is a matrix where its ``(i, j)`` element means the frequency
+    of event ``i`` occurred as ``j``-th step in user trajectories. This class
+    provides methods for a step matrix calculation and visualization.
 
     Parameters
     ----------
@@ -327,7 +326,7 @@ class StepMatrix:
             if targets is not None and targets_list is not None
             else {}
         )
-        f, axs = sns.mpl.pyplot.subplots(
+        figure, axs = sns.mpl.pyplot.subplots(
             n_rows,
             n_cols,
             sharex=True,
@@ -387,14 +386,13 @@ class StepMatrix:
                 axs.vlines(
                     [centered_position - 0.02, centered_position + 0.98], *axs.get_ylim(), colors="Black", linewidth=0.7
                 )
+        return figure
 
     def fit(self) -> None:
         """
-        Calculates step_matrix with specified parameters.
-        Result of calculation could be presented using:
-
-        - :py:func:`values`
-        - :py:func:`plot`
+        Calculates the step matrix internal values with the defined parameters.
+        Applying ``fit`` method is mandatory for the following usage
+        of any visualization or descriptive ``StepMatrix`` methods.
 
         """
         weight_col = self.weight_col or self.user_col
@@ -467,7 +465,7 @@ class StepMatrix:
 
     def plot(self) -> sns.heatmap:
         """
-        Creates heatmap on the base of calculated step_matrix.
+        Creates a heatmap plot based on the calculated step matrix values.
         Should be used after :py:func:`fit`.
 
         Returns
@@ -475,19 +473,38 @@ class StepMatrix:
         sns.heatmap
 
         """
-        return self._render_plot(self.result_data, self.result_targets, self.targets_list, self.fraction_title)
+        figure = self._render_plot(self.result_data, self.result_targets, self.targets_list, self.fraction_title)
+        return figure
 
     @property
     def values(self) -> tuple[pd.DataFrame, pd.DataFrame | None]:
-
         """
-        Creates pd.DataFrame with ``max_steps`` number of columns and ``len(event_col.unique)``
-        number of rows at max, or less if used thr > 0.
-
+        Returns the calculated step matrix as a pd.DataFrame.
         Should be used after :py:func:`fit`.
 
         Returns
         -------
-        pd.DataFrame
+        tuple[pd.DataFrame, pd.DataFrame | None]
+            1. Stands for the step matrix.
+            2. Stands for a separate step matrix related for target events only.
         """
         return self.result_data, self.result_targets
+
+    @property
+    def params(self) -> dict:
+        """
+        Returns the parameters used for the last fitting.
+        Should be used after :py:func:`fit`.
+
+        """
+        return {
+            "max_steps": self.max_steps,
+            "weight_col": self.weight_col,
+            "precision": self.precision,
+            "targets": self.targets,
+            "accumulated": self.accumulated,
+            "sorting": self.sorting,
+            "thresh": self.thresh,
+            "centered": self.centered,
+            "groups": self.groups,
+        }

@@ -36,7 +36,7 @@ class TruncatePath(DataProcessor):
         This parameter is necessary when specified event occurs more than once in one user's path.
         ``first`` - before first occurrence of the specified event the user's path will be dropped.
         ``last`` - before last occurrence of the specified event the user's path will be dropped.
-    occurrence_after : {"first", "last""}, default="first"
+    occurrence_after : {"first", "last"}, default="first"
         The same behavior as in the 'occurrence_before', but for the other part of the user path.
     shift_before : int,  default=0
         Sets the number of steps by which truncate point is shifted from the selected event.

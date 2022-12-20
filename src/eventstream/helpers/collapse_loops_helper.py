@@ -11,6 +11,23 @@ class CollapseLoopsHelperMixin:
         suffix: Union[Literal["loop", "count"], None] = "loop",
         timestamp_aggregation_type: Literal["max", "min", "mean"] = "max",
     ) -> EventstreamType:
+        """
+        Method of ``Eventstream Class`` which finds ``loops`` and creates new synthetic events
+        in each user's path who have such sequences.
+
+        ``Loop`` - is the sequence of repetitive events in user's path.
+        For example *"event1 -> event1"*
+
+        Returns
+        -------
+        Eventstream
+             Input ``eventstream`` with ``loops`` replaced by new synthetic events.
+
+        Notes
+        -----
+        See parameters and details of dataprocessor functionality
+        :py:func:`src.data_processors_lib.rete.collapse_loops.CollapseLoops`
+        """
 
         # avoid circular import
         from src.data_processors_lib.rete import CollapseLoops, CollapseLoopsParams

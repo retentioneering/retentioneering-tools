@@ -6,7 +6,8 @@ from .lost_users_helper import LostUsersHelperMixin
 from .negative_target import NegativeTargetHelperMixin
 from .new_users_helper import NewUsersHelperMixin
 from .positive_target import PositiveTargetHelperMixin
+from .rename_helper import RenameHelperMixin
 from .split_session_helper import SplitSessionsHelperMixin
 from .start_end_helper import StartEndHelperMixin
-from .truncate_events_helper import TruncatedEventsHelperMixin
 from .truncate_path_helper import TruncatePathHelperMixin
+from .truncated_events_helper import TruncatedEventsHelperMixin

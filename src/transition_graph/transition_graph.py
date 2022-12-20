@@ -13,7 +13,7 @@ from src.backend import ServerManager
 from src.edgelist import Edgelist
 from src.eventstream.types import EventstreamType
 from src.nodelist import Nodelist
-from src.templates.translition_graph import TransitionGraphRenderer
+from src.templates.transition_graph import TransitionGraphRenderer
 
 from .typing import (
     GraphSettings,
@@ -442,10 +442,12 @@ class TransitionGraph:
             )
         )
 
-        graph_styles = self.render.graph_style()
         graph_body = self.render.body()
 
-        graph_script_src = "https://static.server.retentioneering.com/viztools/graph/rete-graph.js"
+        graph_script_src = (
+            "https://static.server.retentioneering.com/viztools/transition-graph/v3/transition-graph.umd.js?id="
+            + self.generateId()
+        )
 
         init_graph_template = self.render.init(
             **dict(
@@ -476,7 +478,6 @@ class TransitionGraph:
                         width=width,
                         height=height,
                         graph_body=graph_body,
-                        graph_styles=graph_styles,
                         graph_script_src=graph_script_src,
                         init_graph_js=init_graph_template,
                         template="",
@@ -491,7 +492,6 @@ class TransitionGraph:
                 width=width,
                 height=height,
                 graph_body=graph_body,
-                graph_styles=graph_styles,
                 graph_script_src=graph_script_src,
                 init_graph_js=init_graph_js,
                 template=html_template,

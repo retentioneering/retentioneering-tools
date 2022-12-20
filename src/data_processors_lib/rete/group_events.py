@@ -21,13 +21,14 @@ class GroupEventsParams(ParamsModel):
 
 class GroupEvents(DataProcessor):
     """
-    Creates new events which rename input events on the basis of specified conditions
+    Filters specified events from input ``eventstream`` and creates on their basis
+    new synthetic events with new name.
 
     Parameters
     ----------
     event_name : str
         Name of new, grouped event
-    filter : Callable[[DataFrame, EventstreamSchema], Any]
+    func : Callable[[DataFrame, EventstreamSchema], Any]
         Custom function which returns boolean mask the same length as input Eventstream
         If ``True`` - events, that will be grouped
         If ``False`` - events, that will be remained
@@ -38,7 +39,10 @@ class GroupEvents(DataProcessor):
     Returns
     -------
     Eventstream
-        Eventstream with new events and raw events marked ``_deleted=True``
+        ``Eventstream`` with:
+
+         - new synthetic events with ``group_alias`` or custom type
+         - raw events marked ``_deleted=True``
 
         +-----------------+----------------+-------------------+----------------+
         | **event_name**  | **event_type** | **timestamp**     |  **_deleted**  |
@@ -48,13 +52,6 @@ class GroupEvents(DataProcessor):
         | new_event_name  | group_alias    | raw_event         |  False         |
         +-----------------+----------------+-------------------+----------------+
 
-    See Also
-    -------
-    src.graph.p_graph.PGraph
-    src.graph.p_graph.EventsNode
-    src.graph.p_graph.PGraph.add_node
-    :py:func:`src.graph.p_graph.PGraph.combine`
-    DEFAULT_INDEX_ORDER
     """
 
     params: GroupEventsParams
@@ -66,11 +63,11 @@ class GroupEvents(DataProcessor):
         from src.eventstream.eventstream import Eventstream
 
         event_name = self.params.event_name
-        filter_: Callable = self.params.filter
+        func: Callable = self.params.filter
         event_type = self.params.event_type
 
         events = eventstream.to_dataframe()
-        mask = filter_(events, eventstream.schema)
+        mask = func(events, eventstream.schema)
         matched_events = events[mask]
 
         with pd.option_context("mode.chained_assignment", None):

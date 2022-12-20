@@ -14,9 +14,10 @@ from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.tooling.clusters import Clusters
 from src.tooling.cohorts import Cohorts
 from src.tooling.funnel import Funnel
-from src.tooling.sankey import Sankey
 from src.tooling.stattests import TEST_NAMES, StatTests
 from src.tooling.step_matrix import StepMatrix
+from src.tooling.step_sankey import StepSankey
+from src.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
@@ -29,6 +30,7 @@ from .helpers import (
     NegativeTargetHelperMixin,
     NewUsersHelperMixin,
     PositiveTargetHelperMixin,
+    RenameHelperMixin,
     SplitSessionsHelperMixin,
     StartEndHelperMixin,
     TruncatedEventsHelperMixin,
@@ -39,7 +41,6 @@ IndexOrder = List[Optional[str]]
 FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "external"]
 NgramRange = Tuple[int, int]
 Method = Literal["kmeans", "gmm"]
-PlotType = Literal["cluster_bar"]
 
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
@@ -87,6 +88,7 @@ class Eventstream(
     StartEndHelperMixin,
     TruncatedEventsHelperMixin,
     TruncatePathHelperMixin,
+    RenameHelperMixin,
     EventstreamType,
 ):
     schema: EventstreamSchema
@@ -98,8 +100,9 @@ class Eventstream(
     __funnel: Funnel | None = None
     __cohorts: Cohorts | None = None
     __step_matrix: StepMatrix | None = None
-    __sankey: Sankey | None = None
+    __sankey: StepSankey | None = None
     __stattests: StatTests | None = None
+    __timedelta_hist: TimedeltaHist | None = None
 
     def __init__(
         self,
@@ -460,27 +463,18 @@ class Eventstream(
         segments: Collection[Collection[int]] | None = None,
         segment_names: list[str] | None = None,
         sequence: bool = False,
+        show_plot: bool = True,
     ) -> Funnel:
 
         """
-        Creates an object of Class ``Funnel`` and fits it with specified parameters.
-        See :py:func:`src.tooling.funnel.funnel.Funnel.fit`
+        Shows a visualization of the user sequential events represented as a funnel.
 
-        Should be used with:
-
-        - method :py:func:`src.tooling.funnel.funnel.Funnel.plot`
-        - attribute :py:func:`src.tooling.funnel.funnel.Funnel.values`
-
-        As ``plot`` or ``values`` are called without creating variable for Class object
-        ``eventstream.funnel(**params).plot()`` method ``fit()`` will be called each time
-        and recalculation as well.
-
-        See Parameters description :py:func:`src.tooling.funnel.funnel`
+        See parameters description :py:func:`src.tooling.funnel.funnel`
 
         Returns
         -------
         Funnel
-            Fitted ``Funnel`` object.
+            A ``Funnel`` class instance fitted to the given parameters.
 
         """
         self.__funnel = Funnel(
@@ -493,11 +487,16 @@ class Eventstream(
             sequence=sequence,
         )
         self.__funnel.fit()
+        if show_plot:
+            figure = self.__funnel.plot()
+            figure.show()
         return self.__funnel
 
     @property
     def clusters(self) -> Clusters:
         """
+        Returns an instance of ``Cluster`` class to be used for cluster analysis.
+
         See :py:func:`src.tooling.clusters.clusters`
 
         Returns
@@ -519,26 +518,17 @@ class Eventstream(
         thresh: float = 0,
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
+        show_plot: bool = True,
     ) -> StepMatrix:
         """
-        Creates an object of Class ``StepMatrix`` and fits it with specified parameters.
-        See :py:func:`src.tooling.step_matrix.step_matrix.StepMatrix.fit`
+        Shows a heatmap visualization of the step matrix.
 
-        Should be used with:
-
-        - method :py:func:`src.tooling.step_matrix.step_matrix.StepMatrix.plot`
-        - attribute :py:func:`src.tooling.step_matrix.step_matrix.StepMatrix.values`
-
-        As ``plot`` or ``values`` are called without creating variable for Class object
-        ``eventstream.step_matrix(**params).plot()`` method ``fit()`` will be called each time
-        and recalculation as well.
-
-        See Parameters description :py:func:`src.tooling.step_matrix.step_matrix`
+        See parameters description :py:func:`src.tooling.step_matrix.step_matrix`
 
         Returns
         -------
         StepMatrix
-            Fitted ``StepMatrix`` object.
+            A ``StepMatrix`` class instance fitted to the given parameters.
 
         """
         self.__step_matrix = StepMatrix(
@@ -555,39 +545,10 @@ class Eventstream(
         )
 
         self.__step_matrix.fit()
+        if show_plot:
+            figure = self.__step_matrix.plot()
+            figure.show()
         return self.__step_matrix
-
-    def stattests(
-        self,
-        test: TEST_NAMES,
-        groups: Tuple[list[str | int], list[str | int]],
-        objective: Callable = lambda x: x.shape[0],
-        group_names: Tuple[str, str] = ("group_1", "group_2"),
-        alpha: float = 0.05,
-    ) -> StatTests:
-        """
-        Creates an object of Class ``StatTests`` and fits it with specified parameters.
-        See :py:func:`src.tooling.stattests.stattests.StatTests.fit`
-
-        Should be used with:
-
-        - method :py:func:`src.tooling.stattests.stattests.StatTests.plot`
-        - attribute :py:func:`src.tooling.stattests.stattests.StatTests.values`
-
-        As  ``heatmap``, ``lineplot`` and ``values`` are called without creating variable for Class object
-        ``eventstream.stattests(**params).plot()`` - method ``fit()`` will be called each time
-        and recalculation as well.
-
-        Returns
-        -------
-        StatTests
-            Fitted StatTests object.
-        """
-        self.__stattests = StatTests(
-            eventstream=self, groups=groups, objective=objective, test=test, group_names=group_names, alpha=alpha
-        )
-        self.__stattests.fit()
-        return self.__stattests
 
     def step_sankey(
         self,
@@ -598,28 +559,20 @@ class Eventstream(
         autosize: bool = True,
         width: int | None = None,
         height: int | None = None,
-    ) -> Sankey:
+        show_plot: bool = True,
+    ) -> StepSankey:
         """
-        Creates an object of Class ``StepMatrix`` and fits it with specified parameters.
-        See :py:func:`src.tooling.step_sankey.step_sankey.Sankey.fit`
+        Shows a Sankey diagram visualizing the user paths in step-wise manner.
 
-        Should be used with:
-
-        - method :py:func:`src.tooling.step_sankey.step_sankey.Sankey.plot`
-        - attribute :py:func:`src.tooling.step_sankey.step_sankey.Sankey.values`
-
-        As ``plot`` or ``values`` are called without creating variable for Class object
-        ``eventstream.step_sankey(**params).plot()`` method ``fit()`` will be called each time
-        and recalculation as well.
+        See parameters description :py:func:`src.tooling.step_sankey.step_sankey`
 
         Returns
         -------
-        Sankey
-            Fitted ``Sankey`` object.
-
+        StepSankey
+            A ``StepSankey`` class instance fitted to the given parameters.
 
         """
-        self.__sankey = Sankey(
+        self.__sankey = StepSankey(
             eventstream=self,
             max_steps=max_steps,
             thresh=thresh,
@@ -631,6 +584,9 @@ class Eventstream(
         )
 
         self.__sankey.fit()
+        if show_plot:
+            figure = self.__sankey.plot()
+            figure.show()
         return self.__sankey
 
     def cohorts(
@@ -641,31 +597,19 @@ class Eventstream(
         cut_bottom: int = 0,
         cut_right: int = 0,
         cut_diagonal: int = 0,
+        figsize: Tuple[float, float] = (10, 10),
+        show_plot: bool = True,
     ) -> Cohorts:
 
         """
-        Creates an object of Class ``StepMatrix`` and fits it with specified parameters.
-        See :py:func:`src.tooling.cohorts.cohorts.Cohorts.fit`
+        Shows a heatmap visualization of the user appearance grouped by cohorts.
 
-        Should be used with:
-
-        **Methods**
-
-        - :py:func:`src.tooling.cohorts.cohorts.Cohorts.heatmap`
-        - :py:func:`src.tooling.cohorts.cohorts.Cohorts.lineplot`
-
-        Or **attribute**
-
-        - py:func:`src.tooling.cohorts.cohorts.Cohorts.values`
-
-        As  ``heatmap``, ``lineplot`` and ``values`` are called without creating variable for Class object
-        ``eventstream.cohorts(**params).heatmap()`` - method ``fit()`` will be called each time
-        and recalculation as well.
+        See parameters description :py:func:`src.tooling.cohorts.cohorts`
 
         Returns
         -------
         Cohorts
-            Fitted Cohorts object.
+            A ``Cohorts`` class instance fitted to the given parameters.
         """
 
         self.__cohorts = Cohorts(
@@ -679,4 +623,76 @@ class Eventstream(
         )
 
         self.__cohorts.fit()
+        if show_plot:
+            self.__cohorts.heatmap(figsize)
         return self.__cohorts
+
+    def stattest(
+        self,
+        test: TEST_NAMES,
+        groups: Tuple[list[str | int], list[str | int]],
+        function: Callable,
+        group_names: Tuple[str, str] = ("group_1", "group_2"),
+        alpha: float = 0.05,
+    ) -> StatTests:
+        """
+        Determines the statistical difference between the metric values in two user groups.
+
+        See parameters description :py:func:`src.tooling.stattests.stattests`
+
+        Returns
+        -------
+        StatTests
+            A ``StatTest`` class instance fitted to the given parameters.
+        """
+        self.__stattests = StatTests(
+            eventstream=self, groups=groups, func=function, test=test, group_names=group_names, alpha=alpha
+        )
+        self.__stattests.fit()
+        values = self.__stattests.values
+        str_template = "{0} (mean ± SD): {1:.3f} ± {2:.3f}, n = {3}"
+
+        print(
+            str_template.format(
+                values["group_one_name"], values["group_one_mean"], values["group_one_std"], values["group_one_size"]
+            )
+        )
+        print(
+            str_template.format(
+                values["group_two_name"], values["group_two_mean"], values["group_two_std"], values["group_two_size"]
+            )
+        )
+        print(
+            "'{0}' is greater than '{1}' with P-value: {2:.5f}".format(
+                values["greatest_group_name"], values["least_group_name"], values["p_val"]
+            )
+        )
+        print("power of the test: {0:.2f}%".format(100 * values["power_estimated"]))
+
+        return self.__stattests
+
+    def timedelta_hist(
+        self,
+        event_pair: Optional[Tuple[str, str] | List[str]] = None,
+        only_adjacent_event_pairs: bool = True,
+        weight_col: Optional[str] = None,
+        aggregation: Optional[AGGREGATION_NAMES] = None,
+        timedelta_unit: DATETIME_UNITS = "s",
+        log_scale: bool = False,
+        lower_cutoff_quantile: Optional[float] = None,
+        upper_cutoff_quantile: Optional[float] = None,
+        bins: int = 20,
+    ) -> TimedeltaHist:
+        self.__timedelta_hist = TimedeltaHist(
+            eventstream=self,
+            event_pair=event_pair,
+            only_adjacent_event_pairs=only_adjacent_event_pairs,
+            aggregation=aggregation,
+            weight_col=weight_col,
+            timedelta_unit=timedelta_unit,
+            log_scale=log_scale,
+            lower_cutoff_quantile=lower_cutoff_quantile,
+            upper_cutoff_quantile=upper_cutoff_quantile,
+            bins=bins,
+        )
+        return self.__timedelta_hist

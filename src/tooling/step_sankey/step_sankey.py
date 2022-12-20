@@ -6,19 +6,20 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
+from pydantic import ValidationError
 
 from src.eventstream.types import EventstreamType
 
 
-class Sankey:
+class StepSankey:
     """
-    Class for visualization of user's paths in step-wise manner using sankey diagram.
+    A class for the visualization of user paths in step-wise manner using Sankey diagram.
 
     Parameters
     ----------
     eventstream : EventstreamType
     max_steps : int, default 10
-        Maximum number of steps in trajectories to include.
+        Maximum number of steps in trajectories to include. Should be > 1.
     thresh : float | int, default 0.05
         Used to remove rare events from the plot. An event is collapsed to ``thresholded_N`` artificial event if
         its maximum frequency across all the steps is less than or equal to ``thresh``. The frequency is considered
@@ -39,6 +40,10 @@ class Sankey:
         Plot's width (in px). See :plotly_width:`plotly documentation<>`
     height : int, optional
         Plot's height (in px). See :plotly_height:`plotly documentation<>`
+    Raises
+    ------
+    ValueError
+        If ``max_steps`` parameter is <= 1.
 
 
     See Also
@@ -63,6 +68,7 @@ class Sankey:
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
         self.event_index_col = self.__eventstream.schema.event_index
+
         self.max_steps = max_steps
         self.thresh = thresh
         self.sorting = sorting
@@ -75,6 +81,8 @@ class Sankey:
         self.data: pd.DataFrame = pd.DataFrame()
         self.data_grp_links: pd.DataFrame = pd.DataFrame()
         self.data_for_plot: dict = {}
+        if max_steps <= 1:
+            raise ValueError("max_steps parameter must be > 1!")
 
     @staticmethod
     def _make_color(
@@ -531,11 +539,9 @@ class Sankey:
 
     def fit(self) -> None:
         """
-        Calculates values for sankey plot.
-        Result of calculation could be presented using:
-
-        - :py:func:`values`
-        - :py:func:`plot`
+        Calculates the sankey diagram internal values with the defined parameters.
+        Applying ``fit`` method is mandatory for the following usage
+        of any visualization or descriptive ``StepSankey`` methods.
 
         """
         data = self.__eventstream.to_dataframe().copy()[
@@ -547,12 +553,12 @@ class Sankey:
 
     def plot(self) -> go.Figure:
         """
-        Creates sankey interactive plot.
+        Creates a Sankey interactive plot base on the calculated values.
         Should be used after :py:func:`fit`.
 
         Returns
         -------
-        go.Figure
+        plotly.graph_objects.Figure
 
         """
         figure = self._render_plot(self.data_for_plot, self.data_grp_nodes)
@@ -561,15 +567,32 @@ class Sankey:
     @property
     def values(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Creates two pd.DataFrames on the base of calculated values.
-
-        1. Info about nodes on each step.
-        2. Info about edges.
+        Returns two pd.DataFrames which the Sankey diagram is based on.
 
         Should be used after :py:func:`fit`.
 
         Returns
         -------
         tuple[pd.DataFrame, pd.DataFrame]
+            1. Contains the nodes of the diagram.
+            2. Contains the edges of the diagram.
+
         """
         return self.data_grp_nodes, self.data_grp_links
+
+    @property
+    def params(self) -> dict:
+        """
+        Returns the parameters used for the last fitting.
+        Should be used after :py:func:`fit`.
+
+        """
+        return {
+            "max_steps": self.max_steps,
+            "thresh": self.thresh,
+            "sorting": self.sorting,
+            "target": self.target,
+            "autosize": self.autosize,
+            "width": self.width,
+            "height": self.height,
+        }

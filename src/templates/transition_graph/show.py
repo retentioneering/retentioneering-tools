@@ -15,14 +15,14 @@ class TransitionGraphRenderer:
 
         if any("retentioneering-tools-new-arch/examples" in x for x in sys.path):
             self.__environment = Environment(
-                loader=FileSystemLoader("../src/templates/translition_graph"),
+                loader=FileSystemLoader("../src/templates/transition_graph"),
                 autoescape=False,
                 trim_blocks=True,
                 lstrip_blocks=True,
             )
         else:
             self.__environment = Environment(
-                loader=FileSystemLoader("src/templates/translition_graph"),
+                loader=FileSystemLoader("src/templates/transition_graph"),
                 autoescape=False,
                 trim_blocks=True,
                 lstrip_blocks=True,
@@ -44,8 +44,3 @@ class TransitionGraphRenderer:
 
     def inner_iframe(self, **kwargs: Any) -> str:
         return self.__inner_iframe.render(**kwargs)
-
-    def graph_style(self) -> str:
-        from .graph_style import style
-
-        return style

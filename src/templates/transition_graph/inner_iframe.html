@@ -1,0 +1,54 @@
+<iframe id="{{ id }}" src="about:blank" width="{{ width }}" height="{{ height }}"
+        onload="window.reteLoadedIframes = window.reteLoadedIframes || []; window.reteLoadedIframes.push('{{ id }}')">
+</iframe>
+
+<script>
+  (function() {
+    console.info('Initialize graph IFRAME')
+
+    const iframe = document.getElementById('{{ id }}')
+    const iframeLoaded = window.reteLoadedIframes && window.reteLoadedIframes.includes('{{ id }}')
+
+    const init = () => {
+      console.info('Graph IFRAME loaded')
+
+      const iframeDocument = document.getElementById('{{ id }}').contentDocument
+
+      iframeDocument.body.innerHTML = '{{ graph_body }}'
+
+      const graphScript = iframeDocument.createElement('script')
+
+      graphScript.src = `{{ graph_script_src }}`
+
+      graphScript.addEventListener('load', () => {
+        console.info('JavaScript library loaded')
+
+        const initGraph = iframeDocument.createElement('script')
+
+        initGraph.innerHTML = `{{ init_graph_js }}`
+        iframeDocument.body.appendChild(initGraph)
+      })
+
+      iframeDocument.head.appendChild(graphScript)
+      iframeDocument.body.dataset.templateId = '{{ id }}_template'
+
+      console.info('Graph IFRAME initialized')
+    }
+
+    console.log(`Graph IFRAME loaded: ` + iframeLoaded)
+
+    if (iframeLoaded) {
+      init()
+      return
+    }
+
+    iframe.onload = () => {
+      init()
+      window.reteLoadedIframes.push('{{ id }}')
+    }
+  })()
+</script>
+
+<template id="{{ id }}_template">
+    {{ template }}
+</template>

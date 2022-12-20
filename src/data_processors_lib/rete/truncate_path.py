@@ -24,7 +24,8 @@ class TruncatePathParams(ParamsModel):
 
 class TruncatePath(DataProcessor):
     """
-    Truncates each user's path on the base of specified event and selected parameters
+    Filters events that will be deleted from each user's path
+    on the base of specified event and selected parameters.
 
     Parameters
     ----------
@@ -36,7 +37,7 @@ class TruncatePath(DataProcessor):
         This parameter is necessary when specified event occurs more than once in one user's path.
         ``first`` - before first occurrence of the specified event the user's path will be dropped.
         ``last`` - before last occurrence of the specified event the user's path will be dropped.
-    occurrence_after : {"first", "last""}, default="first"
+    occurrence_after : {"first", "last"}, default="first"
         The same behavior as in the 'occurrence_before', but for the other part of the user path.
     shift_before : int,  default=0
         Sets the number of steps by which truncate point is shifted from the selected event.
@@ -45,9 +46,15 @@ class TruncatePath(DataProcessor):
     shift_after : int,  default=0
         The same behavior as in the ``shift_before``, but for the other part of the user path.
 
+    Returns
+    -------
+    Eventstream
+        ``Eventstream`` with events that should be deleted from input ``eventstream``.
+
+
     Notes
     -----
-    Step - is the group of events in user path with the same timestamp
+    ``Step`` - is the group of events in user path with the same timestamp
     If user path doesn't contain events from ``drop_before`` and ``drop_after`` parameters - than its
     path does not change.
 

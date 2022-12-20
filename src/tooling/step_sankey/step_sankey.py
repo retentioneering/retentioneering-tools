@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
+from pydantic import ValidationError
 
 from src.eventstream.types import EventstreamType
 
@@ -18,7 +19,7 @@ class StepSankey:
     ----------
     eventstream : EventstreamType
     max_steps : int, default 10
-        Maximum number of steps in trajectories to include.
+        Maximum number of steps in trajectories to include. Should be > 1.
     thresh : float | int, default 0.05
         Used to remove rare events from the plot. An event is collapsed to ``thresholded_N`` artificial event if
         its maximum frequency across all the steps is less than or equal to ``thresh``. The frequency is considered
@@ -39,6 +40,10 @@ class StepSankey:
         Plot's width (in px). See :plotly_width:`plotly documentation<>`
     height : int, optional
         Plot's height (in px). See :plotly_height:`plotly documentation<>`
+    Raises
+    ------
+    ValueError
+        If ``max_steps`` parameter is <= 1.
 
 
     See Also
@@ -63,6 +68,7 @@ class StepSankey:
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
         self.event_index_col = self.__eventstream.schema.event_index
+
         self.max_steps = max_steps
         self.thresh = thresh
         self.sorting = sorting
@@ -75,6 +81,8 @@ class StepSankey:
         self.data: pd.DataFrame = pd.DataFrame()
         self.data_grp_links: pd.DataFrame = pd.DataFrame()
         self.data_for_plot: dict = {}
+        if max_steps <= 1:
+            raise ValueError("max_steps parameter must be > 1!")
 
     @staticmethod
     def _make_color(

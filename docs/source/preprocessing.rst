@@ -1,133 +1,18 @@
-
 Preprocessing
 =============
+.. toctree::
+   :caption: Preprocessing
+   :maxdepth: 2
 
-Eventstream
------------
-
-start_end_events
-~~~~~~~~~~~~~~~~
-.. automodule::
-    :members:
-
-new_users
-~~~~~~~~~~~~
-.. automodule::
-    :members:
-
-lost_users
-~~~~~~~~~~~~
-.. automodule::
-    :members:
-
-truncated_events
-~~~~~~~~~~~~~~~~
-.. automodule::
-    :members:
-
-positive_target
-~~~~~~~~~~~~~~~
-.. automodule::
-    :members:
-    :private-members:
-
-negative_target
-~~~~~~~~~~~~~~~
-.. automodule::
-    :members:
-    :private-members:
-
-split_sessions
-~~~~~~~~~~~~~~
-.. automodule::
-    :members:
-
-group_events
-~~~~~~~~~~~~
-.. automodule::
-    :members:
-
-collapse_loops
-~~~~~~~~~~~~~~
-.. automodule::
-    :members:
-
-filter_events
-~~~~~~~~~~~~~
-.. automodule::
-    :members:
-
-truncate_path
-~~~~~~~~~~~~~
-.. automodule::
-    :members:
-
-delete_users_by_path_length
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule::
-    :members:
-
-
-Data processors
---------------
-start_end_events
-~~~~~~~~~~~~~~~~
-.. automodule:: src.data_processors_lib.rete.start_end_events
-    :members:
-
-new_users
-~~~~~~~~~
-.. automodule:: src.data_processors_lib.rete.new_users
-    :members:
-
-lost_users
-~~~~~~~~~~
-.. automodule:: src.data_processors_lib.rete.lost_users
-    :members:
-
-truncated_events
-~~~~~~~~~~~~~~~~
-.. automodule:: src.data_processors_lib.rete.truncated_events
-    :members:
-
-positive_target
-~~~~~~~~~~~~~~~
-.. automodule:: src.data_processors_lib.rete.positive_target
-    :members:
-    :private-members:
-
-negative_target
-~~~~~~~~~~~~~~~
-.. automodule:: src.data_processors_lib.rete.negative_target
-    :members:
-    :private-members:
-
-split_sessions
-~~~~~~~~~~~~~~
-.. automodule:: src.data_processors_lib.rete.split_sessions
-    :members:
-
-group_events
-~~~~~~~~~~~~
-.. automodule:: src.data_processors_lib.rete.group_events
-    :members:
-
-collapse_loops
-~~~~~~~~~~~~~~
-.. automodule:: src.data_processors_lib.rete.collapse_loops
-    :members:
-
-filter_events
-~~~~~~~~~~~~~
-.. automodule:: src.data_processors_lib.rete.filter_events
-    :members:
-
-truncate_path
-~~~~~~~~~~~~~
-.. automodule:: src.data_processors_lib.rete.truncate_path
-    :members:
-
-delete_users_by_path_length
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: src.data_processors_lib.rete.delete_users_by_path_length
-    :members:
+    Start End Events <DataProcessors/add_start_end.rst>
+    New users <DataProcessors/add_new_users.rst>
+    Lost Users <DataProcessors/lost_users.rst>
+    Negative Target <DataProcessors/negative_target.rst>
+    Positive Target <DataProcessors/positive_target.rst>
+    Truncated Events <DataProcessors/truncated_events.rst>
+    Filter Events <DataProcessors/filter.rst>
+    Group Events <DataProcessors/group.rst>
+    Collapse loops <DataProcessors/collapse_loops.rst>
+    Split Sessions <DataProcessors/split_sessions.rst>
+    Delete Users By Path Length <DataProcessors/delete_users.rst>
+    Truncate Path <DataProcessors/truncate_path.rst>

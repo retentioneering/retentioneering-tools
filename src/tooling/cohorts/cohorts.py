@@ -164,7 +164,8 @@ class Cohorts:
         data = data.merge(cohorts_list, on="CohortGroupNum", how="left")
 
         data["CohortPeriod"] = (
-            (data["OrderPeriod"].astype(int) - (data["CohortGroup"].astype(int) + converter_freq_)) // converter_freq_
+            (data["OrderPeriod"].astype(int) - (data["CohortGroup"].astype(int) + converter_freq_))  # type: ignore
+            // converter_freq_
         ) + 1
 
         return data

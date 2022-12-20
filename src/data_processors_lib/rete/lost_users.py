@@ -29,7 +29,8 @@ class LostUsersParams(ParamsModel):
 class LostUsersEvents(DataProcessor):
     """
     Creates one of synthetic events in each user's path:
-    ``lost_user`` or ``absent_user``
+    ``lost_user`` or ``absent_user``.
+
 
     Parameters
     ----------
@@ -41,14 +42,14 @@ class LostUsersEvents(DataProcessor):
         will be added.
         For other user's paths will be added new synthetic event - ``absent_user``
 
-    lost_users_list : List[int] or List[str], optional
+    lost_users_list : list of int or list of str, optional
         If the `list of user_ids` is given new synthetic event - ``lost_user`` will be added to each user from the list.
         For other user's paths will be added new synthetic event - ``absent_user``
 
     Returns
     -------
     Eventstream
-        Eventstream with new synthetic events - one for each user:
+        ``Eventstream`` with new synthetic events only - one for each user:
 
         +-----------------+-----------------+------------------+
         | **event_name**  | **event_type**  |  **timestamp**   |

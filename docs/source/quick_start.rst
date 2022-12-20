@@ -195,7 +195,7 @@ page :red:`set the link`.
                 frameborder="0"
                 allowfullscreen
             ></iframe>
-|
+
 
 Note, that the graph is interactive and you can move the graph nodes by
 clicking them and interactively zoom-in / zoom-out the graph layout.

@@ -48,7 +48,7 @@ class StatTests:
         Test the null hypothesis that 2 independent samples are drawn from the same
         distribution. Supported tests are:
 
-        - ``mannwhitneyu`` see :plotly_autosize:`scipy documentation<>`
+        - ``mannwhitneyu`` see :mannwhitneyu:`scipy documentation<>`
         - ``ttest`` see :statsmodel_ttest:`statsmodels documentation<>`
         - ``ztest`` see :statsmodel_ztest:`statsmodels documentation<>`
         - ``ks_2samp`` see :scipy_ks:`scipy documentation<>`

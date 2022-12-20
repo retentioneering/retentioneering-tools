@@ -79,12 +79,12 @@ class Clusters:
             ``gmm`` stands for Gaussian mixture model. https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html
         n_clusters: int
             The expected number of clusters to be passed to a clustering algorithm.
-        feature_type : {"tfidf", "count", "frequency", "binary", "markov"}, default="tfidf"
+        feature_type : {"tfidf", "count", "frequency", "binary", "markov"}
             See :py:func:`extract_features`
-        ngram_range : Tuple(int, int), default=(1, 1)
+        ngram_range : Tuple(int, int)
             See :py:func:`extract_features`
-        vector: pd.Dataframe, default=None
-            ``pd.Dataframe`` representing custom vectorization of the user paths. The index corresponds to user_ids,
+        vector: pd.DataFrame
+            ``pd.DataFrame`` representing custom vectorization of the user paths. The index corresponds to user_ids,
             the columns are vectorized values of the path.
         """
 
@@ -327,21 +327,22 @@ class Clusters:
 
         Parameters
         ----------
-        feature_type : {"tfidf", "count", "frequency", "binary", "markov"}
+        feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}
 
             - ``tfidf`` see details in :sklearn_tfidf:`sklearn documentation<>`
             - ``count`` see details in :sklearn_countvec:`sklearn documentation<>`
             - ``frequency`` an alias for ``count``.
-            - ``binary`` uses the same CountVectorizer as ``count``, but with ``binary=True`` flag.
-            - | ``markov`` available for bigrams only. The vectorized values are
-              | associated with the transition probabilities in the corresponding Markov chain.
-              | For Example: Assume a users has the following transitions: ``A->B`` 3 times,
-              | ``A->C`` 1 time, and ``A->A`` 4 times. Then the vectorized values for these bigrams are
-              | 3/8, 1/8, 1/2.
-        ngram_range: Tuple(int, int), default=None
+            - ``binary`` 1 if a user had given n-gram at least once and 0 otherwise.
+            - | ``markov`` available for bigrams only. For a given bigram ``(A, B)`` the vectorized values
+              | are the user's transition probabilities from ``A`` to ``B``.
+            - | ``time`` Associated with unigrams only. The total number of the seconds spent from the
+              | beginning of a user's path until a given event.
+            - | ``time_fraction`` the same as ``time`` but divided by the total length of the user's trajectory
+              | (in seconds).
+        ngram_range: Tuple(int, int)
             The lower and upper boundary of the range of n-values for different word n-grams or char n-grams to be
             extracted. For example, ngram_range=(1, 1) means only single events, (1, 2) means single events
-            and bigrams. Doesn't work for ``markov`` feature_type.
+            and bigrams. Ignored for ``markov``, ``time``, ``time_fraction`` feature types.
 
         Returns
         -------

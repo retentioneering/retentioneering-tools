@@ -14,7 +14,9 @@ Clusters
 - How to fit clusters to an eventstream.
 - How to analyze the fitted clusters.
 
-All the examples below assume that you have a prepared eventstream ready for clustering analysis. Also, we assume that the initial eventstream is assigned as ``stream`` and the Clusters instance as ``clusters`` variable. simple_shop dataset is used as a data source.
+All the examples below assume that you have a prepared eventstream ready for clustering analysis. Also, we assume that the initial eventstream is assigned as ``stream`` variable and the Clusters instance as ``clusters`` variable. simple_shop dataset is used as a data source.
+
+The constructor of ``Clusters`` accepts a single parameter -- ``Eventstream``'s instance.
 
 .. code:: ipython3
 
@@ -30,13 +32,30 @@ All the examples below assume that you have a prepared eventstream ready for clu
 Fitting clusters
 ----------------
 
-The major method which build the clusters is ``fit()``. Basically, we need to make two decisions:
+The major method which build the clusters is ``fit()``. Basically, the fitting procedure consists of two steps:
 
-- What features should be included into the feature space,
+- Converting user paths to vectors (vectorization),
 
-- What clustering algorithm to use.
+- Applying a clustering algorithm.
 
-The procedure which converts a sequence of some events to a vector of feature values is called *vectorization*. We use a standard approach came from NLP area splitting the sequence into *n-grams* -- subsequences of length *n*. ``ngram_range`` parameter regulates the range of *n*. I.e. ``(ngram_range)=(1, 2)`` means that subsequences of length 1 and 2 will be used.
+For vectorization we use a standard approach came from NLP area . We split the sequence into *n-grams* -- subsequences of length *n*. ``ngram_range`` parameter controls the range of *n*. I.e. ``(ngram_range)=(1, 2)`` means that subsequences of length 1 and 2 will be used in the vectorization.
+
+The next vectorization question is how to treat the frequencies of a n-gram occurrences. There are many alternatives for this purpose included to ``feature_type`` parameter:
+
+- ``count``: the number of occurrences of a given n-gram.
+
+- ``binary``: 1 if a user had a given event at least once and 0 otherwise.
+
+- ``frequency``: the same as ``count`` but normalized to the total number of the events in the user's trajectory.
+
+- ``tfidf``: term frequency–inverse document frequency. The event's frequency in the user's trajectory but weighted to the overall frequency of the same event in the whole eventstream.
+
+- ``markov``: available for bigrams only (``ngram_range=(2, 2)``). For a given bigram ``(A, B)`` the vectorized values are the user's transition probabilities from ``A`` to ``B``. An example. Assume a user has the following transitions: ``A->B`` 3 times, ``A->C`` 1 time, and ``A->A`` 4 times. Then the total number of the events the user has is 8, and the ``markov``-vectorized values for these bigrams are 3/8, 1/8, 1/2.
+
+- ``time``: associated with unigrams only (``ngram_range=(1, 1)``). The total number of the seconds spent from the beginning of a user's path until a given event.
+
+- ``time_fraction``: the same as ``time`` but divided by the total length of the user's trajectory (in seconds).
+
 
 As for the clustering algorithms, ``method`` parameter stands for this choice. So far two algorithms are supported: ``kmeans`` and ``gmm``. Under the hood sklearn implementation of these algorithms is used.
     `https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans <https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans>`_
@@ -94,7 +113,7 @@ Visualizing methods
 
 plot()
 ^^^^^^
-This is a basic method which allows to visualize a couple of important indicators: cluster size and
+This basic method allows to visualize a couple of important indicators: cluster size and
 the conversion rate within a cluster. The latter is associated with ``targets`` parameters.
 
 .. code:: ipython3

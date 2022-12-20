@@ -7,7 +7,7 @@ class TestListDataprocessors:
     def test_list_dataprocessors(self) -> None:
         correct_data = [
             {
-                "name": "MergeProcessor",
+                "name": "RenameProcessor",
                 "params": [{"default": None, "name": "rules", "optional": False, "widget": "array"}],
             },
             {

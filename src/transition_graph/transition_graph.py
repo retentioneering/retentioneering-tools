@@ -13,7 +13,7 @@ from src.backend import ServerManager
 from src.edgelist import Edgelist
 from src.eventstream.types import EventstreamType
 from src.nodelist import Nodelist
-from src.templates.translition_graph import TransitionGraphRenderer
+from src.templates.transition_graph import TransitionGraphRenderer
 
 from .typing import (
     GraphSettings,
@@ -108,7 +108,6 @@ class TransitionGraph:
     ) -> dict[str, MutableSequence[PreparedNode] | MutableSequence[PreparedLink] | list]:
         try:
             self._recalculate(rename_rules=rename_rules)
-            self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
 
             nodes, nodes_set = self._prepare_nodes(
                 nodelist=self.nodelist.nodelist_df,
@@ -127,16 +126,16 @@ class TransitionGraph:
             raise ValueError("error! %s" % err)
 
     def _recalculate(self, rename_rules: list[RenameRule]) -> None:
-        renamed_df = self.eventstream.merge(rules=rename_rules).to_dataframe()
-        self.nodelist.calculate_nodelist(data=renamed_df)
-
-        curr_nodelist = self.nodelist.nodelist_df
+        eventstream = self.eventstream.copy()
+        renamed_df = eventstream.rename(rules=rename_rules).to_dataframe()
 
         # save norm type
         recalculated_nodelist = self.nodelist.calculate_nodelist(data=renamed_df)
         recalculated_edgelist = self.edgelist.calculate_edgelist(
             norm_type=self.norm_type, custom_cols=self.custom_cols, data=renamed_df
         )
+
+        curr_nodelist = self.nodelist.nodelist_df
 
         self.nodelist.nodelist_df = curr_nodelist.apply(
             lambda x: self._update_node_after_recalc(recalculated_nodelist, x), axis=1
@@ -508,10 +507,12 @@ class TransitionGraph:
             )
         )
 
-        graph_styles = self.render.graph_style()
         graph_body = self.render.body()
 
-        graph_script_src = "https://static.server.retentioneering.com/viztools/graph/rete-graph.js"
+        graph_script_src = (
+            "https://static.server.retentioneering.com/viztools/transition-graph/v3/transition-graph.umd.js?id="
+            + self.generateId()
+        )
 
         init_graph_template = self.render.init(
             **dict(
@@ -542,7 +543,6 @@ class TransitionGraph:
                         width=width,
                         height=height,
                         graph_body=graph_body,
-                        graph_styles=graph_styles,
                         graph_script_src=graph_script_src,
                         init_graph_js=init_graph_template,
                         template="",
@@ -557,7 +557,6 @@ class TransitionGraph:
                 width=width,
                 height=height,
                 graph_body=graph_body,
-                graph_styles=graph_styles,
                 graph_script_src=graph_script_src,
                 init_graph_js=init_graph_js,
                 template=html_template,

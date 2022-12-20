@@ -28,7 +28,6 @@ class TruncatedEventsParams(ParamsModel):
 
 
 class TruncatedEvents(DataProcessor):
-
     """
     Creates new synthetic event(s) for each user on the base of timeout threshold:
     ``truncated_left`` and ``truncated_right``
@@ -50,7 +49,7 @@ class TruncatedEvents(DataProcessor):
     Returns
     -------
     Eventstream
-        Eventstream with new synthetic events for users whose paths satisfy the specified cut-offs
+        ``Eventstream`` with new synthetic events only, for users whose paths satisfy the specified cut-offs.
 
         +-------------------+-------------------+------------------+
         | **event_name**    | **event_type**    |  **timestamp**   |
@@ -61,7 +60,7 @@ class TruncatedEvents(DataProcessor):
         +-------------------+-------------------+------------------+
 
     See Also
-    -------
+    --------
     Hists
 
     Raises

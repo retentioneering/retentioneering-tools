@@ -1,7 +1,7 @@
 .. title:: Retentioneering Tools
 
 Contents
-======================================
+========
 .. toctree::
     :caption: Getting started:
     :maxdepth: 2
@@ -24,10 +24,9 @@ Contents
 
 .. toctree::
     :caption: API Reference:
-    :maxdepth: 2
+    :maxdepth: 5
 
     API Reference <api_reference.rst>
-    Github <>
 
 
 `back to github. <https://github.com/retentioneering/retentioneering-tools>`__

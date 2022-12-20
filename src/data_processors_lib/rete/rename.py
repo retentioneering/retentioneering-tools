@@ -14,7 +14,7 @@ class RenameRule:
     child_events: List[str]
 
 
-class MergeParams(ParamsModel):
+class RenameParams(ParamsModel):
     """
     [{
         "group_name": "some_group",
@@ -25,10 +25,10 @@ class MergeParams(ParamsModel):
     rules: List[RenameRule]
 
 
-class MergeProcessor(DataProcessor):
-    params: MergeParams
+class RenameProcessor(DataProcessor):
+    params: RenameParams
 
-    def __init__(self, params: MergeParams):
+    def __init__(self, params: RenameParams):
         super().__init__(params=params)
 
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
@@ -45,8 +45,8 @@ class MergeProcessor(DataProcessor):
 
         affected_names = list(rename_rules.keys())
         affected_events = events[events[event_col].isin(affected_names)]
-        affected_events = affected_events.replace(rename_rules)
-        affected_events["ref"] = affected_events[eventstream.schema.event_id]
+        affected_events = events.replace(rename_rules)
+        affected_events["ref"] = events[eventstream.schema.event_id]
 
         eventstream = Eventstream(
             raw_data_schema=eventstream.schema.to_raw_data_schema(),

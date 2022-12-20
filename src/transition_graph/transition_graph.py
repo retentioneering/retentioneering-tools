@@ -40,13 +40,16 @@ class TransitionGraph:
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
         graph_settings: GraphSettings,
-        positive_target_event: str | None = None,
-        negative_target_event: str | None = None,
-        source_event: str | None = None,
-        edgelist_default_col: str = "edge_weight",
-        nodelist_default_col: str = "number_of_events",
         norm_type: NormType = None,
+        weights: MutableMapping[str, str] | None = None,
+        targets: MutableMapping[str, str | None] | None = None,
+        thresholds: dict[str, Threshold] | None = None,
     ) -> None:
+        self.weights = weights if weights else {"edges": "edge_weight", "nodes": "number_of_events"}
+        self.targets = targets if targets else {"positive": None, "negative": None, "source": None}
+        self.thresholds = (
+            thresholds if thresholds else {"edges": {"count_of_events": 0.03}, "nodes": {"count_of_events": 0.03}}
+        )
         sm = ServerManager()
         self.env = sm.check_env()
         self.server = sm.create_server()
@@ -68,10 +71,7 @@ class TransitionGraph:
         self.id_col = self.eventstream.schema.event_id
         self.custom_cols = self.eventstream.schema.custom_cols
 
-        self.positive_target_event = positive_target_event
-        self.negative_target_event = negative_target_event
-        self.source_event = source_event
-        self.nodelist_default_col = nodelist_default_col
+        self.nodelist_default_col = self.weights["nodes"]
         self.norm_type = norm_type
 
         self.nodelist: Nodelist = Nodelist(
@@ -83,7 +83,7 @@ class TransitionGraph:
 
         self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
 
-        self.edgelist_default_col = edgelist_default_col
+        self.edgelist_default_col = self.weights["edges"]
         self.edgelist: Edgelist = Edgelist(
             event_col=self.event_col,
             time_col=self.event_time_col,
@@ -132,19 +132,13 @@ class TransitionGraph:
         self.nodelist.nodelist_df.set_index("index")
         self.nodelist.nodelist_df = self.nodelist.nodelist_df.drop(columns=["index"])
 
-    def _make_node_params(self, targets: MutableMapping[str, str] | None = None) -> MutableMapping[str, str]:
+    def _make_node_params(
+        self, targets: MutableMapping[str, str | None] | None = None
+    ) -> MutableMapping[str, str | None] | dict[str, str | None]:
         if targets is not None:
             return targets
         else:
-            node_params: NodeParams = {}
-            if self.positive_target_event is not None:
-                node_params[self.positive_target_event] = "nice"
-            if self.negative_target_event is not None:
-                node_params[self.negative_target_event] = "bad"
-            if self.source_event is not None:
-                node_params[self.source_event] = "source"
-
-            return node_params
+            return self.targets  # type: ignore
 
     def _get_norm_link_threshold(self, links_threshold: Threshold | None = None) -> dict[str, float] | None:
         nodelist_default_col = self.nodelist_default_col
@@ -380,9 +374,10 @@ class TransitionGraph:
 
     def plot_graph(
         self,
-        nodes_threshold: Threshold | None,
-        links_threshold: Threshold | None,
-        targets: MutableMapping[str, str] | None,
+        thresholds: dict[str, Threshold] | None = None,
+        targets: MutableMapping[str, str | None] | None = None,
+        weights: MutableMapping[str, str] | None = None,
+        norm_type: NormType | None = None,
         width: int = 960,
         height: int = 900,
         weight_template: str | None = None,
@@ -392,6 +387,11 @@ class TransitionGraph:
         show_all_edges_for_targets: bool | None = None,
         show_nodes_without_links: bool | None = None,
     ) -> None:
+        if targets:
+            self.targets = targets
+        if weights:
+            self.weights = weights
+        self.norm_type = norm_type
 
         settings = self._apply_settings(
             show_weights=show_weights,
@@ -401,18 +401,14 @@ class TransitionGraph:
             show_nodes_without_links=show_nodes_without_links,
         )
 
+        nodes_threshold = thresholds.get("nodes", self.thresholds.get("nodes", None)) if thresholds else None
+        links_threshold = thresholds.get("edges", self.thresholds.get("edges", None)) if thresholds else None
+
+        self.edgelist.calculate_edgelist(
+            norm_type=self.norm_type, custom_cols=self.custom_cols, data=self.eventstream.to_dataframe()
+        )
         node_params = self._make_node_params(targets)
 
-        norm_nodes_threshold = (
-            settings["nodes_threshold"]
-            if "nodes_threshold" in settings
-            else self._get_norm_node_threshold(nodes_threshold)
-        )
-        norm_links_threshold = (
-            settings["links_threshold"]
-            if "links_threshold" in settings
-            else self._get_norm_link_threshold(links_threshold)
-        )
         cols = self.__get_nodelist_cols()
 
         nodes, links = self._make_template_data(
@@ -436,8 +432,8 @@ class TransitionGraph:
                 show_nodes_names=self._get_option("show_nodes_names", settings),
                 show_all_edges_for_targets=self._get_option("show_all_edges_for_targets", settings),
                 show_nodes_without_links=self._get_option("show_nodes_without_links", settings),
-                nodes_threshold=self._to_js_val(norm_nodes_threshold),
-                links_threshold=self._to_js_val(norm_links_threshold),
+                nodes_threshold=self._to_js_val(nodes_threshold),
+                links_threshold=self._to_js_val(links_threshold),
                 weight_template=weight_template if weight_template is not None else "undefined",
             )
         )
@@ -497,7 +493,8 @@ class TransitionGraph:
                 template=html_template,
             )
         )
-
+        display(self._to_js_val(links_threshold))
+        display(self._to_js_val(nodes_threshold))
         display(HTML(html))
 
     def _get_option(self, name: str, settings: dict[str, Any]) -> str:

@@ -113,6 +113,7 @@ class Clusters:
         """
         Plots the distribution of ``top_n`` events in cluster ``cluster_id1`` compared vs
         the entire dataset or vs cluster ``cluster_id2``.
+
         Parameters
         ----------
         cluster_id1: int
@@ -131,6 +132,7 @@ class Clusters:
             List of event names always to include for comparison regardless
             of the parameter top_n value. Target events will appear in the same
             order as specified.
+
         Returns
         -------
         Plots the distribution barchart.
@@ -384,23 +386,26 @@ class Clusters:
 
         Parameters
         ----------
-        method : {'umap', 'tsne'} (optional, default 'tsne')
+        method : {'umap', 'tsne'}, default 'tsne'
             Type of manifold transformation.
-        plot_type : {'targets', 'clusters'} (optional, default 'clusters')
+        plot_type : {'targets', 'clusters'}, default 'clusters'
             Type of color-coding used for projection visualization:
+
                 - 'clusters': colors trajectories with different colors depending on cluster number.
                 - 'targets': color trajectories based on reach to any event provided in 'targets' parameter.
+
                 Must provide 'targets' parameter in this case.
-        targets : list or tuple of str (optional, default  ())
+        targets : list or tuple of str, optional
             Vector of event_names as str. If user reach any of the specified events, the dot corresponding
             to this user will be highlighted as converted on the resulting projection plot
-        plot_type : {'targets', 'clusters', None} (optional, default None)
+        plot_type : {'targets', 'clusters', None}, default None
             Type of color-coding used for projection visualization:
 
             - ``clusters`` colors trajectories with different colors depending on cluster number.
             - | ``targets`` colors trajectories based on reach to any event provided in 'targets' parameter.
               | Must provide ``targets`` parameter in this case.
             - If ``None``, then only calculates TSNE without visualization.
+
         **kwargs : optional
             Parameters for ``sklearn.manifold.TSNE()`` and ``umap.UMAP()``
 

@@ -28,7 +28,7 @@ step-matrix
 
 sankey
 ~~~~~~
-.. automodule:: src.tooling.sankey.sankey
+.. automodule:: src.tooling.step_sankey.step_sankey
     :members:
 
 cohorts

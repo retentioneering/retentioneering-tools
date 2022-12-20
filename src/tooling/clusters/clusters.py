@@ -111,8 +111,8 @@ class Clusters:
         targets: list[str] | None = None,
     ) -> go.Figure:
         """
-        Plots the distribution of ``top_n`` events in cluster ``cluster_id1`` compared vs
-        the entire dataset or vs cluster ``cluster_id2``.
+        Plots a bar plot illustrating the distribution of ``top_n`` events in cluster ``cluster_id1``
+        compared vs the entire dataset or vs cluster ``cluster_id2``.
         Parameters
         ----------
         cluster_id1: int
@@ -127,7 +127,7 @@ class Clusters:
             datasets. If ``weight_col`` is specified, percentages of users
             (column name specified by parameter ``weight_col``) who have particular
             events will be plotted.
-        targets: list of str (optional, default [])
+        targets: list of str (optional, default None)
             List of event names always to include for comparison regardless
             of the parameter top_n value. Target events will appear in the same
             order as specified.
@@ -203,6 +203,16 @@ class Clusters:
         return figure
 
     def plot(self, targets: list[str] | list[list[str]] | None = None) -> go.Figure:
+        """
+        Plots a bar plot illustrating the clusters sizes and the conversion rates of
+        the ``targets`` events within the clusters.
+
+        Parameters
+        ----------
+        targets: list of str (optional, default None)
+            Represents the list of the target events
+
+        """
         if not self.__is_fitted:
             raise RuntimeError("Clusters are not defined. Consider to run 'fit()' or `set_clusters()` methods.")
 
@@ -256,7 +266,7 @@ class Clusters:
         -------
         pd.DataFrame
         """
-        if not self.__features:
+        if self.__features is None:
             raise RuntimeError("The features are not calculated. Consider to run 'extract_features()` method.")
 
         return self.__features
@@ -268,7 +278,7 @@ class Clusters:
         Parameters
         ----------
         user_clusters: pd.Series
-        Series index corresponds to user_ids. Values are cluster_ids.
+            Series index corresponds to user_ids. Values are cluster_ids.
         """
         self._user_clusters = user_clusters
         self.__cluster_result = user_clusters.copy()
@@ -380,7 +390,7 @@ class Clusters:
         **kwargs: Any,
     ) -> go.Figure:
         """
-        Does the dimension reduction of user trajectories and draws projection plane.
+        Shows the clusters projection on a plane applying dimension reduction techniques.
 
         Parameters
         ----------

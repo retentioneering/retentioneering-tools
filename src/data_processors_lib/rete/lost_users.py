@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
-from src.constants import DATETIME_UNITS
+from src.constants import DATETIME_UNITS, DATETIME_UNITS_LIST
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
@@ -21,8 +21,8 @@ class LostUsersParams(ParamsModel):
     lost_users_list: Optional[Union[List[int], List[str]]]
 
     _widgets = {
-        "lost_cutoff": ReteTimeWidget,
-        "lost_users_list": ListOfInt,
+        "lost_cutoff": ReteTimeWidget(),
+        "lost_users_list": ListOfInt(),
     }
 
 

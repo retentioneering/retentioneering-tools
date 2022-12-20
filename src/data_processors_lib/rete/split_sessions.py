@@ -5,7 +5,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 
-from src.constants import DATETIME_UNITS
+from src.constants import DATETIME_UNITS, DATETIME_UNITS_LIST
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.schema import EventstreamSchema
 from src.eventstream.types import EventstreamType
@@ -23,7 +23,7 @@ class SplitSessionsParams(ParamsModel):
     mark_truncated: bool = False
     session_col: str = "session_id"
 
-    _widgets = {"session_cutoff": ReteTimeWidget}
+    _widgets = {"session_cutoff": ReteTimeWidget()}
 
 
 class SplitSessions(DataProcessor):

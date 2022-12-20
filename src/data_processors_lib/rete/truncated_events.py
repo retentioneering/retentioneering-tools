@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
-from src.constants import DATETIME_UNITS
+from src.constants import DATETIME_UNITS, DATETIME_UNITS_LIST
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
@@ -22,8 +22,8 @@ class TruncatedEventsParams(ParamsModel):
     right_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
 
     _widgets = {
-        "left_truncated_cutoff": ReteTimeWidget,
-        "right_truncated_cutoff": ReteTimeWidget,
+        "left_truncated_cutoff": ReteTimeWidget(),
+        "right_truncated_cutoff": ReteTimeWidget(),
     }
 
 

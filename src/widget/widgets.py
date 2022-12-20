@@ -5,11 +5,11 @@ import types
 from dataclasses import dataclass, field
 from typing import Any, Callable, Type, Union
 
+from src.constants import DATETIME_UNITS_LIST
+
 
 @dataclass
 class StringWidget:
-    name: str
-    optional: bool
     widget: str = "string"
 
     @classmethod
@@ -19,8 +19,6 @@ class StringWidget:
 
 @dataclass
 class IntegerWidget:
-    name: str
-    optional: bool
     widget: str = "integer"
 
     @classmethod
@@ -30,9 +28,7 @@ class IntegerWidget:
 
 @dataclass
 class EnumWidget:
-    name: str
-    optional: bool
-    params: list[str]
+    params: list[str] | None = None
     default: str = ""
     widget: str = "enum"
 
@@ -42,21 +38,7 @@ class EnumWidget:
 
 
 @dataclass
-class ArrayWidget:
-    name: str
-    optional: bool
-    default: str = ""
-    widget: str = "array"
-
-    @classmethod
-    def from_dict(cls: Type[ArrayWidget], **kwargs: Any) -> "ArrayWidget":
-        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
-
-
-@dataclass
 class BooleanWidget:
-    name: str
-    optional: bool
     widget: str = "boolean"
 
     @classmethod
@@ -66,11 +48,10 @@ class BooleanWidget:
 
 @dataclass
 class ReteTimeWidget:
-    name: str
-    optional: bool
     widget: str = "time_widget"
-
-    params: list = field(default_factory=list)
+    params: list = field(
+        default_factory=lambda: [{"widget": "float"}, {"params": DATETIME_UNITS_LIST, "widget": "enum"}]
+    )
 
     @classmethod
     def from_dict(cls: Type[ReteTimeWidget], **kwargs: Any) -> "ReteTimeWidget":
@@ -98,8 +79,6 @@ class ReteTimeWidget:
 
 @dataclass
 class ReteFunction:
-    name: str
-    optional: bool
     widget: str = "function"
     _source_code: str = ""
 
@@ -126,8 +105,6 @@ class ReteFunction:
 
 @dataclass
 class ListOfInt:
-    name: str
-    optional: bool
     widget: str = "list_of_int"
 
     @classmethod
@@ -146,9 +123,8 @@ class ListOfInt:
 @dataclass
 class ListOfIntNewUsers:
     # @TODO: remove this widget and make his functionality in ListOfInt. Vladimir Makhanov
-    name: str
-    optional: bool
-    params: list[str]
+    name: str = "new_users_list"
+    params: dict[str, str] | None = field(default_factory=lambda: {"disable_value": "all"})
     widget: str = "list_of_int"
 
     @classmethod
@@ -167,8 +143,6 @@ class ListOfIntNewUsers:
 
 @dataclass
 class ListOfString:
-    name: str
-    optional: bool
     widget: str = "list_of_string"
 
     @classmethod
@@ -188,18 +162,16 @@ WIDGET_TYPE = Union[
     Type[StringWidget],
     Type[IntegerWidget],
     Type[EnumWidget],
-    Type[ArrayWidget],
     Type[BooleanWidget],
     Type[ReteTimeWidget],
 ]
-WIDGET = Union[StringWidget, IntegerWidget, EnumWidget, ArrayWidget, BooleanWidget, ReteTimeWidget]
+WIDGET = Union[StringWidget, IntegerWidget, EnumWidget, BooleanWidget, ReteTimeWidget]
 
 # @TODO: make default dict. Vladimir Makhanov
 WIDGET_MAPPING: dict[str, WIDGET_TYPE] = {
     "string": StringWidget,
     "integer": IntegerWidget,
     "enum": EnumWidget,
-    "array": ArrayWidget,
     "boolean": BooleanWidget,
     "tuple": ReteTimeWidget,
 }

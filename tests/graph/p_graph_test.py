@@ -53,6 +53,16 @@ class EventstreamTest(unittest.TestCase):
 
         return PGraph(source_stream=source)
 
+    def test_export_stub(self) -> None:
+
+        params = StubPProcessorParams(a="a")
+        processor = StubProcessorPGraph(params=params)
+
+        assert {
+            "name": "StubProcessorPGraph",
+            "params": [{"name": "A", "params": ["a", "b"], "default": None, "widget": "enum", "optional": False}],
+        } == processor.get_view()
+
     def test_create_graph(self):
         source = Eventstream(
             raw_data_schema=self.__raw_data_schema, raw_data=self.__raw_data, schema=EventstreamSchema()

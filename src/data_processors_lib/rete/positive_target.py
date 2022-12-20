@@ -49,7 +49,7 @@ class PositiveTargetParams(ParamsModel):
     positive_target_events: List[str]
     positive_function: Callable = _default_func_positive
 
-    _widgets = {"positive_function": ReteFunction, "positive_target_events": ListOfString}
+    _widgets = {"positive_function": ReteFunction(), "positive_target_events": ListOfString()}
 
 
 class PositiveTarget(DataProcessor):

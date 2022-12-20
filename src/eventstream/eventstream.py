@@ -366,7 +366,7 @@ class Eventstream(
 
     def index_events(self) -> None:
         """
-        Sort and index eventstream using DEFAULT_INDEX_ORDER
+        Sort and index eventstream using DEFAULT_INDEX_ORDER.
 
         Returns
         -------

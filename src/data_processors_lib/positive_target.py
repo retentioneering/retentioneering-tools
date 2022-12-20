@@ -10,7 +10,7 @@ from src.params_model import ParamsModel
 from src.widget.widgets import ListOfString, ReteFunction
 
 
-def _default_func_positive(eventstream: EventstreamType, positive_target_events: list[str]) -> pd.DataFrame:
+def _default_func(eventstream: EventstreamType, positive_target_events: list[str]) -> pd.DataFrame:
     """
     Filters rows with target events from the input eventstream.
 
@@ -47,9 +47,9 @@ class PositiveTargetParams(ParamsModel):
     """
 
     positive_target_events: List[str]
-    positive_function: Callable = _default_func_positive
+    func: Callable = _default_func
 
-    _widgets = {"positive_function": ReteFunction, "positive_target_events": ListOfString}
+    _widgets = {"func": ReteFunction, "positive_target_events": ListOfString}
 
 
 class PositiveTarget(DataProcessor):
@@ -63,7 +63,7 @@ class PositiveTarget(DataProcessor):
         Each event from that list is associated with a conversional user behaviour in the product.
         If there are several target events in user path - the event with minimum timestamp taken.
 
-    positive_function : Callable, default _default_func_positive
+    func : Callable, default _default_func
         Filter rows with target events from the input eventstream.
 
     Returns
@@ -90,7 +90,7 @@ class PositiveTarget(DataProcessor):
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 
-        positive_function: Callable[[EventstreamType, list[str]], pd.DataFrame] = self.params.positive_function
+        positive_function: Callable[[EventstreamType, list[str]], pd.DataFrame] = self.params.func
         positive_target_events = self.params.positive_target_events
 
         positive_targets = positive_function(eventstream, positive_target_events)

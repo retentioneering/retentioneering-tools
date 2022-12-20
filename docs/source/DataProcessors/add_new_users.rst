@@ -3,7 +3,7 @@ Add New Users
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.rete.new_users
+.. automodule:: src.data_processors_lib.new_users
     :members:
 
 Eventstream

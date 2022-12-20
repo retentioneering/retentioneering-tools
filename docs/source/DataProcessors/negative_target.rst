@@ -3,7 +3,7 @@ Negative Target
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.rete.negative_target
+.. automodule:: src.data_processors_lib.negative_target
     :members:
 
 Eventstream

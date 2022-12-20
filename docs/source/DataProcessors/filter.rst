@@ -3,7 +3,7 @@ Filter Events
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.rete.filter_events
+.. automodule:: src.data_processors_lib.filter_events
     :members:
 
 Eventstream

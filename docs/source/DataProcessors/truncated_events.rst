@@ -3,7 +3,7 @@ Truncated Events
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.rete.truncated_events
+.. automodule:: src.data_processors_lib.truncated_events
     :members:
 
 

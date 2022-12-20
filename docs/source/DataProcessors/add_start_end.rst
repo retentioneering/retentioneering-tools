@@ -3,7 +3,7 @@ Start End Events
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.rete.start_end_events
+.. automodule:: src.data_processors_lib.start_end_events
     :members:
 
 Eventstream

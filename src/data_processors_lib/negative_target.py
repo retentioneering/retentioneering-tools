@@ -13,7 +13,7 @@ from src.widget.widgets import ListOfString, ReteFunction
 EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchema], Any]
 
 
-def _default_func_negative(eventstream: EventstreamType, negative_target_events: List[str]) -> pd.DataFrame:
+def _default_func(eventstream: EventstreamType, negative_target_events: List[str]) -> pd.DataFrame:
     """
     Filters rows with target events from the input eventstream.
 
@@ -50,9 +50,9 @@ class NegativeTargetParams(ParamsModel):
     """
 
     negative_target_events: List[str]
-    negative_function: Callable = _default_func_negative
+    func: Callable = _default_func
 
-    _widgets = {"negative_function": ReteFunction, "negative_target_events": ListOfString}
+    _widgets = {"func": ReteFunction, "negative_target_events": ListOfString}
 
 
 class NegativeTarget(DataProcessor):
@@ -66,7 +66,7 @@ class NegativeTarget(DataProcessor):
         Each event from that list is associated with the negative user behaviour in the product.
         If there are several target events in user path - the event with minimum timestamp is taken.
 
-    negative_function : Callable, default _default_func_negative
+    func : Callable, default _default_func
         Filter rows with target events from the input eventstream.
 
     Returns
@@ -93,7 +93,7 @@ class NegativeTarget(DataProcessor):
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 
-        negative_function = self.params.negative_function
+        negative_function = self.params.func
         negative_target_events = self.params.negative_target_events
 
         negative_targets = negative_function(eventstream, negative_target_events)

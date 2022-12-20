@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib.rete import TruncatePath, TruncatePathParams
+from src.data_processors_lib import TruncatePath, TruncatePathParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase

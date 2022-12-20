@@ -3,7 +3,7 @@ Split Sessions
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.rete.split_sessions
+.. automodule:: src.data_processors_lib.split_sessions
     :members:
 
 Eventstream

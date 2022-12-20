@@ -23,11 +23,11 @@ class DeleteUsersByPathLengthHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.rete.delete_users_by_path_length.DeleteUsersByPathLengthParams`
+        :py:func:`src.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLengthParams`
         """
 
         # avoid circular import
-        from src.data_processors_lib.rete import (
+        from src.data_processors_lib import (
             DeleteUsersByPathLength,
             DeleteUsersByPathLengthParams,
         )

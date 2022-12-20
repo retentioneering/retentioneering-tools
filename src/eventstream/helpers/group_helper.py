@@ -28,12 +28,12 @@ class GroupHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.rete.group_events.GroupEvents`
+        :py:func:`src.data_processors_lib.group_events.GroupEvents`
 
         """
 
         # avoid circular import
-        from src.data_processors_lib.rete import GroupEvents, GroupEventsParams
+        from src.data_processors_lib import GroupEvents, GroupEventsParams
         from src.graph.nodes import EventsNode
         from src.graph.p_graph import PGraph
 

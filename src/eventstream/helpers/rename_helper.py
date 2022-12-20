@@ -3,8 +3,8 @@ from __future__ import annotations
 from ..types import EventstreamType
 
 
-class MergeHelperMixin:
-    def merge(self, rules: list[dict[str, str]]) -> EventstreamType:
+class RenameHelperMixin:
+    def rename(self, rules: list[dict[str, str]]) -> EventstreamType:
 
         # avoid circular import
         from src.data_processors_lib.rete import RenameParams, RenameProcessor

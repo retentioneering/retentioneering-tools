@@ -53,7 +53,7 @@ class TestRename:
 
         source = Eventstream(simple_dataset_for_rename)
 
-        actual = source.merge(rules=simple_rules)
+        actual = source.rename(rules=simple_rules)
         result_df = actual.to_dataframe()[simple_expected_results.columns].reset_index(drop=True)
         assert (
             pd.testing.assert_frame_equal(result_df[simple_expected_results.columns], simple_expected_results) is None

@@ -22,7 +22,7 @@ def _default_func_negative(eventstream: EventstreamType, negative_target_events:
     eventstream : Eventstream
         Source eventstream or output from previous nodes.
 
-    negative_target_events : List[str]
+    negative_target_events : list of str
         Each event from that list is associated with the bad result (scenario)
         of user's behaviour (experience) in the product.
         If there are several target events in user path - the event with minimum timestamp is taken.
@@ -57,22 +57,22 @@ class NegativeTargetParams(ParamsModel):
 
 class NegativeTarget(DataProcessor):
     """
-    Creates new synthetic events for users who have had specified event(s) in their paths:
-    ``negative_target``
+    Creates new synthetic events in each user's path who have specified event(s):
+    ``negative_target_RAW_EVENT_NAME``
 
     Parameters
     ----------
-    negative_target_events : List[str]
+    negative_target_events : list of str
         Each event from that list is associated with the negative user behaviour in the product.
         If there are several target events in user path - the event with minimum timestamp is taken.
 
-    negative_function : Callable, default=_default_func_negative
+    negative_function : Callable, default _default_func_negative
         Filter rows with target events from the input eventstream.
 
     Returns
     -------
     Eventstream
-        Eventstream with new synthetic events for users who fit the conditions.
+        ``Eventstream`` with new synthetic events only added to users who fit the conditions.
 
         +--------------------------------+-----------------+-----------------------------+
         | **event_name**                 | **event_type**  | **timestamp**               |

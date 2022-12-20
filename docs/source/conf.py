@@ -1,11 +1,3 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# This file only contains a selection of the most common options. For a full
-# list see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
-
-# -- Path setup --------------------------------------------------------------
-
 import datetime
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -85,7 +77,8 @@ extlinks = {
         None,
     ),
     "numpy_timedelta_link": (
-        "https://numpy.org/doc/stable/reference/arrays.datetime.html#:~:text=There%20are%20two,numbers%20of%20days./%s",
+        "https://numpy.org/doc/stable/reference/arrays.datetime.html"
+        "#:~:text=There%%20are%%20two,numbers%%20of%%20days%s",
         None,
     ),
     "plotly_autosize": ("https://plotly.com/python/reference/layout/#layout-autosize/%s", None),

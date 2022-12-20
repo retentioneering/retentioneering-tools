@@ -2,8 +2,8 @@ Funnel
 =================
 
 This notebook can be found :download:`here <_static/examples/funnel_tutorial.ipynb>`
-or open directly in `google colab <https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/examples/funnel_tutorial.ipynb>`__.
-
+or open directly in ``google colab``
+@TODO добавить ссылку на colab. dpanina
 Install retentioneering if running from google.colab or for the first
 time:
 

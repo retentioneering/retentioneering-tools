@@ -22,16 +22,16 @@ class NewUsersParams(ParamsModel):
 class NewUsersEvents(DataProcessor):
     """
     Creates new synthetic event for each user:
-    ``new_user`` or ``existing_user``
+    ``new_user`` or ``existing_user``.
 
     Parameters
     ----------
-    new_users_list : List[int], List[str] or `all`
+    new_users_list : list of int or list of str or `all`
 
         If the `list of user_ids` is given - ``new_user`` event will be created for each user from the list.
         Event ``existing_user`` will be added to the rest of the users.
 
-        If ``all`` - ``new_user`` synthetic event will be created for all users from the input Eventstream
+        If ``all`` - ``new_user`` synthetic event will be created for all users from the input ``eventstream``.
 
     Returns
     -------
@@ -46,8 +46,6 @@ class NewUsersEvents(DataProcessor):
         | existing_user   | existing_user   | first_event            |
         +-----------------+-----------------+------------------------+
 
-    See Also
-    -------
 
     """
 

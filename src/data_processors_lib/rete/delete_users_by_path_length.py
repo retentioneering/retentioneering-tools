@@ -26,7 +26,7 @@ class DeleteUsersByPathLengthParams(ParamsModel):
 
 class DeleteUsersByPathLength(DataProcessor):
     """
-    Deletes entire user paths if they are shorter than the specified number of events or cut_off.
+    Filters entire user's paths if they are shorter than the specified number of events or cut_off.
 
     Parameters
     ----------
@@ -39,7 +39,7 @@ class DeleteUsersByPathLength(DataProcessor):
     Returns
     -------
     Eventstream
-        Eventstream with events that should be deleted from input Eventstream.
+        ``Eventstream`` with events that should be deleted from input ``eventstream`` marked ``_deleted=True``.
 
     Raises
     ------

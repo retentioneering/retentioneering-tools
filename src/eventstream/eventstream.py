@@ -30,6 +30,7 @@ from .helpers import (
     NegativeTargetHelperMixin,
     NewUsersHelperMixin,
     PositiveTargetHelperMixin,
+    RenameHelperMixin,
     SplitSessionsHelperMixin,
     StartEndHelperMixin,
     TruncatedEventsHelperMixin,
@@ -88,6 +89,7 @@ class Eventstream(
     StartEndHelperMixin,
     TruncatedEventsHelperMixin,
     TruncatePathHelperMixin,
+    RenameHelperMixin,
     EventstreamType,
 ):
     schema: EventstreamSchema

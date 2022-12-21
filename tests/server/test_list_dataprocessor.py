@@ -109,7 +109,7 @@ class TestListDataprocessors:
                     },
                     {
                         "_source_code": "",
-                        "name": "func",
+                        "name": "negative_function",
                         "optional": True,
                         "widget": "function",
                     },
@@ -138,7 +138,7 @@ class TestListDataprocessors:
                     },
                     {
                         "_source_code": "",
-                        "name": "func",
+                        "name": "positive_function",
                         "optional": True,
                         "widget": "function",
                     },

@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from src import datasets
-from src.data_processors_lib.rete import (
+from src.data_processors_lib import (
     FilterEvents,
     FilterEventsParams,
     StartEndEvents,
@@ -32,7 +32,7 @@ def stream_simple_shop():
     test_stream = datasets.load_simple_shop()
     graph = PGraph(source_stream=test_stream)
     node1 = EventsNode(StartEndEvents(params=StartEndEventsParams(**{})))
-    node2 = EventsNode(FilterEvents(params=FilterEventsParams(filter=remove_start)))
+    node2 = EventsNode(FilterEvents(params=FilterEventsParams(func=remove_start)))
 
     graph.add_node(node=node1, parents=[graph.root])
     graph.add_node(node=node2, parents=[node1])

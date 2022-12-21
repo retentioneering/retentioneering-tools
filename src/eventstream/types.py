@@ -30,7 +30,7 @@ class EventstreamType(Protocol):
         ...
 
     @abstractmethod
-    def join_eventstream(self, eventstream: EventstreamType) -> None:
+    def _join_eventstream(self, eventstream: EventstreamType) -> None:
         ...
 
     @abstractmethod
@@ -38,11 +38,11 @@ class EventstreamType(Protocol):
         ...
 
     @abstractmethod
-    def get_raw_cols(self) -> list[str]:
+    def _get_raw_cols(self) -> list[str]:
         ...
 
     @abstractmethod
-    def get_relation_cols(self) -> list[str]:
+    def _get_relation_cols(self) -> list[str]:
         ...
 
     @abstractmethod
@@ -50,7 +50,7 @@ class EventstreamType(Protocol):
         ...
 
     @abstractmethod
-    def soft_delete(self, events: pd.DataFrame) -> None:
+    def _soft_delete(self, events: pd.DataFrame) -> None:
         ...
 
 

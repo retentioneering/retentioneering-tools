@@ -723,22 +723,16 @@ class Eventstream(
         width: int = 800,
         height: int = 500,
     ) -> TransitionGraph:
-        thresholds = (
-            thresholds if thresholds else {"edges": {"count_of_events": 0.03}, "nodes": {"count_of_events": 0.03}}
+        self.__transition_graph = TransitionGraph(
+            eventstream=self,
+            graph_settings={},  # type: ignore
+            norm_type=norm_type,
+            weights=weights,
+            thresholds=thresholds,
+            targets=targets,
         )
-        weights = weights if weights else {"edges": "count_of_events", "nodes": "count_of_events"}
-        targets = targets if targets else {"positive": None, "negative": None, "source": None}
-        if self.__transition_graph is None:
-            self.__transition_graph = TransitionGraph(
-                eventstream=self,
-                graph_settings={},  # type: ignore
-                norm_type=norm_type,
-                weights=weights,
-                thresholds=thresholds,
-                targets=targets,
-            )
         self.__transition_graph.plot_graph(
-            thresholds=thresholds, targets=targets, weights=weights, width=width, height=height
+            thresholds=thresholds, targets=targets, weights=weights, width=width, height=height, norm_type=norm_type
         )
         return self.__transition_graph
 

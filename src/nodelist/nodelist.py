@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+from IPython.core.display_functions import display
 
 
 class Nodelist:
@@ -16,7 +17,6 @@ class Nodelist:
     def calculate_nodelist(self, data: pd.DataFrame) -> None:
 
         res: pd.DataFrame = data.groupby([self.event_col])[self.time_col].count().reset_index()
-
         if self.custom_cols is not None:
             for weight_col in self.custom_cols:
                 by_col = data.groupby([self.event_col])[weight_col].nunique().reset_index()

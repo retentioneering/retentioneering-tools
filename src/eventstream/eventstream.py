@@ -835,3 +835,13 @@ class Eventstream(
             self.__p_graph = PGraph(source_stream=self)
         self.__p_graph.display()
         return self.__p_graph
+
+    def transition_adjacency(self, weights: list[str] | None = None, norm_type: NormType = None) -> pd.DataFrame:
+        if self.__transition_graph is None:
+            self.__transition_graph = TransitionGraph(
+                eventstream=self,
+                graph_settings={},  # type: ignore
+                norm_type=norm_type,
+            )
+        adjacency = self.__transition_graph.get_adjacency(weights=weights, norm_type=norm_type)
+        return adjacency

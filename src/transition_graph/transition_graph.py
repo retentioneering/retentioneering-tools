@@ -45,6 +45,8 @@ class TransitionGraph:
         targets: MutableMapping[str, str | None] | None = None,
         thresholds: dict[str, Threshold] | None = None,
     ) -> None:
+        from src.eventstream.eventstream import Eventstream
+
         self.weights = weights if weights else {"edges": "edge_weight", "nodes": "number_of_events"}
         self.targets = targets if targets else {"positive": None, "negative": None, "source": None}
         self.thresholds = (
@@ -58,7 +60,7 @@ class TransitionGraph:
         self.server.register_action("save-layout", lambda n: self._on_layout_request(n))
         self.server.register_action("save-graph-settings", lambda n: self._on_graph_settings_request(n))
 
-        self.eventstream = eventstream
+        self.eventstream: Eventstream = eventstream  # type: ignore
 
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
@@ -72,7 +74,7 @@ class TransitionGraph:
         self.custom_cols = self.eventstream.schema.custom_cols
 
         self.nodelist_default_col = self.weights["nodes"]
-        self.norm_type = norm_type
+        self.norm_type: NormType | None = norm_type
 
         self.nodelist: Nodelist = Nodelist(
             nodelist_default_col=self.nodelist_default_col,
@@ -105,7 +107,6 @@ class TransitionGraph:
         self.layout = pd.DataFrame(layout_nodes)
 
     def _on_nodelist_updated(self, nodes: MutableSequence[PreparedNode]) -> None:
-        self.updates = nodes
         # prepare data, map cols
         mapped_nodes = []
         for i, n in enumerate(nodes):
@@ -498,3 +499,10 @@ class TransitionGraph:
         if name in settings:
             return self._to_json(settings[name])
         return "undefined"
+
+    def get_adjacency(self, weights: list[str] | None, norm_type: NormType) -> pd.DataFrame:
+        self.edgelist.calculate_edgelist(data=self.eventstream.to_dataframe(), norm_type=norm_type, custom_cols=weights)
+        edgelist: pd.DataFrame = self.edgelist.edgelist_df
+        graph = nx.DiGraph()
+        graph.add_weighted_edges_from(edgelist.values)
+        return nx.to_pandas_adjacency(G=graph)

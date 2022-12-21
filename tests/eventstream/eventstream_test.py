@@ -255,14 +255,25 @@ class TestEventstream:
         assert math.isclose(user_sample_size, user_cnt_sampled_2, abs_tol=0.51)
 
     def test_describe(self, test_stream_1):
-        test_stream_1.describe()
-        test_stream_1.describe_events()
-
-        assert True
+        try:
+            test_stream_1.describe()
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.describe. " + str(e))
+        try:
+            test_stream_1.describe_events()
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.describe_events. " + str(e))
 
     def test_hists(self, test_stream_1):
-        test_stream_1.timedelta_hist()
-        test_stream_1.user_lifetime_hist()
-        test_stream_1.event_timestamp_hist()
-
-        assert True
+        try:
+            test_stream_1.timedelta_hist()
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.timedelta_hist. " + str(e))
+        try:
+            test_stream_1.user_lifetime_hist()
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.user_lifetime_hist. " + str(e))
+        try:
+            test_stream_1.event_timestamp_hist()
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.event_timestamp_hist. " + str(e))

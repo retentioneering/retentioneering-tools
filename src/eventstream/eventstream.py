@@ -898,10 +898,7 @@ class Eventstream(
         )
 
         df = self.to_dataframe()
-        if session_col in df.columns:
-            has_sessions = True
-        else:
-            has_sessions = False
+        has_sessions = session_col in df.columns
 
         df = df[df[type_col].isin(["raw"])]
         max_time = df[time_col].max()
@@ -1008,7 +1005,9 @@ class Eventstream(
             print(f"\033[1mMax session events:\033[0m {max_length}")
             print()
 
-    def describe_events(self, session_col: Optional[str] = "session_id") -> None:
+    def describe_events(
+        self, session_col: Optional[str] = "session_id", event_list: Optional[List[str] | str] = "all"
+    ) -> None:
         """
         Displays general information on the eventstream events. If session_col is present in eventstream columns, also
         outputs session statistics, assuming session_col is the session identifier column.
@@ -1021,6 +1020,12 @@ class Eventstream(
         )
 
         df = self.to_dataframe()
+
+        if event_list != "all":
+            if type(event_list) is not list:
+                raise TypeError('event_list should either be "all", or a list of event names to include.')
+            df = df[df[event_col].isin(event_list)]
+
         if session_col in df.columns:
             has_sessions = True
         else:

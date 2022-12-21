@@ -9,7 +9,7 @@ Contents
 
     What is Retentioneering? <what_is_rete.rst>
     Quick start <quick_start.rst>
-    Eventstream basic concept <eventstream_user_guide.rst>
+    Eventstream concept <eventstream_concept.rst>
 
 .. toctree::
     :caption: User Guide:

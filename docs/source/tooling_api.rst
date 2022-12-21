@@ -1,42 +1,13 @@
 Core Tools
 ==========
+.. toctree::
+   :caption: Preprocessing
+   :maxdepth: 2
 
-Eventstream tooling methods
----------------------------
-
-.. autoclass:: src.eventstream.eventstream.Eventstream
-    :noindex:
-    :members: funnel, clusters, step_matrix, step_sankey, cohorts
-
-
-Tooling
--------
-funnel
-~~~~~~
-.. automodule:: src.tooling.funnel.funnel
-    :members:
-
-clusters
-~~~~~~~~
-.. automodule:: src.tooling.clusters.clusters
-    :members:
-
-step-matrix
-~~~~~~~~~~~
-.. automodule:: src.tooling.step_matrix.step_matrix
-    :members:
-
-sankey
-~~~~~~
-.. automodule:: src.tooling.step_sankey.step_sankey
-    :members:
-
-cohorts
-~~~~~~~
-.. automodule:: src.tooling.cohorts.cohorts
-    :members:
-
-stattests
-~~~~~~~~~
-.. automodule:: src.tooling.stattests.stattests
-    :members:
+    Funnel <tooling/funnel.rst>
+    Cohorts <tooling/cohorts.rst>
+    Clusters <tooling/clusters.rst>
+    Step Matrix <tooling/step_matrix.rst>
+    Step Sankey <tooling/step_sankey.rst>
+    Transition Graph <tooling/transition_graph.rst>
+    Stattests <tooling/stattests.rst>

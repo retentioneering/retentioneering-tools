@@ -4,4 +4,4 @@
    :caption: Tutorials:
    :maxdepth: 2
 
-    Preprocessing scenario <preprocessing_tutorial.rst>
+    Preprocessing scenario <tutorials/preprocessing_tutorial.rst>

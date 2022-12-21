@@ -1,18 +1,10 @@
-Eventstream
-===========
+.. title:: Eventstream API
 
-Eventstream Core
-----------------
-.. autoclass:: src.eventstream.eventstream.Eventstream
-    :noindex:
-    :members: copy, append_eventstream, to_dataframe, index_events, add_custom_col
 
-Schema
-------
-.. autoclass:: src.eventstream.schema.RawDataSchema
-    :members:
+.. toctree::
+   :caption: User Guides:
+   :maxdepth: 2
 
-PGraph
-------
-.. autoclass:: src.graph.p_graph.PGraph
-    :members:
+
+    Eventstream Core <eventstream_api/eventstream_core.rst>
+    Eventstream Descriptive <eventstream_api/eventstream_descriptive.rst>

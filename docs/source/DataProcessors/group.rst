@@ -3,7 +3,7 @@ Group Events
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.rete.group_events
+.. automodule:: src.data_processors_lib.group_events
     :members:
 
 Eventstream

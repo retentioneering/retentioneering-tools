@@ -3,7 +3,7 @@ Truncate Path
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.rete.truncate_path
+.. automodule:: src.data_processors_lib.truncate_path
     :members:
 
 Eventstream

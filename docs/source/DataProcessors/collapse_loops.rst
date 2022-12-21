@@ -3,7 +3,7 @@ Collapse Loops
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.rete.collapse_loops
+.. automodule:: src.data_processors_lib.collapse_loops
     :members:
 
 Eventstream

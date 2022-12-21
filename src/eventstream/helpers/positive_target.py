@@ -22,11 +22,11 @@ class PositiveTargetHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.rete.positive_target.PositiveTarget`
+        :py:func:`src.data_processors_lib.positive_target.PositiveTarget`
 
         """
         # avoid circular import
-        from src.data_processors_lib.rete import PositiveTarget, PositiveTargetParams
+        from src.data_processors_lib import PositiveTarget, PositiveTargetParams
         from src.graph.nodes import EventsNode
         from src.graph.p_graph import PGraph
 

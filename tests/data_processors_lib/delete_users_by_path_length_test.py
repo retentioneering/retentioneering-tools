@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib.rete import (
+from src.data_processors_lib import (
     DeleteUsersByPathLength,
     DeleteUsersByPathLengthParams,
 )

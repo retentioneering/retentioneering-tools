@@ -3,7 +3,7 @@ Lost Users
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.rete.lost_users
+.. automodule:: src.data_processors_lib.lost_users
     :members:
 
 Eventstream

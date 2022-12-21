@@ -15,7 +15,7 @@ class FilterEventsParams(ParamsModel):
 
     """
 
-    filter: Callable[[DataFrame, EventstreamSchema], bool]
+    func: Callable[[DataFrame, EventstreamSchema], bool]
 
 
 class FilterEvents(DataProcessor):
@@ -46,7 +46,7 @@ class FilterEvents(DataProcessor):
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from src.eventstream.eventstream import Eventstream
 
-        func: Callable[[DataFrame, EventstreamSchemaType], bool] = self.params.filter  # type: ignore
+        func: Callable[[DataFrame, EventstreamSchemaType], bool] = self.params.func  # type: ignore
         events: pd.DataFrame = eventstream.to_dataframe()
         mask = func(events, eventstream.schema)
         events_to_delete = events[~mask]

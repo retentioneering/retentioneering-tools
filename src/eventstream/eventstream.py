@@ -7,6 +7,7 @@ from typing import Any, Callable, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from IPython.display import display
 from matplotlib.axes import SubplotBase
 
 from src.constants import DATETIME_UNITS
@@ -908,102 +909,117 @@ class Eventstream(
         print("\033[1mBasic statistics\033[0m")
         print()
 
-        print(f"\033[1mNumber of unique users:\033[0m {df[user_col].nunique()}")
-        print()
-        print(f"\033[1mNumber of unique events:\033[0m {df[event_col].nunique()}")
-        print()
         if has_sessions:
-            print(f"\033[1mNumber of unique sessions:\033[0m {df[session_col].nunique()}")  # type: ignore
-            print()
-        print(f"\033[1mEventstream start:\033[0m {df[time_col].min()}")
-        print()
-        print(f"\033[1mEventstream end:\033[0m {df[time_col].max()}")
-        print()
-        print(f"\033[1mEventstream length:\033[0m {max_time  - min_time}")
-        print()
+            out_df = pd.DataFrame(
+                [
+                    ["unique users", df[user_col].nunique()],
+                    ["unique events", df[event_col].nunique()],
+                    ["unique sessions", df[session_col].nunique()],  # type: ignore
+                    ["eventstream start", df[time_col].min()],
+                    ["eventstream end", df[time_col].max()],
+                    ["eventstream length", max_time - min_time],
+                ],
+                columns=["metric", "value"],
+            ).set_index("metric")
+        else:
+            out_df = pd.DataFrame(
+                [
+                    ["unique users", df[user_col].nunique()],
+                    ["unique events", df[event_col].nunique()],
+                    ["eventstream start", df[time_col].min()],
+                    ["eventstream end", df[time_col].max()],
+                    ["eventstream length", max_time - min_time],
+                ],
+                columns=["metric", "value"],
+            ).set_index("metric")
+        display(out_df)
 
         user_agg = df.groupby(user_col).agg({time_col: ["min", "max"], event_col: ["count"]}).reset_index()
         time_diff_user = user_agg[(time_col, "max")] - user_agg[(time_col, "min")]
-        mean_time = time_diff_user.mean()
-        median_time = time_diff_user.median()
-        std_time = time_diff_user.std()
-        min_length_time = time_diff_user.min()
-        max_length_time = time_diff_user.max()
+        mean_time_user = time_diff_user.mean()
+        median_time_user = time_diff_user.median()
+        std_time_user = time_diff_user.std()
+        min_length_time_user = time_diff_user.min()
+        max_length_time_user = time_diff_user.max()
 
         print("----------------------------------------------------------------------------")
-        print("\033[1mUser path time length\033[0m")
-        print()
-        print(f"\033[1mMean user time, std:\033[0m {mean_time}, {std_time}")
-        print()
-        print(f"\033[1mMedian user time:\033[0m {median_time}")
-        print()
-        print(f"\033[1mMin user time:\033[0m {min_length_time}")
-        print()
-        print(f"\033[1mMax user time:\033[0m {max_length_time}")
-        print()
-
         session_agg = None
         if has_sessions:
             session_agg = df.groupby(session_col).agg({time_col: ["min", "max"], event_col: ["count"]}).reset_index()
             time_diff_session = session_agg[(time_col, "max")] - session_agg[(time_col, "min")]
-            mean_time = time_diff_session.mean()
-            median_time = time_diff_session.median()
-            std_time = time_diff_session.std()
-            min_length_time = time_diff_session.min()
-            max_length_time = time_diff_session.max()
+            mean_time_session = time_diff_session.mean()
+            median_time_session = time_diff_session.median()
+            std_time_session = time_diff_session.std()
+            min_length_time_session = time_diff_session.min()
+            max_length_time_session = time_diff_session.max()
 
-            print("----------------------------------------------------------------------------")
-            print("\033[1mSession time length\033[0m")
-            print()
-            print(f"\033[1mMean session time, std:\033[0m {mean_time}, {std_time}")
-            print()
-            print(f"\033[1mMedian session time:\033[0m {median_time}")
-            print()
-            print(f"\033[1mMin session time:\033[0m {min_length_time}")
-            print()
-            print(f"\033[1mMax session time:\033[0m {max_length_time}")
-            print()
+            print("\033[1mUser path/session time length\033[0m")
+            out_df = pd.DataFrame(
+                [
+                    ["mean time", mean_time_user, mean_time_session],
+                    ["std time", std_time_user, std_time_session],
+                    ["median time", median_time_user, median_time_session],
+                    ["min time", min_length_time_user, min_length_time_session],
+                    ["max time", max_length_time_user, max_length_time_session],
+                ],
+                columns=["metric", "per user path", "per session"],
+            ).set_index("metric")
+        else:
+            print("\033[1mUser path time length\033[0m")
+            out_df = pd.DataFrame(
+                [
+                    ["mean time", mean_time_user],
+                    ["std time", std_time_user],
+                    ["median time", median_time_user],
+                    ["min time", min_length_time_user],
+                    ["max time", max_length_time_user],
+                ],
+                columns=["metric", "per user path"],
+            ).set_index("metric")
+        display(out_df)
 
         # events
-        event_count = user_agg[(event_col, "count")]
-        mean = round(event_count.mean(), 2)  # type: ignore
-        median = event_count.median()
-        std = round(event_count.std(), 2)  # type: ignore
-        min_length = event_count.min()
-        max_length = event_count.max()
+        event_count_user = user_agg[(event_col, "count")]
+        mean_user = round(event_count_user.mean(), 2)  # type: ignore
+        median_user = event_count_user.median()
+        std_user = round(event_count_user.std(), 2)  # type: ignore
+        min_length_user = event_count_user.min()
+        max_length_user = event_count_user.max()
 
         print("----------------------------------------------------------------------------")
-        print("\033[1mNumber of events per user\033[0m")
-        print()
-        print(f"\033[1mMean user events, std:\033[0m {mean}, {std}")
-        print()
-        print(f"\033[1mMedian user events:\033[0m {median}")
-        print()
-        print(f"\033[1mMin user events:\033[0m {min_length}")
-        print()
-        print(f"\033[1mMax user events:\033[0m {max_length}")
-        print()
-
         if has_sessions:
             assert session_agg is not None
-            event_count = session_agg[(event_col, "count")]
-            mean = round(event_count.mean(), 2)  # type: ignore
-            median = event_count.median()
-            std = round(event_count.std(), 2)  # type: ignore
-            min_length = event_count.min()
-            max_length = event_count.max()
+            event_count_session = session_agg[(event_col, "count")]
+            mean_session = round(event_count_session.mean(), 2)  # type: ignore
+            median_session = event_count_session.median()
+            std_session = round(event_count_session.std(), 2)  # type: ignore
+            min_length_session = event_count_session.min()
+            max_length_session = event_count_session.max()
 
-            print("----------------------------------------------------------------------------")
-            print("\033[1mNumber of events per session\033[0m")
-            print()
-            print(f"\033[1mMean session events, std:\033[0m {mean}, {std}")
-            print()
-            print(f"\033[1mMedian session events:\033[0m {median}")
-            print()
-            print(f"\033[1mMin session events:\033[0m {min_length}")
-            print()
-            print(f"\033[1mMax session events:\033[0m {max_length}")
-            print()
+            print("\033[1mNumber of events per user path/session\033[0m")
+            out_df = pd.DataFrame(
+                [
+                    ["mean events", mean_user, mean_session],
+                    ["std events", std_user, std_session],
+                    ["median events", median_user, median_session],
+                    ["min events", min_length_user, min_length_session],
+                    ["max events", max_length_user, max_length_session],
+                ],
+                columns=["metric", "per user path", "per session"],
+            ).set_index("metric")
+        else:
+            print("\033[1mNumber of events per user path\033[0m")
+            out_df = pd.DataFrame(
+                [
+                    ["mean events", mean_user],
+                    ["std events", std_user],
+                    ["median events", median_user],
+                    ["min events", min_length_user],
+                    ["max events", max_length_user],
+                ],
+                columns=["metric", "per user path"],
+            ).set_index("metric")
+        display(out_df)
 
     def describe_events(
         self, session_col: Optional[str] = "session_id", event_list: Optional[List[str] | str] = "all"
@@ -1056,130 +1072,156 @@ class Eventstream(
             print("\033[1mBasic statistics\033[0m")
             print()
 
-            print(f"\033[1mFirst appearance:\033[0m {event_data[time_col].min()}")
-            print()
-            print(f"\033[1mLast appearance:\033[0m {event_data[time_col].max()}")
-            print()
-
             event_share = round(event_data.shape[0] / total_events, 4)
-            print(f"\033[1mNumber of occurrences:\033[0m {event_data.shape[0]}")
-            print()
-            print(f"\033[1mShare of all events:\033[0m {event_share * 100}%")
-            print()
-
             unique_users_event = event_data[user_col].nunique()
             user_event_share = round(unique_users_event / unique_users, 4)
-            print(f"\033[1mNumber of unique users with the event:\033[0m {unique_users_event}")
-            print()
-            print(f"\033[1mShare of users with the event:\033[0m {user_event_share * 100}%")
-            print()
 
             if has_sessions:
                 unique_sessions_event = event_data[session_col].nunique()  # type: ignore
                 session_event_share = round(unique_sessions_event / unique_sessions, 4)
-                print(f"\033[1mNumber of unique sessions with the event:\033[0m {unique_sessions_event}")
-                print()
-                print(f"\033[1mShare of sessions with the event:\033[0m {session_event_share * 100}%")
-                print()
-
-            print("----------------------------------------------------------------------------")
-            print("\033[1mAppearances per user path\033[0m")
-            print()
+                out_df = pd.DataFrame(
+                    [
+                        ["first appearance", event_data[time_col].min()],
+                        ["last appearance", event_data[time_col].max()],
+                        ["number of occurrences", event_data.shape[0]],
+                        ["share of all events", str(event_share * 100) + "%"],
+                        ["users with the event", unique_users_event],
+                        ["share of users with the event", str(user_event_share * 100) + "%"],
+                        ["sessions with the event", unique_sessions_event],
+                        ["share of sessions with the event", str(session_event_share * 100) + "%"],
+                    ],
+                    columns=["metric", "value"],
+                ).set_index("metric")
+            else:
+                out_df = pd.DataFrame(
+                    [
+                        ["first appearance", event_data[time_col].min()],
+                        ["last appearance", event_data[time_col].max()],
+                        ["number of occurrences", event_data.shape[0]],
+                        ["share of all events", str(event_share * 100) + "%"],
+                        ["users with the event", unique_users_event],
+                        ["share of users with the event", str(user_event_share * 100) + "%"],
+                    ],
+                    columns=["metric", "value"],
+                ).set_index("metric")
+            display(out_df)
 
             user_agg = event_data.groupby(user_col)[event_col].agg("count")
-            mean_events, std_events, median_events = user_agg.mean(), user_agg.std(), user_agg.median()
-            min_events, max_events = user_agg.min(), user_agg.max()
-            print(f"\033[1mMean appearances per user, std:\033[0m {mean_events}, {std_events}")
-            print()
-            print(f"\033[1mMedian appearances per user:\033[0m {median_events}")
-            print()
-            print(f"\033[1mMin appearances per user:\033[0m {min_events}")
-            print()
-            print(f"\033[1mMax appearances per user:\033[0m {max_events}")
-            print()
-
-            if has_sessions:
-                print("----------------------------------------------------------------------------")
-                print("\033[1mAppearances per session\033[0m")
-                print()
-
-                session_agg = event_data.groupby(session_col)[event_col].agg("count")  # type: ignore
-                mean_events, std_events, median_events = session_agg.mean(), session_agg.std(), session_agg.median()
-                min_events, max_events = session_agg.min(), session_agg.max()
-                print(f"\033[1mMean appearances per session, std:\033[0m {mean_events}, {std_events}")
-                print()
-                print(f"\033[1mMedian appearances per session:\033[0m {median_events}")
-                print()
-                print(f"\033[1mMin appearances per session:\033[0m {min_events}")
-                print()
-                print(f"\033[1mMax appearances per session:\033[0m {max_events}")
-                print()
-
+            mean_events_user, std_events_user, median_events_user = user_agg.mean(), user_agg.std(), user_agg.median()
+            min_events_user, max_events_user = user_agg.min(), user_agg.max()
             print("----------------------------------------------------------------------------")
-            print("\033[1mTime since user path start before first appearance\033[0m")
-            print()
+            if has_sessions:
+                print("\033[1mAppearances per user path/session\033[0m")
+                print()
+                session_agg = event_data.groupby(session_col)[event_col].agg("count")  # type: ignore
+                mean_events_session, std_events_session, median_events_session = (
+                    session_agg.mean(),
+                    session_agg.std(),
+                    session_agg.median(),
+                )
+                min_events_session, max_events_session = session_agg.min(), session_agg.max()
+                out_df = pd.DataFrame(
+                    [
+                        ["mean appearances", mean_events_user, mean_events_session],
+                        ["std appearances", std_events_user, std_events_session],
+                        ["median appearances", median_events_user, median_events_session],
+                        ["min appearances", min_events_user, min_events_session],
+                        ["max appearances", max_events_user, max_events_session],
+                    ],
+                    columns=["metric", "per user path", "per session"],
+                ).set_index("metric")
+            else:
+                print("\033[1mAppearances per user path\033[0m")
+                print()
+                out_df = pd.DataFrame(
+                    [
+                        ["mean appearances", mean_events_user],
+                        ["std appearances", std_events_user],
+                        ["median appearances", median_events_user],
+                        ["min appearances", min_events_user],
+                        ["max appearances", max_events_user],
+                    ],
+                    columns=["metric", "per user path"],
+                ).set_index("metric")
+            display(out_df)
 
             user_agg = event_data.groupby(user_col)["__event_trajectory_timedelta"].min()
-            mean_time, std_time, median_time = user_agg.mean(), user_agg.std(), user_agg.median()
-            min_time, max_time = user_agg.min(), user_agg.max()
-            print(f"\033[1mMean time, std:\033[0m {mean_time}, {std_time}")
-            print()
-            print(f"\033[1mMedian time:\033[0m {median_time}")
-            print()
-            print(f"\033[1mMin time:\033[0m {min_time}")
-            print()
-            print(f"\033[1mMax time:\033[0m {max_time}")
-            print()
-
-            if has_sessions:
-                print("----------------------------------------------------------------------------")
-                print("\033[1mTime since session start before first appearance\033[0m")
-                print()
-
-                session_agg = event_data.groupby(session_col)["__event_session_timedelta"].min()  # type: ignore
-                mean_time, std_time, median_time = session_agg.mean(), session_agg.std(), session_agg.median()
-                min_time, max_time = session_agg.min(), session_agg.max()
-                print(f"\033[1mMean time, std:\033[0m {mean_time}, {std_time}")
-                print()
-                print(f"\033[1mMedian time:\033[0m {median_time}")
-                print()
-                print(f"\033[1mMin time:\033[0m {min_time}")
-                print()
-                print(f"\033[1mMax time:\033[0m {max_time}")
-                print()
-
+            mean_time_user, std_time_user, median_time_user = user_agg.mean(), user_agg.std(), user_agg.median()
+            min_time_user, max_time_user = user_agg.min(), user_agg.max()
             print("----------------------------------------------------------------------------")
-            print("\033[1mEvents since user path start before first appearance\033[0m")
-            print()
+            if has_sessions:
+                print("\033[1mTime before first appearance since user path/session start\033[0m")
+                print()
+                session_agg = event_data.groupby(session_col)["__event_session_timedelta"].min()  # type: ignore
+                mean_time_session, std_time_session, median_time_session = (
+                    session_agg.mean(),
+                    session_agg.std(),
+                    session_agg.median(),
+                )
+                min_time_session, max_time_session = session_agg.min(), session_agg.max()
+                out_df = pd.DataFrame(
+                    [
+                        ["mean timedelta", mean_time_user, mean_time_session],
+                        ["std timedelta", std_time_user, std_time_session],
+                        ["median timedelta", median_time_user, median_time_session],
+                        ["min timedelta", min_time_user, min_time_session],
+                        ["max timedelta", max_time_user, max_time_session],
+                    ],
+                    columns=["metric", "per user path", "per session"],
+                ).set_index("metric")
+            else:
+                print("\033[1mTime before first appearance since user path start\033[0m")
+                print()
+                out_df = pd.DataFrame(
+                    [
+                        ["mean timedelta", mean_time_user],
+                        ["std timedelta", std_time_user],
+                        ["median timedelta", median_time_user],
+                        ["min timedelta", min_time_user],
+                        ["max timedelta", max_time_user],
+                    ],
+                    columns=["metric", "per user path"],
+                ).set_index("metric")
+            display(out_df)
 
             user_agg = event_data.groupby(user_col)["__event_trajectory_idx"].min()
-            mean_events, std_events, median_events = user_agg.mean(), user_agg.std(), user_agg.median()
-            min_events, max_events = user_agg.min(), user_agg.max()
-            print(f"\033[1mMean events, std:\033[0m {mean_events}, {std_events}")
-            print()
-            print(f"\033[1mMedian events:\033[0m {median_events}")
-            print()
-            print(f"\033[1mMin events:\033[0m {min_events}")
-            print()
-            print(f"\033[1mMax events:\033[0m {max_events}")
-            print()
-
+            mean_events_user, std_events_user, median_events_user = user_agg.mean(), user_agg.std(), user_agg.median()
+            min_events_user, max_events_user = user_agg.min(), user_agg.max()
+            print("----------------------------------------------------------------------------")
             if has_sessions:
-                print("----------------------------------------------------------------------------")
-                print("\033[1mEvents since session start before first appearance\033[0m")
+                print("\033[1mEvents before first appearance since user path/session start\033[0m")
                 print()
-
                 session_agg = event_data.groupby(user_col)["__event_session_idx"].min()
-                mean_events, std_events, median_events = session_agg.mean(), session_agg.std(), session_agg.median()
-                min_events, max_events = session_agg.min(), session_agg.max()
-                print(f"\033[1mMean events, std:\033[0m {mean_events}, {std_events}")
+                mean_events_session, std_events_session, median_events_session = (
+                    session_agg.mean(),
+                    session_agg.std(),
+                    session_agg.median(),
+                )
+                min_events_session, max_events_session = session_agg.min(), session_agg.max()
+                out_df = pd.DataFrame(
+                    [
+                        ["mean events", mean_events_user, mean_events_session],
+                        ["std events", std_events_user, std_events_session],
+                        ["median events", median_events_user, median_events_session],
+                        ["min events", min_events_user, min_events_session],
+                        ["max events", max_events_user, max_events_session],
+                    ],
+                    columns=["metric", "per user path", "per session"],
+                ).set_index("metric")
+            else:
+                print("\033[1mEvents before first appearance since user path start\033[0m")
                 print()
-                print(f"\033[1mMedian events:\033[0m {median_events}")
-                print()
-                print(f"\033[1mMin events:\033[0m {min_events}")
-                print()
-                print(f"\033[1mMax events:\033[0m {max_events}")
-                print()
+                out_df = pd.DataFrame(
+                    [
+                        ["mean events", mean_events_user],
+                        ["std events", std_events_user],
+                        ["median events", median_events_user],
+                        ["min events", min_events_user],
+                        ["max events", max_events_user],
+                    ],
+                    columns=["metric", "per user path"],
+                ).set_index("metric")
+            display(out_df)
 
     def transition_graph(
         self,

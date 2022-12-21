@@ -54,7 +54,7 @@ class ParamsModel(BaseModel):
     ) -> None:
         try:
             super().__init__(**data)
-        except ValidationError:
+        except ValidationError as v_error:
             for key in data:
                 if key in self._widgets:
                     try:

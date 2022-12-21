@@ -19,7 +19,7 @@ class FilterEventsParams(ParamsModel):
     func: Callable[[DataFrame, EventstreamSchema], bool]
 
     _widgets = {
-        "filter": ReteFunction,
+        "func": ReteFunction(),
     }
 
 

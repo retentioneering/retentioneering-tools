@@ -20,7 +20,7 @@ class GroupEventsParams(ParamsModel):
     event_type: Optional[str] = "group_alias"
 
     _widgets = {
-        "filter": ReteFunction,
+        "filter": ReteFunction(),
     }
 
 

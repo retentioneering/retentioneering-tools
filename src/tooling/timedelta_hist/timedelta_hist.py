@@ -1,6 +1,3 @@
-# write and run version 1 of class contents
-# add tests
-
 from __future__ import annotations
 
 from typing import List, Optional, Tuple

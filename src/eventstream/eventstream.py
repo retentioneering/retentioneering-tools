@@ -1,12 +1,14 @@
 # flake8: noqa
 from __future__ import annotations
 
+import logging
 import uuid
 from collections.abc import Collection
 from typing import Any, Callable, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from matplotlib.axes import SubplotBase
 
 from src.constants import DATETIME_UNITS
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
@@ -18,6 +20,7 @@ from src.tooling.stattests import TEST_NAMES, StatTests
 from src.tooling.step_matrix import StepMatrix
 from src.tooling.step_sankey import StepSankey
 from src.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
+from src.tooling.user_lifetime_hist import UserLifetimeHist
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
@@ -103,6 +106,7 @@ class Eventstream(
     __sankey: StepSankey | None = None
     __stattests: StatTests | None = None
     __timedelta_hist: TimedeltaHist | None = None
+    __user_lifetime_hist: UserLifetimeHist | None = None
 
     def __init__(
         self,
@@ -696,3 +700,234 @@ class Eventstream(
             bins=bins,
         )
         return self.__timedelta_hist
+
+    def user_lifetime_hist(
+        self,
+        timedelta_unit: DATETIME_UNITS = "s",
+        log_scale: bool = False,
+        lower_cutoff_quantile: Optional[float] = None,
+        upper_cutoff_quantile: Optional[float] = None,
+        bins: int = 20,
+    ) -> UserLifetimeHist:
+        self.__user_lifetime_hist = UserLifetimeHist(
+            eventstream=self,
+            timedelta_unit=timedelta_unit,
+            log_scale=log_scale,
+            lower_cutoff_quantile=lower_cutoff_quantile,
+            upper_cutoff_quantile=upper_cutoff_quantile,
+            bins=bins,
+        )
+        return self.__user_lifetime_hist
+
+    def event_timestamp_hist(
+        self,
+        event_list: Optional[List[str] | str] = 'all',
+        lower_cutoff_quantile: Optional[float] = None,
+        upper_cutoff_quantile: Optional[float] = None,
+        bins: int = 20,
+    ) -> SubplotBase:
+        if lower_cutoff_quantile is not None:
+            if not 0 < lower_cutoff_quantile < 1:
+                raise ValueError("lower_cutoff_quantile should be a fraction between 0 and 1.")
+        if upper_cutoff_quantile is not None:
+            if not 0 < upper_cutoff_quantile < 1:
+                raise ValueError("upper_cutoff_quantile should be a fraction between 0 and 1.")
+
+        data = self.to_dataframe()
+
+        if event_list != 'all':
+            if type(event_list) is not list:
+                raise TypeError('event_list should either be "all", or a list of event names to include.')
+            data = data[data[self.schema.event_name].isin(event_list)]
+
+        values = data[self.schema.event_timestamp]
+        idx = [True] * len(values)
+        if upper_cutoff_quantile is not None:
+            idx &= values <= values.quantile(upper_cutoff_quantile)
+        if lower_cutoff_quantile is not None:
+            idx &= values >= values.quantile(lower_cutoff_quantile)
+        return values[idx].hist(bins=bins)
+
+    def describe(self, session_col: Optional[str] = None) -> None:
+        user_col, event_col, time_col, type_col = (
+            self.schema.user_id,
+            self.schema.event_name,
+            self.schema.event_timestamp,
+            self.schema.event_type,
+        )
+
+        df = self.to_dataframe()
+
+        df = df[df[type_col].isin(["raw"])]
+        max_time = df[time_col].max()
+        min_time = df[time_col].min()
+
+        print(f"\033[1mNumber of unique users:\033[0m {df[user_col].nunique()}")
+        print()
+        print(f"\033[1mNumber of unique events:\033[0m {df[event_col].nunique()}")
+        print()
+        print(f"\033[1mStart observations:\033[0m {df[time_col].min()}")
+        print()
+        print(f"\033[1mEnd observations:\033[0m {df[time_col].max()}")
+        print()
+        print(f"\033[1mLength of observations (full dataset):\033[0m {max_time  - min_time}")
+        print()
+
+        gr_check = df.groupby(user_col).agg({time_col: ["min", "max"], event_col: ["count"]}).reset_index()
+
+        time_diff = gr_check[(time_col, "max")] - gr_check[(time_col, "min")]
+
+        # time users
+        mean_time = time_diff.mean()
+        median_time = time_diff.median()
+        std_time = time_diff.std()
+        min_length_time = time_diff.min()
+        max_length_time = time_diff.max()
+
+        print('----------------------------------------------------------------------------')
+        print("\033[1mTime\033[0m")
+        print()
+        print(f"\033[1mMean user path length, std (time):\033[0m {mean_time}, {std_time}")
+        print()
+        print(f"\033[1mMedian user path length (time):\033[0m {median_time}")
+        print()
+        print(f"\033[1mMin user path length (time):\033[0m {min_length_time}")
+        print()
+        print(f"\033[1mMax user path length (time):\033[0m {max_length_time}")
+        print()
+
+        # events
+        event_count = gr_check[(event_col, "count")]
+        mean = round(event_count.mean(), 2)  # type: ignore
+        median = event_count.median()
+        std = round(event_count.std(), 2)  # type: ignore
+        min_length = event_count.min()
+        max_length = event_count.max()
+
+        print('----------------------------------------------------------------------------')
+        print("\033[1mNumber of events\033[0m")
+        print()
+        print(f"\033[1mMean user path length, std (events):\033[0m {mean}, {std}")
+        print()
+        print(f"\033[1mMedian user path length (events):\033[0m {median}")
+        print()
+        print(f"\033[1mMin user path length (events):\033[0m {min_length}")
+        print()
+        print(f"\033[1mMax user path length (events):\033[0m {max_length}")
+        print()
+
+        # sessions
+        if session_col:
+            print('----------------------------------------------------------------------------')
+            df = df.to_dataframe()
+
+            cross = df[df[type_col].isin(["session_start", "session_end"])]
+            if len(cross) == 0:
+                logging.warning(
+                    f"There are no events with types start_session or end_session. \
+                    Use the SplitSessions dataprocessor first"
+                )
+
+            cross_ = pd.crosstab([cross[user_col], cross[session_col]], cross[type_col]).reset_index()
+            cross_["diff"] = cross_["session_end"] - cross_["session_start"]
+
+            full_sessions = cross_[cross_["diff"] == 0][session_col].nunique()
+
+            left_sessions = cross_[cross_["diff"] > 0][session_col].nunique()
+            right_sessions = cross_[cross_["diff"] < 0][session_col].nunique()
+
+            print(f"\033[1mNumber of full sessions:\033[0m {full_sessions}")
+            print()
+
+            print(f"\033[1mNumber of left_cut sessions:\033[0m {left_sessions}")
+            print()
+            print(f"\033[1mNumber of right_cut sessions:\033[0m {right_sessions}")
+
+    def describe_events(self) -> None:
+        user_col, event_col, time_col, type_col = (
+            self.schema.user_id,
+            self.schema.event_name,
+            self.schema.event_timestamp,
+            self.schema.event_type,
+        )
+        df = self.to_dataframe()
+        df['__event_trajectory_idx'] = df.groupby(user_col).cumcount()
+        df['__event_trajectory_timedelta'] = df[time_col] - df.groupby(user_col)[time_col].transform('first')
+        total_events = df.shape[0]
+        unique_users = df[user_col].nunique()
+
+        for i, event_name in enumerate(df[event_col].unique()):
+            if i != 0:
+                print('============================================================================')
+                print()
+
+            event_data = df[df[event_col] == event_name]
+
+            print(f'\033[1m"{event_name}" event statistics:\033[0m')
+            print()
+
+            event_share = round(event_data.shape[0] / total_events, 4)
+            print(f"\033[1mNumber of observations:\033[0m {event_data.shape[0]}")
+            print()
+            print(f"\033[1mShare of all events:\033[0m {event_share * 100}%")
+            print()
+
+            unique_users_event = event_data[user_col].nunique()
+            user_event_share = round(unique_users_event / unique_users, 4)
+            print(f"\033[1mNumber of unique users with the event:\033[0m {unique_users_event}")
+            print()
+            print(f"\033[1mShare of users with the event:\033[0m {user_event_share * 100}%")
+            print()
+
+            print('----------------------------------------------------------------------------')
+            print("\033[1mAppearances per user path\033[0m")
+            print()
+
+            gr_check = event_data.groupby(user_col)[event_col].agg("count")
+            mean_events, std_events, median_events = gr_check.mean(), gr_check.std(), gr_check.median()
+            min_events, max_events = gr_check.min(), gr_check.max()
+            print(f"\033[1mMean appearances per user, std:\033[0m {mean_events}, {std_events}")
+            print()
+            print(f"\033[1mMedian appearances per user:\033[0m {median_events}")
+            print()
+            print(f"\033[1mMin appearances per user:\033[0m {min_events}")
+            print()
+            print(f"\033[1mMax appearances per user:\033[0m {max_events}")
+            print()
+
+            print(f"\033[1mFirst appearance:\033[0m {event_data[time_col].min()}")
+            print()
+            print(f"\033[1mLast appearance:\033[0m {event_data[time_col].max()}")
+            print()
+
+            print('----------------------------------------------------------------------------')
+            print("\033[1mTime/events since user path start before first appearance\033[0m")
+            print()
+
+            gr_check = event_data.groupby(user_col)['__event_trajectory_timedelta'].min()
+            mean_time, std_time, median_time = gr_check.mean(), gr_check.std(), gr_check.median()
+            min_time, max_time = gr_check.min(), gr_check.max()
+            print(f"\033[1mMean user time before first appearance, std:\033[0m {mean_time}, {std_time}")
+            print()
+            print(f"\033[1mMedian user time before first appearance:\033[0m {median_time}")
+            print()
+            print(f"\033[1mMin user time before first appearance:\033[0m {min_time}")
+            print()
+            print(f"\033[1mMax user time before first appearance:\033[0m {max_time}")
+            print()
+
+            gr_check = event_data.groupby(user_col)['__event_trajectory_idx'].min()
+            mean_events, std_events, median_events = gr_check.mean(), gr_check.std(), gr_check.median()
+            min_events, max_events = gr_check.min(), gr_check.max()
+            print(f"\033[1mMean user events before first appearance, std:\033[0m {mean_events}, {std_events}")
+            print()
+            print(f"\033[1mMedian user events before first appearance:\033[0m {median_events}")
+            print()
+            print(f"\033[1mMin user events before first appearance:\033[0m {min_events}")
+            print()
+            print(f"\033[1mMax user events before first appearance:\033[0m {max_events}")
+            print()
+
+
+
+

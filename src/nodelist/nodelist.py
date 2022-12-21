@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pandas as pd
-from IPython.core.display_functions import display
 
 
 class Nodelist:

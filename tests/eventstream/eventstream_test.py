@@ -253,3 +253,16 @@ class TestEventstream:
         user_cnt_sampled_2 = len(df_sampled_2["user_id"].unique())
 
         assert math.isclose(user_sample_size, user_cnt_sampled_2, abs_tol=0.51)
+
+    def test_describe(self, test_stream_1):
+        test_stream_1.describe()
+        test_stream_1.describe_events()
+
+        assert True
+
+    def test_hists(self, test_stream_1):
+        test_stream_1.timedelta_hist()
+        test_stream_1.user_lifetime_hist()
+        test_stream_1.event_timestamp_hist()
+
+        assert True

@@ -4,7 +4,7 @@ from ..types import EventstreamType
 
 
 class RenameHelperMixin:
-    def rename(self, rules: list[dict[str, str]]) -> EventstreamType:
+    def rename(self, rules: list[dict[str, list[str]]]) -> EventstreamType:
 
         # avoid circular import
         from src.data_processors_lib import RenameParams, RenameProcessor

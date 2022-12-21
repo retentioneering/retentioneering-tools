@@ -63,8 +63,8 @@ class Clusters:
 
     def fit(
         self,
-        method: Method,
-        n_clusters: int,
+        method: Method | None = None,
+        n_clusters: int | None = None,
         feature_type: FeatureType | None = None,
         ngram_range: NgramRange | None = None,
         vector: pd.DataFrame | None = None,
@@ -74,17 +74,17 @@ class Clusters:
 
         Parameters
         ----------
-        method: {"kmeans", "gmm"}
+        method: {"kmeans", "gmm"}, default=None
             ``kmeans`` stands classic K-means algorithm. https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
             ``gmm`` stands for Gaussian mixture model. https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html
-        n_clusters: int
+        n_clusters: int, default=None
             The expected number of clusters to be passed to a clustering algorithm.
-        feature_type : {"tfidf", "count", "frequency", "binary", "markov"}, default="tfidf"
+        feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}, default=None
             See :py:func:`extract_features`
-        ngram_range : Tuple(int, int), default=(1, 1)
+        ngram_range : Tuple(int, int), default=None
             See :py:func:`extract_features`
-        vector: pd.Dataframe, default=None
-            ``pd.Dataframe`` representing custom vectorization of the user paths. The index corresponds to user_ids,
+        vector: pd.DataFrame, default=None
+            ``pd.DataFrame`` representing custom vectorization of the user paths. The index corresponds to user_ids,
             the columns are vectorized values of the path.
         """
 
@@ -111,8 +111,9 @@ class Clusters:
         targets: list[str] | None = None,
     ) -> go.Figure:
         """
-        Plots the distribution of ``top_n`` events in cluster ``cluster_id1`` compared vs
-        the entire dataset or vs cluster ``cluster_id2``.
+        Plots a bar plot illustrating the distribution of ``top_n`` events in cluster ``cluster_id1``
+        compared vs the entire dataset or vs cluster ``cluster_id2``.
+
         Parameters
         ----------
         cluster_id1: int
@@ -127,10 +128,11 @@ class Clusters:
             datasets. If ``weight_col`` is specified, percentages of users
             (column name specified by parameter ``weight_col``) who have particular
             events will be plotted.
-        targets: list of str (optional, default [])
+        targets: list of str (optional, default None)
             List of event names always to include for comparison regardless
             of the parameter top_n value. Target events will appear in the same
             order as specified.
+
         Returns
         -------
         Plots the distribution barchart.
@@ -203,6 +205,16 @@ class Clusters:
         return figure
 
     def plot(self, targets: list[str] | list[list[str]] | None = None) -> go.Figure:
+        """
+        Plots a bar plot illustrating the clusters sizes and the conversion rates of
+        the ``targets`` events within the clusters.
+
+        Parameters
+        ----------
+        targets: list of str (optional, default None)
+            Represents the list of the target events
+
+        """
         if not self.__is_fitted:
             raise RuntimeError("Clusters are not defined. Consider to run 'fit()' or `set_clusters()` methods.")
 
@@ -256,10 +268,23 @@ class Clusters:
         -------
         pd.DataFrame
         """
-        if not self.__features:
+        if self.__features is None:
             raise RuntimeError("The features are not calculated. Consider to run 'extract_features()` method.")
 
         return self.__features
+
+    @property
+    def params(self) -> dict:
+        """
+        Returns the parameters used for the last fitting.
+
+        """
+        return {
+            "method": self._method,
+            "n_clusters": self._n_clusters,
+            "ngram_range": self._ngram_range,
+            "feature_type": self._feature_type,
+        }
 
     def set_clusters(self, user_clusters: pd.Series) -> None:
         """
@@ -268,10 +293,14 @@ class Clusters:
         Parameters
         ----------
         user_clusters: pd.Series
-        Series index corresponds to user_ids. Values are cluster_ids.
+            Series index corresponds to user_ids. Values are cluster_ids.
         """
         self._user_clusters = user_clusters
         self.__cluster_result = user_clusters.copy()
+        self._n_clusters = user_clusters.nunique()
+        self._feature_type = None
+        self._method = None
+        self._ngram_range = None
         self.__is_fitted = True
         return
 
@@ -317,21 +346,23 @@ class Clusters:
 
         Parameters
         ----------
-        feature_type : {"tfidf", "count", "frequency", "binary", "markov"}
+        feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}
 
             - ``tfidf`` see details in :sklearn_tfidf:`sklearn documentation<>`
             - ``count`` see details in :sklearn_countvec:`sklearn documentation<>`
-            - ``frequency`` an alias for ``count``.
-            - ``binary`` uses the same CountVectorizer as ``count``, but with ``binary=True`` flag.
-            - | ``markov`` available for bigrams only. The vectorized values are
-              | associated with the transition probabilities in the corresponding Markov chain.
-              | For Example: Assume a users has the following transitions: ``A->B`` 3 times,
-              | ``A->C`` 1 time, and ``A->A`` 4 times. Then the vectorized values for these bigrams are
-              | 3/8, 1/8, 1/2.
-        ngram_range: Tuple(int, int), default=None
+            - | ``frequency`` the same as count but normalized to the total number of the events
+              | in the user's trajectory.
+            - ``binary`` 1 if a user had given n-gram at least once and 0 otherwise.
+            - | ``markov`` available for bigrams only. For a given bigram ``(A, B)`` the vectorized values
+              | are the user's transition probabilities from ``A`` to ``B``.
+            - | ``time`` Associated with unigrams only. The total number of the seconds spent from the
+              | beginning of a user's path until a given event.
+            - | ``time_fraction`` the same as ``time`` but divided by the total length of the user's trajectory
+              | (in seconds).
+        ngram_range: Tuple(int, int)
             The lower and upper boundary of the range of n-values for different word n-grams or char n-grams to be
             extracted. For example, ngram_range=(1, 1) means only single events, (1, 2) means single events
-            and bigrams. Doesn't work for ``markov`` feature_type.
+            and bigrams. Ignored for ``markov``, ``time``, ``time_fraction`` feature types.
 
         Returns
         -------
@@ -352,7 +383,7 @@ class Clusters:
         if feature_type in ["time", "time_fraction"]:
             events.sort_values(by=[self.user_col, self.time_col], inplace=True)
             events.reset_index(inplace=True)
-            events["time_diff"] = events.groupby(user_col)[time_col].diff().dt.total_seconds()  # type: ignore
+            events["time_diff"] = events.groupby(self.user_col)[time_col].diff().dt.total_seconds()  # type: ignore
             events["time_length"] = events["time_diff"].shift(-1)
             if feature_type == "time_fraction":
                 vec_data = (
@@ -380,27 +411,30 @@ class Clusters:
         **kwargs: Any,
     ) -> go.Figure:
         """
-        Does the dimension reduction of user trajectories and draws projection plane.
+        Shows the clusters projection on a plane applying dimension reduction techniques.
 
         Parameters
         ----------
-        method : {'umap', 'tsne'} (optional, default 'tsne')
+        method : {'umap', 'tsne'}, default 'tsne'
             Type of manifold transformation.
-        plot_type : {'targets', 'clusters'} (optional, default 'clusters')
+        plot_type : {'targets', 'clusters'}, default 'clusters'
             Type of color-coding used for projection visualization:
+
                 - 'clusters': colors trajectories with different colors depending on cluster number.
                 - 'targets': color trajectories based on reach to any event provided in 'targets' parameter.
+
                 Must provide 'targets' parameter in this case.
-        targets : list or tuple of str (optional, default  ())
+        targets : list or tuple of str, optional
             Vector of event_names as str. If user reach any of the specified events, the dot corresponding
             to this user will be highlighted as converted on the resulting projection plot
-        plot_type : {'targets', 'clusters', None} (optional, default None)
+        plot_type : {'targets', 'clusters', None}, default None
             Type of color-coding used for projection visualization:
 
             - ``clusters`` colors trajectories with different colors depending on cluster number.
             - | ``targets`` colors trajectories based on reach to any event provided in 'targets' parameter.
               | Must provide ``targets`` parameter in this case.
             - If ``None``, then only calculates TSNE without visualization.
+
         **kwargs : optional
             Parameters for ``sklearn.manifold.TSNE()`` and ``umap.UMAP()``
 
@@ -476,6 +510,12 @@ class Clusters:
         _n_clusters = n_clusters or self._n_clusters
         _user_clusters = None
 
+        if _method is None:
+            raise ValueError("'method' must be defined for fitting.")
+
+        if _n_clusters is None:
+            raise ValueError("'n_clusters' must be defined for fitting.")
+
         if vector:
             if not isinstance(vector, pd.DataFrame):  # type: ignore
                 raise ValueError("Vector is not a DataFrame!")
@@ -495,6 +535,12 @@ class Clusters:
             _feature_type = feature_type or self._feature_type
             _ngram_range = ngram_range or self._ngram_range
             _vector = vector or self._vector
+
+            if _feature_type is None:
+                raise ValueError("'feature_type' must be defined for fitting.")
+
+            if _ngram_range is None:
+                raise ValueError("'ngram_range' must be defined for fitting.")
 
         return _method, _n_clusters, _feature_type, _ngram_range, _vector
 

@@ -28,7 +28,7 @@ class DeleteProcessor(DataProcessor):
             relations=[{"raw_col": "ref", "eventstream": eventstream}],
         )
 
-        eventstream.soft_delete(data_for_delete)
+        eventstream._soft_delete(data_for_delete)
 
         return eventstream
 

@@ -52,7 +52,7 @@ class TransitionGraph:
         self.weights = weights if weights else {"edges": "edge_weight", "nodes": "number_of_events"}
         self.targets = targets if targets else {"positive": None, "negative": None, "source": None}
         self.thresholds = (
-            thresholds if thresholds else {"edges": {"count_of_events": 0.03}, "nodes": {"count_of_events": 0.03}}
+            thresholds if thresholds else {"edges": {"number_of_events": 0.03}, "nodes": {"number_of_events": 0.03}}
         )
         sm = ServerManager()
         self.env = sm.check_env()
@@ -325,13 +325,11 @@ class TransitionGraph:
             else node_params.get(x[target_col]) or "suit",
             1,  # type: ignore
         )
-
         pos = self._use_layout(self._calc_layout(edgelist=edgelist, width=width, height=height))
 
         nodes, nodes_set = self._prepare_nodes(nodelist=nodelist, pos=pos, node_params=node_params)
 
         links = self._prepare_edges(edgelist=edgelist, nodes_set=nodes_set)
-
         return nodes, links
 
     def _use_layout(self, position: Position) -> Position:
@@ -406,12 +404,13 @@ class TransitionGraph:
 
         nodes_threshold = thresholds.get("nodes", self.thresholds.get("nodes", None)) if thresholds else None
         links_threshold = thresholds.get("edges", self.thresholds.get("edges", None)) if thresholds else None
+        norm_nodes_threshold = nodes_threshold if nodes_threshold else self._get_norm_node_threshold(nodes_threshold)
+        norm_links_threshold = links_threshold if links_threshold else self._get_norm_link_threshold(links_threshold)
 
         self.edgelist.calculate_edgelist(
             norm_type=self.norm_type, custom_cols=self.custom_cols, data=self.eventstream.to_dataframe()
         )
         node_params = self._make_node_params(targets)
-
         cols = self.__get_nodelist_cols()
 
         nodes, links = self._make_template_data(
@@ -435,8 +434,8 @@ class TransitionGraph:
                 show_nodes_names=self._get_option("show_nodes_names", settings),
                 show_all_edges_for_targets=self._get_option("show_all_edges_for_targets", settings),
                 show_nodes_without_links=self._get_option("show_nodes_without_links", settings),
-                nodes_threshold=self._to_js_val(nodes_threshold),
-                links_threshold=self._to_js_val(links_threshold),
+                nodes_threshold=self._to_js_val(norm_nodes_threshold),
+                links_threshold=self._to_js_val(norm_links_threshold),
                 weight_template=weight_template if weight_template is not None else "undefined",
             )
         )

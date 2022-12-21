@@ -140,7 +140,7 @@ class TestEventstream:
 
         child_events_df = child.to_dataframe()
 
-        source.join_eventstream(child)
+        source._join_eventstream(child)
         result_df = source.to_dataframe()
 
         names: list[str] = result_df[schema.event_name].to_list()
@@ -172,7 +172,7 @@ class TestEventstream:
     def test_soft_delete(self, test_stream_1):
         df = test_stream_1.to_dataframe()
 
-        test_stream_1.soft_delete(events=df[df[test_stream_1.schema.event_name] == "pageview"])
+        test_stream_1._soft_delete(events=df[df[test_stream_1.schema.event_name] == "pageview"])
 
         after_delete = test_stream_1.to_dataframe()
         after_delete_all = test_stream_1.to_dataframe(show_deleted=True)
@@ -184,7 +184,7 @@ class TestEventstream:
 
         assert with_deleted_event_names == ["pageview", "click_1", "click_2"]
 
-        test_stream_1.soft_delete(events=after_delete[after_delete[test_stream_1.schema.event_name] == "click_1"])
+        test_stream_1._soft_delete(events=after_delete[after_delete[test_stream_1.schema.event_name] == "click_1"])
 
         after_delete = test_stream_1.to_dataframe()
         after_delete_all = test_stream_1.to_dataframe(show_deleted=True)
@@ -200,7 +200,7 @@ class TestEventstream:
         source = Eventstream(raw_data_schema=test_schema_1, raw_data=test_data_1, schema=EventstreamSchema())
         df = source.to_dataframe()
 
-        source.soft_delete(events=df[df[source.schema.event_name] == "pageview"])
+        source._soft_delete(events=df[df[source.schema.event_name] == "pageview"])
 
         related_cols: list[str] = test_data_1.columns.to_list()
         related_cols.append("ref_id")
@@ -219,9 +219,9 @@ class TestEventstream:
         click_1_df = related.to_dataframe()
 
         click_1_df = click_1_df[click_1_df[related.schema.event_name] == "click_1"]
-        related.soft_delete(click_1_df)
+        related._soft_delete(click_1_df)
 
-        source.join_eventstream(related)
+        source._join_eventstream(related)
         result_df = source.to_dataframe()
         result_events_names: list[str] = result_df[source.schema.event_name].to_list()
 

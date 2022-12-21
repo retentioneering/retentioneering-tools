@@ -13,10 +13,9 @@ class Nodelist:
         self.nodelist_default_col = nodelist_default_col
         self.custom_cols = custom_cols
 
-    def calculate_nodelist(self, data: pd.DataFrame) -> None:
+    def calculate_nodelist(self, data: pd.DataFrame) -> pd.DataFrame:
 
         res: pd.DataFrame = data.groupby([self.event_col])[self.time_col].count().reset_index()
-
         if self.custom_cols is not None:
             for weight_col in self.custom_cols:
                 by_col = data.groupby([self.event_col])[weight_col].nunique().reset_index()
@@ -31,3 +30,4 @@ class Nodelist:
         res["changed_name"] = None
 
         self.nodelist_df = res
+        return res

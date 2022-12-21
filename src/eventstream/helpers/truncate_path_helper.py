@@ -27,10 +27,10 @@ class TruncatePathHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.rete.truncate_path.TruncatePath`
+        :py:func:`src.data_processors_lib.truncate_path.TruncatePath`
         """
         # avoid circular import
-        from src.data_processors_lib.rete import TruncatePath, TruncatePathParams
+        from src.data_processors_lib import TruncatePath, TruncatePathParams
         from src.graph.nodes import EventsNode
         from src.graph.p_graph import PGraph
 

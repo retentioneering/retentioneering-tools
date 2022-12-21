@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib.rete import FilterEvents, FilterEventsParams
+from src.data_processors_lib import FilterEvents, FilterEventsParams
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
@@ -28,7 +28,7 @@ class TestFilterEvents(ApplyTestBase):
         def _filter(df: pd.DataFrame, schema: EventstreamSchema):
             return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
 
-        original, actual = self._apply(FilterEventsParams(filter=_filter), return_with_original=True)
+        original, actual = self._apply(FilterEventsParams(func=_filter), return_with_original=True)
         expected = pd.DataFrame(
             [
                 [1, "pageview", "2021-10-26 12:00:00"],
@@ -42,7 +42,7 @@ class TestFilterEvents(ApplyTestBase):
         def _filter(df: pd.DataFrame, schema: EventstreamSchema):
             return df[schema.event_name].isin([])
 
-        original, actual = self._apply(FilterEventsParams(filter=_filter), return_with_original=True)
+        original, actual = self._apply(FilterEventsParams(func=_filter), return_with_original=True)
         expected = pd.DataFrame(
             [
                 [1, "pageview", "2021-10-26 12:00"],
@@ -58,7 +58,7 @@ class TestFilterEvents(ApplyTestBase):
         def _filter(df: pd.DataFrame, schema: EventstreamSchema):
             return df[schema.event_name].isin(["pageview", "cart_btn_click", "plus_icon_click"])
 
-        original, actual = self._apply(FilterEventsParams(filter=_filter), return_with_original=True)
+        original, actual = self._apply(FilterEventsParams(func=_filter), return_with_original=True)
         expected = pd.DataFrame([], columns=["user_id", "event", "timestamp"])
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -84,7 +84,7 @@ class TestFilterEventsGraph(GraphTestBase):
         def _filter(df: pd.DataFrame, schema: EventstreamSchema):
             return (df[schema.user_id].isin([2])) | (df.event.str.contains("cart_btn_click"))
 
-        original, actual = self._apply(FilterEventsParams(filter=_filter), return_with_original=True)
+        original, actual = self._apply(FilterEventsParams(func=_filter), return_with_original=True)
         expected = pd.DataFrame(
             [
                 [1, "cart_btn_click", "raw", "2021-10-26 12:02:00"],
@@ -98,7 +98,7 @@ class TestFilterEventsGraph(GraphTestBase):
         def _filter(df: pd.DataFrame, schema: EventstreamSchema):
             return df[schema.event_name].isin([])
 
-        original, actual = self._apply(FilterEventsParams(filter=_filter), return_with_original=True)
+        original, actual = self._apply(FilterEventsParams(func=_filter), return_with_original=True)
         expected = pd.DataFrame(
             [],
             columns=["user_id", "event", "timestamp"],
@@ -109,7 +109,7 @@ class TestFilterEventsGraph(GraphTestBase):
         def _filter(df: pd.DataFrame, schema: EventstreamSchema):
             return df[schema.event_name].isin(["pageview", "cart_btn_click", "plus_icon_click"])
 
-        original, actual = self._apply(FilterEventsParams(filter=_filter), return_with_original=True)
+        original, actual = self._apply(FilterEventsParams(func=_filter), return_with_original=True)
         expected = pd.DataFrame(
             [
                 [1, "pageview", "2021-10-26 12:00"],

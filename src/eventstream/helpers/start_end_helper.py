@@ -17,10 +17,10 @@ class StartEndHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.rete.start_end_events.StartEndEvents`
+        :py:func:`src.data_processors_lib.start_end_events.StartEndEvents`
         """
         # avoid circular import
-        from src.data_processors_lib.rete import StartEndEvents, StartEndEventsParams
+        from src.data_processors_lib import StartEndEvents, StartEndEventsParams
         from src.graph.nodes import EventsNode
         from src.graph.p_graph import PGraph
 

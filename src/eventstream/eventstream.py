@@ -12,6 +12,7 @@ from matplotlib.axes import SubplotBase
 from src.constants import DATETIME_UNITS
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
+from src.graph import PGraph, SourceNode
 from src.tooling.clusters import Clusters
 from src.tooling.cohorts import Cohorts
 from src.tooling.funnel import Funnel
@@ -20,6 +21,8 @@ from src.tooling.step_matrix import StepMatrix
 from src.tooling.step_sankey import StepSankey
 from src.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
 from src.tooling.user_lifetime_hist import UserLifetimeHist
+from src.transition_graph import NormType, TransitionGraph
+from src.transition_graph.typing import Threshold
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
@@ -93,6 +96,43 @@ class Eventstream(
     RenameHelperMixin,
     EventstreamType,
 ):
+    """
+    Collection of tools for storing and processing clickstream data.
+
+    Parameters
+    ----------
+    raw_data : pd.DataFrame or pd.Series
+        Raw clickstream data.
+    raw_data_schema : RawDataSchema, optional
+        Should be specified as an instance of class ``RawDataSchema``:
+
+        - If ``raw_data`` column names are different from default :py:func:`src.eventstream.schema.RawDataSchema`.
+        - If there is at least one ``custom_col`` in ``raw_data``.
+
+    schema : EventstreamSchema, optional
+        Schema of created ``eventstream``.
+        See default schema% :py:func:`src.eventstream.schema.EventstreamSchema`.
+    prepare : bool, default True
+
+        - If ``True`` input data will be transformed in the following way:
+            - Convert column ``event_timestamp`` to pandas datetime format.
+            - | Adds ``event_type`` column and fills with ``raw`` value.
+              | if that column already exists it will remain unchanged.
+        - If ``False`` - ``raw_data`` will be remained as is.
+
+    index_order : list of str, default DEFAULT_INDEX_ORDER
+        Sorting order for ``event_type`` column.
+    relations : list, optional
+    user_sample_size : int of float, optional
+        Number (``int``) or share (``float``) of all users trajectories which will be randomly chosen
+        and remained in final sample.
+        See :numpy_random_choice:`numpy documentation<>`.
+    user_sample_seed : int, optional
+        Random seed value to generate repeated random users sample.
+        See :numpy_random_seed:`numpy documentation<>`.
+
+    """
+
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]
@@ -106,6 +146,8 @@ class Eventstream(
     __stattests: StatTests | None = None
     __timedelta_hist: TimedeltaHist | None = None
     __user_lifetime_hist: UserLifetimeHist | None = None
+    __transition_graph: TransitionGraph | None = None
+    __p_graph: PGraph | None = None
 
     def __init__(
         self,
@@ -142,6 +184,14 @@ class Eventstream(
         self.index_events()
 
     def copy(self) -> Eventstream:
+        """
+        Make a copy of current ``eventstream``.
+
+        Returns
+        -------
+        Eventstream
+
+        """
         return Eventstream(
             raw_data_schema=self.__raw_data_schema.copy(),
             raw_data=self.__events.copy(),
@@ -152,6 +202,22 @@ class Eventstream(
         )
 
     def append_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
+        """
+        Append ``eventstream`` with the same schema.
+
+        Parameters
+        ----------
+        eventstream : Eventstream
+
+        Returns
+        -------
+        eventstream
+
+        Raises
+        ------
+        ValueError
+            If ``EventstreamSchemas`` of two ``eventstreams`` are not equal.
+        """
         if not self.schema.is_equal(eventstream.schema):
             raise ValueError("invalid schema: joined eventstream")
 
@@ -175,8 +241,8 @@ class Eventstream(
         left_events = merged_events[(merged_events["_merge"] == "left_only") | (merged_events["_merge"] == "both")]
         right_events = merged_events[(merged_events["_merge"] == "right_only")]
 
-        left_raw_cols = self.get_raw_cols()
-        right_raw_cols = eventstream.get_raw_cols()
+        left_raw_cols = self._get_raw_cols()
+        right_raw_cols = eventstream._get_raw_cols()
         cols = self.schema.get_cols()
 
         result_left_part = pd.DataFrame()
@@ -196,10 +262,10 @@ class Eventstream(
         result_right_part[DELETE_COL_NAME] = get_merged_col(df=right_events, colname=DELETE_COL_NAME, suffix="_y")
 
         self.__events = pd.concat([result_left_part, result_right_part])
-        self.soft_delete(deleted_events)
+        self._soft_delete(deleted_events)
         self.index_events()
 
-    def join_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
+    def _join_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
         if not self.schema.is_equal(eventstream.schema):
             raise ValueError("invalid schema: joined eventstream")
 
@@ -235,8 +301,8 @@ class Eventstream(
             (merged_events["_merge"] == "both") | (merged_events[left_id_colname].isin(not_related_events_ids))
         ]
 
-        left_raw_cols = self.get_raw_cols()
-        right_raw_cols = eventstream.get_raw_cols()
+        left_raw_cols = self._get_raw_cols()
+        right_raw_cols = eventstream._get_raw_cols()
         cols = self._get_both_cols(eventstream)
 
         result_left_part = pd.DataFrame()
@@ -280,11 +346,28 @@ class Eventstream(
         return list(all_cols)
 
     def to_dataframe(self, raw_cols: bool = False, show_deleted: bool = False, copy: bool = False) -> pd.DataFrame:
-        cols = self.schema.get_cols() + self.get_relation_cols()
+        """
+        Convert ``eventstream`` to ``pd.Dataframe``
+
+        Parameters
+        ----------
+        raw_cols : bool, default False
+            If ``True`` - original columns of the input ``raw_data`` will be shown.
+        show_deleted : bool, default
+            If ``True`` - show all rows in ``eventstream``
+        copy : bool, default False
+            If ``True`` - copy data from current ``eventstream``.
+            See details :pandas_copy:`pandas documentation<>`
+
+        Returns
+        -------
+        pd.DataFrame
+
+        """
+        cols = self.schema.get_cols() + self._get_relation_cols()
 
         if raw_cols:
-            cols += self.get_raw_cols()
-
+            cols += self._get_raw_cols()
         if show_deleted:
             cols.append(DELETE_COL_NAME)
 
@@ -293,6 +376,14 @@ class Eventstream(
         return view
 
     def index_events(self) -> None:
+        """
+        Sort and index eventstream using DEFAULT_INDEX_ORDER.
+
+        Returns
+        -------
+        None
+
+        """
         order_temp_col_name = "order"
         indexed = self.__events
 
@@ -304,7 +395,7 @@ class Eventstream(
         indexed[self.schema.event_index] = indexed.index
         self.__events = indexed
 
-    def get_raw_cols(self) -> list[str]:
+    def _get_raw_cols(self) -> list[str]:
         cols = self.__events.columns
         raw_cols: list[str] = []
         for col in cols:
@@ -312,7 +403,7 @@ class Eventstream(
                 raw_cols.append(col)
         return raw_cols
 
-    def get_relation_cols(self) -> list[str]:
+    def _get_relation_cols(self) -> list[str]:
         cols = self.__events.columns
         relation_cols: list[str] = []
         for col in cols:
@@ -321,15 +412,29 @@ class Eventstream(
         return relation_cols
 
     def add_custom_col(self, name: str, data: pd.Series[Any] | None) -> None:
+        """
+        Add custom column to existing ``eventstream``.
+
+        Parameters
+        ----------
+        name : str
+            New column name.
+        data : pd.Series
+
+            - If ``pd.Series`` - new column with given values will be added.
+            - If ``None`` - new column will be filled with ``np.nan``
+
+        Returns
+        -------
+        Eventstream
+        """
         self.__raw_data_schema.custom_cols.extend([{"custom_col": name, "raw_data_col": name}])
         self.schema.custom_cols.extend([name])
         self.__events[name] = data
 
-    def soft_delete(self, events: pd.DataFrame) -> None:
+    def _soft_delete(self, events: pd.DataFrame) -> None:
         """
-        method deletes events either by event_id or by the last relation
-        :param events:
-        :return:
+        Method deletes events either by event_id or by the last relation.
         """
         deleted_events = events.copy()
         deleted_events[DELETE_COL_NAME] = True
@@ -341,7 +446,7 @@ class Eventstream(
             indicator=True,
             how="left",
         )
-        if relation_cols := self.get_relation_cols():
+        if relation_cols := self._get_relation_cols():
             last_relation_col = relation_cols[-1]
             self.__events[DELETE_COL_NAME] = self.__events[DELETE_COL_NAME] | merged[f"{DELETE_COL_NAME}_y"] == True
             merged = pd.merge(
@@ -498,7 +603,7 @@ class Eventstream(
     @property
     def clusters(self) -> Clusters:
         """
-        Returns an instance of ``Cluster`` class to be used for cluster analysis.
+        Returns an instance of ``Clusters`` class to be used for cluster analysis.
 
         See :py:func:`src.tooling.clusters.clusters`
 
@@ -630,7 +735,7 @@ class Eventstream(
             self.__cohorts.heatmap(figsize)
         return self.__cohorts
 
-    def stattest(
+    def stattests(
         self,
         test: TEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
@@ -1070,3 +1175,41 @@ class Eventstream(
                 print()
                 print(f"\033[1mMax events:\033[0m {max_events}")
                 print()
+
+    def transition_graph(
+        self,
+        thresholds: dict[str, Threshold] | None = None,
+        norm_type: NormType = None,
+        weights: dict[str, str] | None = None,
+        targets: dict[str, str | None] | None = None,
+        width: int = 960,
+        height: int = 900,
+    ) -> TransitionGraph:
+        self.__transition_graph = TransitionGraph(
+            eventstream=self,
+            graph_settings={},  # type: ignore
+            norm_type=norm_type,
+            weights=weights,
+            thresholds=thresholds,
+            targets=targets,
+        )
+        self.__transition_graph.plot_graph(
+            thresholds=thresholds, targets=targets, weights=weights, width=width, height=height, norm_type=norm_type
+        )
+        return self.__transition_graph
+
+    def processing_graph(self) -> PGraph:
+        if self.__p_graph is None:
+            self.__p_graph = PGraph(source_stream=self)
+        self.__p_graph.display()
+        return self.__p_graph
+
+    def transition_adjacency(self, weights: list[str] | None = None, norm_type: NormType = None) -> pd.DataFrame:
+        if self.__transition_graph is None:
+            self.__transition_graph = TransitionGraph(
+                eventstream=self,
+                graph_settings={},  # type: ignore
+                norm_type=norm_type,
+            )
+        adjacency = self.__transition_graph.get_adjacency(weights=weights, norm_type=norm_type)
+        return adjacency

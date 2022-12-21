@@ -30,8 +30,8 @@ class Edgelist:
         self.edgelist_norm_functions = edgelist_norm_functions
 
     def calculate_edgelist(
-        self, data: pd.DataFrame, norm_type: NormType = None, custom_cols: MutableSequence[str] | None = None
-    ) -> None:
+        self, data: pd.DataFrame, norm_type: NormType | None = None, custom_cols: MutableSequence[str] | None = None
+    ) -> pd.DataFrame:
 
         if norm_type not in [None, "full", "node"]:
             raise ValueError(f"unknown normalization type: {norm_type}")
@@ -78,6 +78,7 @@ class Edgelist:
                         edgelist[weight_col] = self.edgelist_norm_functions[weight_col](data, self.nodelist, edgelist)
 
         self.edgelist_df = edgelist
+        return edgelist
 
     def _get_shift(self, data: pd.DataFrame, index_col: str, event_col: str, time_col: str) -> pd.DataFrame:
         data.sort_values([index_col, time_col], inplace=True)

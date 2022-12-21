@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal, MutableMapping, Sequence, TypedDict, Union
-
-from src.eventstream.types import EventstreamType
+from typing import Any, Literal, MutableMapping, Optional, Sequence, TypedDict, Union
 
 
 class Degree(TypedDict):
@@ -30,7 +28,7 @@ class PlotParamsType(TypedDict):
 AllowedColors = Literal["red", "green", "yellow", "blue", "magenta", "cyan"]
 
 Threshold = MutableMapping[str, float]
-NodeParams = MutableMapping[str, str]
+NodeParams = MutableMapping[str, Optional[str]]
 Position = MutableMapping[str, Sequence[float]]
 
 

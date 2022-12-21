@@ -1,1 +1,1 @@
-from .transition_graph import TransitionGraph
+from .transition_graph import NormType, TransitionGraph

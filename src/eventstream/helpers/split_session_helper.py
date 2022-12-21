@@ -30,11 +30,11 @@ class SplitSessionsHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        Parameters and details :py:func:`src.data_processors_lib.rete.split_sessions.SplitSessions`
+        Parameters and details :py:func:`src.data_processors_lib.split_sessions.SplitSessions`
         """
 
         # avoid circular import
-        from src.data_processors_lib.rete import SplitSessions, SplitSessionsParams
+        from src.data_processors_lib import SplitSessions, SplitSessionsParams
         from src.graph.nodes import EventsNode
         from src.graph.p_graph import PGraph
 

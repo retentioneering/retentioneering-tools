@@ -17,7 +17,7 @@ class TestEventstreamStepMatrix:
             index=["event1", "event2", "event4"],
             columns=[1, 2, 3, 4, 5],
         )
-        res, _ = test_stream.step_matrix(**params).values
+        res, _ = test_stream.step_matrix(**params, show_plot=False).values
 
         assert correct_res.round(FLOAT_PRECISION).compare(res).shape == (0, 0)
 
@@ -37,8 +37,8 @@ class TestEventstreamStepMatrix:
             columns=[1, 2, 3, 4, 5],
         )
 
-        res_1, _ = test_stream.step_matrix(**params_1).values
-        res_2, _ = test_stream.step_matrix(**params_2).values
+        res_1, _ = test_stream.step_matrix(**params_1, show_plot=False).values
+        res_2, _ = test_stream.step_matrix(**params_2, show_plot=False).values
 
         assert correct_res_1.round(FLOAT_PRECISION).compare(res_1).shape == (0, 0), "First calculation"
         assert correct_res_2.round(FLOAT_PRECISION).compare(res_2).shape == (0, 0), "Refit"
@@ -46,9 +46,8 @@ class TestEventstreamStepMatrix:
     def test_step_matrix_eventstream__fit_hash_check(self, test_stream):
         params = {"max_steps": 5}
 
-        cc = test_stream.step_matrix(**params)
+        cc = test_stream.step_matrix(**params, show_plot=False)
         hash1 = hash(cc)
-        cc.values
         hash2 = hash(cc)
 
         assert hash1 == hash2

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-from pydantic import ValidationError
 
 from src.tooling.cohorts import Cohorts
 from tests.tooling.fixtures.cohorts_corr import (

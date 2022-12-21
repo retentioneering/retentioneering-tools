@@ -19,10 +19,10 @@ class FilterHelperMixin:
 
         See Also
         --------
-        :py:func:`src.data_processors_lib.rete.filter_events.FilterEvents`
+        :py:func:`src.data_processors_lib.filter_events.FilterEvents`
         """
         # avoid circular import
-        from src.data_processors_lib.rete import FilterEvents, FilterEventsParams
+        from src.data_processors_lib import FilterEvents, FilterEventsParams
         from src.graph.nodes import EventsNode
         from src.graph.p_graph import PGraph
 

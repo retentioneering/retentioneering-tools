@@ -3,13 +3,15 @@ from __future__ import annotations
 import inspect
 import types
 from dataclasses import dataclass, field
-from typing import Callable, Type, Union
+from typing import Any, Callable, Type, Union, Optional
+from src.exceptions.widget import ParseReteFuncError
 
 
 @dataclass
 class StringWidget:
     name: str
     optional: bool
+    default: str
     widget: str = "string"
 
     @classmethod
@@ -21,6 +23,7 @@ class StringWidget:
 class IntegerWidget:
     name: str
     optional: bool
+    default: int
     widget: str = "integer"
 
     @classmethod
@@ -33,7 +36,7 @@ class EnumWidget:
     name: str
     optional: bool
     params: list[str]
-    default: str = ""
+    default: Any
     widget: str = "enum"
 
     @classmethod
@@ -45,7 +48,7 @@ class EnumWidget:
 class ArrayWidget:
     name: str
     optional: bool
-    default: str = ""
+    default: list
     widget: str = "array"
 
     @classmethod
@@ -57,6 +60,7 @@ class ArrayWidget:
 class BooleanWidget:
     name: str
     optional: bool
+    default: bool
     widget: str = "boolean"
 
     @classmethod
@@ -68,6 +72,7 @@ class BooleanWidget:
 class ReteTimeWidget:
     name: str
     optional: bool
+    default: tuple[float, str]
     widget: str = "time_widget"
 
     params: list = field(default_factory=list)
@@ -100,6 +105,7 @@ class ReteTimeWidget:
 class ReteFunction:
     name: str
     optional: bool
+    default: Callable
     widget: str = "function"
 
     @classmethod
@@ -116,8 +122,22 @@ class ReteFunction:
 
     @classmethod
     def _parse(cls, value: str) -> Callable:  # type: ignore
-        code_obj = compile(value, "<string>", "exec")
-        new_func_type = types.FunctionType(code_obj.co_consts[2], {})
+        try:
+            code_obj = compile(value, "<string>", "exec")
+        except:
+            raise ParseReteFuncError("parsing error. You must implement a python function here")
+    
+        new_func_type = None
+        
+        for i in code_obj.co_consts:
+            try:
+                new_func_type = types.FunctionType(i, {})
+            except Exception as err:
+                continue
+
+        if new_func_type is None:
+            raise ParseReteFuncError("parsing error. You must implement a python function here")
+
         return new_func_type
 
 
@@ -125,6 +145,7 @@ class ReteFunction:
 class ListOfInt:
     name: str
     optional: bool
+    default: list[int]
     widget: str = "list_of_int"
 
     @classmethod
@@ -146,6 +167,8 @@ class ListOfIntNewUsers:
     name: str
     optional: bool
     params: list[str]
+    default: list[int]
+
     widget: str = "list_of_int"
 
     @classmethod
@@ -166,6 +189,8 @@ class ListOfIntNewUsers:
 class ListOfString:
     name: str
     optional: bool
+    default: list[str]
+
     widget: str = "list_of_string"
 
     @classmethod

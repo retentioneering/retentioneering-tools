@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from typing import Any, Optional, Type, Union
-
+from pydantic import ValidationError
 from src.data_processor.data_processor import DataProcessor
 from src.data_processor.registry import dataprocessor_registry
 from src.eventstream.types import EventstreamType
@@ -71,24 +71,29 @@ class NotFoundDataprocessor(Exception):
     pass
 
 
-def build_node(node_name: str, processor_name: str, processor_params: dict[str, Any] | None = None) -> Node | None:
-    if node_name == "SourceNode":
-        return None
-
+def build_node(source_stream: EventstreamType, pk: str, node_name: str, processor_name: str | None = None, processor_params: dict[str, Any] | None = None) -> Node:
     _node = nodes[node_name]
     node_kwargs = {}
-    if processor_name:
+
+    if node_name == "SourceNode":
+        node_kwargs["source"] = source_stream
+
+    if not processor_params:
+        processor_params = {}
+
+    if processor_name and node_name == "EventsNode":
         _params_model_registry = params_model_registry.get_registry()
         _dataprocessor_registry = dataprocessor_registry.get_registry()
 
         _processor: Type[DataProcessor] = _dataprocessor_registry[processor_name]  # type: ignore
         params_name = _processor.__annotations__["params"]
-        _params_model = _params_model_registry[params_name]
+        _params_model = _params_model_registry[params_name] if type(params_name) is str else params_name
+        
         params_model = _params_model(**processor_params)
 
         processor: DataProcessor = _processor(params=params_model)
-
         node_kwargs["processor"] = processor
 
     node = _node(**node_kwargs)
+    node.pk = pk
     return node

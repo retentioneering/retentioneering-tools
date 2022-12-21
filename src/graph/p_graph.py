@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import json
-from typing import Any, List, Optional, TypedDict, cast
+from typing import Any, List, Optional, TypedDict, Literal, Union, cast
 
 import networkx
 from IPython.display import HTML, DisplayHandle, display
+from pydantic import ValidationError
 
 from src.backend import JupyterServer, ServerManager
 from src.backend.callback import list_dataprocessor, list_dataprocessor_mock
 from src.eventstream.types import EventstreamType
 from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode, build_node
 from src.templates import PGraphRenderer
+from src.exceptions.widget import WidgetParseError
+from src.exceptions.server import ServerErrorWithResponse
 
 
 class NodeData(TypedDict):
@@ -29,15 +32,30 @@ class Payload(TypedDict):
     nodes: list[NodeData]
     links: list[NodeLink]
 
+class CombineHandlerPayload(TypedDict):
+    node_pk: str
+
+class FieldErrorDesc(TypedDict):
+    field: str
+    msg: str
+
+class CreateNodeErrorDesc(TypedDict):
+    type: Literal["node_error"]
+    node_pk: str
+    msg: Optional[str]
+    fields_errors: List[FieldErrorDesc]
+
 
 class PGraph:
     root: SourceNode
+    combine_result: EventstreamType | None
     _ngraph: networkx.DiGraph
     __server_manager: ServerManager | None = None
     __server: JupyterServer | None = None
 
     def __init__(self, source_stream: EventstreamType) -> None:
         self.root = SourceNode(source=source_stream)
+        self.combine_result = None
         self._ngraph = networkx.DiGraph()
         self._ngraph.add_node(self.root)
 
@@ -131,8 +149,9 @@ class PGraph:
             self.__server = self.__server_manager.create_server()
             self.__server.register_action("list-dataprocessor-mock", list_dataprocessor_mock)
             self.__server.register_action("list-dataprocessor", list_dataprocessor)
-            self.__server.register_action("set-graph", self._set_graph)
+            self.__server.register_action("set-graph", self._set_graph_handler)
             self.__server.register_action("get-graph", self.export)
+            self.__server.register_action("combine", self._combine_handler)
 
         render = PGraphRenderer()
         return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))
@@ -150,6 +169,30 @@ class PGraph:
     def _export_to_json(self) -> str:
         data = self.export(payload=dict())
         return json.dumps(data)
+
+    def _combine_handler(self, payload: CombineHandlerPayload):
+        node = self._find_node(payload["node_pk"])
+        if not node:
+            raise ServerErrorWithResponse(message="node not found!", type="unexpected_error")
+        self.combine_result = self.combine(node)
+
+
+    def _set_graph_handler(self, payload: Payload):
+        current_graph = self._ngraph
+        current_root = self.root
+
+        def restore_graph():
+            self._ngraph = current_graph
+            self.root = current_root
+
+        try:
+            self._set_graph(payload=payload)
+        except ServerErrorWithResponse as err:
+            restore_graph()
+            raise err
+        except Exception as err:
+            restore_graph()
+            raise ServerErrorWithResponse(message=str(err), type="unexpected_error")
 
     def _set_graph(self, payload: Payload) -> None:
         """
@@ -191,25 +234,95 @@ class PGraph:
         }
 
         """
-        self._ngraph = networkx.DiGraph()
-        self._ngraph.add_node(self.root)
+        errors: List[CreateNodeErrorDesc] = []
+        nodes: List[Node] = []
 
-        try:
-            for node in payload["nodes"]:
-                node_pk = node["pk"]
-                if actual_node := build_node(
+        # create nodes & validate params
+        for node in payload["nodes"]:
+            node_pk = node["pk"]
+            processor = node.get("processor", {})
+            processor_name = processor.get("name", None) if processor else None
+            processor_params = processor.get("values", None) if processor else None
+
+            try: 
+                actual_node = build_node(
+                    source_stream=self.root.events,
+                    pk=node_pk,
                     node_name=node["name"],
-                    processor_name=node.get("processor", {}).get("name", None),  # type: ignore
-                    processor_params=node.get("processor", {}).get("values", None),  # type: ignore
-                ):
-                    actual_node.pk = node_pk
-                    parents = self._find_parents_by_links(target_node=node_pk, link_list=payload["links"])
-                    self.add_node(parents=parents, node=actual_node)
-                if node["name"] == "SourceNode":
-                    self.root.pk = node["pk"]
-        except Exception as err:
-            self.save_err = err
+                    processor_name=processor_name,
+                    processor_params=processor_params,
+                )
+                nodes.append(actual_node)
+            except Exception as error:
+                error_desc = self._build_node_error_desc(node_pk=node_pk, error=error)
+                errors.append(error_desc)
+        
+        if errors:
+            raise ServerErrorWithResponse(message="set graph error", type="create_nodes_error", errors=errors)
+        
+        self._ngraph = networkx.DiGraph()
 
+        # add nodes
+        for node in nodes:
+            if isinstance(node, SourceNode):
+                self.root = node
+            self._ngraph.add_node(node)
+
+        # add links
+        # @TODO: validate links (graph structure)
+        for link in payload["links"]:
+            source = self._find_node(link["source"])
+            target = self._find_node(link["target"])
+            if not source:
+                raise ServerErrorWithResponse(message="source not found", type="create_link_error")
+            if not target:
+                raise ServerErrorWithResponse(message="target not found", type="create_link_error")
+            self._ngraph.add_edge(source, target)
+
+    def _build_node_error_desc(self, node_pk: str, error: Exception) -> CreateNodeErrorDesc:
+        if isinstance(error, ValidationError):
+            return self._build_pydantic_error_desc(
+                node_pk=node_pk,
+                v_error=error,
+            )
+
+        if isinstance(error, WidgetParseError):
+            field_errors: List[FieldErrorDesc] = [{ "field": error.field_name, "msg": str(error)}] if error.field_name else []
+            return {
+                "type": "node_error",
+                "msg": str(error),
+                "node_pk": node_pk,
+                "fields_errors": field_errors,
+            }
+        
+        return {
+            "type": "node_error",
+            "msg": str(error),
+            "node_pk": node_pk,
+            "fields_errors": [],
+        }
+
+    def _build_pydantic_error_desc(self, node_pk: str, v_error: ValidationError) -> CreateNodeErrorDesc:
+        raw_errs = v_error.errors()
+        result_errors: List[FieldErrorDesc] = []
+
+        for raw_err in raw_errs:
+            loc = raw_err.get("loc", ())
+            field = next(iter(loc), None)
+            msg = raw_err.get("msg")
+
+            result_errors.append({
+                "field": str(field),
+                "msg": msg,
+            })
+
+        return {
+            "type": "node_error",
+            "node_pk": node_pk,
+            "msg": "node error",
+            "fields_errors": result_errors
+        }
+        
     def _find_parents_by_links(self, target_node: str, link_list: list[NodeLink]) -> list[Node]:
         parents: list[str] = []
         for node in link_list:

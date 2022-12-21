@@ -9,7 +9,7 @@ from src.data_processor.data_processor import DataProcessor
 from src.data_processors_lib.rete.constants import DATETIME_UNITS
 from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
-from src.widget.widgets import ListOfInt, ReteTimeWidget
+from src.widget.widgets import ListOfString, ReteTimeWidget
 
 
 class LostUsersParams(ParamsModel):
@@ -22,7 +22,7 @@ class LostUsersParams(ParamsModel):
 
     _widgets = {
         "lost_cutoff": ReteTimeWidget,
-        "lost_users_list": ListOfInt,
+        "lost_users_list": ListOfString,
     }
 
 
@@ -86,26 +86,32 @@ class LostUsersEvents(DataProcessor):
             lost_cutoff, lost_cutoff_unit = self.params.lost_cutoff
 
         if lost_cutoff and lost_users_list:
-            raise ValueError("lost_cutoff and lost_users_list parameters cannot be used simultaneously!")
+            raise ValueError(
+                "lost_cutoff and lost_users_list parameters cannot be used simultaneously!")
 
         if not lost_cutoff and not lost_users_list:
-            raise ValueError("Either lost_cutoff or lost_users_list must be specified!")
+            raise ValueError(
+                "Either lost_cutoff or lost_users_list must be specified!")
 
         df = eventstream.to_dataframe(copy=True)
 
         if lost_cutoff and lost_cutoff_unit:
             data_lost = df.groupby(user_col, as_index=False)[time_col].max()
-            data_lost["diff_end_to_end"] = data_lost[time_col].max() - data_lost[time_col]
-            data_lost["diff_end_to_end"] /= np.timedelta64(1, lost_cutoff_unit)  # type: ignore
+            data_lost["diff_end_to_end"] = data_lost[time_col].max() - \
+                data_lost[time_col]
+            # type: ignore
+            data_lost["diff_end_to_end"] /= np.timedelta64(1, lost_cutoff_unit)
 
-            data_lost[type_col] = np.where(data_lost["diff_end_to_end"] < lost_cutoff, "absent_user", "lost_user")
+            data_lost[type_col] = np.where(
+                data_lost["diff_end_to_end"] < lost_cutoff, "absent_user", "lost_user")
             data_lost[event_col] = data_lost[type_col]
             data_lost["ref"] = None
             del data_lost["diff_end_to_end"]
 
         if lost_users_list:
             data_lost = df.groupby(user_col, as_index=False)[time_col].max()
-            data_lost[type_col] = np.where(data_lost["user_id"].isin(lost_users_list), "lost_user", "absent_user")
+            data_lost[type_col] = np.where(data_lost["user_id"].isin(
+                lost_users_list), "lost_user", "absent_user")
             data_lost[event_col] = data_lost[type_col]
             data_lost["ref"] = None
 

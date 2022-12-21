@@ -8,6 +8,7 @@ from pydantic import BaseModel, ValidationError, validator
 from typing_extensions import TypedDict
 
 from src.params_model.registry import register_params_model
+from src.exceptions.widget import WidgetParseError
 from src.widget import WIDGET, WIDGET_MAPPING, WIDGET_TYPE
 
 if TYPE_CHECKING:
@@ -56,8 +57,13 @@ class ParamsModel(BaseModel):
         except ValidationError:
             for key in data:
                 if key in self._widgets:
-                    data[key] = self._widgets[key]._parse(data[key])
+                    try:
+                        data[key] = self._widgets[key]._parse(data[key])
+                    except WidgetParseError as parse_err:
+                        parse_err.field_name = key
+                        raise parse_err
             super().__init__(**data)
+
 
     def __call__(self, **data: Dict[str, Any]) -> ParamsModel:
         ParamsModel.__init__(self, **data)
@@ -84,7 +90,7 @@ class ParamsModel(BaseModel):
             widget = None
             default = params.get("default")
             if name in custom_widgets:  # type: ignore
-                widget = cls._parse_custom_widget(name=name, optional=optionals[name])
+                widget = cls._parse_custom_widget(name=name, default=default, optional=optionals[name])
             elif "$ref" in params or "allOf" in params:
                 widget = cls._parse_schema_definition(params, definitions, default=default, optional=optionals[name])
             elif "anyOf" in params:
@@ -149,11 +155,11 @@ class ParamsModel(BaseModel):
             raise Exception("Not found widget. Define new widget for <%s> and add it to mapping." % widget_type)
 
     @classmethod
-    def _parse_custom_widget(cls, name: str, optional: bool = False) -> WIDGET:
+    def _parse_custom_widget(cls, name: str, default: Any, optional: bool = False) -> WIDGET:
         custom_widget = cls._widgets[name]  # type: ignore
         _widget = WIDGET_MAPPING[custom_widget["widget"]] if isinstance(custom_widget, dict) else custom_widget
         widget_type = custom_widget["widget"] if isinstance(custom_widget, dict) else custom_widget.widget
-        return _widget.from_dict(**dict(optional=optional, name=name, widget=widget_type, value=None))
+        return _widget.from_dict(**dict(optional=optional, name=name, default=default, widget=widget_type, value=None))
 
     @classmethod
     def get_widgets(cls) -> dict[str, str | dict | list]:

@@ -69,35 +69,40 @@ master_doc = "index"
 extlinks = {
     "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units/%s", None),
     "sklearn_tfidf": (
-        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html/%s",
+        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html%s",
         None,
     ),
     "sklearn_countvec": (
-        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html/%s",
+        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html%s",
         None,
     ),
     "numpy_timedelta_link": (
         "https://numpy.org/doc/stable/reference/arrays.datetime.html"
-        "#:~:text=There%%20are%%20two,numbers%%20of%%20days%s",
+        "#:~:text=There%%20are%%20two,numbers%%20of%%20days/%s",
         None,
     ),
     "plotly_autosize": ("https://plotly.com/python/reference/layout/#layout-autosize/%s", None),
     "plotly_width": ("https://plotly.com/python/reference/layout/#layout-width/%s", None),
     "plotly_height": ("https://plotly.com/python/reference/layout/#layout-height/%s", None),
-    "mannwhitneyu": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.mannwhitneyu.html/%s", None),
-    "scipy_chi2": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.chi2_contingency.html/%s", None),
-    "scipy_fisher": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.fisher_exact.html/%s", None),
-    "scipy_ks": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html/%s", None),
+    "mannwhitneyu": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.mannwhitneyu.html%s", None),
+    "scipy_chi2": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.chi2_contingency.html%s", None),
+    "scipy_fisher": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.fisher_exact.html%s", None),
+    "scipy_ks": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html%s", None),
     "statsmodel_ttest": (
-        "https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ttest_ind.html/%s",
+        "https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ttest_ind.html%s",
         None,
     ),
-    "statsmodel_ztest": ("https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ztest.html/%s", None),
+    "statsmodel_ztest": ("https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ztest.html%s", None),
     "numpy_random_choice": (
-        "https://numpy.org/doc/stable/reference/random/generated/numpy.random.RandomState.choice.html/%s",
+        "https://numpy.org/doc/stable/reference/random/generated/numpy.random.RandomState.choice.html%s",
         None,
     ),
-    "numpy_random_seed": ("https://numpy.org/doc/stable/reference/random/generated/numpy.random.seed.htm/%sl", None),
+    "numpy_random_seed": ("https://numpy.org/doc/stable/reference/random/generated/numpy.random.seed.html%s", None),
+    "pandas_copy": (
+        "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html"
+        "#:~:text=If%%20None%%2C%%20infer.-,copybool,-or%%20None%%2C%%20default%s",
+        None,
+    ),
 }
 
 

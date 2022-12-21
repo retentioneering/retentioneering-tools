@@ -4,7 +4,8 @@ Eventstream
 Eventstream Core
 ----------------
 .. autoclass:: src.eventstream.eventstream.Eventstream
-    :undoc-members: funnel, clusters, step_matrix, step_sankey, cohorts, graph, stattests
+    :noindex:
+    :members: copy, append_eventstream, to_dataframe, index_events, add_custom_col
 
 Schema
 ------

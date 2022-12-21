@@ -119,7 +119,8 @@ class Eventstream(
         Sorting order for ``event_type`` column.
     relations : list, optional
     user_sample_size : int of float, optional
-        Number of users trajectories which will be randomly chosen and remained in final sample.
+        Number (``int``) or share (``float``) of all users trajectories which will be randomly chosen
+        and remained in final sample.
         See :numpy_random_choice:`numpy documentation<>`.
     user_sample_seed : int, optional
         Random seed value to generate repeated random users sample.
@@ -176,7 +177,7 @@ class Eventstream(
 
     def copy(self) -> Eventstream:
         """
-        Make a copy of input ``eventstream``.
+        Make a copy of current ``eventstream``.
 
         Returns
         -------
@@ -347,10 +348,12 @@ class Eventstream(
         show_deleted : bool, default
             If ``True`` - show all rows in ``eventstream``
         copy : bool, default False
-
+            If ``True`` - copy data from current ``eventstream``.
+            See details :pandas_copy:`pandas documentation<>`
 
         Returns
         -------
+        pd.DataFrame
 
         """
         cols = self.schema.get_cols() + self._get_relation_cols()
@@ -410,7 +413,9 @@ class Eventstream(
         name : str
             New column name.
         data : pd.Series
-            Array with new column values.
+
+            - If ``pd.Series`` - new column with given values will be added.
+            - If ``None`` - new column will be filled with ``np.nan``
 
         Returns
         -------

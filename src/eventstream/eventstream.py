@@ -360,7 +360,6 @@ class Eventstream(
 
         if raw_cols:
             cols += self._get_raw_cols()
-
         if show_deleted:
             cols.append(DELETE_COL_NAME)
 
@@ -596,7 +595,7 @@ class Eventstream(
     @property
     def clusters(self) -> Clusters:
         """
-        Returns an instance of ``Cluster`` class to be used for cluster analysis.
+        Returns an instance of ``Clusters`` class to be used for cluster analysis.
 
         See :py:func:`src.tooling.clusters.clusters`
 
@@ -728,7 +727,7 @@ class Eventstream(
             self.__cohorts.heatmap(figsize)
         return self.__cohorts
 
-    def stattest(
+    def stattests(
         self,
         test: TEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
@@ -784,6 +783,12 @@ class Eventstream(
         upper_cutoff_quantile: Optional[float] = None,
         bins: int = 20,
     ) -> TimedeltaHist:
+
+        """
+
+        See parameters description :py:func:`src.tooling.timedelta_hist.timedelta_hist`
+
+        """
         self.__timedelta_hist = TimedeltaHist(
             eventstream=self,
             event_pair=event_pair,

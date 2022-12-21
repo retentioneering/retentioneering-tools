@@ -2,7 +2,7 @@ Preprocessing
 =============
 .. toctree::
    :caption: Preprocessing
-   :maxdepth: 2
+   :maxdepth: 5
 
     Start End Events <data_processors/add_start_end.rst>
     New users <data_processors/add_new_users.rst>

@@ -1,10 +1,10 @@
 .. title:: API Reference
 
 .. toctree::
-   :caption: Eventstream Core:
+   :caption: Eventstream:
    :maxdepth: 2
 
-   Eventstream Core <eventstream_api.rst>
+   Eventstream <eventstream_api.rst>
 
 .. toctree::
    :caption: Preprocessing:

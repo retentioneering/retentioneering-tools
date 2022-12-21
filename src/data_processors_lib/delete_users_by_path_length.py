@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from src.constants import DATETIME_UNITS
+from src.constants import DATETIME_UNITS, DATETIME_UNITS_LIST
 from src.data_processor.data_processor import DataProcessor
 from src.eventstream.types import EventstreamType
 from src.params_model import ParamsModel
@@ -20,7 +20,7 @@ class DeleteUsersByPathLengthParams(ParamsModel):
     cutoff: Optional[Tuple[float, DATETIME_UNITS]]
 
     _widgets = {
-        "cutoff": ReteTimeWidget,
+        "cutoff": ReteTimeWidget(),
     }
 
 

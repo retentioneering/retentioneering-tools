@@ -237,17 +237,17 @@ class PGraph:
         data = self.export(payload=dict())
         return json.dumps(data)
 
-    def _combine_handler(self, payload: CombineHandlerPayload):
+    def _combine_handler(self, payload: CombineHandlerPayload) -> None:
         node = self._find_node(payload["node_pk"])
         if not node:
             raise ServerErrorWithResponse(message="node not found!", type="unexpected_error")
         self.combine_result = self.combine(node)
 
-    def _set_graph_handler(self, payload: Payload):
+    def _set_graph_handler(self, payload: Payload) -> None:
         current_graph = self._ngraph
         current_root = self.root
 
-        def restore_graph():
+        def restore_graph() -> None:
             self._ngraph = current_graph
             self.root = current_root
 
@@ -329,10 +329,10 @@ class PGraph:
         self._ngraph = networkx.DiGraph()
 
         # add nodes
-        for node in nodes:
-            if isinstance(node, SourceNode):
-                self.root = node
-            self._ngraph.add_node(node)
+        for created_node in nodes:
+            if isinstance(created_node, SourceNode):
+                self.root = created_node
+            self._ngraph.add_node(created_node)
 
         # add links
         # @TODO: validate links (graph structure)

@@ -16,7 +16,7 @@ class NewUsersParams(ParamsModel):
     """
 
     new_users_list: Union[List[int], List[str], Literal["all"]]
-    _widgets = {"new_users_list": ListOfIntNewUsers}
+    _widgets = {"new_users_list": ListOfIntNewUsers()}
 
 
 class NewUsersEvents(DataProcessor):

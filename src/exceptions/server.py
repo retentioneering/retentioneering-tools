@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any, Optional, TypedDict
 
 from .base import BaseReteException
 
@@ -17,6 +17,12 @@ class ServerNotFound(BaseReteException):
     pass
 
 
+class ServerErrorDict(TypedDict):
+    type: str
+    msg: str
+    errors: Optional[Any]
+
+
 class ServerErrorWithResponse(BaseReteException):
     type: str
     message: str
@@ -27,7 +33,7 @@ class ServerErrorWithResponse(BaseReteException):
         self.type = type
         self.errors = errors
 
-    def dict(self):
+    def dict(self) -> ServerErrorDict:
         # check errors serializable
         try:
             json.dumps(self.errors)
@@ -35,6 +41,7 @@ class ServerErrorWithResponse(BaseReteException):
             return {
                 "type": self.type,
                 "msg": "serialize error response error!",
+                "errors": None,
             }
         return {
             "type": self.type,

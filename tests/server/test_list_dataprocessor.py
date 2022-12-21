@@ -249,7 +249,7 @@ class TestListDataprocessors:
             },
             {
                 "name": "StubProcessor",
-                "params": [{"default": None, "name": "A", "optional": False, "widget": "array"}],
+                "params": [{"default": None, "name": "A", "optional": False, "widget": "enum", "params": ["a", "b"]}],
             },
             {
                 "name": "HelperAddColProcessor",
@@ -271,7 +271,7 @@ class TestListDataprocessors:
             },
             {
                 "name": "StubProcessorPGraph",
-                "params": [{"default": None, "name": "A", "optional": False, "widget": "array"}],
+                "params": [{"default": None, "name": "A", "optional": False, "widget": "enum", "params": ["a", "b"]}],
             },
         ]
         correct_data = sorted(correct_data, key=lambda x: x["name"])

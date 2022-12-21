@@ -100,7 +100,7 @@ def build_node(
         params_model = _params_model(**processor_params)
 
         processor: DataProcessor = _processor(params=params_model)
-        node_kwargs["processor"] = processor
+        node_kwargs["processor"] = processor  # type: ignore
 
     node = _node(**node_kwargs)
     node.pk = pk

@@ -3,7 +3,7 @@ Positive Target
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.rete.positive_target
+.. automodule:: src.data_processors_lib.positive_target
     :members:
 
 Eventstream

@@ -3,7 +3,7 @@ Delete Users
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.rete.delete_users_by_path_length
+.. automodule:: src.data_processors_lib.delete_users_by_path_length
     :members:
 
 Eventstream

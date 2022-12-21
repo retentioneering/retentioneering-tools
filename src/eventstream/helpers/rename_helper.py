@@ -7,7 +7,7 @@ class RenameHelperMixin:
     def rename(self, rules: list[dict[str, str]]) -> EventstreamType:
 
         # avoid circular import
-        from src.data_processors_lib.rete import RenameParams, RenameProcessor
+        from src.data_processors_lib import RenameParams, RenameProcessor
         from src.graph.nodes import EventsNode
         from src.graph.p_graph import PGraph
 

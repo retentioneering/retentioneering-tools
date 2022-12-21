@@ -19,10 +19,10 @@ class NewUsersHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.rete.new_users.NewUsersEvents`
+        :py:func:`src.data_processors_lib.new_users.NewUsersEvents`
         """
         # avoid circular import
-        from src.data_processors_lib.rete import NewUsersEvents, NewUsersParams
+        from src.data_processors_lib import NewUsersEvents, NewUsersParams
         from src.graph.nodes import EventsNode
         from src.graph.p_graph import PGraph
 

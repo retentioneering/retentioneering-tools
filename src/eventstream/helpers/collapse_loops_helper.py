@@ -26,11 +26,11 @@ class CollapseLoopsHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.rete.collapse_loops.CollapseLoops`
+        :py:func:`src.data_processors_lib.collapse_loops.CollapseLoops`
         """
 
         # avoid circular import
-        from src.data_processors_lib.rete import CollapseLoops, CollapseLoopsParams
+        from src.data_processors_lib import CollapseLoops, CollapseLoopsParams
         from src.graph.nodes import EventsNode
         from src.graph.p_graph import PGraph
 

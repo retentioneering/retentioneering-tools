@@ -15,7 +15,7 @@ class GroupEventsParams(ParamsModel):
     """
 
     event_name: str
-    filter: EventstreamFilter
+    func: EventstreamFilter
     event_type: Optional[str] = "group_alias"
 
 
@@ -63,7 +63,7 @@ class GroupEvents(DataProcessor):
         from src.eventstream.eventstream import Eventstream
 
         event_name = self.params.event_name
-        func: Callable = self.params.filter
+        func: Callable = self.params.func
         event_type = self.params.event_type
 
         events = eventstream.to_dataframe()

@@ -23,12 +23,12 @@ class LostUsersHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.rete.lost_users.LostUsersEvents`
+        :py:func:`src.data_processors_lib.lost_users.LostUsersEvents`
 
         """
 
         # avoid circular import
-        from src.data_processors_lib.rete import LostUsersEvents, LostUsersParams
+        from src.data_processors_lib import LostUsersEvents, LostUsersParams
         from src.graph.nodes import EventsNode
         from src.graph.p_graph import PGraph
 

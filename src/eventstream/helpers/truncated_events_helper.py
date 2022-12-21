@@ -26,10 +26,10 @@ class TruncatedEventsHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.rete.truncated_events.TruncatedEvents`
+        :py:func:`src.data_processors_lib.truncated_events.TruncatedEvents`
         """
         # avoid circular import
-        from src.data_processors_lib.rete import TruncatedEvents, TruncatedEventsParams
+        from src.data_processors_lib import TruncatedEvents, TruncatedEventsParams
         from src.graph.nodes import EventsNode
         from src.graph.p_graph import PGraph
 

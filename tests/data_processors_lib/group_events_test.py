@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib.rete import GroupEvents, GroupEventsParams
+from src.data_processors_lib import GroupEvents, GroupEventsParams
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
@@ -32,7 +32,7 @@ class TestGroupEvents(ApplyTestBase):
             GroupEventsParams(
                 event_name="add_to_cart",
                 event_type="group_alias",
-                filter=_filter,
+                func=_filter,
             ),
             return_with_original=True,
         )
@@ -53,7 +53,7 @@ class TestGroupEvents(ApplyTestBase):
             GroupEventsParams(
                 event_name="add_to_cart",
                 event_type="group_alias",
-                filter=_filter,
+                func=_filter,
             ),
             return_with_original=True,
         )
@@ -68,7 +68,7 @@ class TestGroupEvents(ApplyTestBase):
             GroupEventsParams(
                 event_name="anything",
                 event_type="group_alias",
-                filter=_filter,
+                func=_filter,
             ),
             return_with_original=True,
         )
@@ -109,7 +109,7 @@ class TestGroupEventsGraph(GraphTestBase):
             GroupEventsParams(
                 event_name="event_new",
                 event_type="group_alias",
-                filter=_filter,
+                func=_filter,
             ),
             return_with_original=True,
         )
@@ -132,7 +132,7 @@ class TestGroupEventsGraph(GraphTestBase):
             GroupEventsParams(
                 event_name="event_new",
                 event_type="group_alias",
-                filter=_filter,
+                func=_filter,
             ),
             return_with_original=True,
         )
@@ -155,7 +155,7 @@ class TestGroupEventsGraph(GraphTestBase):
             GroupEventsParams(
                 event_name="anything",
                 event_type="group_alias",
-                filter=_filter,
+                func=_filter,
             ),
             return_with_original=True,
         )

@@ -26,11 +26,11 @@ class EventstreamType(Protocol):
         ...
 
     @abstractmethod
-    def append_eventstream(self, eventstream: EventstreamType):
+    def append_eventstream(self, eventstream: EventstreamType) -> None:
         ...
 
     @abstractmethod
-    def join_eventstream(self, eventstream: EventstreamType):
+    def _join_eventstream(self, eventstream: EventstreamType) -> None:
         ...
 
     @abstractmethod
@@ -38,11 +38,11 @@ class EventstreamType(Protocol):
         ...
 
     @abstractmethod
-    def get_raw_cols(self) -> list[str]:
+    def _get_raw_cols(self) -> list[str]:
         ...
 
     @abstractmethod
-    def get_relation_cols(self) -> list[str]:
+    def _get_relation_cols(self) -> list[str]:
         ...
 
     @abstractmethod
@@ -50,7 +50,7 @@ class EventstreamType(Protocol):
         ...
 
     @abstractmethod
-    def soft_delete(self, events: pd.DataFrame) -> None:
+    def _soft_delete(self, events: pd.DataFrame) -> None:
         ...
 
 
@@ -68,7 +68,7 @@ class EventstreamSchemaType(Protocol):
         ...
 
     @abstractmethod
-    def is_equal(self, schema) -> bool:
+    def is_equal(self, schema: EventstreamSchemaType) -> bool:
         ...
 
     @abstractmethod
@@ -86,8 +86,8 @@ class RawDataCustomColSchema(TypedDict):
 
 
 class RawDataSchemaType(Protocol):
-    event_name: str = "event_name"
-    event_timestamp: str = "event_timestamp"
+    event_name: str = "event"
+    event_timestamp: str = "timestamp"
     user_id: str = "user_id"
     event_type: Optional[str] = None
     custom_cols: List[RawDataCustomColSchema] = field(default_factory=list)

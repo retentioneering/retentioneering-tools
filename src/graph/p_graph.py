@@ -50,6 +50,10 @@ class CreateNodeErrorDesc(TypedDict):
 
 
 class PGraph:
+    """
+    Collection of methods for preprocessing graph construction and calculation.
+    """
+
     root: SourceNode
     combine_result: EventstreamType | None
     _ngraph: networkx.DiGraph
@@ -63,6 +67,28 @@ class PGraph:
         self._ngraph.add_node(self.root)
 
     def add_node(self, node: Node, parents: List[Node]) -> None:
+        """
+        Add node to ``PGraph`` instance.
+
+        Parameters
+        ----------
+        node : Node
+            Instance of class ``EventsNode`` or ``MergeNode``.
+        parents : list of Node
+
+            - If ``node`` is ``EventsNode`` - it should be only 1 parent
+            - If ``node`` is ``MergeNode`` - it should be at least 2 parents
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        Adding node doesn't run calculations.
+        See :py:func:`combine`.
+
+        """
         self.__valiate_already_exists(node)
         self.__validate_not_found(parents)
 
@@ -78,25 +104,38 @@ class PGraph:
             self._ngraph.add_edge(parent, node)
 
     def combine(self, node: Node) -> EventstreamType:
+        """
+        Run calculation from the ``SourceNode`` up to specified ``node``.
+
+        Parameters
+        ----------
+        node : Node
+            Instance of the class SourceNode, EventsNode or MergeNode
+
+        Returns
+        -------
+        EventstreamType
+            ``Eventstream`` with
+        """
         self.__validate_not_found([node])
 
         if isinstance(node, SourceNode):
             return node.events.copy()
 
         if isinstance(node, EventsNode):
-            return self.combine_events_node(node)
+            return self._combine_events_node(node)
 
-        return self.combine_merge_node(node)
+        return self._combine_merge_node(node)
 
-    def combine_events_node(self, node: EventsNode) -> EventstreamType:
-        parent = self.get_events_node_parent(node)
+    def _combine_events_node(self, node: EventsNode) -> EventstreamType:
+        parent = self._get_events_node_parent(node)
         parent_events = self.combine(parent)
         events = node.processor.apply(parent_events)
-        parent_events.join_eventstream(events)
+        parent_events._join_eventstream(events)
         return parent_events
 
-    def combine_merge_node(self, node: MergeNode) -> EventstreamType:
-        parents = self.get_merge_node_parents(node)
+    def _combine_merge_node(self, node: MergeNode) -> EventstreamType:
+        parents = self._get_merge_node_parents(node)
         curr_eventstream: Optional[EventstreamType] = None
 
         for parent_node in parents:
@@ -111,6 +150,15 @@ class PGraph:
         return cast(EventstreamType, curr_eventstream)
 
     def get_parents(self, node: Node) -> List[Node]:
+        """
+        Show parents of specified ``node``.
+
+        Parameters
+        ----------
+        node : Node
+            Instance of the class SourceNode, EventsNode or MergeNode
+
+        """
         self.__validate_not_found([node])
         parents: List[Node] = []
 
@@ -118,14 +166,14 @@ class PGraph:
             parents.append(parent)
         return parents
 
-    def get_merge_node_parents(self, node: MergeNode) -> List[Node]:
+    def _get_merge_node_parents(self, node: MergeNode) -> List[Node]:
         parents = self.get_parents(node)
         if len(parents) == 0:
             raise ValueError("orphan merge node!")
 
         return parents
 
-    def get_events_node_parent(self, node: EventsNode) -> Node:
+    def _get_events_node_parent(self, node: EventsNode) -> Node:
         parents = self.get_parents(node)
         if len(parents) > 1:
             raise ValueError("invalid graph: events node has more than 1 parent")
@@ -145,6 +193,10 @@ class PGraph:
                 raise ValueError("node not found!")
 
     def display(self) -> DisplayHandle:
+        """
+        Show constructed ``PGraph``.
+
+        """
         if not self.__server_manager:
             self.__server_manager = ServerManager()
 
@@ -160,6 +212,18 @@ class PGraph:
         return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))
 
     def export(self, payload: dict[str, Any]) -> dict:
+        """
+        Show ``PGraph`` as config.
+
+        Parameters
+        ----------
+        payload : dict
+
+        Returns
+        -------
+        dict
+
+        """
         source, target, link = "source", "target", "links"
         graph = self._ngraph
         data = {

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib.rete import (
+from src.data_processors_lib import (
     DeleteUsersByPathLength,
     DeleteUsersByPathLengthParams,
 )
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
@@ -62,7 +62,7 @@ class TestDeleteUsersByPathLength(ApplyTestBase):
                 [3, "event4", "raw", "2022-01-02 00:03:05", True],
                 [3, "path_end", "path_end", "2022-01-02 00:03:05", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -79,7 +79,7 @@ class TestDeleteUsersByPathLength(ApplyTestBase):
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
                 [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -139,7 +139,7 @@ class TestDeleteUsersByPathLengthGraph(GraphTestBase):
                 [1, "event3", "raw", "2022-01-01 00:04:30"],
                 [1, "event1", "raw", "2022-01-01 00:05:00"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -168,7 +168,7 @@ class TestDeleteUsersByPathLengthGraph(GraphTestBase):
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
                 [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -201,7 +201,7 @@ class TestDeleteUsersByPathLengthHelper:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 
         correct_result = pd.DataFrame(
             [
@@ -221,13 +221,7 @@ class TestDeleteUsersByPathLengthHelper:
             columns=correct_result_columns,
         )
 
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         result = source.delete_users(events_num=4)
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
@@ -261,7 +255,7 @@ class TestDeleteUsersByPathLengthHelper:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 
         correct_result = pd.DataFrame(
             [
@@ -285,13 +279,7 @@ class TestDeleteUsersByPathLengthHelper:
             columns=correct_result_columns,
         )
 
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
         result = source.delete_users(cutoff=(1.5, "m"))
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 

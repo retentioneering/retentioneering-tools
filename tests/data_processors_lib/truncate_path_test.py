@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib.rete import TruncatePath, TruncatePathParams
+from src.data_processors_lib import TruncatePath, TruncatePathParams
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
@@ -84,7 +84,7 @@ class TestTruncatePath(ApplyTestBase):
                 [1, "event1", "synthetic", "2022-01-01 00:03:00", True],
                 [2, "event1", "raw", "2022-01-02 00:00:00", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -110,7 +110,7 @@ class TestTruncatePath(ApplyTestBase):
                 [1, "event1", "raw", "2022-01-01 00:04:00", True],
                 [2, "event1", "raw", "2022-01-02 00:00:00", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -139,7 +139,7 @@ class TestTruncatePath(ApplyTestBase):
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
                 [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -157,7 +157,7 @@ class TestTruncatePath(ApplyTestBase):
                 [1, "event1", "raw", "2022-01-01 00:01:00", True],
                 [1, "event2", "raw", "2022-01-01 00:01:02", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -189,7 +189,7 @@ class TestTruncatePath(ApplyTestBase):
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
                 [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -211,7 +211,7 @@ class TestTruncatePath(ApplyTestBase):
                 [1, "event1", "raw", "2022-01-01 00:03:00", True],
                 [1, "event1", "synthetic", "2022-01-01 00:03:00", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -230,7 +230,7 @@ class TestTruncatePath(ApplyTestBase):
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
                 [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -248,7 +248,7 @@ class TestTruncatePath(ApplyTestBase):
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
                 [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -264,7 +264,7 @@ class TestTruncatePath(ApplyTestBase):
             [
                 [1, "event1", "raw", "2022-01-01 00:05:00", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -291,7 +291,7 @@ class TestTruncatePath(ApplyTestBase):
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
                 [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -304,7 +304,7 @@ class TestTruncatePath(ApplyTestBase):
             ),
             source_df=self._source_df_1,
         )
-        expected = pd.DataFrame([], columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"])
+        expected = pd.DataFrame([], columns=["user_id", "event", "event_type", "timestamp", "_deleted"])
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_apply__after_last_negative_shift(self):
@@ -326,7 +326,7 @@ class TestTruncatePath(ApplyTestBase):
                 [2, "event2", "raw", "2022-01-02 00:01:05", True],
                 [2, "path_end", "path_end", "2022-01-02 00:01:05", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -351,7 +351,7 @@ class TestTruncatePath(ApplyTestBase):
                 [1, "event4", "raw", "2022-01-02 00:03:05", True],
                 [1, "path_end", "path_end", "2022-01-02 00:03:05", True],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "_deleted"],
+            columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -430,7 +430,7 @@ class TestTruncatePathGraph(GraphTestBase):
                 [2, "event4", "raw", "2022-01-02 00:03:05"],
                 [2, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -446,7 +446,7 @@ class TestTruncatePathGraph(GraphTestBase):
             ),
             source_df=self._source_df_2,
         )
-        expected = pd.DataFrame([], columns=["user_id", "event_name", "event_type", "event_timestamp"])
+        expected = pd.DataFrame([], columns=["user_id", "event", "event_type", "timestamp"])
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_truncate_path_graph__irrelevant_before_event(self):
@@ -465,7 +465,7 @@ class TestTruncatePathGraph(GraphTestBase):
                 [1, "event2", "raw", "2022-01-01 00:04:00"],
                 [1, "event3", "raw", "2022-01-01 00:05:00"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -485,7 +485,7 @@ class TestTruncatePathGraph(GraphTestBase):
                 [1, "event2", "raw", "2022-01-01 00:04:00"],
                 [1, "event3", "raw", "2022-01-01 00:05:00"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -522,7 +522,7 @@ class TestTruncatePathHelper:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 
         correct_result = pd.DataFrame(
             [
@@ -544,13 +544,7 @@ class TestTruncatePathHelper:
             columns=correct_result_columns,
         )
 
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         result = source.truncate_path(drop_before="event3", drop_after="event5")
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
@@ -570,16 +564,10 @@ class TestTruncatePathHelper:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = pd.DataFrame([], columns=correct_result_columns)
 
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
         result = source.truncate_path(
             drop_before="event3",
             occurrence_before="first",
@@ -605,17 +593,11 @@ class TestTruncatePathHelper:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = pd.DataFrame(source_df, copy=True)
         correct_result.columns = correct_result_columns
 
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         result = source.truncate_path(drop_before="missing_event")
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
@@ -635,17 +617,11 @@ class TestTruncatePathHelper:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = pd.DataFrame(source_df, copy=True)
         correct_result.columns = correct_result_columns
 
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         result = source.truncate_path(drop_after="missing_event")
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)

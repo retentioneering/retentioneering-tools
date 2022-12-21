@@ -7,6 +7,10 @@ class TestListDataprocessors:
     def test_list_dataprocessors(self) -> None:
         correct_data = [
             {
+                "name": "RenameProcessor",
+                "params": [{"default": None, "name": "rules", "optional": False, "widget": "array"}],
+            },
+            {
                 "name": "CollapseLoops",
                 "params": [
                     {"name": "suffix", "optional": True, "widget": "string"},
@@ -169,7 +173,7 @@ class TestListDataprocessors:
                         "widget": "time_widget",
                     },
                     {"name": "mark_truncated", "optional": True, "widget": "boolean"},
-                    {"name": "session_col", "optional": False, "widget": "string"},
+                    {"name": "session_col", "optional": True, "widget": "string"},
                 ],
             },
             {"name": "StartEndEvents", "params": []},
@@ -270,7 +274,7 @@ class TestListDataprocessors:
                 "params": [{"default": None, "name": "A", "optional": False, "widget": "array"}],
             },
         ]
-
+        correct_data = sorted(correct_data, key=lambda x: x["name"])
         assert json.dumps(correct_data, sort_keys=True, indent=4, separators=(",", ": ")) == json.dumps(
             list_dataprocessor(payload={}), sort_keys=True, indent=4, separators=(",", ": ")
         )

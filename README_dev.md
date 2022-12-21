@@ -48,9 +48,9 @@ pre-commit install
 
 #### Ручной запуск
 
-`pre-commit run -a` -- запуск для всех файлов
-`pre-commit run --files tests/data_processor/test_dataprocessor_add_column.py` -- запуск для конкретного файла
-Больше информации: `pre-commit run -h`
+- `pre-commit run -a` -- запуск для всех файлов
+- `pre-commit run --files tests/data_processor/test_dataprocessor_add_column.py` -- запуск для конкретного файла
+- больше информации: `pre-commit run -h`
 
 ### PyTest
 

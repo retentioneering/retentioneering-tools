@@ -1,6 +1,6 @@
 import pandas as pd
 
-from src.data_processors_lib.rete import (
+from src.data_processors_lib import (
     CollapseLoops,
     CollapseLoopsParams,
     DeleteUsersByPathLength,
@@ -476,7 +476,7 @@ class TestPGraphExportImport:
                             "    eventstream : Eventstream\n"
                             "        Source eventstream or output from previous nodes.\n"
                             "\n"
-                            "    negative_target_events : List[str]\n"
+                            "    negative_target_events : list of str\n"
                             "        Each event from that list is associated with the bad result (scenario)\n"
                             "        of user's behaviour (experience) in the product.\n"
                             "        If there are several target events in user path - the event with minimum "
@@ -605,7 +605,7 @@ class TestPGraphExportImport:
                             "    eventstream : Eventstream\n"
                             "        Source eventstream or output from previous nodes.\n"
                             "\n"
-                            "    positive_target_events : List[str]\n"
+                            "    positive_target_events : list of str\n"
                             "        Condition for eventstream filtering.\n"
                             "        Each event from that list is associated with a conversion goal "
                             "of the user behaviour in the product.\n"
@@ -679,7 +679,7 @@ class TestPGraphExportImport:
                             "    eventstream : Eventstream\n"
                             "        Source eventstream or output from previous nodes.\n"
                             "\n"
-                            "    positive_target_events : List[str]\n"
+                            "    positive_target_events : list of str\n"
                             "        Condition for eventstream filtering.\n"
                             "        Each event from that list is associated with a conversion goal "
                             "of the user behaviour in the product.\n"

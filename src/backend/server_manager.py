@@ -21,7 +21,7 @@ class ServerManager:
     def _find_server(self, server_id: str) -> JupyterServer | None:
         return self._servers.get(server_id, None)
 
-    def _on_colab_func_called(self, server_id: str, method: str, request_id: str, payload) -> str:
+    def _on_colab_func_called(self, server_id: str, method: str, request_id: str, payload: dict) -> str:
         target_server: JupyterServer | None = self._find_server(server_id)
         if target_server is None:
             err = "ServerNotFound"
@@ -66,9 +66,9 @@ class ServerManager:
                 }
             )
 
-    def _on_comm_message(self, comm: Comm, open_msg) -> None:
+    def _on_comm_message(self, comm: Comm, open_msg: Any) -> None:
         @comm.on_msg  # type: ignore
-        def _recv(msg):
+        def _recv(msg: dict[str, dict]) -> None:
             data: dict[str, Any] = msg["content"]["data"]
             server_id = data["server_id"]
             request_id = data["request_id"]

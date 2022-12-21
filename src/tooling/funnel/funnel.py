@@ -12,10 +12,11 @@ from src.eventstream.types import EventstreamType
 
 class Funnel:
     """
-    Plots conversion funnel with specified parameters.
+    A class for the calculation and visualization of a conversion funnel.
 
     Parameters
     ----------
+    eventstream : EventstreamType
     stages: list of str
         List of events used as stages for the funnel. Absolute and relative
         number of users who reached specified events at least once will be
@@ -39,7 +40,7 @@ class Funnel:
 
     See Also
     --------
-    :py:func:`src.eventstream.funnel`
+    :py:func:`src.eventstream.eventstream.Eventstream.funnel`
 
     """
 
@@ -62,20 +63,22 @@ class Funnel:
         segment_names: list[str] | None = None,
         sequence: bool = False,
     ) -> None:
+
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
+
         self.stages = stages
-        self.stage_names = stage_names
         self.funnel_type: Literal["open", "closed"] = funnel_type
         self.sequence = sequence
 
         data = self.__eventstream.to_dataframe()
         data = data[data[self.event_col].isin([i for i in flatten(stages)])]  # type: ignore
         self.data = data
+        self.res_dict: dict = {}
 
-        if self.stages and self.stage_names and len(self.stages) != len(self.stage_names):
+        if self.stages and stage_names and len(self.stages) != len(stage_names):
             raise ValueError("stages and stage_names must be the same length!")
 
         if segments is None:
@@ -99,78 +102,24 @@ class Funnel:
         if funnel_type not in ["open", "closed"]:
             raise ValueError("funnel_type should be 'open' or 'closed'!")
 
-    def draw_plot(self) -> go.Figure:
-        """
-
-        Returns
-        -------
-        Funnel plot
-        """
-        plot_params = self._calculate(
-            data=self.data,
-            stages=self.stages,
-            stage_names=self.stage_names,
-            funnel_type=self.funnel_type,
-            segments=self.segments,
-            segment_names=self.segment_names,
-            sequence=self.sequence,
-        )
-        data = self._calculate_plot_data(plot_params=plot_params)
-        plot = self._plot_stacked_funnel(data=data)
-        return plot
-
-    def _calculate(
-        self,
-        data: pd.DataFrame,
-        stages: list[str],
-        stage_names: list[str] | None,
-        funnel_type: Literal["open", "closed"],
-        segments: Collection[Collection[int]],
-        segment_names: list[str],
-        sequence: bool = False,
-    ) -> dict[str, Any]:
-
-        res_dict = {}
-        for idx, stage in enumerate(stages):
+        for idx, stage in enumerate(self.stages):
             if type(stage) is not list:
-                stages[idx] = [stage]  # type: ignore
+                self.stages[idx] = [stage]  # type: ignore
 
         if stage_names is None:
             stage_names = []
-            for t in stages:
+            for t in self.stages:
                 # get name
                 stage_names.append(" | ".join(t).strip(" | "))
+        self.stage_names = stage_names
 
-        if funnel_type == "closed":
-            res_dict = self._prepare_data_for_closed_funnel(
-                data=data,
-                stages=stages,
-                segments=segments,
-                segment_names=segment_names,
-                stage_names=stage_names,
-                sequence=sequence,
-            )
-
-        elif funnel_type == "open":
-            res_dict = self._prepare_data_for_open_funnel(
-                data=data, stages=stages, segments=segments, segment_names=segment_names, stage_names=stage_names
-            )
-        return res_dict
-
-    def _plot_stacked_funnel(self, data) -> go.Figure:
+    def _plot_stacked_funnel(self, data: list[go.Funnel]) -> go.Figure:
         layout = go.Layout(**self.__default_layout)
         fig = go.Figure(data, layout)
-
-        # @TODO: Why do we need to write graph to html?
-        # plot_name = 'funnel_plot_{}'.format(datetime.now()).replace(':', '_').replace('.', '_') + '.html'
-        # path = f'/home/vladimir/Workspace/retentioneering/retentioneering-tools-new-arch/src/expetiments/{plot_name}'
-        # _tmpfile = tempfile.NamedTemporaryFile()
-        # path = _tmpfile.name
-        # fig.write_html(path)
-
         return fig
 
-    def _calculate_plot_data(self, plot_params: dict[str, Any]) -> list[go.Funnel]:
+    @staticmethod
+    def _calculate_plot_data(plot_params: dict[str, Any]) -> list[go.Funnel]:
         data = []
         for t in plot_params.keys():
             trace = go.Funnel(
@@ -191,7 +140,7 @@ class Funnel:
         segments: Collection[Collection[int]],
         segment_names: list[str],
         sequence: bool = False,
-    ):
+    ) -> dict[str, dict]:
 
         min_time_0stage = (
             data[data[self.event_col].isin(stages[0])].groupby(self.user_col)[[self.time_col]].min().reset_index()
@@ -199,7 +148,7 @@ class Funnel:
         data = data.merge(min_time_0stage, "left", on=self.user_col, suffixes=("", "_min"))
         data.rename(columns={data.columns[-1]: "min_date"}, inplace=True)
 
-        # filtered NA and only events that occured after the user entered the first funnel event remain
+        # filtered NA and only events that occurred after the user entered the first funnel event remain
         data = data[(~data["min_date"].isna()) & (data["min_date"] <= data[self.time_col])]
         data.drop(columns="min_date", inplace=True)
 
@@ -216,7 +165,7 @@ class Funnel:
         stage_names: list[str],
         segments: Collection[Collection[int]],
         segment_names: list[str],
-    ):
+    ) -> dict[str, dict]:
         res_dict = {}
         for segment, name in zip(segments, segment_names):
             # isolate users from group
@@ -225,7 +174,9 @@ class Funnel:
             res_dict[name] = {"stages": stage_names, "values": vals}
         return res_dict
 
-    def _crop_df(self, df: pd.DataFrame, stages: list[str], segment: Collection[int], sequence: bool = False):
+    def _crop_df(
+        self, df: pd.DataFrame, stages: list[str], segment: Collection[int], sequence: bool = False
+    ) -> tuple[list[int], pd.DataFrame]:
         first_stage = stages[0]
         next_stages = stages[1:]
 
@@ -267,3 +218,91 @@ class Funnel:
                 df = df.drop(df[~df[self.user_col].isin(user_stage)].index.tolist())
 
         return vals, df
+
+    def fit(self) -> None:
+        """
+        Calculates the funnel internal values with the defined parameters.
+        Applying ``fit`` method is mandatory for the following usage
+        of any visualization or descriptive ``Funnel`` methods.
+
+        """
+
+        if self.funnel_type == "closed":
+            self.res_dict = self._prepare_data_for_closed_funnel(
+                data=self.data,
+                stages=self.stages,
+                segments=self.segments,
+                segment_names=self.segment_names,
+                stage_names=self.stage_names,
+                sequence=self.sequence,
+            )
+
+        elif self.funnel_type == "open":
+            self.res_dict = self._prepare_data_for_open_funnel(
+                data=self.data,
+                stages=self.stages,
+                segments=self.segments,
+                segment_names=self.segment_names,
+                stage_names=self.stage_names,
+            )
+
+    def plot(self) -> go.Figure:
+        """
+        Creates a funnel plot based on the calculated funnel values.
+        Should be used after :py:func:`fit`.
+
+        Returns
+        -------
+        go.Figure
+
+        """
+        result_dict = self.res_dict
+        data = self._calculate_plot_data(plot_params=result_dict)
+        figure = self._plot_stacked_funnel(data=data)
+        return figure
+
+    @property
+    def values(self) -> pd.DataFrame:
+        """
+        Returns a pd.DataFrame representing the calculated funnel values.
+        Should be used after :py:func:`fit`.
+
+        Returns
+        -------
+        pd.DataFrame
+
+            +------------------+-------------+-----------------+-------------------+-----------------+
+            | **segment_name** |  **stages** | **unique_users**|  **%_of_initial** |  **%_of_total** |
+            +------------------+-------------+-----------------+-------------------+-----------------+
+            | segment_1        |  stage_1    |            2000 |            100.00 |          100.00 |
+            +------------------+-------------+-----------------+-------------------+-----------------+
+
+        """
+
+        result_dict = self.res_dict
+        result_list = []
+        for key in result_dict:
+            result_ = pd.DataFrame(result_dict[key])
+            result_.columns = ["stages", "unique_users"]  # type: ignore
+            result_["segment_name"] = key
+            result_ = result_[["segment_name", "stages", "unique_users"]]
+            result_["shift"] = result_["unique_users"].shift(periods=1, fill_value=result_["unique_users"][0])
+            result_["%_of_initial"] = (result_["unique_users"] / result_["shift"] * 100).round(2)
+            result_["%_of_total"] = (result_["unique_users"] / result_["unique_users"][0] * 100).round(2)
+            result_.drop(columns="shift", inplace=True)
+            result_list.append(result_)
+
+        result_df = pd.concat(result_list).set_index(["segment_name", "stages"])
+
+        return result_df
+
+    @property
+    def params(self) -> dict:
+        return {
+            "stages": self.stages,
+            "stage_names": self.stage_names,
+            "funnel_type": self.funnel_type,
+            "segments": self.segments,
+            "segment_names": self.segment_names,
+            "sequence": self.sequence,
+        }

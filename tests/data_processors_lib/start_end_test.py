@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib.rete import StartEndEvents, StartEndEventsParams
+from src.data_processors_lib import StartEndEvents, StartEndEventsParams
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
@@ -16,13 +16,13 @@ class TestStartEndEvents(ApplyTestBase):
             [1, "cart_btn_click", "raw", "2021-10-26 12:02"],
             [1, "plus_icon_click", "raw", "2021-10-26 12:04"],
         ],
-        columns=["user_id", "event_name", "event_type", "event_timestamp"],
+        columns=["user_id", "event", "event_type", "timestamp"],
     )
     _raw_data_schema = RawDataSchema(
         user_id="user_id",
-        event_name="event_name",
+        event_name="event",
         event_type="event_type",
-        event_timestamp="event_timestamp",
+        event_timestamp="timestamp",
     )
 
     def test_start_end__apply(self):
@@ -32,7 +32,7 @@ class TestStartEndEvents(ApplyTestBase):
                 [1, "path_start", "path_start", "2021-10-26 12:00:00"],
                 [1, "path_end", "path_end", "2021-10-26 12:04:00"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -67,7 +67,7 @@ class TestStartEndEventsGraph(GraphTestBase):
                 [2, "event4", "raw", "2022-01-02 00:00:00"],
                 [2, "path_end", "path_end", "2022-01-02 00:00:00"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -84,7 +84,7 @@ class TestStartEndEventsHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = pd.DataFrame(
             [
                 [1, "path_start", "path_start", "2022-01-01 00:00:00"],
@@ -99,11 +99,7 @@ class TestStartEndEventsHelper:
             columns=correct_result_columns,
         )
 
-        stream = Eventstream(
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
+        stream = Eventstream(source_df)
 
         result = stream.add_start_end()
         result_df = result.to_dataframe()[correct_result_columns]

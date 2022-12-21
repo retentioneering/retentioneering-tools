@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib.rete import NegativeTarget, NegativeTargetParams
+from src.data_processors_lib import NegativeTarget, NegativeTargetParams
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
@@ -52,7 +52,7 @@ class TestNegativeTarget(ApplyTestBase):
                 [1, "negative_target_event3", "negative_target", "2022-01-01 00:03:30"],
                 [2, "negative_target_event3", "negative_target", "2022-01-02 00:00:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -67,7 +67,7 @@ class TestNegativeTarget(ApplyTestBase):
                 [1, "negative_target_event2", "negative_target", "2022-01-01 00:01:02"],
                 [2, "negative_target_event3", "negative_target", "2022-01-02 00:00:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -135,7 +135,7 @@ class TestNegativeTargetGraph(GraphTestBase):
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
                 [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -169,7 +169,7 @@ class TestNegativeTargetGraph(GraphTestBase):
                 [3, "event4", "raw", "2022-01-02 00:03:05"],
                 [3, "path_end", "path_end", "2022-01-02 00:03:05"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
 
         assert actual[expected.columns].compare(expected).shape == (0, 0)
@@ -201,7 +201,7 @@ class TestNegativeTargetHelper:
             ],
             columns=["user_id", "event", "event_type", "timestamp"],
         )
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 
         correct_result = pd.DataFrame(
             [
@@ -230,13 +230,7 @@ class TestNegativeTargetHelper:
             columns=correct_result_columns,
         )
 
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         result = source.negative_target(negative_target_events=["event3"])
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
@@ -269,7 +263,7 @@ class TestNegativeTargetHelper:
             columns=["user_id", "event", "event_type", "timestamp"],
         )
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 
         correct_result = pd.DataFrame(
             [
@@ -298,13 +292,7 @@ class TestNegativeTargetHelper:
             columns=correct_result_columns,
         )
 
-        source = Eventstream(
-            raw_data_schema=RawDataSchema(
-                event_name="event", event_timestamp="timestamp", user_id="user_id", event_type="event_type"
-            ),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
+        source = Eventstream(source_df)
 
         result = source.negative_target(negative_target_events=["event3", "event2"])
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)

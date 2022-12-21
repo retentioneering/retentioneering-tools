@@ -1,104 +1,199 @@
-import os
-
-import pandas as pd
-import pytest
-
-from src import datasets
-from src.data_processors_lib.rete import (
-    FilterEvents,
-    FilterEventsParams,
-    StartEndEvents,
-    StartEndEventsParams,
-)
-from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-from src.graph.p_graph import EventsNode, PGraph
 from src.tooling.step_matrix import StepMatrix
+from tests.tooling.fixtures.step_matrix_corr import (
+    accumulated_both_targets_plot_cor,
+    accumulated_only_targets_plot_cor,
+    centered_cor,
+    centered_name_cor,
+    centered_target_thresh_cor,
+    centered_target_thresh_plot_cor,
+    differential_cor,
+    differential_name_cor,
+    events_sorting_cor,
+    max_steps_100_cor,
+    max_steps_cor,
+    max_steps_one_cor,
+    path_end_cor,
+    targets_grouping_cor,
+    targets_plot_cor,
+    targets_thresh_plot_cor,
+    thresh_1_cor,
+    thresh_cor,
+    weight_col_cor,
+)
+from tests.tooling.fixtures.step_matrix_input import (
+    stream_simple_shop,
+    test_stream,
+    test_stream_end_path,
+    test_weight_col,
+)
 
-FLOAT_PRECISION = 6
-
-
-def read_test_data(filename):
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    test_data_dir = os.path.join(current_dir, "../datasets/tooling/step_matrix")
-    filepath = os.path.join(test_data_dir, filename)
-    df = pd.read_csv(filepath, index_col=0).round(FLOAT_PRECISION)
-    df.columns = df.columns.astype(int)
-    return df
-
-
-@pytest.fixture
-def stream():
-    def remove_start(df, schema):
-        return df["event_name"] != "path_start"
-
-    test_stream = datasets.load_simple_shop()
-    graph = PGraph(source_stream=test_stream)
-    node1 = EventsNode(StartEndEvents(params=StartEndEventsParams(**{})))
-    node2 = EventsNode(FilterEvents(params=FilterEventsParams(filter=remove_start)))
-
-    graph.add_node(node=node1, parents=[graph.root])
-    graph.add_node(node=node2, parents=[node1])
-
-    stream = graph.combine(node=node2)
-    return stream
-
-
-def run_test(stream, filename, **kwargs):
-    sm = StepMatrix(eventstream=stream, **kwargs)
-    result, _, _, _ = sm._get_plot_data()
-    result = result.round(FLOAT_PRECISION)
-    result_correct = read_test_data(filename)
-    test_is_correct = result.compare(result_correct).shape == (0, 0)
-    return test_is_correct
+FLOAT_PRECISION = 3
 
 
 class TestStepMatrix:
-    def test_step_matrix_simple(self):
-        source_df = pd.DataFrame(
-            [
-                [1, "event1", "2022-01-01 00:01:00"],
-                [1, "event2", "2022-01-01 00:01:02"],
-                [1, "event1", "2022-01-01 00:02:00"],
-                [1, "event1", "2022-01-01 00:03:00"],
-                [1, "event1", "2022-01-01 00:03:00"],
-                [1, "event3", "2022-01-01 00:03:30"],
-                [1, "event1", "2022-01-01 00:04:00"],
-                [1, "event3", "2022-01-01 00:04:30"],
-                [1, "event1", "2022-01-01 00:05:00"],
-                [2, "event1", "2022-01-02 00:00:00"],
-                [2, "event2", "2022-01-02 00:00:05"],
-                [2, "event2", "2022-01-02 00:01:05"],
-                [3, "event1", "2022-01-02 00:01:10"],
-                [3, "event1", "2022-01-02 00:02:05"],
-                [3, "event4", "2022-01-02 00:03:05"],
-                [4, "event1", "2022-01-02 00:01:10"],
-                [4, "event1", "2022-01-02 00:02:05"],
-                [4, "event1", "2022-01-02 00:03:05"],
-            ],
-            columns=["user_id", "event", "timestamp"],
-        )
-
-        correct_result = pd.DataFrame(
-            [[1.0, 0.5, 0.5, 0.25, 0.25], [0.0, 0.5, 0.25, 0.0, 0.0], [0.0, 0.0, 0.25, 0.0, 0.0]],
-            index=["event1", "event2", "event4"],
-            columns=[1, 2, 3, 4, 5],
-        )
-
-        source_stream = Eventstream(
-            raw_data=source_df,
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            schema=EventstreamSchema(),
-        )
-
-        sm = StepMatrix(eventstream=source_stream, max_steps=5)
-        result, _, _, _ = sm._get_plot_data()
+    def test_step_matrix__max_steps(self, test_stream, max_steps_cor):
+        correct_result = max_steps_cor
+        sm = StepMatrix(eventstream=test_stream, max_steps=5)
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
         assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__basic(self, stream):
-        assert run_test(stream, "01_basic.csv")
+    def test_step_matrix__max_steps_100(self, stream_simple_shop, max_steps_100_cor):
+        sm = StepMatrix(eventstream=stream_simple_shop, max_steps=100)
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        correct_result = max_steps_100_cor.round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__one_step(self, stream):
-        assert run_test(stream, "02_one_step.csv", max_steps=1)
+    def test_step_matrix__max_steps_one(self, test_stream, max_steps_one_cor):
+        sm = StepMatrix(eventstream=test_stream, max_steps=1)
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        correct_result = max_steps_one_cor
+        assert result.compare(correct_result).shape == (0, 0)
 
-    def test_step_matrix__100_steps(self, stream):
-        assert run_test(stream, "03_100_steps.csv", max_steps=100, precision=3)
+    def test_step_matrix__thresh(self, test_stream, thresh_cor):
+        correct_result = thresh_cor
+        sm = StepMatrix(eventstream=test_stream, max_steps=6, thresh=0.3)
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__thresh_1(self, test_stream, thresh_1_cor):
+        correct_result = thresh_1_cor
+        sm = StepMatrix(eventstream=test_stream, max_steps=6, thresh=1.0)
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__targets_plot(self, test_stream, targets_plot_cor):
+        correct_result = targets_plot_cor
+        sm = StepMatrix(eventstream=test_stream, max_steps=6, targets=["event3"])
+        sm.fit()
+        result = sm.values[1].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__targets_thresh_plot(self, test_stream, targets_thresh_plot_cor):
+        correct_result = targets_thresh_plot_cor
+        sm = StepMatrix(eventstream=test_stream, max_steps=6, targets=["event3", "event5"], thresh=0.5)
+        sm.fit()
+        result = sm.values[1].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__targets_grouping(self, test_stream, targets_grouping_cor):
+        correct_result = targets_grouping_cor
+        sm = StepMatrix(eventstream=test_stream, max_steps=6, targets=[["event3", "event5"]])
+        sm.fit()
+        result = sm.targets_list
+        assert correct_result == result
+
+    def test_step_matrix__accumulated_only_targets_plot(self, test_stream, accumulated_only_targets_plot_cor):
+        correct_result = accumulated_only_targets_plot_cor
+        sm = StepMatrix(eventstream=test_stream, max_steps=10, targets=["event5"], accumulated="only")
+        sm.fit()
+        result = sm.values[1].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__accumulated_both_targets_plot(self, test_stream, accumulated_both_targets_plot_cor):
+        correct_result = accumulated_both_targets_plot_cor
+        sm = StepMatrix(eventstream=test_stream, max_steps=10, targets=["event4", "event5"], accumulated="both")
+        sm.fit()
+        result = sm.values[1].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__centered(self, test_stream, centered_cor):
+        correct_result = centered_cor
+        sm = StepMatrix(
+            eventstream=test_stream, max_steps=10, centered={"event": "event5", "left_gap": 4, "occurrence": 1}
+        )
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__centered_target_thresh(self, test_stream, centered_target_thresh_cor):
+        correct_result = centered_target_thresh_cor
+        sm = StepMatrix(
+            eventstream=test_stream,
+            max_steps=10,
+            centered={"event": "event5", "left_gap": 4, "occurrence": 1},
+            targets=["event4"],
+            thresh=0.6,
+        )
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__centered_target_thresh_plot(self, test_stream, centered_target_thresh_plot_cor):
+        correct_result = centered_target_thresh_plot_cor
+        sm = StepMatrix(
+            eventstream=test_stream,
+            max_steps=10,
+            centered={"event": "event5", "left_gap": 4, "occurrence": 1},
+            targets=["event4"],
+            thresh=0.6,
+        )
+        sm.fit()
+        result = sm.values[1].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__centered_name(self, test_stream, centered_name_cor):
+        correct_result = centered_name_cor
+        sm = StepMatrix(
+            eventstream=test_stream,
+            max_steps=10,
+            centered={"event": "event5", "left_gap": 4, "occurrence": 1},
+            thresh=0.6,
+        )
+        sm.fit()
+        result = sm.fraction_title
+        assert correct_result == result
+
+    def test_step_matrix__events_sorting(self, test_stream, events_sorting_cor):
+        new_order = ["event5", "event3", "event2", "event1"]
+        correct_result = events_sorting_cor
+        sm = StepMatrix(eventstream=test_stream, sorting=new_order, max_steps=6)
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__differential(self, test_stream, differential_cor):
+        g1 = [3, 6]
+        g2 = [1, 2, 5]
+        correct_result = differential_cor
+        sm = StepMatrix(
+            eventstream=test_stream,
+            max_steps=10,
+            centered={"event": "event3", "left_gap": 5, "occurrence": 1},
+            groups=(g1, g2),
+        )
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__differential_name(self, test_stream, differential_name_cor):
+        g1 = [3, 6]
+        g2 = [1, 2, 5]
+        correct_result = differential_name_cor
+        sm = StepMatrix(
+            eventstream=test_stream,
+            max_steps=10,
+            centered={"event": "event3", "left_gap": 5, "occurrence": 1},
+            groups=(g1, g2),
+        )
+        sm.fit()
+        result = sm.fraction_title
+        assert correct_result == result
+
+    def test_step_matrix__path_end(self, test_stream_end_path, path_end_cor):
+        correct_result = path_end_cor
+        sm = StepMatrix(eventstream=test_stream_end_path, max_steps=5)
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)
+
+    def test_step_matrix__weight_col(self, test_weight_col, weight_col_cor):
+        correct_result = weight_col_cor
+        sm = StepMatrix(eventstream=test_weight_col, max_steps=5, weight_col=["session_id"])
+        sm.fit()
+        result = sm.values[0].round(FLOAT_PRECISION)
+        assert result.compare(correct_result).shape == (0, 0)

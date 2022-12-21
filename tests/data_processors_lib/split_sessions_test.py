@@ -4,9 +4,9 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from src.data_processors_lib.rete import SplitSessions, SplitSessionsParams
+from src.data_processors_lib import SplitSessions, SplitSessionsParams
 from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from src.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
@@ -50,7 +50,7 @@ class TestSplitSessions(ApplyTestBase):
                 [1, "plus_icon_click", "raw", "2021-10-26 12:04:00"],
                 [1, "session_end", "session_end", "2021-10-26 12:04:00"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -75,7 +75,7 @@ class TestSplitSessions(ApplyTestBase):
                 [1, "session_end_truncated", "session_end_truncated", "2021-10-26 12:04:00"],
                 [1, "session_end", "session_end", "2021-10-26 12:04:00"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp"],
+            columns=["user_id", "event", "event_type", "timestamp"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -135,7 +135,7 @@ class TestSplitSessionsGraph(GraphTestBase):
                 [333, "event4", "raw", "2022-01-01 01:33:00", "333_2"],
                 [333, "session_end", "session_end", "2022-01-01 01:33:00", "333_2"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "session_id"],
+            columns=["user_id", "event", "event_type", "timestamp", "session_id"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -173,7 +173,7 @@ class TestSplitSessionsGraph(GraphTestBase):
                 [333, "session_end_truncated", "session_end_truncated", "2022-01-01 01:33:00", "333_2"],
                 [333, "session_end", "session_end", "2022-01-01 01:33:00", "333_2"],
             ],
-            columns=["user_id", "event_name", "event_type", "event_timestamp", "session_id"],
+            columns=["user_id", "event", "event_type", "timestamp", "session_id"],
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
@@ -197,7 +197,7 @@ class TestSplitSessionsHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp", "session_id"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp", "session_id"]
         correct_result = pd.DataFrame(
             [
                 [111, "session_start", "session_start", "2022-01-01 00:00:00", "111_1"],
@@ -225,16 +225,12 @@ class TestSplitSessionsHelper:
             columns=correct_result_columns,
         )
 
-        stream = Eventstream(
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
+        stream = Eventstream(source_df)
 
         res = (
             stream.split_sessions(session_cutoff=(30, "m"), session_col="session_id")
             .to_dataframe()[correct_result_columns]
-            .sort_values(["user_id", "event_timestamp"])
+            .sort_values(["user_id", "timestamp"])
             .reset_index(drop=True)
         )
 
@@ -258,7 +254,7 @@ class TestSplitSessionsHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp", "session_id"]
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp", "session_id"]
         correct_result = pd.DataFrame(
             [
                 [111, "session_start", "session_start", "2022-01-01 00:00:00", "111_1"],
@@ -288,16 +284,12 @@ class TestSplitSessionsHelper:
             columns=correct_result_columns,
         )
 
-        stream = Eventstream(
-            raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-            raw_data=source_df,
-            schema=EventstreamSchema(),
-        )
+        stream = Eventstream(source_df)
 
         res = (
             stream.split_sessions(session_cutoff=(30, "m"), session_col="session_id", mark_truncated=True)
             .to_dataframe()[correct_result_columns]
-            .sort_values(["user_id", "event_timestamp"])
+            .sort_values(["user_id", "timestamp"])
             .reset_index(drop=True)
         )
 
@@ -322,17 +314,13 @@ class TestSplitSessionsHelper:
                 ],
                 columns=["user_id", "event", "timestamp"],
             )
-            correct_result_columns = ["user_id", "event_name", "event_type", "event_timestamp", "session_id"]
+            correct_result_columns = ["user_id", "event", "event_type", "timestamp", "session_id"]
 
-            stream = Eventstream(
-                raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
-                raw_data=source_df,
-                schema=EventstreamSchema(),
-            )
+            stream = Eventstream(source_df)
 
             res = (
                 stream.split_sessions(session_cutoff=(30, "xxx"), session_col="session_id", mark_truncated=True)
                 .to_dataframe()[correct_result_columns]
-                .sort_values(["user_id", "event_timestamp"])
+                .sort_values(["user_id", "timestamp"])
                 .reset_index(drop=True)
             )

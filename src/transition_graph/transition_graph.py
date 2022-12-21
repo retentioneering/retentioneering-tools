@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import random
 import string
-from typing import Any, MutableMapping, MutableSequence, cast
+from typing import Any, Dict, List, MutableMapping, MutableSequence, Union, cast
 
 import networkx as nx
 import pandas as pd
@@ -26,6 +26,8 @@ from .typing import (
     Threshold,
     Weight,
 )
+
+RenameRule = Dict[str, Union[List[str], str]]
 
 
 def clear_dict(d: dict) -> dict:
@@ -59,6 +61,7 @@ class TransitionGraph:
         self.server.register_action("save-nodelist", lambda n: self._on_nodelist_updated(n))
         self.server.register_action("save-layout", lambda n: self._on_layout_request(n))
         self.server.register_action("save-graph-settings", lambda n: self._on_graph_settings_request(n))
+        self.server.register_action("recalculate", lambda n: self._on_recalc_request(n))
 
         self.eventstream: Eventstream = eventstream  # type: ignore
 
@@ -98,6 +101,66 @@ class TransitionGraph:
         )
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
+
+    def _on_recalc_request(
+        self, rename_rules: list[RenameRule]
+    ) -> dict[str, MutableSequence[PreparedNode] | MutableSequence[PreparedLink] | list]:
+        try:
+            self._recalculate(rename_rules=rename_rules)
+
+            nodes, nodes_set = self._prepare_nodes(
+                nodelist=self.nodelist.nodelist_df,
+            )
+            self._on_nodelist_updated(nodes)
+
+            self.edgelist.edgelist_df["type"] = "suit"
+            links = self._prepare_edges(edgelist=self.edgelist.edgelist_df, nodes_set=nodes_set)
+            result: dict[str, MutableSequence[PreparedNode] | MutableSequence[PreparedLink] | list] = {
+                "nodes": nodes,
+                "links": links,
+            }
+
+            return result
+        except Exception as err:
+            raise ValueError("error! %s" % err)
+
+    def _recalculate(self, rename_rules: list[RenameRule]) -> None:
+        eventstream = self.eventstream.copy()
+        renamed_df = eventstream.rename(rules=rename_rules).to_dataframe()
+
+        # save norm type
+        recalculated_nodelist = self.nodelist.calculate_nodelist(data=renamed_df)
+        recalculated_edgelist = self.edgelist.calculate_edgelist(
+            norm_type=self.norm_type, custom_cols=self.custom_cols, data=renamed_df
+        )
+
+        curr_nodelist = self.nodelist.nodelist_df
+
+        self.nodelist.nodelist_df = curr_nodelist.apply(
+            lambda x: self._update_node_after_recalc(recalculated_nodelist, x), axis=1
+        )
+        self.edgelist.edgelist_df = recalculated_edgelist
+
+    def _replace_grouped_events(self, grouped: pd.Series, row: pd.Series) -> pd.Series:
+        event_name = row[self.event_col]
+        mathced = grouped[grouped[self.event_col] == event_name]
+
+        if len(mathced) > 0:
+            parent_node_name = mathced.iloc[0]["parent"]
+            row[self.event_col] = parent_node_name
+
+        return row
+
+    def _update_node_after_recalc(self, recalculated_nodelist: pd.DataFrame, row: pd.Series) -> pd.Series:
+        cols = self.__get_nodelist_cols()
+        node_name = row[self.event_col]
+        matched: pd.Series[Any] = recalculated_nodelist[recalculated_nodelist[self.event_col] == node_name]
+
+        if len(matched) > 0:
+            recalculated_node = matched.iloc[0]
+            for col in cols:
+                row[col] = recalculated_node[col]
+        return row.copy()
 
     def _on_graph_settings_request(self, settings: GraphSettings) -> None:
         self.graph_settings = settings

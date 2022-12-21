@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import random
 import string
-from typing import Any, Dict, List, MutableMapping, MutableSequence, cast
+from typing import Any, Dict, List, MutableMapping, MutableSequence, Union, cast
 
 import networkx as nx
 import pandas as pd
@@ -27,7 +27,7 @@ from .typing import (
     Weight,
 )
 
-RenameRule = Dict[str, List[str]]
+RenameRule = Dict[str, Union[List[str], str]]
 
 
 def clear_dict(d: dict) -> dict:

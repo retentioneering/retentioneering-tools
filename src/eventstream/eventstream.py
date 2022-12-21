@@ -721,7 +721,7 @@ class Eventstream(
 
     def event_timestamp_hist(
         self,
-        event_list: Optional[List[str] | str] = 'all',
+        event_list: Optional[List[str] | str] = "all",
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int = 20,
@@ -735,7 +735,7 @@ class Eventstream(
 
         data = self.to_dataframe()
 
-        if event_list != 'all':
+        if event_list != "all":
             if type(event_list) is not list:
                 raise TypeError('event_list should either be "all", or a list of event names to include.')
             data = data[data[self.schema.event_name].isin(event_list)]
@@ -784,7 +784,7 @@ class Eventstream(
         min_length_time = time_diff.min()
         max_length_time = time_diff.max()
 
-        print('----------------------------------------------------------------------------')
+        print("----------------------------------------------------------------------------")
         print("\033[1mTime\033[0m")
         print()
         print(f"\033[1mMean user path length, std (time):\033[0m {mean_time}, {std_time}")
@@ -804,7 +804,7 @@ class Eventstream(
         min_length = event_count.min()
         max_length = event_count.max()
 
-        print('----------------------------------------------------------------------------')
+        print("----------------------------------------------------------------------------")
         print("\033[1mNumber of events\033[0m")
         print()
         print(f"\033[1mMean user path length, std (events):\033[0m {mean}, {std}")
@@ -818,7 +818,7 @@ class Eventstream(
 
         # sessions
         if session_col:
-            print('----------------------------------------------------------------------------')
+            print("----------------------------------------------------------------------------")
             df = df.to_dataframe()
 
             cross = df[df[type_col].isin(["session_start", "session_end"])]
@@ -851,14 +851,14 @@ class Eventstream(
             self.schema.event_type,
         )
         df = self.to_dataframe()
-        df['__event_trajectory_idx'] = df.groupby(user_col).cumcount()
-        df['__event_trajectory_timedelta'] = df[time_col] - df.groupby(user_col)[time_col].transform('first')
+        df["__event_trajectory_idx"] = df.groupby(user_col).cumcount()
+        df["__event_trajectory_timedelta"] = df[time_col] - df.groupby(user_col)[time_col].transform("first")
         total_events = df.shape[0]
         unique_users = df[user_col].nunique()
 
         for i, event_name in enumerate(df[event_col].unique()):
             if i != 0:
-                print('============================================================================')
+                print("============================================================================")
                 print()
 
             event_data = df[df[event_col] == event_name]
@@ -879,7 +879,7 @@ class Eventstream(
             print(f"\033[1mShare of users with the event:\033[0m {user_event_share * 100}%")
             print()
 
-            print('----------------------------------------------------------------------------')
+            print("----------------------------------------------------------------------------")
             print("\033[1mAppearances per user path\033[0m")
             print()
 
@@ -900,11 +900,11 @@ class Eventstream(
             print(f"\033[1mLast appearance:\033[0m {event_data[time_col].max()}")
             print()
 
-            print('----------------------------------------------------------------------------')
+            print("----------------------------------------------------------------------------")
             print("\033[1mTime/events since user path start before first appearance\033[0m")
             print()
 
-            gr_check = event_data.groupby(user_col)['__event_trajectory_timedelta'].min()
+            gr_check = event_data.groupby(user_col)["__event_trajectory_timedelta"].min()
             mean_time, std_time, median_time = gr_check.mean(), gr_check.std(), gr_check.median()
             min_time, max_time = gr_check.min(), gr_check.max()
             print(f"\033[1mMean user time before first appearance, std:\033[0m {mean_time}, {std_time}")
@@ -916,7 +916,7 @@ class Eventstream(
             print(f"\033[1mMax user time before first appearance:\033[0m {max_time}")
             print()
 
-            gr_check = event_data.groupby(user_col)['__event_trajectory_idx'].min()
+            gr_check = event_data.groupby(user_col)["__event_trajectory_idx"].min()
             mean_events, std_events, median_events = gr_check.mean(), gr_check.std(), gr_check.median()
             min_events, max_events = gr_check.min(), gr_check.max()
             print(f"\033[1mMean user events before first appearance, std:\033[0m {mean_events}, {std_events}")
@@ -927,7 +927,3 @@ class Eventstream(
             print()
             print(f"\033[1mMax user events before first appearance:\033[0m {max_events}")
             print()
-
-
-
-

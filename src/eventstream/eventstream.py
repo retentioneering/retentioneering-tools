@@ -814,8 +814,8 @@ class Eventstream(
         norm_type: NormType = None,
         weights: dict[str, str] | None = None,
         targets: dict[str, str | None] | None = None,
-        width: int = 800,
-        height: int = 500,
+        width: int = 960,
+        height: int = 900,
     ) -> TransitionGraph:
         self.__transition_graph = TransitionGraph(
             eventstream=self,

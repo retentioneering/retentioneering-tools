@@ -11,6 +11,7 @@ import pandas as pd
 from src.constants import DATETIME_UNITS
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
 from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
+from src.graph import PGraph, SourceNode
 from src.tooling.clusters import Clusters
 from src.tooling.cohorts import Cohorts
 from src.tooling.funnel import Funnel
@@ -18,6 +19,8 @@ from src.tooling.stattests import TEST_NAMES, StatTests
 from src.tooling.step_matrix import StepMatrix
 from src.tooling.step_sankey import StepSankey
 from src.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
+from src.transition_graph import NormType, TransitionGraph
+from src.transition_graph.typing import Threshold
 from src.utils import get_merged_col
 from src.utils.list import find_index
 
@@ -140,6 +143,8 @@ class Eventstream(
     __sankey: StepSankey | None = None
     __stattests: StatTests | None = None
     __timedelta_hist: TimedeltaHist | None = None
+    __transition_graph: TransitionGraph | None = None
+    __p_graph: PGraph | None = None
 
     def __init__(
         self,
@@ -802,3 +807,31 @@ class Eventstream(
             bins=bins,
         )
         return self.__timedelta_hist
+
+    def transition_graph(
+        self,
+        thresholds: dict[str, Threshold] | None = None,
+        norm_type: NormType = None,
+        weights: dict[str, str] | None = None,
+        targets: dict[str, str | None] | None = None,
+        width: int = 800,
+        height: int = 500,
+    ) -> TransitionGraph:
+        self.__transition_graph = TransitionGraph(
+            eventstream=self,
+            graph_settings={},  # type: ignore
+            norm_type=norm_type,
+            weights=weights,
+            thresholds=thresholds,
+            targets=targets,
+        )
+        self.__transition_graph.plot_graph(
+            thresholds=thresholds, targets=targets, weights=weights, width=width, height=height, norm_type=norm_type
+        )
+        return self.__transition_graph
+
+    def processing_graph(self) -> PGraph:
+        if self.__p_graph is None:
+            self.__p_graph = PGraph(source_stream=self)
+        self.__p_graph.display()
+        return self.__p_graph

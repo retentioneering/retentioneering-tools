@@ -1,6 +1,7 @@
-from .base import BaseReteException
-from typing import Any, Optional
 import json
+from typing import Any, Optional
+
+from .base import BaseReteException
 
 
 class ServerNotFoundActionError(BaseReteException):
@@ -14,6 +15,7 @@ class ServerNotFoundActionError(BaseReteException):
 
 class ServerNotFound(BaseReteException):
     pass
+
 
 class ServerErrorWithResponse(BaseReteException):
     type: str
@@ -39,6 +41,3 @@ class ServerErrorWithResponse(BaseReteException):
             "msg": self.message,
             "errors": self.errors,
         }
-
-
-

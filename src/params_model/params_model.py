@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Union
 from pydantic import BaseModel, ValidationError, validator
 from typing_extensions import TypedDict
 
-from src.params_model.registry import register_params_model
 from src.exceptions.widget import WidgetParseError
+from src.params_model.registry import register_params_model
 from src.widget import WIDGET, WIDGET_MAPPING, WIDGET_TYPE
 
 if TYPE_CHECKING:
@@ -63,7 +63,6 @@ class ParamsModel(BaseModel):
                         parse_err.field_name = key
                         raise parse_err
             super().__init__(**data)
-
 
     def __call__(self, **data: Dict[str, Any]) -> ParamsModel:
         ParamsModel.__init__(self, **data)

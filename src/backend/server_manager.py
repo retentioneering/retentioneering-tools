@@ -6,8 +6,8 @@ from typing import Any, Optional
 from ipykernel.comm.comm import Comm
 
 from src.backend import JupyterServer
-from src.utils.singleton import Singleton
 from src.exceptions.server import ServerErrorWithResponse
+from src.utils.singleton import Singleton
 
 
 class ServerManager:
@@ -65,7 +65,6 @@ class ServerManager:
                     "result": str(err),
                 }
             )
-
 
     def _on_comm_message(self, comm: Comm, open_msg) -> None:
         @comm.on_msg  # type: ignore

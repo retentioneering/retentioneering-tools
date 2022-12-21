@@ -3,7 +3,8 @@ from __future__ import annotations
 import inspect
 import types
 from dataclasses import dataclass, field
-from typing import Any, Callable, Type, Union, Optional
+from typing import Any, Callable, Type, Union
+
 from src.exceptions.widget import ParseReteFuncError
 
 
@@ -126,9 +127,9 @@ class ReteFunction:
             code_obj = compile(value, "<string>", "exec")
         except:
             raise ParseReteFuncError("parsing error. You must implement a python function here")
-    
+
         new_func_type = None
-        
+
         for i in code_obj.co_consts:
             try:
                 new_func_type = types.FunctionType(i, {})

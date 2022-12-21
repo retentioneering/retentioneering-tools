@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, List, Optional, TypedDict, Literal, Union, cast
+from typing import Any, List, Literal, Optional, TypedDict, cast
 
 import networkx
 from IPython.display import HTML, DisplayHandle, display
@@ -10,10 +10,10 @@ from pydantic import ValidationError
 from src.backend import JupyterServer, ServerManager
 from src.backend.callback import list_dataprocessor, list_dataprocessor_mock
 from src.eventstream.types import EventstreamType
+from src.exceptions.server import ServerErrorWithResponse
+from src.exceptions.widget import WidgetParseError
 from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode, build_node
 from src.templates import PGraphRenderer
-from src.exceptions.widget import WidgetParseError
-from src.exceptions.server import ServerErrorWithResponse
 
 
 class NodeData(TypedDict):
@@ -32,12 +32,15 @@ class Payload(TypedDict):
     nodes: list[NodeData]
     links: list[NodeLink]
 
+
 class CombineHandlerPayload(TypedDict):
     node_pk: str
+
 
 class FieldErrorDesc(TypedDict):
     field: str
     msg: str
+
 
 class CreateNodeErrorDesc(TypedDict):
     type: Literal["node_error"]
@@ -176,7 +179,6 @@ class PGraph:
             raise ServerErrorWithResponse(message="node not found!", type="unexpected_error")
         self.combine_result = self.combine(node)
 
-
     def _set_graph_handler(self, payload: Payload):
         current_graph = self._ngraph
         current_root = self.root
@@ -244,7 +246,7 @@ class PGraph:
             processor_name = processor.get("name", None) if processor else None
             processor_params = processor.get("values", None) if processor else None
 
-            try: 
+            try:
                 actual_node = build_node(
                     source_stream=self.root.events,
                     pk=node_pk,
@@ -256,10 +258,10 @@ class PGraph:
             except Exception as error:
                 error_desc = self._build_node_error_desc(node_pk=node_pk, error=error)
                 errors.append(error_desc)
-        
+
         if errors:
             raise ServerErrorWithResponse(message="set graph error", type="create_nodes_error", errors=errors)
-        
+
         self._ngraph = networkx.DiGraph()
 
         # add nodes
@@ -287,14 +289,16 @@ class PGraph:
             )
 
         if isinstance(error, WidgetParseError):
-            field_errors: List[FieldErrorDesc] = [{ "field": error.field_name, "msg": str(error)}] if error.field_name else []
+            field_errors: List[FieldErrorDesc] = (
+                [{"field": error.field_name, "msg": str(error)}] if error.field_name else []
+            )
             return {
                 "type": "node_error",
                 "msg": str(error),
                 "node_pk": node_pk,
                 "fields_errors": field_errors,
             }
-        
+
         return {
             "type": "node_error",
             "msg": str(error),
@@ -311,18 +315,15 @@ class PGraph:
             field = next(iter(loc), None)
             msg = raw_err.get("msg")
 
-            result_errors.append({
-                "field": str(field),
-                "msg": msg,
-            })
+            result_errors.append(
+                {
+                    "field": str(field),
+                    "msg": msg,
+                }
+            )
 
-        return {
-            "type": "node_error",
-            "node_pk": node_pk,
-            "msg": "node error",
-            "fields_errors": result_errors
-        }
-        
+        return {"type": "node_error", "node_pk": node_pk, "msg": "node error", "fields_errors": result_errors}
+
     def _find_parents_by_links(self, target_node: str, link_list: list[NodeLink]) -> list[Node]:
         parents: list[str] = []
         for node in link_list:

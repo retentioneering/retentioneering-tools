@@ -1,7 +1,7 @@
 Funnel
-=================
+======
 
-This notebook can be found :download:`here <_static/examples/funnel_tutorial.ipynb>`
+This notebook can be found :download:`here <../_static/examples/funnel_tutorial.ipynb>`
 or open directly in ``google colab``
 @TODO добавить ссылку на colab. dpanina
 Install retentioneering if running from google.colab or for the first

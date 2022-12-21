@@ -95,6 +95,6 @@ class DeleteUsersByPathLength(DataProcessor):
         )
 
         if not events.empty:
-            eventstream.soft_delete(eventstream.to_dataframe())
+            eventstream._soft_delete(eventstream.to_dataframe())
 
         return eventstream

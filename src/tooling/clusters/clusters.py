@@ -63,8 +63,8 @@ class Clusters:
 
     def fit(
         self,
-        method: Method,
-        n_clusters: int,
+        method: Method | None = None,
+        n_clusters: int | None = None,
         feature_type: FeatureType | None = None,
         ngram_range: NgramRange | None = None,
         vector: pd.DataFrame | None = None,
@@ -74,16 +74,16 @@ class Clusters:
 
         Parameters
         ----------
-        method: {"kmeans", "gmm"}
+        method: {"kmeans", "gmm"}, default=None
             ``kmeans`` stands classic K-means algorithm. https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
             ``gmm`` stands for Gaussian mixture model. https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html
-        n_clusters: int
+        n_clusters: int, default=None
             The expected number of clusters to be passed to a clustering algorithm.
-        feature_type : {"tfidf", "count", "frequency", "binary", "markov"}
+        feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}, default=None
             See :py:func:`extract_features`
-        ngram_range : Tuple(int, int)
+        ngram_range : Tuple(int, int), default=None
             See :py:func:`extract_features`
-        vector: pd.DataFrame
+        vector: pd.DataFrame, default=None
             ``pd.DataFrame`` representing custom vectorization of the user paths. The index corresponds to user_ids,
             the columns are vectorized values of the path.
         """
@@ -271,6 +271,19 @@ class Clusters:
 
         return self.__features
 
+    @property
+    def params(self) -> dict:
+        """
+        Returns the parameters used for the last fitting.
+
+        """
+        return {
+            "method": self._method,
+            "n_clusters": self._n_clusters,
+            "ngram_range": self._ngram_range,
+            "feature_type": self._feature_type,
+        }
+
     def set_clusters(self, user_clusters: pd.Series) -> None:
         """
         Sets custom user-cluster mapping.
@@ -282,6 +295,10 @@ class Clusters:
         """
         self._user_clusters = user_clusters
         self.__cluster_result = user_clusters.copy()
+        self._n_clusters = user_clusters.nunique()
+        self._feature_type = None
+        self._method = None
+        self._ngram_range = None
         self.__is_fitted = True
         return
 
@@ -331,7 +348,8 @@ class Clusters:
 
             - ``tfidf`` see details in :sklearn_tfidf:`sklearn documentation<>`
             - ``count`` see details in :sklearn_countvec:`sklearn documentation<>`
-            - ``frequency`` an alias for ``count``.
+            - | ``frequency`` the same as count but normalized to the total number of the events
+              | in the user's trajectory.
             - ``binary`` 1 if a user had given n-gram at least once and 0 otherwise.
             - | ``markov`` available for bigrams only. For a given bigram ``(A, B)`` the vectorized values
               | are the user's transition probabilities from ``A`` to ``B``.
@@ -487,6 +505,12 @@ class Clusters:
         _n_clusters = n_clusters or self._n_clusters
         _user_clusters = None
 
+        if _method is None:
+            raise ValueError("'method' must be defined for fitting.")
+
+        if _n_clusters is None:
+            raise ValueError("'n_clusters' must be defined for fitting.")
+
         if vector:
             if not isinstance(vector, pd.DataFrame):  # type: ignore
                 raise ValueError("Vector is not a DataFrame!")
@@ -506,6 +530,12 @@ class Clusters:
             _feature_type = feature_type or self._feature_type
             _ngram_range = ngram_range or self._ngram_range
             _vector = vector or self._vector
+
+            if _feature_type is None:
+                raise ValueError("'feature_type' must be defined for fitting.")
+
+            if _ngram_range is None:
+                raise ValueError("'ngram_range' must be defined for fitting.")
 
         return _method, _n_clusters, _feature_type, _ngram_range, _vector
 

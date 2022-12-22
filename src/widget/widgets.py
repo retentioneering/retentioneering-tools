@@ -92,12 +92,12 @@ class ReteFunction:
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
     @classmethod
-    def _serialize(cls: Type[ReteFunction], value: Callable) -> str:
+    def _serialize(cls, value: Callable) -> str:
         try:
             code = inspect.getsource(value)
             return code
         except OSError:
-            return ""
+            return getattr(value, "_source_code", "")
 
     @classmethod
     def _parse(cls, value: str) -> Callable:  # type: ignore
@@ -111,12 +111,14 @@ class ReteFunction:
         for i in code_obj.co_consts:
             try:
                 new_func_type = types.FunctionType(i, {})
+                break
             except Exception as err:
                 continue
 
         if new_func_type is None:
             raise ParseReteFuncError("parsing error. You must implement a python function here")
 
+        setattr(new_func_type, "_source_code", value)
         return new_func_type
 
 

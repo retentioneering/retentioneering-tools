@@ -9,11 +9,11 @@ if typing.TYPE_CHECKING:
 
 
 class ParamsModelRegistry:
-    REGISTRY: dict[str, "ParamsModel"] = {}  # type: ignore
+    REGISTRY: dict[str, "type[ParamsModel]"] = {}  # type: ignore
 
     objects = "ParamsModel"
 
-    def __setitem__(self, key: str, value: "ParamsModel") -> None:
+    def __setitem__(self, key: str, value: "type[ParamsModel]") -> None:
         if key not in self.REGISTRY:
             self.REGISTRY[key] = value
 
@@ -25,5 +25,5 @@ class ParamsModelRegistry:
 params_model_registry = ParamsModelRegistry()
 
 
-def register_params_model(cls: ParamsModel) -> None:
-    params_model_registry[cls.__class__.__name__] = cls
+def register_params_model(cls: type[ParamsModel]) -> None:
+    params_model_registry[cls.__name__] = cls

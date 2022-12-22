@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import asdict
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, Union, cast
 
 from pydantic import BaseModel, ValidationError, validator
 from typing_extensions import TypedDict
@@ -28,8 +28,8 @@ class ParamsModel(BaseModel):
     @classmethod
     def __init_subclass__(cls: Type[ParamsModel], **kwargs: Any):
         super().__init_subclass__(**kwargs)
-        obj = cls.__new__(cls)
-        register_params_model(obj)
+        # obj = cls.__new__(cls)
+        register_params_model(cls)
 
     @validator("*")
     def validate_subiterable(cls, value: Any) -> Any:
@@ -95,6 +95,10 @@ class ParamsModel(BaseModel):
                 widget: dict[str, Any] = cls._parse_schema_definition(
                     params=params, definitions=definitions, default=default, optional=optionals[name]
                 )
+            elif params.get("type") == "string" and "enum" in params:
+                widget = cls._parse_enum_schema_definition(
+                    name=name, params=params, definitions=definitions, default=default, optional=optionals[name]
+                )
             elif "anyOf" in params:
                 widget = cls._parse_anyof_schema_definition(
                     params, definitions, default=default, optional=optionals[name]
@@ -146,6 +150,25 @@ class ParamsModel(BaseModel):
         enum_params = [x.get("enum", [None])[0] for x in params["anyOf"] if hasattr(x, "get")]  # type: ignore
         enum_params = list(filter(lambda x: x is not None, enum_params))
         kwargs: dict = {"name": definition_name, "widget": "enum", "default": default, "optional": optional}
+        if len(enum_params) > 0:
+            kwargs["params"] = enum_params
+
+        widget_data: dict[str, Any] = asdict(WIDGET_MAPPING["enum"].from_dict(**kwargs))
+        kwargs.update(widget_data)
+        return kwargs
+
+    @classmethod
+    def _parse_enum_schema_definition(
+        cls,
+        name: str,
+        params: dict[str, dict[str, Any] | list[dict[str, Any]]] | Any,
+        definitions: dict[str, Any],
+        default: Any | None = None,
+        optional: bool = True,
+    ) -> dict[str, Any]:
+        enum_params = cast(list[str], params.get("enum"))
+        enum_params = list(filter(lambda x: x is not None, enum_params))
+        kwargs: dict = {"name": name, "widget": "enum", "default": default, "optional": optional}
         if len(enum_params) > 0:
             kwargs["params"] = enum_params
 

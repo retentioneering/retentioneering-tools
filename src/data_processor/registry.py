@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+from typing import Type
 
 from src.utils.registry import RegistryValidationError, ReteRegistry
 
@@ -15,10 +16,10 @@ class DataprocessorViewRegistry(ReteRegistry):
 
 class DataprocessorRegistry(ReteRegistry):
 
-    REGISTRY: dict[str, "DataProcessor"] = {}  # type: ignore
+    REGISTRY: dict[str, "Type[DataProcessor]"] = {}  # type: ignore
     objects = "Dataprocessor"
 
-    def __setitem__(self, key: str, value: "DataProcessor") -> None:
+    def __setitem__(self, key: str, value: "Type[DataProcessor]") -> None:
         if key not in self.REGISTRY:
             self.REGISTRY[key] = value
         else:
@@ -29,6 +30,6 @@ dataprocessor_view_registry = DataprocessorViewRegistry()
 dataprocessor_registry = DataprocessorRegistry()
 
 
-def register_dataprocessor(cls: DataProcessor) -> None:
-    dataprocessor_view_registry[cls.__class__.__name__] = cls.get_view()
-    dataprocessor_registry[cls.__class__.__name__] = cls
+def register_dataprocessor(cls: type[DataProcessor]) -> None:
+    dataprocessor_view_registry[cls.__name__] = cls.get_view()
+    dataprocessor_registry[cls.__name__] = cls

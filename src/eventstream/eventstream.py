@@ -707,7 +707,7 @@ class Eventstream(
     ) -> Cohorts:
 
         """
-        Shows a heatmap visualization of the user appearance grouped by cohorts.
+        Show a heatmap visualization of the user appearance grouped by cohorts.
 
         See parameters description :py:func:`src.tooling.cohorts.cohorts`
 
@@ -817,6 +817,15 @@ class Eventstream(
         width: int = 960,
         height: int = 900,
     ) -> TransitionGraph:
+        """
+        Create interactive graph visualization with callback to input ``eventstream``.
+        See parameters description :py:func:`src.transition_graph.transition_graph`
+
+        Returns
+        -------
+        TransitionGraph
+            A ``TransitionGraph`` class instance fitted to the given parameters.
+        """
         self.__transition_graph = TransitionGraph(
             eventstream=self,
             graph_settings={},  # type: ignore
@@ -837,6 +846,22 @@ class Eventstream(
         return self.__p_graph
 
     def transition_adjacency(self, weights: list[str] | None = None, norm_type: NormType = None) -> pd.DataFrame:
+        """
+        Creates edge graph in the matrix format. Row indexes are events, from which the transition occured,
+        and columns are events, to which the transition occured.
+        The values are weights of the edges defined with weights and norm_type parameters.
+
+        Parameters
+        ----------
+
+        weights :
+        norm_type : {"full", "node", None}, default None
+
+        Returns
+        -------
+        pd.DataFrame
+
+        """
         if self.__transition_graph is None:
             self.__transition_graph = TransitionGraph(
                 eventstream=self,

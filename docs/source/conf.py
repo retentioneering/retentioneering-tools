@@ -103,6 +103,8 @@ extlinks = {
         "#:~:text=If%%20None%%2C%%20infer.-,copybool,-or%%20None%%2C%%20default%s",
         None,
     ),
+    "sklearn_kmeans": ("https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html%s", None),
+    "sklearn_gmm": ("https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html%s", None),
 }
 
 

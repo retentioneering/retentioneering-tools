@@ -1042,10 +1042,7 @@ class Eventstream(
                 raise TypeError('event_list should either be "all", or a list of event names to include.')
             df = df[df[event_col].isin(event_list)]
 
-        if session_col in df.columns:
-            has_sessions = True
-        else:
-            has_sessions = False
+        has_sessions = session_col in df.columns
 
         df["__event_trajectory_idx"] = df.groupby(user_col).cumcount()
         df["__event_trajectory_timedelta"] = df[time_col] - df.groupby(user_col)[time_col].transform("first")

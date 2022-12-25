@@ -751,29 +751,37 @@ class Eventstream(
             A ``StatTest`` class instance fitted to the given parameters.
         """
         self.__stattests = StatTests(
-            eventstream=self, groups=groups, func=function, test=test, group_names=group_names, alpha=alpha
+            eventstream=self, groups=groups, function=function, test=test, group_names=group_names, alpha=alpha
         )
         self.__stattests.fit()
         values = self.__stattests.values
-        str_template = "{0} (mean ± SD): {1:.3f} ± {2:.3f}, n = {3}"
+        if test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
+            str_template = "{0} (mean ± SD): {1:.3f} ± {2:.3f}, n = {3}"
 
-        print(
-            str_template.format(
-                values["group_one_name"], values["group_one_mean"], values["group_one_std"], values["group_one_size"]
+            print(
+                str_template.format(
+                    values["group_one_name"], values["group_one_mean"], values["group_one_SD"], values["group_one_size"]
+                )
             )
-        )
-        print(
-            str_template.format(
-                values["group_two_name"], values["group_two_mean"], values["group_two_std"], values["group_two_size"]
+            print(
+                str_template.format(
+                    values["group_two_name"], values["group_two_mean"], values["group_two_SD"], values["group_two_size"]
+                )
             )
-        )
-        print(
-            "'{0}' is greater than '{1}' with P-value: {2:.5f}".format(
-                values["greatest_group_name"], values["least_group_name"], values["p_val"]
+            print(
+                "'{0}' is greater than '{1}' with P-value: {2:.5f}".format(
+                    values["greatest_group_name"], values["least_group_name"], values["p_val"]
+                )
             )
-        )
-        print("power of the test: {0:.2f}%".format(100 * values["power_estimated"]))
+            print("power of the test: {0:.2f}%".format(100 * values["power_estimated"]))
+        elif test in ["chi2_contingency", "fisher_exact"]:
+            str_template = "{0} (size): n = {1}"
 
+            print(str_template.format(values["group_one_name"], values["group_one_size"]))
+            print(str_template.format(values["group_two_name"], values["group_two_size"]))
+            print("Group difference test with P-value: {:.5f}".format(values["p_val"]))
+        else:
+            raise ValueError("Wrong test passed")
         return self.__stattests
 
     def timedelta_hist(

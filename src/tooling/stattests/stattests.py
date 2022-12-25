@@ -36,14 +36,6 @@ class StatTests:
     Parameters
     ----------
     eventstream : EventstreamType
-    groups : tuple of list
-        Must contain tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
-        of user_id`s.
-    func : Callable, default lambda x: x.shape[0]
-        Selected metrics. Must contain a function which takes as an argument dataset for
-        single user trajectory and returns a single numerical value.
-    group_names : tuple, default ('group_1', 'group_2')
-        Names for selected groups g_1 and g_2.
     test : {'mannwhitneyu', 'ttest', 'ztest', 'ks_2samp', 'chi2_contingency', 'fisher_exact'}
         Test the null hypothesis that 2 independent samples are drawn from the same
         distribution. Supported tests are:
@@ -55,6 +47,14 @@ class StatTests:
         - ``chi2_contingency`` see :scipy_chi2:`scipy documentation<>`
         - ``fisher_exact`` see :scipy_fisher:`scipy documentation<>`
 
+    groups : tuple of list
+        Must contain tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
+        of user_id`s.
+    function : Callable
+        Selected metrics. Must contain a function which takes as an argument dataset for
+        single user trajectory and returns a single numerical value.
+    group_names : tuple, default ('group_1', 'group_2')
+        Names for selected groups g_1 and g_2.
     alpha : float, default 0.05
         Selected level of significance.
 
@@ -69,7 +69,7 @@ class StatTests:
         eventstream: EventstreamType,
         test: TEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
-        func: Callable,
+        function: Callable,
         group_names: Tuple[str, str] = ("group_1", "group_2"),
         alpha: float = 0.05,
     ) -> None:
@@ -78,7 +78,7 @@ class StatTests:
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
         self.groups = groups
-        self.func = func
+        self.func = function
         self.test = test
         self.group_names = group_names
         self.alpha = alpha
@@ -94,8 +94,12 @@ class StatTests:
         g2 = data[data[self.user_col].isin(self.groups[1])].copy()
 
         # obtain two distributions:
-        g1_data = list(g1.groupby(self.user_col).apply(self.func).dropna().astype(float).values)
-        g2_data = list(g2.groupby(self.user_col).apply(self.func).dropna().astype(float).values)
+        if self.test not in ["chi2_contingency", "fisher_exact"]:
+            g1_data = list(g1.groupby(self.user_col).apply(self.func).dropna().astype(float).values)
+            g2_data = list(g2.groupby(self.user_col).apply(self.func).dropna().astype(float).values)
+        else:
+            g1_data = list(g1.groupby(self.user_col).apply(self.func).dropna().values)
+            g2_data = list(g2.groupby(self.user_col).apply(self.func).dropna().values)
         return g1_data, g2_data
 
     def _get_freq_table(self, a: list, b: list) -> list:
@@ -106,41 +110,43 @@ class StatTests:
         return crosstab(labels, values)[1]
 
     def _get_test_results(self, data_max: list, data_min: list) -> Tuple[float, float]:
-        # calculate effect size
-        if max(data_max) <= 1 and min(data_max) >= 0 and max(data_min) <= 1 and min(data_min) >= 0:
-            # if analyze proportions use Cohen's h:
-            effect_size = _cohenh(data_max, data_min)
+        if self.test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
+            # calculate effect size
+            if max(data_max) <= 1 and min(data_max) >= 0 and max(data_min) <= 1 and min(data_min) >= 0:
+                # if analyze proportions use Cohen's h:
+                effect_size = _cohenh(data_max, data_min)
+            else:
+                # for other variables use Cohen's d:
+                effect_size = _cohend(data_max, data_min)
+
+            # calculate power
+            power = TTestIndPower().power(
+                effect_size=effect_size,
+                nobs1=len(data_max),
+                ratio=len(data_min) / len(data_max),
+                alpha=self.alpha,
+                alternative="larger",
+            )
+
+            if self.test == "ks_2samp":
+                p_val = ks_2samp(data_max, data_min, alternative="less")[1]
+            elif self.test == "mannwhitneyu":
+                p_val = mannwhitneyu(data_max, data_min, alternative="greater")[1]
+            elif self.test == "ttest":
+                p_val = ttest_ind(data_max, data_min, alternative="larger")[1]
+            elif self.test == "ztest":
+                p_val = ztest(data_max, data_min, alternative="larger")[1]
+        elif self.test in ["chi2_contingency", "fisher_exact"]:
+            power = None
+            if self.test == "chi2_contingency":
+                freq_table = self._get_freq_table(data_max, data_min)
+                p_val = chi2_contingency(freq_table)[1]
+            elif self.test == "fisher_exact":
+                freq_table = self._get_freq_table(data_max, data_min)
+                p_val = fisher_exact(freq_table, alternative="greater")[1]
         else:
-            # for other variables use Cohen's d:
-            effect_size = _cohend(data_max, data_min)
-
-        # calculate power
-        power = TTestIndPower().power(
-            effect_size=effect_size,
-            nobs1=len(data_max),
-            ratio=len(data_min) / len(data_max),
-            alpha=self.alpha,
-            alternative="larger",
-        )
-
-        if self.test == "ks_2samp":
-            p_val = ks_2samp(data_max, data_min, alternative="less")[1]
-        elif self.test == "mannwhitneyu":
-            p_val = mannwhitneyu(data_max, data_min, alternative="greater")[1]
-        elif self.test == "ttest":
-            p_val = ttest_ind(data_max, data_min, alternative="larger")[1]
-        elif self.test == "ztest":
-            p_val = ztest(data_max, data_min, alternative="larger")[1]
-        elif self.test == "chi2_contingency":
-            freq_table = self._get_freq_table(data_max, data_min)
-            p_val = chi2_contingency(freq_table)[1]
-        elif self.test == "fisher_exact":
-            freq_table = self._get_freq_table(data_max, data_min)
-            p_val = fisher_exact(freq_table, alternative="greater")[1]
-        else:
-            raise ValueError("The argument test is not supported. Supported tests are: {}".format(*TEST_NAMES))
-
-        return p_val, power
+            raise ValueError("The argument test is not supported. Supported tests are: {}".format(*TEST_NAMES))  # type: ignore
+        return p_val, power  # type: ignore
 
     def _get_sorted_test_results(self) -> Tuple[float, float, str, str]:
         p_val_norm, power_norm = self._get_test_results(self.g1_data, self.g2_data)

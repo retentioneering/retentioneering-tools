@@ -2,16 +2,22 @@
 </div>
 <script>
   (function () {
+    const width = 960
+    const height = 900
+
     const iframe = document.createElement("iframe")
     iframe.src = "about:blank"
-    iframe.width = 960
-    iframe.height = 900
+    iframe.width = width
+    iframe.height = height
 
     const renderBlock = document.getElementById("{{block_id}}")
     renderBlock.appendChild(iframe)
 
     iframe.contentWindow.__SERVER_ID__ = "{{server_id}}"
     iframe.contentWindow.__ENV__ = "{{env}}"
+    iframe.contentWindow.__WIDTH__ = width
+    iframe.contentWindow.__HEIGHT__ = height
+
     const fDocument = iframe.contentDocument
     const container = fDocument.createElement("div")
     container.id = "root"

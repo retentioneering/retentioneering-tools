@@ -12,7 +12,7 @@ class TestEventstreamStattests:
     def test_stattests_eventstream__simple(self, test_stream):
         params = {
             "groups": ([1, 2, 3, 4], [5, 6, 7, 8]),
-            "function": lambda x: x.shape[0],
+            "func": lambda x: x.shape[0],
             "group_names": ("group_1", "group_2"),
             "test": "ttest",
         }
@@ -23,13 +23,13 @@ class TestEventstreamStattests:
     def test_stattests_eventstream__refit(self, test_stream):
         params_1 = {
             "groups": ([1, 2, 3, 4], [5, 6, 7, 8]),
-            "function": lambda x: x.shape[0],
+            "func": lambda x: x.shape[0],
             "group_names": ("group_1", "group_2"),
             "test": "ttest",
         }
         params_2 = {
             "groups": ([1, 2, 3, 4], [5, 6, 7, 8]),
-            "function": lambda x: x.shape[0],
+            "func": lambda x: x.shape[0],
             "group_names": ("group_1", "group_2"),
             "test": "mannwhitneyu",
         }
@@ -45,7 +45,7 @@ class TestEventstreamStattests:
     def test_stattests_eventstream__fit_hash_check(self, test_stream):
         params = {
             "groups": ([1, 2, 3, 4], [5, 6, 7, 8]),
-            "function": lambda x: x.shape[0],
+            "func": lambda x: x.shape[0],
             "group_names": ("group_1", "group_2"),
             "test": "ttest",
         }

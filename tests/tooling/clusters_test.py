@@ -83,6 +83,18 @@ class TestClusters:
         features = c.extract_features(feature_type="count", ngram_range=(1, 1))
         assert features.compare(correct_features).shape == (0, 0)
 
+    def test_clusters_vectorization__time(self, test_stream, time_corr):
+        correct_features = time_corr
+        c = Clusters(eventstream=test_stream)
+        features = c.extract_features(feature_type="time", ngram_range=(1, 1))
+        assert features.compare(correct_features).shape == (0, 0)
+
+    def test_clusters_vectorization__time_fraction(self, test_stream, time_fraction_corr):
+        correct_features = time_fraction_corr
+        c = Clusters(eventstream=test_stream)
+        features = round(c.extract_features(feature_type="time_fraction", ngram_range=(1, 1)), 3)
+        assert features.compare(correct_features).shape == (0, 0)
+
     def test_clusters_method__kmeans_(self, test_stream, kmeans_corr):
         correct_result = kmeans_corr
         c = Clusters(eventstream=test_stream)
@@ -117,3 +129,10 @@ class TestClusters:
         c.set_clusters(user_clusters)
         result = c.cluster_mapping
         assert result == correct_result
+
+    def test_clusters__vector(self, test_stream, custom_vector, vector_corr):
+        correct_result = vector_corr
+        c = Clusters(eventstream=test_stream)
+        c.fit(method="kmeans", n_clusters=2, vector=custom_vector)
+        result = c.user_clusters
+        assert sum(result != correct_result) == 0

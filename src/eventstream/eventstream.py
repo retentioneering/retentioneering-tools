@@ -736,7 +736,7 @@ class Eventstream(
         self,
         test: TEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
-        function: Callable,
+        func: Callable,
         group_names: Tuple[str, str] = ("group_1", "group_2"),
         alpha: float = 0.05,
     ) -> StatTests:
@@ -751,7 +751,7 @@ class Eventstream(
             A ``StatTest`` class instance fitted to the given parameters.
         """
         self.__stattests = StatTests(
-            eventstream=self, groups=groups, function=function, test=test, group_names=group_names, alpha=alpha
+            eventstream=self, groups=groups, func=func, test=test, group_names=group_names, alpha=alpha
         )
         self.__stattests.fit()
         values = self.__stattests.values

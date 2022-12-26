@@ -16,7 +16,7 @@ class TestTest:
         try:
             source.stattests(
                 groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-                function=lambda x: x.shape[0],
+                func=lambda x: x.shape[0],
                 group_names=("group_1", "group_2"),
                 test="ttest",
             )
@@ -25,7 +25,7 @@ class TestTest:
         try:
             source.stattests(
                 groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-                function=lambda x: x.shape[0],
+                func=lambda x: x.shape[0],
                 group_names=("group_1", "group_2"),
                 test="chi2_contingency",
             )

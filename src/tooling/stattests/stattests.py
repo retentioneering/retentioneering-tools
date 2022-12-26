@@ -50,7 +50,7 @@ class StatTests:
     groups : tuple of list
         Must contain tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
         of user_id`s.
-    function : Callable
+    func : Callable
         Selected metrics. Must contain a function which takes as an argument dataset for
         single user trajectory and returns a single numerical value.
     group_names : tuple, default ('group_1', 'group_2')
@@ -69,7 +69,7 @@ class StatTests:
         eventstream: EventstreamType,
         test: TEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
-        function: Callable,
+        func: Callable,
         group_names: Tuple[str, str] = ("group_1", "group_2"),
         alpha: float = 0.05,
     ) -> None:
@@ -78,7 +78,7 @@ class StatTests:
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
         self.groups = groups
-        self.func = function
+        self.func = func
         self.test = test
         self.group_names = group_names
         self.alpha = alpha
@@ -240,7 +240,7 @@ class StatTests:
         return {
             "test": self.test,
             "groups": self.groups,
-            "function": self.func,
+            "func": self.func,
             "group_names": self.group_names,
             "alpha": self.alpha,
         }

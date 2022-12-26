@@ -383,7 +383,7 @@ class Clusters:
         if feature_type in ["time", "time_fraction"]:
             events.sort_values(by=[self.user_col, self.time_col], inplace=True)
             events.reset_index(inplace=True)
-            events["time_diff"] = events.groupby(self.user_col)[time_col].diff().dt.total_seconds()  # type: ignore
+            events["time_diff"] = events.groupby(self.user_col)[self.time_col].diff().dt.total_seconds()  # type: ignore
             events["time_length"] = events["time_diff"].shift(-1)
             if feature_type == "time_fraction":
                 vec_data = (

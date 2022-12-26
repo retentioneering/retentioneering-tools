@@ -113,7 +113,7 @@ class TestStatTest:
         result = st.values()["p_val"]
         assert math.isclose(result, correct, abs_tol=0.001)
 
-    def test_stattest__alpha(self, simple_data):
+    def test_stattest__ttest_alpha(self, simple_data):
         correct = 0.4390
         st = simple_data.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),

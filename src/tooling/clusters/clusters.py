@@ -63,8 +63,8 @@ class Clusters:
 
     def fit(
         self,
-        method: Method | None = None,
-        n_clusters: int | None = None,
+        method: Method,
+        n_clusters: int,
         feature_type: FeatureType | None = None,
         ngram_range: NgramRange | None = None,
         vector: pd.DataFrame | None = None,
@@ -74,11 +74,11 @@ class Clusters:
 
         Parameters
         ----------
-        method : {"kmeans", "gmm"}, default None
+        method : {"kmeans", "gmm"}
             - ``kmeans`` stands classic K-means algorithm. See details in :sklearn_kmeans:`sklearn documentation<>`
             - ``gmm`` stands for Gaussian mixture model. See details in :sklearn_gmm:`sklearn documentation<>`
 
-        n_clusters : int, default None
+        n_clusters : int
             The expected number of clusters to be passed to a clustering algorithm.
         feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}, default None
             See :py:func:`extract_features`
@@ -494,8 +494,8 @@ class Clusters:
     # inner functions
     def __validate_input(
         self,
-        method: Method | None = None,
-        n_clusters: int | None = None,
+        method: Method,
+        n_clusters: int,
         feature_type: FeatureType | None = None,
         ngram_range: NgramRange | None = None,
         vector: pd.DataFrame | None = None,
@@ -504,12 +504,6 @@ class Clusters:
         _method = method or self._method
         _n_clusters = n_clusters or self._n_clusters
         _user_clusters = None
-
-        if _method is None:
-            raise ValueError("'method' must be defined for fitting.")
-
-        if _n_clusters is None:
-            raise ValueError("'n_clusters' must be defined for fitting.")
 
         if vector:
             if not isinstance(vector, pd.DataFrame):  # type: ignore

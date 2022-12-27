@@ -178,7 +178,7 @@ class StepSankey:
                 # NOTE total sum for understanding do we need extra step size or not
                 total_sum = df[df["step"] == step]["usr_cnt"].sum()
                 # NOTE step size for middle points
-                step = round(y_range / total_sum, 2)
+                y_step = round(y_range / total_sum, 2)
                 # NOTE cumulative sum for understanding do we need use default step size or not
                 cumulative_sum = 0
                 # NOTE path_end action
@@ -209,7 +209,7 @@ class StepSankey:
                             # NOTE placing first point after the biggest one at the next position
                             # but inside [.1; .3] range
                             y_positions.append(
-                                round(y_positions[-1] + np.minimum(np.maximum(step * iterate_sum, 0.1), 0.3), 2)
+                                round(y_positions[-1] + np.minimum(np.maximum(y_step * iterate_sum, 0.1), 0.3), 2)
                             )
 
                         # NOTE placing points after the biggest

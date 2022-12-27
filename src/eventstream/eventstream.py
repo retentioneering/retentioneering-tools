@@ -597,6 +597,19 @@ class Eventstream(
             figure.show()
         return self.__funnel
 
+    @property
+    def clusters(self) -> Clusters:
+        """
+        Returns an instance of ``Clusters`` class to be used for cluster analysis.
+        See :py:func:`src.tooling.clusters.clusters`
+        Returns
+        -------
+        Clusters
+        """
+        if self.__clusters is None:
+            self.__clusters = Clusters(eventstream=self)
+        return self.__clusters
+
     def step_matrix(
         self,
         max_steps: int = 20,

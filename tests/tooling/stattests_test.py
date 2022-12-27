@@ -14,7 +14,7 @@ class TestStatTest:
     def test_stattest__ttest_p_val(self, simple_data):
         st = simple_data.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-            objective=lambda x: x.shape[0],
+            func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
             test="ttest",
         )
@@ -27,7 +27,7 @@ class TestStatTest:
         correct = 7.0
         st = simple_data.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-            objective=lambda x: x.shape[0],
+            func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
             test="ttest",
         )
@@ -39,7 +39,7 @@ class TestStatTest:
         correct = True
         st = simple_data.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-            objective=lambda x: x.shape[0],
+            func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
             test="ttest",
         )
@@ -51,7 +51,7 @@ class TestStatTest:
         correct = 0.1859
         st = simple_data.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-            objective=lambda x: x.shape[0],
+            func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
             test="mannwhitneyu",
         )
@@ -64,7 +64,7 @@ class TestStatTest:
         correct = ks_2samp_corr["p_val"]
         st = continuous_data.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-            objective=lambda x: x["seconds"].mean(),
+            func=lambda x: x["seconds"].mean(),
             group_names=("group_1", "group_2"),
             test="ks_2samp",
         )
@@ -76,7 +76,7 @@ class TestStatTest:
         correct = chi2_contingency_corr["p_val"]
         st = simple_data.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-            objective=lambda x: "payment_done" in x["event"].values,
+            func=lambda x: "payment_done" in x["event"].values,
             group_names=("group_1", "group_2"),
             test="chi2_contingency",
         )
@@ -88,7 +88,7 @@ class TestStatTest:
         correct = ztest_corr["p_val"]
         st = simple_data.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-            objective=lambda x: x.shape[0],
+            func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
             test="ztest",
         )
@@ -100,7 +100,7 @@ class TestStatTest:
         correct = fisher_exact_corr["p_val"]
         st = cutted_data.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-            objective=lambda x: "payment_done" in x["event"].values,
+            func=lambda x: "payment_done" in x["event"].values,
             group_names=("group_1", "group_2"),
             test="fisher_exact",
         )
@@ -112,7 +112,7 @@ class TestStatTest:
         correct = 0.4390
         st = simple_data.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
-            objective=lambda x: x.shape[0],
+            func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
             test="ttest",
             alpha=0.1,

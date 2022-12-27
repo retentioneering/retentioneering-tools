@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from src.data_processors_lib.rete import TruncatedEvents, TruncatedEventsParams
+from src.data_processors_lib import TruncatedEvents, TruncatedEventsParams
 from src.eventstream.eventstream import Eventstream
 from src.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase

@@ -1,11 +1,3 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# This file only contains a selection of the most common options. For a full
-# list see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
-
-# -- Path setup --------------------------------------------------------------
-
 import datetime
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -14,6 +6,7 @@ import datetime
 #
 import os
 import sys
+from typing import Any
 
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -37,6 +30,7 @@ release = "3.0.0"
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "numpydoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.extlinks",
@@ -44,23 +38,19 @@ extensions = [
 
 # -- Options for HTML output -------------------------------------------------
 
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes.
+numpydoc_show_inherited_class_members = False
+numpydoc_class_members_toctree = False
+numpydoc_show_class_members = False
+html_theme = "pydata_sphinx_theme"
 
-html_theme = "sphinx_rtd_theme"
+html_theme_options = {"logo": {"image_light": "rete_logo.svg", "image_dark": "rete_logo_white.svg"}}
 
-html_logo = "rete_logo.png"
-html_theme_options = {
-    "analytics_id": "UA-143266385-2",
-    "logo_only": True,
-    "display_version": False,
-    "style_nav_header_background": "#343131",  # colour of the left-side panel
-}
+autodoc_typehints = "none"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
-
+pygments_style = "sphinx"
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
@@ -77,9 +67,44 @@ source_suffix = ".rst"
 master_doc = "index"
 
 extlinks = {
-    "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units", ""),
+    "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units/%s", None),
+    "sklearn_tfidf": (
+        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html%s",
+        None,
+    ),
+    "sklearn_countvec": (
+        "https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html%s",
+        None,
+    ),
     "numpy_timedelta_link": (
-        "https://numpy.org/doc/stable/reference/" "arrays.datetime.html#:~:text=There%20are%20two,numbers%20of%20days.",
-        "",
+        "https://numpy.org/doc/stable/reference/arrays.datetime.html"
+        "#:~:text=There%%20are%%20two,numbers%%20of%%20days/%s",
+        None,
+    ),
+    "plotly_autosize": ("https://plotly.com/python/reference/layout/#layout-autosize/%s", None),
+    "plotly_width": ("https://plotly.com/python/reference/layout/#layout-width/%s", None),
+    "plotly_height": ("https://plotly.com/python/reference/layout/#layout-height/%s", None),
+    "mannwhitneyu": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.mannwhitneyu.html%s", None),
+    "scipy_chi2": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.chi2_contingency.html%s", None),
+    "scipy_fisher": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.fisher_exact.html%s", None),
+    "scipy_ks": ("https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html%s", None),
+    "statsmodel_ttest": (
+        "https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ttest_ind.html%s",
+        None,
+    ),
+    "statsmodel_ztest": ("https://www.statsmodels.org/dev/generated/statsmodels.stats.weightstats.ztest.html%s", None),
+    "numpy_random_choice": (
+        "https://numpy.org/doc/stable/reference/random/generated/numpy.random.RandomState.choice.html%s",
+        None,
+    ),
+    "numpy_random_seed": ("https://numpy.org/doc/stable/reference/random/generated/numpy.random.seed.html%s", None),
+    "pandas_copy": (
+        "https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html"
+        "#:~:text=If%%20None%%2C%%20infer.-,copybool,-or%%20None%%2C%%20default%s",
+        None,
     ),
 }
+
+
+def setup(app: Any) -> None:
+    app.add_css_file("css/custom.css")

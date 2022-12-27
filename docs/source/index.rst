@@ -1,37 +1,41 @@
-
 .. title:: Retentioneering Tools
 
----------------------------------------------------------------------
-
-
 Contents
-======================================
+========
 .. toctree::
     :caption: Getting started:
-    :maxdepth: 2
+    :maxdepth: 1
+
 
     What is Retentioneering? <what_is_rete.rst>
     Quick start <quick_start.rst>
+    Eventstream concept <eventstream_concept.rst>
 
 .. toctree::
     :caption: User Guide:
-    :maxdepth: 2
+    :maxdepth: 1
 
-    Eventstream <eventstream_user_guide.rst>
-    Funnel analysis <funnel_tutorial.rst>
+    User Guide <user_guide.rst>
+
 
 .. toctree::
-    :caption: Tutorial:
-    :maxdepth: 2
+    :caption: Tutorials:
+    :maxdepth: 1
 
-    Preprocessing scenario <tutorial.rst>
+    Tutorials <tutorials.rst>
+
 
 .. toctree::
     :caption: API Reference:
-    :maxdepth: 2
+    :maxdepth: 1
 
     API Reference <api_reference.rst>
-    Github <>
+
+
+
+
+
+
 
 
 `back to github. <https://github.com/retentioneering/retentioneering-tools>`__

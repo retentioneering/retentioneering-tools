@@ -7,6 +7,10 @@ class TestListDataprocessors:
     def test_list_dataprocessors(self) -> None:
         correct_data = [
             {
+                "name": "RenameProcessor",
+                "params": [{"default": None, "name": "rules", "optional": False, "widget": "array"}],
+            },
+            {
                 "name": "CollapseLoops",
                 "params": [
                     {"name": "suffix", "optional": True, "widget": "string"},
@@ -105,7 +109,7 @@ class TestListDataprocessors:
                     },
                     {
                         "_source_code": "",
-                        "name": "negative_function",
+                        "name": "func",
                         "optional": True,
                         "widget": "function",
                     },
@@ -134,7 +138,7 @@ class TestListDataprocessors:
                     },
                     {
                         "_source_code": "",
-                        "name": "positive_function",
+                        "name": "func",
                         "optional": True,
                         "widget": "function",
                     },
@@ -171,7 +175,7 @@ class TestListDataprocessors:
                         "widget": "time_widget",
                     },
                     {"name": "mark_truncated", "optional": True, "widget": "boolean"},
-                    {"name": "session_col", "optional": False, "widget": "string"},
+                    {"name": "session_col", "optional": True, "widget": "string"},
                 ],
             },
             {"name": "StartEndEvents", "params": []},

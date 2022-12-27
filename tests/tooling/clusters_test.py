@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+from pandas.testing import assert_frame_equal
 
 from src.eventstream import Eventstream, EventstreamSchema
 from src.tooling.clusters import Clusters
@@ -75,7 +76,8 @@ class TestClusters:
         correct_features = markov_corr
         c = Clusters(eventstream=test_stream)
         features = c.extract_features(feature_type="markov")
-        assert features.compare(correct_features).shape == (0, 0)
+        # assert features.compare(correct_features).shape == (0, 0)
+        assert features.equals(correct_features)
 
     def test_clusters_vectorization__count(self, test_stream, count_corr):
         correct_features = count_corr

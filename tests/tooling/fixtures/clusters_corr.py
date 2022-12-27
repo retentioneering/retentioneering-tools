@@ -16,6 +16,7 @@ def markov_corr():
         "event3~event1",
     ]
     correct_columns = [c + "_markov" for c in correct_columns]
+    index = pd.Index([1, 2, 3, 4], name="user_id")
     correct_features = pd.DataFrame(
         [
             [0.4, 0.2, 0.4, 0.0, 1.0, 0.0, 1.0],
@@ -24,7 +25,7 @@ def markov_corr():
             [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         ],
         columns=correct_columns,
-        index=[1, 2, 3, 4],
+        index=index,
     )
     return correct_features
 

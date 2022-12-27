@@ -280,6 +280,7 @@ class Eventstream(
         joined_events = eventstream.to_dataframe(raw_cols=True, show_deleted=True)
         not_related_events = joined_events[joined_events[relation_col_name].isna()]
         not_related_events_ids = not_related_events[self.schema.event_id]
+        user_id_type = curr_events.dtypes[self.schema.user_id]
 
         merged_events = pd.merge(
             curr_events,
@@ -327,6 +328,8 @@ class Eventstream(
         result_right_part[DELETE_COL_NAME] = right_events[left_delete_col] | right_events[right_delete_col]
 
         self.__events = pd.concat([result_left_part, result_right_part, result_deleted_events])
+        self.__events[self.schema.user_id] = self.__events[self.schema.user_id].astype(user_id_type)
+
         self.schema.custom_cols = self._get_both_custom_cols(eventstream)
         self.index_events()
 

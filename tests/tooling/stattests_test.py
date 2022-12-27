@@ -1,10 +1,5 @@
 import math
 
-import numpy as np
-import pandas as pd
-import pytest
-
-from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
 from src.tooling.stattests import StatTests
 from tests.tooling.fixtures.stattests import continuous_data, cutted_data, simple_data
 from tests.tooling.fixtures.stattests_corr import (

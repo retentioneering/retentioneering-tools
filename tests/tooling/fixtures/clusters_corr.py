@@ -50,6 +50,7 @@ def gmm_corr():
 def count_corr():
     correct_columns = ["event1", "event2", "event3", "event4"]
     correct_columns = [c + "_count" for c in correct_columns]
+    index = pd.Index([1, 2, 3, 4], name="user_id")
     correct_features = pd.DataFrame(
         [
             [6, 1, 2, 0],
@@ -58,7 +59,7 @@ def count_corr():
             [3, 0, 0, 0],
         ],
         columns=correct_columns,
-        index=[1, 2, 3, 4],
+        index=index,
     )
     return correct_features
 
@@ -67,6 +68,7 @@ def count_corr():
 def time_corr():
     correct_columns = ["event1", "event2", "event3", "event4"]
     correct_columns = [c + "_time" for c in correct_columns]
+    index = pd.Index([1, 2, 3, 4], name="user_id")
     correct_features = pd.DataFrame(
         [
             [122.0, 58.0, 60.0, 0.0],
@@ -75,7 +77,7 @@ def time_corr():
             [115.0, 0.0, 0.0, 0.0],
         ],
         columns=correct_columns,
-        index=[1, 2, 3, 4],
+        index=index,
     )
     return correct_features
 
@@ -84,6 +86,7 @@ def time_corr():
 def time_fraction_corr():
     correct_columns = ["event1", "event2", "event3", "event4"]
     correct_columns = [c + "_time_fraction" for c in correct_columns]
+    index = pd.Index([1, 2, 3, 4], name="user_id")
     correct_features = pd.DataFrame(
         [
             [0.508, 0.242, 0.25, 0.0],
@@ -92,7 +95,7 @@ def time_fraction_corr():
             [1.0, 0.0, 0.0, 0.0],
         ],
         columns=correct_columns,
-        index=[1, 2, 3, 4],
+        index=index,
     )
     return correct_features
 
@@ -116,6 +119,7 @@ def ngram_range_corr():
         "event3 event1 event3",
     ]
     correct_columns = [c + "_count" for c in correct_columns]
+    index = pd.Index([1, 2, 3, 4], name="user_id")
     correct_features = pd.DataFrame(
         [
             [1, 1, 0, 1, 0, 2, 1, 1],
@@ -124,7 +128,7 @@ def ngram_range_corr():
             [1, 0, 0, 0, 0, 0, 0, 0],
         ],
         columns=correct_columns,
-        index=[1, 2, 3, 4],
+        index=index,
     )
     return correct_features
 

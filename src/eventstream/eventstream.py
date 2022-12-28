@@ -756,15 +756,13 @@ class Eventstream(
         self.__stattests.fit()
         values = self.__stattests.values
         if test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
-            str_template = "{0} (mean ± SD): {1:.3f} ± {2:.3f}, n = {3}"
-
             print(
-                str_template.format(
+                self.__stattests.output_template_numerical.format(
                     values["group_one_name"], values["group_one_mean"], values["group_one_SD"], values["group_one_size"]
                 )
             )
             print(
-                str_template.format(
+                self.__stattests.output_template_numerical.format(
                     values["group_two_name"], values["group_two_mean"], values["group_two_SD"], values["group_two_size"]
                 )
             )
@@ -775,10 +773,12 @@ class Eventstream(
             )
             print("power of the test: {0:.2f}%".format(100 * values["power_estimated"]))
         elif test in ["chi2_contingency", "fisher_exact"]:
-            str_template = "{0} (size): n = {1}"
-
-            print(str_template.format(values["group_one_name"], values["group_one_size"]))
-            print(str_template.format(values["group_two_name"], values["group_two_size"]))
+            print(
+                self.__stattests.output_template_categorical.format(values["group_one_name"], values["group_one_size"])
+            )
+            print(
+                self.__stattests.output_template_categorical.format(values["group_two_name"], values["group_two_size"])
+            )
             print("Group difference test with P-value: {:.5f}".format(values["p_val"]))
         else:
             raise ValueError("Wrong test passed")

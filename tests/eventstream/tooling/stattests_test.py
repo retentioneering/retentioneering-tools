@@ -1,19 +1,15 @@
 import math
-import os
 
 import pandas as pd
 
 from src.eventstream import Eventstream
 from src.tooling.stattests import StatTests
+from tests.eventstream.fixtures.eventstream import test_stattests_stream_1
 
 
-class TestTest:
-    def test_test__first(self):
-        current_dir = os.path.dirname(os.path.realpath(__file__))
-        test_data_dir = os.path.join(current_dir, "../../datasets/tooling/stattests")
-        source_df = pd.read_csv(os.path.join(test_data_dir, "01_simple_data.csv"))
-
-        source = Eventstream(source_df)
+class TestEventstreamStattests:
+    def test_ttest_correctness(self, test_stattests_stream_1):
+        source = test_stattests_stream_1
         st = StatTests(
             eventstream=source,
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),

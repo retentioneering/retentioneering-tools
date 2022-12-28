@@ -253,3 +253,30 @@ class TestEventstream:
         user_cnt_sampled_2 = len(df_sampled_2["user_id"].unique())
 
         assert math.isclose(user_sample_size, user_cnt_sampled_2, abs_tol=0.51)
+
+    def test_describe_works(self, test_stream_1):
+        try:
+            test_stream_1.describe()
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.describe. " + str(e))
+        try:
+            test_stream_1.describe_events()
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.describe_events. " + str(e))
+
+    def test_describe_works_correctly(self, test_stream_1):
+        pass
+
+    def test_hists(self, test_stream_1):
+        try:
+            test_stream_1.timedelta_hist()
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.timedelta_hist. " + str(e))
+        try:
+            test_stream_1.user_lifetime_hist()
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.user_lifetime_hist. " + str(e))
+        try:
+            test_stream_1.event_timestamp_hist()
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.event_timestamp_hist. " + str(e))

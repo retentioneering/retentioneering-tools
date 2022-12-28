@@ -866,28 +866,13 @@ class Eventstream(
         SubplotBase
             A ``SubplotBase`` class instance fitted to the given parameters.
         """
-
-        if lower_cutoff_quantile is not None:
-            if not 0 < lower_cutoff_quantile < 1:
-                raise ValueError("lower_cutoff_quantile should be a fraction between 0 and 1.")
-        if upper_cutoff_quantile is not None:
-            if not 0 < upper_cutoff_quantile < 1:
-                raise ValueError("upper_cutoff_quantile should be a fraction between 0 and 1.")
-
-        data = self.to_dataframe()
-
-        if event_list != "all":
-            if type(event_list) is not list:
-                raise TypeError('event_list should either be "all", or a list of event names to include.')
-            data = data[data[self.schema.event_name].isin(event_list)]
-
-        values = data[self.schema.event_timestamp]
-        idx = [True] * len(values)
-        if upper_cutoff_quantile is not None:
-            idx &= values <= values.quantile(upper_cutoff_quantile)
-        if lower_cutoff_quantile is not None:
-            idx &= values >= values.quantile(lower_cutoff_quantile)
-        return values[idx].hist(bins=bins)
+        self.__event_timestamp_hist = EventTimestampHist(
+            eventstream=self,
+            lower_cutoff_quantile=lower_cutoff_quantile,
+            upper_cutoff_quantile=upper_cutoff_quantile,
+            bins=bins,
+        )
+        return self.__event_timestamp_hist
 
     def describe(self, session_col: Optional[str] = "session_id") -> None:
         """

@@ -294,7 +294,7 @@ class Clusters:
             "feature_type": self._feature_type,
         }
 
-    def set_clusters(self, user_clusters: pd.Series) -> None:
+    def set_clusters(self, user_clusters: pd.Series) -> Clusters:
         """
         Sets custom user-cluster mapping.
 
@@ -302,6 +302,12 @@ class Clusters:
         ----------
         user_clusters : pd.Series
             Series index corresponds to user_ids. Values are cluster_ids.
+
+        Returns
+        -------
+        Clusters
+            A fitted ``Clusters`` instance.
+
         """
         self._user_clusters = user_clusters
         self.__cluster_result = user_clusters.copy()
@@ -310,7 +316,7 @@ class Clusters:
         self._method = None
         self._ngram_range = None
         self.__is_fitted = True
-        return
+        return self
 
     def filter_cluster(self, cluster_id: int | str) -> EventstreamType:
         """
@@ -547,24 +553,21 @@ class Clusters:
         features = pd.DataFrame()
         user_clusters = pd.Series(dtype=np.int64)
 
-        if self._user_clusters is not None:
-            user_clusters = self._user_clusters.copy()
+        if self._vector is not None:
+            features = self._vector.copy()
         else:
-            if self._vector is not None:
-                features = self._vector.copy()
+            if self._feature_type is not None and self._ngram_range is not None:
+                features = self.extract_features(self._feature_type, self._ngram_range)
+
+        if self._n_clusters is not None:
+            if self._method == "kmeans":
+                cluster_result = self._kmeans(features=features, n_clusters=self._n_clusters)
+            elif self._method == "gmm":
+                cluster_result = self._gmm(features=features, n_clusters=self._n_clusters)
             else:
-                if self._feature_type is not None and self._ngram_range is not None:
-                    features = self.extract_features(self._feature_type, self._ngram_range)
+                raise ValueError("Unknown method: %s" % self._method)
 
-            if self._n_clusters is not None:
-                if self._method == "kmeans":
-                    cluster_result = self._kmeans(features=features, n_clusters=self._n_clusters)
-                elif self._method == "gmm":
-                    cluster_result = self._gmm(features=features, n_clusters=self._n_clusters)
-                else:
-                    raise ValueError("Unknown method: %s" % self._method)
-
-                user_clusters = pd.Series(cluster_result, index=features.index)
+            user_clusters = pd.Series(cluster_result, index=features.index)
 
         return features, user_clusters
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -93,6 +94,8 @@ class TimedeltaHist:
             if not 0 < upper_cutoff_quantile < 1:
                 raise ValueError("upper_cutoff_quantile should be a fraction between 0 and 1.")
         self.upper_cutoff_quantile = upper_cutoff_quantile
+        if lower_cutoff_quantile > upper_cutoff_quantile:
+            warnings.warn("lower_cutoff_quantile exceeds upper_cutoff_quantile; no data passed to the histogram")
         self.log_scale = log_scale
         self.bins = bins
 

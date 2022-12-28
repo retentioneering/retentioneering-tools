@@ -254,7 +254,7 @@ class TestEventstream:
 
         assert math.isclose(user_sample_size, user_cnt_sampled_2, abs_tol=0.51)
 
-    def test_describe(self, test_stream_1):
+    def test_describe_works(self, test_stream_1):
         try:
             test_stream_1.describe()
         except Exception as e:
@@ -263,6 +263,9 @@ class TestEventstream:
             test_stream_1.describe_events()
         except Exception as e:
             pytest.fail("Runtime error in Eventstream.describe_events. " + str(e))
+
+    def test_describe_works_correctly(self, test_stream_1):
+        pass
 
     def test_hists(self, test_stream_1):
         try:

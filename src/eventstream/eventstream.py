@@ -7,6 +7,8 @@ from typing import Any, Callable, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
+from matplotlib.axes import SubplotBase
 
 from src.constants import DATETIME_UNITS
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
@@ -14,11 +16,15 @@ from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.graph import PGraph, SourceNode
 from src.tooling.clusters import Clusters
 from src.tooling.cohorts import Cohorts
+from src.tooling.describe import Describe
+from src.tooling.describe_events import DescribeEvents
+from src.tooling.event_timestamp_hist import EventTimestampHist
 from src.tooling.funnel import Funnel
 from src.tooling.stattests import TEST_NAMES, StatTests
 from src.tooling.step_matrix import StepMatrix
 from src.tooling.step_sankey import StepSankey
 from src.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
+from src.tooling.user_lifetime_hist import UserLifetimeHist
 from src.transition_graph import NormType, TransitionGraph
 from src.transition_graph.typing import Threshold
 from src.utils import get_merged_col
@@ -142,7 +148,6 @@ class Eventstream(
     __step_matrix: StepMatrix | None = None
     __sankey: StepSankey | None = None
     __stattests: StatTests | None = None
-    __timedelta_hist: TimedeltaHist | None = None
     __transition_graph: TransitionGraph | None = None
     __p_graph: PGraph | None = None
 
@@ -788,14 +793,20 @@ class Eventstream(
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int = 20,
-    ) -> TimedeltaHist:
-
+    ) -> go.Figure:
         """
+        Plots the distribution of the time deltas between two events. Supports various
+        distribution types, such as distribution of time for adjacent consecutive events, or
+        for a pair of pre-defined events, or median transition time from event to event per user/session.
 
         See parameters description :py:func:`src.tooling.timedelta_hist.timedelta_hist`
 
+        Returns
+        -------
+        TimedeltaHist
+            A ``Figure`` instance fitted to the given parameters.
         """
-        self.__timedelta_hist = TimedeltaHist(
+        hist = TimedeltaHist(
             eventstream=self,
             event_pair=event_pair,
             only_adjacent_event_pairs=only_adjacent_event_pairs,
@@ -807,7 +818,79 @@ class Eventstream(
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
         )
-        return self.__timedelta_hist
+        return hist.plot()
+
+    def user_lifetime_hist(
+        self,
+        timedelta_unit: DATETIME_UNITS = "s",
+        log_scale: bool = False,
+        lower_cutoff_quantile: Optional[float] = None,
+        upper_cutoff_quantile: Optional[float] = None,
+        bins: int = 20,
+    ) -> go.Figure:
+        """
+        Plots the distribution of user lifetimes. A users' lifetime is the timedelta between the first and the last
+        events of the user. Can be useful for finding suitable parameters of various data processors, such as
+        DeleteUsersByPathLength or TruncatedEvents.
+
+        See parameters description :py:func:`src.tooling.timedelta_hist.timedelta_hist`
+
+        Returns
+        -------
+        UserLifetimeHist
+            A ``Figure`` class instance fitted to the given parameters.
+        """
+        hist = UserLifetimeHist(
+            eventstream=self,
+            timedelta_unit=timedelta_unit,
+            log_scale=log_scale,
+            lower_cutoff_quantile=lower_cutoff_quantile,
+            upper_cutoff_quantile=upper_cutoff_quantile,
+            bins=bins,
+        )
+        return hist.plot()
+
+    def event_timestamp_hist(
+        self,
+        event_list: Optional[List[str] | str] = "all",
+        lower_cutoff_quantile: Optional[float] = None,
+        upper_cutoff_quantile: Optional[float] = None,
+        bins: int = 20,
+    ) -> SubplotBase:
+        """
+        Plots the distribution of events over time. Can be useful for detecting time-based anomalies, and visualising
+        general timespan of the eventstream.
+
+        Returns
+        -------
+        SubplotBase
+            A ``SubplotBase`` class instance fitted to the given parameters.
+        """
+        hist = EventTimestampHist(
+            eventstream=self,
+            lower_cutoff_quantile=lower_cutoff_quantile,
+            upper_cutoff_quantile=upper_cutoff_quantile,
+            bins=bins,
+        )
+        return hist.plot()
+
+    def describe(self, session_col: Optional[str] = "session_id") -> None:
+        """
+        Displays general eventstream information. If session_col is present in eventstream columns, also
+        outputs session statistics, assuming session_col is the session identifier column.
+        """
+        describer = Describe(eventstream=self, session_col=session_col)
+        describer.display()
+
+    def describe_events(
+        self, session_col: Optional[str] = "session_id", event_list: Optional[List[str] | str] = "all"
+    ) -> None:
+        """
+        Displays general information on the eventstream events. If session_col is present in eventstream columns, also
+        outputs session statistics, assuming session_col is the session identifier column.
+        """
+        describer = DescribeEvents(eventstream=self, session_col=session_col, event_list=event_list)
+        describer.display()
 
     def transition_graph(
         self,

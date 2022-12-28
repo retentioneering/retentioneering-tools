@@ -5,11 +5,11 @@ import uuid
 from collections.abc import Collection
 from typing import Any, Callable, List, Literal, Optional, Tuple, Union
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from matplotlib.axes import SubplotBase
-import matplotlib.pyplot as plt
 
 from src.constants import DATETIME_UNITS
 from src.eventstream.schema import EventstreamSchema, RawDataSchema

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Optional, List
+from typing import List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,7 +34,7 @@ class EventTimestampHist:
     def __init__(
         self,
         eventstream: EventstreamType,
-        event_list:  Optional[List[str] | str] = "all",
+        event_list: Optional[List[str] | str] = "all",
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int = 20,
@@ -55,6 +55,9 @@ class EventTimestampHist:
             if not 0 < upper_cutoff_quantile < 1:
                 raise ValueError("upper_cutoff_quantile should be a fraction between 0 and 1.")
         self.upper_cutoff_quantile = upper_cutoff_quantile
+        if lower_cutoff_quantile is not None and upper_cutoff_quantile is not None:
+            if lower_cutoff_quantile > upper_cutoff_quantile:
+                warnings.warn("lower_cutoff_quantile exceeds upper_cutoff_quantile; no data passed to the histogram")
         self.bins = bins
 
     def _remove_cutoff_values(self, series: pd.Series) -> pd.Series:

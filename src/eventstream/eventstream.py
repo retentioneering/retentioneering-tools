@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from matplotlib.axes import SubplotBase
+import matplotlib.pyplot as plt
 
 from src.constants import DATETIME_UNITS
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
@@ -826,7 +827,8 @@ class Eventstream(
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
         )
-        return hist.plot()
+        hist.plot()
+        return plt.show()
 
     def user_lifetime_hist(
         self,
@@ -856,7 +858,8 @@ class Eventstream(
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
         )
-        return hist.plot()
+        hist.plot()
+        return plt.show()
 
     def event_timestamp_hist(
         self,
@@ -880,7 +883,8 @@ class Eventstream(
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
         )
-        return hist.plot()
+        hist.plot()
+        return plt.show()
 
     def describe(self, session_col: Optional[str] = "session_id") -> None:
         """

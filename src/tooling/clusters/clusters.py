@@ -68,7 +68,7 @@ class Clusters:
         feature_type: FeatureType | None = None,
         ngram_range: NgramRange | None = None,
         vector: pd.DataFrame | None = None,
-    ) -> None:
+    ) -> Clusters:
         """
         Fits clusters to the eventstream data.
 
@@ -86,6 +86,11 @@ class Clusters:
         vector: pd.DataFrame, default=None
             ``pd.DataFrame`` representing custom vectorization of the user paths. The index corresponds to user_ids,
             the columns are vectorized values of the path.
+
+        Returns
+        -------
+        Clusters
+            A fitted ``Clusters`` instance.
         """
 
         self._method, self._n_clusters, self._feature_type, self._ngram_range, self._vector = self.__validate_input(
@@ -101,6 +106,8 @@ class Clusters:
         )
 
         self.__is_fitted = True
+
+        return self
 
     def event_dist(
         self,

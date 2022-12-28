@@ -601,9 +601,7 @@ class Eventstream(
     def clusters(self) -> Clusters:
         """
         Returns an instance of ``Clusters`` class to be used for cluster analysis.
-
         See :py:func:`src.tooling.clusters.clusters`
-
         Returns
         -------
         Clusters

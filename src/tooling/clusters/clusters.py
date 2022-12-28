@@ -63,8 +63,8 @@ class Clusters:
 
     def fit(
         self,
-        method: Method | None = None,
-        n_clusters: int | None = None,
+        method: Method,
+        n_clusters: int,
         feature_type: FeatureType | None = None,
         ngram_range: NgramRange | None = None,
         vector: pd.DataFrame | None = None,
@@ -74,16 +74,17 @@ class Clusters:
 
         Parameters
         ----------
-        method: {"kmeans", "gmm"}, default=None
-            ``kmeans`` stands classic K-means algorithm. https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
-            ``gmm`` stands for Gaussian mixture model. https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html
-        n_clusters: int, default=None
+        method : {"kmeans", "gmm"}
+            - ``kmeans`` stands classic K-means algorithm. See details in :sklearn_kmeans:`sklearn documentation<>`
+            - ``gmm`` stands for Gaussian mixture model. See details in :sklearn_gmm:`sklearn documentation<>`
+
+        n_clusters : int
             The expected number of clusters to be passed to a clustering algorithm.
-        feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}, default=None
+        feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}, default None
             See :py:func:`extract_features`
-        ngram_range : Tuple(int, int), default=None
+        ngram_range : Tuple(int, int), default None
             See :py:func:`extract_features`
-        vector: pd.DataFrame, default=None
+        vector : pd.DataFrame, default None
             ``pd.DataFrame`` representing custom vectorization of the user paths. The index corresponds to user_ids,
             the columns are vectorized values of the path.
 
@@ -123,19 +124,19 @@ class Clusters:
 
         Parameters
         ----------
-        cluster_id1: int
+        cluster_id1 : int
             ID of the cluster to compare.
-        cluster_id2: int, (optional, default None)
+        cluster_id2 : int, optional
             ID of the second cluster to compare with top events from first
             cluster. If None, then compares with entire dataset.
-        top_n: int, (optional, default 8)
+        top_n : int, default 8
             Number of top events.
-        weight_col: str (optional, default None)
+        weight_col : str, optional
             If None distribution will be compared based on events occurrences in
             datasets. If ``weight_col`` is specified, percentages of users
             (column name specified by parameter ``weight_col``) who have particular
             events will be plotted.
-        targets: list of str (optional, default None)
+        targets : list of str, optional
             List of event names always to include for comparison regardless
             of the parameter top_n value. Target events will appear in the same
             order as specified.
@@ -218,7 +219,7 @@ class Clusters:
 
         Parameters
         ----------
-        targets: list of str (optional, default None)
+        targets : list of str (optional, default None)
             Represents the list of the target events
 
         """
@@ -299,7 +300,7 @@ class Clusters:
 
         Parameters
         ----------
-        user_clusters: pd.Series
+        user_clusters : pd.Series
             Series index corresponds to user_ids. Values are cluster_ids.
         """
         self._user_clusters = user_clusters
@@ -313,17 +314,18 @@ class Clusters:
 
     def filter_cluster(self, cluster_id: int | str) -> EventstreamType:
         """
-        Truncates the eventstream and leaves the trajectories of the users who belong to the selected cluster.
+        Truncate the eventstream and leave the trajectories of the users who belong to the selected cluster.
 
         Parameters
         ----------
-        cluster_id: int or str
+        cluster_id : int or str
             Cluster identifier to be selected.
 
             If :py:func:`create_clusters` was used for cluster generation, then
              0, 1, ... values are possible.
+
         Returns
-        --------
+        -------
         EventstreamType
             Eventstream with the users belonging to the selected cluster only.
 
@@ -349,7 +351,7 @@ class Clusters:
 
     def extract_features(self, feature_type: FeatureType, ngram_range: NgramRange | None = None) -> pd.DataFrame:
         """
-        Calculates vectorized user paths.
+        Calculate vectorized user paths.
 
         Parameters
         ----------
@@ -366,7 +368,7 @@ class Clusters:
               | beginning of a user's path until a given event.
             - | ``time_fraction`` the same as ``time`` but divided by the total length of the user's trajectory
               | (in seconds).
-        ngram_range: Tuple(int, int)
+        ngram_range : Tuple(int, int)
             The lower and upper boundary of the range of n-values for different word n-grams or char n-grams to be
             extracted. For example, ngram_range=(1, 1) means only single events, (1, 2) means single events
             and bigrams. Ignored for ``markov``, ``time``, ``time_fraction`` feature types.
@@ -427,20 +429,13 @@ class Clusters:
         plot_type : {'targets', 'clusters'}, default 'clusters'
             Type of color-coding used for projection visualization:
 
-                - 'clusters': colors trajectories with different colors depending on cluster number.
-                - 'targets': color trajectories based on reach to any event provided in 'targets' parameter.
-
-                Must provide 'targets' parameter in this case.
-        targets : list or tuple of str, optional
-            Vector of event_names as str. If user reach any of the specified events, the dot corresponding
-            to this user will be highlighted as converted on the resulting projection plot
-        plot_type : {'targets', 'clusters', None}, default None
-            Type of color-coding used for projection visualization:
-
             - ``clusters`` colors trajectories with different colors depending on cluster number.
             - | ``targets`` colors trajectories based on reach to any event provided in 'targets' parameter.
               | Must provide ``targets`` parameter in this case.
-            - If ``None``, then only calculates TSNE without visualization.
+
+        targets : list or tuple of str, optional
+            Vector of event_names as str. If user reach any of the specified events, the dot corresponding
+            to this user will be highlighted as converted on the resulting projection plot.
 
         **kwargs : optional
             Parameters for ``sklearn.manifold.TSNE()`` and ``umap.UMAP()``
@@ -506,8 +501,8 @@ class Clusters:
     # inner functions
     def __validate_input(
         self,
-        method: Method | None = None,
-        n_clusters: int | None = None,
+        method: Method,
+        n_clusters: int,
         feature_type: FeatureType | None = None,
         ngram_range: NgramRange | None = None,
         vector: pd.DataFrame | None = None,
@@ -516,12 +511,6 @@ class Clusters:
         _method = method or self._method
         _n_clusters = n_clusters or self._n_clusters
         _user_clusters = None
-
-        if _method is None:
-            raise ValueError("'method' must be defined for fitting.")
-
-        if _n_clusters is None:
-            raise ValueError("'n_clusters' must be defined for fitting.")
 
         if vector:
             if not isinstance(vector, pd.DataFrame):  # type: ignore
@@ -604,9 +593,9 @@ class Clusters:
 
         Parameters
         --------
-        data: np.array
+        data : np.array
             Array of features.
-        kwargs: optional
+        kwargs : optional
             Parameters for ``sklearn.manifold.TSNE()``
 
         Returns
@@ -640,17 +629,18 @@ class Clusters:
     def _learn_umap(data: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
         """
         Calculates UMAP transformation for given matrix features.
+
         Parameters
         --------
-        data: np.array
+        data : np.array
             Array of features.
-        kwargs: optional
+        kwargs : optional
             Parameters for ``umap.UMAP()``
 
         Returns
         -------
         pd.DataFrame
-            Calculated UMAP transform
+            Calculated UMAP transform.
 
         """
         reducer = umap.UMAP()

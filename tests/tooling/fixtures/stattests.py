@@ -3,13 +3,6 @@ import os
 import pandas as pd
 import pytest
 
-from src import datasets
-from src.data_processors_lib.rete import (
-    FilterEvents,
-    FilterEventsParams,
-    StartEndEvents,
-    StartEndEventsParams,
-)
 from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
 
 

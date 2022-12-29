@@ -1,6 +1,5 @@
 import math
 
-from src.tooling.stattests import StatTests
 from tests.tooling.fixtures.stattests import continuous_data, cutted_data, simple_data
 from tests.tooling.fixtures.stattests_corr import (
     chi2_contingency_corr,
@@ -20,7 +19,7 @@ class TestStatTest:
         )
         st.fit()
         correct = 0.13545
-        result = st.values()["p_val"]
+        result = st.values["p_val"]
         assert math.isclose(result, correct, abs_tol=0.001)
 
     def test_stattest__ttest_mean(self, simple_data):
@@ -32,7 +31,7 @@ class TestStatTest:
             test="ttest",
         )
         st.fit()
-        result = st.values()["group_one_mean"]
+        result = st.values["group_one_mean"]
         assert math.isclose(result, correct, abs_tol=0.1)
 
     def test_stattest__ttest_greatest(self, simple_data):
@@ -44,7 +43,7 @@ class TestStatTest:
             test="ttest",
         )
         st.fit()
-        result = st.values()["is_group_one_greatest"]
+        result = st.values["is_group_one_greatest"]
         assert correct == result
 
     def test_stattest__mannwhitneyu_p_val(self, simple_data):
@@ -56,7 +55,7 @@ class TestStatTest:
             test="mannwhitneyu",
         )
         st.fit()
-        result = st.values()["p_val"]
+        result = st.values["p_val"]
 
         assert math.isclose(result, correct, abs_tol=0.001)
 
@@ -69,7 +68,7 @@ class TestStatTest:
             test="ks_2samp",
         )
         st.fit()
-        result = st.values()["p_val"]
+        result = st.values["p_val"]
         assert math.isclose(result, correct, abs_tol=0.001)
 
     def test_stattest__chi2_contingency(self, simple_data, chi2_contingency_corr):
@@ -81,7 +80,7 @@ class TestStatTest:
             test="chi2_contingency",
         )
         st.fit()
-        result = st.values()["p_val"]
+        result = st.values["p_val"]
         assert math.isclose(result, correct, abs_tol=0.1)
 
     def test_stattest__ztest(self, simple_data, ztest_corr):
@@ -93,7 +92,7 @@ class TestStatTest:
             test="ztest",
         )
         st.fit()
-        result = st.values()["p_val"]
+        result = st.values["p_val"]
         assert math.isclose(result, correct, abs_tol=0.001)
 
     def test_stattest__fisher_exact(self, cutted_data, fisher_exact_corr):
@@ -105,7 +104,7 @@ class TestStatTest:
             test="fisher_exact",
         )
         st.fit()
-        result = st.values()["p_val"]
+        result = st.values["p_val"]
         assert math.isclose(result, correct, abs_tol=0.001)
 
     def test_stattest__ttest_alpha(self, simple_data):
@@ -118,13 +117,13 @@ class TestStatTest:
             alpha=0.1,
         )
         st.fit()
-        result = st.values()["power_estimated"]
+        result = st.values["power_estimated"]
         assert math.isclose(result, correct, abs_tol=0.001)
 
 
 class TestEventstreamStattests:
-    def test_stattests_working(self, test_stattests_stream_1):
-        source = test_stattests_stream_1
+    def test_stattests_working(self, simple_data):
+        source = simple_data
         try:
             source.stattests(
                 groups=([1, 2, 3, 4], [5, 6, 7, 8]),

@@ -120,3 +120,26 @@ class TestStatTest:
         st.fit()
         result = st.values()["power_estimated"]
         assert math.isclose(result, correct, abs_tol=0.001)
+
+
+class TestEventstreamStattests:
+    def test_stattests_working(self, test_stattests_stream_1):
+        source = test_stattests_stream_1
+        try:
+            source.stattests(
+                groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+                func=lambda x: x.shape[0],
+                group_names=("group_1", "group_2"),
+                test="ttest",
+            )
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.stattests. " + str(e))
+        try:
+            source.stattests(
+                groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+                func=lambda x: x.shape[0],
+                group_names=("group_1", "group_2"),
+                test="chi2_contingency",
+            )
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.stattests. " + str(e))

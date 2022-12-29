@@ -7,6 +7,8 @@ from typing import Any, Callable, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
+from matplotlib.axes import SubplotBase
 
 from src.constants import DATETIME_UNITS
 from src.eventstream.schema import EventstreamSchema, RawDataSchema
@@ -14,11 +16,15 @@ from src.eventstream.types import EventstreamType, RawDataSchemaType, Relation
 from src.graph import PGraph, SourceNode
 from src.tooling.clusters import Clusters
 from src.tooling.cohorts import Cohorts
+from src.tooling.describe import Describe
+from src.tooling.describe_events import DescribeEvents
+from src.tooling.event_timestamp_hist import EventTimestampHist
 from src.tooling.funnel import Funnel
 from src.tooling.stattests import TEST_NAMES, StatTests
 from src.tooling.step_matrix import StepMatrix
 from src.tooling.step_sankey import StepSankey
 from src.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
+from src.tooling.user_lifetime_hist import UserLifetimeHist
 from src.transition_graph import NormType, TransitionGraph
 from src.transition_graph.typing import Threshold
 from src.utils import get_merged_col
@@ -142,7 +148,6 @@ class Eventstream(
     __step_matrix: StepMatrix | None = None
     __sankey: StepSankey | None = None
     __stattests: StatTests | None = None
-    __timedelta_hist: TimedeltaHist | None = None
     __transition_graph: TransitionGraph | None = None
     __p_graph: PGraph | None = None
 
@@ -280,6 +285,7 @@ class Eventstream(
         joined_events = eventstream.to_dataframe(raw_cols=True, show_deleted=True)
         not_related_events = joined_events[joined_events[relation_col_name].isna()]
         not_related_events_ids = not_related_events[self.schema.event_id]
+        user_id_type = curr_events.dtypes[self.schema.user_id]
 
         merged_events = pd.merge(
             curr_events,
@@ -327,6 +333,8 @@ class Eventstream(
         result_right_part[DELETE_COL_NAME] = right_events[left_delete_col] | right_events[right_delete_col]
 
         self.__events = pd.concat([result_left_part, result_right_part, result_deleted_events])
+        self.__events[self.schema.user_id] = self.__events[self.schema.user_id].astype(user_id_type)
+
         self.schema.custom_cols = self._get_both_custom_cols(eventstream)
         self.index_events()
 
@@ -601,9 +609,7 @@ class Eventstream(
     def clusters(self) -> Clusters:
         """
         Returns an instance of ``Clusters`` class to be used for cluster analysis.
-
         See :py:func:`src.tooling.clusters.clusters`
-
         Returns
         -------
         Clusters
@@ -707,7 +713,7 @@ class Eventstream(
     ) -> Cohorts:
 
         """
-        Shows a heatmap visualization of the user appearance grouped by cohorts.
+        Show a heatmap visualization of the user appearance grouped by cohorts.
 
         See parameters description :py:func:`src.tooling.cohorts.cohorts`
 
@@ -736,7 +742,7 @@ class Eventstream(
         self,
         test: TEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
-        function: Callable,
+        func: Callable,
         group_names: Tuple[str, str] = ("group_1", "group_2"),
         alpha: float = 0.05,
     ) -> StatTests:
@@ -751,29 +757,37 @@ class Eventstream(
             A ``StatTest`` class instance fitted to the given parameters.
         """
         self.__stattests = StatTests(
-            eventstream=self, groups=groups, func=function, test=test, group_names=group_names, alpha=alpha
+            eventstream=self, groups=groups, func=func, test=test, group_names=group_names, alpha=alpha
         )
         self.__stattests.fit()
         values = self.__stattests.values
-        str_template = "{0} (mean ± SD): {1:.3f} ± {2:.3f}, n = {3}"
-
-        print(
-            str_template.format(
-                values["group_one_name"], values["group_one_mean"], values["group_one_std"], values["group_one_size"]
+        if test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
+            print(
+                self.__stattests.output_template_numerical.format(
+                    values["group_one_name"], values["group_one_mean"], values["group_one_SD"], values["group_one_size"]
+                )
             )
-        )
-        print(
-            str_template.format(
-                values["group_two_name"], values["group_two_mean"], values["group_two_std"], values["group_two_size"]
+            print(
+                self.__stattests.output_template_numerical.format(
+                    values["group_two_name"], values["group_two_mean"], values["group_two_SD"], values["group_two_size"]
+                )
             )
-        )
-        print(
-            "'{0}' is greater than '{1}' with P-value: {2:.5f}".format(
-                values["greatest_group_name"], values["least_group_name"], values["p_val"]
+            print(
+                "'{0}' is greater than '{1}' with P-value: {2:.5f}".format(
+                    values["greatest_group_name"], values["least_group_name"], values["p_val"]
+                )
             )
-        )
-        print("power of the test: {0:.2f}%".format(100 * values["power_estimated"]))
-
+            print("power of the test: {0:.2f}%".format(100 * values["power_estimated"]))
+        elif test in ["chi2_contingency", "fisher_exact"]:
+            print(
+                self.__stattests.output_template_categorical.format(values["group_one_name"], values["group_one_size"])
+            )
+            print(
+                self.__stattests.output_template_categorical.format(values["group_two_name"], values["group_two_size"])
+            )
+            print("Group difference test with P-value: {:.5f}".format(values["p_val"]))
+        else:
+            raise ValueError("Wrong test passed")
         return self.__stattests
 
     def timedelta_hist(
@@ -787,14 +801,20 @@ class Eventstream(
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int = 20,
-    ) -> TimedeltaHist:
-
+    ) -> go.Figure:
         """
+        Plots the distribution of the time deltas between two events. Supports various
+        distribution types, such as distribution of time for adjacent consecutive events, or
+        for a pair of pre-defined events, or median transition time from event to event per user/session.
 
         See parameters description :py:func:`src.tooling.timedelta_hist.timedelta_hist`
 
+        Returns
+        -------
+        TimedeltaHist
+            A ``Figure`` instance fitted to the given parameters.
         """
-        self.__timedelta_hist = TimedeltaHist(
+        hist = TimedeltaHist(
             eventstream=self,
             event_pair=event_pair,
             only_adjacent_event_pairs=only_adjacent_event_pairs,
@@ -806,7 +826,79 @@ class Eventstream(
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
         )
-        return self.__timedelta_hist
+        return hist.plot()
+
+    def user_lifetime_hist(
+        self,
+        timedelta_unit: DATETIME_UNITS = "s",
+        log_scale: bool = False,
+        lower_cutoff_quantile: Optional[float] = None,
+        upper_cutoff_quantile: Optional[float] = None,
+        bins: int = 20,
+    ) -> go.Figure:
+        """
+        Plots the distribution of user lifetimes. A users' lifetime is the timedelta between the first and the last
+        events of the user. Can be useful for finding suitable parameters of various data processors, such as
+        DeleteUsersByPathLength or TruncatedEvents.
+
+        See parameters description :py:func:`src.tooling.timedelta_hist.timedelta_hist`
+
+        Returns
+        -------
+        UserLifetimeHist
+            A ``Figure`` class instance fitted to the given parameters.
+        """
+        hist = UserLifetimeHist(
+            eventstream=self,
+            timedelta_unit=timedelta_unit,
+            log_scale=log_scale,
+            lower_cutoff_quantile=lower_cutoff_quantile,
+            upper_cutoff_quantile=upper_cutoff_quantile,
+            bins=bins,
+        )
+        return hist.plot()
+
+    def event_timestamp_hist(
+        self,
+        event_list: Optional[List[str] | str] = "all",
+        lower_cutoff_quantile: Optional[float] = None,
+        upper_cutoff_quantile: Optional[float] = None,
+        bins: int = 20,
+    ) -> SubplotBase:
+        """
+        Plots the distribution of events over time. Can be useful for detecting time-based anomalies, and visualising
+        general timespan of the eventstream.
+
+        Returns
+        -------
+        SubplotBase
+            A ``SubplotBase`` class instance fitted to the given parameters.
+        """
+        hist = EventTimestampHist(
+            eventstream=self,
+            lower_cutoff_quantile=lower_cutoff_quantile,
+            upper_cutoff_quantile=upper_cutoff_quantile,
+            bins=bins,
+        )
+        return hist.plot()
+
+    def describe(self, session_col: Optional[str] = "session_id") -> None:
+        """
+        Displays general eventstream information. If session_col is present in eventstream columns, also
+        outputs session statistics, assuming session_col is the session identifier column.
+        """
+        describer = Describe(eventstream=self, session_col=session_col)
+        describer.display()
+
+    def describe_events(
+        self, session_col: Optional[str] = "session_id", event_list: Optional[List[str] | str] = "all"
+    ) -> None:
+        """
+        Displays general information on the eventstream events. If session_col is present in eventstream columns, also
+        outputs session statistics, assuming session_col is the session identifier column.
+        """
+        describer = DescribeEvents(eventstream=self, session_col=session_col, event_list=event_list)
+        describer.display()
 
     def transition_graph(
         self,
@@ -817,6 +909,15 @@ class Eventstream(
         width: int = 960,
         height: int = 900,
     ) -> TransitionGraph:
+        """
+        Create interactive graph visualization with callback to input ``eventstream``.
+        See parameters description :py:func:`src.transition_graph.transition_graph`
+
+        Returns
+        -------
+        TransitionGraph
+            A ``TransitionGraph`` class instance fitted to the given parameters.
+        """
         self.__transition_graph = TransitionGraph(
             eventstream=self,
             graph_settings={},  # type: ignore
@@ -837,6 +938,22 @@ class Eventstream(
         return self.__p_graph
 
     def transition_adjacency(self, weights: list[str] | None = None, norm_type: NormType = None) -> pd.DataFrame:
+        """
+        Creates edge graph in the matrix format. Row indexes are events, from which the transition occured,
+        and columns are events, to which the transition occured.
+        The values are weights of the edges defined with weights and norm_type parameters.
+
+        Parameters
+        ----------
+
+        weights :
+        norm_type : {"full", "node", None}, default None
+
+        Returns
+        -------
+        pd.DataFrame
+
+        """
         if self.__transition_graph is None:
             self.__transition_graph = TransitionGraph(
                 eventstream=self,

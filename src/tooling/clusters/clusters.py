@@ -518,8 +518,6 @@ class Clusters:
         _n_clusters = n_clusters or self._n_clusters
         _user_clusters = None
 
-
-
         if vector is not None:
 
             if not isinstance(vector, pd.DataFrame):  # type: ignore

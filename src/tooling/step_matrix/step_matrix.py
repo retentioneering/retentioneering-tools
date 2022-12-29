@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Literal, Optional, Tuple, Union
 
 import matplotlib
+import numpy as np
 import pandas as pd
 import seaborn as sns
 
@@ -85,23 +86,22 @@ class StepMatrix:
 
     Notes
     -----
-    If during preprocessing ``path_end`` synthetic event was added to user's paths
-    (for example using :py:func:`src.data_processors_lib.start_end_event` data processor)
-    Event ``path_end`` will always be passed in the last line of ``step_matrix`` and fraction
-    of users will be accumulated from first step to the last. If each user in the ``eventstream``
-    has``path_end`` event - values in each column of step_matrix will sum up to 1.
+    During step matrix calculation an artificial ``ENDED`` event is created. If a path already
+    contains ``path_end`` event (See :py:func:`src.data_processors_lib.start_end_event`), it
+    will be temporarily replaced with ``ENDED`` (within step matrix only). Otherwise, ``ENDED``
+    event will be explicitly added to the end of each path.
 
-    And in differential step_matrix values in columns will sum up to 0.
+    Event ``ENDED`` is cumulated so that the values in its row are summed up from
+    the first step to the last. ``ENDED`` row is always placed at the last line of step matrix.
 
-    If during preprocessing users paths were truncated it is recommended to add event ``path_end``
-    once again in order to guarantee that each user has such event
+    Also, such a cumulative design guarantees that the sum of any step matrix's column is 1
+    (0 for a differential step matrix).
 
     See Also
     --------
     :py:func:`src.eventstream.eventstream.Eventstream.step_matrix`
     """
 
-    # @TODO Нужно проработать поведение при наличии в траектории события path_end. Завела баг PLAT-342. dpanina
     __eventstream: EventstreamType
 
     def __init__(
@@ -121,6 +121,7 @@ class StepMatrix:
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
+        self.event_index = self.__eventstream.schema.event_index
         self.data = self.__eventstream.to_dataframe()
         self.max_steps = max_steps
         self.weight_col = weight_col or self.__eventstream.schema.user_id
@@ -201,6 +202,33 @@ class StepMatrix:
 
         return piv, piv_targets, fraction_title, targets
 
+    def _add_ended_events(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Adds artificial ``ENDED`` event in the end of a path. If a path already
+        contains ``path_end`` event, it will be replaced with ``ENDED`` event.
+        Otherwise, ``ENDED`` event will be placed into the end of the path.
+        """
+        data[self.event_col] = data[self.event_col].str.replace("path_end", "ENDED")
+        users_with_ended = data[data[self.event_col] == "ENDED"][self.user_col].unique()
+
+        paths_with_ended = data[data[self.user_col].isin(users_with_ended)]
+        paths_without_ended = data[~data[self.user_col].isin(users_with_ended)]
+
+        additional_ended_events = (
+            paths_without_ended.groupby(self.user_col, as_index=False)
+            .last()
+            .assign(
+                **{
+                    self.event_col: "ENDED",
+                    self.event_index: lambda df_: df_[self.event_index]
+                    + (np.where(df_[self.event_col] == "ENDED", 0.5, 0)),
+                }
+            )
+        )
+
+        new_data = pd.concat([paths_with_ended, paths_without_ended, additional_ended_events])
+        return new_data
+
     def _generate_step_matrix(self, data: pd.DataFrame) -> pd.DataFrame:
         agg = data.groupby(["event_rank", self.event_col])[self.weight_col].nunique().reset_index()
         agg[self.weight_col] /= data[self.weight_col].nunique()
@@ -212,8 +240,8 @@ class StepMatrix:
         piv.columns.name = None
         piv.index.name = None
         # MAKE TERMINATED STATE ACCUMULATED:
-        if "path_end" in piv.index:
-            piv.loc["path_end"] = piv.loc["path_end"].cumsum().fillna(0)
+        if "ENDED" in piv.index:
+            piv.loc["ENDED"] = piv.loc["ENDED"].cumsum().fillna(0)
         return piv
 
     def _process_targets(self, data: pd.DataFrame) -> tuple[pd.DataFrame | None, list[list[str]] | None]:
@@ -397,6 +425,7 @@ class StepMatrix:
         """
         weight_col = self.weight_col or self.user_col
         data = self.__eventstream.to_dataframe()
+        data = self._add_ended_events(data)
         data["event_rank"] = data.groupby(weight_col).cumcount() + 1
 
         # BY HERE WE NEED TO OBTAIN FINAL DIFF piv and piv_targets before sorting, thresholding and plotting:
@@ -427,9 +456,9 @@ class StepMatrix:
         thresh_index = "THRESHOLDED_"
         if self.thresh != 0:
             # find if there are any rows to threshold:
-            thresholded = piv.loc[(piv.abs() < self.thresh).all(axis=1)].copy()
+            thresholded = piv.loc[(piv.abs() < self.thresh).all(axis=1) & (piv.index != "ENDED")].copy()
             if len(thresholded) > 0:
-                piv = piv.loc[(piv.abs() >= self.thresh).any(axis=1)].copy()
+                piv = piv.loc[(piv.abs() >= self.thresh).any(axis=1) | (piv.index == "ENDED")].copy()
                 thresh_index = f"THRESHOLDED_{len(thresholded)}"
                 piv.loc[thresh_index] = thresholded.sum()
 
@@ -437,7 +466,7 @@ class StepMatrix:
             piv = self._sort_matrix(piv)
 
             keep_in_the_end = []
-            keep_in_the_end.append("path_end") if ("path_end" in piv.index) else None
+            keep_in_the_end.append("ENDED") if ("ENDED" in piv.index) else None
             keep_in_the_end.append(thresh_index) if (thresh_index in piv.index) else None
 
             events_order = [*(i for i in piv.index if i not in keep_in_the_end), *keep_in_the_end]

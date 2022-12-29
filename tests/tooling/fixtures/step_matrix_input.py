@@ -26,18 +26,7 @@ def read_test_data(filename):
 
 @pytest.fixture
 def stream_simple_shop():
-    def remove_start(df, schema):
-        return df[schema.event_name] != "path_start"
-
-    test_stream = datasets.load_simple_shop()
-    graph = PGraph(source_stream=test_stream)
-    node1 = EventsNode(StartEndEvents(params=StartEndEventsParams(**{})))
-    node2 = EventsNode(FilterEvents(params=FilterEventsParams(func=remove_start)))
-
-    graph.add_node(node=node1, parents=[graph.root])
-    graph.add_node(node=node2, parents=[node1])
-
-    stream = graph.combine(node=node2)
+    stream = datasets.load_simple_shop().add_start_end()
     return stream
 
 

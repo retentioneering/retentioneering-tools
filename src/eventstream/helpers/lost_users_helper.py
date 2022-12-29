@@ -9,7 +9,7 @@ from ..types import EventstreamType
 
 class LostUsersHelperMixin:
     def lost_users(
-        self, lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]], lost_users_list: Optional[List[int]]
+        self, lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]] = None, lost_users_list: Optional[List[int]] = None
     ) -> EventstreamType:
         """
         Method of ``Eventstream Class`` which creates one of synthetic events in each user's path:

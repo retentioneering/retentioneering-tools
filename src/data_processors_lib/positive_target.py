@@ -38,7 +38,7 @@ def _default_func(eventstream: EventstreamType, positive_target_events: list[str
         df[df[event_col].isin(positive_target_events)].groupby(user_col)[time_col].idxmin()  # type: ignore
     )
 
-    return df.iloc[positive_events_index]  # type: ignore
+    return df.loc[positive_events_index]  # type: ignore
 
 
 class PositiveTargetParams(ParamsModel):

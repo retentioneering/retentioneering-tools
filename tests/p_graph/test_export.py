@@ -495,7 +495,7 @@ class TestPGraphExportImport:
                             "    negative_events_index = (\n"
                             "        df[df[event_col].isin(negative_target_events)]."
                             "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
-                            "    return df.iloc[negative_events_index]  # type: ignore\n",
+                            "    return df.loc[negative_events_index]  # type: ignore\n",
                         },
                     },
                 },
@@ -624,7 +624,7 @@ class TestPGraphExportImport:
                             "positive_events_index = (\n        "
                             "df[df[event_col].isin(positive_target_events)]."
                             "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
-                            "    return df.iloc[positive_events_index]  # type: ignore\n",
+                            "    return df.loc[positive_events_index]  # type: ignore\n",
                         },
                     },
                 },
@@ -698,7 +698,7 @@ class TestPGraphExportImport:
                             "positive_events_index = (\n        "
                             "df[df[event_col].isin(positive_target_events)]."
                             "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
-                            "    return df.iloc[positive_events_index]  # type: ignore\n",
+                            "    return df.loc[positive_events_index]  # type: ignore\n",
                         },
                     },
                 },

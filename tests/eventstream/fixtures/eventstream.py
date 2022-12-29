@@ -7,6 +7,20 @@ from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
 
 
 @pytest.fixture
+def test_stattests_stream_1():
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    test_data_dir = os.path.join(current_dir, "../../datasets/tooling/stattests")
+    filepath = os.path.join(test_data_dir, "01_simple_data.csv")
+
+    stream = Eventstream(
+        raw_data=pd.read_csv(filepath),
+        raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
+        schema=EventstreamSchema(),
+    )
+    return stream
+
+
+@pytest.fixture
 def test_data_1():
     current_dir = os.path.dirname(os.path.realpath(__file__))
     test_data_dir = os.path.join(current_dir, "../../datasets/eventstream")

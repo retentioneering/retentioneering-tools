@@ -74,6 +74,8 @@ class StatTests:
         alpha: float = 0.05,
     ) -> None:
         self.__eventstream = eventstream
+        self.output_template_numerical = "{0} (mean ± SD): {1:.3f} ± {2:.3f}, n = {3}"
+        self.output_template_categorical = "{0} (size): n = {1}"
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp

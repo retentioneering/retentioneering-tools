@@ -89,12 +89,12 @@ class PGraph:
         Parameters
         ----------
         node : Node
-            Instance of the class SourceNode, EventsNode or MergeNode
+            Instance of the class ``SourceNode``, ``EventsNode`` or ``MergeNode``
 
         Returns
         -------
         EventstreamType
-            ``Eventstream`` with
+            ``Eventstream`` with all changes after data processors apply.
         """
         self.__validate_not_found([node])
 

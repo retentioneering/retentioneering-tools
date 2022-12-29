@@ -65,7 +65,7 @@ Introducing Eventstream class
 
 We assume that the original clickstream which generates an ``Eventstream`` class instance is represented by a ``pandas.DataFrame`` and consists of three columns: user_id, event, timestamp. In this case you can create an eventstream especially easy:
 
-.. code:: ipython3
+.. code-block:: python
 
     import pandas as pd
     import retentioneering as rete
@@ -77,7 +77,7 @@ In case your dataframe has columns named differently you can either rename them 
 
 :red:`Simplify the library path to RawDataSchema`
 
-.. code:: ipython3
+.. code-block:: python
 
     import pandas as pd
     import retentioneering as rete
@@ -94,7 +94,7 @@ In case your dataframe has columns named differently you can either rename them 
 
 But for demonstrating purposes we'll use an embedded clickstream *simple_shop*
 
-.. code:: ipython3
+.. code-block:: python
 
     import retentioneering as rete
 
@@ -102,7 +102,7 @@ But for demonstrating purposes we'll use an embedded clickstream *simple_shop*
 
 As soon as you create an eventstream, you can check the underlying dataframe by calling ``rete.Eventstream.to_dataframe()`` method:
 
-.. code:: ipython3
+.. code-block:: python
 
     stream.to_dataframe()\
         .head()
@@ -197,6 +197,8 @@ Similar to atomic operations, data processors could be categorized into three pa
     +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
     | DeleteUsersByPathLength  | Removing  | Deletes a too short user paths (in terms of number of events or time duration).                                                                                | delete_users     |
     +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
+    | TruncatePath             | Removing  | Leaves a part of an eventstream between a couple of selected events.                                                                                           | truncate_path    |
+    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
     | GroupEvents              | Grouping  | Group given events into a single synthetic event.                                                                                                              | group            |
     +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
     | CollapseLoops            | Grouping  | Replaces sequences of repetitive events with new synthetic events. E.g. ``A, A, A -> A``.                                                                      | collapse_loops   |
@@ -204,6 +206,7 @@ Similar to atomic operations, data processors could be categorized into three pa
 
 Custom data processors
 ~~~~~~~~~~~~~~~~~~~~~~
+:red:`Move to DataProcessors user guide`
 
 In case the data processors implemented in the library don't cover your needs, you can develop your own data processor. The interface is as follows:
 
@@ -220,7 +223,7 @@ Editing data processor
 
 Let's have an example here. Consider simpleshop_dataset. Suppose you want to round the timestamp column up so seconds/minutes/hours. If you used pure pandas you would implement it like this.
 
-.. code:: ipython3
+.. code-block:: python
 
     def round_timestamp(df, freq: Literal["H", "M", "S"]) -> pd.DataFrame:
         df["timestamp"] = df["timestamp"].dt.floor(freq)
@@ -228,7 +231,7 @@ Let's have an example here. Consider simpleshop_dataset. Suppose you want to rou
 
 Now, you need to wrap this logic into the data processor class, and here things go more complicate.
 
-.. code:: ipython3
+.. code-block:: python
 
     from typing import Literal
     from src.eventstream.eventstream import Eventstream
@@ -262,7 +265,7 @@ Now, you need to wrap this logic into the data processor class, and here things 
 
 Finally, we need to build a graph with a single node encompassing ``RoundTimestamp`` data processor.
 
-.. code:: ipython3
+.. code-block:: python
 
     from src.graph.p_graph import PGraph, EventsNode
 
@@ -301,11 +304,11 @@ Unlike these regular nodes, merging nodes accept multiple eventstreams as input,
 
 Linking graph nodes according to preprocessing logic, we obtain a ``preprocessing graph``. Preprocessing graphs are instances of ``PGraph`` class. To add a node to the graph use  ``add_node`` method. The links are set via ``parents`` parameter of the method. Hereâ€™s an tiny example how to create a simple preprocessing graph consisting of two nodes ``StartEndEvents`` and ``SplitSessions``.
 
-.. code:: ipython3
+.. code-block:: python
 
-    from retentioneering.graph.p_graph import PGraph, EventsNode
-    from retentioneering.data_processors_lib import SplitSessions, SplitSessionsParams
-    from retentioneering.data_processors_lib import StartEndEvents, StartEndParams
+    from src.graph.p_graph import PGraph, EventsNode
+    from src.data_processors_lib import SplitSessions, SplitSessionsParams
+    from src.data_processors_lib import StartEndEvents, StartEndParams
 
     # creating single nodes
     node1 = EventsNode(StartEndEvents(params=StartEndEventsParams()))
@@ -324,7 +327,7 @@ Now, it's important to note that when we construct a preprocessing graph we donâ
 
 In order to run a calculation directly, you should call ``combine`` (:red:`TODO: See combine method`) method. Here you need to choose a node which you consider as an endpoint meaning that the calculation should run from the root (the initial eventstream state) to the selected node. ``combine`` returns you the modified eventstream state according to the given preprocessing calculation path.
 
-.. code:: ipython3
+.. code-block:: python
 
     # run the calculation from the root node to SplitSessions node
     processed_stream = pgraph.combine(node=node2)
@@ -338,7 +341,7 @@ Chaining preprocessing methods
 
 In many real-world scenarios preprocessing graph has simple linear structure (e.g. no splitting, no merging). For such cases instead of constructing a preprocessing graph it would be useful to chain so-called *helpers* methods. Helpers are special ``Eventstream`` methods associated with corresponding data processors. They simply take ``Eventstream`` instance as input and return a modified eventstream. Here's how the implementation of the  graph from the example above could be improved:
 
-.. code:: ipython3
+.. code-block:: python
 
     processed_stream = stream \
         .add_start_end() \
@@ -362,7 +365,7 @@ Here's an example how one can apply ``Clusters`` tooling class.
 
 Treating clustering tool as a separate method:
 
-.. code:: ipython3
+.. code-block:: python
 
     from src.tooling.clusters import Clusters
 
@@ -372,7 +375,7 @@ Treating clustering tool as a separate method:
 
 Treating clustering tool as chaining methods:
 
-.. code:: ipython3
+.. code-block:: python
 
     stream\
         .clusters\
@@ -385,20 +388,20 @@ The table below contains a brief overview of Retentioneering tools. The comprehe
     :widths: 5 50 40 5
     :class: tight-table
 
-    +----------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | Tooling class  | Description                                                                                                 | Common methods                                                                                  | Eventstream method    |
-    +================+=============================================================================================================+=================================================================================================+=======================+
-    |                | Plots an interactive transition graph according to Markov process underlying the eventstream.               |                                                                                                 | ``transition_graph``  |
-    +----------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | ``StepMatrix`` | Plots a step-wise matrix showing the distribution of the events over a given step coloured with a heatmap.  | ``fit``, ``plot``, ``values``                                                                   | ``step_matrix``       |
-    +----------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | ``Sankey``     | Visualizes user paths in step-wise manner using sankey diagram.                                             | ``fit``, ``plot``, ``values``                                                                   | ``step_sankey``       |
-    +----------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | ``Clusters``   | Provides a set of instruments for cluster analysis of the user paths.                                       | ``fit``, ``select_cluster``, ``compare_clusters``, ``user_clusters``, ``plot``, ``projection``  | ``clusters``          |
-    +----------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | ``Funnel``     | Plots conversion funnel consisted of given events.                                                          | ``fit``, ``plot``, ``values``                                                                   | ``funnel``            |
-    +----------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | ``Cohorts``    | Provides a set of the instruments for cohort analysis.                                                      | ``fit``, ``heatmap``, ``lineplot``, ``values``                                                  | ``cohorts``           |
-    +----------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | ``StatTests``  | Tests statistical hypothesis                                                                                | ``fit``, ``plot``, ``values``                                                                   | ``stattests``         |
-    +----------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
+    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
+    | Tooling class       | Description                                                                                                 | Common methods                                                                                  | Eventstream method    |
+    +=====================+=============================================================================================================+=================================================================================================+=======================+
+    | ``TransitionGraph`` | Plots an interactive transition graph according to Markov process underlying the eventstream.               |                                                                                                 | ``transition_graph``  |
+    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
+    | ``StepMatrix``      | Plots a step-wise matrix showing the distribution of the events over a given step coloured with a heatmap.  | ``fit``, ``plot``, ``values``                                                                   | ``step_matrix``       |
+    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
+    | ``Sankey``          | Visualizes user paths in step-wise manner using sankey diagram.                                             | ``fit``, ``plot``, ``values``                                                                   | ``step_sankey``       |
+    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
+    | ``Clusters``        | Provides a set of instruments for cluster analysis of the user paths.                                       | ``fit``, ``select_cluster``, ``compare_clusters``, ``user_clusters``, ``plot``, ``projection``  | ``clusters``          |
+    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
+    | ``Funnel``          | Plots conversion funnel consisted of given events.                                                          | ``fit``, ``plot``, ``values``                                                                   | ``funnel``            |
+    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
+    | ``Cohorts``         | Provides a set of the instruments for cohort analysis.                                                      | ``fit``, ``heatmap``, ``lineplot``, ``values``                                                  | ``cohorts``           |
+    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
+    | ``StatTests``       | Tests statistical hypothesis                                                                                | ``fit``, ``plot``, ``values``                                                                   | ``stattests``         |
+    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+

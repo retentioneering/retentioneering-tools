@@ -47,7 +47,8 @@ exclude = [
     './examples',
     './.tox',
     './tests',
-    './examples'
+    './examples',
+    './venv'
     ]
 strictListInference = true
 strictDictionaryInference = true

@@ -68,15 +68,22 @@ class EventTimestampHist:
             idx &= series >= series.quantile(self.lower_cutoff_quantile)
         return series[idx]
 
-    def plot(self) -> go.SubplotBase:
+    def values(self) -> tuple[np.ndarray, np.ndarray | int]:
         data = self.__eventstream.to_dataframe()
         if self.event_list != "all":
             data = data[data[self.event_col].isin(self.event_list)]
-
         values = data[self.time_col]
         idx = [True] * len(values)
         if self.upper_cutoff_quantile is not None:
             idx &= values <= values.quantile(self.upper_cutoff_quantile)
         if self.lower_cutoff_quantile is not None:
             idx &= values >= values.quantile(self.lower_cutoff_quantile)
-        return values[idx].hist(bins=self.bins)
+        values_to_plot = values[idx].to_numpy()
+        bins_to_plot = self.bins
+        return values_to_plot, bins_to_plot
+
+    def plot(self) -> None:
+        out_hist = self.values()
+        plt.title("Event timestamp histogram")
+        plt.hist(out_hist[0], bins=out_hist[1])
+        plt.show()

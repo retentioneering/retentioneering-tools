@@ -761,34 +761,7 @@ class Eventstream(
             eventstream=self, groups=groups, func=func, test=test, group_names=group_names, alpha=alpha
         )
         self.__stattests.fit()
-        values = self.__stattests.values
-        if test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
-            print(
-                self.__stattests.output_template_numerical.format(
-                    values["group_one_name"], values["group_one_mean"], values["group_one_SD"], values["group_one_size"]
-                )
-            )
-            print(
-                self.__stattests.output_template_numerical.format(
-                    values["group_two_name"], values["group_two_mean"], values["group_two_SD"], values["group_two_size"]
-                )
-            )
-            print(
-                "'{0}' is greater than '{1}' with P-value: {2:.5f}".format(
-                    values["greatest_group_name"], values["least_group_name"], values["p_val"]
-                )
-            )
-            print("power of the test: {0:.2f}%".format(100 * values["power_estimated"]))
-        elif test in ["chi2_contingency", "fisher_exact"]:
-            print(
-                self.__stattests.output_template_categorical.format(values["group_one_name"], values["group_one_size"])
-            )
-            print(
-                self.__stattests.output_template_categorical.format(values["group_two_name"], values["group_two_size"])
-            )
-            print("Group difference test with P-value: {:.5f}".format(values["p_val"]))
-        else:
-            raise ValueError("Wrong test passed")
+        self.__stattests.display_results()
         return self.__stattests
 
     def timedelta_hist(

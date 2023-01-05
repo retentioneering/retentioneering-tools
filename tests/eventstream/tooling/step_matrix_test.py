@@ -13,8 +13,13 @@ class TestEventstreamStepMatrix:
         params = {"max_steps": 5}
 
         correct_res = pd.DataFrame(
-            [[1.0, 0.5, 0.5, 0.25, 0.25], [0.0, 0.5, 0.25, 0.0, 0.0], [0.0, 0.0, 0.25, 0.0, 0.0]],
-            index=["event1", "event2", "event4"],
+            [
+                [1.0, 0.5, 0.5, 0.25, 0.25],
+                [0.0, 0.5, 0.25, 0.0, 0.0],
+                [0.0, 0.0, 0.25, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.75, 0.75],
+            ],
+            index=["event1", "event2", "event4", "ENDED"],
             columns=[1, 2, 3, 4, 5],
         )
         res, _ = test_stream.step_matrix(**params, show_plot=False).values
@@ -27,13 +32,23 @@ class TestEventstreamStepMatrix:
         params_2 = {"max_steps": 5, "thresh": 0.3}
 
         correct_res_1 = pd.DataFrame(
-            [[1.0, 0.5, 0.5, 0.25, 0.25], [0.0, 0.5, 0.25, 0.0, 0.0], [0.0, 0.0, 0.25, 0.0, 0.0]],
-            index=["event1", "event2", "event4"],
+            [
+                [1.0, 0.5, 0.5, 0.25, 0.25],
+                [0.0, 0.5, 0.25, 0.0, 0.0],
+                [0.0, 0.0, 0.25, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.75, 0.75],
+            ],
+            index=["event1", "event2", "event4", "ENDED"],
             columns=[1, 2, 3, 4, 5],
         )
         correct_res_2 = pd.DataFrame(
-            [[1.0, 0.5, 0.5, 0.25, 0.25], [0.0, 0.5, 0.25, 0.0, 0.0], [0.0, 0.0, 0.25, 0.0, 0.0]],
-            index=["event1", "event2", "THRESHOLDED_1"],
+            [
+                [1.0, 0.5, 0.5, 0.25, 0.25],
+                [0.0, 0.5, 0.25, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.75, 0.75],
+                [0.0, 0.0, 0.25, 0.0, 0.0],
+            ],
+            index=["event1", "event2", "ENDED", "THRESHOLDED_1"],
             columns=[1, 2, 3, 4, 5],
         )
 

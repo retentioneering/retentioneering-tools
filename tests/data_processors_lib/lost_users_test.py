@@ -33,12 +33,7 @@ class TestLostUsers(ApplyTestBase):
     )
 
     def test_lost_users_apply__lost_users_list(self):
-        actual = self._apply(
-            LostUsersParams(
-                lost_users_list=[2],
-                lost_cutoff=None,
-            )
-        )
+        actual = self._apply(LostUsersParams(lost_users_list=[2]))
         expected = pd.DataFrame(
             [
                 [1, "absent_user", "absent_user", "2022-01-01 00:05:00"],
@@ -49,12 +44,7 @@ class TestLostUsers(ApplyTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_lost_users_apply__lost_cutoff(self):
-        actual = self._apply(
-            LostUsersParams(
-                lost_users_list=None,
-                lost_cutoff=(4, "h"),
-            )
-        )
+        actual = self._apply(LostUsersParams(lost_cutoff=(4, "h")))
         expected = pd.DataFrame(
             [
                 [1, "lost_user", "lost_user", "2022-01-01 00:05:00"],
@@ -92,12 +82,7 @@ class TestLostUsersGraph(GraphTestBase):
     )
 
     def test_lost_users_graph__lost_users_list(self):
-        actual = self._apply(
-            LostUsersParams(
-                lost_users_list=[2],
-                lost_cutoff=None,
-            )
-        )
+        actual = self._apply(LostUsersParams(lost_users_list=[2]))
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -117,12 +102,7 @@ class TestLostUsersGraph(GraphTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
     def test_lost_users_graph__lost_cutoff(self):
-        actual = self._apply(
-            LostUsersParams(
-                lost_users_list=None,
-                lost_cutoff=(4, "h"),
-            )
-        )
+        actual = self._apply(LostUsersParams(lost_cutoff=(4, "h")))
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -179,7 +159,7 @@ class TestLostUsersHelper:
             columns=correct_result_columns,
         )
 
-        result = source.lost_users(lost_users_list=[2], lost_cutoff=None)
+        result = source.lost_users(lost_users_list=[2])
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)
@@ -218,7 +198,7 @@ class TestLostUsersHelper:
             ],
             columns=correct_result_columns,
         )
-        result = source.lost_users(lost_users_list=None, lost_cutoff=(4, "h"))
+        result = source.lost_users(lost_cutoff=(4, "h"))
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)

@@ -71,6 +71,7 @@ class UserLifetimeHist:
             idx &= series >= series.quantile(self.lower_cutoff_quantile)
         return series[idx]
 
+    @property
     def values(self) -> tuple[np.ndarray, np.ndarray | int]:
         data = self.__eventstream.to_dataframe().groupby(self.user_col)[self.time_col].agg(["min", "max"])
         data["time_passed"] = data["max"] - data["min"]
@@ -83,7 +84,7 @@ class UserLifetimeHist:
         return values_to_plot, bins_to_plot
 
     def plot(self) -> None:
-        out_hist = self.values()
+        out_hist = self.values
         if self.log_scale:
             plt.xscale("log")
         plt.title("User lifetime histogram")

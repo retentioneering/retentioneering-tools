@@ -68,6 +68,7 @@ class EventTimestampHist:
             idx &= series >= series.quantile(self.lower_cutoff_quantile)
         return series[idx]
 
+    @property
     def values(self) -> tuple[np.ndarray, np.ndarray | int]:
         data = self.__eventstream.to_dataframe()
         if self.event_list != "all":
@@ -83,7 +84,7 @@ class EventTimestampHist:
         return values_to_plot, bins_to_plot
 
     def plot(self) -> None:
-        out_hist = self.values()
+        out_hist = self.values
         plt.title("Event timestamp histogram")
         plt.hist(out_hist[0], bins=out_hist[1])
         plt.show()

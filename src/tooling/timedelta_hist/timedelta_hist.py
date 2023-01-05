@@ -126,6 +126,7 @@ class TimedeltaHist:
             idx &= series >= series.quantile(self.lower_cutoff_quantile)
         return series[idx]
 
+    @property
     def values(self) -> tuple[np.ndarray, np.ndarray | int]:
         data = self.__eventstream.to_dataframe().sort_values([self.agg_col, self.time_col])
         if self.event_pair is not None:
@@ -143,7 +144,7 @@ class TimedeltaHist:
         return values_to_plot, bins_to_plot
 
     def plot(self) -> None:
-        out_hist = self.values()
+        out_hist = self.values
         if self.log_scale:
             plt.xscale("log")
         plt.title(

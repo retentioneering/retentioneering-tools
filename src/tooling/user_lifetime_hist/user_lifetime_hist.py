@@ -77,8 +77,13 @@ class UserLifetimeHist:
         data["time_passed"] = data["max"] - data["min"]
         values_to_plot = (data["time_passed"] / np.timedelta64(1, self.timedelta_unit)).reset_index(drop=True)
         values_to_plot = self._remove_cutoff_values(values_to_plot).to_numpy()
+        log_adjustment = np.timedelta64(100, "ms") / np.timedelta64(1, self.timedelta_unit)
         if self.log_scale:
-            bins_to_plot = np.logspace(np.log10(values_to_plot.min()), np.log10(values_to_plot.max()), self.bins)
+            bins_to_plot = np.logspace(
+                np.log10(values_to_plot.min() + log_adjustment),
+                np.log10(values_to_plot.max() + log_adjustment),
+                self.bins,
+            )
         else:
             bins_to_plot = self.bins
         return values_to_plot, bins_to_plot

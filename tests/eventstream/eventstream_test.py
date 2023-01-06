@@ -269,14 +269,14 @@ class TestEventstream:
 
     def test_hists(self, test_stream_1):
         try:
-            test_stream_1.timedelta_hist()
+            test_stream_1.timedelta_hist(show_plot=False)
         except Exception as e:
             pytest.fail("Runtime error in Eventstream.timedelta_hist. " + str(e))
         try:
-            test_stream_1.user_lifetime_hist()
+            test_stream_1.user_lifetime_hist(show_plot=False)
         except Exception as e:
             pytest.fail("Runtime error in Eventstream.user_lifetime_hist. " + str(e))
         try:
-            test_stream_1.event_timestamp_hist()
+            test_stream_1.event_timestamp_hist(show_plot=False)
         except Exception as e:
             pytest.fail("Runtime error in Eventstream.event_timestamp_hist. " + str(e))

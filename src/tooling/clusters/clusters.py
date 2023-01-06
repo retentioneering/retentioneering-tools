@@ -518,7 +518,8 @@ class Clusters:
         _n_clusters = n_clusters or self._n_clusters
         _user_clusters = None
 
-        if vector:
+        if vector is not None:
+
             if not isinstance(vector, pd.DataFrame):  # type: ignore
                 raise ValueError("Vector is not a DataFrame!")
             if np.all(np.all(vector.dtypes == "float") and vector.isna().sum().sum() != 0):

@@ -398,7 +398,7 @@ class Clusters:
         if feature_type in ["time", "time_fraction"]:
             events.sort_values(by=[self.user_col, self.time_col], inplace=True)
             events.reset_index(inplace=True)
-            events["time_diff"] = events.groupby(self.user_col)[time_col].diff().dt.total_seconds()  # type: ignore
+            events["time_diff"] = events.groupby(self.user_col)[self.time_col].diff().dt.total_seconds()  # type: ignore
             events["time_length"] = events["time_diff"].shift(-1)
             if feature_type == "time_fraction":
                 vec_data = (
@@ -518,7 +518,8 @@ class Clusters:
         _n_clusters = n_clusters or self._n_clusters
         _user_clusters = None
 
-        if vector:
+        if vector is not None:
+
             if not isinstance(vector, pd.DataFrame):  # type: ignore
                 raise ValueError("Vector is not a DataFrame!")
             if np.all(np.all(vector.dtypes == "float") and vector.isna().sum().sum() != 0):

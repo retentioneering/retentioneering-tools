@@ -13,36 +13,36 @@ Run this cell to prepare the environment. This step is obligatory.
 
 .. code:: ipython3
 
-    # Configuration for using Retentioneering library 
-    
+    # Configuration for using Retentioneering library
+
     # get link to the Rete repository
     import pandas as pd
     LINKS = pd.read_csv(
-        'https://spreadsheets.google.com/feeds/download/spreadsheets/Export?key=1Wd5A24EoankWRVX3klL3TN4smal4yXf0mgSNj_2Aymw&exportFormat=csv', 
+        'https://spreadsheets.google.com/feeds/download/spreadsheets/Export?key=1Wd5A24EoankWRVX3klL3TN4smal4yXf0mgSNj_2Aymw&exportFormat=csv',
         index_col='title'
     )
     RETE_ID = LINKS.link.rete_repository.split('/')[-2]
-    
-    # download the required packages 
-    !pip install umap-learn 
-    
+
+    # download the required packages
+    !pip install umap-learn
+
     # import system packages
     from google_drive_downloader import GoogleDriveDownloader as gdd
     import os
     import sys
     import shutil
-    
+
     os.chdir('/content/')
     if os.path.exists('/content/retentioneering-tools-new-arch.zip'):
         os.remove('/content/retentioneering-tools-new-arch.zip')
     if os.path.exists('/content/retentioneering-tools-new-arch/'):
         shutil.rmtree('/content/retentioneering-tools-new-arch/', ignore_errors=True)
-    
+
     # download library
     gdd.download_file_from_google_drive(file_id=RETE_ID,
                                         dest_path='./retentioneering-tools-new-arch.zip',
-                                        unzip=True) 
-    
+                                        unzip=True)
+
     # setup environment
     sys.path.insert(0, '..')
     sys.path.insert(1, '/content/retentioneering-tools-new-arch/')
@@ -55,14 +55,14 @@ Run this cell to prepare the environment. This step is obligatory.
     Looking in indexes: https://pypi.org/simple, https://us-python.pkg.dev/colab-wheels/public/simple/
     Collecting umap-learn
       Downloading umap-learn-0.5.3.tar.gz (88 kB)
-    [K     |████████████████████████████████| 88 kB 3.1 MB/s 
+    [K     |████████████████████████████████| 88 kB 3.1 MB/s
     [?25hRequirement already satisfied: numpy>=1.17 in /usr/local/lib/python3.8/dist-packages (from umap-learn) (1.21.6)
     Requirement already satisfied: scikit-learn>=0.22 in /usr/local/lib/python3.8/dist-packages (from umap-learn) (1.0.2)
     Requirement already satisfied: scipy>=1.0 in /usr/local/lib/python3.8/dist-packages (from umap-learn) (1.7.3)
     Requirement already satisfied: numba>=0.49 in /usr/local/lib/python3.8/dist-packages (from umap-learn) (0.56.4)
     Collecting pynndescent>=0.5
       Downloading pynndescent-0.5.8.tar.gz (1.1 MB)
-    [K     |████████████████████████████████| 1.1 MB 38.2 MB/s 
+    [K     |████████████████████████████████| 1.1 MB 38.2 MB/s
     [?25hRequirement already satisfied: tqdm in /usr/local/lib/python3.8/dist-packages (from umap-learn) (4.64.1)
     Requirement already satisfied: setuptools in /usr/local/lib/python3.8/dist-packages (from numba>=0.49->umap-learn) (57.4.0)
     Requirement already satisfied: importlib-metadata in /usr/local/lib/python3.8/dist-packages (from numba>=0.49->umap-learn) (5.1.0)
@@ -90,7 +90,7 @@ Loading data
 .. code:: ipython3
 
     import numpy as np
-    
+
     from src import datasets
 
 .. code:: ipython3
@@ -103,7 +103,7 @@ Loading data
 
 .. raw:: html
 
-    
+
       <div id="df-535416c3-59fa-4e27-a6bd-a58b96a91408">
         <div class="colab-df-container">
           <div>
@@ -111,11 +111,11 @@ Loading data
         .dataframe tbody tr th:only-of-type {
             vertical-align: middle;
         }
-    
+
         .dataframe tbody tr th {
             vertical-align: top;
         }
-    
+
         .dataframe thead th {
             text-align: right;
         }
@@ -184,21 +184,21 @@ Loading data
           <button class="colab-df-convert" onclick="convertToInteractive('df-535416c3-59fa-4e27-a6bd-a58b96a91408')"
                   title="Convert this dataframe to an interactive table."
                   style="display:none;">
-    
+
       <svg xmlns="http://www.w3.org/2000/svg" height="24px"viewBox="0 0 24 24"
            width="24px">
         <path d="M0 0h24v24H0V0z" fill="none"/>
         <path d="M18.56 5.44l.94 2.06.94-2.06 2.06-.94-2.06-.94-.94-2.06-.94 2.06-2.06.94zm-11 1L8.5 8.5l.94-2.06 2.06-.94-2.06-.94L8.5 2.5l-.94 2.06-2.06.94zm10 10l.94 2.06.94-2.06 2.06-.94-2.06-.94-.94-2.06-.94 2.06-2.06.94z"/><path d="M17.41 7.96l-1.37-1.37c-.4-.4-.92-.59-1.43-.59-.52 0-1.04.2-1.43.59L10.3 9.45l-7.72 7.72c-.78.78-.78 2.05 0 2.83L4 21.41c.39.39.9.59 1.41.59.51 0 1.02-.2 1.41-.59l7.78-7.78 2.81-2.81c.8-.78.8-2.07 0-2.86zM5.41 20L4 18.59l7.72-7.72 1.47 1.35L5.41 20z"/>
       </svg>
           </button>
-    
+
       <style>
         .colab-df-container {
           display:flex;
           flex-wrap:wrap;
           gap: 12px;
         }
-    
+
         .colab-df-convert {
           background-color: #E8F0FE;
           border: none;
@@ -210,18 +210,18 @@ Loading data
           padding: 0 0 0 0;
           width: 32px;
         }
-    
+
         .colab-df-convert:hover {
           background-color: #E2EBFA;
           box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
           fill: #174EA6;
         }
-    
+
         [theme=dark] .colab-df-convert {
           background-color: #3B4455;
           fill: #D2E3FC;
         }
-    
+
         [theme=dark] .colab-df-convert:hover {
           background-color: #434B5C;
           box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
@@ -229,20 +229,20 @@ Loading data
           fill: #FFFFFF;
         }
       </style>
-    
+
           <script>
             const buttonEl =
               document.querySelector('#df-535416c3-59fa-4e27-a6bd-a58b96a91408 button.colab-df-convert');
             buttonEl.style.display =
               google.colab.kernel.accessAllowed ? 'block' : 'none';
-    
+
             async function convertToInteractive(key) {
               const element = document.querySelector('#df-535416c3-59fa-4e27-a6bd-a58b96a91408');
               const dataTable =
                 await google.colab.kernel.invokeFunction('convertToInteractive',
                                                          [key], {});
               if (!dataTable) return;
-    
+
               const docLinkHtml = 'Like what you see? Visit the ' +
                 '<a target="_blank" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'
                 + ' to learn more about interactive tables.';
@@ -404,7 +404,7 @@ product 2 exclusively:
 
     user_group_1 = data[data['event']=='product1']['user_id'].unique()
     user_group_2 = data[data['event']=='product2']['user_id'].unique()
-    
+
     user_group_1 = user_group_1[~np.isin(user_group_1, user_group_2)]
     user_group_2 = user_group_2[~np.isin(user_group_2, user_group_1)]
 
@@ -415,7 +415,7 @@ product 2 exclusively:
         if cart_count < 3:
             return str(cart_count)
         return '>=3'
-    
+
     some_user = user_groups[0][378]
     cart_count(data[data['user_id']==some_user])
 

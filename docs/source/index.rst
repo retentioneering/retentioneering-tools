@@ -4,12 +4,9 @@ Contents
 ========
 .. toctree::
     :caption: Getting started:
-    :maxdepth: 1
+    :maxdepth: 2
 
-
-    What is Retentioneering? <what_is_rete.rst>
-    Quick start <quick_start.rst>
-    Eventstream concept <eventstream_concept.rst>
+    Getting Started <getting_started.rst>
 
 .. toctree::
     :caption: User Guide:
@@ -17,13 +14,11 @@ Contents
 
     User Guide <user_guide.rst>
 
-
 .. toctree::
     :caption: Tutorials:
     :maxdepth: 1
 
     Tutorials <tutorials.rst>
-
 
 .. toctree::
     :caption: API Reference:

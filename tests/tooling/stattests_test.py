@@ -1,5 +1,6 @@
 import math
 
+from src.tooling.stattests import StatTests
 from tests.tooling.fixtures.stattests import continuous_data, cutted_data, simple_data
 from tests.tooling.fixtures.stattests_corr import (
     chi2_contingency_corr,
@@ -60,16 +61,28 @@ class TestStatTest:
         assert math.isclose(result, correct, abs_tol=0.001)
 
     def test_stattest__ks_2samp(self, continuous_data, ks_2samp_corr):
-        correct = ks_2samp_corr["p_val"]
-        st = continuous_data.stattests(
+        correct = ks_2samp_corr
+        st = StatTests(
+            continuous_data,
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             func=lambda x: x["seconds"].mean(),
             group_names=("group_1", "group_2"),
             test="ks_2samp",
         )
         st.fit()
-        result = st.values["p_val"]
-        assert math.isclose(result, correct, abs_tol=0.001)
+        result = st.values
+        numeric_values = [
+            "group_one_mean",
+            "group_one_SD",
+            "group_two_mean",
+            "group_two_SD",
+            "p_val",
+            "power_estimated",
+        ]
+        for item in result:
+            if item in numeric_values:
+                result[item] = result[item].round(3)
+        assert result == correct
 
     def test_stattest__chi2_contingency(self, simple_data, chi2_contingency_corr):
         correct = chi2_contingency_corr["p_val"]

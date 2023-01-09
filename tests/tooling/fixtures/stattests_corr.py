@@ -11,12 +11,13 @@ def ks_2samp_corr():
         "group_one_SD": 19.246,
         "group_two_name": "group_2",
         "group_two_size": 4,
-        "group_two_mean": 56.9642,
-        "group_two_SD": 10.1118,
+        "group_two_mean": 56.964,
+        "group_two_SD": 10.112,
         "greatest_group_name": "group_2",
+        "least_group_name": "group_1",
         "is_group_one_greatest": False,
         "p_val": 0.4,
-        "power_estimated": 0.2273,
+        "power_estimated": 0.227,
     }
     return correct_result
 

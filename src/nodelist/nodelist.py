@@ -4,7 +4,6 @@ import pandas as pd
 
 
 class Nodelist:
-
     nodelist_df: pd.DataFrame
 
     def __init__(self, event_col: str, time_col: str, nodelist_default_col: str, custom_cols: list[str]) -> None:

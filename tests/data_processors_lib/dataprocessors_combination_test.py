@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
-import pytest
 
 from src.data_processors_lib import (
-    CollapseLoops,
-    CollapseLoopsParams,
     DeleteUsersByPathLength,
     DeleteUsersByPathLengthParams,
     FilterEvents,
@@ -25,14 +21,10 @@ from src.data_processors_lib import (
     SplitSessionsParams,
     StartEndEvents,
     StartEndEventsParams,
-    TruncatedEvents,
-    TruncatedEventsParams,
     TruncatePath,
     TruncatePathParams,
 )
-from src.eventstream import Eventstream
 from src.graph.p_graph import EventsNode, PGraph
-from src.tooling.step_matrix import StepMatrix
 from tests.data_processors_lib.fixtures.combination import (
     test_stream,
     test_stream_custom_col,

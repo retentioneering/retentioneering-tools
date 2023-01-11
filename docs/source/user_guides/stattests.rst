@@ -1,6 +1,8 @@
 Stattests tooling user guide
 ----------------------------
 
+`Google Colab <https://colab.research.google.com/drive/1u0s-aMMnYrufmSTvLFtA1JS7nYBwfqwx?usp=share_link>`_
+
 This notebook is a user guide on eventstream *stattests* - a simple
 utility for two-group user hypothesis testing.
 

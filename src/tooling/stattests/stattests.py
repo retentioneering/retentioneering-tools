@@ -203,7 +203,8 @@ class StatTests:
         dict
 
         """
-        assert self.is_fitted
+        if not self.is_fitted:
+            raise ValueError("The StatTests instance needs to be fitted before returning values")
         if self.test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
             res_dict = {
                 "group_one_name": self.group_names[0],
@@ -231,6 +232,34 @@ class StatTests:
         else:
             raise ValueError("Wrong test passed")
         return res_dict
+
+    def display_results(self) -> None:
+        if not self.is_fitted:
+            raise ValueError("The StatTests instance needs to be fitted before displaying results")
+        values = self.values
+        if self.test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
+            print(
+                self.output_template_numerical.format(
+                    values["group_one_name"], values["group_one_mean"], values["group_one_SD"], values["group_one_size"]
+                )
+            )
+            print(
+                self.output_template_numerical.format(
+                    values["group_two_name"], values["group_two_mean"], values["group_two_SD"], values["group_two_size"]
+                )
+            )
+            print(
+                "'{0}' is greater than '{1}' with P-value: {2:.5f}".format(
+                    values["greatest_group_name"], values["least_group_name"], values["p_val"]
+                )
+            )
+            print("power of the test: {0:.2f}%".format(100 * values["power_estimated"]))
+        elif self.test in ["chi2_contingency", "fisher_exact"]:
+            print(self.output_template_categorical.format(values["group_one_name"], values["group_one_size"]))
+            print(self.output_template_categorical.format(values["group_two_name"], values["group_two_size"]))
+            print("Group difference test with P-value: {:.5f}".format(values["p_val"]))
+        else:
+            raise ValueError("Wrong test passed")
 
     @property
     def params(self) -> dict:

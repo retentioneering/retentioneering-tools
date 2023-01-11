@@ -149,7 +149,7 @@ class TestStepMatrix:
         assert correct_result == result
 
     def test_step_matrix__events_sorting(self, test_stream, events_sorting_cor):
-        new_order = ["event5", "event3", "event2", "event1"]
+        new_order = ["event5", "event3", "event2", "event1", "ENDED"]
         correct_result = events_sorting_cor
         sm = StepMatrix(eventstream=test_stream, sorting=new_order, max_steps=6)
         sm.fit()

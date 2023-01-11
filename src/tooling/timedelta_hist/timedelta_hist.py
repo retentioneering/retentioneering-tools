@@ -126,7 +126,8 @@ class TimedeltaHist:
             idx &= series >= series.quantile(self.lower_cutoff_quantile)
         return series[idx]
 
-    def plot(self) -> go.Figure:
+    @property
+    def values(self) -> tuple[np.ndarray, np.ndarray | int]:
         data = self.__eventstream.to_dataframe().sort_values([self.agg_col, self.time_col])
         if self.event_pair is not None:
             data = self._prepare_event_pair_data(data)
@@ -135,14 +136,26 @@ class TimedeltaHist:
         data = self._exclude_multiunit_events(data)
         data = self._aggregate_data(data)
         values_to_plot = data["time_passed"].reset_index(drop=True)
-        values_to_plot = self._remove_cutoff_values(values_to_plot)
+        values_to_plot = self._remove_cutoff_values(values_to_plot).to_numpy()
+        log_adjustment = np.timedelta64(100, "ms") / np.timedelta64(1, self.timedelta_unit)
+        if self.log_scale:
+            bins_to_plot = np.logspace(
+                np.log10(values_to_plot.min() + log_adjustment),
+                np.log10(values_to_plot.max() + log_adjustment),
+                self.bins,
+            )
+        else:
+            bins_to_plot = self.bins
+        return values_to_plot, bins_to_plot
+
+    def plot(self) -> None:
+        out_hist = self.values
+        if self.log_scale:
+            plt.xscale("log")
         plt.title(
             f"Timedelta histogram, event pair {self.event_pair}, weight column {self.weight_col}"
             f"{', group ' + self.aggregation if self.aggregation is not None else ''}"
         )
         plt.xlabel(f"Time units: {self.timedelta_unit}")
-        if self.log_scale:
-            logbins = np.logspace(np.log10(values_to_plot.min()), np.log10(values_to_plot.max()), self.bins)
-            plt.xscale("log")
-            return plt.hist(values_to_plot, bins=logbins, rwidth=0.9)
-        return plt.hist(values_to_plot, bins=self.bins, rwidth=0.9)
+        plt.hist(out_hist[0], bins=out_hist[1], rwidth=0.9)
+        plt.show()

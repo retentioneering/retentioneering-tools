@@ -760,34 +760,7 @@ class Eventstream(
             eventstream=self, groups=groups, func=func, test=test, group_names=group_names, alpha=alpha
         )
         self.__stattests.fit()
-        values = self.__stattests.values
-        if test in ["ztest", "ttest", "mannwhitneyu", "ks_2samp"]:
-            print(
-                self.__stattests.output_template_numerical.format(
-                    values["group_one_name"], values["group_one_mean"], values["group_one_SD"], values["group_one_size"]
-                )
-            )
-            print(
-                self.__stattests.output_template_numerical.format(
-                    values["group_two_name"], values["group_two_mean"], values["group_two_SD"], values["group_two_size"]
-                )
-            )
-            print(
-                "'{0}' is greater than '{1}' with P-value: {2:.5f}".format(
-                    values["greatest_group_name"], values["least_group_name"], values["p_val"]
-                )
-            )
-            print("power of the test: {0:.2f}%".format(100 * values["power_estimated"]))
-        elif test in ["chi2_contingency", "fisher_exact"]:
-            print(
-                self.__stattests.output_template_categorical.format(values["group_one_name"], values["group_one_size"])
-            )
-            print(
-                self.__stattests.output_template_categorical.format(values["group_two_name"], values["group_two_size"])
-            )
-            print("Group difference test with P-value: {:.5f}".format(values["p_val"]))
-        else:
-            raise ValueError("Wrong test passed")
+        self.__stattests.display_results()
         return self.__stattests
 
     def timedelta_hist(
@@ -801,7 +774,8 @@ class Eventstream(
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int = 20,
-    ) -> go.Figure:
+        show_plot: bool = True,
+    ) -> TimedeltaHist:
         """
         Plots the distribution of the time deltas between two events. Supports various
         distribution types, such as distribution of time for adjacent consecutive events, or
@@ -812,9 +786,9 @@ class Eventstream(
         Returns
         -------
         TimedeltaHist
-            A ``Figure`` instance fitted to the given parameters.
+            A ``TimedeltaHist`` instance fitted to the given parameters.
         """
-        hist = TimedeltaHist(
+        timedelta_hist = TimedeltaHist(
             eventstream=self,
             event_pair=event_pair,
             only_adjacent_event_pairs=only_adjacent_event_pairs,
@@ -826,7 +800,9 @@ class Eventstream(
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
         )
-        return hist.plot()
+        if show_plot:
+            timedelta_hist.plot()
+        return timedelta_hist
 
     def user_lifetime_hist(
         self,
@@ -835,7 +811,8 @@ class Eventstream(
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int = 20,
-    ) -> go.Figure:
+        show_plot: bool = True,
+    ) -> UserLifetimeHist:
         """
         Plots the distribution of user lifetimes. A users' lifetime is the timedelta between the first and the last
         events of the user. Can be useful for finding suitable parameters of various data processors, such as
@@ -846,9 +823,9 @@ class Eventstream(
         Returns
         -------
         UserLifetimeHist
-            A ``Figure`` class instance fitted to the given parameters.
+            A ``UserLifetimeHist`` class instance fitted to the given parameters.
         """
-        hist = UserLifetimeHist(
+        user_lifetime_hist = UserLifetimeHist(
             eventstream=self,
             timedelta_unit=timedelta_unit,
             log_scale=log_scale,
@@ -856,7 +833,9 @@ class Eventstream(
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
         )
-        return hist.plot()
+        if show_plot:
+            user_lifetime_hist.plot()
+        return user_lifetime_hist
 
     def event_timestamp_hist(
         self,
@@ -864,23 +843,26 @@ class Eventstream(
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int = 20,
-    ) -> SubplotBase:
+        show_plot: bool = True,
+    ) -> EventTimestampHist:
         """
         Plots the distribution of events over time. Can be useful for detecting time-based anomalies, and visualising
         general timespan of the eventstream.
 
         Returns
         -------
-        SubplotBase
-            A ``SubplotBase`` class instance fitted to the given parameters.
+        EventTimestampHist
+            A ``EventTimestampHist`` class instance fitted to the given parameters.
         """
-        hist = EventTimestampHist(
+        event_timestamp_hist = EventTimestampHist(
             eventstream=self,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
         )
-        return hist.plot()
+        if show_plot:
+            event_timestamp_hist.plot()
+        return event_timestamp_hist
 
     def describe(self, session_col: Optional[str] = "session_id") -> None:
         """

@@ -1,0 +1,86 @@
+
+
+
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin="" rel="preconnect" href="https://fonts.gstatic.com">
+    <link crossorigin="" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+    <title>Retentioneering Transition Graph Application</title>
+
+
+
+<noscript>You need to enable JavaScript to run this app.</noscript>
+<iframe id="elOA9PNO" src="about:blank" width="960" height="900" onload="window.reteLoadedIframes = window.reteLoadedIframes || []; window.reteLoadedIframes.push('elOA9PNO')">
+</iframe>
+
+<script>
+  (function() {
+    console.info('Initialize graph IFRAME')
+
+    const iframe = document.getElementById('elOA9PNO')
+    const iframeLoaded = window.reteLoadedIframes && window.reteLoadedIframes.includes('elOA9PNO')
+
+    const init = () => {
+      console.info('Graph IFRAME loaded')
+
+      const iframeDocument = document.getElementById('elOA9PNO').contentDocument
+
+      iframeDocument.body.innerHTML = '<div id="root"></div>'
+
+      const graphScript = iframeDocument.createElement('script')
+
+      graphScript.src = `https://static.server.retentioneering.com/viztools/transition-graph/v3/transition-graph.umd.js?id=el3H7ZGC`
+
+      graphScript.addEventListener('load', () => {
+        console.info('JavaScript library loaded')
+
+        const initGraph = iframeDocument.createElement('script')
+
+        initGraph.innerHTML = `
+    initialize({
+    serverId: '43e7fec1-96f4-44b7-8ec7-5f2d0e5e61e3',
+    env: 'classic',
+    configNodes: [{"index":0,"name":"payment_choice","changed_name":"payment_choice","x":557.7120534901545,"y":432.45031148736274,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":12.437194127243067,"source":862}},"type":"suit_node"},{"index":1,"name":"product2","changed_name":"product2","x":357.74131741419876,"y":528.9813230581121,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":9.31484502446982,"source":543}},"type":"suit_node"},{"index":2,"name":"cart","changed_name":"cart","x":487.06332494233163,"y":248.66701747606737,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":16.225122349102776,"source":1249}},"type":"suit_node"},{"index":3,"name":"lost","changed_name":"lost","x":810,"y":450,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":7.239804241435563,"source":331}},"type":"bad_node"},{"index":4,"name":"delivery_courier","changed_name":"delivery_courier","x":210.4759118675799,"y":389.33698622672466,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":10.088091353996738,"source":622}},"type":"suit_node"},{"index":5,"name":"main","changed_name":"main","x":715.6417816436231,"y":285.57873586899615,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":15.099510603588907,"source":1134}},"type":"suit_node"},{"index":6,"name":"catalog","changed_name":"catalog","x":387.6991383877619,"y":719.7319065276464,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":34,"source":3065}},"type":"suit_node"},{"index":7,"name":"delivery_pickup","changed_name":"delivery_pickup","x":313.13747137048523,"y":148.87013318522082,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":7.543230016313213,"source":362}},"type":"suit_node"},{"index":8,"name":"payment_card","changed_name":"payment_card","x":810,"y":549.1459454437647,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":8.786296900489397,"source":489}},"type":"suit_node"},{"index":9,"name":"payment_done","changed_name":"payment_done","x":90,"y":450,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":9.823817292006524,"source":595}},"type":"nice_node"},{"index":10,"name":"product1","changed_name":"product1","x":640.4614719010626,"y":90,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":7.4257748776508965,"source":350}},"type":"suit_node"},{"index":11,"name":"delivery_choice","changed_name":"delivery_choice","x":595.9396024938319,"y":810,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":14.668841761827078,"source":1090}},"type":"suit_node"},{"index":12,"name":"payment_cash","changed_name":"payment_cash","x":90,"y":225.60388747741342,"active":true,"visible":true,"alias":false,"degree":{"number_of_events":{"degree":5.262642740619902,"source":129}},"type":"suit_node"}],
+    configLinks: [{"sourceIndex":2,"targetIndex":2,"type":"suit","weights":{"number_of_events":{"weight_norm":0.0009174311926605505,"weight":1}}},{"sourceIndex":2,"targetIndex":6,"type":"suit","weights":{"number_of_events":{"weight_norm":0.0908256880733945,"weight":99}}},{"sourceIndex":2,"targetIndex":11,"type":"suit","weights":{"number_of_events":{"weight_norm":1,"weight":1090}}},{"sourceIndex":2,"targetIndex":3,"type":"bad","weights":{"number_of_events":{"weight_norm":0.009174311926605505,"weight":10}}},{"sourceIndex":2,"targetIndex":5,"type":"suit","weights":{"number_of_events":{"weight_norm":0.03302752293577982,"weight":36}}},{"sourceIndex":6,"targetIndex":2,"type":"suit","weights":{"number_of_events":{"weight_norm":0.7009174311926606,"weight":764}}},{"sourceIndex":6,"targetIndex":6,"type":"suit","weights":{"number_of_events":{"weight_norm":0.8348623853211009,"weight":910}}},{"sourceIndex":6,"targetIndex":3,"type":"bad","weights":{"number_of_events":{"weight_norm":0.03486238532110092,"weight":38}}},{"sourceIndex":6,"targetIndex":5,"type":"suit","weights":{"number_of_events":{"weight_norm":0.3559633027522936,"weight":388}}},{"sourceIndex":6,"targetIndex":10,"type":"suit","weights":{"number_of_events":{"weight_norm":0.3211009174311927,"weight":350}}},{"sourceIndex":6,"targetIndex":1,"type":"suit","weights":{"number_of_events":{"weight_norm":0.4981651376146789,"weight":543}}},{"sourceIndex":11,"targetIndex":6,"type":"suit","weights":{"number_of_events":{"weight_norm":0.04128440366972477,"weight":45}}},{"sourceIndex":11,"targetIndex":4,"type":"suit","weights":{"number_of_events":{"weight_norm":0.5706422018348624,"weight":622}}},{"sourceIndex":11,"targetIndex":7,"type":"suit","weights":{"number_of_events":{"weight_norm":0.3321100917431193,"weight":362}}},{"sourceIndex":11,"targetIndex":3,"type":"bad","weights":{"number_of_events":{"weight_norm":0.03669724770642202,"weight":40}}},{"sourceIndex":11,"targetIndex":5,"type":"suit","weights":{"number_of_events":{"weight_norm":0.01651376146788991,"weight":18}}},{"sourceIndex":4,"targetIndex":3,"type":"bad","weights":{"number_of_events":{"weight_norm":0.023853211009174313,"weight":26}}},{"sourceIndex":4,"targetIndex":5,"type":"suit","weights":{"number_of_events":{"weight_norm":0.01651376146788991,"weight":18}}},{"sourceIndex":4,"targetIndex":0,"type":"suit","weights":{"number_of_events":{"weight_norm":0.5284403669724771,"weight":576}}},{"sourceIndex":7,"targetIndex":3,"type":"bad","weights":{"number_of_events":{"weight_norm":0.04954128440366973,"weight":54}}},{"sourceIndex":7,"targetIndex":5,"type":"suit","weights":{"number_of_events":{"weight_norm":0.01743119266055046,"weight":19}}},{"sourceIndex":7,"targetIndex":0,"type":"suit","weights":{"number_of_events":{"weight_norm":0.26238532110091745,"weight":286}}},{"sourceIndex":5,"targetIndex":6,"type":"suit","weights":{"number_of_events":{"weight_norm":0.8486238532110092,"weight":925}}},{"sourceIndex":5,"targetIndex":3,"type":"bad","weights":{"number_of_events":{"weight_norm":0.02018348623853211,"weight":22}}},{"sourceIndex":5,"targetIndex":5,"type":"suit","weights":{"number_of_events":{"weight_norm":0.14036697247706423,"weight":153}}},{"sourceIndex":8,"targetIndex":3,"type":"bad","weights":{"number_of_events":{"weight_norm":0.024770642201834864,"weight":27}}},{"sourceIndex":8,"targetIndex":5,"type":"suit","weights":{"number_of_events":{"weight_norm":0.013761467889908258,"weight":15}}},{"sourceIndex":8,"targetIndex":9,"type":"nice","weights":{"number_of_events":{"weight_norm":0.4055045871559633,"weight":442}}},{"sourceIndex":12,"targetIndex":3,"type":"bad","weights":{"number_of_events":{"weight_norm":0.03302752293577982,"weight":36}}},{"sourceIndex":12,"targetIndex":5,"type":"suit","weights":{"number_of_events":{"weight_norm":0.02018348623853211,"weight":22}}},{"sourceIndex":12,"targetIndex":9,"type":"nice","weights":{"number_of_events":{"weight_norm":0.06330275229357799,"weight":69}}},{"sourceIndex":0,"targetIndex":6,"type":"suit","weights":{"number_of_events":{"weight_norm":0.05688073394495413,"weight":62}}},{"sourceIndex":0,"targetIndex":3,"type":"bad","weights":{"number_of_events":{"weight_norm":0.06697247706422019,"weight":73}}},{"sourceIndex":0,"targetIndex":5,"type":"suit","weights":{"number_of_events":{"weight_norm":0.02018348623853211,"weight":22}}},{"sourceIndex":0,"targetIndex":8,"type":"suit","weights":{"number_of_events":{"weight_norm":0.44862385321100917,"weight":489}}},{"sourceIndex":0,"targetIndex":12,"type":"suit","weights":{"number_of_events":{"weight_norm":0.11834862385321102,"weight":129}}},{"sourceIndex":0,"targetIndex":9,"type":"nice","weights":{"number_of_events":{"weight_norm":0.07706422018348624,"weight":84}}},{"sourceIndex":9,"targetIndex":5,"type":"suit","weights":{"number_of_events":{"weight_norm":0.1743119266055046,"weight":190}}},{"sourceIndex":10,"targetIndex":2,"type":"suit","weights":{"number_of_events":{"weight_norm":0.1706422018348624,"weight":186}}},{"sourceIndex":10,"targetIndex":6,"type":"suit","weights":{"number_of_events":{"weight_norm":0.12935779816513762,"weight":141}}},{"sourceIndex":10,"targetIndex":3,"type":"bad","weights":{"number_of_events":{"weight_norm":0.001834862385321101,"weight":2}}},{"sourceIndex":10,"targetIndex":5,"type":"suit","weights":{"number_of_events":{"weight_norm":0.015596330275229359,"weight":17}}},{"sourceIndex":1,"targetIndex":2,"type":"suit","weights":{"number_of_events":{"weight_norm":0.27339449541284405,"weight":298}}},{"sourceIndex":1,"targetIndex":6,"type":"suit","weights":{"number_of_events":{"weight_norm":0.20825688073394497,"weight":227}}},{"sourceIndex":1,"targetIndex":3,"type":"bad","weights":{"number_of_events":{"weight_norm":0.0027522935779816515,"weight":3}}},{"sourceIndex":1,"targetIndex":5,"type":"suit","weights":{"number_of_events":{"weight_norm":0.010091743119266056,"weight":11}}}],
+    nodesColsNames: ['number_of_events'],
+    linksWeightsNames: ['number_of_events'],
+    nodesThreshold: {"number_of_events":0},
+    linksThreshold: {"number_of_events":0},
+    showWeights: true,
+    showPercents: false,
+    showNodesNames: true,
+    showAllEdgesForTargets: true,
+    showNodesWithoutLinks: false,
+    useLayoutDump: Boolean(1),
+    weightTemplate: undefined
+})
+`
+        iframeDocument.body.appendChild(initGraph)
+      })
+
+      iframeDocument.head.appendChild(graphScript)
+      iframeDocument.body.dataset.templateId = 'elOA9PNO_template'
+
+      console.info('Graph IFRAME initialized')
+    }
+
+    console.log(`Graph IFRAME loaded: ` + iframeLoaded)
+
+    if (iframeLoaded) {
+      init()
+      return
+    }
+
+    iframe.onload = () => {
+      init()
+      window.reteLoadedIframes.push('elOA9PNO')
+    }
+  })()
+</script>
+
+<template id="elOA9PNO_template">
+
+</template>

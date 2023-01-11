@@ -8,4 +8,4 @@ Clusters Class
 
 Eventstream
 -----------
-.. automethod:: src.eventstream.eventstream.Eventstream.clusters
+.. autoproperty:: src.eventstream.eventstream.Eventstream.clusters

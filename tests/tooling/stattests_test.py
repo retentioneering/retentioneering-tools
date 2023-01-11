@@ -1,7 +1,11 @@
 import math
 
 from src.tooling.stattests import StatTests
-from tests.tooling.fixtures.stattests import continuous_data, cutted_data, simple_data
+from tests.tooling.fixtures.stattests import (
+    continuous_data,
+    non_equal_target_data,
+    simple_data,
+)
 from tests.tooling.fixtures.stattests_corr import (
     chi2_contingency_corr,
     fisher_exact_corr,
@@ -108,9 +112,9 @@ class TestStatTest:
         result = st.values["p_val"]
         assert math.isclose(result, correct, abs_tol=0.001)
 
-    def test_stattest__fisher_exact(self, cutted_data, fisher_exact_corr):
+    def test_stattest__fisher_exact(self, non_equal_target_data, fisher_exact_corr):
         correct = fisher_exact_corr["p_val"]
-        st = cutted_data.stattests(
+        st = non_equal_target_data.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             func=lambda x: "payment_done" in x["event"].values,
             group_names=("group_1", "group_2"),

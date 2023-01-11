@@ -41,7 +41,7 @@ def continuous_data():
 
 
 @pytest.fixture
-def cutted_data():
-    source_df = read_test_data("03_сutted_data.csv")
+def non_equal_target_data():
+    source_df = read_test_data("03_non_equal_target_data.csv")
     source_stream = Eventstream(source_df)
     return source_stream

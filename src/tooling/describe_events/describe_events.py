@@ -52,7 +52,9 @@ class DescribeEvents:
         if event_list != "all":
             if type(event_list) is not list:
                 raise TypeError('event_list should either be "all", or a list of event names to include.')
-            df = df[df[event_col].isin(event_list)]
+            unique_events = df[df[event_col].isin(event_list)][event_col].unique()
+        else:
+            unique_events = df[event_col].unique()
 
         has_sessions = session_col in df.columns
 
@@ -67,7 +69,7 @@ class DescribeEvents:
             df["__event_session_timedelta"] = df[time_col] - df.groupby(session_col)[time_col].transform("first")
             unique_sessions = df[session_col].nunique()  # type: ignore
 
-        for i, event_name in enumerate(df[event_col].unique()):
+        for i, event_name in enumerate(unique_events):
             if i != 0:
                 print("=" * 30, end="\n")
 

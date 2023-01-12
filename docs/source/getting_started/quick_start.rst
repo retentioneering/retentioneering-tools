@@ -153,8 +153,8 @@ Transition graph
 
     stream.transition_graph(
         thresholds={
-            'nodes': {'number_of_events': 0.06},
-            'edges': {'number_of_events' : 0.06}
+            'nodes': {'events': 0.06},
+            'edges': {'events' : 0.06}
         },
         norm_type=None,
         targets={

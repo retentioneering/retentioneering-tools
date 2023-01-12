@@ -23,7 +23,7 @@ Retentioneering stores data in its core class ``Eventstream`` which allow to tre
 
 .. code-block:: python
 
-    from src import datasets
+    from retentioneering import datasets
 
     # load sample user behavior data:
     stream = datasets.load_simple_shop()
@@ -37,20 +37,7 @@ In the shell of eventstream object there is a regular pandas dataframe:
 .. raw:: html
 
     <div>
-    <style scoped>
-        .dataframe tbody tr th:only-of-type {
-            vertical-align: middle;
-        }
-
-        .dataframe tbody tr th {
-            vertical-align: top;
-        }
-
-        .dataframe thead th {
-            text-align: right;
-        }
-    </style>
-    <table border="1" class="dataframe">
+    <table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>
@@ -105,7 +92,7 @@ If you have your raw data of user behavior for example in csv format simply uplo
 .. code-block:: python
 
     import pandas as pd
-    from src.eventstream import Eventstream
+    from retentioneering.eventstream import Eventstream
 
     # load your own csv
     data = pd.read_csv("yourowndatafile.csv")
@@ -153,8 +140,8 @@ Transition graph
 
     stream.transition_graph(
         thresholds={
-            'nodes': {'number_of_events': 0.06},
-            'edges': {'number_of_events' : 0.06}
+            'nodes': {'events': 0.06},
+            'edges': {'events' : 0.06}
         },
         norm_type=None,
         targets={
@@ -164,10 +151,16 @@ Transition graph
         }
     )
 
-.. figure:: /_static/quick_start/transition_graph.png
-    :width: 900
+.. raw:: html
 
-    Fig. XXX. Transition graph
+    <iframe
+        width="600"
+        height="600"
+        src="../_static/quick_start/transition_graph.html"
+        frameborder="0"
+        allowfullscreen
+    ></iframe>
+
 
 :red:`The graph on the image above is not interactive so far`
 The ``Transition graph`` represents CJM as Markov random walk model and shows how often the users jumps from one event to another. The graph is interactive and you can move the graph nodes by clicking them, zoom-in/zoom-out the graph layout, etc. Also, you can highlight the most valuable nodes and hide noisy nodes and edges.
@@ -215,7 +208,7 @@ Step Sankey diagram is similar to step matrix, but it has some advances:
     <iframe
         width="900"
         height="500"
-        src="/_static/quick_start/step_sankey.html"
+        src="../_static/quick_start/step_sankey.html"
         frameborder="0"
         allowfullscreen
     ></iframe>

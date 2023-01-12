@@ -1,4 +1,4 @@
-define: &exclude_folders "^(examples/|tests/)"
+define: &exclude_folders "^(examples/|tests/|venv/)"
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

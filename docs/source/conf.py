@@ -120,10 +120,13 @@ extlinks = {
     ),
     "sklearn_kmeans": ("https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html%s", None),
     "sklearn_gmm": ("https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html%s", None),
+    "sklearn_tsne": ("https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html%s", None),
+    "umap": ("https://umap-learn.readthedocs.io/en/latest/index.html%s", None),
 }
 
 
 def setup(app: Any) -> None:
     app.add_css_file("css/custom.css")
+    app.add_css_file("css/dataframe.css")
     app.add_js_file("js/custom.js")
     app.add_js_file("https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js")

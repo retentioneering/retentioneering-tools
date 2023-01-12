@@ -19,10 +19,127 @@ Basic algorithm of ``Cohort Matrix`` calculation:
 To better understand how it works let’s first consider an intuitive
 example. Here it is small dataset of event logs:
 
-.. figure:: /_static/user_guides/cohorts/cohorts_0_small_eventstream.png
+.. code:: ipython3
+
+    source_df = pd.DataFrame(
+    [
+        [1, "event", "2021-01-28 00:01:00"],
+        [2, "event", "2021-01-30 00:01:00"],
+        [1, "event", "2021-02-03 00:01:00"],
+        [3, "event", "2021-02-04 00:01:00"],
+        [4, "event", "2021-02-05 00:01:00"],
+        [4, "event", "2021-03-06 00:01:00"],
+        [1, "event", "2021-03-07 00:01:00"],
+        [2, "event", "2021-03-07 00:01:00"],
+        [3, "event", "2021-03-29 00:01:00"],
+        [5, "event", "2021-03-30 00:01:00"],
+        [4, "event", "2021-04-06 00:01:00"]
+     ],
+            columns=["user_id", "event", "timestamp"]
+            )
+    source_df
+
+.. raw:: html
+
+
+    <div><table class="dataframe">
+      <thead>
+        <tr style="text-align: right;">
+          <th></th>
+          <th>user_id</th>
+          <th>event</th>
+          <th>timestamp</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>0</th>
+          <td>1</td>
+          <td>event</td>
+          <td>2021-01-28 00:01:00</td>
+        </tr>
+        <tr>
+          <th>1</th>
+          <td>2</td>
+          <td>event</td>
+          <td>2021-01-30 00:01:00</td>
+        </tr>
+        <tr>
+          <th>2</th>
+          <td>1</td>
+          <td>event</td>
+          <td>2021-02-03 00:01:00</td>
+        </tr>
+        <tr>
+          <th>3</th>
+          <td>3</td>
+          <td>event</td>
+          <td>2021-02-04 00:01:00</td>
+        </tr>
+        <tr>
+          <th>4</th>
+          <td>4</td>
+          <td>event</td>
+          <td>2021-02-05 00:01:00</td>
+        </tr>
+        <tr>
+          <th>5</th>
+          <td>4</td>
+          <td>event</td>
+          <td>2021-03-06 00:01:00</td>
+        </tr>
+        <tr>
+          <th>6</th>
+          <td>1</td>
+          <td>event</td>
+          <td>2021-03-07 00:01:00</td>
+        </tr>
+        <tr>
+          <th>7</th>
+          <td>2</td>
+          <td>event</td>
+          <td>2021-03-07 00:01:00</td>
+        </tr>
+        <tr>
+          <th>8</th>
+          <td>3</td>
+          <td>event</td>
+          <td>2021-03-29 00:01:00</td>
+        </tr>
+        <tr>
+          <th>9</th>
+          <td>5</td>
+          <td>event</td>
+          <td>2021-03-30 00:01:00</td>
+        </tr>
+        <tr>
+          <th>10</th>
+          <td>4</td>
+          <td>event</td>
+          <td>2021-04-06 00:01:00</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
 
 We can visualize this dataset as a heatmap indicating what fraction of
 users from each cohort remained in the clickstream at each time period:
+
+.. code:: ipython3
+
+    import retentioneering as rete
+    from rete.eventstream import Eventstream
+    from rete.tooling.cohorts import Cohorts
+
+    source = Eventstream(source_df)
+    cohorts = Cohorts(eventstream=source,
+                     cohort_start_unit="M",
+                     cohort_period=(1,"M"),
+                      average=False)
+
+    cohorts.fit()
+    cohorts.heatmap(figsize=(6,5));
 
 .. figure:: /_static/user_guides/cohorts/cohorts_1_simple_coh_matrix.png
 
@@ -71,28 +188,28 @@ second period. For second cohort (``2021-02``) second period is April,
 so only user 4 is presenting, it means, that only ``50%`` of users from
 this cohort reached the second period.
 
-Below we will explore how to use and customize ``Cohort`` tool in
+Below we will explore how to use and customize ``Cohort`` tool using
 ``Retentioneering`` library.
 
 Basic example
 -------------
 
-In order to start, we need to: - import requred tools and libraries -
-load sample dataset - create Cohorts object
+Loading data
+~~~~~~~~~~~~
+
+Here we use ``simple_shop`` dataset, which has already converted to ``Eventstream``.
+If you want to know more about ``Eventstream`` and how to use it, please study
+:doc:`this guide<eventstream>`
 
 .. code:: ipython3
 
     import retentioneering as rete
-    import pandas as pd
-    from rete.eventstream import Eventstream
+    from retentioneering import datasets
 
-    # load sample user behavior data as a pandas dataframe:
-    raw_data = pd.read_csv('retentioneering-tools-new-arch/src/datasets/data/simple-onlineshop.csv')
+    # load eventstream
+    source = datasets.load_simple_shop()
 
-    # create source eventstream
-    source = Eventstream(raw_data)
-
-Creating an instance of the cohorts class
+Creating an instance of the Cohorts class
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 At the moment when an instance of a class is created, it is still
@@ -131,23 +248,7 @@ output will be a dataframe.
 .. raw:: html
 
 
-      <div id="df-838e4902-c378-4c59-91dd-3ab96c871117">
-        <div class="colab-df-container">
-          <div>
-    <style scoped>
-        .dataframe tbody tr th:only-of-type {
-            vertical-align: middle;
-        }
-
-        .dataframe tbody tr th {
-            vertical-align: top;
-        }
-
-        .dataframe thead th {
-            text-align: right;
-        }
-    </style>
-    <table border="1" class="dataframe">
+    <div><table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th>CohortPeriod</th>
@@ -522,23 +623,7 @@ avaliable, now it can be done in one line:
 .. raw:: html
 
 
-      <div id="df-6c169e9b-2129-495f-bba5-a6db441c37e9">
-        <div class="colab-df-container">
-          <div>
-    <style scoped>
-        .dataframe tbody tr th:only-of-type {
-            vertical-align: middle;
-        }
-
-        .dataframe tbody tr th {
-            vertical-align: top;
-        }
-
-        .dataframe thead th {
-            text-align: right;
-        }
-    </style>
-    <table border="1" class="dataframe">
+    <div><table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th>CohortPeriod</th>
@@ -686,6 +771,7 @@ avaliable, now it can be done in one line:
       </div>
 
 
+
 .. code:: ipython3
 
     source.cohorts(cohort_start_unit='M',
@@ -711,23 +797,7 @@ avaliable, now it can be done in one line:
 .. raw:: html
 
 
-      <div id="df-6a676b30-ade0-48a2-8003-832682c9b82f">
-        <div class="colab-df-container">
-          <div>
-    <style scoped>
-        .dataframe tbody tr th:only-of-type {
-            vertical-align: middle;
-        }
-
-        .dataframe tbody tr th {
-            vertical-align: top;
-        }
-
-        .dataframe thead th {
-            text-align: right;
-        }
-    </style>
-    <table border="1" class="dataframe">
+     <div><table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th>CohortPeriod</th>

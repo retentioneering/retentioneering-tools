@@ -16,7 +16,8 @@ from tests.tooling.fixtures.stattests_corr import (
 
 class TestStatTest:
     def test_stattest__ttest_p_val(self, simple_data):
-        st = simple_data.stattests(
+        st = StatTests(
+            eventstream=simple_data,
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
@@ -29,7 +30,8 @@ class TestStatTest:
 
     def test_stattest__ttest_mean(self, simple_data):
         correct = 7.0
-        st = simple_data.stattests(
+        st = StatTests(
+            eventstream=simple_data,
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
@@ -41,7 +43,8 @@ class TestStatTest:
 
     def test_stattest__ttest_greatest(self, simple_data):
         correct = True
-        st = simple_data.stattests(
+        st = StatTests(
+            eventstream=simple_data,
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
@@ -53,7 +56,8 @@ class TestStatTest:
 
     def test_stattest__mannwhitneyu_p_val(self, simple_data):
         correct = 0.1859
-        st = simple_data.stattests(
+        st = StatTests(
+            eventstream=simple_data,
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
@@ -90,7 +94,8 @@ class TestStatTest:
 
     def test_stattest__chi2_contingency(self, simple_data, chi2_contingency_corr):
         correct = chi2_contingency_corr["p_val"]
-        st = simple_data.stattests(
+        st = StatTests(
+            eventstream=simple_data,
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             func=lambda x: "payment_done" in x["event"].values,
             group_names=("group_1", "group_2"),
@@ -102,7 +107,8 @@ class TestStatTest:
 
     def test_stattest__ztest(self, simple_data, ztest_corr):
         correct = ztest_corr["p_val"]
-        st = simple_data.stattests(
+        st = StatTests(
+            eventstream=simple_data,
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
@@ -114,7 +120,8 @@ class TestStatTest:
 
     def test_stattest__fisher_exact(self, non_equal_target_data, fisher_exact_corr):
         correct = fisher_exact_corr["p_val"]
-        st = non_equal_target_data.stattests(
+        st = StatTests(
+            eventstream=non_equal_target_data,
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             func=lambda x: "payment_done" in x["event"].values,
             group_names=("group_1", "group_2"),
@@ -126,7 +133,8 @@ class TestStatTest:
 
     def test_stattest__ttest_alpha(self, simple_data):
         correct = 0.4390
-        st = simple_data.stattests(
+        st = StatTests(
+            eventstream=simple_data,
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),

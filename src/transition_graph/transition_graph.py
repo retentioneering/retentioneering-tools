@@ -53,11 +53,9 @@ class TransitionGraph:
     ) -> None:
         from src.eventstream.eventstream import Eventstream
 
-        self.weights = weights if weights else {"edges": "edge_weight", "nodes": "number_of_events"}
+        self.weights = weights if weights else {"edges": "edge_weight", "nodes": "events"}
         self.targets = targets if targets else {"positive": None, "negative": None, "source": None}
-        self.thresholds = (
-            thresholds if thresholds else {"edges": {"number_of_events": 0.03}, "nodes": {"number_of_events": 0.03}}
-        )
+        self.thresholds = thresholds if thresholds else {"edges": {"events": 0.03}, "nodes": {"events": 0.03}}
         sm = ServerManager()
         self.env = sm.check_env()
         self.server = sm.create_server()
@@ -461,7 +459,7 @@ class TransitionGraph:
         thresholds : dict{}
             Minimal edge and node weight value to be rendered on a graph.
             Nodes specified in targets parameter will be always shown regardless selected threshold.
-            Example: {'nodes': {'number_of_events': 0.03}, 'edges': {'number_of_events' : 0.03}}
+            Example: {'nodes': {'events': 0.03}, 'edges': {'events' : 0.03}}
         targets : dict, optional
             Event mapping describing which nodes or edges should be highlighted by different colors
             for better visualization.

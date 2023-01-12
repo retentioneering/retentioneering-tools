@@ -1,4 +1,17 @@
+.. raw:: html
+
+    <style>
+        .red {color: red; font-weight:bold;}
+    </style>
+
+.. role:: red
+
+
 .. title:: Retentioneering Tools
+
+retentioneering documentation
+=============================
+**Date:** Jan 11, 2023 **Version:** 3.0.0 :red:`(alpha)`
 
 Contents
 ========

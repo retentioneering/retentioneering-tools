@@ -14,6 +14,11 @@ The following user guide is also available as `Google Colab <https://colab.resea
 Loading data
 ------------
 
+We use ``simple_shop`` dataset for demonstration purposes. If you want to use your
+own dataset, upload it following :doc:`this instruction</user_guides/eventstream>`.
+
+:red:`TODO: change the anchored link when rst doc is ready`
+
 .. code-block:: python
 
     import numpy as np
@@ -352,8 +357,8 @@ with ``cluster 1`` value.
 Getting clustering results
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you want to explicitly get the results of the clustering (i.
-. mapping rule ``user_id -> cluster_id``), there are two methods
+If you want to explicitly get the results of the clustering (i.e.
+mapping rule ``user_id -> cluster_id``), there are two methods
 to do this.
 
 :py:meth:`Clusters.user_clusters()<src.tooling.clusters.clusters.Clusters.user_clusters>`
@@ -386,7 +391,7 @@ returns a dictionary containing ``cluster_id -> list[user_ids]`` mapping.
 .. code-block:: python
 
     cluster_mapping = clusters.cluster_mapping
-    print(list(cluster_mapping.keys()))
+    list(cluster_mapping.keys())
 
 .. parsed-literal::
 

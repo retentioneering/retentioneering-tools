@@ -203,8 +203,7 @@ If you want to know more about ``Eventstream`` and how to use it, please study
 
 .. code:: ipython3
 
-    import retentioneering as rete
-    from retentioneering import datasets
+    from rete import datasets
 
     # load eventstream
     source = datasets.load_simple_shop()

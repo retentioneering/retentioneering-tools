@@ -15,7 +15,7 @@ Why Eventstream
 Let's start from a review of a process how data analyst (we also use researcher as a synonym) usually work with data. On |fig_research_workflow| you can see a simplified workflow of a typical analytical research. What data analysts actually do: they download collected clickstream data from a data storage, prepare the data, analyze it by applying an analytical tool, and deliver actionable results to stakeholders.
 
 .. |fig_research_workflow| replace:: Fig. 1
-.. figure:: _static/eventstream/research_workflow.png
+.. figure:: /_static/eventstream/research_workflow.png
     :width: 800
 
     Fig. 1. A simplified workflow of a typical analytical research
@@ -43,7 +43,7 @@ Assume for simplicity, that the goal of a research is to explore users behavior 
 Next, by “to explore users behavior” one could mean applying different techniques, such as analyzing Markov chain model, performing cluster analysis, analyzing a step-wise Sankey diagram. As a result, we obtain 9 different analytical cases (see |fig_research_example|).
 
 .. |fig_research_example| replace:: Fig. 2
-.. figure:: _static/eventstream/research_example.png
+.. figure:: /_static/eventstream/research_example.png
     :width: 800
 
     Fig. 2. An example of an analytical research with branching logic.
@@ -65,7 +65,7 @@ Introducing Eventstream class
 
 We assume that the original clickstream which generates an ``Eventstream`` class instance is represented by a ``pandas.DataFrame`` and consists of three columns: user_id, event, timestamp. In this case you can create an eventstream especially easy:
 
-.. code-block:: python
+.. code:: python
 
     import pandas as pd
     import retentioneering as rete
@@ -108,7 +108,7 @@ As soon as you create an eventstream, you can check the underlying dataframe by 
         .head()
 
 .. |fig_eventstream_columns| replace:: Fig. 3
-.. figure:: _static/eventstream/eventstream_columns.png
+.. figure:: /_static/eventstream/eventstream_columns.png
     :width: 800
 
     Fig. 3. An example of a preprocessing graph.
@@ -127,7 +127,7 @@ Preprocessing
 As it was mentioned above, we define *preprocessing* as any data preparations preceding applying a core analytical tool. The sequence of preprocessing calculations naturally constitutes a directed acyclic graph (DAG). The nodes represent some specific calculations while the edges define the order of the calculations to be run. Here's an example of such a graph on |fig_preprocessing_graph|.
 
 .. |fig_preprocessing_graph| replace:: Fig. 4
-.. figure:: _static/eventstream/preprocessing_graph.png
+.. figure:: /_static/eventstream/preprocessing_graph.png
     :width: 800
 
     Fig. 4. An example of a preprocessing graph.
@@ -150,9 +150,9 @@ All these operations might be implemented with ``LEFT OUTER JOIN`` operator. Why
 
 :red:`TODO: Make nicer images`
 
-.. |atomic_insert| image:: _static/eventstream/atomic_insert.png
-.. |atomic_delete| image:: _static/eventstream/atomic_delete.png
-.. |atomic_edit| image:: _static/eventstream/atomic_edit.png
+.. |atomic_insert| image:: /_static/eventstream/atomic_insert.png
+.. |atomic_delete| image:: /_static/eventstream/atomic_delete.png
+.. |atomic_edit| image:: /_static/eventstream/atomic_edit.png
 
 +---------+-------------------+
 | Insert  +  |atomic_insert|  +
@@ -295,7 +295,7 @@ Nodes and edges
 The nodes of preprocessing graph belong to ``EventNode`` class and could be of two types. In general, a node is a shell for its underlying data processor. This regular node accepts a single eventstream as input and defines how it should be modified. The entire structure of this node is illustrated on |fig_event_node_structure|.
 
 .. |fig_event_node_structure| replace:: Fig. 5
-.. figure:: _static/eventstream/event_node_structure.png
+.. figure:: /_static/eventstream/event_node_structure.png
     :width: 200
 
     Fig. 5. The nested structure of EventNode class.
@@ -359,11 +359,11 @@ There's another elegant way to construct a preprocessing graph. This could be do
 Retentioneering tools
 ---------------------
 
-Retentioneering tools are designed as stand-alone classes, but the instances of these classes might be embedded into ``Eventstream`` class instance. This allows either to create a separate tooling instance and treat it as a usual or to use it in chaining manner.
+Retentioneering tools are designed as stand-alone classes, but the instances of these classes might be embedded into ``Eventstream`` class instance. This allows either to create a separate tooling instance and treat it as usual or to use it in chaining manner.
 
-Here's an example how one can apply ``Clusters`` tooling class.
+Suppose we need to split paths of an eventstream into 4 clusters and compare the event distribution in cluster 0 vs cluster 1. Below are two ways how this could be achieved.
 
-Treating clustering tool as a separate method:
+Treating clustering tool as a separate instance:
 
 .. code-block:: python
 
@@ -371,7 +371,7 @@ Treating clustering tool as a separate method:
 
     clusters = Clusters(stream)
     clusters.fit(method='kmeans', feature_type='tfidf', ngram_range=(1, 1), n_clusters=4)
-    clusters.select_cluster(cluster_id=0)
+    clusters.event_dist(cluster_id1=0, cluster_id2=1)
 
 Treating clustering tool as chaining methods:
 
@@ -380,28 +380,28 @@ Treating clustering tool as chaining methods:
     stream\
         .clusters\
         .fit(method='kmeans', feature_type='tfidf', ngram_range=(1, 1), n_clusters=4)\
-        .select_cluster(cluster_id=0)
+        .event_dist(cluster_id1=0, cluster_id2=1)
 
-The table below contains a brief overview of Retentioneering tools. The comprehensive documentation can be found here: :red:`TODO: set a link`
+The table below contains a brief overview of Retentioneering tools. The comprehensive description on all the tools work can be found in these sections: :doc:`User Guide </user_guide>` and :doc:`API Reference </api/tooling_api>`.
 
 .. table:: Retentioneering tools overview
-    :widths: 5 50 40 5
+    :widths: 20 80
     :class: tight-table
 
-    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | Tooling class       | Description                                                                                                 | Common methods                                                                                  | Eventstream method    |
-    +=====================+=============================================================================================================+=================================================================================================+=======================+
-    | ``TransitionGraph`` | Plots an interactive transition graph according to Markov process underlying the eventstream.               |                                                                                                 | ``transition_graph``  |
-    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | ``StepMatrix``      | Plots a step-wise matrix showing the distribution of the events over a given step coloured with a heatmap.  | ``fit``, ``plot``, ``values``                                                                   | ``step_matrix``       |
-    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | ``Sankey``          | Visualizes user paths in step-wise manner using sankey diagram.                                             | ``fit``, ``plot``, ``values``                                                                   | ``step_sankey``       |
-    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | ``Clusters``        | Provides a set of instruments for cluster analysis of the user paths.                                       | ``fit``, ``select_cluster``, ``compare_clusters``, ``user_clusters``, ``plot``, ``projection``  | ``clusters``          |
-    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | ``Funnel``          | Plots conversion funnel consisted of given events.                                                          | ``fit``, ``plot``, ``values``                                                                   | ``funnel``            |
-    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | ``Cohorts``         | Provides a set of the instruments for cohort analysis.                                                      | ``fit``, ``heatmap``, ``lineplot``, ``values``                                                  | ``cohorts``           |
-    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
-    | ``StatTests``       | Tests statistical hypothesis                                                                                | ``fit``, ``plot``, ``values``                                                                   | ``stattests``         |
-    +---------------------+-------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------+-----------------------+
+    +--------------------------------------------------------+-------------------------------------------------------------------------------------------------------------+
+    | Tooling class                                          | Description                                                                                                 |
+    +========================================================+=============================================================================================================+
+    | :doc:`TransitionGraph</user_guides/transition_graph>`  | Plots an interactive transition graph according to Markov process underlying the eventstream.               |
+    +--------------------------------------------------------+-------------------------------------------------------------------------------------------------------------+
+    | :doc:`StepMatrix</user_guides/step_matrix>`            | Plots a step-wise matrix showing the distribution of the events over a given step coloured with a heatmap.  |
+    +--------------------------------------------------------+-------------------------------------------------------------------------------------------------------------+
+    | :doc:`StepSankey</user_guides/step_sankey>`            | Visualizes user paths in step-wise manner using sankey diagram.                                             |
+    +--------------------------------------------------------+-------------------------------------------------------------------------------------------------------------+
+    | :doc:`Clusters</user_guides/clusters>`                 | Provides a set of instruments for cluster analysis of the user paths.                                       |
+    +--------------------------------------------------------+-------------------------------------------------------------------------------------------------------------+
+    | :doc:`Funnel</user_guides/funnel>`                     | Plots conversion funnel consisted of given events.                                                          |
+    +--------------------------------------------------------+-------------------------------------------------------------------------------------------------------------+
+    | :doc:`Cohorts</user_guides/cohorts>`                   | Provides a set of the instruments for cohort analysis.                                                      |
+    +--------------------------------------------------------+-------------------------------------------------------------------------------------------------------------+
+    | :doc:`StatTests</user_guides/stattests>`               | Tests statistical hypothesis                                                                                |
+    +--------------------------------------------------------+-------------------------------------------------------------------------------------------------------------+

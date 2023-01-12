@@ -214,7 +214,7 @@ Creating an instance of the Cohorts class
 
 At the moment when an instance of a class is created, it is still
 “naive”. In order to start calculation using passed parameters, you need
-to use the ``.fit()`` method.
+to use the :py:meth:`Cohorts.fit()<src.tooling.cohorts.cohorts.Cohorts.fit>` method.
 
 .. code:: ipython3
 
@@ -230,7 +230,8 @@ to use the ``.fit()`` method.
 Methods and attributes
 ~~~~~~~~~~~~~~~~~~~~~~
 
-To visualize data as a heatmap, we can call ``.heatmap()`` method.
+To visualize data as a heatmap, we can call
+:py:meth:`Cohorts.heatmap()<src.tooling.cohorts.cohorts.Cohorts.heatmap>` method.
 
 .. code:: ipython3
 
@@ -238,7 +239,8 @@ To visualize data as a heatmap, we can call ``.heatmap()`` method.
 
 .. figure:: /_static/user_guides/cohorts/cohorts_4_basic.png
 
-To get values of the heatmap, we can call ``.values``, and then the
+To get values of the heatmap, we can use
+:py:meth:`Cohorts.values<src.tooling.cohorts.cohorts.Cohorts.values>` property, and then the
 output will be a dataframe.
 
 .. code:: ipython3
@@ -327,83 +329,6 @@ output will be a dataframe.
       </tbody>
     </table>
     </div>
-          <button class="colab-df-convert" onclick="convertToInteractive('df-838e4902-c378-4c59-91dd-3ab96c871117')"
-                  title="Convert this dataframe to an interactive table."
-                  style="display:none;">
-
-      <svg xmlns="http://www.w3.org/2000/svg" height="24px"viewBox="0 0 24 24"
-           width="24px">
-        <path d="M0 0h24v24H0V0z" fill="none"/>
-        <path d="M18.56 5.44l.94 2.06.94-2.06 2.06-.94-2.06-.94-.94-2.06-.94 2.06-2.06.94zm-11 1L8.5 8.5l.94-2.06 2.06-.94-2.06-.94L8.5 2.5l-.94 2.06-2.06.94zm10 10l.94 2.06.94-2.06 2.06-.94-2.06-.94-.94-2.06-.94 2.06-2.06.94z"/><path d="M17.41 7.96l-1.37-1.37c-.4-.4-.92-.59-1.43-.59-.52 0-1.04.2-1.43.59L10.3 9.45l-7.72 7.72c-.78.78-.78 2.05 0 2.83L4 21.41c.39.39.9.59 1.41.59.51 0 1.02-.2 1.41-.59l7.78-7.78 2.81-2.81c.8-.78.8-2.07 0-2.86zM5.41 20L4 18.59l7.72-7.72 1.47 1.35L5.41 20z"/>
-      </svg>
-          </button>
-
-      <style>
-        .colab-df-container {
-          display:flex;
-          flex-wrap:wrap;
-          gap: 12px;
-        }
-
-        .colab-df-convert {
-          background-color: #E8F0FE;
-          border: none;
-          border-radius: 50%;
-          cursor: pointer;
-          display: none;
-          fill: #1967D2;
-          height: 32px;
-          padding: 0 0 0 0;
-          width: 32px;
-        }
-
-        .colab-df-convert:hover {
-          background-color: #E2EBFA;
-          box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
-          fill: #174EA6;
-        }
-
-        [theme=dark] .colab-df-convert {
-          background-color: #3B4455;
-          fill: #D2E3FC;
-        }
-
-        [theme=dark] .colab-df-convert:hover {
-          background-color: #434B5C;
-          box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
-          filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
-          fill: #FFFFFF;
-        }
-      </style>
-
-          <script>
-            const buttonEl =
-              document.querySelector('#df-838e4902-c378-4c59-91dd-3ab96c871117 button.colab-df-convert');
-            buttonEl.style.display =
-              google.colab.kernel.accessAllowed ? 'block' : 'none';
-
-            async function convertToInteractive(key) {
-              const element = document.querySelector('#df-838e4902-c378-4c59-91dd-3ab96c871117');
-              const dataTable =
-                await google.colab.kernel.invokeFunction('convertToInteractive',
-                                                         [key], {});
-              if (!dataTable) return;
-
-              const docLinkHtml = 'Like what you see? Visit the ' +
-                '<a target="_blank" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'
-                + ' to learn more about interactive tables.';
-              element.innerHTML = '';
-              dataTable['output_type'] = 'display_data';
-              await google.colab.output.renderOutput(dataTable, element);
-              const docLink = document.createElement('div');
-              docLink.innerHTML = docLinkHtml;
-              element.appendChild(docLink);
-            }
-          </script>
-        </div>
-      </div>
-
-
 
 
 There are some NANs in the table. These gaps can mean one of two things:
@@ -590,14 +515,16 @@ ShortCut for Cohorts (as an eventstream method)
 ===============================================
 
 We can also use :doc:`Eventstream.cohorts</api/tooling/cohorts>` method which
-creates an instance of ``Cohorts`` class and applies ``.fit()`` method as well.
+creates an instance of ``Cohorts`` class and applies
+:py:meth:`Cohorts.fit()<src.tooling.cohorts.cohorts.Cohorts.fit>` method as well.
 
 In order to avoid unnessesary recalculations while you need different representations
 of one matrix with the same parameters - that would be helpful to save that fitted
 instance in separate variable.
 
-Heatmap is displayed by default, but ``.values`` and ``.lineplot()`` are also
-avaliable, now it can be done in one line:
+Heatmap is displayed by default, but :py:meth:`Cohorts.values<src.tooling.cohorts.cohorts.Cohorts.values>`
+and `:py:meth:`Cohorts.lineplot()<src.tooling.cohorts.cohorts.Cohorts.lineplot>` are also
+available, now it can be done in one line:
 
 
 .. code:: ipython3
@@ -694,82 +621,6 @@ avaliable, now it can be done in one line:
       </tbody>
     </table>
     </div>
-          <button class="colab-df-convert" onclick="convertToInteractive('df-6c169e9b-2129-495f-bba5-a6db441c37e9')"
-                  title="Convert this dataframe to an interactive table."
-                  style="display:none;">
-
-      <svg xmlns="http://www.w3.org/2000/svg" height="24px"viewBox="0 0 24 24"
-           width="24px">
-        <path d="M0 0h24v24H0V0z" fill="none"/>
-        <path d="M18.56 5.44l.94 2.06.94-2.06 2.06-.94-2.06-.94-.94-2.06-.94 2.06-2.06.94zm-11 1L8.5 8.5l.94-2.06 2.06-.94-2.06-.94L8.5 2.5l-.94 2.06-2.06.94zm10 10l.94 2.06.94-2.06 2.06-.94-2.06-.94-.94-2.06-.94 2.06-2.06.94z"/><path d="M17.41 7.96l-1.37-1.37c-.4-.4-.92-.59-1.43-.59-.52 0-1.04.2-1.43.59L10.3 9.45l-7.72 7.72c-.78.78-.78 2.05 0 2.83L4 21.41c.39.39.9.59 1.41.59.51 0 1.02-.2 1.41-.59l7.78-7.78 2.81-2.81c.8-.78.8-2.07 0-2.86zM5.41 20L4 18.59l7.72-7.72 1.47 1.35L5.41 20z"/>
-      </svg>
-          </button>
-
-      <style>
-        .colab-df-container {
-          display:flex;
-          flex-wrap:wrap;
-          gap: 12px;
-        }
-
-        .colab-df-convert {
-          background-color: #E8F0FE;
-          border: none;
-          border-radius: 50%;
-          cursor: pointer;
-          display: none;
-          fill: #1967D2;
-          height: 32px;
-          padding: 0 0 0 0;
-          width: 32px;
-        }
-
-        .colab-df-convert:hover {
-          background-color: #E2EBFA;
-          box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
-          fill: #174EA6;
-        }
-
-        [theme=dark] .colab-df-convert {
-          background-color: #3B4455;
-          fill: #D2E3FC;
-        }
-
-        [theme=dark] .colab-df-convert:hover {
-          background-color: #434B5C;
-          box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
-          filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
-          fill: #FFFFFF;
-        }
-      </style>
-
-          <script>
-            const buttonEl =
-              document.querySelector('#df-6c169e9b-2129-495f-bba5-a6db441c37e9 button.colab-df-convert');
-            buttonEl.style.display =
-              google.colab.kernel.accessAllowed ? 'block' : 'none';
-
-            async function convertToInteractive(key) {
-              const element = document.querySelector('#df-6c169e9b-2129-495f-bba5-a6db441c37e9');
-              const dataTable =
-                await google.colab.kernel.invokeFunction('convertToInteractive',
-                                                         [key], {});
-              if (!dataTable) return;
-
-              const docLinkHtml = 'Like what you see? Visit the ' +
-                '<a target="_blank" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'
-                + ' to learn more about interactive tables.';
-              element.innerHTML = '';
-              dataTable['output_type'] = 'display_data';
-              await google.colab.output.renderOutput(dataTable, element);
-              const docLink = document.createElement('div');
-              docLink.innerHTML = docLinkHtml;
-              element.appendChild(docLink);
-            }
-          </script>
-        </div>
-      </div>
-
 
 
 .. code:: ipython3
@@ -868,78 +719,3 @@ avaliable, now it can be done in one line:
       </tbody>
     </table>
     </div>
-          <button class="colab-df-convert" onclick="convertToInteractive('df-6a676b30-ade0-48a2-8003-832682c9b82f')"
-                  title="Convert this dataframe to an interactive table."
-                  style="display:none;">
-
-      <svg xmlns="http://www.w3.org/2000/svg" height="24px"viewBox="0 0 24 24"
-           width="24px">
-        <path d="M0 0h24v24H0V0z" fill="none"/>
-        <path d="M18.56 5.44l.94 2.06.94-2.06 2.06-.94-2.06-.94-.94-2.06-.94 2.06-2.06.94zm-11 1L8.5 8.5l.94-2.06 2.06-.94-2.06-.94L8.5 2.5l-.94 2.06-2.06.94zm10 10l.94 2.06.94-2.06 2.06-.94-2.06-.94-.94-2.06-.94 2.06-2.06.94z"/><path d="M17.41 7.96l-1.37-1.37c-.4-.4-.92-.59-1.43-.59-.52 0-1.04.2-1.43.59L10.3 9.45l-7.72 7.72c-.78.78-.78 2.05 0 2.83L4 21.41c.39.39.9.59 1.41.59.51 0 1.02-.2 1.41-.59l7.78-7.78 2.81-2.81c.8-.78.8-2.07 0-2.86zM5.41 20L4 18.59l7.72-7.72 1.47 1.35L5.41 20z"/>
-      </svg>
-          </button>
-
-      <style>
-        .colab-df-container {
-          display:flex;
-          flex-wrap:wrap;
-          gap: 12px;
-        }
-
-        .colab-df-convert {
-          background-color: #E8F0FE;
-          border: none;
-          border-radius: 50%;
-          cursor: pointer;
-          display: none;
-          fill: #1967D2;
-          height: 32px;
-          padding: 0 0 0 0;
-          width: 32px;
-        }
-
-        .colab-df-convert:hover {
-          background-color: #E2EBFA;
-          box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
-          fill: #174EA6;
-        }
-
-        [theme=dark] .colab-df-convert {
-          background-color: #3B4455;
-          fill: #D2E3FC;
-        }
-
-        [theme=dark] .colab-df-convert:hover {
-          background-color: #434B5C;
-          box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
-          filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
-          fill: #FFFFFF;
-        }
-      </style>
-
-          <script>
-            const buttonEl =
-              document.querySelector('#df-6a676b30-ade0-48a2-8003-832682c9b82f button.colab-df-convert');
-            buttonEl.style.display =
-              google.colab.kernel.accessAllowed ? 'block' : 'none';
-
-            async function convertToInteractive(key) {
-              const element = document.querySelector('#df-6a676b30-ade0-48a2-8003-832682c9b82f');
-              const dataTable =
-                await google.colab.kernel.invokeFunction('convertToInteractive',
-                                                         [key], {});
-              if (!dataTable) return;
-
-              const docLinkHtml = 'Like what you see? Visit the ' +
-                '<a target="_blank" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'
-                + ' to learn more about interactive tables.';
-              element.innerHTML = '';
-              dataTable['output_type'] = 'display_data';
-              await google.colab.output.renderOutput(dataTable, element);
-              const docLink = document.createElement('div');
-              docLink.innerHTML = docLinkHtml;
-              element.appendChild(docLink);
-            }
-          </script>
-        </div>
-      </div>

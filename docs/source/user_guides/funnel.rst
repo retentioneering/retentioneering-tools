@@ -1,3 +1,12 @@
+.. raw:: html
+
+    <style>
+        .red {color:#24ff83; font-weight:bold;}
+    </style>
+
+.. role:: red
+
+
 Funnel
 ======
 
@@ -7,39 +16,36 @@ This notebook can be open directly in
 Basic example
 -------------
 
-Conversion funnel is the basic first step in almost all product
-analytics workflow. To learn how to plot basic funnels in
-Retentioneering framework let’s work through a basic example.
+Building a conversion funnel is the basic first step in almost all
+product analytics workflows. To learn how to plot basic funnels in
+the Retentioneering framework, let us work through a basic example.
 
-In order to start, we need to:
 
-- import required libraries
-- load sample dataset
-- create ``eventstream`` object @TODO: Link to explanation of eventstream. dpanina.
+Loading data
+~~~~~~~~~~~~
 
-.. code-block:: python
+Here we use ``simple_shop`` dataset, which has already converted to ``Eventstream``.
+If you want to know more about ``Eventstream`` and how to use it, please study
+:doc:`this guide<eventstream>`
 
-    # import retentioneering
-    from src.eventstream import Eventstream
-    # @TODO: check imports in final version. dpanina
+.. code:: ipython3
 
-    # load sample user behavior data as a pandas dataframe:
-    raw_data = pd.read_csv('retentioneering-tools-new-arch/src/datasets/data/simple-onlineshop.csv')  # @TODO: либо использовать датафрейм, либо прописать загрузку эвентстрима. j.ostanina
+    import retentioneering as rete
+    from rete import datasets
 
-    # create source eventstream
-    source = Eventstream(raw_data)
-
+    # load eventstream
+    source = datasets.load_simple_shop()
 
 Creating an instance of the Funnel class
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-At the moment when an instance of a class is created, it is still
-``naive``. To pass it the parameters specified in brackets, you need to
-use the ``.fit()`` method.
+When created, the class instance is ``naive``.
+In order to start calculation using passed parameters, you need
+to use the :py:meth:`Funnel.fit()<src.tooling.funnel.funnel.Funnel.fit>` method.
 
 .. code-block:: python
 
-    from src.tooling.funnel import Funnel
+    from rete.tooling.funnel import Funnel
 
     funnel = Funnel(
         eventstream=source,
@@ -53,7 +59,7 @@ use the ``.fit()`` method.
             <iframe
                 width="700"
                 height="400"
-                src="../_static/funnel/funnel_0_basic.html"
+                src="../_static/user_guides/funnel/funnel_0_basic.html"
                 frameborder="0"
                 align="left"
                 allowfullscreen
@@ -65,13 +71,14 @@ Customization
 Stages
 ~~~~~~
 
-Stages is required parameter for funnel() method, and it is a list of
-event names you are interested to observe in the funnel. For each
-specified stage we calculate and show:
+``Stages`` is required parameter. It should contain a list of event names
+you would like to observe in the funnel.
+
+For each specified stage event, the following will be calculated:
 
 - absolute unique number of user_id’s who reach this stage at least once.
-- percentage from the first stage (“% of initial”)
-- percentage from the previous stage (“% of previous”)
+- conversion from the first stage (`% of initial`)
+- conversion from the previous stage (`% of previous`)
 
 The order of stages on the funnel plot corresponds to the order in which
 events are passed in ``stages`` parameter.
@@ -79,12 +86,12 @@ events are passed in ``stages`` parameter.
 Stage grouping
 ~~~~~~~~~~~~~~
 
-Sometimes during funnel analysis several events can have similar
-importance, and it doesn’t matter which particular event was reached. In
-this case, we would like to group multiple events as one stage, and they
-can be passed as sub-list in ``stage`` parameter.
+In many practical cases, we would like to be able to group multiple
+events as one stage - for example, if it doesn’t matter which particular
+event was reached. We can access this function by passing lists of
+events (along with single events) in the ``stage`` parameter.
 
-Let’s plot a funnel where we group ``product1`` and ``product2``:
+Let us plot a funnel with `product1` and `product2` grouped that way:
 
 .. code-block:: python
 
@@ -100,28 +107,32 @@ Let’s plot a funnel where we group ``product1`` and ``product2``:
             <iframe
                 width="700"
                 height="400"
-                src="../_static/funnel/funnel_1_stages.html"
+                src="../_static/user_guides/funnel/funnel_1_stages.html"
                 frameborder="0"
                 align="left"
                 allowfullscreen
             ></iframe>
 
-You can now see new ``product1 | product2`` stage on the funnel with
-2010 unique users who reached any product page
-(``product1 or product2``). NOTE: If one user has both events in his
-path he will be counted as one unique user.
+As you can see, the new ``product1 | product2`` stage is created for
+the funnel. It corresponds to having 2010 unique users who reached
+some product page(``product1 or product2``).
+
+NOTE: If a user path has both of the events, the user still counts as one.
 
 Stage names
 ~~~~~~~~~~~
 
-If you need to group long list of events, you have two ways:
+Grouping big sets of events with the previous method could be less
+practical, as the displayed name of the event group will be hard to
+interpret. You could avoid this problem by doing one of the following:
 
-#. return to preprocessing and use grouping data processor (See @TODO: Link to
-   preprocessing. dpanina)
-#. give a new name to your group just to see the plot, without changing your ``eventstream``
+#. use grouping data processor for grouping relevant events.
+   See :doc:`GroupEvents</api/data_processors/group>`)
+#. use the ``stage_names`` funnel parameter
 
-Let’s turn to the second method. We can use ``stage_names`` parameter.
-This list should be the same length as ``stages``.
+In the following example, let us use the second method. We define
+``stage_names`` as a list of funnel stage names (the length of which
+has to be equal to the number of stages):
 
 .. code-block:: python
 
@@ -139,7 +150,7 @@ This list should be the same length as ``stages``.
             <iframe
                 width="700"
                 height="400"
-                src="../_static/funnel/funnel_2_stage_names.html"
+                src="../_static/user_guides/funnel/funnel_2_stage_names.html"
                 frameborder="0"
                 align="left"
                 allowfullscreen
@@ -148,31 +159,31 @@ This list should be the same length as ``stages``.
 Funnel type and sequence parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Parameter ``funnel_type`` has two possible options:
+Parameter ``funnel_type`` could take one of the two values:
 
-#. ``open`` - it’s default value and we use it when only the user presence on the
-   stage is significant. And we don’t care about the order of the stages in
-   user’s path and also about if user was only on first or on all previous
-   stages.
-#. ``closed`` - in return can be of two types:
+#. ``open`` (default) - used if the metric of interest is user presence
+   on a given stage. The funnel will disregard the user presence on previous
+   stages. This means that, for each stage, all stage visits will be
+   counted - regardless of whether the previous stages were passed.
+#. ``closed`` - for each stage, only users who passed the first stage
+   will be counted. The ``sequence`` parameter further specifies the behaviour:
 
-    - If it is important to see only users who were on the first stage and analyse the
-      funnel stages only after passing it. In the other words, user path
-      before the first stage of the funnel dropped and then funnel is built
-      according to the rules of the ``open`` funnel. Parameter
-      ``sequence=False`` should be used in that case.
-    - If it is important to look at the users who move to each next stage
-      only if earlier they were on all previous ones. Parameter ``sequence=True``
-      should be used in that case.
+    - If ``sequence`` is set to ``False``, all users who visited the first stage
+      before will be counted
+    - If ``sequence`` is set to ``True``, only users who visited all previous
+      stages before will be counted
 
-In order to feel the difference - see very simple example (@TODO: Link
-to API reference funnel. dpanina)
+This example illustrates the behaviour differences
+
+:red:`TODO: Link to API reference funnel. dpanina`
+
 
 Let’s build ``closed`` funnel with ``sequence=False``.
 
-With comparison to ``open`` funnel we can see that some users come to
-``cart`` not from ``catalog`` or ``product`` stages. And real conversion
-from these stages is lower than we saw in ``open`` funnel.
+In comparison to ``open`` funnel we can see that some users come to
+``cart`` without passing ``catalog`` or ``product`` beforehand.
+The real forward conversion for these stages is lower than
+we see in the ``open`` funnel.
 
 .. code-block:: python
 
@@ -191,19 +202,19 @@ from these stages is lower than we saw in ``open`` funnel.
             <iframe
                 width="700"
                 height="400"
-                src="../_static/funnel/funnel_3_closed.html"
+                src="../_static/user_guides/funnel/funnel_3_closed.html"
                 frameborder="0"
                 align="left"
                 allowfullscreen
             ></iframe>
 
-And let’s take a look at the most strict funnel ``funnel_type=closed``
-and ``sequence=True`` Here the conversion to the ``cart`` even lower
-than in ``funnel_type=closed`` and ``sequence=False``. That’s mean that
-some users who visit ``catalog`` go strait to the cart and it can be
-basicly another type of users (for example who was on this web-site
-before and left some products in the cart earlier or there is another
-way to reach ``cart`` stage)
+Now we take a look at a funnel with ``funnel_type=closed``
+and ``sequence=True``. The conversion to the ``cart`` stage is even lower
+than it is for ``funnel_type=closed`` and ``sequence=False``.
+It means that some users visiting ``catalog`` go strait to the cart stage,
+which we could interpret as being a specific class of users (for instance,
+those who were on the web-site before, and left some products in the cart
+earlier or there is another way to reach ``cart`` stage)
 
 .. code-block:: python
 
@@ -223,7 +234,7 @@ way to reach ``cart`` stage)
             <iframe
                 width="700"
                 height="400"
-                src="../_static/funnel/funnel_4_sequence.html"
+                src="../_static/user_guides/funnel/funnel_4_sequence.html"
                 frameborder="0"
                 align="left"
                 allowfullscreen
@@ -232,18 +243,21 @@ way to reach ``cart`` stage)
 User segments
 ~~~~~~~~~~~~~
 
-Sometimes it is useful to compare funnels stage-by-stage of several user
-segments. For example, to have a quick comparison of funnels of users:
+It can be useful to make separate funnels for different user groups,
+and compare them stage-by-stage.
 
-- from different channels
-- from test and control groups in A/B test
-- to compare multiple behavioral segments and etc.
+Groups of users could be represented by:
 
-This can be done by passing list of collections of user id’s via groups
-parameter. To illustrate this functionality let’s plot funnels for two
-groups: users who converted to ``payment_done`` and users who did not.
-First, we need to obtain two collections of ``user_ids`` and then pass
-it to groups parameters for ``eventstream.funnel()`` method:
+- users from different channels
+- users from test and control groups in A/B test
+- users from different behavioral segments
+
+To achieve the desired effect, we can pass lists of user ids
+to the ``groups`` parameter. Let us plot funnels for two user
+groups:
+
+- users who had reached the ``payment_done`` stage
+- users who had not:
 
 .. code-block:: python
 
@@ -266,21 +280,20 @@ it to groups parameters for ``eventstream.funnel()`` method:
             <iframe
                 width="700"
                 height="400"
-                src="../_static/funnel/funnel_5_segments_open.html"
+                src="../_static/user_guides/funnel/funnel_5_segments_open.html"
                 frameborder="0"
                 align="left"
                 allowfullscreen
             ></iframe>
 
-We can immediately see at the high level how two groups compare between
-each other at particular stages. As expected ``not_converted`` users are
-majority, and we can see that most of ``not_converted`` users lost after
-visiting cart. Interestly, for converted users we can see that some
-users add product to cart directly from the catalog, without visiting
-product page (for converted users more unique users visited cart page
-than product page).
+We see how the two groups compare to each other at particular stages.
+As expected, the ``not_converted`` users are the majority, and we can
+see that most of them are "lost" after visiting ``cart``. Interestingly,
+we can see that some users add product to cart directly from the catalog,
+without visiting a product page(which is represented by the fact that
+more users have visited ``cart`` than ``product``).
 
-Now let’s have a look at the ``closed`` funnel:
+Now, let us have a look at the ``closed`` funnel:
 
 .. code-block:: python
 
@@ -301,26 +314,25 @@ Now let’s have a look at the ``closed`` funnel:
             <iframe
                 width="700"
                 height="400"
-                src="../_static/funnel/funnel_6_segments_closed.html"
+                src="../_static/user_guides/funnel/funnel_6_segments_closed.html"
                 frameborder="0"
                 align="left"
                 allowfullscreen
             ></iframe>
 
-It is interesting to notice that our hypothesis about the fact that
-users add product to cart directly from the catalog is incorrect, and
-those users appear in the ``cart`` from the others stages, not from
-``catalog``.
+Now we see - our assumption that some users add product to cart
+directly from the catalog is incorrect. In fact, those users appear
+in ``cart`` passing from the others stages, not from ``catalog``.
 
 Clustering
 ^^^^^^^^^^
 
-Let’s consider another example when we compare funnels between multiple
-users groups segmented according to their behavior - clustering.
+Consider another example - we compare funnels for multiple users groups,
+segmented according to clusterization results:
 
 .. code-block:: python
 
-    from src.tooling.clusters import Clusters
+    from rete.tooling.clusters import Clusters
 
     clusters = Clusters(eventstream=source)
     clusters.fit(method='kmeans',
@@ -328,10 +340,13 @@ users groups segmented according to their behavior - clustering.
                  feature_type='tfidf',
                  ngram_range=(1,1));
 
-With the clustering procedure above we grouped users together in a
-groups with similar behavior. The dictionary containing lists of user
-ids for each cluster was assigned to ``rete.cluster_mapping`` attribute.
-Now, let’s plot funnels which compares several obtained clusters:
+
+With this clustering procedure, we grouped users based
+on their behavioural patterns. The dictionary containing cluster
+user lists is assigned to the
+:py:meth:`Clusters.cluster_mapping<src.tooling.clusters.clusters.Clusters.cluster_mapping>` attribute.
+
+Let us plot the cluster funnels to compare cluster conversions:
 
 .. code-block:: python
 
@@ -353,20 +368,28 @@ Now, let’s plot funnels which compares several obtained clusters:
             <iframe
                 width="700"
                 height="400"
-                src="../_static/funnel/funnel_7_clusters.html"
+                src="../_static/user_guides/funnel/funnel_7_clusters.html"
                 frameborder="0"
                 align="left"
                 allowfullscreen
             ></iframe>
 
-To understand deeper what are the common behavioral patterns for each
-graph we can plot graphs or step matrix. (@TODO: Link to graphs and step
-matrix. dpanina)
+We could further expand our user behaviour analysis by plotting
+:doc:`transition graphs<transition_graph>` or :doc:`step matrices<step_matrix>`.
 
 ShortCut for Funnel (as an eventstream method)
 ----------------------------------------------
 
-By default, the ``.plot()`` method is called.
+We can also use :doc:`Eventstream.funnel</api/tooling/funnel>` method which
+creates an instance of ``Funnel`` class and applies
+:py:meth:`Funnel.fit()<src.tooling.funnel.funnel.Funnel.fit>` method as well.
+
+In order to avoid unnessesary recalculations while you need different representations
+of one matrix with the same parameters - that would be helpful to save that fitted
+instance in separate variable.
+
+``Funnel.plot()`` is displayed by default, but :py:meth:`Funnel.values<src.tooling.funnel.funnel.Funnel.values>`
+ is also available.
 
 .. code-block:: python
 
@@ -378,7 +401,7 @@ By default, the ``.plot()`` method is called.
             <iframe
                 width="700"
                 height="400"
-                src="../_static/funnel/funnel_8_eventstream.html"
+                src="../_static/user_guides/funnel/funnel_8_eventstream.html"
                 frameborder="0"
                 align="left"
                 allowfullscreen
@@ -390,21 +413,7 @@ By default, the ``.plot()`` method is called.
 
 .. raw:: html
 
-    <div>
-    <style scoped>
-        .dataframe tbody tr th:only-of-type {
-            vertical-align: middle;
-        }
-
-        .dataframe tbody tr th {
-            vertical-align: top;
-        }
-
-        .dataframe thead th {
-            text-align: right;
-        }
-    </style>
-    <table border="1" class="dataframe">
+    <div><table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>
@@ -451,21 +460,7 @@ By default, the ``.plot()`` method is called.
 
 .. raw:: html
 
-    <div>
-    <style scoped>
-        .dataframe tbody tr th:only-of-type {
-            vertical-align: middle;
-        }
-
-        .dataframe tbody tr th {
-            vertical-align: top;
-        }
-
-        .dataframe thead th {
-            text-align: right;
-        }
-    </style>
-    <table border="1" class="dataframe">
+    <div><table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>

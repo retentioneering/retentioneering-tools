@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "retentioneering"
-version = "0.1.14"
+version = "0.1.15"
 description = "universal framework for data processing"
 authors = ["Retentioneering User Trajectory Analysis Lab <you@example.com>"]
 packages = [

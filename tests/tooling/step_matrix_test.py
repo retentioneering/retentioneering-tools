@@ -1,4 +1,4 @@
-from src.tooling.step_matrix import StepMatrix
+from retentioneering.tooling.step_matrix import StepMatrix
 from tests.tooling.fixtures.step_matrix_corr import (
     accumulated_both_targets_plot_cor,
     accumulated_only_targets_plot_cor,

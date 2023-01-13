@@ -5,14 +5,20 @@ from typing import List, Literal, Union
 
 import pandas as pd
 
-from src.data_processor.data_processor import DataProcessor
-from src.data_processors_lib.filter_events import FilterEvents, FilterEventsParams
-from src.data_processors_lib.group_events import GroupEvents, GroupEventsParams
-from src.eventstream.eventstream import Eventstream, EventstreamSchema
-from src.eventstream.schema import RawDataSchema
-from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode
-from src.graph.p_graph import PGraph
-from src.params_model import ParamsModel
+from retentioneering.data_processor.data_processor import DataProcessor
+from retentioneering.data_processors_lib.filter_events import (
+    FilterEvents,
+    FilterEventsParams,
+)
+from retentioneering.data_processors_lib.group_events import (
+    GroupEvents,
+    GroupEventsParams,
+)
+from retentioneering.eventstream.eventstream import Eventstream, EventstreamSchema
+from retentioneering.eventstream.schema import RawDataSchema
+from retentioneering.graph.nodes import EventsNode, MergeNode, Node, SourceNode
+from retentioneering.graph.p_graph import PGraph
+from retentioneering.params_model import ParamsModel
 
 
 class StubPProcessorParams(ParamsModel):

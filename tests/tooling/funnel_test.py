@@ -5,8 +5,8 @@ import pytest
 from pandas.core.common import flatten
 from pydantic import ValidationError
 
-from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-from src.tooling.funnel import Funnel
+from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
+from retentioneering.tooling.funnel import Funnel
 
 
 class TestFunnel:

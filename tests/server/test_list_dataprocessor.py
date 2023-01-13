@@ -1,6 +1,6 @@
 import json
 
-from src.backend.callback import list_dataprocessor
+from retentioneering.backend.callback import list_dataprocessor
 
 
 class TestListDataprocessors:

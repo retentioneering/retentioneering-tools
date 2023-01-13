@@ -1,10 +1,10 @@
 import pandas as pd
 
-from src.data_processor.data_processor import DataProcessor
-from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
-from src.graph.p_graph import EventsNode, PGraph
-from src.params_model.params_model import ParamsModel
+from retentioneering.data_processor.data_processor import DataProcessor
+from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
+from retentioneering.graph.p_graph import EventsNode, PGraph
+from retentioneering.params_model.params_model import ParamsModel
 
 _default_raw_data_schema = RawDataSchema(
     user_id="user_id",

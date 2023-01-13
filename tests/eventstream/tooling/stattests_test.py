@@ -2,8 +2,8 @@ import math
 
 import pandas as pd
 
-from src.eventstream import Eventstream
-from src.tooling.stattests import StatTests
+from retentioneering.eventstream import Eventstream
+from retentioneering.tooling.stattests import StatTests
 from tests.eventstream.fixtures.eventstream import test_stattests_stream_1
 
 

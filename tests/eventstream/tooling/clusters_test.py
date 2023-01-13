@@ -11,7 +11,7 @@ from tests.eventstream.tooling.fixtures.clusters_corr import (
 )
 
 
-class TestEventstreamStepMatrix:
+class TestEventstreamClusters:
     def test_clusters_eventstream__simple_features(self, test_stream, count_corr):
         correct_features = count_corr
         features = test_stream.clusters.extract_features(feature_type="count", ngram_range=(1, 1))
@@ -44,6 +44,7 @@ class TestEventstreamStepMatrix:
         c = test_stream.clusters
         c.fit(method="gmm", n_clusters=2, feature_type="tfidf", ngram_range=(1, 1))
         hash1 = hash(c)
+        c.params
         hash2 = hash(c)
 
         assert hash1 == hash2

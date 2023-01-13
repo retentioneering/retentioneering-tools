@@ -54,6 +54,7 @@ class TestEventstreamFunnel:
 
         cc = test_stream.funnel(**params, show_plot=False)
         hash1 = hash(cc)
+        cc.params
         hash2 = hash(cc)
 
         assert hash1 == hash2

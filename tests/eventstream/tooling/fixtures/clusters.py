@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
+from src.eventstream import Eventstream
 
 
 @pytest.fixture

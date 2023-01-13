@@ -5,7 +5,7 @@ from typing import List, Literal, Union
 
 import pandas as pd
 
-from retentioneering.data_processor.data_processor import DataProcessor
+from retentioneering.data_processor import DataProcessor
 from retentioneering.data_processors_lib.filter_events import (
     FilterEvents,
     FilterEventsParams,

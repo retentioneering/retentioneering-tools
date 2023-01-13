@@ -4,7 +4,7 @@ from typing import Any, Callable, List
 
 import pandas as pd
 
-from retentioneering.data_processor.data_processor import DataProcessor
+from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.params_model import ParamsModel

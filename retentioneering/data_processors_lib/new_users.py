@@ -4,7 +4,7 @@ from typing import List, Literal, Union
 
 from pandas import DataFrame
 
-from retentioneering.data_processor.data_processor import DataProcessor
+from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.params_model import ParamsModel
 from retentioneering.widget.widgets import ListOfIntNewUsers

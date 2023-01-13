@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Optional, Type, Union
 
-from retentioneering.data_processor.data_processor import DataProcessor
+from retentioneering.data_processor import DataProcessor
 from retentioneering.data_processor.registry import dataprocessor_registry
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.params_model.registry import params_model_registry

@@ -1,14 +1,14 @@
 from . import (
-    data_processor,
-    data_processors_lib,
     datasets,
     eventstream,
     graph,
     params_model,
     preprocessor,
     tooling,
-    transition_graph,
     widget,
+    transition_graph,
+    data_processor,
+    data_processors_lib,
 )
 
 __all__ = (

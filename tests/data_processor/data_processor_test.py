@@ -4,7 +4,7 @@ from typing import List, Literal, Union
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from retentioneering.data_processor.data_processor import DataProcessor
+from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.params_model import ParamsModel
 

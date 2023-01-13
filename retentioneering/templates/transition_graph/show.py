@@ -1,6 +1,6 @@
 from typing import Any
 
-from jinja2 import Environment, FileSystemLoader, Template
+from jinja2 import Environment, FileSystemLoader, PackageLoader, Template
 
 from .init_template import init_code
 
@@ -15,14 +15,14 @@ class TransitionGraphRenderer:
 
         if any("retentioneering-tools-new-arch/examples" in x for x in sys.path):
             self.__environment = Environment(
-                loader=FileSystemLoader("../retentioneering/templates/transition_graph"),
+                loader=PackageLoader(package_name="retentioneering", package_path="templates/transition_graph"),
                 autoescape=False,
                 trim_blocks=True,
                 lstrip_blocks=True,
             )
         else:
             self.__environment = Environment(
-                loader=FileSystemLoader("retentioneering/templates/transition_graph"),
+                loader=PackageLoader(package_name="retentioneering", package_path="templates/transition_graph"),
                 autoescape=False,
                 trim_blocks=True,
                 lstrip_blocks=True,

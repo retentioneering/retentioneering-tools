@@ -1,6 +1,6 @@
 import pandas as pd
 
-from retentioneering.data_processor.data_processor import DataProcessor
+from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
 from retentioneering.graph.p_graph import EventsNode, PGraph
 from retentioneering.params_model import ParamsModel

@@ -4,8 +4,9 @@ from typing import List
 
 from pydantic.dataclasses import dataclass
 
-from retentioneering.data_processor.data_processor import DataProcessor, ParamsModel
+from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamType
+from retentioneering.params_model import ParamsModel
 
 
 @dataclass

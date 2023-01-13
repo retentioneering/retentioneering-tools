@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 import numpy as np
 
 from retentioneering.constants import DATETIME_UNITS
-from retentioneering.data_processor.data_processor import DataProcessor
+from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.params_model import ParamsModel
 from retentioneering.widget.widgets import ReteTimeWidget

@@ -10,23 +10,12 @@ class TransitionGraphRenderer:
     __environment: Environment
 
     def __init__(self) -> None:
-        # little workaround for notebooks. @TODO: think how to avoid that. Vladimir Makhanov
-        import sys
-
-        if any("retentioneering-tools-new-arch/examples" in x for x in sys.path):
-            self.__environment = Environment(
-                loader=PackageLoader(package_name="retentioneering", package_path="templates/transition_graph"),
-                autoescape=False,
-                trim_blocks=True,
-                lstrip_blocks=True,
-            )
-        else:
-            self.__environment = Environment(
-                loader=PackageLoader(package_name="retentioneering", package_path="templates/transition_graph"),
-                autoescape=False,
-                trim_blocks=True,
-                lstrip_blocks=True,
-            )
+        self.__environment = Environment(
+            loader=PackageLoader(package_name="retentioneering", package_path="templates/transition_graph"),
+            autoescape=False,
+            trim_blocks=True,
+            lstrip_blocks=True,
+        )
 
         self.__body_template = self.__environment.get_template("body.html")
         self.__full = self.__environment.get_template("full.html")

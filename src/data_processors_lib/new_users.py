@@ -59,12 +59,11 @@ class NewUsersEvents(DataProcessor):
 
         events: DataFrame = eventstream.to_dataframe(copy=True)
         user_col = eventstream.schema.user_id
-        time_col = eventstream.schema.event_timestamp
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
         new_users_list = self.params.new_users_list
 
-        matched_events = events.groupby(user_col, as_index=False)[time_col].min()
+        matched_events = events.groupby(user_col, as_index=False).first()
 
         if new_users_list == "all":
             matched_events[type_col] = "new_user"

@@ -14,8 +14,9 @@ def max_steps_cor():
             [0.0, 0.333, 0.5, 0.167, 0.0],
             [0.0, 0.0, 0.0, 0.167, 0.167],
             [0.0, 0.0, 0.0, 0.167, 0.0],
+            [0.0, 0.0, 0.167, 0.333, 0.667],
         ],
-        index=["event1", "event2", "event3", "event5"],
+        index=["event1", "event2", "event3", "event5", "ENDED"],
         columns=[1, 2, 3, 4, 5],
     )
     return correct_result
@@ -43,9 +44,10 @@ def thresh_cor():
         [
             [1.0, 0.667, 0.333, 0.167, 0.167, 0.167],
             [0.0, 0.333, 0.5, 0.167, 0.0, 0.0],
+            [0.0, 0.0, 0.167, 0.333, 0.667, 0.667],
             [0.0, 0.0, 0.0, 0.333, 0.167, 0.167],
         ],
-        index=["event1", "event2", "THRESHOLDED_2"],
+        index=["event1", "event2", "ENDED", "THRESHOLDED_2"],
         columns=[1, 2, 3, 4, 5, 6],
     )
     return correct_result
@@ -56,9 +58,10 @@ def thresh_1_cor():
     correct_result = pd.DataFrame(
         [
             [1.0, 0.667, 0.333, 0.167, 0.167, 0.167],
+            [0.0, 0.0, 0.167, 0.333, 0.667, 0.667],
             [0.0, 0.333, 0.5, 0.5, 0.167, 0.167],
         ],
-        index=["event1", "THRESHOLDED_3"],
+        index=["event1", "ENDED", "THRESHOLDED_3"],
         columns=[1, 2, 3, 4, 5, 6],
     )
     return correct_result
@@ -124,8 +127,9 @@ def centered_cor():
             [0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0],
             [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.5, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 1.0, 1.0],
         ],
-        index=(["event2", "event1", "event3", "event4", "event5"]),
+        index=(["event2", "event1", "event3", "event4", "event5", "ENDED"]),
         columns=["-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5"],
     )
     return correct_result
@@ -136,9 +140,10 @@ def centered_target_thresh_cor():
     correct_result = pd.DataFrame(
         [
             [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.5, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 1.0, 1.0],
             [0.5, 1.0, 1.0, 1.0, 0.0, 1.0, 0.5, 0.5, 0.0, 0.0],
         ],
-        index=(["event5", "THRESHOLDED_4"]),
+        index=(["event5", "ENDED", "THRESHOLDED_4"]),
         columns=["-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5"],
     )
     return correct_result
@@ -170,8 +175,9 @@ def events_sorting_cor():
             [0.0, 0.0, 0.0, 0.167, 0.167, 0.167],  # event3
             [0.0, 0.333, 0.50, 0.167, 0.0, 0.0],  # event2
             [1.0, 0.667, 0.333, 0.167, 0.167, 0.167],  # event1
+            [0.0, 0.0, 0.167, 0.333, 0.667, 0.667],  # ENDED
         ],
-        index=(["event5", "event3", "event2", "event1"]),
+        index=(["event5", "event3", "event2", "event1", "ENDED"]),
         columns=[1, 2, 3, 4, 5, 6],
     )
     return correct_result
@@ -186,8 +192,9 @@ def differential_cor():
             [0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
             [0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0],
             [0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+            [0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, -1.0, -1.0, -1.0],
         ],
-        index=(["event1", "event2", "event3", "event4", "event5"]),
+        index=(["event1", "event2", "event3", "event4", "event5", "ENDED"]),
         columns=["-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4"],
     )
     return correct_result
@@ -210,7 +217,7 @@ def path_end_cor():
             [0, 0.0, 0.0, 0.167, 0.0],
             [0, 0.0, 0.167, 0.333, 0.667],
         ],
-        index=(["event1", "event2", "event3", "event5", "event4", "path_end"]),
+        index=(["event1", "event2", "event3", "event5", "event4", "ENDED"]),
         columns=[1, 2, 3, 4, 5],
     )
     return correct_result

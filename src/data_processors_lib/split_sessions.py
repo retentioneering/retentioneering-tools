@@ -125,8 +125,8 @@ class SplitSessions(DataProcessor):
         df[session_col] = df.groupby(user_col)["is_session_start"].transform(np.cumsum)
         df[session_col] = df[user_col].astype(str) + "_" + df[session_col].astype(str)
 
-        session_starts = df[session_starts_mask][[user_col, time_col, session_col]]
-        session_ends = df[session_ends_mask][[user_col, time_col, session_col]]
+        session_starts = df[session_starts_mask].copy()
+        session_ends = df[session_ends_mask].copy()
 
         session_starts[event_col] = "session_start"
         session_starts[type_col] = "session_start"

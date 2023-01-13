@@ -466,7 +466,7 @@ class TestPGraphExportImport:
                         "name": "NegativeTarget",
                         "values": {
                             "negative_target_events": ["event3", "event2"],
-                            "negative_function": "def _default_func_negative(eventstream: EventstreamType, "
+                            "func": "def _default_func(eventstream: EventstreamType, "
                             "negative_target_events: List[str]) -> pd.DataFrame:\n"
                             '    """\n'
                             "    Filters rows with target events from the input eventstream.\n"
@@ -495,7 +495,7 @@ class TestPGraphExportImport:
                             "    negative_events_index = (\n"
                             "        df[df[event_col].isin(negative_target_events)]."
                             "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
-                            "    return df.iloc[negative_events_index]  # type: ignore\n",
+                            "    return df.loc[negative_events_index]  # type: ignore\n",
                         },
                     },
                 },
@@ -516,7 +516,7 @@ class TestPGraphExportImport:
                             "name": "NegativeTarget",
                             "values": {
                                 "negative_target_events": ["event3", "event2"],
-                                "negative_function": "def _default_func_negative(eventstream, "
+                                "func": "def _default_func(eventstream, "
                                 "negative_target_events) -> pd.DataFrame:\n"
                                 "    user_col = eventstream.schema.user_id\n"
                                 "    time_col = eventstream.schema.event_timestamp\n"
@@ -553,7 +553,7 @@ class TestPGraphExportImport:
                         "name": "NegativeTarget",
                         "values": {
                             "negative_target_events": ["event3", "event2"],
-                            "negative_function": "def _default_func_negative(eventstream, "
+                            "func": "def _default_func(eventstream, "
                             "negative_target_events) -> pd.DataFrame:\n"
                             "    user_col = eventstream.schema.user_id\n"
                             "    time_col = eventstream.schema.event_timestamp\n"
@@ -594,7 +594,7 @@ class TestPGraphExportImport:
                         "name": "PositiveTarget",
                         "values": {
                             "positive_target_events": ["event3", "event2"],
-                            "positive_function": "def _default_func_positive("
+                            "func": "def _default_func("
                             "eventstream: EventstreamType, positive_target_events: list[str]) "
                             "-> pd.DataFrame:\n"
                             '    """\n'
@@ -624,7 +624,7 @@ class TestPGraphExportImport:
                             "positive_events_index = (\n        "
                             "df[df[event_col].isin(positive_target_events)]."
                             "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
-                            "    return df.iloc[positive_events_index]  # type: ignore\n",
+                            "    return df.loc[positive_events_index]  # type: ignore\n",
                         },
                     },
                 },
@@ -668,7 +668,7 @@ class TestPGraphExportImport:
                         "name": "PositiveTarget",
                         "values": {
                             "positive_target_events": ["event3", "event2"],
-                            "positive_function": "def _default_func_positive("
+                            "func": "def _default_func("
                             "eventstream: EventstreamType, positive_target_events: list[str]) "
                             "-> pd.DataFrame:\n"
                             '    """\n'
@@ -698,7 +698,7 @@ class TestPGraphExportImport:
                             "positive_events_index = (\n        "
                             "df[df[event_col].isin(positive_target_events)]."
                             "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
-                            "    return df.iloc[positive_events_index]  # type: ignore\n",
+                            "    return df.loc[positive_events_index]  # type: ignore\n",
                         },
                     },
                 },

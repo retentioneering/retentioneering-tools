@@ -38,6 +38,10 @@ def clear_dict(d: dict) -> dict:
 
 
 class TransitionGraph:
+    """
+    Class that holds methods for graph visualization.
+    """
+
     def __init__(
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
@@ -49,11 +53,9 @@ class TransitionGraph:
     ) -> None:
         from src.eventstream.eventstream import Eventstream
 
-        self.weights = weights if weights else {"edges": "edge_weight", "nodes": "number_of_events"}
+        self.weights = weights if weights else {"edges": "edge_weight", "nodes": "events"}
         self.targets = targets if targets else {"positive": None, "negative": None, "source": None}
-        self.thresholds = (
-            thresholds if thresholds else {"edges": {"number_of_events": 0.03}, "nodes": {"number_of_events": 0.03}}
-        )
+        self.thresholds = thresholds if thresholds else {"edges": {"events": 0.03}, "nodes": {"events": 0.03}}
         sm = ServerManager()
         self.env = sm.check_env()
         self.server = sm.create_server()
@@ -449,6 +451,47 @@ class TransitionGraph:
         show_all_edges_for_targets: bool | None = None,
         show_nodes_without_links: bool | None = None,
     ) -> None:
+        """
+        Create interactive graph visualization with callback to input ``eventstream``.
+
+        Parameters
+        ----------
+        thresholds : dict{}
+            Minimal edge and node weight value to be rendered on a graph.
+            Nodes specified in targets parameter will be always shown regardless selected threshold.
+            Example: {'nodes': {'events': 0.03}, 'edges': {'events' : 0.03}}
+        targets : dict, optional
+            Event mapping describing which nodes or edges should be highlighted by different colors
+            for better visualization.
+
+            - ``keys`` are values from ``schema.event_name`` column.
+            - ``values`` - have the following possible values and corresponded colores:
+                - ``nice`` - green
+                - ``bad`` - red
+                - ``source`` - yellow
+
+            Example: {‘lost’: ‘bad’, ‘purchased’: ‘nice’, ‘main’: ‘source’}
+
+        weights : dict
+
+        norm_type : {"full", "node", None}, default None
+            Type of normalization used to calculate weights for graph edges.
+
+        width : int, default 960
+            Width of plot in pixels.
+        height : int, default 960
+            Height of plot in pixels.
+        weight_template : str, optional
+        show_weights : bool, optional
+        show_percents : bool, optional
+        show_nodes_names : bool, optional
+        show_all_edges_for_targets : bool, optional
+        show_nodes_without_links : bool, optional
+
+        Returns
+        -------
+            Rendered IFrame graph
+        """
         if targets:
             self.targets = targets
         if weights:
@@ -564,6 +607,17 @@ class TransitionGraph:
         return "undefined"
 
     def get_adjacency(self, weights: list[str] | None, norm_type: NormType) -> pd.DataFrame:
+        """
+        Parameters
+        ----------
+        weights : list of str or None
+        norm_type : {"full", "node", None}
+
+        Returns
+        -------
+        pd.DataFrame
+            Transition matrix
+        """
         self.edgelist.calculate_edgelist(data=self.eventstream.to_dataframe(), norm_type=norm_type, custom_cols=weights)
         edgelist: pd.DataFrame = self.edgelist.edgelist_df
         graph = nx.DiGraph()

@@ -1,15 +1,25 @@
+.. raw:: html
+
+    <style>
+        .red {color: red; font-weight:bold;}
+    </style>
+
+.. role:: red
+
+
 .. title:: Retentioneering Tools
+
+retentioneering documentation
+=============================
+**Date:** Jan 11, 2023 **Version:** 3.0.0 :red:`(alpha)`
 
 Contents
 ========
 .. toctree::
     :caption: Getting started:
-    :maxdepth: 1
+    :maxdepth: 2
 
-
-    What is Retentioneering? <what_is_rete.rst>
-    Quick start <quick_start.rst>
-    Eventstream concept <eventstream_concept.rst>
+    Getting Started <getting_started.rst>
 
 .. toctree::
     :caption: User Guide:
@@ -17,13 +27,11 @@ Contents
 
     User Guide <user_guide.rst>
 
-
 .. toctree::
     :caption: Tutorials:
     :maxdepth: 1
 
     Tutorials <tutorials.rst>
-
 
 .. toctree::
     :caption: API Reference:

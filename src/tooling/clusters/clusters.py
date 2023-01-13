@@ -75,7 +75,7 @@ class Clusters:
         Parameters
         ----------
         method : {"kmeans", "gmm"}
-            - ``kmeans`` stands classic K-means algorithm. See details in :sklearn_kmeans:`sklearn documentation<>`
+            - ``kmeans`` stands for classic K-means algorithm. See details in :sklearn_kmeans:`sklearn documentation<>`
             - ``gmm`` stands for Gaussian mixture model. See details in :sklearn_gmm:`sklearn documentation<>`
 
         n_clusters : int

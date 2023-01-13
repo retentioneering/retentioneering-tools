@@ -75,7 +75,9 @@ class UserLifetimeHist:
     def values(self) -> tuple[np.ndarray, np.ndarray | int]:
         data = self.__eventstream.to_dataframe().groupby(self.user_col)[self.time_col].agg(["min", "max"])
         data["time_passed"] = data["max"] - data["min"]
-        values_to_plot = (data["time_passed"] / np.timedelta64(1, self.timedelta_unit)).reset_index(drop=True)
+        values_to_plot = (data["time_passed"] / np.timedelta64(1, self.timedelta_unit)).reset_index(  # type: ignore
+            drop=True
+        )
         values_to_plot = self._remove_cutoff_values(values_to_plot).to_numpy()
         log_adjustment = np.timedelta64(100, "ms") / np.timedelta64(1, self.timedelta_unit)
         if self.log_scale:

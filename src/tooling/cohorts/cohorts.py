@@ -15,7 +15,7 @@ from src.eventstream.types import EventstreamType
 
 class Cohorts:
     """
-    A class which provides methods for cohort analysis. The users are spit into groups
+    A class which provides methods for cohort analysis. The users are split into groups
     depending on the time of their first appearance in the eventstream so each user is
     associated with some ``cohort_group``. The retention rate of the active users
     belonging to each ``cohort_group`` is  calculated within each ``cohort_period``.

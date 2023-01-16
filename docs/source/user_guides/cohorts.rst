@@ -213,7 +213,7 @@ Creating an instance of the Cohorts class
 
 At the moment when an instance of a class is created, it is still
 “naive”. In order to start calculation using passed parameters, you need
-to use the :py:meth:`Cohorts.fit()<src.tooling.cohorts.cohorts.Cohorts.fit>` method.
+to use the :py:meth:`Cohorts.fit()<retentioneering.tooling.cohorts.cohorts.Cohorts.fit>` method.
 
 .. code:: ipython3
 
@@ -230,7 +230,7 @@ Methods and attributes
 ~~~~~~~~~~~~~~~~~~~~~~
 
 To visualize data as a heatmap, we can call
-:py:meth:`Cohorts.heatmap()<src.tooling.cohorts.cohorts.Cohorts.heatmap>` method.
+:py:meth:`Cohorts.heatmap()<retentioneering.tooling.cohorts.cohorts.Cohorts.heatmap>` method.
 
 .. code:: ipython3
 
@@ -239,7 +239,7 @@ To visualize data as a heatmap, we can call
 .. figure:: /_static/user_guides/cohorts/cohorts_4_basic.png
 
 To get values of the heatmap, we can use
-:py:meth:`Cohorts.values<src.tooling.cohorts.cohorts.Cohorts.values>` property, and then the
+:py:meth:`Cohorts.values<retentioneering.tooling.cohorts.cohorts.Cohorts.values>` property, and then the
 output will be a dataframe.
 
 .. code:: ipython3
@@ -515,14 +515,14 @@ ShortCut for Cohorts (as an eventstream method)
 
 We can also use :doc:`Eventstream.cohorts</api/tooling/cohorts>` method which
 creates an instance of ``Cohorts`` class and applies
-:py:meth:`Cohorts.fit()<src.tooling.cohorts.cohorts.Cohorts.fit>` method as well.
+:py:meth:`Cohorts.fit()<retentioneering.tooling.cohorts.cohorts.Cohorts.fit>` method as well.
 
 In order to avoid unnessesary recalculations while you need different representations
 of one matrix with the same parameters - that would be helpful to save that fitted
 instance in separate variable.
 
-Heatmap is displayed by default, but :py:meth:`Cohorts.values<src.tooling.cohorts.cohorts.Cohorts.values>`
-and `:py:meth:`Cohorts.lineplot()<src.tooling.cohorts.cohorts.Cohorts.lineplot>` are also
+Heatmap is displayed by default, but :py:meth:`Cohorts.values<retentioneering.tooling.cohorts.cohorts.Cohorts.values>`
+and `:py:meth:`Cohorts.lineplot()<retentioneering.tooling.cohorts.cohorts.Cohorts.lineplot>` are also
 available, now it can be done in one line:
 
 

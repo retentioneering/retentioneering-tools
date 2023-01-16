@@ -31,13 +31,16 @@ class TimedeltaHist:
     only_adjacent_event_pairs : bool, default True
         Is used only when ``event_pair`` is not ``None``; specifies whether events need to be adjacent to be included.
 
-        For example, if event_pair=("login", "purchase") and ``only_adjacent_event_pairs=False``, then the sequence
+        For example, if ``event_pair=("login", "purchase")`` and ``only_adjacent_event_pairs=False``, then the sequence
         ("login", "main", "trading", "purchase") will contain a valid pair (which is not the case with
         only_adjacent_event_pairs=True)
     weight_col : str, optional
-        Specify a unit of observation, inside which time differences will be computed. For example, if weight_col is
-        set to session id, will only compute time deltas for events inside each session.
-        If ``None``, select ``user_id`` column.
+        Specify a unit of observation, inside which time differences will be computed.
+        For example:
+
+        - If ``weight_col='session_id'``, only time deltas will be computed for events inside each session.
+        - If ``None``, ``user_id`` column will be selected
+
     aggregation : {None, "mean", "median"}, optional
         Specify the aggregation policy for the time distances. Aggregate based on passed ``weight_col``.
 

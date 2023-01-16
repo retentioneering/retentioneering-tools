@@ -3,9 +3,9 @@ Timedelta hist
 
 Class
 -----
-.. automodule:: src.tooling.timedelta_hist.timedelta_hist
+.. automodule:: retentioneering.tooling.timedelta_hist.timedelta_hist
     :members:
 
 Eventstream
 -----------
-.. automethod:: src.eventstream.eventstream.Eventstream.timedelta_hist
+.. automethod:: retentioneering.eventstream.eventstream.Eventstream.timedelta_hist

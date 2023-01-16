@@ -3,10 +3,10 @@ Transition Graph
 
 Transition Graph Class
 ----------------------
-.. automodule:: src.transition_graph.transition_graph
+.. automodule:: retentioneering.transition_graph.transition_graph
     :members:
 
 Eventstream
 -----------
-.. automethod:: src.eventstream.eventstream.Eventstream.transition_graph
-.. automethod:: src.eventstream.eventstream.Eventstream.transition_adjacency
+.. automethod:: retentioneering.eventstream.eventstream.Eventstream.transition_graph
+.. automethod:: retentioneering.eventstream.eventstream.Eventstream.transition_adjacency

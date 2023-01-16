@@ -282,7 +282,7 @@ be significant, indicating which of the groups could be “greater”:
 
 .. parsed-literal::
 
-    <src.tooling.stattests.stattests.StatTests at 0x7f391cbcbc40>
+    <retentioneering.tooling.stattests.stattests.StatTests at 0x7f391cbcbc40>
 
 
 
@@ -312,7 +312,7 @@ would expect the power to also drop:
 
 .. parsed-literal::
 
-    <src.tooling.stattests.stattests.StatTests at 0x7f391caa5b50>
+    <retentioneering.tooling.stattests.stattests.StatTests at 0x7f391caa5b50>
 
 
 

@@ -3,9 +3,9 @@ Describe
 
 Class
 -----
-.. automodule:: src.tooling.describe.describe
+.. automodule:: retentioneering.tooling.describe.describe
     :members:
 
 Eventstream
 -----------
-.. automethod:: src.eventstream.eventstream.Eventstream.describe
+.. automethod:: retentioneering.eventstream.eventstream.Eventstream.describe

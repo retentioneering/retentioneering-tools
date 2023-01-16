@@ -4,7 +4,7 @@ import json
 from typing import Any, List, Optional, TypedDict, cast
 
 import networkx
-from IPython.display import HTML, DisplayHandle, display
+from IPython.core.display import HTML, DisplayHandle, display
 
 from retentioneering.backend import JupyterServer, ServerManager
 from retentioneering.backend.callback import list_dataprocessor, list_dataprocessor_mock

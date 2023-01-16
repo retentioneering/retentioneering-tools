@@ -95,8 +95,8 @@ class ServerManager:
         if env == "classic":
             from IPython.core.getipython import get_ipython
 
-            if get_ipython() is not None:
-                get_ipython().kernel.comm_manager.register_target(
+            if ipython := get_ipython():
+                ipython.kernel.comm_manager.register_target(
                     "JupyterServerMainCallback", lambda comm, open_msg: self._on_comm_message(comm, open_msg)
                 )
         self._main_listener_created = True

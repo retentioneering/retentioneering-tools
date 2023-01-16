@@ -2,10 +2,8 @@ FROM python:3.8
 RUN apt-get update && apt-get upgrade -y
 RUN pip install poetry
 COPY pyproject.toml /app/pyproject.toml
-COPY .pre-commit-config.yaml /app/.pre-commit-config.yaml
 WORKDIR /app
 RUN poetry export --only main --without-hashes -f requirements.txt --output requirements.txt
 RUN python -m pip install -r requirements.txt
 RUN python -m pip install pytest
 RUN python -m pip install pre-commit
-RUN pre-commit install

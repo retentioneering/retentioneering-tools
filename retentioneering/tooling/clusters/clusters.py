@@ -161,7 +161,7 @@ class Clusters:
             top_cluster = cluster1[self.event_col].value_counts(normalize=True)
 
         # add zero events for missing targets
-        for event in set(targets) - set(top_cluster.index):
+        for event in set(targets) - set(top_cluster.index):  # type: ignore
             top_cluster.loc[event] = 0
 
         # create events order: top_n non-target events + targets:
@@ -263,7 +263,7 @@ class Clusters:
 
         df = self.__cluster_result.to_frame("cluster_id").reset_index()
         user_col, cluster_col = df.columns
-        cluster_map = df.groupby(cluster_col)[user_col].apply(list)
+        cluster_map = df.groupby(cluster_col)[user_col].apply(list)  # type: ignore
         return cluster_map.to_dict()
 
     @property
@@ -414,7 +414,7 @@ class Clusters:
                 )
 
         if vec_data is not None:
-            vec_data.columns = [col + "_" + feature_type for col in vec_data.columns]
+            vec_data.columns = [f"{col}_{feature_type}" for col in vec_data.columns]  # type: ignore
 
         return cast(pd.DataFrame, vec_data)
 

@@ -170,12 +170,12 @@ class StepMatrix:
             With columns from 0 to ``max_steps``
         """
         df = df.copy()
-        if max(df.columns) < self.max_steps:
-            for col in range(max(df.columns) + 1, self.max_steps + 1):
+        if max(df.columns) < self.max_steps:  # type: ignore
+            for col in range(max(df.columns) + 1, self.max_steps + 1):  # type: ignore
                 df[col] = 0
         # add missing cols if needed:
-        if min(df.columns) > 1:
-            for col in range(1, min(df.columns)):
+        if min(df.columns) > 1:  # type: ignore
+            for col in range(1, min(df.columns)):  # type: ignore
                 df[col] = 0
         # sort cols
         return df[list(range(1, self.max_steps + 1))]
@@ -286,7 +286,7 @@ class StepMatrix:
                     target[j] = "ACC_" + item
         if self.accumulated == "both":
             for i in piv_targets.index:
-                piv_targets.loc["ACC_" + i] = piv_targets.loc[i].cumsum().fillna(0)
+                piv_targets.loc["ACC_" + i] = piv_targets.loc[i].cumsum().fillna(0)  # type: ignore
 
             # add accumulated targets to the list:
             targets_not_acc = deepcopy(targets)

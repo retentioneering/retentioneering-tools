@@ -7,8 +7,6 @@ from typing import Any, Callable, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
-from matplotlib.axes import SubplotBase
 
 from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
@@ -405,19 +403,19 @@ class Eventstream(
         self.__events = indexed
 
     def _get_raw_cols(self) -> list[str]:
-        cols = self.__events.columns
+        cols: list[str] | pd.Index = self.__events.columns
         raw_cols: list[str] = []
         for col in cols:
-            if col.startswith(RAW_COL_PREFIX):
-                raw_cols.append(col)
+            if col.startswith(RAW_COL_PREFIX):  # type: ignore
+                raw_cols.append(col)  # type: ignore
         return raw_cols
 
     def _get_relation_cols(self) -> list[str]:
         cols = self.__events.columns
         relation_cols: list[str] = []
         for col in cols:
-            if col.startswith("ref_"):
-                relation_cols.append(col)
+            if col.startswith("ref_"):  # type: ignore
+                relation_cols.append(col)  # type: ignore
         return relation_cols
 
     def add_custom_col(self, name: str, data: pd.Series[Any] | None) -> None:

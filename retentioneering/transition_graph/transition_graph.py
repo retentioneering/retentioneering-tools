@@ -7,7 +7,7 @@ from typing import Any, Dict, List, MutableMapping, MutableSequence, Union, cast
 
 import networkx as nx
 import pandas as pd
-from IPython.display import HTML, display
+from IPython.core.display import HTML, display
 
 from retentioneering.backend import ServerManager
 from retentioneering.edgelist import Edgelist

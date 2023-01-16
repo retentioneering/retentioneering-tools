@@ -1,4 +1,3 @@
-define: &exclude_folders "^(examples/|tests/|venv/)"
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -16,12 +15,12 @@ repos:
       - id: pycln
         args: [ --config=pyproject.toml ]
   - repo: https://github.com/psf/black
-    rev: 22.10.0
+    rev: 22.12.0
     hooks:
       - id: black
         language_version: python3
   - repo: https://github.com/pycqa/isort
-    rev: 5.10.1
+    rev: 5.11.4
     hooks:
       - id: isort
         args: [ "--profile", "black", "--filter-files" ]
@@ -30,7 +29,7 @@ repos:
     rev: 'v0.991'
     hooks:
       - id: mypy
-        exclude: *exclude_folders
+        exclude: "^(examples/|tests/|venv/)"
   - repo: local
     hooks:
       - id: pyright
@@ -38,7 +37,7 @@ repos:
         entry: pyright
         language: node
         pass_filenames: false
-        exclude: *exclude_folders
+        exclude: "^(examples/|tests/|venv/)"
         types: [ python ]
         exclude: 'tests/'
         # Replace the version below with the latest pyright version

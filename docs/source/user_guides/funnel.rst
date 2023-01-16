@@ -41,7 +41,7 @@ Creating an instance of the Funnel class
 
 When created, the class instance is ``naive``.
 In order to start calculation using passed parameters, you need
-to use the :py:meth:`Funnel.fit()<src.tooling.funnel.funnel.Funnel.fit>` method.
+to use the :py:meth:`Funnel.fit()<retentioneering.tooling.funnel.funnel.Funnel.fit>` method.
 
 .. code-block:: python
 
@@ -344,7 +344,7 @@ segmented according to clusterization results:
 With this clustering procedure, we grouped users based
 on their behavioural patterns. The dictionary containing cluster
 user lists is assigned to the
-:py:meth:`Clusters.cluster_mapping<src.tooling.clusters.clusters.Clusters.cluster_mapping>` attribute.
+:py:meth:`Clusters.cluster_mapping<retentioneering.tooling.clusters.clusters.Clusters.cluster_mapping>` attribute.
 
 Let us plot the cluster funnels to compare cluster conversions:
 
@@ -382,13 +382,13 @@ ShortCut for Funnel (as an eventstream method)
 
 We can also use :doc:`Eventstream.funnel</api/tooling/funnel>` method which
 creates an instance of ``Funnel`` class and applies
-:py:meth:`Funnel.fit()<src.tooling.funnel.funnel.Funnel.fit>` method as well.
+:py:meth:`Funnel.fit()<retentioneering.tooling.funnel.funnel.Funnel.fit>` method as well.
 
 In order to avoid unnessesary recalculations while you need different representations
 of one matrix with the same parameters - that would be helpful to save that fitted
 instance in separate variable.
 
-``Funnel.plot()`` is displayed by default, but :py:meth:`Funnel.values<src.tooling.funnel.funnel.Funnel.values>`
+``Funnel.plot()`` is displayed by default, but :py:meth:`Funnel.values<retentioneering.tooling.funnel.funnel.Funnel.values>`
  is also available.
 
 .. code-block:: python

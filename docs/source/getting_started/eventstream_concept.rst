@@ -234,9 +234,9 @@ Now, you need to wrap this logic into the data processor class, and here things 
 .. code-block:: python
 
     from typing import Literal
-    from src.eventstream.eventstream import Eventstream
-    from src.data_processor.data_processor import DataProcessor
-    from src.params_model import ParamsModel
+    from retentioneering.eventstream.eventstream import Eventstream
+    from retentioneering.data_processor.data_processor import DataProcessor
+    from retentioneering.params_model import ParamsModel
 
     class RoundTimestampParams(ParamsModel):
         freq: Literal["H", "M", "S"] = "S"
@@ -267,7 +267,7 @@ Finally, we need to build a graph with a single node encompassing ``RoundTimesta
 
 .. code-block:: python
 
-    from src.graph.p_graph import PGraph, EventsNode
+    from retentioneering.graph.p_graph import PGraph, EventsNode
 
     node = EventsNode(RoundTimestamp(params=RoundTimestampParams()))
     graph = PGraph(stream)
@@ -306,9 +306,9 @@ Linking graph nodes according to preprocessing logic, we obtain a ``preprocessin
 
 .. code-block:: python
 
-    from src.graph.p_graph import PGraph, EventsNode
-    from src.data_processors_lib import SplitSessions, SplitSessionsParams
-    from src.data_processors_lib import StartEndEvents, StartEndParams
+    from retentioneering.graph.p_graph import PGraph, EventsNode
+    from retentioneering.data_processors_lib import SplitSessions, SplitSessionsParams
+    from retentioneering.data_processors_lib import StartEndEvents, StartEndParams
 
     # creating single nodes
     node1 = EventsNode(StartEndEvents(params=StartEndEventsParams()))
@@ -367,7 +367,7 @@ Treating clustering tool as a separate instance:
 
 .. code-block:: python
 
-    from src.tooling.clusters import Clusters
+    from retentioneering.tooling.clusters import Clusters
 
     clusters = Clusters(stream)
     clusters.fit(method='kmeans', feature_type='tfidf', ngram_range=(1, 1), n_clusters=4)

@@ -4,9 +4,9 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from src.data_processors_lib import LostUsersEvents, LostUsersParams
-from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import RawDataSchema
+from retentioneering.data_processors_lib import LostUsersEvents, LostUsersParams
+from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 

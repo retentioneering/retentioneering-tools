@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib import RenameParams, RenameProcessor
-from src.eventstream import Eventstream
+from retentioneering.data_processors_lib import RenameParams, RenameProcessor
+from retentioneering.eventstream import Eventstream
 from tests.data_processors_lib.fixtures.rename import (
     complex_dataset_for_rename,
     complex_expected_results,

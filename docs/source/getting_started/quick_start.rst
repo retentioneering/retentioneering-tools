@@ -219,7 +219,7 @@ Cluster analysis
 
 .. code-block:: python
 
-    from src.tooling.clusters import Clusters
+    from retentioneering.tooling.clusters import Clusters
 
     clusters = Clusters(stream)
     clusters.fit(method="kmeans", n_clusters=8, feature_type="tfidf", ngram_range=(1, 2))

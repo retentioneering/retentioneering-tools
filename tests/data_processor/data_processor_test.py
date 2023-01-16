@@ -4,9 +4,9 @@ from typing import List, Literal, Union
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from src.data_processor.data_processor import DataProcessor
-from src.eventstream.eventstream import Eventstream
-from src.params_model import ParamsModel
+from retentioneering.data_processor import DataProcessor
+from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.params_model import ParamsModel
 
 
 class StubProcessorParams(ParamsModel):

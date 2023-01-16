@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from src.tooling.cohorts import Cohorts
+from retentioneering.tooling.cohorts import Cohorts
 from tests.tooling.fixtures.cohorts_corr import (
     matrix_avg_corr,
     matrix_cut_corr,

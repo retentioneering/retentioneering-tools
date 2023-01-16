@@ -15,19 +15,19 @@ from src.eventstream.types import EventstreamType
 
 class EventTimestampHist:
     """
-    Plots the distribution of events over time. Can be useful for detecting time-based anomalies, and visualising
+    Plot the distribution of events over time. Can be useful for detecting time-based anomalies, and visualising
     general timespan of the eventstream.
 
     Parameters
     ----------
-    event_list: List[str] | "all" (optional, default "all")
-        Specifies the events to be plotted. If "all"(by default), plots all events.
-    lower_cutoff_quantile: float (optional, default None)
-        Specifies the time distance quantile as the lower boundary. The values below the boundary are truncated.
-    upper_cutoff_quantile: float (optional, default None)
-        Specifies the time distance quantile as the upper boundary. The values above the boundary are truncated.
-    bins: int, default 20
-        Specifies the amount of histogram bins.
+    event_list : List of str or 'all', default 'all'
+        Specify the events to be plotted. If ``all``, plot all events.
+    lower_cutoff_quantile : float, optional
+        Specify the time distance quantile as the lower boundary. The values below the boundary are truncated.
+    upper_cutoff_quantile : float, optional
+        Specify the time distance quantile as the upper boundary. The values above the boundary are truncated.
+    bins : int, default 20
+        Specify the amount of histogram bins.
 
     """
 

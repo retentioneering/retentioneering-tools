@@ -156,7 +156,7 @@ Transition graph
     <iframe
         width="600"
         height="600"
-        src="../_static/quick_start/transition_graph.html"
+        src="../_static/getting_started/quick_start/transition_graph.html"
         frameborder="0"
         allowfullscreen
     ></iframe>
@@ -186,7 +186,7 @@ Step matrix provides a step-wise look at CJM. It shows the event distribution wi
 
 :red:`Figure out what's going on with path_end PLAT-342`
 
-.. figure:: /_static/quick_start/step_matrix.png
+.. figure:: /_static/getting_started/quick_start/step_matrix.png
     :width: 900
 
     Fig. XXX. Step matrix
@@ -208,7 +208,7 @@ Step Sankey diagram is similar to step matrix, but it has some advances:
     <iframe
         width="900"
         height="500"
-        src="../_static/quick_start/step_sankey.html"
+        src="../_static/getting_started/quick_start/step_sankey.html"
         frameborder="0"
         allowfullscreen
     ></iframe>
@@ -225,7 +225,7 @@ Cluster analysis
     clusters.fit(method="kmeans", n_clusters=8, feature_type="tfidf", ngram_range=(1, 2))
     clusters.plot(targets=["payment_done", "cart"])
 
-.. figure:: /_static/quick_start/clusters.png
+.. figure:: /_static/getting_started/quick_start/clusters.png
     :width: 900
 
 Users with similar behavior grouped in the same cluster. Clusters with low conversion rate can represent systematic problem in the product: specific behavior pattern which does not lead to product goals. Obtained user segments can be explored deeper to understand problematic behavior pattern. In the example above for instance, cluster 4 has low conversion rate to purchase but high conversion rate to cart visit.

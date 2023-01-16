@@ -11,13 +11,13 @@ from src.eventstream.types import EventstreamType
 
 class Describe:
     """
-    Displays general eventstream information. If session_col is present in eventstream columns, also
-    outputs session statistics, assuming session_col is the session identifier column.
+    Display general eventstream information. If ``session_col`` is present in eventstream columns, also
+    output session statistics, assuming ``session_col`` is the session identifier column.
 
     Parameters
     ----------
-    session_col: str (optional, default "session_id")
-    Specifies name of the session column. If present in the eventstream, outputs session statistics.
+    session_col : str, default 'session_id'
+        Specify name of the session column. If present in the eventstream, output session statistics.
 
     """
 

@@ -16,42 +16,47 @@ from src.tooling.timedelta_hist.constants import AGGREGATION_NAMES
 
 class TimedeltaHist:
     """
-    Plots the distribution of the time deltas between two events. Supports various
+    Plot the distribution of the time deltas between two events. Support various
     distribution types, such as distribution of time for adjacent consecutive events, or
     for a pair of pre-defined events, or median transition time from event to event per user/session.
 
     Parameters
     ----------
-    event_pair : tuple | list of length 2 (optional, default None)
-        Specifies an event pair to plot the time distance between. The first
+    event_pair : tuple | list of length 2, optional
+        Specify an event pair to plot the time distance between. The first
         item corresponds to chronologically first event, the second item corresponds to the second event. If
-        event_pair=None, plots distribution of timedelta for all adjacent events.
+        ``event_pair=None``, plot distribution of timedelta for all adjacent events.
+
         Examples: ('login', 'purchase'); ['start', 'cabinet']
     only_adjacent_event_pairs : bool, default True
-        Is used only when event_pair is not None; specifies whether events need to be adjacent to be included.
-        For example, if event_pair=("login", "purchase") and only_adjacent_event_pairs=False, then the sequence
-        ("login", "main", "trading", "purchase") will contain a valid pair(which is not the case with
+        Is used only when ``event_pair`` is not ``None``; specifies whether events need to be adjacent to be included.
+
+        For example, if event_pair=("login", "purchase") and ``only_adjacent_event_pairs=False``, then the sequence
+        ("login", "main", "trading", "purchase") will contain a valid pair (which is not the case with
         only_adjacent_event_pairs=True)
-    weight_col : str, default None
-        Specifies a unit of observation, inside which time differences will be computed. For example, if weight_col is
-        set to session id, will only compute time deltas for events inside each session. If None, selects user_id
-        column.
-    aggregation : {None, "mean", "median"}, default None
-        Specifies the aggregation policy for the time distances. Aggregates based on passed weight_col. None means no
-        aggregation; "mean" and "median" plots distributions of weight_col unit mean and weight_col unit median
-        timedeltas. For example, if session id is specified in weight_col, one observation per
-        session(for example, session median) will be provided for the histogram.
-    timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default "s"
-        Specifies the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
+    weight_col : str, optional
+        Specify a unit of observation, inside which time differences will be computed. For example, if weight_col is
+        set to session id, will only compute time deltas for events inside each session.
+        If ``None``, select ``user_id`` column.
+    aggregation : {None, "mean", "median"}, optional
+        Specify the aggregation policy for the time distances. Aggregate based on passed ``weight_col``.
+
+        - If ``None`` - no aggregation;
+        - ``mean`` and ``median`` plot distributions of ``weight_col`` unit mean or unit ``median`` timedeltas.
+
+        For example, if session id is specified in ``weight_col``, one observation per
+        session (for example, session median) will be provided for the histogram.
+    timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
+        Specify the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
     log_scale : bool, default False
-        Applies log scaling to the x axis.
-    lower_cutoff_quantile : float (optional, default None)
-        Specifies the time distance quantile as the lower boundary. The values below the boundary are truncated.
-    upper_cutoff_quantile : float (optional, default None)
-        Specifies the time distance quantile as the upper boundary. The values above the boundary are truncated.
+        Apply log scaling to the x axis.
+    lower_cutoff_quantile : float, optional
+        Specify the time distance quantile as the lower boundary. The values below the boundary are truncated.
+    upper_cutoff_quantile : float, optional
+        Specify the time distance quantile as the upper boundary. The values above the boundary are truncated.
     bins : int, default 20
-        Specifies the amount of histogram bins.
+        Specify the amount of histogram bins.
 
     """
 

@@ -358,7 +358,7 @@ class Eventstream(
         ----------
         raw_cols : bool, default False
             If ``True`` - original columns of the input ``raw_data`` will be shown.
-        show_deleted : bool, default
+        show_deleted : bool, default False
             If ``True`` - show all rows in ``eventstream``
         copy : bool, default False
             If ``True`` - copy data from current ``eventstream``.
@@ -439,7 +439,7 @@ class Eventstream(
 
     def _soft_delete(self, events: pd.DataFrame) -> None:
         """
-        Method deletes events either by event_id or by the last relation.
+        Delete events either by event_id or by the last relation.
         """
         deleted_events = events.copy()
         deleted_events[DELETE_COL_NAME] = True
@@ -580,7 +580,7 @@ class Eventstream(
     ) -> Funnel:
 
         """
-        Shows a visualization of the user sequential events represented as a funnel.
+        Show a visualization of the user sequential events represented as a funnel.
 
         See parameters description :py:func:`src.tooling.funnel.funnel`
 
@@ -608,7 +608,7 @@ class Eventstream(
     @property
     def clusters(self) -> Clusters:
         """
-        Returns a blank (not fitted) instance of ``Clusters`` class to be used for cluster analysis.
+        Return a blank (not fitted) instance of ``Clusters`` class to be used for cluster analysis.
         See :py:func:`src.tooling.clusters.clusters`
 
         Returns
@@ -633,7 +633,7 @@ class Eventstream(
         show_plot: bool = True,
     ) -> StepMatrix:
         """
-        Shows a heatmap visualization of the step matrix.
+        Show a heatmap visualization of the step matrix.
 
         See parameters description :py:func:`src.tooling.step_matrix.step_matrix`
 
@@ -674,7 +674,7 @@ class Eventstream(
         show_plot: bool = True,
     ) -> StepSankey:
         """
-        Shows a Sankey diagram visualizing the user paths in step-wise manner.
+        Show a Sankey diagram visualizing the user paths in step-wise manner.
 
         See parameters description :py:func:`src.tooling.step_sankey.step_sankey`
 
@@ -748,7 +748,7 @@ class Eventstream(
         alpha: float = 0.05,
     ) -> StatTests:
         """
-        Determines the statistical difference between the metric values in two user groups.
+        Determine the statistical difference between the metric values in two user groups.
 
         See parameters description :py:func:`src.tooling.stattests.stattests`
 
@@ -778,7 +778,7 @@ class Eventstream(
         show_plot: bool = True,
     ) -> TimedeltaHist:
         """
-        Plots the distribution of the time deltas between two events. Supports various
+        Plot the distribution of the time deltas between two events. Support various
         distribution types, such as distribution of time for adjacent consecutive events, or
         for a pair of pre-defined events, or median transition time from event to event per user/session.
 
@@ -815,11 +815,13 @@ class Eventstream(
         show_plot: bool = True,
     ) -> UserLifetimeHist:
         """
-        Plots the distribution of user lifetimes. A users' lifetime is the timedelta between the first and the last
+        Plot the distribution of user lifetimes. A ``users' lifetime`` is the timedelta between the first and the last
         events of the user. Can be useful for finding suitable parameters of various data processors, such as
-        DeleteUsersByPathLength or TruncatedEvents.
+        :py:func:`DeleteUsersByPathLength<src.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>`
+        or
+        :py:func:`TruncatedEvents<src.data_processors_lib.truncated_events.TruncatedEvents>`.
 
-        See parameters description :py:func:`src.tooling.timedelta_hist.timedelta_hist`
+        See parameters description :py:func:`src.tooling.user_lifetime_hist.user_lifetime_hist`
 
         Returns
         -------
@@ -847,8 +849,10 @@ class Eventstream(
         show_plot: bool = True,
     ) -> EventTimestampHist:
         """
-        Plots the distribution of events over time. Can be useful for detecting time-based anomalies, and visualising
+        Plot the distribution of events over time. Can be useful for detecting time-based anomalies, and visualising
         general timespan of the eventstream.
+
+        See parameters description :py:func:`src.tooling.event_timestamp_hist.event_timestamp_hist`
 
         Returns
         -------
@@ -857,6 +861,7 @@ class Eventstream(
         """
         event_timestamp_hist = EventTimestampHist(
             eventstream=self,
+            event_list=event_list,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
@@ -867,8 +872,10 @@ class Eventstream(
 
     def describe(self, session_col: Optional[str] = "session_id") -> None:
         """
-        Displays general eventstream information. If session_col is present in eventstream columns, also
-        outputs session statistics, assuming session_col is the session identifier column.
+        Display general eventstream information. If ``session_col`` is present in eventstream columns, also
+        output session statistics, assuming ``session_col`` is the session identifier column.
+
+        See parameters description :py:func:`src.tooling.describe.describe`
         """
         describer = Describe(eventstream=self, session_col=session_col)
         describer.display()
@@ -877,8 +884,11 @@ class Eventstream(
         self, session_col: Optional[str] = "session_id", event_list: Optional[List[str] | str] = "all"
     ) -> None:
         """
-        Displays general information on the eventstream events. If session_col is present in eventstream columns, also
-        outputs session statistics, assuming session_col is the session identifier column.
+        Display general information on the eventstream events.
+        If ``session_col`` is present in eventstream columns, also
+        output session statistics, assuming ``session_col`` is the session identifier column.
+
+        See parameters description :py:func:`src.tooling.describe_events.describe_events`
         """
         describer = DescribeEvents(eventstream=self, session_col=session_col, event_list=event_list)
         describer.display()
@@ -922,9 +932,9 @@ class Eventstream(
 
     def transition_adjacency(self, weights: list[str] | None = None, norm_type: NormType = None) -> pd.DataFrame:
         """
-        Creates edge graph in the matrix format. Row indexes are events, from which the transition occured,
+        Create edge graph in the matrix format. Row indexes are events, from which the transition occured,
         and columns are events, to which the transition occured.
-        The values are weights of the edges defined with weights and norm_type parameters.
+        The values are weights of the edges defined with weights and ``norm_type`` parameters.
 
         Parameters
         ----------

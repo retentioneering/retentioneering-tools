@@ -21,14 +21,14 @@ class UserLifetimeHist:
 
     Parameters
     ----------
-    timedelta_unit: :numpy_link:`DATETIME_UNITS<>`, default "s"
+    timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
         Specifies the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
-    log_scale: bool, default False
+    log_scale : bool, default False
         Applies log scaling to the x axis.
-    lower_cutoff_quantile: float (optional, default None)
+    lower_cutoff_quantile : float, optional
         Specifies the time distance quantile as the lower boundary. The values below the boundary are truncated.
-    upper_cutoff_quantile: float (optional, default None)
+    upper_cutoff_quantile : float, optional
         Specifies the time distance quantile as the upper boundary. The values above the boundary are truncated.
     bins: int, default 20
         Specifies the amount of histogram bins.

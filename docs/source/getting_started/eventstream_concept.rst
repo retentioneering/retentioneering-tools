@@ -15,7 +15,7 @@ Why Eventstream
 Let's start from a review of a process how data analyst (we also use researcher as a synonym) usually work with data. On |fig_research_workflow| you can see a simplified workflow of a typical analytical research. What data analysts actually do: they download collected clickstream data from a data storage, prepare the data, analyze it by applying an analytical tool, and deliver actionable results to stakeholders.
 
 .. |fig_research_workflow| replace:: Fig. 1
-.. figure:: /_static/eventstream/research_workflow.png
+.. figure:: /_static/getting_started/eventstream_concept/research_workflow.png
     :width: 800
 
     Fig. 1. A simplified workflow of a typical analytical research
@@ -43,7 +43,7 @@ Assume for simplicity, that the goal of a research is to explore users behavior 
 Next, by “to explore users behavior” one could mean applying different techniques, such as analyzing Markov chain model, performing cluster analysis, analyzing a step-wise Sankey diagram. As a result, we obtain 9 different analytical cases (see |fig_research_example|).
 
 .. |fig_research_example| replace:: Fig. 2
-.. figure:: /_static/eventstream/research_example.png
+.. figure:: /_static/getting_started/eventstream_concept/research_example.png
     :width: 800
 
     Fig. 2. An example of an analytical research with branching logic.
@@ -108,7 +108,7 @@ As soon as you create an eventstream, you can check the underlying dataframe by 
         .head()
 
 .. |fig_eventstream_columns| replace:: Fig. 3
-.. figure:: /_static/eventstream/eventstream_columns.png
+.. figure:: /_static/getting_started/eventstream_concept/eventstream_columns.png
     :width: 800
 
     Fig. 3. An example of a preprocessing graph.
@@ -127,7 +127,7 @@ Preprocessing
 As it was mentioned above, we define *preprocessing* as any data preparations preceding applying a core analytical tool. The sequence of preprocessing calculations naturally constitutes a directed acyclic graph (DAG). The nodes represent some specific calculations while the edges define the order of the calculations to be run. Here's an example of such a graph on |fig_preprocessing_graph|.
 
 .. |fig_preprocessing_graph| replace:: Fig. 4
-.. figure:: /_static/eventstream/preprocessing_graph.png
+.. figure:: /_static/getting_started/eventstream_concept/preprocessing_graph.png
     :width: 800
 
     Fig. 4. An example of a preprocessing graph.
@@ -150,9 +150,9 @@ All these operations might be implemented with ``LEFT OUTER JOIN`` operator. Why
 
 :red:`TODO: Make nicer images`
 
-.. |atomic_insert| image:: /_static/eventstream/atomic_insert.png
-.. |atomic_delete| image:: /_static/eventstream/atomic_delete.png
-.. |atomic_edit| image:: /_static/eventstream/atomic_edit.png
+.. |atomic_insert| image:: /_static/getting_started/eventstream_concept/atomic_insert.png
+.. |atomic_delete| image:: /_static/getting_started/eventstream_concept/atomic_delete.png
+.. |atomic_edit| image:: /_static/getting_started/eventstream_concept/atomic_edit.png
 
 +---------+-------------------+
 | Insert  +  |atomic_insert|  +
@@ -295,7 +295,7 @@ Nodes and edges
 The nodes of preprocessing graph belong to ``EventNode`` class and could be of two types. In general, a node is a shell for its underlying data processor. This regular node accepts a single eventstream as input and defines how it should be modified. The entire structure of this node is illustrated on |fig_event_node_structure|.
 
 .. |fig_event_node_structure| replace:: Fig. 5
-.. figure:: /_static/eventstream/event_node_structure.png
+.. figure:: /_static/getting_started/eventstream_concept/event_node_structure.png
     :width: 200
 
     Fig. 5. The nested structure of EventNode class.

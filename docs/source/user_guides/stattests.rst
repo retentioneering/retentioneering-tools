@@ -16,7 +16,7 @@ Loading data
 
     import numpy as np
 
-    from src import datasets
+    from retentioneering import datasets
 
 .. code:: ipython3
 

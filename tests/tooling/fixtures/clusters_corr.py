@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from src import datasets
+from retentioneering import datasets
 
 
 @pytest.fixture

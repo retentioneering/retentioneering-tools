@@ -1,8 +1,8 @@
 import pandas as pd
 import pytest
 
-from src import datasets
-from src.eventstream import Eventstream, EventstreamSchema
+from retentioneering import datasets
+from retentioneering.eventstream import Eventstream, EventstreamSchema
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@ import unittest
 
 import pandas as pd
 
-from src.utils import get_merged_col
+from retentioneering.utils import get_merged_col
 
 
 class PandasTest(unittest.TestCase):

@@ -6,9 +6,9 @@ import uuid
 import pandas as pd
 import pytest
 
-from src.eventstream.eventstream import DELETE_COL_NAME, Eventstream
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
-from src.utils import shuffle_df
+from retentioneering.eventstream.eventstream import DELETE_COL_NAME, Eventstream
+from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
+from retentioneering.utils import shuffle_df
 from tests.eventstream.fixtures.eventstream import (
     test_data_1,
     test_data_join_1,
@@ -269,14 +269,14 @@ class TestEventstream:
 
     def test_hists(self, test_stream_1):
         try:
-            test_stream_1.timedelta_hist()
+            test_stream_1.timedelta_hist(show_plot=False)
         except Exception as e:
             pytest.fail("Runtime error in Eventstream.timedelta_hist. " + str(e))
         try:
-            test_stream_1.user_lifetime_hist()
+            test_stream_1.user_lifetime_hist(show_plot=False)
         except Exception as e:
             pytest.fail("Runtime error in Eventstream.user_lifetime_hist. " + str(e))
         try:
-            test_stream_1.event_timestamp_hist()
+            test_stream_1.event_timestamp_hist(show_plot=False)
         except Exception as e:
             pytest.fail("Runtime error in Eventstream.event_timestamp_hist. " + str(e))

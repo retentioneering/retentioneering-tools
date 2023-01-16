@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import pytest
 
-from src.params_model import ParamsModel
+from retentioneering.params_model import ParamsModel
 
 
 class TestParamsModel:

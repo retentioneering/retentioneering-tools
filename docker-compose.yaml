@@ -7,14 +7,14 @@ services:
       dockerfile: test38.Dockerfile
     volumes:
       - ".:/app"
-    command: poetry run pytest
+    command: poetry run pre-commit install && poetry run pre-commit run -a && poetry run pytest -vvv
   test39:
     build:
       context: ./
       dockerfile: test38.Dockerfile
     volumes:
       - ".:/app"
-    command: poetry run pytest
+    command: pre-commit install && ./.git/hooks/pre-commit && pytest -vvv
     depends_on:
       - test38
   test310:
@@ -23,6 +23,6 @@ services:
       dockerfile: test38.Dockerfile
     volumes:
       - ".:/app"
-    command: poetry run pytest
+    command: pre-commit install && ./.git/hooks/pre-commit && pytest -vvv
     depends_on:
       - test39

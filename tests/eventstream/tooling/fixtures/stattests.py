@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import pytest
 
-from src.eventstream import Eventstream
+from retentioneering.eventstream import Eventstream
 
 
 def read_test_data(filename):

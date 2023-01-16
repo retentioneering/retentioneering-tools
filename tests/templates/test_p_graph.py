@@ -1,6 +1,6 @@
 import uuid
 
-from src.templates import PGraphRenderer
+from retentioneering.templates import PGraphRenderer
 
 
 class TestPGraphTemplate:

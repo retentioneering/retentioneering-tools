@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import pytest
 
-from src.tooling.step_sankey import StepSankey
+from retentioneering.tooling.step_sankey import StepSankey
 from tests.tooling.fixtures.step_sankey import test_stream
 
 

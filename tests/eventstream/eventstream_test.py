@@ -6,9 +6,9 @@ import uuid
 import pandas as pd
 import pytest
 
-from src.eventstream.eventstream import DELETE_COL_NAME, Eventstream
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
-from src.utils import shuffle_df
+from retentioneering.eventstream.eventstream import DELETE_COL_NAME, Eventstream
+from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
+from retentioneering.utils import shuffle_df
 from tests.eventstream.fixtures.eventstream import (
     test_data_1,
     test_data_join_1,

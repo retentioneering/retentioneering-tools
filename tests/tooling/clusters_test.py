@@ -5,8 +5,8 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from src.eventstream import Eventstream, EventstreamSchema
-from src.tooling.clusters import Clusters
+from retentioneering.eventstream import Eventstream, EventstreamSchema
+from retentioneering.tooling.clusters import Clusters
 from tests.tooling.fixtures.clusters import (
     custom_vector,
     stream_simple_shop,

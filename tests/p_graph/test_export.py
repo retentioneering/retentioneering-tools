@@ -1,6 +1,6 @@
 import pandas as pd
 
-from src.data_processors_lib import (
+from retentioneering.data_processors_lib import (
     CollapseLoops,
     CollapseLoopsParams,
     DeleteUsersByPathLength,
@@ -22,10 +22,10 @@ from src.data_processors_lib import (
     TruncatePath,
     TruncatePathParams,
 )
-from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import RawDataSchema
-from src.graph.nodes import EventsNode
-from src.graph.p_graph import PGraph
+from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.eventstream.schema import RawDataSchema
+from retentioneering.graph.nodes import EventsNode
+from retentioneering.graph.p_graph import PGraph
 
 
 class TestPGraphExportImport:

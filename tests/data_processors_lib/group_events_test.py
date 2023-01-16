@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib import GroupEvents, GroupEventsParams
-from src.eventstream.schema import EventstreamSchema, RawDataSchema
+from retentioneering.data_processors_lib import GroupEvents, GroupEventsParams
+from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 

@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import pytest
 
-from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
+from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
 
 
 @pytest.fixture

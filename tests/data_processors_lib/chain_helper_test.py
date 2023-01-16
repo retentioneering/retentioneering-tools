@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.eventstream.eventstream import Eventstream
+from retentioneering.eventstream.eventstream import Eventstream
 
 
 class TestChainHelper:

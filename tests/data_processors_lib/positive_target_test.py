@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib import PositiveTarget, PositiveTargetParams
-from src.eventstream.eventstream import Eventstream
-from src.eventstream.schema import RawDataSchema
+from retentioneering.data_processors_lib import PositiveTarget, PositiveTargetParams
+from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 

@@ -7,7 +7,7 @@ services:
       dockerfile: test38.Dockerfile
     volumes:
       - ".:/app"
-    command: pre-commit install && ./.git/hooks/pre-commit && pytest -vvv
+    command: poetry run pre-commit install && poetry run pre-commit run -a && poetry run pytest -vvv
   test39:
     build:
       context: ./

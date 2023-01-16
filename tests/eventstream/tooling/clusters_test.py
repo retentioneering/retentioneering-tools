@@ -44,7 +44,7 @@ class TestEventstreamClusters:
         c = test_stream.clusters
         c.fit(method="gmm", n_clusters=2, feature_type="tfidf", ngram_range=(1, 1))
         hash1 = hash(c)
-        c.user_clusters
+        c.filter_cluster(cluster_id=0)
         hash2 = hash(c)
 
         assert hash1 == hash2

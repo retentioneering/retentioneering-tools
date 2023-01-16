@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data_processors_lib import (
+from retentioneering.data_processors_lib import (
     DeleteUsersByPathLength,
     DeleteUsersByPathLengthParams,
     FilterEvents,
@@ -24,7 +24,7 @@ from src.data_processors_lib import (
     TruncatePath,
     TruncatePathParams,
 )
-from src.graph.p_graph import EventsNode, PGraph
+from retentioneering.graph.p_graph import EventsNode, PGraph
 from tests.data_processors_lib.fixtures.combination import (
     test_stream,
     test_stream_custom_col,
@@ -53,7 +53,7 @@ class TestDataprocessorsCombination:
         new_users = [1]
         data_processor = NewUsersEvents(params=NewUsersParams(new_users_list=new_users))
         res = apply_data_processor(res, data_processor)
-        data_processor = LostUsersEvents(params=LostUsersParams(lost_cutoff=(10, "D")))
+        data_processor = LostUsersEvents(params=LostUsersParams(lost_cutoff=(5, "m")))
         res = apply_data_processor(res, data_processor).to_dataframe()
         correct_result = new_lost_corr
         result_df = res[correct_result.columns].reset_index(drop=True)

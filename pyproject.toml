@@ -13,8 +13,8 @@ url = "https://pypi.python.org/simple"
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
-virtualenv = ">20.17"
-numpy = "^1.21.5"
+virtualenv = ">=20.17"
+numpy = ">=1.21.5,<1.24"
 pandas = "^1.5.0"
 jupyterlab = "^3.4.7"
 notebook = "^6.4.12"

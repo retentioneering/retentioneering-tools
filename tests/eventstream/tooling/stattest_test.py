@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 
-import pandas as pd
 import pytest
 
 from tests.eventstream.tooling.fixtures.stattests import test_stream

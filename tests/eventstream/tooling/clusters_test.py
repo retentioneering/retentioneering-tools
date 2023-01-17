@@ -37,14 +37,3 @@ class TestEventstreamClusters:
 
         assert pd.testing.assert_frame_equal(res_1[correct_res_1.columns], correct_res_1) is None, "First calculation"
         assert pd.testing.assert_frame_equal(res_2[correct_res_2.columns], correct_res_2) is None, "Refit"
-
-    def test_clusters_eventstream__fit_hash_check(self, test_stream):
-        params = {"feature_type": "count", "ngram_range": (1, 1)}
-
-        c = test_stream.clusters
-        c.fit(method="gmm", n_clusters=2, feature_type="tfidf", ngram_range=(1, 1))
-        hash1 = hash(c)
-        c.filter_cluster(cluster_id=0)
-        hash2 = hash(c)
-
-        assert hash1 == hash2

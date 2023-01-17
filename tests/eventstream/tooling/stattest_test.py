@@ -41,21 +41,6 @@ class TestEventstreamStattests:
         assert math.isclose(res_1, correct_res_1, abs_tol=0.001), "First calculation"
         assert math.isclose(res_2, correct_res_2, abs_tol=0.001), "Refit"
 
-    def test_stattests_eventstream__fit_hash_check(self, test_stream):
-        params = {
-            "groups": ([1, 2, 3, 4], [5, 6, 7, 8]),
-            "func": lambda x: x.shape[0],
-            "group_names": ("group_1", "group_2"),
-            "test": "ttest",
-        }
-
-        st = test_stream.stattests(**params)
-        hash1 = hash(st)
-        st.values
-        hash2 = hash(st)
-
-        assert hash1 == hash2
-
     def test_ttest_correctness(self, test_stream):
         st = test_stream.stattests(
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),

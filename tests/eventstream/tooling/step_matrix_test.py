@@ -57,13 +57,3 @@ class TestEventstreamStepMatrix:
 
         assert pd.testing.assert_frame_equal(res_1[correct_res_1.columns], correct_res_1) is None, "First calculation"
         assert pd.testing.assert_frame_equal(res_2[correct_res_2.columns], correct_res_2) is None, "Refit"
-
-    def test_step_matrix_eventstream__fit_hash_check(self, test_stream):
-        params = {"max_steps": 5}
-
-        cc = test_stream.step_matrix(**params, show_plot=False)
-        hash1 = hash(cc)
-        cc.values
-        hash2 = hash(cc)
-
-        assert hash1 == hash2

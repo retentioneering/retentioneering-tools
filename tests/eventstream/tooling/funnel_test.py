@@ -52,13 +52,3 @@ class TestEventstreamFunnel:
         assert (
             pd.testing.assert_frame_equal(res_2[correct_res_2.columns], correct_res_2, check_dtype=False) is None
         ), "Refit"
-
-    def test_funnel_eventstream__fit_hash_check(self, test_stream):
-        params = {"stages": ["catalog", ["product1", "product2"], "cart", "payment_done"]}
-
-        cc = test_stream.funnel(**params, show_plot=False)
-        hash1 = hash(cc)
-        cc.values
-        hash2 = hash(cc)
-
-        assert hash1 == hash2

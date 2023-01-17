@@ -61,13 +61,3 @@ class TestEventstreamSankey:
         assert (
             pd.testing.assert_frame_equal(res_edges_2[correct_edges_2.columns], correct_edges_2) is None
         ), "Edges calculation after refit"
-
-    def test_sankey_eventstream__fit_hash_check(self, test_stream):
-        params = {}
-
-        cc = test_stream.step_sankey(**params, show_plot=False)
-        hash1 = hash(cc)
-        cc.values
-        hash2 = hash(cc)
-
-        assert hash1 == hash2

@@ -3,9 +3,9 @@ Funnel
 
 Funnel Class
 ------------
-.. automodule:: src.tooling.funnel.funnel
+.. automodule:: retentioneering.tooling.funnel.funnel
     :members:
 
 Eventstream
 -----------
-.. automethod:: src.eventstream.eventstream.Eventstream.funnel
+.. automethod:: retentioneering.eventstream.eventstream.Eventstream.funnel

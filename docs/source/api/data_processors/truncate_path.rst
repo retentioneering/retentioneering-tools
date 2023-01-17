@@ -3,9 +3,9 @@ Truncate Path
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.truncate_path
+.. automodule:: retentioneering.data_processors_lib.truncate_path
     :members:
 
 Eventstream
 -----------
-.. automethod:: src.eventstream.helpers.truncate_path_helper.TruncatePathHelperMixin.truncate_path
+.. automethod:: retentioneering.eventstream.helpers.truncate_path_helper.TruncatePathHelperMixin.truncate_path

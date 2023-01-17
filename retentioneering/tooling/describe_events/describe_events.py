@@ -11,16 +11,16 @@ from retentioneering.eventstream.types import EventstreamType
 
 class DescribeEvents:
     """
-    Displays general information on the eventstream events. If session_col is present in eventstream columns, also
-    outputs session statistics, assuming session_col is the session identifier column.
+    Display general information on the eventstream events. If ``session_col`` is present in eventstream, also
+    output session statistics, assuming ``session_col`` is the session identifier column.
 
     Parameters
     ----------
-    session_col: str (optional, default "session_id")
-    Specifies name of the session column. If present in the eventstream, outputs session statistics.
+    session_col : str, default 'session_id'
+        Specify name of the session column. If present in the eventstream, output session statistics.
 
-    event_list: List[str] | "all" (optional, default "all")
-    Specifies the events to be plotted. If "all"(by default), describes all events.
+    event_list : List of str or 'all', default 'all'
+        Specify the events to be plotted. If ``all``, describe all events.
 
     """
 

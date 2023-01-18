@@ -10,8 +10,8 @@
 Funnel
 ======
 
-This notebook can be open directly in
-`Google Colab <https://colab.research.google.com/drive/1VjFXazgIdMKLyHaqMoKTWhnq5_29lRIs?usp=share_link>`_
+The following user guide is also available as
+`Google Colab notebook <https://colab.research.google.com/drive/1VjFXazgIdMKLyHaqMoKTWhnq5_29lRIs?usp=share_link>`_
 
 Basic example
 -------------
@@ -28,7 +28,7 @@ Here we use ``simple_shop`` dataset, which has already converted to ``Eventstrea
 If you want to know more about ``Eventstream`` and how to use it, please study
 :doc:`this guide<eventstream>`
 
-.. code:: ipython3
+.. code-block:: python
 
     import retentioneering as rete
     from rete import datasets

@@ -46,7 +46,7 @@ StepSankey tool is mainly available as :py:meth:`Eventstream.step_sankey()<src.e
     <iframe
         width="700"
         height="500"
-        src="../_static/step_sankey/basic_step_sankey.html"
+        src="../_static/user_guides/step_sankey/basic_step_sankey.html"
         frameborder="0"
         allowfullscreen
     ></iframe>
@@ -56,9 +56,9 @@ Here we can see user flow. The nodes are grouped into columns in step-wise manne
 
 An edge's width is proportional to the frequency the corresponding transition occurred in the eventstream. Hovering the mouse on the edges, you can reveal not only this information, but also the info on how long the transition took the users in average. For example, we can see that the transition ``catalog (1st step) -> catalog (2nd step)`` appeared in 869 paths, and it took 29 seconds in average.
 
-.. |hover_node1| image:: /_static/step_sankey/hover_node1.png
-.. |hover_node2| image:: /_static/step_sankey/hover_node2.png
-.. |hover_edge| image:: /_static/step_sankey/hover_edge.png
+.. |hover_node1| image:: /_static/user_guides/step_sankey/hover_node1.png
+.. |hover_node2| image:: /_static/user_guides/step_sankey/hover_node2.png
+.. |hover_edge| image:: /_static/user_guides/step_sankey/hover_edge.png
 
 .. table:: The screenshots of the data chunks on mouse hovering.
 
@@ -86,7 +86,7 @@ As you may know, ``path_end`` is a special synthetic event which explicitly indi
     <iframe
         width="1000"
         height="500"
-        src="../_static/step_sankey/path_end.html"
+        src="../_static/user_guides/step_sankey/path_end.html"
         frameborder="0"
         allowfullscreen
     ></iframe>
@@ -112,7 +112,7 @@ The default value for ``thresh`` is 0.05. Let's look how the events are adsorbed
     <iframe
         width="1200"
         height="500"
-        src="../_static/step_sankey/thresh_0.1.html"
+        src="../_static/user_guides/step_sankey/thresh_0.1.html"
         frameborder="0"
         allowfullscreen
     ></iframe>
@@ -141,7 +141,7 @@ It you want to prevent some events from the collapsing, use ``target`` parameter
     <iframe
         width="1200"
         height="500"
-        src="../_static/step_sankey/thresh_and_target.html"
+        src="../_static/user_guides/step_sankey/thresh_and_target.html"
         frameborder="0"
         allowfullscreen
     ></iframe>
@@ -185,7 +185,7 @@ To illustrate this logic consider a dummy eventstream:
     <iframe
         width="600"
         height="300"
-        src="../_static/step_sankey/dummy_sorting.html"
+        src="../_static/user_guides/step_sankey/dummy_sorting.html"
         frameborder="0"
         allowfullscreen
     ></iframe>

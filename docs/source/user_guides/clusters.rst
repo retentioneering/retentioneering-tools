@@ -9,7 +9,7 @@
 
 Clusters
 ========
-The following user guide is also available as `Google Colab <https://colab.research.google.com/drive/1czRNCWcena5KlyPIJR7RRuXNQltl9mKQ?usp=share_link>`_.
+The following user guide is also available as `Google Colab notebook <https://colab.research.google.com/drive/1czRNCWcena5KlyPIJR7RRuXNQltl9mKQ?usp=share_link>`_.
 
 Loading data
 ------------
@@ -56,7 +56,7 @@ and ``plot`` methods then.
     clusters.fit(method='kmeans', n_clusters=4, feature_type='tfidf', ngram_range=(1, 1))
     clusters.plot()
 
-.. image:: /_static/user_guides/clustering/basic_plot.png
+.. image:: /_static/user_guides/clusters/basic_plot.png
 
 Eventstream.clusters property
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -172,7 +172,7 @@ We pass this variable next as an argument for ``set_clusters`` method.
     clusters_random.set_clusters(user_clusters)
     clusters_random.plot()
 
-.. image:: /_static/user_guides/clustering/basic_plot_random_clustering.png
+.. image:: /_static/user_guides/clusters/basic_plot_random_clustering.png
 
 From this plot we see that the cluster sizes are close to each other
 which is exactly what we expect from random splitting.
@@ -199,7 +199,7 @@ who had at least one target event.
 
     clusters.plot(targets=['cart'])
 
-.. image:: /_static/user_guides/clustering/plot_target.png
+.. image:: /_static/user_guides/clusters/plot_target.png
 
 The diagram above shows that cluster 0 contains ~40% of the
 eventstream users, 60% of them have at least one ``cart``
@@ -224,7 +224,7 @@ reduction algorithms.
 
     clusters.projection(method='tsne')
 
-.. image:: /_static/user_guides/clustering/projection_tsne.png
+.. image:: /_static/user_guides/clusters/projection_tsne.png
 
 Each dot represents a single user. Users with similar behaviour are
 located close to each other.
@@ -238,7 +238,7 @@ appeared in a user’s trajectory, the user will be colored as converted.
 
     clusters.projection(method='tsne', plot_type='targets', targets=['cart'])
 
-.. image:: /_static/user_guides/clustering/projection_targets.png
+.. image:: /_static/user_guides/clusters/projection_targets.png
 
 Exploring individual clusters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -272,7 +272,7 @@ method.
     <iframe
         width="600"
         height="600"
-        src="../_static/user_guides/clustering/cluster_transition_graph.html"
+        src="../_static/user_guides/clusters/cluster_transition_graph.html"
         frameborder="0"
         allowfullscreen
     ></iframe>
@@ -297,7 +297,7 @@ in the original eventstream ``catalog`` event holds ~30% of all events only.
 
     clusters.event_dist(cluster_id1=0)
 
-.. image:: /_static/user_guides/clustering/event_dist.png
+.. image:: /_static/user_guides/clusters/event_dist.png
 
 Such definition of event frequency often is not convenient since it's hard
 to interpret. One may consider to use ``weight_col`` argument instead which
@@ -315,7 +315,7 @@ to be compared.
 
     clusters.event_dist(cluster_id1=0, top_n=5, weight_col='user_id')
 
-.. image:: /_static/user_guides/clustering/plot_weight_col_user_id.png
+.. image:: /_static/user_guides/clusters/plot_weight_col_user_id.png
 
 Now, we see that 100% of the users in cluster 0 had at least one ``catalog``
 event, whereas only 97% of the users in the entire eventstream had the
@@ -327,7 +327,7 @@ Similarly, defining ``weight_col='user_id'`` we get the following diagram:
 
     clusters.event_dist(cluster_id1=0, top_n=5, weight_col='session_id')
 
-.. image:: /_static/user_guides/clustering/plot_weight_col_session_id.png
+.. image:: /_static/user_guides/clusters/plot_weight_col_session_id.png
 
 
 As we see from this diagram, if we look at the sessions generated
@@ -343,7 +343,7 @@ that.
 
     clusters.event_dist(cluster_id1=0, cluster_id2=1, top_n=5)
 
-.. image:: /_static/user_guides/clustering/plot_cluster1_cluster2.png
+.. image:: /_static/user_guides/clusters/plot_cluster1_cluster2.png
 
 We see that ``all`` value in the diagram legend has been replaced
 with ``cluster 1`` value.

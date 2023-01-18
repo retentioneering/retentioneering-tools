@@ -147,9 +147,7 @@ It you want to prevent some events from the collapsing, use ``target`` parameter
     ></iframe>
     </div>
 
-Look at step 3. What we see is that ``thresholded_4`` has disappeared completely, and ``product1`` has been revealed instead. At step 4 it has
-
-event has been substituted with ``thresholded_2`` event which is ok because now ``delivery_choice`` and ``delivery_courier`` events are excluded. However, these events have not been appeared at this step but if we go further we'll see that ``delivery_choice`` appears at step 4 and both ``delivery_choice`` and ``delivery_courier`` are spotted at step 5.
+Look at step 3. What we see is that ``thresholded_4`` event has disappeared completely, and ``product1`` has been revealed instead. At step 4 there is no ``thresholded_4`` event too. It has been replaced by ``product1`` and ``delivery_choice``. Finally, at step 5 we see a couple of target events ``product1`` and ``delivery_choice``, but ``thresholded_2`` event is also represented here. It still contains two events: ``delivery_couirer`` and ``delivery_pickup``.
 
 Events sorting
 --------------

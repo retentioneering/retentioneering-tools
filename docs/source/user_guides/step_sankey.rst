@@ -34,7 +34,7 @@ The ``StepSankey`` diagram represents eventstream as a step-wise directed graph.
 
 The implementation is based on `Plotly Sankey diagram <https://plotly.com/python/sankey-diagram/>`_ and inherits all the benefits from its parent. In particular, the diagram is interactive, so you can hover the nodes and edges and look at the detailed info, move the nodes, and even merge them (for merging use `Box Select` or `Lasso Select` tools located at the top-right corner on hover).
 
-StepSankey tool is mainly available as :py:meth:`Eventstream.step_sankey()<src.eventstream.Eventstream.step_sankey>` method. Here's how it visualizes ``simple_shop`` eventstream:
+StepSankey tool is mainly available as :py:meth:`Eventstream.step_sankey()<retentioneering.eventstream.eventstream.Eventstream.step_sankey>` method. Here's how it visualizes ``simple_shop`` eventstream:
 
 .. code-block:: python
 
@@ -71,7 +71,7 @@ Finally, ``max_steps`` denotes the maximum number of steps available for display
 Terminating event
 -----------------
 
-As you may know, ``path_end`` is a special synthetic event which explicitly indicates a trajectory's end. It is yielded as a result of :py:meth:`StartEndEvents<src.data_processors_lib.start_end_events.StartEndEvents>` data processor. Like for :doc:`StepMatrix</user_guides/step_matrix>`, ``path_end`` event has the same meaning for StepSankey. If a user's path is shorter than ``max_steps`` parameter, ``path_end`` is padded the path so that it becomes exactly of length ``max_steps``. Having this behavior implemented, we can guarantee that the sum of the user fractions over each column (i.e. each step) is exactly 1.
+As you may know, ``path_end`` is a special synthetic event which explicitly indicates a trajectory's end. It is yielded as a result of :py:meth:`StartEndEvents<retentioneering.data_processors_lib.start_end_events.StartEndEvents>` data processor. Like for :doc:`StepMatrix</user_guides/step_matrix>`, ``path_end`` event has the same meaning for StepSankey. If a user's path is shorter than ``max_steps`` parameter, ``path_end`` is padded the path so that it becomes exactly of length ``max_steps``. Having this behavior implemented, we can guarantee that the sum of the user fractions over each column (i.e. each step) is exactly 1.
 ``path_end`` is always placed to the bottom. The following example demonstrates this (we temporarily set ``thresh=0`` for the comparison purposes, see the next section).
 
 .. code-block:: python
@@ -118,7 +118,7 @@ The default value for ``thresh`` is 0.05. Let's look how the events are adsorbed
     ></iframe>
     </div>
 
-We see that ``thresholded_4`` event has appeared. As you might guess, it contains ``product1``, ``delivery_choice``, ``delivery_couirer``, ``delivery_pickup``. Why has ``product1`` collapsed?
+We see that ``thresholded_4`` event has appeared. As you might guess, it contains ``product1``, ``delivery_choice``, ``delivery_courier``, ``delivery_pickup``. Why has ``product1`` collapsed?
 At step 3 this event contains 7.01% of the users, 4.51% at step 4, and 4.27% at step 5. Since the maximum value (7.01%) is less than ``thresh=0.1``, the event is collapsed.
 
 Please also note that the number ``_4`` in the ``thresholded_4`` event name carries no information on a specific step. For example, from the chart with ``thresh=0`` we see that at step 3 only one event among these 4 is represented (``product1``), so it is the only event which is collapsed at this step. On the other hand, at step 4 ``product1`` and ``delivery_choice`` appear, so they are collapsed to ``thresholded_4`` event. Finally, at step 5 all these 4 events are collapsed.
@@ -147,7 +147,7 @@ It you want to prevent some events from the collapsing, use ``target`` parameter
     ></iframe>
     </div>
 
-Look at step 3. What we see is that ``thresholded_4`` event has disappeared completely, and ``product1`` has been revealed instead. At step 4 there is no ``thresholded_4`` event too. It has been replaced by ``product1`` and ``delivery_choice``. Finally, at step 5 we see a couple of target events ``product1`` and ``delivery_choice``, but ``thresholded_2`` event is also represented here. It still contains two events: ``delivery_couirer`` and ``delivery_pickup``.
+Look at step 3. What we see is that ``thresholded_4`` event has disappeared completely, and ``product1`` has been revealed instead. At step 4 there is no ``thresholded_4`` event too. It has been replaced by ``product1`` and ``delivery_choice``. Finally, at step 5 we see a couple of target events ``product1`` and ``delivery_choice``, but ``thresholded_2`` event is also represented here. It still contains two events: ``delivery_courier`` and ``delivery_pickup``.
 
 Events sorting
 --------------
@@ -194,7 +194,7 @@ From this chart we see that there's no ``event2`` spotted at step 1. However, de
 Using a separate instance
 -------------------------
 
-By design, :py:meth:`Eventstream.step_sankey()<src.eventstream.Eventstream.step_sankey>` is a shortcut method which uses an instance of :py:meth:`StepSankey<src.tooling.step_sankey.StepSankey>` under the hood. Eventstream method creates an instance of StepSankey object and stores it the eventstream internally.
+By design, :py:meth:`Eventstream.step_sankey()<retentioneering.eventstream.eventstream.Eventstream.step_sankey>` is a shortcut method which uses an instance of :py:meth:`StepSankey<retentioneering.tooling.step_sankey.step_sankey.StepSankey>` under the hood. Eventstream method creates an instance of StepSankey object and stores it the eventstream internally.
 
 Sometimes it's reasonable to work with a separate instance of StepSankey class. In this case you also have to call ``StepSankey.fit()`` and ``StepSankey.plot()`` methods explicitly. Here's an example how you can do it.
 

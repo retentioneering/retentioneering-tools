@@ -192,7 +192,7 @@ class PGraph:
             if node not in self._ngraph.nodes:
                 raise ValueError("node not found!")
 
-    def display(self) -> DisplayHandle:
+    def display(self, width: int = 960, height: int = 900) -> DisplayHandle:
         """
         Show constructed ``PGraph``.
 
@@ -209,7 +209,13 @@ class PGraph:
             self.__server.register_action("combine", self._combine_handler)
 
         render = PGraphRenderer()
-        return display(HTML(render.show(server_id=self.__server.pk, env=self.__server_manager.check_env())))
+        return display(
+            HTML(
+                render.show(
+                    server_id=self.__server.pk, env=self.__server_manager.check_env(), width=width, height=height
+                )
+            )
+        )
 
     def export(self, payload: dict[str, Any]) -> dict:
         """

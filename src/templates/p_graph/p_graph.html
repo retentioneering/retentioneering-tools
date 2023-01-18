@@ -2,8 +2,8 @@
 </div>
 <script>
   (function () {
-    const width = 960
-    const height = 900
+    const width = Number("{{ width }}") // 960
+    const height = Number("{{ height }}") // 900
 
     const iframe = document.createElement("iframe")
     iframe.src = "about:blank"
@@ -30,8 +30,18 @@
     link.rel = "stylesheet"
     link.href = "https://static.server.retentioneering.com/viztools/preprocessing-graph/v3/style.css"
 
+    const font1 = fDocument.createElement("link")
+    font1.rel = "stylesheet"
+    font1.href = "https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap"
+
+    const font2 = fDocument.createElement("link")
+    font2.rel = "stylesheet"
+    font2.href = "https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@300&display=swap"
+
     fDocument.body.appendChild(container)
     fDocument.body.appendChild(script)
     fDocument.body.appendChild(link)
+    fDocument.body.appendChild(font1)
+    fDocument.body.appendChild(font2)
   })()
 </script>

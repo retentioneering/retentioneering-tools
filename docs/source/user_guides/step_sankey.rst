@@ -212,7 +212,7 @@ Common tooling properties
 values
 ~~~~~~
 
-Since the StepSankey object is essentially a graph, it natural to get the underlying values as the data on the graph's nodes and edges. So ``StepSankey.values`` property returns two ``pandas.DataFrame`` objects. The first relates to the nodes, the second relates to the edges. ``show_plot=False`` in the examples below is needed to supress displaying the diagram.
+Since the StepSankey object is essentially a graph, it natural to get the underlying values as the data on the graph's nodes and edges. So :py:meth:`StepSankey.values<retentioneering.tooling.step_sankey.step_sankey.StepSankey.values>` property returns two ``pandas.DataFrame`` objects. The first relates to the nodes, the second relates to the edges. ``show_plot=False`` in the examples below is needed to supress displaying the diagram.
 
 .. code-block:: python
 
@@ -395,7 +395,7 @@ Since the StepSankey object is essentially a graph, it natural to get the underl
 
 params
 ~~~~~~
-``StepSankey.params`` property returns a dictionary containing all the parameters (including the defaults) related to the current state of the StepSankey object:
+:py:meth:`StepSankey.params<retentioneering.tooling.step_sankey.step_sankey.StepSankey.params>` property returns a dictionary containing all the parameters (including the defaults) related to the current state of the StepSankey object:
 
 .. code-block:: python
 

@@ -3,9 +3,9 @@ Stattests
 
 Stattests Class
 ---------------
-.. automodule:: src.tooling.stattests.stattests
+.. automodule:: retentioneering.tooling.stattests.stattests
     :members:
 
 Eventstream
 -----------
-.. automethod:: src.eventstream.eventstream.Eventstream.stattests
+.. automethod:: retentioneering.eventstream.eventstream.Eventstream.stattests

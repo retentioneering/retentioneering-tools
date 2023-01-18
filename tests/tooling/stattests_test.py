@@ -1,6 +1,6 @@
 import math
 
-from src.tooling.stattests import StatTests
+from retentioneering.tooling.stattests import StatTests
 from tests.tooling.fixtures.stattests import (
     continuous_data,
     non_equal_target_data,

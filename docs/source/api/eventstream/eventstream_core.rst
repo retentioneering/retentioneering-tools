@@ -3,16 +3,16 @@ Eventstream Core
 
 Eventstream
 -----------
-.. autoclass:: src.eventstream.eventstream.Eventstream
+.. autoclass:: retentioneering.eventstream.eventstream.Eventstream
     :noindex:
     :members: copy, append_eventstream, to_dataframe, index_events, add_custom_col
 
 Schema
 ------
-.. automodule:: src.eventstream.schema
+.. automodule:: retentioneering.eventstream.schema
     :members:
 
 PGraph
 ------
-.. autoclass:: src.graph.p_graph.PGraph
+.. autoclass:: retentioneering.graph.p_graph.PGraph
     :members:

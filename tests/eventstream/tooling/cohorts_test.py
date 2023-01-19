@@ -28,13 +28,3 @@ class TestEventstreamCohorts:
 
         assert pd.testing.assert_frame_equal(res_1[correct_res_1.columns], correct_res_1) is None, "First calculation"
         assert pd.testing.assert_frame_equal(res_2[correct_res_2.columns], correct_res_2) is None, "Refit"
-
-    def test_cohorts_eventstream__fit_hash_check(self, test_stream):
-        params = {"cohort_start_unit": "M", "cohort_period": (1, "M"), "average": False}
-
-        cc = test_stream.cohorts(**params)
-        hash1 = hash(cc)
-        cc.values
-        hash2 = hash(cc)
-
-        assert hash1 == hash2

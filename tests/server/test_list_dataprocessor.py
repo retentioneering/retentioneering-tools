@@ -1,11 +1,15 @@
 import json
 
-from src.backend.callback import list_dataprocessor
+from retentioneering.backend.callback import list_dataprocessor
 
 
 class TestListDataprocessors:
     def test_list_dataprocessors(self) -> None:
         correct_data = [
+            {
+                "name": "RenameProcessor",
+                "params": [{"default": None, "name": "rules", "optional": False, "widget": "array"}],
+            },
             {
                 "name": "CollapseLoops",
                 "params": [
@@ -105,7 +109,7 @@ class TestListDataprocessors:
                     },
                     {
                         "_source_code": "",
-                        "name": "negative_function",
+                        "name": "func",
                         "optional": True,
                         "widget": "function",
                     },
@@ -134,7 +138,7 @@ class TestListDataprocessors:
                     },
                     {
                         "_source_code": "",
-                        "name": "positive_function",
+                        "name": "func",
                         "optional": True,
                         "widget": "function",
                     },

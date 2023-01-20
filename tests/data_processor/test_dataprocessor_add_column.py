@@ -1,9 +1,9 @@
 import pandas as pd
 
-from src.data_processor.data_processor import DataProcessor
-from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-from src.graph.p_graph import EventsNode, PGraph
-from src.params_model import ParamsModel
+from retentioneering.data_processor import DataProcessor
+from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
+from retentioneering.graph.p_graph import EventsNode, PGraph
+from retentioneering.params_model import ParamsModel
 
 
 class AddColParamsModel(ParamsModel):

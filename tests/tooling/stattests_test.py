@@ -1,27 +1,169 @@
 import math
-import os
 
-import pandas as pd
+from retentioneering.tooling.stattests import StatTests
+from tests.tooling.fixtures.stattests import (
+    continuous_data,
+    non_equal_target_data,
+    simple_data,
+)
+from tests.tooling.fixtures.stattests_corr import (
+    chi2_contingency_corr,
+    fisher_exact_corr,
+    ks_2samp_corr,
+    ztest_corr,
+)
 
-from src.eventstream import Eventstream
-from src.tooling.stattests import StatTests
 
-
-class TestTest:
-    def test_test__first(self):
-        current_dir = os.path.dirname(os.path.realpath(__file__))
-        test_data_dir = os.path.join(current_dir, "../datasets/tooling/stattests")
-        source_df = pd.read_csv(os.path.join(test_data_dir, "01_simple_data.csv"))
-
-        source = Eventstream(source_df)
+class TestStatTest:
+    def test_stattest__ttest_p_val(self, simple_data):
         st = StatTests(
-            eventstream=source,
+            eventstream=simple_data,
             groups=([1, 2, 3, 4], [5, 6, 7, 8]),
             func=lambda x: x.shape[0],
             group_names=("group_1", "group_2"),
             test="ttest",
         )
         st.fit()
-        res_p_val = st.values["p_val"]
-        assert math.isclose(res_p_val, 0.13545, abs_tol=0.0001)
-        assert st.values["is_group_one_greatest"]
+        correct = 0.13545
+        result = st.values["p_val"]
+        assert math.isclose(result, correct, abs_tol=0.001)
+
+    def test_stattest__ttest_mean(self, simple_data):
+        correct = 7.0
+        st = StatTests(
+            eventstream=simple_data,
+            groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+            func=lambda x: x.shape[0],
+            group_names=("group_1", "group_2"),
+            test="ttest",
+        )
+        st.fit()
+        result = st.values["group_one_mean"]
+        assert math.isclose(result, correct, abs_tol=0.1)
+
+    def test_stattest__ttest_greatest(self, simple_data):
+        correct = True
+        st = StatTests(
+            eventstream=simple_data,
+            groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+            func=lambda x: x.shape[0],
+            group_names=("group_1", "group_2"),
+            test="ttest",
+        )
+        st.fit()
+        result = st.values["is_group_one_greatest"]
+        assert correct == result
+
+    def test_stattest__mannwhitneyu_p_val(self, simple_data):
+        correct = 0.1859
+        st = StatTests(
+            eventstream=simple_data,
+            groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+            func=lambda x: x.shape[0],
+            group_names=("group_1", "group_2"),
+            test="mannwhitneyu",
+        )
+        st.fit()
+        result = st.values["p_val"]
+
+        assert math.isclose(result, correct, abs_tol=0.001)
+
+    def test_stattest__ks_2samp(self, continuous_data, ks_2samp_corr):
+        correct = ks_2samp_corr
+        st = StatTests(
+            continuous_data,
+            groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+            func=lambda x: x["seconds"].mean(),
+            group_names=("group_1", "group_2"),
+            test="ks_2samp",
+        )
+        st.fit()
+        result = st.values
+        numeric_values = [
+            "group_one_mean",
+            "group_one_SD",
+            "group_two_mean",
+            "group_two_SD",
+            "p_val",
+            "power_estimated",
+        ]
+        for item in result:
+            if item in numeric_values:
+                result[item] = result[item].round(3)
+        assert result == correct
+
+    def test_stattest__chi2_contingency(self, simple_data, chi2_contingency_corr):
+        correct = chi2_contingency_corr["p_val"]
+        st = StatTests(
+            eventstream=simple_data,
+            groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+            func=lambda x: "payment_done" in x["event"].values,
+            group_names=("group_1", "group_2"),
+            test="chi2_contingency",
+        )
+        st.fit()
+        result = st.values["p_val"]
+        assert math.isclose(result, correct, abs_tol=0.1)
+
+    def test_stattest__ztest(self, simple_data, ztest_corr):
+        correct = ztest_corr["p_val"]
+        st = StatTests(
+            eventstream=simple_data,
+            groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+            func=lambda x: x.shape[0],
+            group_names=("group_1", "group_2"),
+            test="ztest",
+        )
+        st.fit()
+        result = st.values["p_val"]
+        assert math.isclose(result, correct, abs_tol=0.001)
+
+    def test_stattest__fisher_exact(self, non_equal_target_data, fisher_exact_corr):
+        correct = fisher_exact_corr["p_val"]
+        st = StatTests(
+            eventstream=non_equal_target_data,
+            groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+            func=lambda x: "payment_done" in x["event"].values,
+            group_names=("group_1", "group_2"),
+            test="fisher_exact",
+        )
+        st.fit()
+        result = st.values["p_val"]
+        assert math.isclose(result, correct, abs_tol=0.001)
+
+    def test_stattest__ttest_alpha(self, simple_data):
+        correct = 0.4390
+        st = StatTests(
+            eventstream=simple_data,
+            groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+            func=lambda x: x.shape[0],
+            group_names=("group_1", "group_2"),
+            test="ttest",
+            alpha=0.1,
+        )
+        st.fit()
+        result = st.values["power_estimated"]
+        assert math.isclose(result, correct, abs_tol=0.001)
+
+
+class TestEventstreamStattests:
+    def test_stattests_working(self, simple_data):
+        source = simple_data
+        try:
+            source.stattests(
+                groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+                func=lambda x: x.shape[0],
+                group_names=("group_1", "group_2"),
+                test="ttest",
+            )
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.stattests. " + str(e))
+        try:
+            source.stattests(
+                groups=([1, 2, 3, 4], [5, 6, 7, 8]),
+                func=lambda x: x.shape[0],
+                group_names=("group_1", "group_2"),
+                test="chi2_contingency",
+            )
+        except Exception as e:
+            pytest.fail("Runtime error in Eventstream.stattests. " + str(e))

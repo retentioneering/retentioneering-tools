@@ -2,7 +2,6 @@ import pickle
 from typing import Callable
 
 from _pickle import PicklingError
-
 from src.params_model import ParamsModel
 
 

@@ -5,14 +5,20 @@ from typing import List, Literal, Union
 
 import pandas as pd
 
-from src.data_processor.data_processor import DataProcessor
-from src.data_processors_lib.rete.filter_events import FilterEvents, FilterEventsParams
-from src.data_processors_lib.rete.group_events import GroupEvents, GroupEventsParams
-from src.eventstream.eventstream import Eventstream, EventstreamSchema
-from src.eventstream.schema import RawDataSchema
-from src.graph.nodes import EventsNode, MergeNode, Node, SourceNode
-from src.graph.p_graph import PGraph
-from src.params_model import ParamsModel
+from retentioneering.data_processor import DataProcessor
+from retentioneering.data_processors_lib.filter_events import (
+    FilterEvents,
+    FilterEventsParams,
+)
+from retentioneering.data_processors_lib.group_events import (
+    GroupEvents,
+    GroupEventsParams,
+)
+from retentioneering.eventstream.eventstream import Eventstream, EventstreamSchema
+from retentioneering.eventstream.schema import RawDataSchema
+from retentioneering.graph.nodes import EventsNode, MergeNode, Node, SourceNode
+from retentioneering.graph.p_graph import PGraph
+from retentioneering.params_model import ParamsModel
 
 
 class StubPProcessorParams(ParamsModel):
@@ -85,7 +91,7 @@ class EventstreamTest(unittest.TestCase):
             parents=added_nodes,
         )
 
-        merge_node_parents = graph.get_merge_node_parents(merge_node)
+        merge_node_parents = graph._get_merge_node_parents(merge_node)
         self.assertEqual(len(merge_node_parents), len(added_nodes))
 
         for node in merge_node_parents:
@@ -117,7 +123,7 @@ class EventstreamTest(unittest.TestCase):
         def cart_func(df: pd.DataFrame, schema: EventstreamSchema) -> pd.Series[bool]:
             return df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
 
-        cart_events = EventsNode(GroupEvents(GroupEventsParams(event_name="add_to_cart", filter=cart_func)))
+        cart_events = EventsNode(GroupEvents(GroupEventsParams(event_name="add_to_cart", func=cart_func)))
 
         graph = PGraph(source)
         graph.add_node(node=cart_events, parents=[graph.root])
@@ -153,7 +159,7 @@ class EventstreamTest(unittest.TestCase):
             GroupEvents(
                 GroupEventsParams(
                     event_name="add_to_cart",
-                    filter=lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"]),
+                    func=lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"]),
                 )
             )
         )
@@ -161,12 +167,12 @@ class EventstreamTest(unittest.TestCase):
             GroupEvents(
                 GroupEventsParams(
                     event_name="logout",
-                    filter=lambda df, schema: df[schema.event_name] == "exit_btn_click",
+                    func=lambda df, schema: df[schema.event_name] == "exit_btn_click",
                 )
             )
         )
         allowed_events = EventsNode(
-            FilterEvents(FilterEventsParams(filter=lambda df, schema: df[schema.event_name] != "trash_event"))
+            FilterEvents(FilterEventsParams(func=lambda df, schema: df[schema.event_name] != "trash_event"))
         )
         merge = MergeNode()
 
@@ -233,7 +239,7 @@ class EventstreamTest(unittest.TestCase):
             GroupEvents(
                 GroupEventsParams(
                     event_name="add_to_cart",
-                    filter=lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"]),
+                    func=lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"]),
                 )
             )
         )
@@ -242,7 +248,7 @@ class EventstreamTest(unittest.TestCase):
             GroupEvents(
                 GroupEventsParams(
                     event_name="logout",
-                    filter=lambda df, schema: df[schema.event_name] == "exit_btn_click",
+                    func=lambda df, schema: df[schema.event_name] == "exit_btn_click",
                 )
             )
         )
@@ -281,8 +287,8 @@ class EventstreamTest(unittest.TestCase):
         export_data = graph.export(payload={})
         # del export_data["links"]
         # При каждом запуске функции имеют разные адреса, отсюда разница при ассерте
-        del export_data["nodes"][1]["processor"]["values"]["filter"]
-        del export_data["nodes"][2]["processor"]["values"]["filter"]
+        del export_data["nodes"][1]["processor"]["values"]["func"]
+        del export_data["nodes"][2]["processor"]["values"]["func"]
 
         assert example == export_data
 

@@ -3,15 +3,15 @@ import os
 import pandas as pd
 import pytest
 
-from src import datasets
-from src.data_processors_lib.rete import (
+from retentioneering import datasets
+from retentioneering.data_processors_lib import (
     FilterEvents,
     FilterEventsParams,
     StartEndEvents,
     StartEndEventsParams,
 )
-from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-from src.graph.p_graph import EventsNode, PGraph
+from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
+from retentioneering.graph.p_graph import EventsNode, PGraph
 
 FLOAT_PRECISION = 3
 
@@ -26,18 +26,7 @@ def read_test_data(filename):
 
 @pytest.fixture
 def stream_simple_shop():
-    def remove_start(df, schema):
-        return df[schema.event_name] != "path_start"
-
-    test_stream = datasets.load_simple_shop()
-    graph = PGraph(source_stream=test_stream)
-    node1 = EventsNode(StartEndEvents(params=StartEndEventsParams(**{})))
-    node2 = EventsNode(FilterEvents(params=FilterEventsParams(filter=remove_start)))
-
-    graph.add_node(node=node1, parents=[graph.root])
-    graph.add_node(node=node2, parents=[node1])
-
-    stream = graph.combine(node=node2)
+    stream = datasets.load_simple_shop().add_start_end()
     return stream
 
 

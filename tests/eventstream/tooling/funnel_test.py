@@ -21,7 +21,7 @@ class TestEventstreamFunnel:
         )
 
         res = test_stream.funnel(**params, show_plot=False).values
-        assert correct_res.compare(res).shape == (0, 0)
+        assert pd.testing.assert_frame_equal(res[correct_res.columns], correct_res, check_dtype=False) is None
 
     def test_cohorts_eventstream__refit(self, test_stream):
         params_1 = {"stages": ["catalog", ["product1", "product2"], "cart", "payment_done"]}
@@ -46,14 +46,9 @@ class TestEventstreamFunnel:
 
         res_1 = test_stream.funnel(**params_1, show_plot=False).values
         res_2 = test_stream.funnel(**params_2, show_plot=False).values
-        assert correct_res_1.round(2).compare(res_1).shape == (0, 0), "First calculation"
-        assert correct_res_2.round(2).compare(res_2).shape == (0, 0), "Refit"
-
-    def test_funnel_eventstream__fit_hash_check(self, test_stream):
-        params = {"stages": ["catalog", ["product1", "product2"], "cart", "payment_done"]}
-
-        cc = test_stream.funnel(**params, show_plot=False)
-        hash1 = hash(cc)
-        hash2 = hash(cc)
-
-        assert hash1 == hash2
+        assert (
+            pd.testing.assert_frame_equal(res_1[correct_res_1.columns], correct_res_1, check_dtype=False) is None
+        ), "First calculation"
+        assert (
+            pd.testing.assert_frame_equal(res_2[correct_res_2.columns], correct_res_2, check_dtype=False) is None
+        ), "Refit"

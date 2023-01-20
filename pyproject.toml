@@ -1,23 +1,26 @@
 [tool.poetry]
-name = "retentioneering-tools-new-arch"
-version = "0.1.0"
-description = ""
-authors = ["Your Name <you@example.com>"]
+name = "retentioneering"
+version = "0.1.15"
+description = "universal framework for data processing"
+authors = ["Retentioneering User Trajectory Analysis Lab <you@example.com>"]
+packages = [
+    { include = "retentioneering"}
+]
+
+[[tool.poetry.source]]
+name = "main"
+url = "https://pypi.python.org/simple"
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
-numpy = "^1.23.3"
+virtualenv = ">=20.17"
+numpy = ">=1.21.5,<1.24"
 pandas = "^1.5.0"
-pre-commit = "^2.20.0"
 jupyterlab = "^3.4.7"
 notebook = "^6.4.12"
 pandas-stubs = "^1.4.4"
-poetry = "^1.2.1"
-pytest = "^7.1.3"
 pydantic = "^1.10.2"
 networkx = "^2.8.6"
-mypy = "^0.971"
-tox-poetry = "^0.4.1"
 plotly = "^5.10.0"
 seaborn = "^0.12.1"
 umap-learn = "^0.5.3"
@@ -25,9 +28,12 @@ statsmodels = "^0.13.5"
 scipy = ">=1.3,<1.9"
 
 [tool.poetry.dev-dependencies]
+pre-commit = "^2.20.0"
+poetry = "^1.2.1"
+pytest = "^7.1.3"
+tox-poetry = "^0.4.1"
+mypy = "^0.971"
 
-#[tool.poetry.scripts]
-#test = { callable = "pytest", extras = ["tests"] }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -38,7 +44,6 @@ line-length = 120
 
 [tool.pyright]
 useLibraryCodeForTypes = false
-#strict = ['**']
 typeCheckingMode = 'basic'
 stubPath = './typings'
 exclude = [
@@ -47,7 +52,8 @@ exclude = [
     './examples',
     './.tox',
     './tests',
-    './examples'
+    './examples',
+    './venv'
     ]
 strictListInference = true
 strictDictionaryInference = true

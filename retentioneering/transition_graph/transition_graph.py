@@ -605,21 +605,3 @@ class TransitionGraph:
         if name in settings:
             return self._to_json(settings[name])
         return "undefined"
-
-    def get_adjacency(self, weights: list[str] | None, norm_type: NormType) -> pd.DataFrame:
-        """
-        Parameters
-        ----------
-        weights : list of str or None
-        norm_type : {"full", "node", None}
-
-        Returns
-        -------
-        pd.DataFrame
-            Transition matrix
-        """
-        self.edgelist.calculate_edgelist(data=self.eventstream.to_dataframe(), norm_type=norm_type, custom_cols=weights)
-        edgelist: pd.DataFrame = self.edgelist.edgelist_df
-        graph = nx.DiGraph()
-        graph.add_weighted_edges_from(edgelist.values)
-        return nx.to_pandas_adjacency(G=graph)

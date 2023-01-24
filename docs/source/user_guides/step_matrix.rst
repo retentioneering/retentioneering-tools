@@ -31,35 +31,27 @@ distribution of the events appeared at a specific step:
 
 
 .. code-block:: python
-    simple_example = pd.DataFrame({
-        'user_id': ['user1', 'user2', 'user3', 'user4',
-                    'user1', 'user3', 'user4',
-                    'user1', 'user3', 'user4',
-                    'user1', 'user3', 'user4',
-                    'user1', 'user3',
-                    'user3'
-                   ],
-        'event': ['main', 'main', 'main', 'catalog',
-                  'catalog', 'catalog', 'product',
-                  'product', 'catalog', 'main',
-                  'cart', 'product', 'catalog',
-                  'catalog', 'cart',
-                  'order'
-                 ],
-        'timestamp': [0, 0, 0, 0,
-                      1, 1, 1,
-                      2, 2, 2,
-                      3, 3, 3,
-                      5, 5,
-                      6
-                     ]
-    })
+
+    simple_example = pd.DataFrame([['user1', 'main', 0],
+                                  ['user2', 'main', 0],
+                                  ['user3', 'main', 0],
+                                  ['user4', 'catalog', 0],
+                                  ['user1', 'catalog', 1],
+                                  ['user3', 'catalog', 1],
+                                  ['user4', 'product', 1],
+                                  ['user1', 'product', 2],
+                                  ['user3', 'catalog', 2],
+                                  ['user4', 'main', 2],
+                                  ['user1', 'cart', 3],
+                                  ['user3', 'product', 3],
+                                  ['user4', 'catalog', 3],
+                                  ['user1', 'catalog', 5],
+                                  ['user3', 'cart', 5],
+                                  ['user3', 'order', 6]],
+                                  columns=['user_id', 'event', 'timestamp'])
+
 
     Eventstream(simple_example).step_matrix(max_steps=7);
-
-
-
-
 
 .. image:: /_static/user_guides/step_matrix/output_6_1.png
 
@@ -236,7 +228,7 @@ Now we can visually compare by color how many users reach ``cart`` vs
 
 Targets can be presented as accumulated values. It means we can display
 the cumulative sum of the share of the users who had this event at each
-step. Rows with accumulated values start with “ACC_”. There are two
+step. Rows with accumulated values start with "ACC_". There are two
 options for displaying these rows:
 
 1. ``only`` accumulated rows;
@@ -684,8 +676,10 @@ Regardless of how the step matrix is called, as eventstream method or as
 StepMatrix class instance, common properties are available.
 
 .. _values:
+
 values
-~~~~~~
+~~~~~~~
+
 
 To see the matrix data, we can call the ``.values`` attribute. This
 attribute returns two datasets: the step matrix itself and the target

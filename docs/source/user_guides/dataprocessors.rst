@@ -22,7 +22,7 @@ Here we use ``simple_shop`` dataset, which has already converted to
 to use it, please study our :doc:`eventstream guide<eventstream>`.
 
 
-.. code:: ipython3
+.. code-block:: python
 
     import pandas as pd
     from retentioneering import datasets
@@ -54,7 +54,7 @@ preprocessing graph is, please study our guides:
 General usage
 -------------
 
-.. code:: ipython3
+.. code-block:: python
 
     from retentioneering.graph.p_graph import PGraph, EventsNode
 
@@ -84,7 +84,7 @@ To demonstrate the data processors in action we should:
 
 Let’s see how to create simple graph with one node:
 
-.. code:: ipython3
+.. code-block:: python
 
     graph = PGraph(source_stream=stream)
     dp_start_end = StartEndEvents(StartEndEventsParams())
@@ -287,7 +287,7 @@ Let’s see how to create simple graph with one node:
 
 Now let us add one more node ``SplitSessions``:
 
-.. code:: ipython3
+.. code-block:: python
 
     dp_split_sessions = SplitSessions(SplitSessionsParams(session_cutoff=(10, 'm')))
     node_1 = EventsNode(dp_split_sessions)
@@ -663,7 +663,7 @@ python libraries, for example in Pandas.
 Let’s see how we can get the same result as in *General Usage* block of
 current guide but using helper methods:
 
-.. code:: ipython3
+.. code-block:: python
 
     res = stream.add_start_end().split_sessions(session_cutoff=(10, 'm')).to_dataframe()
     res[res['user_id'] == 219483890]
@@ -998,7 +998,7 @@ called ``path_start`` right before the first user event, and an event
 
 Applying ``StartEndEvents`` to mark user trajectory start and finish:
 
-.. code:: ipython3
+.. code-block:: python
 
     res = stream.add_start_end().to_dataframe()
     res[res['user_id'] == 219483890]
@@ -1222,7 +1222,7 @@ session ordinal number within a user path and always starts with 1.
 Applying ``SplitSessions`` to split user paths into sessions with
 session cutoff = 10 minutes:
 
-.. code:: ipython3
+.. code-block:: python
 
     res = stream.split_sessions(session_cutoff=(10, 'm')).to_dataframe()
     res[res['user_id'] == 219483890]
@@ -1527,7 +1527,7 @@ list, all users will be labeled as new.
 .. figure:: /_static/user_guides/data_processor/dp_3_new_users.png
 
 
-.. code:: ipython3
+.. code-block:: python
 
     new_users = [219483890, 964964743, 965024600]
     res = stream.add_new_users(new_users_list=new_users).to_dataframe()
@@ -1607,7 +1607,7 @@ We can see that user ``219483890`` is marked as a new user.
 
 But user ``501098384`` is marked as an existing user:
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 501098384].head()
 
@@ -1709,7 +1709,7 @@ exceeds ``lost_cutoff``, label as ``lost_user``; otherwise, label as
 .. figure:: /_static/user_guides/data_processor/dp_4_lost_users.png
 
 
-.. code:: ipython3
+.. code-block:: python
 
     lost_users_list = [219483890, 964964743, 965024600]
     res = stream.lost_users(lost_users_list=lost_users_list).to_dataframe()
@@ -1786,7 +1786,7 @@ exceeds ``lost_cutoff``, label as ``lost_user``; otherwise, label as
 In opposite to user ``219483890``, user ``501098384`` is labeled as
 ``absent_user``.
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 501098384].tail()
 
@@ -1869,14 +1869,14 @@ We can also run ``LostUsersEvents`` with ``lost_cutoff`` passed, to
 arbitrarily label some users as lost. Assume we consider a user as
 absent if there was no event after 30 days.
 
-.. code:: ipython3
+.. code-block:: python
 
     res = stream.lost_users(lost_cutoff=(30, 'D')).to_dataframe()
 
 Before we inspect the results of applying the data processor, let’s
 notice that the eventstream ends at ``2020-04-29 12:48:07``.
 
-.. code:: ipython3
+.. code-block:: python
 
     res['timestamp'].max()
 
@@ -1893,7 +1893,7 @@ So user ``495985018`` is labeled as lost since her last event occurred
 on ``2019-11-02``. It’s more than 30 days before the end of the
 eventstream.
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 495985018]
 
@@ -1963,7 +1963,7 @@ On the other hand, user ``819489198`` is labeled as ``absent`` because
 her last event occurred on ``2020-04-15``, and this is less than 30 days
 before ``2020-04-29``.
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 819489198]
 
@@ -2120,7 +2120,7 @@ type.
 
 .. figure:: /_static/user_guides/data_processor/dp_5_positive.png
 
-.. code:: ipython3
+.. code-block:: python
 
     positive_events = ['cart', 'payment_done']
     res = stream.positive_target(positive_target_events=positive_events).to_dataframe()
@@ -2129,7 +2129,7 @@ Consider user ``219483890`` who has ``cart`` event appeared in her
 trajectory with ``event_index = 2``. Right after it a synthetic event
 ``positive_target_cart`` was added.
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 219483890]
 
@@ -2323,7 +2323,7 @@ trajectory with ``event_index = 2``. Right after it a synthetic event
 In opposite to this user, user ``24427596`` has no positive events, so
 her path remains unchanged:
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 24427596]
 
@@ -2408,7 +2408,7 @@ And define a custom one.
 For example we need to mark each ``positive_target_event``, not only the
 first one in the trajectory.
 
-.. code:: ipython3
+.. code-block:: python
 
     def custom_func(eventstream, positive_target_events) -> pd.DataFrame:
 
@@ -2420,7 +2420,7 @@ first one in the trajectory.
     res = stream.positive_target(positive_target_events=positive_events, func=custom_func).to_dataframe()
 
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 219483890]
 
@@ -2636,7 +2636,7 @@ positive.
 
 .. figure:: /_static/user_guides/data_processor/dp_6_negative.png
 
-.. code:: ipython3
+.. code-block:: python
 
     negative_events = ['lost']
 
@@ -2645,7 +2645,7 @@ positive.
 Functions similarly to the ``PositiveTarget`` dataprocessor - in this
 case, it will add negative event next to the ``lost`` event:
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 24427596]
 
@@ -2781,7 +2781,7 @@ with specified parameter ``event_pair=('path_start', 'cart')`` can help.
 
 
 
-.. code:: ipython3
+.. code-block:: python
 
     params = {
         'left_truncated_cutoff': (4, 'D'),
@@ -2792,7 +2792,7 @@ with specified parameter ``event_pair=('path_start', 'cart')`` can help.
 
 Notice the eventstream’s start and end:
 
-.. code:: ipython3
+.. code-block:: python
 
     print('Eventstream start: {}'.format(res.timestamp.min()))
     print('Eventstream end: {}'.format(res.timestamp.max()))
@@ -2809,7 +2809,7 @@ close to the eventstream start according to ``left_truncated_cutoff``
 value, so the ``TruncatedEvents`` dataprocessor labels it as truncated
 from the left:
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 495985018]
 
@@ -2879,7 +2879,7 @@ close to the eventstream end according to ``left_truncated_cutoff``, so
 the ``TruncatedEvents`` data processor labels it as truncated from the
 right:
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 831491833]
 
@@ -3024,7 +3024,7 @@ Let us say we are interested only in specific events - for example, only
 in events of users that appear in some pre-defined list of users.
 ``FilterEvents`` allows us to access only these events:
 
-.. code:: ipython3
+.. code-block:: python
 
     def save_specific_users(df, schema):
         users_to_save = [219483890, 964964743, 965024600]
@@ -3034,7 +3034,7 @@ in events of users that appear in some pre-defined list of users.
 
 As you see below, the resulting eventstream includes these 3 users only:
 
-.. code:: ipython3
+.. code-block:: python
 
     res['user_id'].unique().astype(int)
 
@@ -3060,7 +3060,7 @@ also remove specific events from the eventstream. Let us remove all
 ``catalog`` and ``main`` events, assuming they are non-informative for
 us:
 
-.. code:: ipython3
+.. code-block:: python
 
     stream.to_dataframe()\
         ['event']\
@@ -3078,7 +3078,7 @@ us:
 
 
 
-.. code:: ipython3
+.. code-block:: python
 
     def exclude_events(df, schema):
         events_to_exclude = ['catalog', 'main']
@@ -3088,7 +3088,7 @@ us:
 
 We can see that ``res`` dataframe doesn’t have “useless” events anymore.
 
-.. code:: ipython3
+.. code-block:: python
 
     res['event']\
         .value_counts()\
@@ -3136,14 +3136,14 @@ dataprocessor:
 
 A minimum number of events specified:
 
-.. code:: ipython3
+.. code-block:: python
 
     res = stream.delete_users(events_num=25).to_dataframe()
 
 Any remaining user has at least 25 events. For example, user
 ``629881394`` has 48 events.
 
-.. code:: ipython3
+.. code-block:: python
 
     len(res[res['user_id'] == 629881394])
 
@@ -3157,7 +3157,7 @@ Any remaining user has at least 25 events. For example, user
 
 A minimum path length (user lifetime) specified:
 
-.. code:: ipython3
+.. code-block:: python
 
     res = stream.delete_users(cutoff=(1, 'M')).to_dataframe()
 
@@ -3165,7 +3165,7 @@ Any remaining user has been “alive” for at least a full month. For
 example, user ``964964743`` started her trajectory on ``2019-11-01`` and
 ended on ``2019-12-09``.
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 964964743].iloc[[0, -1]]
 
@@ -3252,14 +3252,14 @@ Suppose we want to see what happens to the user after she jumps to
 brought her to ``cart`` event. So we use ``drop_before='cart'`` along
 with ``shift_before=-2`` parameters.
 
-.. code:: ipython3
+.. code-block:: python
 
     res = stream.truncate_path(drop_before='cart', shift_before=-2).to_dataframe()
 
 Now some users have their trajectories truncated, because they have at
 least one ``cart`` in their path:
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 219483890]
 
@@ -3451,7 +3451,7 @@ ignored by the data processor.
 Some users, however, do not have any ``cart`` events - and their
 trajectories have not been changed:
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 24427596]
 
@@ -3530,14 +3530,14 @@ point to be not the first, but the last occurence of ``cart``. To
 demonstrate both, let us set ``drop_after = "cart"`` and
 ``occurrence_after = "last"``:
 
-.. code:: ipython3
+.. code-block:: python
 
     res = stream.truncate_path(drop_after='cart', occurrence_after="last").to_dataframe()
 
 Now, any trajectory which includes ``cart`` is truncated to end with the
 last ``cart``:
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 219483890]
 
@@ -3681,7 +3681,7 @@ With ``GroupEvents``, we can group events based on event name. Suppose
 we need to assign a common name ``product`` to events ``product1`` and
 ``product2``. Here’s how we can manage it.
 
-.. code:: ipython3
+.. code-block:: python
 
     def group_events(df, schema):
         events_to_group = ['product1', 'product2']
@@ -3697,7 +3697,7 @@ we need to assign a common name ``product`` to events ``product1`` and
 As we can see, user ``456870964`` now has a couple of ``product`` events
 (``event_index = 160, 164``) with ``event_type = ‘group_alias’``).
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 456870964]
 
@@ -3810,7 +3810,7 @@ As we can see, user ``456870964`` now has a couple of ``product`` events
 We can also make sure that previously these events were named as
 ``product1`` and ``product2`` and had ``raw`` event type.
 
-.. code:: ipython3
+.. code-block:: python
 
     stream.to_dataframe().query('user_id == 456870964')
 
@@ -3953,14 +3953,14 @@ The timestamp that the new event has is determined by
 .. figure:: /_static/user_guides/data_processor/dp_13_collapse_loops.png
 
 
-.. code:: ipython3
+.. code-block:: python
 
     res = stream.collapse_loops().to_dataframe()
 
 Consider for example user ``2112338``. In the original eventstream she
 had 3 consecutive ``catalog`` events.
 
-.. code:: ipython3
+.. code-block:: python
 
     stream.to_dataframe().query('user_id == 2112338')
 
@@ -4048,7 +4048,7 @@ In the result dataframe these events have been collapsed to a single
 same as the timestamp of the last looping event:
 ``2019-12-24 12:58:44``.
 
-.. code:: ipython3
+.. code-block:: python
 
     res[res['user_id'] == 2112338]
 
@@ -4117,7 +4117,7 @@ To see the length of the loops we removed, we can set suffix to
 ``count``. Also, let’s see how ``timestamp_aggregation_type`` works if
 we set it to ``mean``.
 
-.. code:: ipython3
+.. code-block:: python
 
     params = {
         'suffix': 'count',
@@ -4219,7 +4219,7 @@ simple-onlineshop dataset we have seen before.
 If we try to visualize the data without using dataprocessors, we can get
 results that are difficult to analyze:
 
-.. code:: ipython3
+.. code-block:: python
 
     from retentioneering.transition_graph import TransitionGraph
 
@@ -4276,7 +4276,7 @@ between different “heads” of the transformation.
 
 Let us compose this graph:
 
-.. code:: ipython3
+.. code-block:: python
 
     def group_browsing(df, schema):
         return df[schema.event_name].isin(['catalog', 'main'])
@@ -4301,7 +4301,7 @@ Let us compose this graph:
 Looking at the simpliest version, where loops are replaced with the
 event they consist of:
 
-.. code:: ipython3
+.. code-block:: python
 
     stream_out = stream_7_nodes.collapse_loops(suffix=None)
     tgraph = TransitionGraph(eventstream=stream_out, graph_settings={})
@@ -4346,7 +4346,7 @@ improvement compared to the original plot.
 To learn more about loops and where they occur, let us plot two other
 versions of the eventstream:
 
-.. code:: ipython3
+.. code-block:: python
 
     stream_out = stream_7_nodes.collapse_loops(suffix='loop')
     tgraph = TransitionGraph(eventstream=stream_out, graph_settings={})
@@ -4380,7 +4380,7 @@ pay.
 Now we can attempt to look at the typical loop length using the third
 created eventstream:
 
-.. code:: ipython3
+.. code-block:: python
 
     stream_out = stream_7_nodes.collapse_loops(suffix='count')
     tgraph = TransitionGraph(eventstream=stream_out, graph_settings={})

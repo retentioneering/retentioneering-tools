@@ -127,7 +127,7 @@ practical, as the displayed name of the event group will be hard to
 interpret. You could avoid this problem by doing one of the following:
 
 #. use grouping data processor for grouping relevant events.
-   See :doc:`GroupEvents</api/data_processors/group>`)
+   See :py:meth:`GroupEvents<retentioneering.data_processors_lib.group_events.GroupEvents>`)
 #. use the ``stage_names`` funnel parameter
 
 In the following example, let us use the second method. We define
@@ -380,16 +380,16 @@ We could further expand our user behaviour analysis by plotting
 ShortCut for Funnel (as an eventstream method)
 ----------------------------------------------
 
-We can also use :doc:`Eventstream.funnel</api/tooling/funnel>` method which
-creates an instance of ``Funnel`` class and applies
+We can also use :py::meth:`Eventstream.funnel()<retentioneering.eventstream.eventstream.Eventstream.funnel>`
+method which creates an instance of ``Funnel`` class and applies
 :py:meth:`Funnel.fit()<retentioneering.tooling.funnel.funnel.Funnel.fit>` method as well.
 
 In order to avoid unnessesary recalculations while you need different representations
 of one matrix with the same parameters - that would be helpful to save that fitted
 instance in separate variable.
 
-``Funnel.plot()`` is displayed by default, but :py:meth:`Funnel.values<retentioneering.tooling.funnel.funnel.Funnel.values>`
- is also available.
+``Funnel.plot()`` is displayed by default, but
+:py:meth:`Funnel.values<retentioneering.tooling.funnel.funnel.Funnel.values>` is also available.
 
 .. code-block:: python
 

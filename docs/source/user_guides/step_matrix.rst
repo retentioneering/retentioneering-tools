@@ -1,34 +1,35 @@
-Step Matrix
+StepMatrix
 ==========
 
-The following user guide is also available as `Google Colab <https://colab.research.google.com/drive/12l603hupPLIWp9H1ljkr5RUQLuunbLY3?usp=share_link>`_
+The following user guide is also available as `Google Colab notebook <https://colab.research.google.com/drive/12l603hupPLIWp9H1ljkr5RUQLuunbLY3?usp=sharing>'.
 
-Step matrix intro
------------------
+Step matrix definition
+----------------------
 
-Step matrix is a very powerful tool in the retentioneering arsenal. It
-allows getting a quick high-level understanding of user behavior. Step
-matrix has powerful customization options to tailor the output depending
-on the goal of the analysis.
+Step matrix is a powerful tool in the retentioneering arsenal. It allows
+getting a quick high-level understanding of user behavior. Step matrix
+has powerful customization options to tailor the output depending on the
+goal of the analysis.
 
-To better understand how step_matrix works let’s first consider an
-intuitive example. Let’s say we are analyzing web-store logs and have a
+To better understand how step matrix works let’s first consider an
+intuitive example. Suppose we are analyze web-store logs and have a
 dataset with event logs from four user sessions with the following
 events in the following order:
 
 .. image:: /_static/user_guides/step_matrix/step_matrix_demo.svg
 
-We can visualize this dataset as a heatmap indicating what fraction of
-users were at which step in their trajectories:
 
-.. code:: ipython3
+We can visualize this dataset as a step-wise heatmap indicating the
+distribution of the events appeared at a specific step:
+
+.. code-block:: python
 
     from retentioneering.eventstream import Eventstream
     import pandas as pd
-    from retentioneering import datasets
 
-.. code:: ipython3
 
+
+.. code-block:: python
     simple_example = pd.DataFrame({
         'user_id': ['user1', 'user2', 'user3', 'user4',
                     'user1', 'user3', 'user4',
@@ -53,1540 +54,652 @@ users were at which step in their trajectories:
                      ]
     })
 
-    Eventstream(simple_example).step_matrix(max_steps=7)
+    Eventstream(simple_example).step_matrix(max_steps=7);
 
 
 
 
 
+.. image:: /_static/user_guides/step_matrix/output_6_1.png
 
-.. image:: /_static/user_guides/step_matrix/output_7_1.png
 
-This is the simplest step matrix. It has individual unique events as
-rows, and columns correspond to the positional number of events in the
-user log, and the value in the matrix shows what percentage of users
-have given event at a given step. We can also see a special synthetic
-event called “ENDED”, which shows the percentage of users who have ended
-their path to the given step.
+This is the simplest step matrix. The matrix rows correspond to the
+unique events, and the columns correspond to the steps in the user
+trajectories. So that ``(i, j)`` matrix element show the percantage of
+the users who had event ``i`` appeared at step ``j``.
 
 Below we will explore how to plot and customize the step matrix.
+
+Loading data
+~~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from retentioneering import datasets
+
+    stream = datasets.load_simple_shop()
 
 Basic example
 -------------
 
-In order to start, we need to: - import the required libraries - load
-sample dataset - create ``StepMatrix`` object
+StepMatrix tool is mainly available as ``Eventstream.step_matrix()``
+method. Here’s how it visualizes ``simple_shop`` eventstream:
 
-.. code:: ipython3
+.. code-block:: python
 
-    from retentioneering.eventstream import Eventstream
-    import pandas as pd
-    from retentioneering import datasets
+    stream.step_matrix(max_steps=12)
 
-.. code:: ipython3
 
-    source = datasets.load_simple_shop()
 
-Creating an instance of the StepMatrix class
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-At the moment when an instance of a class is created, it is still
-“naive”. To pass it the parameters specified in brackets, you need to
-use the “.fit()” method.
 
-.. code:: ipython3
+.. image:: /_static/user_guides/step_matrix/output_12_2.png
 
-    from retentioneering.tooling.step_matrix import StepMatrix
-    step_matrix = StepMatrix(
-        eventstream=source,
-        max_steps=12
-        )
-    step_matrix.fit()
 
-Methods and attributes
-~~~~~~~~~~~~~~~~~~~~~~
+As you can see, the sum of the values in the cells of the matrix at each
+step is 1. Looking at the first column we can immediately say that the
+users in the analyzed eventstream start their sessions from events
+``catalog`` (72%) and ``main`` (28%). We are potentially interested in
+the payment_done event, and the step matrix shows that it appears in the
+trajectories no earlier than the seventh step (row payment_done have
+0.02 at step 7).
 
-To visualize data as a heatmap, we can call ``.plot()`` method.
 
-.. code:: ipython3
+Terminating event
+-----------------
 
-    step_matrix.plot();
+As you may know, ``ENDED`` is a special synthetic event which explicitly
+indicates a trajectory’s end. If a user’s path is shorter than
+``max_steps`` parameter, ``path_end`` is padded the path so that it
+becomes exactly of length ``max_steps``. Having this behavior
+implemented, we can guarantee that the sum of the user fractions over
+each column (i.e each step) is exactly 1. ``ENDED`` is always placed to
+the bottom. This line calculates the cumulative share of users who left
+the clickstream at each step.
 
+Collapsing rare events
+------------------------
 
-.. image:: /_static/user_guides/step_matrix/output_18_0.png
+Often we need to collapse rare events in the step matrix since these
+events make it excessively noisy. This behaviour is controlled by
+``thresh`` argument. An event is considered as rare if its maximum
+frequency over all the steps represented in the diagram is less than
+``thresh``. All these rare events are not removed from the matrix, but
+collapsed to ``thresholded_N`` artificial event instead where ``N``
+stands for the number of the collapsed events. ``thresholded_N`` event
+appears in the step matrix only and is not added to the parent
+eventstream.
 
+Let’s look how the events are adsorbed if we set ``thresh=0.05`` and
+compare the result with the previous step matrix (with default
+``thresh=0`` parameter).
 
+.. code-block:: python
 
-To see the matrix data, we can call the ``.values`` attribute. This
-attribute returns two datasets: the step matrix itself and the target
-events separately. At the moment we are not using the target parameter,
-so the attribute call looks like this: .values[0].
+    stream.step_matrix(max_steps=16, thresh=0.05);
 
-.. code:: ipython3
 
-    step_matrix.values[0]
 
+.. image:: /_static/user_guides/step_matrix/output_16_1.png
 
 
+All the rare events cutted away by thresholding are grouped
+together in ``THRESHOLDED_N`` row, where N - is the total number of
+dropped events. We see that thresholded_6 contains delivery_courier,
+delivery_pickup, payment_cash, payment_card, payment_done,
+payment_choice. Look at the ``payment_choice`` event in the previous
+step matrix: at step 5 this event contains 3% of the users, 4% at step
+6, and 3% at step 7. Since the maximum value (3%) is less than
+thresh=0.05, the event is collapsed.
 
-.. raw:: html
+Please also note that the number \_6 in the thresholded_6 event name
+carries no information on a specific step. For example, from the matrix
+with thresh=0 we see that at step 4 only one event among these 6 is
+represented (delivery_courier), so it is the only event which is
+collapsed at this step. On the other hand, at step 5 delivery_pickup and
+payment_choice appear, so they are collapsed to thresholded_6 event.
+Finally, at step 7 all these 6 events are collapsed.
 
-    <div><table class="dataframe">
-      <thead>
-        <tr style="text-align: right;">
-          <th></th>
-          <th>1</th>
-          <th>2</th>
-          <th>3</th>
-          <th>4</th>
-          <th>5</th>
-          <th>6</th>
-          <th>7</th>
-          <th>8</th>
-          <th>9</th>
-          <th>10</th>
-          <th>11</th>
-          <th>12</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>catalog</th>
-          <td>0.716076</td>
-          <td>0.445215</td>
-          <td>0.384164</td>
-          <td>0.310051</td>
-          <td>0.251400</td>
-          <td>0.211677</td>
-          <td>0.169022</td>
-          <td>0.147427</td>
-          <td>0.134897</td>
-          <td>0.117835</td>
-          <td>0.101840</td>
-          <td>0.094908</td>
-        </tr>
-        <tr>
-          <th>main</th>
-          <td>0.283924</td>
-          <td>0.162357</td>
-          <td>0.121834</td>
-          <td>0.094108</td>
-          <td>0.085311</td>
-          <td>0.079712</td>
-          <td>0.070914</td>
-          <td>0.064250</td>
-          <td>0.053586</td>
-          <td>0.050120</td>
-          <td>0.049853</td>
-          <td>0.037057</td>
-        </tr>
-        <tr>
-          <th>lost</th>
-          <td>0.000000</td>
-          <td>0.118102</td>
-          <td>0.101306</td>
-          <td>0.093842</td>
-          <td>0.075180</td>
-          <td>0.066649</td>
-          <td>0.060784</td>
-          <td>0.054385</td>
-          <td>0.040523</td>
-          <td>0.035724</td>
-          <td>0.023460</td>
-          <td>0.022661</td>
-        </tr>
-        <tr>
-          <th>cart</th>
-          <td>0.000000</td>
-          <td>0.089843</td>
-          <td>0.109571</td>
-          <td>0.080778</td>
-          <td>0.064783</td>
-          <td>0.047454</td>
-          <td>0.046388</td>
-          <td>0.031725</td>
-          <td>0.027459</td>
-          <td>0.024527</td>
-          <td>0.021061</td>
-          <td>0.022394</td>
-        </tr>
-        <tr>
-          <th>payment_choice</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.033591</td>
-          <td>0.043455</td>
-          <td>0.031991</td>
-          <td>0.023994</td>
-          <td>0.022661</td>
-          <td>0.017329</td>
-          <td>0.010131</td>
-          <td>0.011464</td>
-        </tr>
-        <tr>
-          <th>delivery_choice</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.054119</td>
-          <td>0.061584</td>
-          <td>0.049054</td>
-          <td>0.034391</td>
-          <td>0.031725</td>
-          <td>0.026926</td>
-          <td>0.018395</td>
-          <td>0.018395</td>
-          <td>0.014396</td>
-          <td>0.012263</td>
-        </tr>
-        <tr>
-          <th>payment_done</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.003999</td>
-          <td>0.024793</td>
-          <td>0.024793</td>
-          <td>0.018395</td>
-          <td>0.014929</td>
-          <td>0.013063</td>
-          <td>0.010131</td>
-        </tr>
-        <tr>
-          <th>product2</th>
-          <td>0.000000</td>
-          <td>0.114370</td>
-          <td>0.065849</td>
-          <td>0.057851</td>
-          <td>0.045854</td>
-          <td>0.035724</td>
-          <td>0.030392</td>
-          <td>0.023727</td>
-          <td>0.020794</td>
-          <td>0.020261</td>
-          <td>0.017595</td>
-          <td>0.016262</td>
-        </tr>
-        <tr>
-          <th>product1</th>
-          <td>0.000000</td>
-          <td>0.070115</td>
-          <td>0.045055</td>
-          <td>0.042655</td>
-          <td>0.031991</td>
-          <td>0.025860</td>
-          <td>0.020794</td>
-          <td>0.017595</td>
-          <td>0.017062</td>
-          <td>0.011197</td>
-          <td>0.012263</td>
-          <td>0.010397</td>
-        </tr>
-        <tr>
-          <th>payment_card</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.017595</td>
-          <td>0.020261</td>
-          <td>0.017062</td>
-          <td>0.012797</td>
-          <td>0.010664</td>
-          <td>0.010131</td>
-          <td>0.005065</td>
-        </tr>
-        <tr>
-          <th>delivery_courier</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.025327</td>
-          <td>0.032791</td>
-          <td>0.024793</td>
-          <td>0.015729</td>
-          <td>0.017595</td>
-          <td>0.011997</td>
-          <td>0.007465</td>
-          <td>0.007731</td>
-          <td>0.006398</td>
-        </tr>
-        <tr>
-          <th>delivery_pickup</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.014396</td>
-          <td>0.016796</td>
-          <td>0.015463</td>
-          <td>0.012530</td>
-          <td>0.009597</td>
-          <td>0.010131</td>
-          <td>0.005332</td>
-          <td>0.007198</td>
-          <td>0.003999</td>
-        </tr>
-        <tr>
-          <th>payment_cash</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.004799</td>
-          <td>0.006931</td>
-          <td>0.004799</td>
-          <td>0.004266</td>
-          <td>0.004532</td>
-          <td>0.002133</td>
-          <td>0.001866</td>
-        </tr>
-        <tr>
-          <th>ENDED</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.118102</td>
-          <td>0.219408</td>
-          <td>0.313250</td>
-          <td>0.388430</td>
-          <td>0.457745</td>
-          <td>0.536124</td>
-          <td>0.607038</td>
-          <td>0.661690</td>
-          <td>0.709144</td>
-          <td>0.745135</td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
-
-
-
-Single user dataset
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-So, after getting instructed with the basic syntax of the step matrix
-tool, let’s try it on a small dataset.
-
-To intuitively understand what step_matrix is, let us begin with
-plotting step_matrix for an extremely simple dataset containing only one
-user’s events. To do this without going back to the dataframe format,
-let’s use the ``.filter()``. It is an eventstream method, it takes two
-arguments as input: a callable function that defines the filtering
-criteria, and a data scheme, in this case, it is the default data scheme
-for the eventstream.
-
-.. code:: ipython3
-
-    single_user = source.filter(lambda df, schema: df[schema.user_id] == 613604495);
-
-.. code:: ipython3
-
-    single_user.to_dataframe()
-
-
-
-
-.. raw:: html
-
-    <div><table class="dataframe">
-      <thead>
-        <tr style="text-align: right;">
-          <th></th>
-          <th>event_id</th>
-          <th>event_type</th>
-          <th>event_index</th>
-          <th>event</th>
-          <th>timestamp</th>
-          <th>user_id</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>158</th>
-          <td>19cb553f-be93-4e45-a764-cf837a296c9f</td>
-          <td>raw</td>
-          <td>158</td>
-          <td>main</td>
-          <td>2019-11-02 23:25:03.672939</td>
-          <td>613604495</td>
-        </tr>
-        <tr>
-          <th>159</th>
-          <td>1cda37ea-8389-4194-9c99-b2440140c1ea</td>
-          <td>raw</td>
-          <td>159</td>
-          <td>catalog</td>
-          <td>2019-11-02 23:25:07.390498</td>
-          <td>613604495</td>
-        </tr>
-        <tr>
-          <th>160</th>
-          <td>d6678868-94ef-46c9-9b1a-2ece2716abe4</td>
-          <td>raw</td>
-          <td>160</td>
-          <td>catalog</td>
-          <td>2019-11-02 23:25:48.043605</td>
-          <td>613604495</td>
-        </tr>
-        <tr>
-          <th>161</th>
-          <td>49cac82a-658f-43b2-9616-e97333c7dda5</td>
-          <td>raw</td>
-          <td>161</td>
-          <td>product2</td>
-          <td>2019-11-02 23:26:08.845033</td>
-          <td>613604495</td>
-        </tr>
-        <tr>
-          <th>162</th>
-          <td>0f788fb3-675a-4903-af09-ec14c43d859d</td>
-          <td>raw</td>
-          <td>162</td>
-          <td>cart</td>
-          <td>2019-11-02 23:26:37.007346</td>
-          <td>613604495</td>
-        </tr>
-        <tr>
-          <th>163</th>
-          <td>fa7280aa-67ee-43c4-8030-bdeb3458e7d7</td>
-          <td>raw</td>
-          <td>163</td>
-          <td>catalog</td>
-          <td>2019-11-02 23:26:38.406224</td>
-          <td>613604495</td>
-        </tr>
-        <tr>
-          <th>164</th>
-          <td>7fde4606-e1ce-45fa-9360-1e80e96a270a</td>
-          <td>raw</td>
-          <td>164</td>
-          <td>cart</td>
-          <td>2019-11-02 23:27:09.279245</td>
-          <td>613604495</td>
-        </tr>
-        <tr>
-          <th>165</th>
-          <td>34d5c1c0-7a19-48bf-a86a-7f40e663b686</td>
-          <td>raw</td>
-          <td>165</td>
-          <td>catalog</td>
-          <td>2019-11-02 23:27:11.432713</td>
-          <td>613604495</td>
-        </tr>
-        <tr>
-          <th>166</th>
-          <td>886bb82a-6234-41c1-a0f2-0f7757f04dd0</td>
-          <td>raw</td>
-          <td>166</td>
-          <td>product2</td>
-          <td>2019-11-02 23:27:43.193619</td>
-          <td>613604495</td>
-        </tr>
-        <tr>
-          <th>167</th>
-          <td>059630e6-44d1-484a-a3ae-474b74205f8b</td>
-          <td>raw</td>
-          <td>167</td>
-          <td>cart</td>
-          <td>2019-11-02 23:27:48.110186</td>
-          <td>613604495</td>
-        </tr>
-        <tr>
-          <th>168</th>
-          <td>a74c1d6b-d0f6-438b-adce-1dcb35c39443</td>
-          <td>raw</td>
-          <td>168</td>
-          <td>delivery_choice</td>
-          <td>2019-11-02 23:27:48.292051</td>
-          <td>613604495</td>
-        </tr>
-        <tr>
-          <th>169</th>
-          <td>b5577147-48e4-412e-aac2-9808631c8a75</td>
-          <td>raw</td>
-          <td>169</td>
-          <td>delivery_pickup</td>
-          <td>2019-11-02 23:27:59.789239</td>
-          <td>613604495</td>
-        </tr>
-        <tr>
-          <th>170</th>
-          <td>de93092b-f586-40dc-ae96-081740bf3673</td>
-          <td>raw</td>
-          <td>170</td>
-          <td>lost</td>
-          <td>2019-11-02 23:28:00.789239</td>
-          <td>613604495</td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
-
-
-
-To learn more about ``.filter()`` method and how to work with data
-processors, you can follow the link:
-
-#@TODO Добавить ссылĸу на туториал с датапроцессорами. j.ostanina
-
-Let’s plot a simple intuitive step_matrix for our single user dataset:
-
-.. code:: ipython3
-
-    sm_single_user = StepMatrix(
-        eventstream=single_user,
-        max_steps=12
-        )
-    sm_single_user.fit()
-    sm_single_user.plot();
-
-
-
-.. figure:: docs/source/_static/user_guides/step_matrix/output_28_0.png
-
-
-As we can see, since we have only one user in this example, step_matrix
-contains only 0’s and 1’s. At step 1 user had event “main” (100% of
-users have event main as the first event in the trajectory), then at
-step 2 user proceeded to catalog, etc. By step 13 user’s trajectory has
-ended, and there were no more events, so the rest of the table is filled
-with zeros.
-
-Full dataset
-~~~~~~~~~~~~~~
-
-Let’s now plot step_matrix for the full dataset containing all users:
-
-.. code:: ipython3
-
-    sm = StepMatrix(eventstream=source, max_steps=16)
-    sm.fit()
-    sm.plot();
-
-
-.. image:: /_static/user_guides/step_matrix/output_31_0.png
-
-
-
-Now it is clearly visible that in each cell we have the number of users
-divided by the total number of users. Looking at the first column we can
-immediately say that users in the analyzed cohort start their sessions
-from events catalog (72%) and main (28%). Some conversions start
-happening after step 7 (row payment_done have 0.02 at step 7). And so
-on.
-
-Path end
-~~~~~~~~~~
-
-We can add some synthetic events, for example, path_start and path_end.
-For the step matrix, the path_end event is very important, step matrix
-recognizes it and processes it accordingly. To understand how, let’s
-create an eventstream with start and end events.
-
-.. code:: ipython3
-
-    source_start_end = source.add_start_end();
-
-.. code:: ipython3
-
-    sm = StepMatrix(eventstream=source_start_end, max_steps=16)
-    sm.fit()
-    sm.plot();
-
-
-
-.. image:: /_static/user_guides/step_matrix/output_36_0.png
-
-
-
-Note that the “path_end” event is always placed at the end of the step
-matrix. This line calculates the cumulative share of users who left the
-clickstream at each step.
-
-Thresholding
-------------
-
-When we plot step_matrix using the full dataset sometimes we want first
-to focus on the bigger picture and avoid rows with events where an
-insignificant fraction of users were present. Such thresholding can be
-done using thresh parameter (float, default: 0). If the row has all
-values less than the specified thresh, such row will not be shown.
-
-.. code:: ipython3
-
-    sm = StepMatrix(eventstream=source, max_steps=16, thresh=0.05)
-    sm.fit()
-    sm.plot();
-
-
-.. image:: /_static/user_guides/step_matrix/output_40_0.png
-
-
-
-All events cutted away by thresholding are grouped together in
-THRESHOLDED_X row, where X - is the total number of dropped events.
+It you want to prevent some events from the collapsing, use target
+parameter then.
 
 Targets analysis
-----------------
+-----------------
 
-Very often there are specific events of particular importance for
-product analyst (for example such as cart, or order_confirmed, or
-subscribe, etc.). Often such events have much lower occurrence rate
-comparing other events (like main page or catalog) and often ended up
-thresholded from step_matrix or shown with non-informative coloring. In
-this case we can isolate those events of particular importance (targets)
-to individual rows, each of which will have their individual color
-scale. This can be done with parameter targets:
+In product analysis we often deal with the events of particular
+importance. This includes events such as adding an item to the cart,
+order confirmation, payment, etc.. Such events have much lower
+occurrence rate comparing with other events (like visiting main page or
+catalog) and because of this are lost as collapsed to ``THRESHOLDED_N``
+or shown with non-informative coloring. In this case we can isolate
+those events (targets) to individual rows, each of which will have their
+individual color scale. This can be done with parameter ``targets``:
 
-.. code:: ipython3
+.. code-block:: python
 
-    sm = StepMatrix(eventstream=source, max_steps=16,
-                          thresh=0.05,
-                          targets=['payment_done'])
-    sm.fit()
-    sm.plot();
+    stream.step_matrix(max_steps=16,
+        thresh=0.05,
+        targets=['payment_done'])
 
 
-.. image:: /_static/user_guides/step_matrix/output_44_0.png
 
+
+
+.. image:: /_static/user_guides/step_matrix/output_20_2.png
 
 
 Specified target events are always shown in the bottom of step matrix
-regardless of selected threshold. Multiple targets can be included as a
-list:
+regardless of selected threshold. As we chose the ``payment_done`` event
+as a target, the row with ``payment_done`` moved to the end of the
+matrix and now has its own palette.
 
-.. code:: ipython3
+Multiple targets can be included as a list:
 
-    sm = StepMatrix(eventstream=source,
-                    max_steps=16,
-                    thresh=0.05,
-                    targets=['product1','cart','payment_done'])
-    sm.fit()
-    sm.plot();
+.. code-block:: python
 
-
-.. image:: /_static/user_guides/step_matrix/output_46_0.png
-
-
-If we want to compare some targets and plot them using same color
-scaling, we can combine them in sub-list inside the targets list:
-
-.. code:: ipython3
-
-    sm = StepMatrix(eventstream=source,
-                    max_steps=16,
-                    thresh=0.05,
-                    targets=['product1',['cart','payment_done']])
-    sm.fit()
-    sm.plot();
-
-
-.. image:: /_static/user_guides/step_matrix/output_48_0.png
-
-
-
-Now we can visually compare by color how many users reach cart vs
-payment_done at particular step in their trajectory.
-
-Targets can be presented as accumulated values (or both):
-
-.. code:: ipython3
-
-    sm = StepMatrix(eventstream=source,
-                    max_steps=16,
-                    thresh=0.05,
-                    targets=['product1',['cart','payment_done']],
-                    accumulated='only')
-    sm.fit()
-    sm.plot();
-
-
-.. image:: /_static/user_guides/step_matrix/output_50_0.png
-
-
-.. code:: ipython3
-
-    sm = StepMatrix(eventstream=source,
-                    max_steps=16,
-                    thresh=0.05,
-                    targets=['product1',['cart','payment_done']],
-                    accumulated='both')
-    sm.fit()
-    sm.plot();
-
-.. image:: /_static/user_guides/step_matrix/output_51_0.png
-
-
-
-To get the target events in DataFrame format, we can use the ``.values``
-attribute. If we apply indexing, ``.values[0]`` returns step_matrix,
-.\ ``values[1]`` returns targets
-
-.. code:: ipython3
-
-    sm = StepMatrix(eventstream=source,
-                    max_steps=12,
-                    thresh=0.05,
-                    targets=['product1',['cart','payment_done']],
-                    accumulated='both')
-    sm.fit()
-    sm.values[0]
-
-
-.. raw:: html
-
-    <div><table class="dataframe">
-      <thead>
-        <tr style="text-align: right;">
-          <th></th>
-          <th>1</th>
-          <th>2</th>
-          <th>3</th>
-          <th>4</th>
-          <th>5</th>
-          <th>6</th>
-          <th>7</th>
-          <th>8</th>
-          <th>9</th>
-          <th>10</th>
-          <th>11</th>
-          <th>12</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>catalog</th>
-          <td>0.716076</td>
-          <td>0.445215</td>
-          <td>0.384164</td>
-          <td>0.310051</td>
-          <td>0.251400</td>
-          <td>0.211677</td>
-          <td>0.169022</td>
-          <td>0.147427</td>
-          <td>0.134897</td>
-          <td>0.117835</td>
-          <td>0.101840</td>
-          <td>0.094908</td>
-        </tr>
-        <tr>
-          <th>main</th>
-          <td>0.283924</td>
-          <td>0.162357</td>
-          <td>0.121834</td>
-          <td>0.094108</td>
-          <td>0.085311</td>
-          <td>0.079712</td>
-          <td>0.070914</td>
-          <td>0.064250</td>
-          <td>0.053586</td>
-          <td>0.050120</td>
-          <td>0.049853</td>
-          <td>0.037057</td>
-        </tr>
-        <tr>
-          <th>lost</th>
-          <td>0.000000</td>
-          <td>0.118102</td>
-          <td>0.101306</td>
-          <td>0.093842</td>
-          <td>0.075180</td>
-          <td>0.066649</td>
-          <td>0.060784</td>
-          <td>0.054385</td>
-          <td>0.040523</td>
-          <td>0.035724</td>
-          <td>0.023460</td>
-          <td>0.022661</td>
-        </tr>
-        <tr>
-          <th>cart</th>
-          <td>0.000000</td>
-          <td>0.089843</td>
-          <td>0.109571</td>
-          <td>0.080778</td>
-          <td>0.064783</td>
-          <td>0.047454</td>
-          <td>0.046388</td>
-          <td>0.031725</td>
-          <td>0.027459</td>
-          <td>0.024527</td>
-          <td>0.021061</td>
-          <td>0.022394</td>
-        </tr>
-        <tr>
-          <th>delivery_choice</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.054119</td>
-          <td>0.061584</td>
-          <td>0.049054</td>
-          <td>0.034391</td>
-          <td>0.031725</td>
-          <td>0.026926</td>
-          <td>0.018395</td>
-          <td>0.018395</td>
-          <td>0.014396</td>
-          <td>0.012263</td>
-        </tr>
-        <tr>
-          <th>product2</th>
-          <td>0.000000</td>
-          <td>0.114370</td>
-          <td>0.065849</td>
-          <td>0.057851</td>
-          <td>0.045854</td>
-          <td>0.035724</td>
-          <td>0.030392</td>
-          <td>0.023727</td>
-          <td>0.020794</td>
-          <td>0.020261</td>
-          <td>0.017595</td>
-          <td>0.016262</td>
-        </tr>
-        <tr>
-          <th>product1</th>
-          <td>0.000000</td>
-          <td>0.070115</td>
-          <td>0.045055</td>
-          <td>0.042655</td>
-          <td>0.031991</td>
-          <td>0.025860</td>
-          <td>0.020794</td>
-          <td>0.017595</td>
-          <td>0.017062</td>
-          <td>0.011197</td>
-          <td>0.012263</td>
-          <td>0.010397</td>
-        </tr>
-        <tr>
-          <th>ENDED</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.118102</td>
-          <td>0.219408</td>
-          <td>0.313250</td>
-          <td>0.388430</td>
-          <td>0.457745</td>
-          <td>0.536124</td>
-          <td>0.607038</td>
-          <td>0.661690</td>
-          <td>0.709144</td>
-          <td>0.745135</td>
-        </tr>
-        <tr>
-          <th>THRESHOLDED_6</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.039723</td>
-          <td>0.083178</td>
-          <td>0.110104</td>
-          <td>0.112237</td>
-          <td>0.097841</td>
-          <td>0.080245</td>
-          <td>0.060251</td>
-          <td>0.050387</td>
-          <td>0.038923</td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
-
-
-
-.. code:: ipython3
-
-    sm = StepMatrix(eventstream=source,
-                    max_steps=12,
-                    thresh=0.05,
-                    targets=['product1',['cart','payment_done']],
-                    accumulated='both')
-    sm.fit()
-    sm.values[1]
+    stream.step_matrix(max_steps=16,
+        thresh=0.05,
+        targets=['product1','cart','payment_done'])
 
 
 
 
-.. raw:: html
 
-    <div><table class="dataframe">
-      <thead>
-        <tr style="text-align: right;">
-          <th></th>
-          <th>1</th>
-          <th>2</th>
-          <th>3</th>
-          <th>4</th>
-          <th>5</th>
-          <th>6</th>
-          <th>7</th>
-          <th>8</th>
-          <th>9</th>
-          <th>10</th>
-          <th>11</th>
-          <th>12</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>product1</th>
-          <td>0.0</td>
-          <td>0.070115</td>
-          <td>0.045055</td>
-          <td>0.042655</td>
-          <td>0.031991</td>
-          <td>0.025860</td>
-          <td>0.020794</td>
-          <td>0.017595</td>
-          <td>0.017062</td>
-          <td>0.011197</td>
-          <td>0.012263</td>
-          <td>0.010397</td>
-        </tr>
-        <tr>
-          <th>cart</th>
-          <td>0.0</td>
-          <td>0.089843</td>
-          <td>0.109571</td>
-          <td>0.080778</td>
-          <td>0.064783</td>
-          <td>0.047454</td>
-          <td>0.046388</td>
-          <td>0.031725</td>
-          <td>0.027459</td>
-          <td>0.024527</td>
-          <td>0.021061</td>
-          <td>0.022394</td>
-        </tr>
-        <tr>
-          <th>payment_done</th>
-          <td>0.0</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.003999</td>
-          <td>0.024793</td>
-          <td>0.024793</td>
-          <td>0.018395</td>
-          <td>0.014929</td>
-          <td>0.013063</td>
-          <td>0.010131</td>
-        </tr>
-        <tr>
-          <th>ACC_product1</th>
-          <td>0.0</td>
-          <td>0.070115</td>
-          <td>0.115169</td>
-          <td>0.157825</td>
-          <td>0.189816</td>
-          <td>0.215676</td>
-          <td>0.236470</td>
-          <td>0.254066</td>
-          <td>0.271128</td>
-          <td>0.282325</td>
-          <td>0.294588</td>
-          <td>0.304985</td>
-        </tr>
-        <tr>
-          <th>ACC_cart</th>
-          <td>0.0</td>
-          <td>0.089843</td>
-          <td>0.199413</td>
-          <td>0.280192</td>
-          <td>0.344975</td>
-          <td>0.392429</td>
-          <td>0.438816</td>
-          <td>0.470541</td>
-          <td>0.498001</td>
-          <td>0.522527</td>
-          <td>0.543588</td>
-          <td>0.565982</td>
-        </tr>
-        <tr>
-          <th>ACC_payment_done</th>
-          <td>0.0</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.003999</td>
-          <td>0.028792</td>
-          <td>0.053586</td>
-          <td>0.071981</td>
-          <td>0.086910</td>
-          <td>0.099973</td>
-          <td>0.110104</td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
 
+.. image:: /_static/user_guides/step_matrix/output_22_2.png
+
+
+
+Now we have selected three target events: ``product1``, ``cart``,
+``payment_done``, so we can see them in the end of matrix. Each of them
+has its own palette and color scaling.
+
+If we want to compare some targets and plot them using the same color
+scaling, we can combine them in a sub-list inside the targets list:
+
+.. code-block:: python
+
+    stream.step_matrix(max_steps=16,
+        thresh=0.05,
+        targets=['product1',['cart','payment_done']])
+
+
+
+
+
+.. image:: /_static/user_guides/step_matrix/output_25_2.png
+
+
+Now we can visually compare by color how many users reach ``cart`` vs
+``payment_done`` at particular step in their trajectory.
+
+Targets can be presented as accumulated values. It means we can display
+the cumulative sum of the share of the users who had this event at each
+step. Rows with accumulated values start with “ACC_”. There are two
+options for displaying these rows:
+
+1. ``only`` accumulated rows;
+2. ``both`` not accumulated and accumulated values, two rows with
+   different color scaling for each event.
+
+.. code-block:: python
+
+    stream.step_matrix(max_steps=16,
+        thresh=0.05,
+        targets=['product1',['cart','payment_done']],
+        accumulated='only');
+
+
+
+
+.. image:: /_static/user_guides/step_matrix/output_28_1.png
+
+
+.. code-block:: python
+
+    stream.step_matrix(max_steps=16,
+        thresh=0.05,
+        targets=['product1', ['cart', 'payment_done']],
+        accumulated='both')
+
+
+
+
+
+
+
+.. image:: /_static/user_guides/step_matrix/output_29_2.png
 
 
 Centered step matrix
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
-Sometimes we are interested in flow of users through specific event: how
-do users reach specific event and what do they do after? This
+Sometimes we are interested in flow of users through a specific event:
+how do users reach a specific event and what do they do after? This
 information can be visualized with step_marix using parameter
 ``centered``:
 
-.. code:: ipython3
+.. code-block:: python
 
-    sm = StepMatrix(eventstream=source,
-                    max_steps=16,
-                    thresh = 0.2,
-                    centered={'event':'cart',
-                              'left_gap':5,
-                              'occurrence':1})
-    sm.fit()
-    sm.plot();
-
-
-.. image:: /_static/user_guides/step_matrix/output_57_0.png
+    stream.step_matrix(max_steps=16,
+        thresh=0.2,
+        centered={
+            'event': 'cart',
+            'left_gap': 5,
+            'occurrence': 1})
 
 
 
-Note, that when plotting step_matrix with parameter centered we only
-keep users who have reached the specified event (column 0 has value 1 at
-the specified event). Parameter centered is a dictionary which requires
-three keys:
 
--  ‘event’ - the name of the event we are interested in. This event will
-   be taken as 0. Negative step numbers will correspond to events before
-   the selected event and positive step numbers will correspond to steps
-   after the selected event
 
--  ‘left_gap’ - integer number which indicates how many steps before the
-   centered event we want to show on the step matrix
 
--  ‘occurrence’ - which occurrence number of target event we are
-   interested in. For example, in the illustration above, all
-   trajectories will be aligned to have the first ‘cart’ occurrence as
-   step 0
+
+
+.. image:: /_static/user_guides/step_matrix/output_32_2.png
+
+
+
+Parameter ``centered`` is a dictionary which requires three keys:
+
+-  ``event`` - the name of the event we are interested in. Reaching this
+   event will be associated with step 0. Negative step numbers will
+   correspond to events occurred before the selected event and positive
+   step numbers will correspond to steps occurred after the selected
+   event;
+
+-  ``left_gap`` - the integer number which indicates how many steps
+   before the centered event we want to show in the step matrix;
+
+-  ``occurrence`` - which occurrence number of the target event we are
+   interested in. For example, in the illustration above, all the
+   trajectories will be aligned to have **the first** ‘cart’ occurrence
+   as step 0.
 
 Importantly, when a centered step matrix is used, only users who have
 selected events in their trajectories present (or it’s n`th occurrence)
 will be shown. Therefore, the column with step index 0 will always have
 1 at the selected event and zero at all other events. The fraction of
-users kept for the centered step matrix is shown in the title. In the
-example above, 51.3% of users have reached the event ‘cart’ at least
-once.
+the users kept for the centered step matrix is shown in the title. In
+the example above, 51.3% of users have reached the event ‘cart’ at least
+**once**.
 
-We can use all targets functionality with centered step_matrix, for
+.. image:: /_static/user_guides/step_matrix/SM_occurence=1.png
+
+
+
+To better understand the meaning of the ``occurrence`` parameter, let’s
+build another step matrix, this time with ``occurrence=2``:
+
+.. code-block:: python
+
+    stream.step_matrix(max_steps=16,
+        thresh=0.2,
+        centered={
+            'event': 'cart',
+            'left_gap': 5,
+            'occurrence': 2})
+
+
+
+
+
+.. image:: /_static/user_guides/step_matrix/output_36_2.png
+
+
+Here we can see that the proportion of users whose steps are displayed
+in our matrix has noticeably decreased. Now they are 15.2%, because we
+are evaluating the **second** occurrence of the ``cart`` event, which
+means we are considering users who had this event at least **twice**.
+
+A combination of ``targets`` and ``centered`` parameters is also
+possible:
+
+.. code-block:: python
+
+    stream.step_matrix(max_steps=16,
+        thresh = 0.2,
+        centered={'event':'cart',
+            'left_gap':5,
+            'occurrence':1},
+        targets=['payment_done'])
+
+
+
+
+
+.. image:: /_static/user_guides/step_matrix/output_39_2.png
+
+
+
+Events sorting
+~~~~~~~~~~~~~~~
+
+By default, rows in the step matrix are sorted in the next order:
+
+1. real events in the order of the first occurrence in eventstream
+2. ``ENDED`` event
+3. ``THRESHOLDED`` event
+4. targets
+
+Sometimes it is needed to obtain a step matrix with the events ranked in
+the specific order (for example, to compare two step matrices). This can
+be done with parameter ``sorting`` which accepts a list of event names
+in the required order to show up in the step matrix. Let’s consider an
 example:
 
-.. code:: ipython3
+.. code-block:: python
 
-    sm = StepMatrix(eventstream=source,
-                    max_steps=16,
-                    thresh = 0.2,
-                    centered={'event':'cart',
-                              'left_gap':5,
-                              'occurrence':1},
-                    targets=['payment_done'])
-    sm.fit()
-    sm.plot();
+    stream.step_matrix(max_steps=16,
+        thresh=0.07)
 
 
-.. image:: /_static/user_guides/step_matrix/output_59_0.png
 
 
-Custom events sorting
----------------------
 
-Sometimes it is needed to obtain step_matrix with events listed in the
-specific order (for example, to compare two step_matrixes). This can be
-done with parameter sorting which accepts a list of event names in the
-required order to show up in the step matrix. Let’s consider an example:
 
-.. code:: ipython3
-
-    sm = StepMatrix(eventstream=source,
-                    max_steps=16,
-                    thresh=0.07)
-    sm.fit()
-    sm.plot();
-
-.. image:: /_static/user_guides/step_matrix/output_62_0.png
-
+.. image:: /_static/user_guides/step_matrix/output_43_2.png
 
 
 
 Let’s say we would like to change the order of the events in the
 resulted step_matrix. First, we can obtain a list of event names from
-the step_matrix output using ``.values[0]``:
+the step_matrix output using ``.values[0]``
 
-.. code:: ipython3
+To read about the ``.values`` attribute, follow the link to :ref:`values-label`
 
-    sm.values[0].index
+.. code-block:: python
+
+    stream\
+        .step_matrix(max_steps=16, thresh=0.07)\
+        .values[0]\
+        .index
 
 
 
 
-.. parsed-literal::
-
-    Index(['catalog', 'main', 'lost', 'cart', 'product2', 'product1', 'ENDED',
-           'THRESHOLDED_7'],
-          dtype='object')
-
+.. image:: /_static/user_guides/step_matrix/output_45_2.png
 
 
 Now we can conveniently copy the list of events, reorganize it in the
 required order and pass it to the step_matrix function as a sorting
 parameter:
 
-.. code:: ipython3
+.. code-block:: python
 
     custom_order = ['main',
-                    'catalog',
-                    'product1',
-                    'product2',
-                    'cart',
-                    'lost',
-                    'ENDED',
-                    'THRESHOLDED_7']
-    sm = StepMatrix(eventstream=source,
-                    max_steps=16,
-                    thresh=0.07,
-                    sorting=custom_order)
-    sm.fit()
-    sm.plot();
+        'catalog',
+        'product1',
+        'product2',
+        'cart',
+        'lost',
+        'THRESHOLDED_7',
+        'ENDED']
+    stream\
+        .step_matrix(max_steps=16,
+            thresh=0.07,
+            sorting=custom_order)
 
 
-.. image:: /_static/user_guides/step_matrix/output_66_0.png
 
 
-Note, that ordering only affects non-target events. Target events will
-always be in the same order as they are specified in the parameter
-targets.
+
+
+
+.. image:: /_static/user_guides/step_matrix/output_47_2.png
+
+
+Note, that the custom ordering only affects non-target events. Target
+events will always be in the same order as they are specified in the
+parameter ``targets``.
 
 Differential step_matrix
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Sometimes we need to compare the behavior of several groups of users.
-For example, when we would like to compare the behavior of users who had
-a conversion to target vs those who had not, compare the behavior of
-test and control groups in the A/B test, or compare behavior between
-specific segments of users.
+For example, when we would like to compare the behavior of the users who
+had conversion to a target vs. those who had not, compare the behavior
+of test and control groups in an A/B test, or compare behavior between
+specific segments of the users. For example, now we want to compare the
+behavior of any abstract groups g1 and g2. In g1 we will add users who
+have the ``payment_done`` event in their trajectory, in g2 - all the
+rest. We will choose ``cart`` as the central event, because it is
+usually closely followed by a purchase or user disappearance.
 
 In this case, it is informative to plot a step_matrix as the difference
 between step_matrix for group_A and step_matrix for group_B. This can be
-done using parameter groups, which require a tuple of two elements (g1
-and g2): where g_1 and g_2 are collections of user_id`s (list, tuple, or
-set). Two separate step_matrices M1 and M2 will be calculated for users
-from g_1 and g_2, respectively. The resulting matrix will be the matrix
-M = M1-M2. Note, that values in each column in the differential step
-matrix will always sum up to 0 (since columns in both M1 and M2 always
-sum up to 1).
+done using parameter ``groups``, which requires a tuple of two elements
+``(g1, g2)``: where ``g_1`` and ``g_2`` are collections of the
+``user_id``\ s (list, tuple, or set). Two separate step matrices M1 and
+M2 will be calculated for users from ``g_1`` and ``g_2``, respectively.
+The resulting matrix will be the matrix M = M1-M2. Note, that the values
+in each column in the differential step matrix will always sum up to 0
+(since the columns in both M1 and M2 always sum up to 1).
 
-.. code:: ipython3
+.. code-block:: python
 
-    raw_data = source.to_dataframe()
-    g1 = set(raw_data[raw_data['event']=='payment_done']['user_id'])
+    raw_data = stream.to_dataframe()
+
+    g1 = set(raw_data[raw_data['event'] == 'payment_done']['user_id'])
     g2 = set(raw_data['user_id']) - g1
 
-    sm = StepMatrix(eventstream=source,
-                    max_steps=16,
-                    thresh = 0.05,
-                    centered={'event':'cart',
-                              'left_gap':5,
-                              'occurrence':1},
-                    groups=(g1, g2))
-    sm.fit()
-    sm.plot();
+    stream.step_matrix(max_steps=16,
+        thresh = 0.05,
+        centered={'event':'cart',
+            'left_gap':5,
+            'occurrence':1},
+            groups=(g1, g2))
 
 
-.. image:: /_static/user_guides/step_matrix/output_70_0.png
 
+
+
+
+
+.. image:: /_static/user_guides/step_matrix/output_51_2.png
+
+
+
+To correctly interpret the differential matrix, it is enough to keep in
+mind the idea that we have before us the result of subtracting one
+matrix from another. It means that if we see a value in a matrix cell
+that is equal to or close to zero, we understand that the share of this
+event at this step in the two groups is approximately equal. If we see a
+large negative number, then users from the second group performed this
+action more often at this step. If we see a large positive number, this
+means that this event happened more often for users from the first
+group.
+
+For example, before the central event ``cart``, the values in the cells
+of the matrix are close to zero, which means that the behavior of users
+in the two groups is approximately the same. However, after it, negative
+values appear in the ``lost`` and ``ENDED`` row, which tells us that
+among users who did not make a purchase, many users were lost after
+adding the product to the cart. On the contrary, users who have made a
+purchase are dominated by ``payment_done``, ``payment_choice`` and
+``payment_cart`` events.
 
 Clusters
---------
+^^^^^^^^
 
-Let’s consider another example of differential step matrix use, where we
-will compare behavior of two user clusters. First, let’s obtain
-behavioural segments and visualize the results of segmentation using
-conversion to ‘payment_done’ and event ‘cart’.
+Consider another example of differential step matrix use, where we will
+compare behavior of two user clusters. First, let’s obtain behavioural
+segments and visualize the results of the segmentation using conversion
+to ``payment_done`` and event ``cart``.
 
-To learn more about user behavior clustering read here:
-#@TODO:ссылка на юзергайд с кластерами
+To learn more about user behavior clustering read here: :doc:`Clusters user guide </user_guides/clusters>`.
 
-.. code:: ipython3
+.. code-block:: python
 
     from retentioneering.tooling.clusters import Clusters
 
-    clusters = Clusters(eventstream=source)
+    clusters = Clusters(eventstream=stream)
     clusters.fit(method='kmeans', n_clusters=8, feature_type='count', ngram_range=(1, 1))
     clusters.plot(targets=['payment_done', 'cart']);
 
 
-.. image:: /_static/user_guides/step_matrix/output_74_0.png
+
+.. image:: /_static/user_guides/step_matrix/output_57_0.png
 
 
+We can see 8 clusters with the corresponding conversion rates to the
+specified events (% of the users in the given cluster who had at least
+one specified event). Suppose we would like to compare the behavior of
+cluster #1 compared to cluster #3. Both have relatively high conversion
+rate to ``payment_done`` and ``cart``. Let’s find out how they differ
+using differential step matrix. All we need is to get ``user_id``\ s
+collections from ``cluster_mapping`` attribute and pass it to ``groups``
+parameter of step matrix:
 
-We can see 8 clusters with the corresponding conversion rates to
-specified events (% of users in the given cluster who had at least one
-specified event). Let’s say we would like to compare behavior between
-segments 0 and 3. Both have relatively high conversion rate and cart
-visit rate. Let’s find out how they are differ using differential
-step_matrix. All we need is to get user_id’s collections from
-cluster_mapping attribute and pass it to groups parameter of
-step_matrix:
+To get more information about the ``cluster_mapping`` attribute read
+here:
 
-.. code:: ipython3
+:doc:`Getting clustering results</api/tooling/clusters>`
 
-    g1 = clusters.cluster_mapping[0]
+
+.. code-block:: python
+
+    g1 = clusters.cluster_mapping[1]
     g2 = clusters.cluster_mapping[3]
 
-    sm = StepMatrix(eventstream=source,
-                    max_steps=16,
+    stream.step_matrix(max_steps=16,
                     thresh = 0.05,
                     centered={'event':'cart',
                                     'left_gap':5,
                                     'occurrence':1},
                     groups=(g1, g2));
-    sm.fit()
-    sm.plot();
 
 
-.. image:: /_static/user_guides/step_matrix/output_76_0.png
+
+.. image:: /_static/user_guides/step_matrix/output_59_1.png
 
 
+In this step matrix, we can see the difference between clusters #1 and
+#3. Users from cluster #1, after adding the product to the cart, more
+often returned to the catalog and continued shopping. Users from cluster
+#3 usually made a payment and finished their trajectory through the
+online shop after the ``cart`` event.
 
 Weight_col
 ----------
 
-All this time, we have been calculating matrices by the percentage of
-users remaining in the clickstream by a certain step. But for 100% we
-can take not only users. For example, we can take sessions.
+So far we have been calculating step matrix values as the percentage of
+the users appearing in the clickstream at a certain step. However,
+sometimes it is reasonable to calculate similar fractions not over
+users, but over other entities as well. For example, over sessions.
 
 To do this, we need to divide the event stream into sessions. The split
-sessions method will help us with this. But first, first we need to
-decide on the duration of the session.
+sessions method will help us with this.
 
-To find the average session duration, you can use a histogram that shows
-the distribution of the delta between 2 consecutive events, it’s an
-eventstream method ``.timedelta_hist()``. The cutoff should be chosen
-from the segment between the “bells”, as shown in the figure.
+We will set the length of the session - 100 minutes. The resulting
+object will be a new eventstream.
 
-.. code:: ipython3
+.. code-block:: python
 
-    source.timedelta_hist(timedelta_unit='m', bins=100, log_scale=True)
-
-
-.. image:: /_static/user_guides/step_matrix/output_81_0.png
-
-
-
-Looks like the distance between “bells” is about 100 minutes, this is
-the approximate length of the session.
-
-Then we set the parameters for dividing into sessions: the length of the
-session will be 100 minutes. The resulting object will be a new
-eventstream.
-
-.. code:: ipython3
-
-    result = source.split_sessions((100.0,'m'), session_col='session_id')
-
-
-# @TODO cсылка на .timedelta_hist()
+    result = stream.split_sessions((100,'m'), session_col='session_id')
 
 To learn more about working with data processors, you can follow the
 link:
+:doc:`Preprocessing user guide </user_guides/preprocessing>`.
+
+There is a special eventstream method in retentioneering library, called
+``.timedeltahist()``. It can help calculate the maximum session length
+more accurately. To learn more about this method you can follow the link:
+:doc:`Eventstream user guide </user_guides/preprocessing>`.
 
 
-# @TODO Добавить ссылĸу на туториал с датапроцессорами. j.ostanina
+
 
 Now we feed the result as input to the step_matrix tool and specify the
 ``weight_col=['session_id']`` parameter.
 
-.. code:: ipython3
+.. code-block:: python
 
-    sm = StepMatrix(eventstream=result,
-                    max_steps=16,
-                    weight_col=['session_id'])
-    sm.fit()
-    sm.plot();
+    result.step_matrix(max_steps=16,
+        weight_col=['session_id'])
 
 
-.. image:: /_static/user_guides/step_matrix/output_89_0.png
+
+
+
+.. image:: /_static/user_guides/step_matrix/output_69_2.png
 
 
 Now we see in the cells the share of all sessions for which the
-specified event happened at the specified step. For example, for 54
-percents of sessions, the third step was a catalog.
+specified event happened at the specified step.
 
-ShortCut for StepMatrix (as an eventstream method)
-----------------------------------------------------
+Let’s compare the result with the user-weighted matrix
 
-We can also use StepMatrix as an eventstream method. By default, the
-``.plot()`` method is called. ``values`` attribute is also avaliable,
-but it can be done in one line:
+.. code-block:: python
 
-.. code:: ipython3
-
-    source.step_matrix(max_steps=16);
-
-
-.. image:: /_static/user_guides/step_matrix/output_93_0.png
-
-
-.. code:: ipython3
-
-    source.step_matrix(max_steps=12, show_plot=False).values[0]
+    result.step_matrix(max_steps=16,
+        weight_col=['user_id']))
 
 
 
 
-.. raw:: html
+.. image:: /_static/user_guides/step_matrix/output_72_2.png
 
-    <div><table class="dataframe">
-      <thead>
-        <tr style="text-align: right;">
-          <th></th>
-          <th>1</th>
-          <th>2</th>
-          <th>3</th>
-          <th>4</th>
-          <th>5</th>
-          <th>6</th>
-          <th>7</th>
-          <th>8</th>
-          <th>9</th>
-          <th>10</th>
-          <th>11</th>
-          <th>12</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>catalog</th>
-          <td>0.716076</td>
-          <td>0.445215</td>
-          <td>0.384164</td>
-          <td>0.310051</td>
-          <td>0.251400</td>
-          <td>0.211677</td>
-          <td>0.169022</td>
-          <td>0.147427</td>
-          <td>0.134897</td>
-          <td>0.117835</td>
-          <td>0.101840</td>
-          <td>0.094908</td>
-        </tr>
-        <tr>
-          <th>main</th>
-          <td>0.283924</td>
-          <td>0.162357</td>
-          <td>0.121834</td>
-          <td>0.094108</td>
-          <td>0.085311</td>
-          <td>0.079712</td>
-          <td>0.070914</td>
-          <td>0.064250</td>
-          <td>0.053586</td>
-          <td>0.050120</td>
-          <td>0.049853</td>
-          <td>0.037057</td>
-        </tr>
-        <tr>
-          <th>lost</th>
-          <td>0.000000</td>
-          <td>0.118102</td>
-          <td>0.101306</td>
-          <td>0.093842</td>
-          <td>0.075180</td>
-          <td>0.066649</td>
-          <td>0.060784</td>
-          <td>0.054385</td>
-          <td>0.040523</td>
-          <td>0.035724</td>
-          <td>0.023460</td>
-          <td>0.022661</td>
-        </tr>
-        <tr>
-          <th>cart</th>
-          <td>0.000000</td>
-          <td>0.089843</td>
-          <td>0.109571</td>
-          <td>0.080778</td>
-          <td>0.064783</td>
-          <td>0.047454</td>
-          <td>0.046388</td>
-          <td>0.031725</td>
-          <td>0.027459</td>
-          <td>0.024527</td>
-          <td>0.021061</td>
-          <td>0.022394</td>
-        </tr>
-        <tr>
-          <th>payment_choice</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.033591</td>
-          <td>0.043455</td>
-          <td>0.031991</td>
-          <td>0.023994</td>
-          <td>0.022661</td>
-          <td>0.017329</td>
-          <td>0.010131</td>
-          <td>0.011464</td>
-        </tr>
-        <tr>
-          <th>delivery_choice</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.054119</td>
-          <td>0.061584</td>
-          <td>0.049054</td>
-          <td>0.034391</td>
-          <td>0.031725</td>
-          <td>0.026926</td>
-          <td>0.018395</td>
-          <td>0.018395</td>
-          <td>0.014396</td>
-          <td>0.012263</td>
-        </tr>
-        <tr>
-          <th>payment_done</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.003999</td>
-          <td>0.024793</td>
-          <td>0.024793</td>
-          <td>0.018395</td>
-          <td>0.014929</td>
-          <td>0.013063</td>
-          <td>0.010131</td>
-        </tr>
-        <tr>
-          <th>product2</th>
-          <td>0.000000</td>
-          <td>0.114370</td>
-          <td>0.065849</td>
-          <td>0.057851</td>
-          <td>0.045854</td>
-          <td>0.035724</td>
-          <td>0.030392</td>
-          <td>0.023727</td>
-          <td>0.020794</td>
-          <td>0.020261</td>
-          <td>0.017595</td>
-          <td>0.016262</td>
-        </tr>
-        <tr>
-          <th>product1</th>
-          <td>0.000000</td>
-          <td>0.070115</td>
-          <td>0.045055</td>
-          <td>0.042655</td>
-          <td>0.031991</td>
-          <td>0.025860</td>
-          <td>0.020794</td>
-          <td>0.017595</td>
-          <td>0.017062</td>
-          <td>0.011197</td>
-          <td>0.012263</td>
-          <td>0.010397</td>
-        </tr>
-        <tr>
-          <th>payment_card</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.017595</td>
-          <td>0.020261</td>
-          <td>0.017062</td>
-          <td>0.012797</td>
-          <td>0.010664</td>
-          <td>0.010131</td>
-          <td>0.005065</td>
-        </tr>
-        <tr>
-          <th>delivery_courier</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.025327</td>
-          <td>0.032791</td>
-          <td>0.024793</td>
-          <td>0.015729</td>
-          <td>0.017595</td>
-          <td>0.011997</td>
-          <td>0.007465</td>
-          <td>0.007731</td>
-          <td>0.006398</td>
-        </tr>
-        <tr>
-          <th>delivery_pickup</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.014396</td>
-          <td>0.016796</td>
-          <td>0.015463</td>
-          <td>0.012530</td>
-          <td>0.009597</td>
-          <td>0.010131</td>
-          <td>0.005332</td>
-          <td>0.007198</td>
-          <td>0.003999</td>
-        </tr>
-        <tr>
-          <th>payment_cash</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.004799</td>
-          <td>0.006931</td>
-          <td>0.004799</td>
-          <td>0.004266</td>
-          <td>0.004532</td>
-          <td>0.002133</td>
-          <td>0.001866</td>
-        </tr>
-        <tr>
-          <th>ENDED</th>
-          <td>0.000000</td>
-          <td>0.000000</td>
-          <td>0.118102</td>
-          <td>0.219408</td>
-          <td>0.313250</td>
-          <td>0.388430</td>
-          <td>0.457745</td>
-          <td>0.536124</td>
-          <td>0.607038</td>
-          <td>0.661690</td>
-          <td>0.709144</td>
-          <td>0.745135</td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
+
+Now we can see the difference between these two types of normalisation.
+The number of unique sessions is greater than the number of unique
+users, so the proportion of the ``cart`` event in the third step when
+normalizing by users is higher than for sessions (0,09 vs 0,05). The
+same happens with other, potentially targeted events in the eventstream:
+``payment_choice``, ``payment_done``, ``delivery_choice`` etc. In
+addition, looking at the step matrix by users, we can assume that the
+trajectory of most users starts with the ``catalogue`` event, but if you
+break down the trajectories into sessions, it becomes clear that most of
+them start with the ``main`` event.
+
+Using a separate instance
+-------------------------
+
+By design, ``Eventstream.step_matrix()`` is a shortcut method which uses
+an instance of ``StepMatrix`` class under the hood. Eventstream method
+creates an instance of StepMatrix object and stores it the eventstream
+internally.
+
+Sometimes it’s reasonable to work with a separate instance of StepMatrix
+class. In this case you also have to call ``StepMatrix.fit()`` and
+``StepMatrix.plot()`` methods explicitly. Here’s an example how you can
+do it.
+
+.. code-block:: python
+
+    from retentioneering.tooling.step_matrix import StepMatrix
+
+    step_matrix = StepMatrix(stream, max_steps=12, targets=['payment_done'])
+    step_matrix.fit()
+    step_matrix.plot();
 
 
 
-.. code:: ipython3
 
-    sm = source.step_matrix(max_steps=12, show_plot=False)
-    sm.values[0]
+.. image:: /_static/user_guides/step_matrix/output_75_0.png
+
+
+Common tooling properties
+-------------------------
+
+Regardless of how the step matrix is called, as eventstream method or as
+StepMatrix class instance, common properties are available.
+
+.. _values-label:
+values
+~~~~~~
+
+To see the matrix data, we can call the ``.values`` attribute. This
+attribute returns two datasets: the step matrix itself and the target
+events. If we apply indexing, .values[0] returns step_matrix, .values[1]
+returns targets.
+
+.. code-block:: python
+
+    stream\
+        .step_matrix(max_steps=12,
+            targets=['product1',['cart','payment_done']],
+            show_plot=False)\
+        .values[0]
 
 
 
@@ -1825,3 +938,115 @@ but it can be done in one line:
       </tbody>
     </table>
     </div>
+
+
+
+.. code-block:: python
+
+    # target events
+    stream\
+        .step_matrix(max_steps=12,
+                    targets=['product1',['cart','payment_done']],
+                     show_plot=False)\
+        .values[1]
+
+
+
+.. raw:: html
+
+    <div><table class="dataframe">
+      <thead>
+        <tr style="text-align: right;">
+          <th></th>
+          <th>1</th>
+          <th>2</th>
+          <th>3</th>
+          <th>4</th>
+          <th>5</th>
+          <th>6</th>
+          <th>7</th>
+          <th>8</th>
+          <th>9</th>
+          <th>10</th>
+          <th>11</th>
+          <th>12</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>product1</th>
+          <td>0.0</td>
+          <td>0.070115</td>
+          <td>0.045055</td>
+          <td>0.042655</td>
+          <td>0.031991</td>
+          <td>0.025860</td>
+          <td>0.020794</td>
+          <td>0.017595</td>
+          <td>0.017062</td>
+          <td>0.011197</td>
+          <td>0.012263</td>
+          <td>0.010397</td>
+        </tr>
+        <tr>
+          <th>cart</th>
+          <td>0.0</td>
+          <td>0.089843</td>
+          <td>0.109571</td>
+          <td>0.080778</td>
+          <td>0.064783</td>
+          <td>0.047454</td>
+          <td>0.046388</td>
+          <td>0.031725</td>
+          <td>0.027459</td>
+          <td>0.024527</td>
+          <td>0.021061</td>
+          <td>0.022394</td>
+        </tr>
+        <tr>
+          <th>payment_done</th>
+          <td>0.0</td>
+          <td>0.000000</td>
+          <td>0.000000</td>
+          <td>0.000000</td>
+          <td>0.000000</td>
+          <td>0.003999</td>
+          <td>0.024793</td>
+          <td>0.024793</td>
+          <td>0.018395</td>
+          <td>0.014929</td>
+          <td>0.013063</td>
+          <td>0.010131</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+
+
+params
+~~~~~~
+
+``StepMatrix.params`` property returns a dictionary containing all the
+parameters (including the defaults) related to the current state of the
+StepMatrix object:
+
+.. code-block:: python
+
+    stream\
+        .step_matrix(show_plot=False)\
+        .params
+
+
+
+.. parsed-literal::
+
+    {'max_steps': 20,
+     'weight_col': 'user_id',
+     'precision': 2,
+     'targets': None,
+     'accumulated': None,
+     'sorting': None,
+     'thresh': 0,
+     'centered': None,
+     'groups': None}

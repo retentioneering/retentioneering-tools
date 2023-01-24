@@ -1,7 +1,8 @@
 StepMatrix
 ==========
 
-The following user guide is also available as `Google Colab notebook <https://colab.research.google.com/drive/12l603hupPLIWp9H1ljkr5RUQLuunbLY3?usp=sharing>'.
+The following user guide is also available as Google Colab notebook:
+https://colab.research.google.com/drive/12l603hupPLIWp9H1ljkr5RUQLuunbLY3?usp=sharing
 
 Step matrix definition
 ----------------------
@@ -405,7 +406,7 @@ Let’s say we would like to change the order of the events in the
 resulted step_matrix. First, we can obtain a list of event names from
 the step_matrix output using ``.values[0]``
 
-To read about the ``.values`` attribute, follow the link to :ref:`values-label`
+To read about the ``.values`` attribute, follow the link to :ref:`values`
 
 .. code-block:: python
 
@@ -524,7 +525,9 @@ Clusters
 Consider another example of differential step matrix use, where we will
 compare behavior of two user clusters. First, let’s obtain behavioural
 segments and visualize the results of the segmentation using conversion
-to ``payment_done`` and event ``cart``.
+to ``payment_done`` and event ``cart``. User list is assigned by the
+:py:meth:`Clusters.cluster_mapping<retentioneering.tooling.clusters.clusters.Clusters.cluster_mapping>` attribute.
+
 
 To learn more about user behavior clustering read here: :doc:`Clusters user guide </user_guides/clusters>`.
 
@@ -550,10 +553,7 @@ using differential step matrix. All we need is to get ``user_id``\ s
 collections from ``cluster_mapping`` attribute and pass it to ``groups``
 parameter of step matrix:
 
-To get more information about the ``cluster_mapping`` attribute read
-here:
 
-:doc:`Getting clustering results</api/tooling/clusters>`
 
 
 .. code-block:: python
@@ -601,10 +601,9 @@ To learn more about working with data processors, you can follow the
 link:
 :doc:`Preprocessing user guide </user_guides/preprocessing>`.
 
-There is a special eventstream method in retentioneering library, called
-``.timedeltahist()``. It can help calculate the maximum session length
-more accurately. To learn more about this method you can follow the link:
-:doc:`Eventstream user guide </user_guides/preprocessing>`.
+There is a special eventstream method in retentioneering library, called :py:meth:Eventstream.timedelta_hist()<retentioneering.tooling.timedelta_hist.timedelta_hist.TimedeltaHist>. It can help calculate the maximum session length
+more accurately.
+
 
 
 
@@ -684,7 +683,7 @@ Common tooling properties
 Regardless of how the step matrix is called, as eventstream method or as
 StepMatrix class instance, common properties are available.
 
-.. _values-label:
+.. _values:
 values
 ~~~~~~
 

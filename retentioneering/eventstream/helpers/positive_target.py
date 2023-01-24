@@ -20,7 +20,7 @@ class PositiveTargetHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.positive_target.PositiveTarget`
+        :py:func:`retentioneering.data_processors_lib.positive_target.PositiveTarget`
 
         """
         # avoid circular import

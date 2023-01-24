@@ -20,7 +20,7 @@ class NegativeTargetHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.negative_target.NegativeTarget`
+        :py:func:`retentioneering.data_processors_lib.negative_target.NegativeTarget`
 
         """
         # avoid circular import

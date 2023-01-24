@@ -48,7 +48,7 @@ class StepSankey:
 
     See Also
     --------
-    :py:func:`src.eventstream.eventstream.Eventstream.step_sankey`
+    :py:func:`retentioneering.eventstream.eventstream.Eventstream.step_sankey`
 
     """
 

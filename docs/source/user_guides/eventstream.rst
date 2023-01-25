@@ -19,7 +19,7 @@ What is eventstream
 
 - Data container. The initial clickstream is stored in an ``Eventstream`` object.
 
-- Preprocessing. Eventstream allows you to efficiently work with clickstream data preparation process. See a :doc:`user guide on preprocessing</user_guides/preprocessing>`.
+- Preprocessing. Eventstream allows you to efficiently work with clickstream data preparation process. See a :doc:`user guide on preprocessing</user_guides/dataprocessors>`.
 
 - Applying analytical tools. Eventstream provides simple interfaces to retentioneering tools, so you can seamlessly apply them. See a :doc:`user guide on retentioneering tooling methods</user_guide>`.
 
@@ -263,9 +263,9 @@ Among the standard triple ``user_id``, ``event``, ``timestamp`` and custom colum
 
 - ``event_id``. A string identifier of an evenstream row.
 
-- ``event_type``. All the events came from a sourcing dataframe are of ``raw`` event type. "Raw" means that these event are used as a source for an eventstream, like raw data. However, preprocessing methods can add some so called synthetic events which have different event types. See the details in :doc:`Preprocessing user guide</user_guides/preprocessing>`.
+- ``event_type``. All the events came from a sourcing dataframe are of ``raw`` event type. "Raw" means that these event are used as a source for an eventstream, like raw data. However, preprocessing methods can add some so called synthetic events which have different event types. See the details in :doc:`Preprocessing user guide</user_guides/dataprocessors>`.
 
-- ``event_index``. An integer which is associated with the event order. By default, an eventstream is sorted by timestamp. As for the synthetic events which are often placed at the beginning or in the end of a user's path, special sorting is applied. See :doc:`Preprocessing user guide</user_guides/preprocessing>` for the details. :red:`TODO: set a precise link to synthetic events sorting subsection`. Please note that the event index might contain gaps. It's ok due to its design see :doc:`Eventstream concept</getting_started/eventstream_concept>` for the details. :red:`TODO: set a precise link to a subsection`.
+- ``event_index``. An integer which is associated with the event order. By default, an eventstream is sorted by timestamp. As for the synthetic events which are often placed at the beginning or in the end of a user's path, special sorting is applied. See :doc:`Preprocessing user guide</user_guides/dataprocessors>` for the details. :red:`TODO: set a precise link to synthetic events sorting subsection`. Please note that the event index might contain gaps. It's ok due to its design see :doc:`Eventstream concept</getting_started/eventstream_concept>` for the details. :red:`TODO: set a precise link to a subsection`.
 
 There are some additional options which one might find useful.
 
@@ -403,63 +403,83 @@ The method has multiple parameters. Let's start with those which are responsible
 
 .. note::
 
-    The method is especially useful for working together with :py:meth:`DeleteUsersByPathLength<retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>` and :py:meth:`TruncatedEvents<retentioneering.data_processors_lib.truncated_events.TruncatedEvents>`. See :doc:`the user guide on preprocessing</user_guides/preprocessing>` for the details.
+    The method is especially useful for working together with :py:meth:`DeleteUsersByPathLength<retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>` and :py:meth:`TruncatedEvents<retentioneering.data_processors_lib.truncated_events.TruncatedEvents>`. See :doc:`the user guide on preprocessing</user_guides/dataprocessors>` for the details.
 
 Timedelta between two events
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-So we've defined user lifetime as the timedelta between the beginning and the end of a user's path. This can be generalized. :py:meth:`timedelta_hist()<retentioneering.eventstream.eventstream.Eventstream.timedelta_hist>` shows a histogram for the distribution of the timedeltas between a couple of specified events.
+.. container:: toggle
 
-The method supports the same formatting arguments (``bins``, ``timedelta_unit``, ``log_scale``, ``lower_cutoff_quantile``, ``upper_cutoff_quantile``) as :py:meth:`user_lifetime_hist()<retentioneering.eventstream.eventstream.Eventstream.user_lifetime_hist>`.
+    .. container:: header
 
-If no arguments passed (except formatting arguments), timedeltas between all adjacent events are calculated within each user path. For example, this tiny evenstream
+        :red:`Method timedelta_hist() has a serious bug. Please don't use it and ignore the hidden documentation below`
 
-.. figure:: /_static/user_guides/eventstream/02_timedelta_trivial_example.png
-    :width: 400
+    So we've defined user lifetime as the timedelta between the beginning and the end of a user's path. This can be generalized. :py:meth:`timedelta_hist()<retentioneering.eventstream.eventstream.Eventstream.timedelta_hist>` shows a histogram for the distribution of the timedeltas between a couple of specified events.
 
-generates 4 timedeltas :math:`\Delta_1, \Delta_2, \Delta_3, \Delta_4` as shown in the diagram. The timedeltas between events B and D, D and C, C and E are not taken into account because two events from each pair are from different users.
+    The method supports the same formatting arguments (``bins``, ``timedelta_unit``, ``log_scale``, ``lower_cutoff_quantile``, ``upper_cutoff_quantile``) as :py:meth:`user_lifetime_hist()<retentioneering.eventstream.eventstream.Eventstream.user_lifetime_hist>`.
 
-.. code-block:: python
+    If no arguments passed (except formatting arguments), timedeltas between all adjacent events are calculated within each user path. For example, this tiny evenstream
 
-    stream.timedelta_hist(log_scale=True, timedelta_unit='m')
+    .. figure:: /_static/user_guides/eventstream/02_timedelta_trivial_example.png
+        :width: 400
 
-.. figure:: /_static/user_guides/eventstream/03_timedelta_log_scale.png
-    :width: 400
+    generates 4 timedeltas :math:`\Delta_1, \Delta_2, \Delta_3, \Delta_4` as shown in the diagram. The timedeltas between events B and D, D and C, C and E are not taken into account because two events from each pair are from different users.
 
-This distribution of the adjacent events is sort of common. It looks like a bi-modal (which is not true: remember, we use log-scale here), but these two bells help us to estimate estimate a timeout for splitting sessions. From this charts we can see that it is reasonable to set it to somewhat between 10 and 100 minutes.
+    .. code-block:: python
 
-Another use case for :py:meth:`timedelta_hist()<retentioneering.eventstream.eventstream.Eventstream.timedelta_hist>` is visualizing the distribution of the timedeltas between two specific events. Assume we want to know how much time it takes for a user to go from product1 to cart. Then we set `event_pair=('product1', 'cart')` and pass it to ``timdelta_hist``:
+        stream.timedelta_hist(log_scale=True, timedelta_unit='m')
 
-.. code-block:: python
+    .. figure:: /_static/user_guides/eventstream/03_timedelta_log_scale.png
+        :width: 400
 
-    stream.timedelta_hist(event_pair=('product1', 'cart'), timedelta_unit='m')
+    This distribution of the adjacent events is sort of common. It looks like a bi-modal (which is not true: remember, we use log-scale here), but these two bells help us to estimate estimate a timeout for splitting sessions. From this charts we can see that it is reasonable to set it to somewhat between 10 and 100 minutes.
 
-.. figure:: /_static/user_guides/eventstream/04_timedelta_pair_of_events.png
-    :width: 400
+    Another use case for :py:meth:`timedelta_hist()<retentioneering.eventstream.eventstream.Eventstream.timedelta_hist>` is visualizing the distribution of the timedeltas between two specific events. Assume we want to know how much time it takes for a user to go from product1 to cart. Then we set `event_pair=('product1', 'cart')` and pass it to ``timdelta_hist``:
 
-We see that such occurrences are not very numerous. This is because the method still considers only adjacent pairs of events (in this case ``product1`` and ``cart`` are assumed to go one right after another in a user's path). That's why the histogram is heavily skewed to 0. ``only_adjacent_event_pairs`` parameter allows to consider any cases when a user goes from ``product1`` to ``cart`` non-directly but passing through some other events:
+    .. code-block:: python
 
-.. code-block:: python
+        stream.timedelta_hist(event_pair=('product1', 'cart'), timedelta_unit='m')
 
-    stream.timedelta_hist(event_pair=('product1', 'cart'), timedelta_unit='m')
+    .. figure:: /_static/user_guides/eventstream/04_timedelta_pair_of_events.png
+        :width: 400
 
-.. figure:: /_static/user_guides/eventstream/05_timedelta_only_adjacent_event_pairs.png
-    :width: 400
+    We see that such occurrences are not very numerous. This is because the method still considers only adjacent pairs of events (in this case ``product1`` and ``cart`` are assumed to go one right after another in a user's path). That's why the histogram is heavily skewed to 0. ``only_adjacent_event_pairs`` parameter allows to consider any cases when a user goes from ``product1`` to ``cart`` non-directly but passing through some other events:
 
-Now, the histogram is still skewed to 0, but this time not so heavily.
+    .. code-block:: python
 
-As you may notice fom the previous chart, quite many timedeltas have relatively high values. Yes, we can interprete it in a way like the users are picky, so it takes them long to go from ``product1`` to ``cart`` or probably ``product1`` seems not so popular so the users don't want to purchase it. Anyway, sometimes we are intereste to look only at those events which appeared within a user session. So if we 've already split the paths into sessions we can use ``weight_col='session_id'``:
+        stream.timedelta_hist(event_pair=('product1', 'cart'), timedelta_unit='m')
 
-.. code-block:: python
+    .. figure:: /_static/user_guides/eventstream/05_timedelta_only_adjacent_event_pairs.png
+        :width: 400
 
-    stream.timedelta_hist(event_pair=('product1', 'cart'), timedelta_unit='m')
+    Now, the histogram is still skewed to 0, but this time not so heavily.
 
-.. figure:: /_static/user_guides/eventstream/05_timedelta_only_adjacent_event_pairs.png
-    :width: 400
+    As you may notice from the previous chart, quite many timedeltas have relatively high values. Yes, we can interpret this in a way like the users are picky, so it takes them long to go from ``product1`` to ``cart`` or probably ``product1`` seems not so popular so the users don't want to purchase it. Anyway, sometimes we are interested to look only at those events which appeared within a user session. So if we've already split the paths into sessions we can use ``weight_col='session_id'``:
+
+    .. code-block:: python
+
+        stream\
+        .timedelta_hist(
+            event_pair=('product1', 'cart'),
+            timedelta_unit='m',
+            only_adjacent_event_pairs=False,
+            weight_col='session_id'
+        )
+
+    .. figure:: /_static/user_guides/eventstream/06_timedelta_sessions.png
+        :width: 400
+
+    It's clear now that within a session the users walk from ``product1`` to ``cart`` event in less than 3 minutes.
+
+    For frequently occurring events we might be interested in aggregation some values over sessions. For example, transition ``main -> catalog`` is quite common. It's
+
+    all the timedeltas
+
+
+    in looking at cross-session transition time variation, in other words, the session mean/median transition times distribution. For this, we will pass aggregation='median'; this will aggregate all transition times per session into their median and plot all session medians:
 
 
 
-There are many cases when the timedeltas time is very high, and such cases might not be interesting to us. We could get rid of them by specifying weight_col = 'session_id' and looking only at transitions that happened inside one user session:
 
 
 

@@ -471,7 +471,7 @@ Timedelta between two events
 
     It's clear now that within a session the users walk from ``product1`` to ``cart`` event in less than 3 minutes.
 
-    For frequently occurring events we might be interested in aggregation some values over sessions. For example, transition ``main -> catalog`` is quite frequent. So it might be reasonable to consider all the timedeltas between ``main`` and ``catalog`` events within each session, then calculate mean or median of these timedeltas over each session, and then visualize the distribution of these mean/median values. This can be done by passing an additional argument ``aggregation='mean'`` or ``aggregation='median'``.
+    For frequently occurring events we might be interested in aggregation some values over sessions or users. For example, transition ``main -> catalog`` is quite frequent. Some users do these transitions quickly, some of them not. It might be reasonable to aggregate the timedeltas over each user path firstly (therefore, we get one value per one user at this step), and then visualize the distribution of these aggregated values. This can be done by passing an additional argument ``aggregation='mean'`` or ``aggregation='median'``.
 
     .. code-block:: python
 
@@ -480,70 +480,41 @@ Timedelta between two events
                 event_pair=('product1', 'cart'),
                 timedelta_unit='m',
                 only_adjacent_event_pairs=False,
-                weight_col='session_id',
+                weight_col='user_id',
                 aggregation='mean'
             )
 
-
-
-    in looking at cross-session transition time variation, in other words, the session mean/median transition times distribution. For this, we will pass aggregation='median'; this will aggregate all transition times per session into their median and plot all session medians:
-
-
-
-
-
-
+    :red:`insert an image with the output histogram`
 
 
 Events intensity
 ^^^^^^^^^^^^^^^^
 
-Event statistics
-~~~~~~~~~~~~~~~~
+Another nice way to review an eventstream from time point of view is to look how evenly the events are distributed over time. :py:meth:`event_timestamp_hist()<retentioneering.eventstream.eventstream.Eventstream.event_timestamp_hist>`.
 
+.. code-block:: python
 
+    stream.event_timestamp_hist()
 
+.. figure:: /_static/user_guides/eventstream/08_event_timestamp_hist.png
+    :width: 400
 
+We can notice the heavy skew in the data towards the period between April and May of 2020. Let us check whether it is specific to the ``cart``, ``product1``, and ``product2`` events. There's an argument ``event_list`` for this.
 
+.. code-block:: python
 
+    stream.event_timestamp_hist(event_list=['cart', 'product1', 'product2'])
 
+.. figure:: /_static/user_guides/eventstream/09_event_timestamp_hist_event_list.png
+    :width: 400
 
-Other methods
--------------
+Nothing changed. The skew is probably related to user path sampling or the general popularity of the simple shop over time.
 
-TMP copy
-~~~~~~~~
+We could also get rid of the period between April and May, if we think it is too different from the general time frame:
 
-TMP add_custom_column
-~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: python
 
-TMP index_order
-~~~~~~~~~~~~~~~
+    stream.event_timestamp_hist(upper_cutoff_quantile=0.43)
 
-TMP append
-~~~~~~~~~~
-
-Retentioneering tools
----------------------
-
-.. table:: Retentioneering tools overview
-    :widths: 20 60 15
-    :class: tight-table
-
-    +-------------------------------------------------------+----------------------------------------------------------------------------------------------------------------+---------------------------------------+
-    | Tooling class                                         | Description                                                                                                    | Eventstream method                    |
-    +=======================================================+================================================================================================================+=======================================+
-    |:doc:`TransitionGraph</user_guides/transition_graph>`  | Plots an interactive transition graph according to Markov process underlying the eventstream.                  | ``stream.transition_graph(**params)`` |
-    +-------------------------------------------------------+----------------------------------------------------------------------------------------------------------------+---------------------------------------+
-    |:doc:`StepMatrix</user_guides/step_matrix>`            | Plots a step-wise matrix showing the distribution of the events over a given step coloured with a heatmap.     | ``stream.step_matrix(**params)``      |
-    +-------------------------------------------------------+----------------------------------------------------------------------------------------------------------------+---------------------------------------+
-    | :doc:`StepSankey</user_guides/step_sankey>`           | Visualizes user paths in step-wise manner using sankey diagram.                                                | ``stream.step_sankey(**params)``      |
-    +-------------------------------------------------------+----------------------------------------------------------------------------------------------------------------+---------------------------------------+
-    | :doc:`Clusters</user_guides/clusters>`                | Provides a set of instruments for cluster analysis of the user paths.                                          | ``stream.clusters(**params)``         |
-    +-------------------------------------------------------+----------------------------------------------------------------------------------------------------------------+---------------------------------------+
-    | :doc:`Funnel</user_guides/funnel>`                    | Plots conversion funnel consisted of given events.                                                             | ``stream.funnel(**params)``           |
-    +-------------------------------------------------------+----------------------------------------------------------------------------------------------------------------+---------------------------------------+
-    | :doc:`Cohorts</user_guides/cohorts>`                  | Provides a set of the instruments for cohort analysis.                                                         | ``stream.cohorts(**params)``          |
-    +-------------------------------------------------------+----------------------------------------------------------------------------------------------------------------+---------------------------------------+
-    | :doc:`StatTests</user_guides/stattests>`              | Tests statistical hypothesis                                                                                   | ``stream.stattests(**params)``        |
-    +-------------------------------------------------------+----------------------------------------------------------------------------------------------------------------+---------------------------------------+
+.. figure:: /_static/user_guides/eventstream/10_event_timestamp_hist_quantile.png
+    :width: 400

@@ -636,10 +636,8 @@ To learn more about working with data processors, you can follow the
 link:
 :doc:`Preprocessing user guide </user_guides/preprocessing>`.
 
-There is a special eventstream method in retentioneering library, called :py:meth:Eventstream.timedelta_hist()<retentioneering.tooling.timedelta_hist.timedelta_hist.TimedeltaHist>. It can help calculate the maximum session length
-more accurately.
 
-
+@TODO: link to .timedelta_hist() method
 
 
 

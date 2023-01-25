@@ -2,7 +2,7 @@ Cohorts
 =======
 
 The following user guide is also available as
-`Google Colab <https://colab.research.google.com/drive/11Eqicd5fNLdtr_IqdtyYp4oAFmybNg46?usp=share_link>`_
+`Google Colab notebook <https://colab.research.google.com/drive/11Eqicd5fNLdtr_IqdtyYp4oAFmybNg46?usp=share_link>`_
 
 Cohorts intro
 -------------
@@ -19,24 +19,24 @@ Basic algorithm of ``Cohort Matrix`` calculation:
 To better understand how it works let’s first consider an intuitive
 example. Here it is small dataset of event logs:
 
-.. code:: ipython3
+.. code-block:: python
 
     source_df = pd.DataFrame(
-    [
-        [1, "event", "2021-01-28 00:01:00"],
-        [2, "event", "2021-01-30 00:01:00"],
-        [1, "event", "2021-02-03 00:01:00"],
-        [3, "event", "2021-02-04 00:01:00"],
-        [4, "event", "2021-02-05 00:01:00"],
-        [4, "event", "2021-03-06 00:01:00"],
-        [1, "event", "2021-03-07 00:01:00"],
-        [2, "event", "2021-03-07 00:01:00"],
-        [3, "event", "2021-03-29 00:01:00"],
-        [5, "event", "2021-03-30 00:01:00"],
-        [4, "event", "2021-04-06 00:01:00"]
-     ],
-            columns=["user_id", "event", "timestamp"]
-            )
+        [
+            [1, "event", "2021-01-28 00:01:00"],
+            [2, "event", "2021-01-30 00:01:00"],
+            [1, "event", "2021-02-03 00:01:00"],
+            [3, "event", "2021-02-04 00:01:00"],
+            [4, "event", "2021-02-05 00:01:00"],
+            [4, "event", "2021-03-06 00:01:00"],
+            [1, "event", "2021-03-07 00:01:00"],
+            [2, "event", "2021-03-07 00:01:00"],
+            [3, "event", "2021-03-29 00:01:00"],
+            [5, "event", "2021-03-30 00:01:00"],
+            [4, "event", "2021-04-06 00:01:00"]
+         ],
+         columns=["user_id", "event", "timestamp"]
+    )
     source_df
 
 .. raw:: html
@@ -126,16 +126,18 @@ example. Here it is small dataset of event logs:
 We can visualize this dataset as a heatmap indicating what fraction of
 users from each cohort remained in the clickstream at each time period:
 
-.. code:: ipython3
+.. code-block:: python
 
     from retentioneering.eventstream import Eventstream
     from retentioneering.tooling.cohorts import Cohorts
 
     source = Eventstream(source_df)
-    cohorts = Cohorts(eventstream=source,
-                     cohort_start_unit="M",
-                     cohort_period=(1,"M"),
-                      average=False)
+    cohorts = Cohorts(
+        eventstream=source,
+        cohort_start_unit="M",
+        cohort_period=(1,"M"),
+        average=False
+    )
 
     cohorts.fit()
     cohorts.heatmap(figsize=(6,5));
@@ -200,7 +202,7 @@ Here we use ``simple_shop`` dataset, which has already converted to ``Eventstrea
 If you want to know more about ``Eventstream`` and how to use it, please study
 :doc:`this guide<eventstream>`
 
-.. code:: ipython3
+.. code-block:: python
 
     from retentioneering import datasets
 
@@ -214,13 +216,15 @@ At the moment when an instance of a class is created, it is still
 “naive”. In order to start calculation using passed parameters, you need
 to use the :py:meth:`Cohorts.fit()<retentioneering.tooling.cohorts.cohorts.Cohorts.fit>` method.
 
-.. code:: ipython3
+.. code-block:: python
 
     from retentioneering.tooling.cohorts import Cohorts
 
-    cohorts = Cohorts(eventstream=source,
-                     cohort_start_unit="M",
-                     cohort_period=(1,"M"))
+    cohorts = Cohorts(
+        eventstream=source,
+        cohort_start_unit="M",
+        cohort_period=(1,"M")
+    )
 
     cohorts.fit()
 
@@ -231,7 +235,7 @@ Methods and attributes
 To visualize data as a heatmap, we can call
 :py:meth:`Cohorts.heatmap()<retentioneering.tooling.cohorts.cohorts.Cohorts.heatmap>` method.
 
-.. code:: ipython3
+.. code-block:: python
 
     cohorts.heatmap(figsize=(6,5));
 
@@ -241,7 +245,7 @@ To get values of the heatmap, we can use
 :py:meth:`Cohorts.values<retentioneering.tooling.cohorts.cohorts.Cohorts.values>` property, and then the
 output will be a dataframe.
 
-.. code:: ipython3
+.. code-block:: python
 
     cohorts.values
 
@@ -340,7 +344,7 @@ There are some NANs in the table. These gaps can mean one of two things:
 We can also build lineplots based on our data. Where by default each
 line - is one ``CohortGroup``, ``show_plot='cohorts'``.
 
-.. code:: ipython3
+.. code-block:: python
 
     cohorts.lineplot(figsize=(5,5), show_plot='cohorts');
 
@@ -348,7 +352,7 @@ line - is one ``CohortGroup``, ``show_plot='cohorts'``.
 
 In addition, we can plot the average values for cohorts
 
-.. code:: ipython3
+.. code-block:: python
 
     cohorts.lineplot(figsize=(7,5), show_plot='average');
 
@@ -357,7 +361,7 @@ In addition, we can plot the average values for cohorts
 Specifying the ``show_plot='all'`` we will get a plot that shows
 lineplot for each cohort and also for their average values
 
-.. code:: ipython3
+.. code-block:: python
 
     cohorts.lineplot(figsize=(7,5), show_plot='all');
 
@@ -374,12 +378,13 @@ Cohort_start_unit and Cohort_period
 In the examples we looked at earlier, the parameters
 ``cohort_start_unit='M'`` and ``cohort_period=(1,'M')`` .
 
-.. code:: ipython3
+.. code-block:: python
 
-    cohorts = Cohorts(eventstream=source,
-                   cohort_start_unit='M',
-                   cohort_period=(1, 'M')
-                    )
+    cohorts = Cohorts(
+        eventstream=source,
+        cohort_start_unit='M',
+        cohort_period=(1, 'M')
+    )
     cohorts.fit()
     cohorts.heatmap(figsize=(6,5));
 
@@ -409,12 +414,13 @@ examine. It is used in calculating:
 
 Let’s try to change those parameters.
 
-.. code:: ipython3
+.. code-block:: python
 
-    cohorts = Cohorts(eventstream=source,
-                   cohort_start_unit='W',
-                   cohort_period=(3, 'W')
-                    )
+    cohorts = Cohorts(
+        eventstream=source,
+        cohort_start_unit='W',
+        cohort_period=(3, 'W')
+    )
     cohorts.fit()
     cohorts.heatmap(figsize=(8,7));
 
@@ -438,12 +444,14 @@ Average
    value.
 -  If ``False`` - averages are not calculated
 
-.. code:: ipython3
+.. code-block:: python
 
-    cohorts = Cohorts(eventstream=source,
-                   cohort_start_unit='M',
-                   cohort_period=(1, 'M'),
-                   average=False)
+    cohorts = Cohorts(
+        eventstream=source,
+        cohort_start_unit='M',
+        cohort_period=(1, 'M'),
+        average=False
+    )
     cohorts.fit()
     cohorts.heatmap(figsize=(5,5));
 
@@ -465,12 +473,15 @@ adequately analyze the behavior of the cohort.
 
 Average values are always recalculated.
 
-.. code:: ipython3
+.. code-block:: python
 
-    cohorts = Cohorts(eventstream=source,
-                   cohort_start_unit='M',
-                   cohort_period=(1, 'M'),
-                   average=True, cut_bottom=1)
+    cohorts = Cohorts(
+        eventstream=source,
+        cohort_start_unit='M',
+        cohort_period=(1, 'M'),
+        average=True,
+        cut_bottom=1
+    )
     cohorts.fit()
     cohorts.heatmap(figsize=(6,5));
 
@@ -479,12 +490,16 @@ Average values are always recalculated.
 After applying ``cut_bottom=1`` ``CohortGroup`` starts from ``2020-04``
 were deleted from our matrix.
 
-.. code:: ipython3
+.. code-block:: python
 
-    cohorts = Cohorts(eventstream=source,
-                   cohort_start_unit='M',
-                   cohort_period=(1, 'M'),
-                   average=True, cut_bottom=1, cut_right=1)
+    cohorts = Cohorts(
+        eventstream=source,
+        cohort_start_unit='M',
+        cohort_period=(1, 'M'),
+        average=True,
+        cut_bottom=1,
+        cut_right=1
+    )
 
     cohorts.fit()
     cohorts.heatmap(figsize=(5,5));
@@ -494,12 +509,15 @@ were deleted from our matrix.
 Parameter ``cut_right`` allows to remove the last period column, which
 reflected information only for the first cohort.
 
-.. code:: ipython3
+.. code-block:: python
 
-    cohorts = Cohorts(eventstream=source,
-                   cohort_start_unit='M',
-                   cohort_period=(1, 'M'),
-                   average=True, cut_diagonal=1)
+    cohorts = Cohorts(
+        eventstream=source,
+        cohort_start_unit='M',
+        cohort_period=(1, 'M'),
+        average=True,
+        cut_diagonal=1
+    )
     cohorts.fit()
     cohorts.heatmap(figsize=(5,5));
 
@@ -525,25 +543,30 @@ and `:py:meth:`Cohorts.lineplot()<retentioneering.tooling.cohorts.cohorts.Cohort
 available, now it can be done in one line:
 
 
-.. code:: ipython3
+.. code-block:: python
 
-    source.cohorts(cohort_start_unit='M',
-                      cohort_period=(1,'M'),
-                      average=False,
-                      cut_bottom=0,
-                      cut_right=0,
-                      cut_diagonal=0);
+    source.cohorts(
+        cohort_start_unit='M',
+        cohort_period=(1,'M'),
+        average=False,
+        cut_bottom=0,
+        cut_right=0,
+        cut_diagonal=0
+    );
 
 .. figure:: /_static/user_guides/cohorts/cohorts_15_eventstream.png
 
-.. code:: ipython3
+.. code-block:: python
 
-    source.cohorts(cohort_start_unit='M',
-                      cohort_period=(1,'M'),
-                      average=False,
-                      cut_bottom=0,
-                      cut_right=0,
-                      cut_diagonal=0, show_plot=False).values
+    source.cohorts(
+        cohort_start_unit='M',
+        cohort_period=(1,'M'),
+        average=False,
+        cut_bottom=0,
+        cut_right=0,
+        cut_diagonal=0,
+        show_plot=False
+    ).values
 
 .. raw:: html
 
@@ -621,26 +644,32 @@ available, now it can be done in one line:
     </div>
 
 
-.. code:: ipython3
+.. code-block:: python
 
-    source.cohorts(cohort_start_unit='M',
-                      cohort_period=(1,'M'),
-                      average=False,
-                      cut_bottom=0,
-                      cut_right=0,
-                      cut_diagonal=0, show_plot=False).lineplot();
+    source.cohorts(
+        cohort_start_unit='M',
+        cohort_period=(1,'M'),
+        average=False,
+        cut_bottom=0,
+        cut_right=0,
+        cut_diagonal=0,
+        show_plot=False
+    ).lineplot();
 
 .. figure:: /_static/user_guides/cohorts/cohorts_16_eventstream_lineplot.png
 
 
-.. code:: ipython3
+.. code-block:: python
 
-    ch = source.cohorts(cohort_start_unit='M',
-                      cohort_period=(1,'M'),
-                      average=False,
-                      cut_bottom=0,
-                      cut_right=0,
-                      cut_diagonal=0, show_plot=False)
+    ch = source.cohorts(
+        cohort_start_unit='M',
+        cohort_period=(1,'M'),
+        average=False,
+        cut_bottom=0,
+        cut_right=0,
+        cut_diagonal=0,
+        show_plot=False
+    )
     ch.values
 
 .. raw:: html

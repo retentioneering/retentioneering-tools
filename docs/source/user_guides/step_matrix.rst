@@ -1,8 +1,8 @@
 StepMatrix
 ==========
 
-The following user guide is also available as Google Colab notebook:
-https://colab.research.google.com/drive/12l603hupPLIWp9H1ljkr5RUQLuunbLY3?usp=sharing
+The following user guide is also available as
+`Google Colab notebook <https://colab.research.google.com/drive/12l603hupPLIWp9H1ljkr5RUQLuunbLY3?usp=share_link>`_.
 
 Step matrix definition
 ----------------------
@@ -32,23 +32,27 @@ distribution of the events appeared at a specific step:
 
 .. code-block:: python
 
-    simple_example = pd.DataFrame([['user1', 'main', 0],
-                                  ['user2', 'main', 0],
-                                  ['user3', 'main', 0],
-                                  ['user4', 'catalog', 0],
-                                  ['user1', 'catalog', 1],
-                                  ['user3', 'catalog', 1],
-                                  ['user4', 'product', 1],
-                                  ['user1', 'product', 2],
-                                  ['user3', 'catalog', 2],
-                                  ['user4', 'main', 2],
-                                  ['user1', 'cart', 3],
-                                  ['user3', 'product', 3],
-                                  ['user4', 'catalog', 3],
-                                  ['user1', 'catalog', 5],
-                                  ['user3', 'cart', 5],
-                                  ['user3', 'order', 6]],
-                                  columns=['user_id', 'event', 'timestamp'])
+    simple_example = pd.DataFrame(
+        [
+            ['user1', 'main', 0],
+            ['user2', 'main', 0],
+            ['user3', 'main', 0],
+            ['user4', 'catalog', 0],
+            ['user1', 'catalog', 1],
+            ['user3', 'catalog', 1],
+            ['user4', 'product', 1],
+            ['user1', 'product', 2],
+            ['user3', 'catalog', 2],
+            ['user4', 'main', 2],
+            ['user1', 'cart', 3],
+            ['user3', 'product', 3],
+            ['user4', 'catalog', 3],
+            ['user1', 'catalog', 5],
+            ['user3', 'cart', 5],
+            ['user3', 'order', 6]
+        ],
+        columns=['user_id', 'event', 'timestamp']
+    )
 
 
     Eventstream(simple_example).step_matrix(max_steps=7);
@@ -170,9 +174,11 @@ individual color scale. This can be done with parameter ``targets``:
 
 .. code-block:: python
 
-    stream.step_matrix(max_steps=16,
+    stream.step_matrix(
+        max_steps=16,
         thresh=0.05,
-        targets=['payment_done'])
+        targets=['payment_done']
+    )
 
 
 
@@ -190,9 +196,11 @@ Multiple targets can be included as a list:
 
 .. code-block:: python
 
-    stream.step_matrix(max_steps=16,
+    stream.step_matrix(
+        max_steps=16,
         thresh=0.05,
-        targets=['product1','cart','payment_done'])
+        targets=['product1', 'cart', 'payment_done']
+    )
 
 
 
@@ -212,9 +220,11 @@ scaling, we can combine them in a sub-list inside the targets list:
 
 .. code-block:: python
 
-    stream.step_matrix(max_steps=16,
+    stream.step_matrix(
+        max_steps=16,
         thresh=0.05,
-        targets=['product1',['cart','payment_done']])
+        targets=['product1', ['cart', 'payment_done']]
+    )
 
 
 
@@ -237,10 +247,12 @@ options for displaying these rows:
 
 .. code-block:: python
 
-    stream.step_matrix(max_steps=16,
+    stream.step_matrix(
+        max_steps=16,
         thresh=0.05,
-        targets=['product1',['cart','payment_done']],
-        accumulated='only');
+        targets=['product1', ['cart', 'payment_done']],
+        accumulated='only'
+    )
 
 
 
@@ -250,10 +262,12 @@ options for displaying these rows:
 
 .. code-block:: python
 
-    stream.step_matrix(max_steps=16,
+    stream.step_matrix(
+        max_steps=16,
         thresh=0.05,
         targets=['product1', ['cart', 'payment_done']],
-        accumulated='both')
+        accumulated='both'
+    )
 
 
 
@@ -274,12 +288,15 @@ information can be visualized with step_marix using parameter
 
 .. code-block:: python
 
-    stream.step_matrix(max_steps=16,
+    stream.step_matrix(
+        max_steps=16,
         thresh=0.2,
         centered={
             'event': 'cart',
             'left_gap': 5,
-            'occurrence': 1})
+            'occurrence': 1
+        }
+    )
 
 
 
@@ -325,12 +342,15 @@ build another step matrix, this time with ``occurrence=2``:
 
 .. code-block:: python
 
-    stream.step_matrix(max_steps=16,
+    stream.step_matrix(
+        max_steps=16,
         thresh=0.2,
         centered={
             'event': 'cart',
             'left_gap': 5,
-            'occurrence': 2})
+            'occurrence': 2
+        }
+    )
 
 
 
@@ -349,12 +369,16 @@ possible:
 
 .. code-block:: python
 
-    stream.step_matrix(max_steps=16,
-        thresh = 0.2,
-        centered={'event':'cart',
-            'left_gap':5,
-            'occurrence':1},
-        targets=['payment_done'])
+    stream.step_matrix(
+        max_steps=16,
+        thresh=0.2,
+        centered={
+            'event': 'cart',
+            'left_gap': 5,
+            'occurrence': 1
+        },
+        targets=['payment_done']
+    )
 
 
 
@@ -382,8 +406,7 @@ example:
 
 .. code-block:: python
 
-    stream.step_matrix(max_steps=16,
-        thresh=0.07)
+    stream.step_matrix(max_steps=16, thresh=0.07)
 
 
 
@@ -410,6 +433,14 @@ To read about the ``.values`` attribute, follow the link to :ref:`values`
 
 
 
+.. parsed-literal::
+
+    Index(['catalog', 'main', 'lost', 'cart', 'product2', 'product1', 'ENDED',
+           'THRESHOLDED_7'],
+          dtype='object')
+
+
+
 .. image:: /_static/user_guides/step_matrix/output_45_2.png
 
 
@@ -419,18 +450,22 @@ parameter:
 
 .. code-block:: python
 
-    custom_order = ['main',
+    custom_order = [
+        'main',
         'catalog',
         'product1',
         'product2',
         'cart',
         'lost',
         'THRESHOLDED_7',
-        'ENDED']
-    stream\
-        .step_matrix(max_steps=16,
-            thresh=0.07,
-            sorting=custom_order)
+        'ENDED'
+    ]
+
+    stream.step_matrix(
+        max_steps=16,
+        thresh=0.07,
+        sorting=custom_order
+    )
 
 
 
@@ -475,12 +510,16 @@ in each column in the differential step matrix will always sum up to 0
     g1 = set(raw_data[raw_data['event'] == 'payment_done']['user_id'])
     g2 = set(raw_data['user_id']) - g1
 
-    stream.step_matrix(max_steps=16,
-        thresh = 0.05,
-        centered={'event':'cart',
-            'left_gap':5,
-            'occurrence':1},
-            groups=(g1, g2))
+    stream.step_matrix(
+        max_steps=16,
+        thresh=0.05,
+        centered={
+            'event': 'cart',
+            'left_gap': 5,
+            'occurrence': 1
+        },
+        groups=(g1, g2)
+    )
 
 
 
@@ -553,12 +592,16 @@ parameter of step matrix:
     g1 = clusters.cluster_mapping[1]
     g2 = clusters.cluster_mapping[3]
 
-    stream.step_matrix(max_steps=16,
-                    thresh = 0.05,
-                    centered={'event':'cart',
-                                    'left_gap':5,
-                                    'occurrence':1},
-                    groups=(g1, g2));
+    stream.step_matrix(
+        max_steps=16,
+        thresh = 0.05,
+        centered={
+            'event': 'cart',
+            'left_gap': 5,
+            'occurrence': 1
+        },
+        groups=(g1,g2)
+    )
 
 
 
@@ -605,8 +648,7 @@ Now we feed the result as input to the step_matrix tool and specify the
 
 .. code-block:: python
 
-    result.step_matrix(max_steps=16,
-        weight_col=['session_id'])
+    result.step_matrix(max_steps=16, weight_col=['session_id'])
 
 
 
@@ -622,8 +664,7 @@ Let’s compare the result with the user-weighted matrix
 
 .. code-block:: python
 
-    result.step_matrix(max_steps=16,
-        weight_col=['user_id']))
+    result.step_matrix(max_steps=16, weight_col=['user_id']))
 
 
 
@@ -661,7 +702,7 @@ do it.
 
     step_matrix = StepMatrix(stream, max_steps=12, targets=['payment_done'])
     step_matrix.fit()
-    step_matrix.plot();
+    step_matrix.plot()
 
 
 
@@ -688,11 +729,11 @@ returns targets.
 
 .. code-block:: python
 
-    stream\
-        .step_matrix(max_steps=12,
-            targets=['product1',['cart','payment_done']],
-            show_plot=False)\
-        .values[0]
+    stream.step_matrix(
+        max_steps=12,
+        targets=['product1', ['cart', 'payment_done']],
+        show_plot=False
+    ).values[0]
 
 
 
@@ -937,11 +978,11 @@ returns targets.
 .. code-block:: python
 
     # target events
-    stream\
-        .step_matrix(max_steps=12,
-                    targets=['product1',['cart','payment_done']],
-                     show_plot=False)\
-        .values[1]
+    stream.step_matrix(
+        max_steps=12,
+        targets=['product1', ['cart', 'payment_done']],
+        show_plot=False
+    ).values[1]
 
 
 
@@ -1026,9 +1067,7 @@ StepMatrix object:
 
 .. code-block:: python
 
-    stream\
-        .step_matrix(show_plot=False)\
-        .params
+    stream.step_matrix(show_plot=False).params
 
 
 

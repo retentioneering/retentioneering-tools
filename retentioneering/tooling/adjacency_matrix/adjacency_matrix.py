@@ -7,7 +7,7 @@ from IPython.display import display
 from retentioneering.edgelist import Edgelist
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.nodelist import Nodelist
-from retentioneering.transition_graph.typing import NormType
+from retentioneering.tooling.typing.transition_graph import NormType
 
 
 class AdjacencyMatrix:

@@ -14,8 +14,7 @@ from retentioneering.edgelist import Edgelist
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.nodelist import Nodelist
 from retentioneering.templates.transition_graph import TransitionGraphRenderer
-
-from .typing import (
+from retentioneering.tooling.typing.transition_graph import (
     GraphSettings,
     LayoutNode,
     NodeParams,

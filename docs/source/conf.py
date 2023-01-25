@@ -129,4 +129,5 @@ def setup(app: Any) -> None:
     app.add_css_file("css/custom.css")
     app.add_css_file("css/dataframe.css")
     app.add_js_file("js/custom.js")
+    # js for copying button on hovering code blocks
     app.add_js_file("https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js")

@@ -63,7 +63,7 @@ class PositiveTarget(DataProcessor):
         Each event from that list is associated with a conversional user behaviour in the product.
         If there are several target events in user path - the event with minimum timestamp taken.
 
-    func : Callable, default _default_func_positive
+    func : Callable, default _default_func
         Filter rows with target events from the input eventstream.
 
     Returns

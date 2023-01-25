@@ -3,9 +3,9 @@ Filter Events
 
 Data processor
 --------------
-.. automodule:: src.data_processors_lib.filter_events
+.. automodule:: retentioneering.data_processors_lib.filter_events
     :members:
 
 Eventstream
 -----------
-.. automethod:: src.eventstream.helpers.filter_helper.FilterHelperMixin.filter
+.. automethod:: retentioneering.eventstream.helpers.filter_helper.FilterHelperMixin.filter

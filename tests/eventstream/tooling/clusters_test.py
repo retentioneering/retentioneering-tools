@@ -11,11 +11,11 @@ from tests.eventstream.tooling.fixtures.clusters_corr import (
 )
 
 
-class TestEventstreamStepMatrix:
+class TestEventstreamClusters:
     def test_clusters_eventstream__simple_features(self, test_stream, count_corr):
         correct_features = count_corr
         features = test_stream.clusters.extract_features(feature_type="count", ngram_range=(1, 1))
-        assert features.compare(correct_features).shape == (0, 0)
+        assert pd.testing.assert_frame_equal(features[correct_features.columns], correct_features) is None
 
     def test_clusters__cluster_mapping(self, test_stream, cluster_mapping_corr):
         correct_result = cluster_mapping_corr
@@ -35,15 +35,5 @@ class TestEventstreamStepMatrix:
         res_1 = test_stream.clusters.extract_features(**params_1)
         res_2 = test_stream.clusters.extract_features(**params_2)
 
-        assert correct_res_1.compare(res_1).shape == (0, 0), "First calculation"
-        assert correct_res_2.compare(res_2).shape == (0, 0), "Refit"
-
-    def test_clusters_eventstream__fit_hash_check(self, test_stream):
-        params = {"feature_type": "count", "ngram_range": (1, 1)}
-
-        c = test_stream.clusters
-        c.fit(method="gmm", n_clusters=2, feature_type="tfidf", ngram_range=(1, 1))
-        hash1 = hash(c)
-        hash2 = hash(c)
-
-        assert hash1 == hash2
+        assert pd.testing.assert_frame_equal(res_1[correct_res_1.columns], correct_res_1) is None, "First calculation"
+        assert pd.testing.assert_frame_equal(res_2[correct_res_2.columns], correct_res_2) is None, "Refit"

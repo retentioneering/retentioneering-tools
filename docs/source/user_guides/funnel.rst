@@ -10,8 +10,8 @@
 Funnel
 ======
 
-This notebook can be open directly in
-`Google Colab <https://colab.research.google.com/drive/1VjFXazgIdMKLyHaqMoKTWhnq5_29lRIs?usp=share_link>`_
+The following user guide is also available as
+`Google Colab notebook <https://colab.research.google.com/drive/1VjFXazgIdMKLyHaqMoKTWhnq5_29lRIs?usp=share_link>`_
 
 Basic example
 -------------
@@ -28,10 +28,9 @@ Here we use ``simple_shop`` dataset, which has already converted to ``Eventstrea
 If you want to know more about ``Eventstream`` and how to use it, please study
 :doc:`this guide<eventstream>`
 
-.. code:: ipython3
+.. code-block:: python
 
-    import retentioneering as rete
-    from rete import datasets
+    from retentioneering import datasets
 
     # load eventstream
     source = datasets.load_simple_shop()
@@ -45,7 +44,7 @@ to use the :py:meth:`Funnel.fit()<retentioneering.tooling.funnel.funnel.Funnel.f
 
 .. code-block:: python
 
-    from rete.tooling.funnel import Funnel
+    from retentioneering.tooling.funnel import Funnel
 
     funnel = Funnel(
         eventstream=source,
@@ -332,7 +331,7 @@ segmented according to clusterization results:
 
 .. code-block:: python
 
-    from rete.tooling.clusters import Clusters
+    from retentioneering.tooling.clusters import Clusters
 
     clusters = Clusters(eventstream=source)
     clusters.fit(method='kmeans',

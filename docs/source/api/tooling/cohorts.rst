@@ -3,9 +3,9 @@ Cohorts
 
 Cohorts Class
 -------------
-.. automodule:: src.tooling.cohorts.cohorts
+.. automodule:: retentioneering.tooling.cohorts.cohorts
     :members:
 
 Eventstream
 -----------
-.. automethod:: src.eventstream.eventstream.Eventstream.cohorts
+.. automethod:: retentioneering.eventstream.eventstream.Eventstream.cohorts

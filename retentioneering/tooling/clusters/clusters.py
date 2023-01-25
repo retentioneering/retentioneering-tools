@@ -36,7 +36,7 @@ class Clusters:
 
     See Also
     --------
-    :py:func:`src.eventstream.eventstream.Eventstream.clusters`
+    :py:func:`retentioneering.eventstream.eventstream.Eventstream.clusters`
     """
 
     def __init__(self, eventstream: EventstreamType):
@@ -82,9 +82,9 @@ class Clusters:
             The expected number of clusters to be passed to a clustering algorithm.
         feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}, default None
             See :py:func:`extract_features`
-        ngram_range : Tuple(int, int), default None
+        ngram_range : Tuple(int, int), optional
             See :py:func:`extract_features`
-        vector : pd.DataFrame, default None
+        vector : pd.DataFrame, optional
             ``pd.DataFrame`` representing custom vectorization of the user paths. The index corresponds to user_ids,
             the columns are vectorized values of the path.
 
@@ -382,7 +382,7 @@ class Clusters:
         Returns
         -------
         pd.DataFrame
-            A DataFrame with the vectorized values. Index contains user_id, columns contain n-grams.
+            A DataFrame with the vectorized values. Index contains user_ids, columns contain n-grams.
         """
         eventstream = self.__eventstream
         events = eventstream.to_dataframe()

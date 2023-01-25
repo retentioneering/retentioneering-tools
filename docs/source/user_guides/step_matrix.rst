@@ -634,7 +634,7 @@ object will be a new eventstream.
 
 To learn more about working with data processors, you can follow the
 link:
-:doc:`Preprocessing user guide </user_guides/preprocessing>`.
+:doc:`dataprocessors user guide </user_guides/dataprocessors>`.
 
 
 @TODO: link to .timedelta_hist() method

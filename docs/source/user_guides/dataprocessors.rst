@@ -1509,7 +1509,7 @@ analysis. Sometimes, it is not clear which session cutoff is the best
 (consider observations 9 and 5316 in the table above). In such cases, it
 can be a good practice to generate multiple session splits, and compare
 them in some fashion. Also, this is where
-:py:meth:`Eventstream.timedelta_hist()<retentioneering.tooling.timedelta_hist.timedelta_hist.TimedeltaHist>`
+:red:`TODO: link to timedelta_hist. dpanina`
 method can help.
 
 
@@ -2776,7 +2776,7 @@ policy:
 
 Sometimes, it can be a good practice to use different cutoff values, and
 compare them in some fashion. Also, this is where
-:py:meth:`Eventstream.timedelta_hist()<retentioneering.tooling.timedelta_hist.timedelta_hist.TimedeltaHist>` method
+:red:`TODO: link to timedelta_hist. dpanina` method
 with specified parameter ``event_pair=('path_start', 'cart')`` can help.
 
 
@@ -4232,8 +4232,8 @@ results that are difficult to analyze:
 
 
     <iframe
-        width="900"
-        height="800"
+        width="700"
+        height="600"
         src="../_static/user_guides/data_processor/transition_graph.html"
         frameborder="0"
         align="left"
@@ -4312,8 +4312,8 @@ event they consist of:
 .. raw:: html
 
     <iframe
-        width="900"
-        height="800"
+        width="700"
+        height="600"
         src="../_static/user_guides/data_processor/transition_graph_collapse_loops_none.html"
         frameborder="0"
         align="left"
@@ -4357,8 +4357,8 @@ versions of the eventstream:
 .. raw:: html
 
     <iframe
-        width="900"
-        height="800"
+        width="700"
+        height="600"
         src="../_static/user_guides/data_processor/transition_graph_collapse_loops_loop.html"
         frameborder="0"
         align="left"
@@ -4391,8 +4391,8 @@ created eventstream:
 .. raw:: html
 
      <iframe
-        width="900"
-        height="800"
+        width="700"
+        height="600"
         src="../_static/user_guides/data_processor/transition_graph_collapse_loops_count.html"
         frameborder="0"
         align="left"

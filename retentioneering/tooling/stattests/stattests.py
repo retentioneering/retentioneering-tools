@@ -60,7 +60,7 @@ class StatTests:
 
     See Also
     --------
-    :py:func:`src.eventstream.eventstream.Eventstream.stattests`
+    :py:func:`retentioneering.eventstream.eventstream.Eventstream.stattests`
 
     """
 

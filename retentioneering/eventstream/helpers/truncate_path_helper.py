@@ -27,7 +27,7 @@ class TruncatePathHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.truncate_path.TruncatePath`
+        :py:func:`retentioneering.data_processors_lib.truncate_path.TruncatePath`
         """
         # avoid circular import
         from retentioneering.data_processors_lib import TruncatePath, TruncatePathParams

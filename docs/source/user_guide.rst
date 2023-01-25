@@ -6,6 +6,7 @@
    :maxdepth: 2
 
     Eventstream <user_guides/eventstream.rst>
+    DataProcessors <user_guides/dataprocessors.rst>
     Preprocessing <user_guides/preprocessing.rst>
     Funnels <user_guides/funnel.rst>
     Transition Graph <user_guides/transition_graph.rst>

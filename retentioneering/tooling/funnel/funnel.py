@@ -40,7 +40,7 @@ class Funnel:
 
     See Also
     --------
-    :py:func:`src.eventstream.eventstream.Eventstream.funnel`
+    :py:func:`retentioneering.eventstream.eventstream.Eventstream.funnel`
 
     """
 

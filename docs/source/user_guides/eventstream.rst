@@ -459,21 +459,31 @@ Timedelta between two events
     .. code-block:: python
 
         stream\
-        .timedelta_hist(
-            event_pair=('product1', 'cart'),
-            timedelta_unit='m',
-            only_adjacent_event_pairs=False,
-            weight_col='session_id'
-        )
+            .timedelta_hist(
+                event_pair=('product1', 'cart'),
+                timedelta_unit='m',
+                only_adjacent_event_pairs=False,
+                weight_col='session_id'
+            )
 
     .. figure:: /_static/user_guides/eventstream/06_timedelta_sessions.png
         :width: 400
 
     It's clear now that within a session the users walk from ``product1`` to ``cart`` event in less than 3 minutes.
 
-    For frequently occurring events we might be interested in aggregation some values over sessions. For example, transition ``main -> catalog`` is quite common. It's
+    For frequently occurring events we might be interested in aggregation some values over sessions. For example, transition ``main -> catalog`` is quite frequent. So it might be reasonable to consider all the timedeltas between ``main`` and ``catalog`` events within each session, then calculate mean or median of these timedeltas over each session, and then visualize the distribution of these mean/median values. This can be done by passing an additional argument ``aggregation='mean'`` or ``aggregation='median'``.
 
-    all the timedeltas
+    .. code-block:: python
+
+        stream\
+            .timedelta_hist(
+                event_pair=('product1', 'cart'),
+                timedelta_unit='m',
+                only_adjacent_event_pairs=False,
+                weight_col='session_id',
+                aggregation='mean'
+            )
+
 
 
     in looking at cross-session transition time variation, in other words, the session mean/median transition times distribution. For this, we will pass aggregation='median'; this will aggregate all transition times per session into their median and plot all session medians:

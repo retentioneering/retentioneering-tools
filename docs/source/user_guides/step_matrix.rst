@@ -238,7 +238,7 @@ Now we can visually compare by color how many users reach ``cart`` vs
 
 Targets can be presented as accumulated values. It means we can display
 the cumulative sum of the share of the users who had this event at each
-step. Rows with accumulated values start with "ACC_". There are two
+step. Rows with accumulated values start with ``ACC_``. There are two
 options for displaying these rows:
 
 1. ``only`` accumulated rows;

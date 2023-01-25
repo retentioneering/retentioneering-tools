@@ -26,7 +26,7 @@ class CollapseLoopsHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.collapse_loops.CollapseLoops`
+        :py:func:`retentioneering.data_processors_lib.collapse_loops.CollapseLoops`
         """
 
         # avoid circular import

@@ -112,12 +112,12 @@ class Eventstream(
     raw_data_schema : RawDataSchema, optional
         Should be specified as an instance of class ``RawDataSchema``:
 
-        - If ``raw_data`` column names are different from default :py:func:`src.eventstream.schema.RawDataSchema`.
+        - If ``raw_data`` column names are different from default :py:func:`retentioneering.eventstream.schema.RawDataSchema`.
         - If there is at least one ``custom_col`` in ``raw_data``.
 
     schema : EventstreamSchema, optional
         Schema of created ``eventstream``.
-        See default schema% :py:func:`src.eventstream.schema.EventstreamSchema`.
+        See default schema% :py:func:`retentioneering.eventstream.schema.EventstreamSchema`.
     prepare : bool, default True
 
         - If ``True`` input data will be transformed in the following way:
@@ -584,7 +584,7 @@ class Eventstream(
         """
         Show a visualization of the user sequential events represented as a funnel.
 
-        See parameters description :py:func:`src.tooling.funnel.funnel`
+        See parameters description :py:func:`retentioneering.tooling.funnel.funnel`
 
         Returns
         -------
@@ -611,7 +611,7 @@ class Eventstream(
     def clusters(self) -> Clusters:
         """
         Return a blank (not fitted) instance of ``Clusters`` class to be used for cluster analysis.
-        See :py:func:`src.tooling.clusters.clusters`
+        See :py:func:`retentioneering.tooling.clusters.clusters`
 
         Returns
         -------
@@ -637,7 +637,7 @@ class Eventstream(
         """
         Show a heatmap visualization of the step matrix.
 
-        See parameters description :py:func:`src.tooling.step_matrix.step_matrix`
+        See parameters description :py:func:`retentioneering.tooling.step_matrix.step_matrix`
 
         Returns
         -------
@@ -678,7 +678,7 @@ class Eventstream(
         """
         Show a Sankey diagram visualizing the user paths in step-wise manner.
 
-        See parameters description :py:func:`src.tooling.step_sankey.step_sankey`
+        See parameters description :py:func:`retentioneering.tooling.step_sankey.step_sankey`
 
         Returns
         -------
@@ -718,7 +718,7 @@ class Eventstream(
         """
         Show a heatmap visualization of the user appearance grouped by cohorts.
 
-        See parameters description :py:func:`src.tooling.cohorts.cohorts`
+        See parameters description :py:func:`retentioneering.tooling.cohorts.cohorts`
 
         Returns
         -------
@@ -752,7 +752,7 @@ class Eventstream(
         """
         Determine the statistical difference between the metric values in two user groups.
 
-        See parameters description :py:func:`src.tooling.stattests.stattests`
+        See parameters description :py:func:`retentioneering.tooling.stattests.stattests`
 
         Returns
         -------
@@ -784,7 +784,7 @@ class Eventstream(
         distribution types, such as distribution of time for adjacent consecutive events, or
         for a pair of pre-defined events, or median transition time from event to event per user/session.
 
-        See parameters description :py:func:`src.tooling.timedelta_hist.timedelta_hist`
+        See parameters description :py:func:`retentioneering.tooling.timedelta_hist.timedelta_hist`
 
         Returns
         -------
@@ -819,11 +819,11 @@ class Eventstream(
         """
         Plot the distribution of user lifetimes. A ``users' lifetime`` is the timedelta between the first and the last
         events of the user. Can be useful for finding suitable parameters of various data processors, such as
-        :py:func:`DeleteUsersByPathLength<src.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>`
+        :py:func:`DeleteUsersByPathLength<retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>`
         or
-        :py:func:`TruncatedEvents<src.data_processors_lib.truncated_events.TruncatedEvents>`.
+        :py:func:`TruncatedEvents<retentioneering.data_processors_lib.truncated_events.TruncatedEvents>`.
 
-        See parameters description :py:func:`src.tooling.user_lifetime_hist.user_lifetime_hist`
+        See parameters description :py:func:`retentioneering.tooling.user_lifetime_hist.user_lifetime_hist`
 
         Returns
         -------
@@ -854,7 +854,7 @@ class Eventstream(
         Plot the distribution of events over time. Can be useful for detecting time-based anomalies, and visualising
         general timespan of the eventstream.
 
-        See parameters description :py:func:`src.tooling.event_timestamp_hist.event_timestamp_hist`
+        See parameters description :py:func:`retentioneering.tooling.event_timestamp_hist.event_timestamp_hist`
 
         Returns
         -------
@@ -877,7 +877,7 @@ class Eventstream(
         Display general eventstream information. If ``session_col`` is present in eventstream columns, also
         output session statistics, assuming ``session_col`` is the session identifier column.
 
-        See parameters description :py:func:`src.tooling.describe.describe`
+        See parameters description :py:func:`retentioneering.tooling.describe.describe`
         """
         describer = Describe(eventstream=self, session_col=session_col)
         describer.display()
@@ -890,7 +890,7 @@ class Eventstream(
         If ``session_col`` is present in eventstream columns, also
         output session statistics, assuming ``session_col`` is the session identifier column.
 
-        See parameters description :py:func:`src.tooling.describe_events.describe_events`
+        See parameters description :py:func:`retentioneering.tooling.describe_events.describe_events`
         """
         describer = DescribeEvents(eventstream=self, session_col=session_col, event_list=event_list)
         describer.display()
@@ -906,7 +906,7 @@ class Eventstream(
     ) -> TransitionGraph:
         """
         Create interactive graph visualization with callback to input ``eventstream``.
-        See parameters description :py:func:`src.transition_graph.transition_graph`
+        See parameters description :py:func:`retentioneering.transition_graph.transition_graph`
 
         Returns
         -------

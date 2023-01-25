@@ -17,7 +17,7 @@ class StartEndHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.start_end_events.StartEndEvents`
+        :py:func:`retentioneering.data_processors_lib.start_end_events.StartEndEvents`
         """
         # avoid circular import
         from retentioneering.data_processors_lib import (

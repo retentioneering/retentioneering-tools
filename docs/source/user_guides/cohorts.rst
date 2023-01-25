@@ -128,9 +128,8 @@ users from each cohort remained in the clickstream at each time period:
 
 .. code-block:: python
 
-    import retentioneering as rete
-    from rete.eventstream import Eventstream
-    from rete.tooling.cohorts import Cohorts
+    from retentioneering.eventstream import Eventstream
+    from retentioneering.tooling.cohorts import Cohorts
 
     source = Eventstream(source_df)
     cohorts = Cohorts(
@@ -205,7 +204,7 @@ If you want to know more about ``Eventstream`` and how to use it, please study
 
 .. code-block:: python
 
-    from rete import datasets
+    from retentioneering import datasets
 
     # load eventstream
     source = datasets.load_simple_shop()
@@ -219,7 +218,7 @@ to use the :py:meth:`Cohorts.fit()<retentioneering.tooling.cohorts.cohorts.Cohor
 
 .. code-block:: python
 
-    from rete.tooling.cohorts import Cohorts
+    from retentioneering.tooling.cohorts import Cohorts
 
     cohorts = Cohorts(
         eventstream=source,

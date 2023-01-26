@@ -42,6 +42,8 @@ class TransitionGraph:
     Class that holds methods for graph visualization.
     """
 
+    _weights: MutableMapping[str, str] | None = None
+
     def __init__(
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
@@ -53,7 +55,7 @@ class TransitionGraph:
     ) -> None:
         from retentioneering.eventstream.eventstream import Eventstream
 
-        self.weights = weights if weights else {"edges": "edge_weight", "nodes": "events"}
+        self.weights = weights if weights else {"edges": "events", "nodes": "events"}
         self.targets = targets if targets else {"positive": None, "negative": None, "source": None}
         self.thresholds = thresholds if thresholds else {"edges": {"events": 0.03}, "nodes": {"events": 0.03}}
         sm = ServerManager()
@@ -103,6 +105,16 @@ class TransitionGraph:
         )
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
+
+    @property
+    def weights(self) -> MutableMapping[str, str] | None:
+        return self._weights
+
+    @weights.setter
+    def weights(self, value: MutableMapping[str, str] | None) -> None:
+        if value != {"edges": "events", "nodes": "events"}:
+            raise ValueError("Allowed only: %s" % {"edges": "events", "nodes": "events"})
+        self._weights = value
 
     def _on_recalc_request(
         self, rename_rules: list[RenameRule]

@@ -29,19 +29,25 @@ The structure of an eventstream is designed as follows. Let :math:`U` be a set o
 Eventstream creation
 --------------------
 
+Default field names
+~~~~~~~~~~~~~~~~~~~
+
 In some sense, ``Eventstream`` is a container for a clickstream represented by a ``pandas.DataFrame``, so an Eventstream instance is created by passing a dataframe to Eventstream constructor. The constructor expects the dataframe to have at least 3 columns: ``user_id``, ``event``, ``timestamps``. Let's create a dummy dataframe for that:
 
 .. code-block:: python
 
     import pandas as pd
 
-    df1 = pd.DataFrame([
-        ['user_1', 'A', '2023-01-01 00:00:00'],
-        ['user_1', 'B', '2023-01-01 00:00:01'],
-        ['user_2', 'B', '2023-01-01 00:00:02'],
-        ['user_2', 'A', '2023-01-01 00:00:03'],
-        ['user_2', 'A', '2023-01-01 00:00:04'],
-    ], columns=['user_id', 'event', 'timestamp'])
+    df1 = pd.DataFrame(
+        [
+            ['user_1', 'A', '2023-01-01 00:00:00'],
+            ['user_1', 'B', '2023-01-01 00:00:01'],
+            ['user_2', 'B', '2023-01-01 00:00:02'],
+            ['user_2', 'A', '2023-01-01 00:00:03'],
+            ['user_2', 'A', '2023-01-01 00:00:04'],
+        ],
+        columns=['user_id', 'event', 'timestamp']
+    )
 
 Having such a dataframe, you can create an eventstream simply as follows:
 
@@ -50,7 +56,7 @@ Having such a dataframe, you can create an eventstream simply as follows:
     from retentioneering.eventstream import Eventstream
     stream1 = Eventstream(df1)
 
-Before we go further we need to introduce you a displaying method :py:meth:`to_dataframe()<retentioneering.eventstream.eventstream.Eventstream.to_dataframe>` which shows the data underlying an eventstream.  converts an eventstream to the corresponding data frame.
+Before we go further we need to introduce you :py:meth:`to_dataframe()<retentioneering.eventstream.eventstream.Eventstream.to_dataframe>` method which we will use here for displaying eventstream data. According to its name, the method converts an eventstream to ``pandas.DataFrame``.
 
 .. code-block:: python
 
@@ -122,20 +128,25 @@ Before we go further we need to introduce you a displaying method :py:meth:`to_d
 
 We'll discuss the columns of the resulting dataframe later in `Displaying eventstream`_ section.
 
-Coming back to eventstream creation; in case a parent dataframe has different names, you can either rename them in the dataframe or set a mapping rule which would tell the Eventstream constructor
-where events, user_ids and timestamps are located. This can be done with :py:meth:`RawDataSchema<retentioneering.eventstream.schema.RawDataSchema>` class. Here's how it works. Let's create a dataframe containing the same data but with different column names:
+Custom field names
+~~~~~~~~~~~~~~~~~~
+
+If the column names of a parent dataframe differ from the default you can either rename them using pandas methods or set a mapping rule which would tell the Eventstream constructor where events, user_ids, and timestamps are located. This can be done with :py:meth:`RawDataSchema<retentioneering.eventstream.schema.RawDataSchema>` class. Here's how it works. Let's create a dataframe containing the same data but with different column names (``client_id``, ``action`` and ``datetime``):
 
 .. code-block:: python
 
     from retentioneering.eventstream import RawDataSchema
 
-    df2 = pd.DataFrame([
-        ['user_1', 'A', '2023-01-01 00:00:00'],
-        ['user_1', 'B', '2023-01-01 00:00:01'],
-        ['user_2', 'B', '2023-01-01 00:00:02'],
-        ['user_2', 'A', '2023-01-01 00:00:03'],
-        ['user_2', 'A', '2023-01-01 00:00:04'],
-    ], columns=['client_id', 'action', 'datetime'])
+    df2 = pd.DataFrame(
+        [
+            ['user_1', 'A', '2023-01-01 00:00:00'],
+            ['user_1', 'B', '2023-01-01 00:00:01'],
+            ['user_2', 'B', '2023-01-01 00:00:02'],
+            ['user_2', 'A', '2023-01-01 00:00:03'],
+            ['user_2', 'A', '2023-01-01 00:00:04'],
+        ],
+         columns=['client_id', 'action', 'datetime']
+    )
 
     raw_data_schema_df2 = RawDataSchema(
         user_id='client_id',
@@ -153,15 +164,16 @@ Suppose we use a dataframe ``df3`` similar to the previous ``df2`` but extended 
 
 .. code-block:: python
 
-    from retentioneering.eventstream import RawDataSchema
-
-    df3 = pd.DataFrame([
-        ['user_1', 'A', '2023-01-01 00:00:00', 'session_1'],
-        ['user_1', 'B', '2023-01-01 00:00:01', 'session_1'],
-        ['user_2', 'B', '2023-01-01 00:00:02', 'session_2'],
-        ['user_2', 'A', '2023-01-01 00:00:03', 'session_3'],
-        ['user_2', 'A', '2023-01-01 00:00:04', 'session_3'],
-    ], columns=['client_id', 'action', 'datetime', 'session'])
+    df3 = pd.DataFrame(
+        [
+            ['user_1', 'A', '2023-01-01 00:00:00', 'session_1'],
+            ['user_1', 'B', '2023-01-01 00:00:01', 'session_1'],
+            ['user_2', 'B', '2023-01-01 00:00:02', 'session_2'],
+            ['user_2', 'A', '2023-01-01 00:00:03', 'session_3'],
+            ['user_2', 'A', '2023-01-01 00:00:04', 'session_3'],
+        ],
+        columns=['client_id', 'action', 'datetime', 'session']
+    )
 
     raw_data_schema_df3 = RawDataSchema(
         user_id='client_id',
@@ -178,7 +190,51 @@ If the core triple columns of ``df3`` dataframe were titled with the default nam
 
 :red:`TODO: provide an example when raw_data_schema accepts a dict instead of RawDataSchema`
 
-:red:`TODO: mention user sampling`
+User sampling
+~~~~~~~~~~~~~
+
+Sampling parameters are extremely useful in practice since the clickstreams modern analysts deal with are  large. Large datasets lead to the following three types of effect:
+
+- High computational costs. Yes, the algorithms processing your data might be inefficient, but still it's a general rule.
+
+- The messy big picture (especially in case of applying such tools as :doc:`Transition Graph</user_guides/transition_graph>`, :doc:`StepMatrix</user_guides/step_matrix>`, and :doc:`StepSankey</user_guides/step_sankey>`). Insufficient user paths or large number of almost identical paths (especially short paths) often give you no value for the analysis. It might be reasonable to get rid of them.
+
+- Due to Eventstream design, all the data once uploaded to an Evenstream instance is kept immutable. Even if you remove some eventstream rows while preprocessing, in fact, the data stays untouched: it just becomes hidden and is marked as removed (see :doc:`Eventstream concept</getting_started/eventstream_concept>`).
+
+The last statement means that the only chance to tailor the dataset to a reasonable size is to sample the user paths at entry point -- while applying Eventstream constructor.
+
+Path sampling seems to be a neat solution for reducing an original dataset. Since the major purpose of retentioneering library is exploring user behaviour, sampling the paths should affect and distort the big picture. However, in case you have some very rare events and behavioral patterns, sampling might reduce them so it will be impossible to analyze them. Hence, use sampling technique carefully.
+
+We also highlight that user path sampling means that we remove some random paths entirely. We guarantee that the sampled paths contain all the event from the original dataset, and they are not truncated.
+
+There is a couple sampling parameters in the Eventstream constructor: ``user_sample_size`` and ``user_sample_seed``. The most common way is to set the sample size as a float number. For example, ``user_sample_size=0.1`` means that we want to leave 10% ot the paths and remove 90% of them. Integer sample size is also possible. In this case a specified number of events will be left. ``user_sample_seed`` is a standard way to make random sampling reproducible (see `this Stack Overflow explanation <https://stackoverflow.com/questions/21494489/what-does-numpy-random-seed0-do>`_). You can set it to any integer number.
+
+.. code-block:: python
+
+    simple_shop_df = datasets.load_simple_shop(as_dataframe=True)
+    sampled_stream = Eventstream(
+        simple_shop_df,
+        user_sample_size=0.1,
+        user_sample_seed=42
+    )
+
+    print('Original number of the events:', len(simple_shop_df))
+    print('Sampled number of the events:', len(sampled_stream.to_dataframe()))
+
+    unique_users_original = simple_shop_df['user_id'].nunique()
+    unique_users_sampled = sampled_stream.to_dataframe()['user_id'].nunique()
+
+    print('Original unique users number: ', unique_users_original)
+    print('Sampled unique users number: ', unique_users_sampled)
+
+
+.. parsed-literal::
+    Original number of the events: 35381
+    Sampled number of the events: 3615
+    Original unique users number:  3751
+    Sampled unique users number:  375
+
+We see that the number of users has been reduced from 3751 to 375 (10% exactly). The number of the events has been reduced from 35381 to 3615 (10.2%), but we didn't expect to see exact 10% here.
 
 Displaying eventstream
 ----------------------
@@ -275,7 +331,7 @@ There are some additional options which one might find useful.
 Descriptive methods
 -------------------
 
-As soon as we've created an eventstream we usually want to explore it. ``Eventstream`` provides a set of methods for such a first touch exploration. To illustrate the work of these methods we need a larger dataset, so we'll use our standard demonstration :py:meth:`simple_shop<retentioneering.datasets.load.load_simple_shop>` dataset. For demonstration purposes we add `session_id` column by applying :py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>` data processor.
+As soon as we've created an eventstream we usually want to explore it. ``Eventstream`` provides a set of methods for such a first touch exploration. To illustrate the work of these methods we need a larger dataset, so we'll use our standard demonstration :py:meth:`simple_shop<retentioneering.datasets.load.load_simple_shop>` dataset. For demonstration purposes we add ``session_id`` column by applying :py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>` data processor.
 
 :red:`TODO: fix the link to simple_shop`
 
@@ -286,7 +342,7 @@ As soon as we've created an eventstream we usually want to explore it. ``Eventst
     stream = datasets\
         .load_simple_shop()\
         .split_sessions(session_cutoff=(30, 'm'))
-    stream.head()
+    stream.to_dataframe().head()
 
 .. raw:: html
 
@@ -484,7 +540,7 @@ Timedelta between two events
                 aggregation='mean'
             )
 
-    :red:`insert an image with the output histogram`
+    :red:`TODO: insert an image with the output histogram`
 
 
 Events intensity

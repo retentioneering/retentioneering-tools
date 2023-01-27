@@ -934,8 +934,8 @@ class Eventstream(
 
     def transition_adjacency(self, weights: list[str] | None = None, norm_type: NormType = None) -> pd.DataFrame:
         """
-        Create edge graph in the matrix format. Row indexes are events, from which the transition occured,
-        and columns are events, to which the transition occured.
+        Create edge graph in the matrix format. Row indexes are events, from which the transition occurred,
+        and columns are events, to which the transition occurred.
         The values are weights of the edges defined with weights and ``norm_type`` parameters.
 
         Parameters

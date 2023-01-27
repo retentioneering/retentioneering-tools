@@ -19,9 +19,9 @@ What is eventstream
 
 - Data container. The initial clickstream is stored in an ``Eventstream`` object.
 
-- Preprocessing. Eventstream allows you to efficiently work with clickstream data preparation process. See a :doc:`user guide on preprocessing</user_guides/dataprocessors>`.
+- Preprocessing. Eventstream allows you to efficiently work with clickstream data preparation process. :red:`TODO set a link to preprocessing user guide`.
 
-- Applying analytical tools. Eventstream provides simple interfaces to retentioneering tools, so you can seamlessly apply them. See a :doc:`user guide on retentioneering tooling methods</user_guide>`.
+- Applying analytical tools. Eventstream provides simple interfaces to retentioneering tools, so you can seamlessly apply them. See a :doc:`user guide on retentioneering tooling methods</user_guides>`.
 
 The structure of an eventstream is designed as follows. Let :math:`U` be a set of unique users, :math:`E` be a set of unique events. Eventstream is a set of sequential events :math:`\{(u_i, e_j, t_k)\}` which means that user :math:`u_i` experienced event :math:`e_j` at time :math:`t_k`, where :math:`i = 1, 2, \ldots |U|`, :math:`j = 1, 2, \ldots, |E|`, :math:`k = 1, 2, \ldots`.
 
@@ -315,7 +315,7 @@ Now let's look closely which columns are represented in an eventstream and discu
     </table>
     <br>
 
-Among the standard triple ``user_id``, ``event``, ``timestamp`` and custom column ``session_id`` we see the columns ``event_id``, ``event_type``, ``event_index``. They a sort of technical but sometimes they might be useful in preprocessing so here's their description.
+Among the standard triple ``user_id``, ``event``, ``timestamp`` and custom column ``session_id`` we see the columns ``event_id``, ``event_type``, ``event_index``. They are sort of technical but sometimes they might be useful in preprocessing so here's their description.
 
 - ``event_id``. A string identifier of an evenstream row.
 
@@ -453,7 +453,7 @@ The method has multiple parameters. Let's start with those which are responsible
 
 - ``log_scale`` sets logarithmic scale for the bins;
 
-- ``lower_cutoff_quantile``, ``upper_cutoff_quantile`` indicates the lower and apper quantiles (as floats between 0 and 1), the values between the quantiles only are considered for the histogram.
+- ``lower_cutoff_quantile``, ``upper_cutoff_quantile`` indicates the lower and upper quantiles (as floats between 0 and 1), the values between the quantiles only are considered for the histogram.
 
 :red:`Demonstrate the work of the other parameters`
 
@@ -488,7 +488,7 @@ Timedelta between two events
     .. figure:: /_static/user_guides/eventstream/03_timedelta_log_scale.png
         :width: 400
 
-    This distribution of the adjacent events is sort of common. It looks like a bi-modal (which is not true: remember, we use log-scale here), but these two bells help us to estimate estimate a timeout for splitting sessions. From this charts we can see that it is reasonable to set it to somewhat between 10 and 100 minutes.
+    This distribution of the adjacent events is sort of common. It looks like a bimodal (which is not true: remember we use log-scale here), but these two bells help us to estimate a timeout for splitting sessions. From this charts we can see that it is reasonable to set it to somewhat between 10 and 100 minutes.
 
     Another use case for :py:meth:`timedelta_hist()<retentioneering.eventstream.eventstream.Eventstream.timedelta_hist>` is visualizing the distribution of the timedeltas between two specific events. Assume we want to know how much time it takes for a user to go from product1 to cart. Then we set `event_pair=('product1', 'cart')` and pass it to ``timdelta_hist``:
 

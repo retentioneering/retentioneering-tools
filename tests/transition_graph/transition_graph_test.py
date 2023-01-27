@@ -19,7 +19,7 @@ from tests.transition_graph.fixtures.transition_input import test_stream
 
 
 class TestTransitionGraph:
-    def test_transition_graph__simple(self, test_stream, simple_corr):
+    def test_transition_graph__simple(self, test_stream: EventstreamType, simple_corr: pd.DataFrame) -> bool:
 
         tg = TransitionGraph(eventstream=test_stream, graph_settings={})
         result = tg.get_adjacency(weights=None, norm_type=None)
@@ -27,7 +27,7 @@ class TestTransitionGraph:
 
         assert pd.testing.assert_frame_equal(result, correct) is None
 
-    def test_transition_graph__norm_full(self, test_stream, full_corr):
+    def test_transition_graph__norm_full(self, test_stream: EventstreamType, full_corr: pd.DataFrame) -> bool:
 
         tg = TransitionGraph(eventstream=test_stream, graph_settings={})
         result = tg.get_adjacency(weights=None, norm_type="full").round(3)
@@ -35,7 +35,7 @@ class TestTransitionGraph:
 
         assert pd.testing.assert_frame_equal(result, correct) is None
 
-    def test_transition_graph__norm_node(self, test_stream, node_corr):
+    def test_transition_graph__norm_node(self, test_stream: EventstreamType, node_corr: pd.DataFrame) -> bool:
 
         tg = TransitionGraph(eventstream=test_stream, graph_settings={})
         result = tg.get_adjacency(weights=None, norm_type="node").round(3)
@@ -45,7 +45,9 @@ class TestTransitionGraph:
 
 
 class VerifyTransitionGraph:
-    def verify_transition_graph__session_simple(self, test_stream, session_simple_corr):
+    def verify_transition_graph__session_simple(
+        self, test_stream: EventstreamType, session_simple_corr: pd.DataFrame
+    ) -> bool:
 
         tg = TransitionGraph(eventstream=test_stream, graph_settings={})
         result = tg.get_adjacency(weights={"edges": "session_id", "nodes": "session_id"}, norm_type=None)
@@ -53,7 +55,9 @@ class VerifyTransitionGraph:
 
         assert pd.testing.assert_frame_equal(result, correct) is None
 
-    def verify_transition_graph__session_full(self, test_stream, session_full_corr):
+    def verify_transition_graph__session_full(
+        self, test_stream: EventstreamType, session_full_corr: pd.DataFrame
+    ) -> bool:
 
         tg = TransitionGraph(eventstream=test_stream, graph_settings={})
         result = tg.get_adjacency(weights={"edges": "session_id", "nodes": "session_id"}, norm_type="full").round(3)
@@ -61,7 +65,9 @@ class VerifyTransitionGraph:
 
         assert pd.testing.assert_frame_equal(result, correct) is None
 
-    def verify_transition_graph__session_node(self, test_stream, session_node_corr):
+    def verify_transition_graph__session_node(
+        self, test_stream: EventstreamType, session_node_corr: pd.DataFrame
+    ) -> bool:
 
         tg = TransitionGraph(eventstream=test_stream, graph_settings={})
         result = tg.get_adjacency(weights={"edges": "session_id", "nodes": "session_id"}, norm_type="node").round(3)
@@ -69,7 +75,9 @@ class VerifyTransitionGraph:
 
         assert pd.testing.assert_frame_equal(result, correct) is None
 
-    def verify_transition_graph__user_simple(self, test_stream, user_simple_corr):
+    def verify_transition_graph__user_simple(
+        self, test_stream: EventstreamType, user_simple_corr: pd.DataFrame
+    ) -> bool:
 
         tg = TransitionGraph(eventstream=test_stream, graph_settings={})
         result = tg.get_adjacency(weights={"edges": "user_id", "nodes": "user_id"}, norm_type=None)
@@ -77,7 +85,7 @@ class VerifyTransitionGraph:
 
         assert pd.testing.assert_frame_equal(result, correct) is None
 
-    def verify_transition_graph__users_full(self, test_stream, user_full_corr):
+    def verify_transition_graph__users_full(self, test_stream: EventstreamType, user_full_corr: pd.DataFrame) -> bool:
 
         tg = TransitionGraph(eventstream=test_stream, graph_settings={})
         result = tg.get_adjacency(weights={"edges": "user_id", "nodes": "user_id"}, norm_type="full").round(3)
@@ -85,7 +93,7 @@ class VerifyTransitionGraph:
 
         assert pd.testing.assert_frame_equal(result, correct) is None
 
-    def verify_transition_graph__users_node(self, test_stream, user_node_corr):
+    def verify_transition_graph__users_node(self, test_stream: EventstreamType, user_node_corr: pd.DataFrame) -> bool:
 
         tg = TransitionGraph(eventstream=test_stream, graph_settings={})
         result = tg.get_adjacency(weights={"edges": "user_id", "nodes": "user_id"}, norm_type="node").round(3)

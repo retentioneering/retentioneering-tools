@@ -16,7 +16,7 @@ from tests.data_processors_lib.fixtures.positive_negative_target import (
 )
 
 
-def custom_func(eventstream, events):
+def custom_func(eventstream: EventstreamType, events: list[str]) -> pd.DataFrame:
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
@@ -28,7 +28,7 @@ def custom_func(eventstream, events):
     return result
 
 
-def apply_data_processor(eventstream, data_processor):
+def apply_data_processor(eventstream: EventstreamType, data_processor: DataProcessor) -> EventstreamType:
     graph = PGraph(source_stream=eventstream)
     node_0 = EventsNode(data_processor)
     graph.add_node(node=node_0, parents=[graph.root])
@@ -36,7 +36,9 @@ def apply_data_processor(eventstream, data_processor):
 
 
 class TestPositiveNegativeTarget:
-    def test_positive_target__custom_func(self, test_stream, positive_helper_custom_func_corr):
+    def test_positive_target__custom_func(
+        self, test_stream: EventstreamType, positive_helper_custom_func_corr: pd.DataFrame
+    ) -> bool:
         correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = positive_helper_custom_func_corr
         source = test_stream
@@ -48,7 +50,9 @@ class TestPositiveNegativeTarget:
 
         assert pd.testing.assert_frame_equal(result_df[correct_result_columns], correct_result) is None
 
-    def test_negative_target__custom_func(self, test_stream, negative_helper_custom_func_corr):
+    def test_negative_target__custom_func(
+        self, test_stream: EventstreamType, negative_helper_custom_func_corr: pd.DataFrame
+    ) -> bool:
         correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = negative_helper_custom_func_corr
         source = test_stream
@@ -60,7 +64,9 @@ class TestPositiveNegativeTarget:
 
         assert pd.testing.assert_frame_equal(result_df[correct_result_columns], correct_result) is None
 
-    def test_positive_target_helper__custom_func(self, test_stream, positive_helper_custom_func_corr):
+    def test_positive_target_helper__custom_func(
+        self, test_stream: EventstreamType, positive_helper_custom_func_corr: pd.DataFrame
+    ) -> bool:
         correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = positive_helper_custom_func_corr
         source = test_stream
@@ -69,7 +75,9 @@ class TestPositiveNegativeTarget:
 
         assert pd.testing.assert_frame_equal(result_df[correct_result_columns], correct_result) is None
 
-    def test_negative_target_helper__custom_func(self, test_stream, negative_helper_custom_func_corr):
+    def test_negative_target_helper__custom_func(
+        self, test_stream: EventstreamType, negative_helper_custom_func_corr: pd.DataFrame
+    ) -> bool:
         correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = negative_helper_custom_func_corr
         source = test_stream

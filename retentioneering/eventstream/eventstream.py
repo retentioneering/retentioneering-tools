@@ -16,7 +16,6 @@ from retentioneering.eventstream.types import (
     Relation,
 )
 from retentioneering.graph import PGraph
-from retentioneering.tooling.adjacency_matrix import AdjacencyMatrix
 from retentioneering.tooling.clusters import Clusters
 from retentioneering.tooling.cohorts import Cohorts
 from retentioneering.tooling.describe import Describe
@@ -27,6 +26,7 @@ from retentioneering.tooling.stattests import TEST_NAMES, StatTests
 from retentioneering.tooling.step_matrix import StepMatrix
 from retentioneering.tooling.step_sankey import StepSankey
 from retentioneering.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
+from retentioneering.tooling.transition_matrix import TransitionMatrix
 from retentioneering.tooling.typing.transition_graph import NormType, Threshold
 from retentioneering.tooling.user_lifetime_hist import UserLifetimeHist
 from retentioneering.transition_graph import TransitionGraph
@@ -153,7 +153,7 @@ class Eventstream(
     __stattests: StatTests | None = None
     __transition_graph: TransitionGraph | None = None
     __p_graph: PGraph | None = None
-    __adjacency_matrix: AdjacencyMatrix | None = None
+    __transition_matrix: TransitionMatrix | None = None
 
     def __init__(
         self,
@@ -934,7 +934,7 @@ class Eventstream(
         self.__p_graph.display()
         return self.__p_graph
 
-    def transition_adjacency(self, weights: list[str] | None = None, norm_type: NormType = None) -> AdjacencyMatrix:
+    def transition_matrix(self, weights: list[str] | None = None, norm_type: NormType = None) -> TransitionMatrix:
         """
         Create edge graph in the matrix format. Row indexes are events, from which the transition occured,
         and columns are events, to which the transition occured.
@@ -951,9 +951,9 @@ class Eventstream(
         pd.DataFrame
 
         """
-        if self.__adjacency_matrix is None:
-            self.__adjacency_matrix = AdjacencyMatrix(
+        if self.__transition_matrix is None:
+            self.__transition_matrix = TransitionMatrix(
                 eventstream=self,
             )
-        self.__adjacency_matrix.display(weights=weights, norm_type=norm_type)
-        return self.__adjacency_matrix
+        self.__transition_matrix.display(weights=weights, norm_type=norm_type)
+        return self.__transition_matrix

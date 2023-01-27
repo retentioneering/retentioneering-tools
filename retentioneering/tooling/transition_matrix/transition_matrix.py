@@ -10,7 +10,7 @@ from retentioneering.nodelist import Nodelist
 from retentioneering.tooling.typing.transition_graph import NormType
 
 
-class AdjacencyMatrix:
+class TransitionMatrix:
 
     __edgelist: Edgelist
 
@@ -53,5 +53,5 @@ class AdjacencyMatrix:
         return nx.to_pandas_adjacency(G=graph)
 
     def display(self, weights: list[str] | None, norm_type: NormType) -> None:
-        adjacency_matrix = self.values(weights=weights, norm_type=norm_type)
-        display(adjacency_matrix)
+        transition_matrix = self.values(weights=weights, norm_type=norm_type)
+        display(transition_matrix)

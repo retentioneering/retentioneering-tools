@@ -254,7 +254,7 @@ class TestNegativeTargetGraph(GraphTestBase):
 
 
 class TestNegativeTargetHelper:
-    def test_negative_target_graph__1_event(self):
+    def test_stream(self):
         source_df = pd.DataFrame(
             [
                 [1, "path_start", "path_start", "2022-01-01 00:01:00"],
@@ -279,8 +279,17 @@ class TestNegativeTargetHelper:
             ],
             columns=["user_id", "event", "event_type", "timestamp"],
         )
-        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
+        raw_data_schema = RawDataSchema(
+            user_id="user_id",
+            event_name="event",
+            event_type="event_type",
+            event_timestamp="timestamp",
+        )
+        return Eventstream(source_df, raw_data_schema=raw_data_schema)
 
+    def test_negative_target_graph__1_event(self):
+        source = self.test_stream()
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = pd.DataFrame(
             [
                 [1, "path_start", "path_start", "2022-01-01 00:01:00"],
@@ -307,42 +316,14 @@ class TestNegativeTargetHelper:
             ],
             columns=correct_result_columns,
         )
-
-        source = Eventstream(source_df)
-
         result = source.negative_target(negative_target_events=["event3"])
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
     def test_negative_target_graph__2_events(self):
-        source_df = pd.DataFrame(
-            [
-                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
-            ],
-            columns=["user_id", "event", "event_type", "timestamp"],
-        )
-
+        source = self.test_stream()
         correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
-
         correct_result = pd.DataFrame(
             [
                 [1, "path_start", "path_start", "2022-01-01 00:01:00"],
@@ -370,8 +351,6 @@ class TestNegativeTargetHelper:
             columns=correct_result_columns,
         )
 
-        source = Eventstream(source_df)
-
         result = source.negative_target(negative_target_events=["event3", "event2"])
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
@@ -389,33 +368,7 @@ class TestNegativeTargetHelper:
             result = df.loc[events_index]
             return result
 
-        source_df = pd.DataFrame(
-            [
-                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
-            ],
-            columns=["user_id", "event", "event_type", "timestamp"],
-        )
-
-        source = Eventstream(source_df)
-
+        source = self.test_stream()
         correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = pd.DataFrame(
             [
@@ -447,6 +400,7 @@ class TestNegativeTargetHelper:
             ],
             columns=correct_result_columns,
         )
+
         correct_result["timestamp"] = pd.to_datetime(correct_result["timestamp"])
         actual = source.negative_target(negative_target_events=["event1"], func=custom_func)
         result_df = actual.to_dataframe()[correct_result_columns].reset_index(drop=True)

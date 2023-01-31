@@ -872,15 +872,29 @@ class Eventstream(
             event_timestamp_hist.plot()
         return event_timestamp_hist
 
-    def describe(self, session_col: Optional[str] = "session_id") -> None:
+    def describe(self, session_col: Optional[str] = "session_id") -> pd.DataFrame:
         """
-        Display general eventstream information. If ``session_col`` is present in eventstream columns, also
-        output session statistics, assuming ``session_col`` is the session identifier column.
+        Display general eventstream information. If ``session_col`` is present in eventstream, also
+        output session statistics.
 
-        See parameters description :py:func:`retentioneering.tooling.describe.describe`
+        Parameters
+        ----------
+        session_col : str, default 'session_id'
+            Specify name of the session column. If the column present in the eventstream, session statistics will be added.
+
+        Notes
+        -----
+        All ``float`` values rounded to 2.
+        All ``timestamp`` values rounded to ``s``
+
+        Returns
+        -------
+        pd.DataFrame
+            Eventstream statistics
+
         """
         describer = Describe(eventstream=self, session_col=session_col)
-        describer.display()
+        return describer._describe()
 
     def describe_events(
         self, session_col: Optional[str] = "session_id", event_list: Optional[List[str] | str] = "all"
@@ -891,9 +905,15 @@ class Eventstream(
         output session statistics, assuming ``session_col`` is the session identifier column.
 
         See parameters description :py:func:`retentioneering.tooling.describe_events.describe_events`
+
+        Returns
+        -------
+        pd.DataFrame
+            Eventstream statistics
+
         """
         describer = DescribeEvents(eventstream=self, session_col=session_col, event_list=event_list)
-        describer.display()
+        return describer.display()
 
     def transition_graph(
         self,

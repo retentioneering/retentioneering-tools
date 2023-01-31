@@ -898,13 +898,23 @@ class Eventstream(
 
     def describe_events(
         self, session_col: Optional[str] = "session_id", event_list: Optional[List[str] | str] = "all"
-    ) -> None:
+    ) -> pd.DataFrame:
         """
         Display general information on the eventstream events.
         If ``session_col`` is present in eventstream columns, also
         output session statistics, assuming ``session_col`` is the session identifier column.
 
         See parameters description :py:func:`retentioneering.tooling.describe_events.describe_events`
+        Display general information on the eventstream events. If ``session_col`` is present in eventstream, also
+        output session statistics, assuming ``session_col`` is the session identifier column.
+
+        Parameters
+        ----------
+        session_col : str, default 'session_id'
+            Specify name of the session column. If present in the eventstream, output session statistics.
+
+        event_list : List of str or 'all', default 'all'
+            Specify the events to be plotted. If ``all``, describe all events.
 
         Returns
         -------

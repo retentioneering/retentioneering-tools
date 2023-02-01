@@ -23,7 +23,7 @@ class DescribeEvents:
         self.type_col = self.__eventstream.schema.event_type
         self.event_list = event_list
 
-    def display(self) -> pd.DataFrame:
+    def _display(self) -> pd.DataFrame:
         user_col, event_col, time_col, type_col, session_col, event_list = (
             self.user_col,
             self.event_col,
@@ -49,7 +49,7 @@ class DescribeEvents:
 
         if event_list != "all":
             if type(event_list) is not list:
-                raise TypeError('event_list should either be "all", or a list of event names to include.')
+                raise TypeError("event_list should either be 'all', or a list of event names to include.")
             df = df[df[event_col].isin(event_list)]
 
         basic_info = df.groupby("event").agg(
@@ -85,19 +85,21 @@ class DescribeEvents:
         if has_sessions:
             first_time = "first_occurance_time__session"
             first_event = "first_occurance_event_id__session"
-            share_sess = "share_in_all_sessions"
+            unique_sess = ("Basic_statistics", "unique_sessions")
+            share_sess = ("Basic_statistics", "share_in_all_sessions")
 
-            basic_info["unique_sessions"] = df.groupby("event")[session_col].agg("nunique")  # type: ignore
-            basic_info[share_sess] = (basic_info["unique_sessions"] / total_sessions_base).round(2)  # type: ignore
+            basic_info[unique_sess] = df.groupby("event")[session_col].agg("nunique")  # type: ignore
+            basic_info[share_sess] = (basic_info[unique_sess] / total_sessions_base).round(2)  # type: ignore
 
             df_agg_sess = (
                 df.groupby([event_col, session_col])
                 .agg(
-                    first_occurance_time__session=("__event_session_idx", "first"),
-                    first_occurance_event_id__session=("__event_session_timedelta", "first"),
+                    first_occurance_time__session=("__event_session_timedelta", "first"),
+                    first_occurance_event_id__session=("__event_session_idx", "first"),
                 )
                 .reset_index()
             )
+
             df_agg_sess[first_time] = df_agg_sess[first_time].dt.total_seconds()
 
             df_agg_sess = df_agg_sess.groupby([event_col])[[first_time, first_event]].agg(stats_order)  # type: ignore
@@ -108,8 +110,9 @@ class DescribeEvents:
                 mult_ind = (first_time, stat)
                 df_agg_sess[mult_ind] = pd.to_timedelta(df_agg_sess[mult_ind], unit="s").round("s")  # type: ignore
 
-            df_agg_event.merge(df_agg_sess, left_index=True, right_index=True)
+            df_agg_event = df_agg_event.merge(df_agg_sess, left_index=True, right_index=True)
 
         res = basic_info.merge(df_agg_event, left_index=True, right_index=True)
-
+        if has_sessions:
+            res.insert(2, unique_sess, res.pop(unique_sess))  # type: ignore
         return res

@@ -923,7 +923,7 @@ class Eventstream(
 
         """
         describer = DescribeEvents(eventstream=self, session_col=session_col, event_list=event_list)
-        return describer.display()
+        return describer._display()
 
     def transition_graph(
         self,

@@ -15,7 +15,7 @@ from retentioneering.eventstream.types import (
     RawDataSchemaType,
     Relation,
 )
-from retentioneering.graph import PGraph, SourceNode
+from retentioneering.graph import PGraph
 from retentioneering.tooling.clusters import Clusters
 from retentioneering.tooling.cohorts import Cohorts
 from retentioneering.tooling.describe import Describe
@@ -26,9 +26,10 @@ from retentioneering.tooling.stattests import TEST_NAMES, StatTests
 from retentioneering.tooling.step_matrix import StepMatrix
 from retentioneering.tooling.step_sankey import StepSankey
 from retentioneering.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
+from retentioneering.tooling.transition_matrix import TransitionMatrix
+from retentioneering.tooling.typing.transition_graph import NormType, Threshold
 from retentioneering.tooling.user_lifetime_hist import UserLifetimeHist
-from retentioneering.transition_graph import NormType, TransitionGraph
-from retentioneering.transition_graph.typing import Threshold
+from retentioneering.transition_graph import TransitionGraph
 from retentioneering.utils import get_merged_col
 from retentioneering.utils.list import find_index
 
@@ -152,6 +153,7 @@ class Eventstream(
     __stattests: StatTests | None = None
     __transition_graph: TransitionGraph | None = None
     __p_graph: PGraph | None = None
+    __transition_matrix: TransitionMatrix | None = None
 
     def __init__(
         self,
@@ -996,10 +998,10 @@ class Eventstream(
         self.__p_graph.display()
         return self.__p_graph
 
-    def transition_adjacency(self, weights: list[str] | None = None, norm_type: NormType = None) -> pd.DataFrame:
+    def transition_matrix(self, weights: list[str] | None = None, norm_type: NormType = None) -> TransitionMatrix:
         """
-        Create edge graph in the matrix format. Row indexes are events, from which the transition occured,
-        and columns are events, to which the transition occured.
+        Create edge graph in the matrix format. Row indexes are events, from which the transition occurred,
+        and columns are events, to which the transition occurred.
         The values are weights of the edges defined with weights and ``norm_type`` parameters.
 
         Parameters
@@ -1013,11 +1015,9 @@ class Eventstream(
         pd.DataFrame
 
         """
-        if self.__transition_graph is None:
-            self.__transition_graph = TransitionGraph(
+        if self.__transition_matrix is None:
+            self.__transition_matrix = TransitionMatrix(
                 eventstream=self,
-                graph_settings={},  # type: ignore
-                norm_type=norm_type,
             )
-        adjacency = self.__transition_graph.get_adjacency(weights=weights, norm_type=norm_type)
-        return adjacency
+        self.__transition_matrix.display(weights=weights, norm_type=norm_type)
+        return self.__transition_matrix

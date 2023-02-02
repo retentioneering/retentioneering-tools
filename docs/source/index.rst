@@ -11,7 +11,7 @@
 
 retentioneering documentation
 =============================
-**Date:** Jan 11, 2023 **Version:** 3.0.0 :red:`(alpha)`
+**Date:** Jan 25, 2023 **Version:** 3.0.0 :red:`(beta)`
 
 Contents
 ========

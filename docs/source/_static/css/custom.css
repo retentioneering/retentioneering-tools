@@ -28,3 +28,17 @@ div.highlight .copybtn:hover {
 div.highlight {
     position: relative;
 }
+
+/* Toggle the content */
+.toggle .header {
+    display: block;
+    clear: both;
+}
+
+.toggle .header:after {
+    content: " ▶";
+}
+
+.toggle .header.open:after {
+    content: " ▼";
+}

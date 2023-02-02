@@ -872,7 +872,7 @@ class Eventstream(
             event_timestamp_hist.plot()
         return event_timestamp_hist
 
-    def describe(self, session_col: Optional[str] = "session_id") -> pd.DataFrame:
+    def describe(self, session_col: str = "session_id", raw_events_only: bool = False) -> pd.DataFrame:
         """
         Display general eventstream information. If ``session_col`` is present in eventstream, also
         output session statistics.
@@ -880,12 +880,17 @@ class Eventstream(
         Parameters
         ----------
         session_col : str, default 'session_id'
-            Specify name of the session column. If the column present in the eventstream, session statistics will be added.
+            Specify name of the session column. If the column present in the eventstream,
+            session statistics will be added.
+
+        raw_events_only : bool, default False
+            If ``True`` - statistics will be shown only for raw events.
+            If ``False`` - for all events presented in your data.
 
         Notes
         -----
         All ``float`` values rounded to 2.
-        All ``timestamp`` values rounded to ``s``
+        All ``datetime`` values rounded to ``s``
 
         Returns
         -------
@@ -893,28 +898,32 @@ class Eventstream(
             Eventstream statistics
 
         """
-        describer = Describe(eventstream=self, session_col=session_col)
+        describer = Describe(eventstream=self, session_col=session_col, raw_events_only=raw_events_only)
         return describer._describe()
 
     def describe_events(
-        self, session_col: Optional[str] = "session_id", event_list: Optional[List[str] | str] = "all"
+        self, session_col: str = "session_id", raw_events_only: bool = False, event_list: list[str] | None = None
     ) -> pd.DataFrame:
         """
-        Display general information on the eventstream events.
-        If ``session_col`` is present in eventstream columns, also
-        output session statistics, assuming ``session_col`` is the session identifier column.
-
-        See parameters description :py:func:`retentioneering.tooling.describe_events.describe_events`
         Display general information on the eventstream events. If ``session_col`` is present in eventstream, also
-        output session statistics, assuming ``session_col`` is the session identifier column.
+        output session statistics.
 
         Parameters
         ----------
         session_col : str, default 'session_id'
             Specify name of the session column. If present in the eventstream, output session statistics.
 
-        event_list : List of str or 'all', default 'all'
+        raw_events_only : bool, default False
+            If ``True`` - statistics will be shown only for raw events.
+            If ``False`` - for all events presented in your data.
+
+        event_list : list of str, optional
             Specify the events to be plotted. If ``all``, describe all events.
+
+        Notes
+        -----
+        All ``float`` values rounded to 2.
+        All ``datetime`` values rounded to ``s``
 
         Returns
         -------
@@ -922,8 +931,10 @@ class Eventstream(
             Eventstream statistics
 
         """
-        describer = DescribeEvents(eventstream=self, session_col=session_col, event_list=event_list)
-        return describer._display()
+        describer = DescribeEvents(
+            eventstream=self, session_col=session_col, event_list=event_list, raw_events_only=raw_events_only
+        )
+        return describer._describe()
 
     def transition_graph(
         self,

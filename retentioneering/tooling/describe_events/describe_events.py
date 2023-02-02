@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List, Optional
-
 import pandas as pd
 
 from retentioneering.eventstream.types import EventstreamType
@@ -11,8 +9,9 @@ class DescribeEvents:
     def __init__(
         self,
         eventstream: EventstreamType,
-        session_col: Optional[str] = "session_id",
-        event_list: Optional[List[str] | str] = "all",
+        session_col: str = "session_id",
+        raw_events_only: bool = False,
+        event_list: list[str] | None = None,
     ) -> None:
 
         self.__eventstream = eventstream
@@ -22,8 +21,9 @@ class DescribeEvents:
         self.session_col = session_col
         self.type_col = self.__eventstream.schema.event_type
         self.event_list = event_list
+        self.raw_events_only = raw_events_only
 
-    def _display(self) -> pd.DataFrame:
+    def _describe(self) -> pd.DataFrame:
         user_col, event_col, time_col, type_col, session_col, event_list = (
             self.user_col,
             self.event_col,
@@ -33,8 +33,11 @@ class DescribeEvents:
             self.event_list,
         )
 
-        df = self.__eventstream.to_dataframe()
+        df = self.__eventstream.to_dataframe().copy()
         has_sessions = session_col in df.columns
+
+        if self.raw_events_only:
+            df = df[df[type_col].isin(["raw"])]
 
         total_events_base = df.shape[0]
         unique_users_base = df[user_col].nunique()
@@ -47,9 +50,7 @@ class DescribeEvents:
             df["__event_session_idx"] = df.groupby(session_col).cumcount()
             df["__event_session_timedelta"] = df[time_col] - df.groupby(session_col)[time_col].transform("first")
 
-        if event_list != "all":
-            if type(event_list) is not list:
-                raise TypeError("event_list should either be 'all', or a list of event names to include.")
+        if event_list:
             df = df[df[event_col].isin(event_list)]
 
         basic_info = df.groupby("event").agg(
@@ -58,7 +59,8 @@ class DescribeEvents:
 
         basic_info["share_in_all_events"] = (basic_info["number_of_events"] / total_events_base).round(2)
         basic_info["share_in_all_users"] = (basic_info["unique_users"] / unique_users_base).round(2)
-        basic_info.columns = pd.MultiIndex.from_product([["Basic_statistics"], basic_info.columns])
+
+        basic_info.columns = pd.MultiIndex.from_product([["basic_statistics"], basic_info.columns])
         stats_order = ["mean", "std", "median", "min", "max"]
         first_time = "first_occurance_time__user"
         first_event = "first_occurance_event_id__user"
@@ -85,8 +87,8 @@ class DescribeEvents:
         if has_sessions:
             first_time = "first_occurance_time__session"
             first_event = "first_occurance_event_id__session"
-            unique_sess = ("Basic_statistics", "unique_sessions")
-            share_sess = ("Basic_statistics", "share_in_all_sessions")
+            unique_sess = ("basic_statistics", "unique_sessions")
+            share_sess = ("basic_statistics", "share_in_all_sessions")
 
             basic_info[unique_sess] = df.groupby("event")[session_col].agg("nunique")  # type: ignore
             basic_info[share_sess] = (basic_info[unique_sess] / total_sessions_base).round(2)  # type: ignore
@@ -115,4 +117,5 @@ class DescribeEvents:
         res = basic_info.merge(df_agg_event, left_index=True, right_index=True)
         if has_sessions:
             res.insert(2, unique_sess, res.pop(unique_sess))  # type: ignore
+
         return res

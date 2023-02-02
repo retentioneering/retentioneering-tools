@@ -1,20 +1,21 @@
 from __future__ import annotations
 
-from typing import Optional
-
 import pandas as pd
 
 from retentioneering.eventstream.types import EventstreamType
 
 
 class Describe:
-    def __init__(self, eventstream: EventstreamType, session_col: Optional[str] = "session_id") -> None:
+    def __init__(
+        self, eventstream: EventstreamType, session_col: str = "session_id", raw_events_only: bool = False
+    ) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
         self.session_col = session_col
         self.type_col = self.__eventstream.schema.event_type
+        self.raw_events_only = raw_events_only
 
     def _describe(self) -> pd.DataFrame:
         user_col, event_col, time_col, type_col, session_col = (
@@ -25,10 +26,11 @@ class Describe:
             self.session_col,
         )
 
-        df = self.__eventstream.to_dataframe()
+        df = self.__eventstream.to_dataframe().copy()
         has_sessions = session_col in df.columns
 
-        # df = df[df[type_col].isin(["raw"])]
+        if self.raw_events_only:
+            df = df[df[type_col].isin(["raw"])]
 
         max_time = df[time_col].max()
         min_time = df[time_col].min()

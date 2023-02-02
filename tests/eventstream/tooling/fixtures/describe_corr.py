@@ -41,3 +41,11 @@ def session_corr() -> pd.DataFrame:
     correct_result[("all_users", "unique_sessions")] = pd.to_numeric(correct_result[("all_users", "unique_sessions")])
 
     return correct_result.T
+
+
+@pytest.fixture
+def session_raw_corr() -> pd.DataFrame:
+    correct_result = read_corr_data("describe_session_raw_corr.csv")
+    correct_result[("all_users", "unique_sessions")] = pd.to_numeric(correct_result[("all_users", "unique_sessions")])
+
+    return correct_result.T

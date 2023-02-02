@@ -1,0 +1,27 @@
+category,metric,value
+all_users,unique_users,5
+all_users,unique_events,8
+all_users,unique_sessions,11
+all_users,eventstream_start,2022-01-01 00:01:00
+all_users,eventstream_end,2022-01-05 00:01:05
+all_users,eventstream_length,4 days 00:00:05
+time_per_user,mean,1 days 04:54:03
+time_per_user,std,1 days 15:20:44
+time_per_user,median,1 days 00:00:00
+time_per_user,min,0 days 00:00:04
+time_per_user,max,4 days 00:00:05
+events_per_user,mean,10.4
+events_per_user,std,3.13
+events_per_user,median,11.0
+events_per_user,min,7
+events_per_user,max,15
+time_per_session,mean,0 days 00:00:25
+time_per_session,std,0 days 00:00:55
+time_per_session,median,0 days 00:00:02
+time_per_session,min,0 days 00:00:00
+time_per_session,max,0 days 00:03:01
+events_per_session,mean,4.73
+events_per_session,std,1.27
+events_per_session,median,5.0
+events_per_session,min,3
+events_per_session,max,7

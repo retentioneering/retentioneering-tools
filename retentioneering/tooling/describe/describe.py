@@ -28,7 +28,7 @@ class Describe:
         df = self.__eventstream.to_dataframe()
         has_sessions = session_col in df.columns
 
-        df = df[df[type_col].isin(["raw"])]
+        # df = df[df[type_col].isin(["raw"])]
 
         max_time = df[time_col].max()
         min_time = df[time_col].min()

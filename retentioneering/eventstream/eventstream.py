@@ -889,8 +889,8 @@ class Eventstream(
 
         Notes
         -----
-        All ``float`` values rounded to 2.
-        All ``datetime`` values rounded to ``s``
+        - All ``float`` values rounded to 2.
+        - All ``datetime`` values rounded to ``s``
 
         Returns
         -------
@@ -920,15 +920,38 @@ class Eventstream(
         event_list : list of str, optional
             Specify the events to be plotted. If ``all``, describe all events.
 
-        Notes
-        -----
-        All ``float`` values rounded to 2.
-        All ``datetime`` values rounded to ``s``
-
         Returns
         -------
         pd.DataFrame
-            Eventstream statistics
+            **Eventstream statistics**:
+
+            - | **basic_statistics** category metrics - calculated for each event in eventstream
+              | or filtered eventstream (if parameters ``event_list`` or ``raw_events_only`` are used).
+
+                - *number_of_events* - the number of each event in eventstream
+                - *unique_users* - the number of unique users with each event
+                - *unique_sessions* - the number of unique sessions with each event
+                - *share_in_all_events* - number_of_events / all_events (raw_events_only, if this parameter = ``True``)
+                - *share_in_all_users* - unique_users / all_users
+                - *share_in_all_sessions* - unique_sessions / all_sessions
+
+            - | **first_occurance_time__user** category - time from ``path_start``
+              | to the first occurance of specified event in each user path.
+            - | **first_occurance_event_id__user** category - the number of steps (events) from
+              | ``path_start`` to the first occurance of specified event in each user path.
+              | If ``raw_events_only=True`` only raw events will be counted.
+            - | **first_occurance_time__session** category - time from ``session_start``
+              | to the first occurance of specified event in each session.
+            - | **first_occurance_event_id__session** category - the number of steps (events) from
+              | ``session_start`` to the first occurance of specified event in each session.
+              | If ``raw_events_only=True`` only raw events will be counted.
+
+            Agg functions for each ``first_occurance*`` category: mean, std, median, min, max
+
+        Notes
+        -----
+        - All ``float`` values rounded to 2.
+        - All ``datetime`` values rounded to ``s``
 
         """
         describer = DescribeEvents(

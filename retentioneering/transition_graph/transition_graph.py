@@ -14,8 +14,7 @@ from retentioneering.edgelist import Edgelist
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.nodelist import Nodelist
 from retentioneering.templates.transition_graph import TransitionGraphRenderer
-
-from .typing import (
+from retentioneering.tooling.typing.transition_graph import (
     GraphSettings,
     LayoutNode,
     NodeParams,
@@ -605,21 +604,3 @@ class TransitionGraph:
         if name in settings:
             return self._to_json(settings[name])
         return "undefined"
-
-    def get_adjacency(self, weights: list[str] | None, norm_type: NormType) -> pd.DataFrame:
-        """
-        Parameters
-        ----------
-        weights : list of str or None
-        norm_type : {"full", "node", None}
-
-        Returns
-        -------
-        pd.DataFrame
-            Transition matrix
-        """
-        self.edgelist.calculate_edgelist(data=self.eventstream.to_dataframe(), norm_type=norm_type, custom_cols=weights)
-        edgelist: pd.DataFrame = self.edgelist.edgelist_df
-        graph = nx.DiGraph()
-        graph.add_weighted_edges_from(edgelist.values)
-        return nx.to_pandas_adjacency(G=graph)

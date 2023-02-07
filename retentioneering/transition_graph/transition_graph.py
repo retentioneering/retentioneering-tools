@@ -14,8 +14,7 @@ from retentioneering.edgelist import Edgelist
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.nodelist import Nodelist
 from retentioneering.templates.transition_graph import TransitionGraphRenderer
-
-from .typing import (
+from retentioneering.tooling.typing.transition_graph import (
     GraphSettings,
     LayoutNode,
     NodeParams,
@@ -43,6 +42,7 @@ class TransitionGraph:
     """
 
     _weights: MutableMapping[str, str] | None = None
+    _norm_type: NormType = None
 
     def __init__(
         self,
@@ -115,6 +115,18 @@ class TransitionGraph:
         if value != {"edges": "events", "nodes": "events"}:
             raise ValueError("Allowed only: %s" % {"edges": "events", "nodes": "events"})
         self._weights = value
+
+    @property
+    def norm_type(self) -> NormType:  # type: ignore
+        return self._norm_type
+
+    @norm_type.setter
+    def norm_type(self, norm_type: NormType) -> None:  # type: ignore
+        allowed_norm_types: list[str | None] = [None, "full", "node"]
+        if norm_type in allowed_norm_types:
+            self._norm_type = norm_type
+        else:
+            raise ValueError("Norm type should be one of: %s" % allowed_norm_types)
 
     def _on_recalc_request(
         self, rename_rules: list[RenameRule]
@@ -448,6 +460,9 @@ class TransitionGraph:
     def generateId(size: int = 6, chars: str = string.ascii_uppercase + string.digits) -> str:
         return "el" + "".join(random.choice(chars) for _ in range(size))
 
+    def _norm_type_to_json_value(self, norm_type: NormType) -> str:
+        return "none" if norm_type is None else str(norm_type).lower()
+
     def plot_graph(
         self,
         thresholds: dict[str, Threshold] | None = None,
@@ -539,6 +554,7 @@ class TransitionGraph:
             **dict(
                 server_id=self.server.pk,
                 env=self.env,
+                norm_type=self._norm_type_to_json_value(self.norm_type),
                 links=self._to_json(links),
                 nodes=self._to_json(nodes),
                 node_params=self._to_json(node_params),
@@ -567,6 +583,7 @@ class TransitionGraph:
             **dict(
                 server_id=self.server.pk,
                 env=self.env,
+                norm_type=self._norm_type_to_json_value(self.norm_type),
                 node_params=self._to_json(node_params),
                 links="<%= links %>",
                 nodes="<%= nodes %>",
@@ -617,21 +634,3 @@ class TransitionGraph:
         if name in settings:
             return self._to_json(settings[name])
         return "undefined"
-
-    def get_adjacency(self, weights: list[str] | None, norm_type: NormType) -> pd.DataFrame:
-        """
-        Parameters
-        ----------
-        weights : list of str or None
-        norm_type : {"full", "node", None}
-
-        Returns
-        -------
-        pd.DataFrame
-            Transition matrix
-        """
-        self.edgelist.calculate_edgelist(data=self.eventstream.to_dataframe(), norm_type=norm_type, custom_cols=weights)
-        edgelist: pd.DataFrame = self.edgelist.edgelist_df
-        graph = nx.DiGraph()
-        graph.add_weighted_edges_from(edgelist.values)
-        return nx.to_pandas_adjacency(G=graph)

@@ -460,7 +460,7 @@ Average
 Cut matrix
 ~~~~~~~~~~
 
-There are three ways to сut the matrix to get rid of boundary values,
+There are three ways to cut the matrix to get rid of boundary values,
 for example, when there is not enough data available at the moment to
 adequately analyze the behavior of the cohort.
 
@@ -528,9 +528,9 @@ to the left and down from the last period of the first cohort. Thus, we
 get rid of all boundary values.
 
 ShortCut for Cohorts (as an eventstream method)
-===============================================
+-----------------------------------------------
 
-We can also use :doc:`Eventstream.cohorts</api/tooling/cohorts>` method which
+We can also use :py:meth:`Eventstream.cohorts()<retentioneering.eventstream.eventstream.Eventstream.cohorts>` method which
 creates an instance of ``Cohorts`` class and applies
 :py:meth:`Cohorts.fit()<retentioneering.tooling.cohorts.cohorts.Cohorts.fit>` method as well.
 
@@ -539,7 +539,7 @@ of one matrix with the same parameters - that would be helpful to save that fitt
 instance in separate variable.
 
 Heatmap is displayed by default, but :py:meth:`Cohorts.values<retentioneering.tooling.cohorts.cohorts.Cohorts.values>`
-and `:py:meth:`Cohorts.lineplot()<retentioneering.tooling.cohorts.cohorts.Cohorts.lineplot>` are also
+and :py:meth:`Cohorts.lineplot()<retentioneering.tooling.cohorts.cohorts.Cohorts.lineplot>` are also
 available, now it can be done in one line:
 
 

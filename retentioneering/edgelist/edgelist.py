@@ -4,7 +4,7 @@ from typing import Callable, MutableMapping, MutableSequence
 
 import pandas as pd
 
-from retentioneering.transition_graph.typing import NormType
+from retentioneering.tooling.typing.transition_graph import NormType
 
 NormFunc = Callable[[pd.DataFrame, pd.DataFrame, pd.DataFrame], pd.Series]
 

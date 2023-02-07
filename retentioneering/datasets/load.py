@@ -10,6 +10,15 @@ module_path = dirname(__file__)
 
 
 def load_simple_shop(as_dataframe: bool = False) -> pd.DataFrame | Eventstream:
+    """
+    Load a `simple_shop` demonstration dataset.
+
+    Parameters
+    ----------
+    as_dataframe : bool, default False
+        - If ``False`` the dataset is returned as eventstream
+        - If ``True`` the dataset is returned as pandas.DataFrame
+    """
     df = pd.read_csv(module_path + "/data/simple-onlineshop.csv")
     if as_dataframe:
         return df

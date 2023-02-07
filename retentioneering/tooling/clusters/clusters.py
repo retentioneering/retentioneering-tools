@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
-import umap.umap_ as umap
+import umap as umap
 from matplotlib import axes, rcParams
 from numpy import ndarray
 from sklearn.cluster import KMeans

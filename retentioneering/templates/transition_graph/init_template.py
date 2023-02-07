@@ -2,6 +2,7 @@ init_code = """
     initialize({{
     serverId: '{server_id}',
     env: '{env}',
+    selectedNormalizationTypeId: '{norm_type}',
     configNodes: {nodes},
     configLinks: {links},
     nodesColsNames: {node_cols_names},

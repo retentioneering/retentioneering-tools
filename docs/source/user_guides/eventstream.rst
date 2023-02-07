@@ -21,7 +21,7 @@ What is eventstream
 
 - Preprocessing. Eventstream allows you to efficiently work with clickstream data preparation process. :red:`TODO set a link to preprocessing user guide`.
 
-- Applying analytical tools. Eventstream provides simple interfaces to retentioneering tools, so you can seamlessly apply them. See a :doc:`user guide on retentioneering tooling methods</user_guides>`.
+- Applying analytical tools. Eventstream provides simple interfaces to retentioneering tools, so you can seamlessly apply them. See a :ref:`user guide on retentioneering core tools<UG core tools>`.
 
 The structure of an eventstream is designed as follows. Let :math:`U` be a set of unique users, :math:`E` be a set of unique events. Eventstream is a set of sequential events :math:`\{(u_i, e_j, t_k)\}` which means that user :math:`u_i` experienced event :math:`e_j` at time :math:`t_k`, where :math:`i = 1, 2, \ldots |U|`, :math:`j = 1, 2, \ldots, |E|`, :math:`k = 1, 2, \ldots`.
 

@@ -80,6 +80,10 @@ html_css_files = [
     "css/custom.css",
 ]
 
+# This is a solution for deeply nested lists while building the doc as a pdf-file.
+# https://stackoverflow.com/a/28454426
+latex_elements = {"preamble": "\\usepackage{enumitem}\\setlistdepth{99}"}
+
 
 extlinks = {
     "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units/%s", None),

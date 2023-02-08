@@ -17,7 +17,7 @@ intuitive example. Suppose we are analyze web-store logs and have a
 dataset with event logs from four user sessions with the following
 events in the following order:
 
-.. image:: /_static/user_guides/step_matrix/step_matrix_demo.svg
+.. image:: /_static/user_guides/step_matrix/step_matrix_demo.png
 
 
 We can visualize this dataset as a step-wise heatmap indicating the

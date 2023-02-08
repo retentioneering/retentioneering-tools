@@ -1,19 +1,24 @@
-.. title:: API Reference
+API Reference
+=============
 
+Eventstream
+-----------
 .. toctree::
-   :caption: Eventstream:
    :maxdepth: 2
 
    Eventstream <api/eventstream_api.rst>
 
+Preprocessing
+-------------
 .. toctree::
-   :caption: Preprocessing:
    :maxdepth: 2
 
    Preprocessing <api/preprocessing_api.rst>
 
+Core Tools
+----------
+
 .. toctree::
-   :caption: Core Tools:
    :maxdepth: 2
 
    Core Tools <api/tooling_api.rst>

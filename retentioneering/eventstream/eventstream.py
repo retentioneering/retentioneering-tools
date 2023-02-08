@@ -25,7 +25,11 @@ from retentioneering.tooling.funnel import Funnel
 from retentioneering.tooling.stattests import TEST_NAMES, StatTests
 from retentioneering.tooling.step_matrix import StepMatrix
 from retentioneering.tooling.step_sankey import StepSankey
-from retentioneering.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
+from retentioneering.tooling.timedelta_hist import (
+    AGGREGATION_NAMES,
+    EVENTSTREAM_EVENTS,
+    TimedeltaHist,
+)
 from retentioneering.tooling.transition_matrix import TransitionMatrix
 from retentioneering.tooling.typing.transition_graph import NormType, Threshold
 from retentioneering.tooling.user_lifetime_hist import UserLifetimeHist
@@ -770,12 +774,12 @@ class Eventstream(
 
     def timedelta_hist(
         self,
-        event_pair: Optional[Tuple[str, str] | List[str]] = None,
+        event_pair: Optional[list[str | Literal[EVENTSTREAM_EVENTS]]] = None,
         only_adjacent_event_pairs: bool = True,
-        weight_col: Optional[str] = None,
+        weight_col: str = "user_id",
         aggregation: Optional[AGGREGATION_NAMES] = None,
         timedelta_unit: DATETIME_UNITS = "s",
-        log_scale: bool = False,
+        log_scale: tuple[bool, bool] = (False, False),
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int = 20,
@@ -792,6 +796,7 @@ class Eventstream(
         -------
         TimedeltaHist
             A ``TimedeltaHist`` instance fitted to the given parameters.
+            If ``show_plot=True`` also plot sns.hist
         """
         timedelta_hist = TimedeltaHist(
             eventstream=self,

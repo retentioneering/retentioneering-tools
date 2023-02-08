@@ -1,5 +1,5 @@
-,basic_statistics,basic_statistics,basic_statistics,basic_statistics,first_occurance_time__user,first_occurance_time__user,first_occurance_time__user,first_occurance_time__user,first_occurance_time__user,first_occurance_event_id__user,first_occurance_event_id__user,first_occurance_event_id__user,first_occurance_event_id__user,first_occurance_event_id__user
-,number_of_events,unique_users,share_in_all_events,share_in_all_users,mean,std,median,min,max,mean,std,median,min,max
+,basic_statistics,basic_statistics,basic_statistics,basic_statistics,UserWise_first_occurrence_timedelta,UserWise_first_occurrence_timedelta,UserWise_first_occurrence_timedelta,UserWise_first_occurrence_timedelta,UserWise_first_occurrence_timedelta,UserWise_first_occurrence_steps,UserWise_first_occurrence_steps,UserWise_first_occurrence_steps,UserWise_first_occurrence_steps,UserWise_first_occurrence_steps
+,number_of_events,unique_users,number_of_events_shared,unique_users_shared,mean,std,median,min,max,mean,std,median,min,max
 event1,12,5,0.4,1.0,0 days 04:35:59,0 days 10:17:07,0 days 00:00:00,0 days 00:00:00,0 days 22:59:55,0.2,0.45,0.0,0,1
 event2,4,2,0.13,0.4,0 days 11:30:06,0 days 16:15:55,0 days 11:30:06,0 days 00:00:01,0 days 23:00:10,1.5,0.71,1.5,1,2
 event3,7,3,0.23,0.6,0 days 00:09:41,0 days 00:16:44,0 days 00:00:02,0 days 00:00:01,0 days 00:29:01,1.33,0.58,1.0,1,2

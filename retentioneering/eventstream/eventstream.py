@@ -876,14 +876,14 @@ class Eventstream(
 
     def describe(self, session_col: str = "session_id", raw_events_only: bool = False) -> pd.DataFrame:
         """
-        Display general eventstream information. If ``session_col`` is present in eventstream, also
+        Display general eventstream information. If ``session_col`` is presented in eventstream, also
         output session statistics.
 
         Parameters
         ----------
         session_col : str, default 'session_id'
-            Specify name of the session column. If the column present in the eventstream,
-            session statistics will be added.
+            Specify name of the session column. If the column is presented in the eventstream,
+            session statistics will be added to the output.
 
         raw_events_only : bool, default False
             If ``True`` - statistics will be shown only for raw events.
@@ -891,13 +891,13 @@ class Eventstream(
 
         Notes
         -----
-        - All ``float`` values rounded to 2.
-        - All ``datetime`` values rounded to ``s``
+        - All ``float`` values are rounded to 2.
+        - All ``datetime`` values are rounded to seconds.
 
         Returns
         -------
         pd.DataFrame
-            Eventstream statistics
+            A dataframe containing descriptive statistics on the eventstream.
 
         """
         describer = Describe(eventstream=self, session_col=session_col, raw_events_only=raw_events_only)
@@ -907,48 +907,50 @@ class Eventstream(
         self, session_col: str = "session_id", raw_events_only: bool = False, event_list: list[str] | None = None
     ) -> pd.DataFrame:
         """
-        Display general information on the eventstream events. If ``session_col`` is present in eventstream, also
+        Display general information on the eventstream events. If ``session_col`` is presented in eventstream, also
         output session statistics.
 
         Parameters
         ----------
         session_col : str, default 'session_id'
-            Specify name of the session column. If present in the eventstream, output session statistics.
+            Specify name of the session column. If the column is presented in the eventstream, output session statistics.
 
         raw_events_only : bool, default False
             If ``True`` - statistics will be shown only for raw events.
             If ``False`` - for all events presented in your data.
 
         event_list : list of str, optional
-            Specify the events to be plotted. If ``all``, describe all events.
+            Specify the events to be displayed. If ``all``, describe all events.
 
         Returns
         -------
         pd.DataFrame
             **Eventstream statistics**:
 
-            - | **basic_statistics** category metrics - calculated for each event in eventstream
-              | or filtered eventstream (if parameters ``event_list`` or ``raw_events_only`` are used).
+            - | The following metrics are calculated for each event represented in the eventstream
+              | (or the narrowed eventstream if parameters ``event_list`` or ``raw_events_only`` are used).
+              | Let all_events, all_users, all_sessions be the number of all events, users,
+              | and sessions represented in the eventstream. Then:
 
-                - *number_of_events* - the number of each event in eventstream
-                - *unique_users* - the number of unique users with each event
+                - *number_of_events* - the number of occurrences of a particular event in the eventstream
+                - *unique_users* - the number of unique users who experienced a particular event
                 - *unique_sessions* - the number of unique sessions with each event
-                - *share_in_all_events* - number_of_events / all_events (raw_events_only, if this parameter = ``True``)
-                - *share_in_all_users* - unique_users / all_users
-                - *share_in_all_sessions* - unique_sessions / all_sessions
+                - *number_of_events_shared* - number_of_events / all_events (raw_events_only, if this parameter = ``True``)
+                - *unique_users_shared* - unique_users / all_users
+                - *unique_sessions_shared* - unique_sessions / all_sessions
 
-            - | **first_occurance_time__user** category - time from ``path_start``
-              | to the first occurance of specified event in each user path.
-            - | **first_occurance_event_id__user** category - the number of steps (events) from
-              | ``path_start`` to the first occurance of specified event in each user path.
+            - | **UserWise_first_occurrence_timedelta** category - timedelta between ``path_start``
+              | and the first occurrence of a specified event in each user path.
+            - | **UserWise_first_occurrence_steps** category - the number of steps (events) from
+              | ``path_start`` to the first occurrence of a specified event in each user path.
               | If ``raw_events_only=True`` only raw events will be counted.
-            - | **first_occurance_time__session** category - time from ``session_start``
-              | to the first occurance of specified event in each session.
-            - | **first_occurance_event_id__session** category - the number of steps (events) from
-              | ``session_start`` to the first occurance of specified event in each session.
+            - | **SessionWise_first_occurrence_timedelta** category - timedelta  between ``session_start``
+              | and the first occurrence of a specified event in each session.
+            - | **SessionWise_first_occurrence_steps** category - the number of steps (events) from
+              | ``session_start`` to the first occurrence of a specified event in each session.
               | If ``raw_events_only=True`` only raw events will be counted.
 
-            Agg functions for each ``first_occurance*`` category: mean, std, median, min, max
+            Agg functions for each ``first_occurrence*`` category: mean, std, median, min, max
 
         Notes
         -----

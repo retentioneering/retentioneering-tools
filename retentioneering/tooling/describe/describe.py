@@ -26,7 +26,7 @@ class Describe:
             self.session_col,
         )
 
-        df = self.__eventstream.to_dataframe().copy()
+        df = self.__eventstream.to_dataframe(copy=True)
         has_sessions = session_col in df.columns
 
         if self.raw_events_only:
@@ -38,8 +38,8 @@ class Describe:
         values_all_users = [
             df[user_col].nunique(),
             df[event_col].nunique(),
-            df[time_col].min().round("s"),
-            df[time_col].max().round("s"),
+            min_time.round("s"),
+            max_time.round("s"),
             (max_time - min_time).round("s"),
         ]
 
@@ -117,11 +117,11 @@ class Describe:
         out_columns = ["value"]
         index_names = ["category", "metric"]
 
-        mi_all_users = pd.MultiIndex.from_product(all_iterables, names=index_names)
-        mi_time_events = pd.MultiIndex.from_product(time_events_iterables, names=index_names)
+        all_users_index = pd.MultiIndex.from_product(all_iterables, names=index_names)
+        time_events_index = pd.MultiIndex.from_product(time_events_iterables, names=index_names)
 
-        df_all_users = pd.DataFrame(data=values_all_users, index=mi_all_users, columns=out_columns)
-        df_time_events = pd.DataFrame(data=values_time_events, index=mi_time_events, columns=out_columns)
+        df_all_users = pd.DataFrame(data=values_all_users, index=all_users_index, columns=out_columns)
+        df_time_events = pd.DataFrame(data=values_time_events, index=time_events_index, columns=out_columns)
 
         res = pd.concat([df_all_users, df_time_events])
 

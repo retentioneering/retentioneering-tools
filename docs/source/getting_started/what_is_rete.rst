@@ -1,5 +1,5 @@
 ..
-    .. image:: _static/logo_long_black.png
+    .. image:: /_static/getting_started/what_is_rete/logo_long_black.png
 
 
 What is Retentioneering?
@@ -27,7 +27,7 @@ a powerful environment to perform an in-depth analysis of customer
 journey maps, bringing behavior-driven segmentation of users and machine
 learning pipelines to product analytics.
 
-.. image:: /_static/intro_0.png
+.. image:: /_static/getting_started/what_is_rete/intro_0.png
 
 You don't need to be a Pandas expert, all the functions are specifically
 designed for analytics tasks, reduce data wrangling and simplify data

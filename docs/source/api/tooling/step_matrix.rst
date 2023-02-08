@@ -3,9 +3,9 @@ Step Matrix
 
 Step Matrix Class
 -----------------
-.. automodule:: src.tooling.step_matrix.step_matrix
+.. automodule:: retentioneering.tooling.step_matrix.step_matrix
     :members:
 
 Eventstream
 -----------
-.. automethod:: src.eventstream.eventstream.Eventstream.step_matrix
+.. automethod:: retentioneering.eventstream.eventstream.Eventstream.step_matrix

@@ -3,9 +3,9 @@ Clusters
 
 Clusters Class
 --------------
-.. automodule:: src.tooling.clusters.clusters
+.. automodule:: retentioneering.tooling.clusters.clusters
     :members:
 
 Eventstream
 -----------
-.. autoproperty:: src.eventstream.eventstream.Eventstream.clusters
+.. autoproperty:: retentioneering.eventstream.eventstream.Eventstream.clusters

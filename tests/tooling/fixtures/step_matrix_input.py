@@ -3,15 +3,15 @@ import os
 import pandas as pd
 import pytest
 
-from src import datasets
-from src.data_processors_lib import (
+from retentioneering import datasets
+from retentioneering.data_processors_lib import (
     FilterEvents,
     FilterEventsParams,
     StartEndEvents,
     StartEndEventsParams,
 )
-from src.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-from src.graph.p_graph import EventsNode, PGraph
+from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
+from retentioneering.graph.p_graph import EventsNode, PGraph
 
 FLOAT_PRECISION = 3
 

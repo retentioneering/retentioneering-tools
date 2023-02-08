@@ -1,7 +1,7 @@
 Core Tools
 ==========
 .. toctree::
-   :caption: Preprocessing
+   :caption: Core Tools
    :maxdepth: 2
 
     Funnel <tooling/funnel.rst>

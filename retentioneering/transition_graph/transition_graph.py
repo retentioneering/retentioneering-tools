@@ -71,18 +71,18 @@ class TransitionGraph:
 
         self.eventstream: Eventstream = eventstream  # type: ignore
 
+        self.event_col = self.eventstream.schema.event_name
+        self.event_time_col = self.eventstream.schema.event_timestamp
+        self.user_col = self.eventstream.schema.user_id
+        self.id_col = self.eventstream.schema.event_id
+        self.custom_cols = [self.eventstream.schema.user_id] + self.eventstream.schema.custom_cols
+
         self.weights = weights if weights else {"edges": "events", "nodes": "events"}
 
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
         self.layout: pd.DataFrame | None = None
         self.graph_settings = graph_settings
-
-        self.event_col = self.eventstream.schema.event_name
-        self.event_time_col = self.eventstream.schema.event_timestamp
-        self.user_col = self.eventstream.schema.user_id
-        self.id_col = self.eventstream.schema.event_id
-        self.custom_cols = [self.eventstream.schema.user_id] + self.eventstream.schema.custom_cols
 
         self.norm_type: NormType | None = norm_type
 
@@ -303,7 +303,7 @@ class TransitionGraph:
 
     def __get_nodelist_cols(self) -> list[str]:
         default_col = self.nodelist_default_col
-        custom_cols = self.eventstream.schema.custom_cols
+        custom_cols = self.custom_cols
         return list([default_col]) + list(custom_cols)
 
     def _prepare_nodes(

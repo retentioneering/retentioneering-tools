@@ -460,7 +460,7 @@ Average
 Cut matrix
 ~~~~~~~~~~
 
-There are three ways to сut the matrix to get rid of boundary values,
+There are three ways to cut the matrix to get rid of boundary values,
 for example, when there is not enough data available at the moment to
 adequately analyze the behavior of the cohort.
 

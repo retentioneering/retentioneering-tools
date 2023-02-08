@@ -41,6 +41,8 @@ class TransitionGraph:
     Class that holds methods for graph visualization.
     """
 
+    _norm_type: NormType = None
+
     def __init__(
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
@@ -102,6 +104,18 @@ class TransitionGraph:
         )
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
+
+    @property
+    def norm_type(self) -> NormType:  # type: ignore
+        return self._norm_type
+
+    @norm_type.setter
+    def norm_type(self, norm_type: NormType) -> None:  # type: ignore
+        allowed_norm_types: list[str | None] = [None, "full", "node"]
+        if norm_type in allowed_norm_types:
+            self._norm_type = norm_type
+        else:
+            raise ValueError("Norm type should be one of: %s" % allowed_norm_types)
 
     def _on_recalc_request(
         self, rename_rules: list[RenameRule]
@@ -435,6 +449,9 @@ class TransitionGraph:
     def generateId(size: int = 6, chars: str = string.ascii_uppercase + string.digits) -> str:
         return "el" + "".join(random.choice(chars) for _ in range(size))
 
+    def _norm_type_to_json_value(self, norm_type: NormType) -> str:
+        return "none" if norm_type is None else str(norm_type).lower()
+
     def plot_graph(
         self,
         thresholds: dict[str, Threshold] | None = None,
@@ -526,6 +543,7 @@ class TransitionGraph:
             **dict(
                 server_id=self.server.pk,
                 env=self.env,
+                norm_type=self._norm_type_to_json_value(self.norm_type),
                 links=self._to_json(links),
                 nodes=self._to_json(nodes),
                 node_params=self._to_json(node_params),
@@ -554,6 +572,7 @@ class TransitionGraph:
             **dict(
                 server_id=self.server.pk,
                 env=self.env,
+                norm_type=self._norm_type_to_json_value(self.norm_type),
                 node_params=self._to_json(node_params),
                 links="<%= links %>",
                 nodes="<%= nodes %>",

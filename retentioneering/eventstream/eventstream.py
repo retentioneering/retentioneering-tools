@@ -913,14 +913,15 @@ class Eventstream(
         Parameters
         ----------
         session_col : str, default 'session_id'
-            Specify name of the session column. If the column is presented in the eventstream, output session statistics.
+            Specify name of the session column. If the column is presented in the eventstream,
+            output session statistics.
 
         raw_events_only : bool, default False
             If ``True`` - statistics will be shown only for raw events.
             If ``False`` - for all events presented in your data.
 
         event_list : list of str, optional
-            Specify the events to be displayed. If ``all``, describe all events.
+            Specify the events to be displayed.
 
         Returns
         -------
@@ -932,21 +933,22 @@ class Eventstream(
               | Let all_events, all_users, all_sessions be the number of all events, users,
               | and sessions represented in the eventstream. Then:
 
-                - *number_of_events* - the number of occurrences of a particular event in the eventstream
+                - *number_of_occurrences* - the number of occurrences of a particular event in the eventstream
                 - *unique_users* - the number of unique users who experienced a particular event
                 - *unique_sessions* - the number of unique sessions with each event
-                - *number_of_events_shared* - number_of_events / all_events (raw_events_only, if this parameter = ``True``)
+                - | *number_of_occurrences_shared* - number_of_occurrences / all_events (raw_events_only,
+                  | if this parameter = ``True``)
                 - *unique_users_shared* - unique_users / all_users
                 - *unique_sessions_shared* - unique_sessions / all_sessions
 
-            - | **UserWise_first_occurrence_timedelta** category - timedelta between ``path_start``
+            - | **time_to_FO_user_wise** category - timedelta between ``path_start``
               | and the first occurrence of a specified event in each user path.
-            - | **UserWise_first_occurrence_steps** category - the number of steps (events) from
+            - | **steps_to_FO_user_wise** category - the number of steps (events) from
               | ``path_start`` to the first occurrence of a specified event in each user path.
               | If ``raw_events_only=True`` only raw events will be counted.
-            - | **SessionWise_first_occurrence_timedelta** category - timedelta  between ``session_start``
+            - | **time_to_FO_session_wise** category - timedelta  between ``session_start``
               | and the first occurrence of a specified event in each session.
-            - | **SessionWise_first_occurrence_steps** category - the number of steps (events) from
+            - | **steps_to_FO_session_wise** category - the number of steps (events) from
               | ``session_start`` to the first occurrence of a specified event in each session.
               | If ``raw_events_only=True`` only raw events will be counted.
 
@@ -955,7 +957,7 @@ class Eventstream(
         Notes
         -----
         - All ``float`` values rounded to 2.
-        - All ``datetime`` values rounded to ``s``
+        - All ``datetime`` values are rounded to seconds.
 
         """
         describer = DescribeEvents(

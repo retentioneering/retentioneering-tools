@@ -19,11 +19,11 @@ def read_corr_data(filename: str) -> pd.DataFrame:
         elif "event" in source_df.columns[i][0]:
             source_df[col] = pd.to_numeric(source_df[col])
 
-    source_df[("all_users", "eventstream_start")] = pd.to_datetime(source_df[("all_users", "eventstream_start")])
-    source_df[("all_users", "eventstream_end")] = pd.to_datetime(source_df[("all_users", "eventstream_end")])
-    source_df[("all_users", "eventstream_length")] = pd.to_timedelta(source_df[("all_users", "eventstream_length")])
-    source_df[("all_users", "unique_users")] = pd.to_numeric(source_df[("all_users", "unique_users")])
-    source_df[("all_users", "unique_events")] = pd.to_numeric(source_df[("all_users", "unique_events")])
+    source_df[("overall", "eventstream_start")] = pd.to_datetime(source_df[("overall", "eventstream_start")])
+    source_df[("overall", "eventstream_end")] = pd.to_datetime(source_df[("overall", "eventstream_end")])
+    source_df[("overall", "eventstream_length")] = pd.to_timedelta(source_df[("overall", "eventstream_length")])
+    source_df[("overall", "unique_users")] = pd.to_numeric(source_df[("overall", "unique_users")])
+    source_df[("overall", "unique_events")] = pd.to_numeric(source_df[("overall", "unique_events")])
 
     return source_df
 
@@ -38,6 +38,6 @@ def basic_corr() -> pd.DataFrame:
 @pytest.fixture
 def session_corr() -> pd.DataFrame:
     correct_result = read_corr_data("describe_session_corr.csv")
-    correct_result[("all_users", "unique_sessions")] = pd.to_numeric(correct_result[("all_users", "unique_sessions")])
+    correct_result[("overall", "unique_sessions")] = pd.to_numeric(correct_result[("overall", "unique_sessions")])
 
     return correct_result.T

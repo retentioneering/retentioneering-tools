@@ -54,22 +54,22 @@ class DescribeEvents:
             df = df[df[event_col].isin(event_list)]
 
         basic_info = df.groupby("event").agg(
-            number_of_events=("event_id", "count"), unique_users=("user_id", "nunique")
+            number_of_occurrences=("event_id", "count"), unique_users=("user_id", "nunique")
         )
 
-        basic_info["number_of_events_shared"] = (basic_info["number_of_events"] / total_events_base).round(2)
+        basic_info["number_of_occurrences_shared"] = (basic_info["number_of_occurrences"] / total_events_base).round(2)
         basic_info["unique_users_shared"] = (basic_info["unique_users"] / unique_users_base).round(2)
 
         basic_info.columns = pd.MultiIndex.from_product([["basic_statistics"], basic_info.columns])
         stats_order = ["mean", "std", "median", "min", "max"]
-        first_time = "UserWise_first_occurrence_timedelta"
-        first_event = "UserWise_first_occurrence_steps"
+        first_time = "time_to_FO_user_wise"
+        first_event = "steps_to_FO_user_wise"
 
         df_agg_event = (
             df.groupby([event_col, user_col])
             .agg(
-                UserWise_first_occurrence_timedelta=("__event_trajectory_timedelta", "first"),
-                UserWise_first_occurrence_steps=("__event_trajectory_idx", "first"),
+                time_to_FO_user_wise=("__event_trajectory_timedelta", "first"),
+                steps_to_FO_user_wise=("__event_trajectory_idx", "first"),
             )
             .reset_index()
         )
@@ -85,8 +85,8 @@ class DescribeEvents:
             df_agg_event[mult_ind] = pd.to_timedelta(df_agg_event[mult_ind], unit="s").round("s")  # type: ignore
 
         if has_sessions:
-            first_time = "SessionWise_first_occurrence_timedelta"
-            first_event = "SessionWise_first_occurrence_steps"
+            first_time = "time_to_FO_session_wise"
+            first_event = "steps_to_FO_session_wise"
             unique_sess = ("basic_statistics", "unique_sessions")
             share_sess = ("basic_statistics", "unique_sessions_shared")
 
@@ -96,8 +96,8 @@ class DescribeEvents:
             df_agg_sess = (
                 df.groupby([event_col, session_col])
                 .agg(
-                    SessionWise_first_occurrence_timedelta=("__event_session_timedelta", "first"),
-                    SessionWise_first_occurrence_steps=("__event_session_idx", "first"),
+                    time_to_FO_session_wise=("__event_session_timedelta", "first"),
+                    steps_to_FO_session_wise=("__event_session_idx", "first"),
                 )
                 .reset_index()
             )

@@ -35,7 +35,7 @@ class Describe:
         max_time = df[time_col].max()
         min_time = df[time_col].min()
 
-        values_all_users = [
+        values_overall = [
             df[user_col].nunique(),
             df[event_col].nunique(),
             min_time.round("s"),
@@ -72,17 +72,17 @@ class Describe:
         ]
 
         all_iterables = [
-            ["all_users"],
+            ["overall"],
             ["unique_users", "unique_events", "eventstream_start", "eventstream_end", "eventstream_length"],
         ]
 
-        time_events_iterables = [["time_per_user", "events_per_user"], ["mean", "std", "median", "min", "max"]]
+        time_events_iterables = [["path_length_time", "path_length_events"], ["mean", "std", "median", "min", "max"]]
 
         if has_sessions:
-            time_events_iterables[0] += ["time_per_session", "events_per_session"]
+            time_events_iterables[0] += ["session_length_time", "session_length_events"]
             all_iterables[1].insert(2, "unique_sessions")
 
-            values_all_users.insert(2, df[session_col].nunique())  # type: ignore
+            values_overall.insert(2, df[session_col].nunique())  # type: ignore
 
             session_agg = df.groupby(session_col).agg({time_col: ["min", "max"], event_col: ["count"]}).reset_index()
             time_diff_session = session_agg[(time_col, "max")] - session_agg[(time_col, "min")]
@@ -117,12 +117,12 @@ class Describe:
         out_columns = ["value"]
         index_names = ["category", "metric"]
 
-        all_users_index = pd.MultiIndex.from_product(all_iterables, names=index_names)
+        overall_index = pd.MultiIndex.from_product(all_iterables, names=index_names)
         time_events_index = pd.MultiIndex.from_product(time_events_iterables, names=index_names)
 
-        df_all_users = pd.DataFrame(data=values_all_users, index=all_users_index, columns=out_columns)
+        df_overall = pd.DataFrame(data=values_overall, index=overall_index, columns=out_columns)
         df_time_events = pd.DataFrame(data=values_time_events, index=time_events_index, columns=out_columns)
 
-        res = pd.concat([df_all_users, df_time_events])
+        res = pd.concat([df_overall, df_time_events])
 
         return res

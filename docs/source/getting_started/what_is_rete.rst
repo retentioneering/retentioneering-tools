@@ -9,7 +9,7 @@
 What is Retentioneering?
 ========================
 
-Retentioneering is a `Python library <https://github.com/retentioneering/retentioneering-tools>`_ aiming to assist product analysts and marketing analysts. It makes easier to process and analyze clickstreams, user paths (trajectories), and event logs. With a help of Retentioneering tools you can explore user behavior, segment users, make hypothesis what leads users to a desirable action or makes them leave the product. The library methods can reveal much more insights than funnel analysis, as it will automatically build the behavioral segments and patterns, highlighting what events and patterns impact your conversion rates, retention and revenue.
+Retentioneering is a `Python library <https://github.com/retentioneering/retentioneering-tools>`_ that makes easier to process and analyze clickstreams, user paths (trajectories), and event logs. With a help of Retentioneering tools you can explore user behavior, segment users, make hypothesis what leads users to a desirable action or makes them leave the product. The library is developed for those who works on improving a product's quality: data analysts, marketing analysts, product owners, managers, and others. Retentioneering tools can reveal much more insights than funnel analysis, as it will automatically build the behavioral segments and patterns, highlighting what events and patterns impact your conversion rates, retention and revenue.
 
 :red:`TODO: replace the github link as soon as we make 3.0 public`
 

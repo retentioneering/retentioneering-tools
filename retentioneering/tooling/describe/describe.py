@@ -76,10 +76,10 @@ class Describe:
             ["unique_users", "unique_events", "eventstream_start", "eventstream_end", "eventstream_length"],
         ]
 
-        time_events_iterables = [["path_length_time", "path_length_events"], ["mean", "std", "median", "min", "max"]]
+        time_events_iterables = [["path_length_time", "path_length_steps"], ["mean", "std", "median", "min", "max"]]
 
         if has_sessions:
-            time_events_iterables[0] += ["session_length_time", "session_length_events"]
+            time_events_iterables[0] += ["session_length_time", "session_length_steps"]
             all_iterables[1].insert(2, "unique_sessions")
 
             values_overall.insert(2, df[session_col].nunique())  # type: ignore
@@ -92,8 +92,6 @@ class Describe:
             min_length_time_session = time_diff_session.min().round("s")
             max_length_time_session = time_diff_session.max().round("s")
 
-            if session_agg is None:
-                raise ValueError("session_agg is None")
             event_count_session = session_agg[(event_col, "count")]
             mean_session = round(event_count_session.mean(), 2)  # type: ignore
             median_session = event_count_session.median()

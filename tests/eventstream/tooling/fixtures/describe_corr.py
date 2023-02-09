@@ -16,7 +16,7 @@ def read_corr_data(filename: str) -> pd.DataFrame:
             source_df[col] = pd.to_timedelta(source_df[col])
         elif "eventstream_length" in source_df.columns[i][0]:
             source_df[col] = pd.to_timedelta(source_df[col])
-        elif "event" in source_df.columns[i][0]:
+        elif "steps" in source_df.columns[i][0]:
             source_df[col] = pd.to_numeric(source_df[col])
 
     source_df[("overall", "eventstream_start")] = pd.to_datetime(source_df[("overall", "eventstream_start")])

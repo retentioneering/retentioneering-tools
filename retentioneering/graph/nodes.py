@@ -39,6 +39,10 @@ class SourceNode(BaseNode):
 
 
 class EventsNode(BaseNode):
+    """
+    A class for a regular node of a preprocessing graph
+    """
+
     processor: DataProcessor
     events: Optional[EventstreamType]
 
@@ -52,6 +56,10 @@ class EventsNode(BaseNode):
 
 
 class MergeNode(BaseNode):
+    """
+    A class for a merging node of a preprocessing graph
+    """
+
     events: Optional[EventstreamType]
 
     def __init__(self) -> None:

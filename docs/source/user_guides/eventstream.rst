@@ -25,7 +25,6 @@ What is eventstream
 
 The structure of an eventstream is designed as follows. Let :math:`U` be a set of unique users, :math:`E` be a set of unique events. Eventstream is a set of sequential events :math:`\{(u_i, e_j, t_k)\}` which means that user :math:`u_i` experienced event :math:`e_j` at time :math:`t_k`, where :math:`i = 1, 2, \ldots |U|`, :math:`j = 1, 2, \ldots, |E|`, :math:`k = 1, 2, \ldots`.
 
-
 Eventstream creation
 --------------------
 
@@ -127,6 +126,8 @@ Before we go further we need to introduce you :py:meth:`to_dataframe()<retention
     <br>
 
 We'll discuss the columns of the resulting dataframe later in `Displaying eventstream`_ section.
+
+.. _eventstream_custom_fields:
 
 Custom field names
 ~~~~~~~~~~~~~~~~~~

@@ -9,7 +9,7 @@
 Quick start with Retentioneering
 ================================
 
-Retentioneering is a python library for in-depth clickstream analysis. We find *clickstream* term a bit narrow since user actions might be not necessarily clicks, so we use instead term *event* referring any user action and *eventstream* referring a set of actions. Each event is associated with a user who experienced it and timestamp when the event occurred. Hence, at a basic level eventstream is a set of triples like these:
+Retentioneering is a python library for in-depth clickstream analysis. We find *clickstream* term a bit narrow since user actions might be not necessarily clicks, so we use instead term *event* referring any user action and *eventstream* referring a set of actions belonging to multiple users (sometimes we will use *CJM, customer journey map* term as a synonym). Each event is associated with a user who experienced it and timestamp when the event occurred. Hence, at a basic level eventstream is a set of triples like these:
 
 .. parsed-literal::
 
@@ -18,7 +18,7 @@ Retentioneering is a python library for in-depth clickstream analysis. We find *
     ('user_1', 'cart_button_click', '2019-01-01 00:00:00'),
     ...
 
-A set of events belonging to a particular user is called *user path* or *user trajectory*. Sometimes we will use *CJM (customer journey map)* term as a synonym to eventstream.
+A set of events belonging to a particular user is called *user path* or *user trajectory*.
 
 Any eventstream research consists of three fundamental steps:
 

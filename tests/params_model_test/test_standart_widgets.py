@@ -1,7 +1,7 @@
 from typing import List, Literal, Optional, Union
 
-from src.params_model import ParamsModel
-from src.widget.widgets import (
+from retentioneering.params_model import ParamsModel
+from retentioneering.widget.widgets import (
     EnumWidget,
     IntegerWidget,
     ListOfInt,
@@ -22,7 +22,7 @@ class TestStandardWidgets:
         params = TestStringWidgets(a=value)
         widget = params.get_widgets()
 
-        assert {"a": {"name": "a", "optional": False, "widget": "string"}} == widget
+        assert {"a": {"name": "a", "optional": False, "widget": "string", "default": None}} == widget
         assert value == params.a
 
     def test_default_string_widget(self) -> None:
@@ -48,7 +48,7 @@ class TestStandardWidgets:
         params = TestIntegerWidgets(a=value)
         widget = params.get_widgets()
 
-        assert {"a": {"name": "a", "optional": False, "widget": "integer"}} == widget
+        assert {"a": {"name": "a", "optional": False, "widget": "integer", "default": None}} == widget
         assert value == params.a
 
     def test_default_integer_widget(self) -> None:
@@ -75,7 +75,7 @@ class TestStandardWidgets:
         widget = params.get_widgets()
 
         assert {
-            "a": {"name": "a", "optional": False, "widget": "enum", "params": ["a", "b", "c"], "default": ""}
+            "a": {"name": "a", "optional": False, "widget": "enum", "params": ["a", "b", "c"], "default": None}
         } == widget
         assert enum_value == params.a
 
@@ -106,6 +106,7 @@ class TestStandardWidgets:
                 "params": {
                     "disable_value": "all",
                 },
+                "default": None,
             }
         } == widget
 
@@ -117,9 +118,5 @@ class TestStandardWidgets:
         params = TestListOfIntWidgets()
         widget = params.get_widgets()
         assert {
-            "lost_users_list": {
-                "name": "lost_users_list",
-                "optional": True,
-                "widget": "list_of_int",
-            }
+            "lost_users_list": {"name": "lost_users_list", "optional": True, "widget": "list_of_int", "default": None}
         } == widget

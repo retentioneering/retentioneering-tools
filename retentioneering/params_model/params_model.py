@@ -210,7 +210,9 @@ class ParamsModel(BaseModel):
             widget_type = custom_widget["widget"]
             return asdict(_widget.from_dict(**dict(optional=optional, name=name, widget=widget_type, value=None)))
         else:
-            return asdict(custom_widget)
+            widget = asdict(custom_widget)
+            widget["optional"] = optional
+            return widget
 
     @classmethod
     def get_widgets(cls) -> dict[str, str | dict | list]:

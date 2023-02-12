@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Optional
 
 import pandas as pd
 
@@ -14,7 +14,7 @@ class CollapseLoopsParams(ParamsModel):
     Class with parameters for class :py:func:`CollapseLoops`.
     """
 
-    suffix: Literal["loop", "count"] = "loop"
+    suffix: Optional[Literal["loop", "count"]] = "loop"
     timestamp_aggregation_type: Literal["max", "min", "mean"] = "max"
 
 

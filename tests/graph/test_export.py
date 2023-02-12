@@ -128,7 +128,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "TruncatedEvents",
-                        "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
+                        "values": {"left_truncated_cutoff": (1.0, "h"), "right_truncated_cutoff": (1.0, "h")},
                     },
                 },
             ],
@@ -145,7 +145,7 @@ class TestPGraphExportImport:
                         "name": "EventsNode",
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
-                            "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
+                            "values": {"left_truncated_cutoff": (1.0, "h"), "right_truncated_cutoff": (1.0, "h")},
                             "name": "TruncatedEvents",
                         },
                     },
@@ -169,7 +169,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "TruncatedEvents",
-                        "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
+                        "values": {"left_truncated_cutoff": (1.0, "h"), "right_truncated_cutoff": (1.0, "h")},
                     },
                 },
             ],
@@ -330,7 +330,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "DeleteUsersByPathLength",
-                        "values": {"cutoff": "1.5,m", "events_num": None},
+                        "values": {"cutoff": (1.5, "m"), "events_num": None},
                     },
                 },
             ],
@@ -348,7 +348,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "DeleteUsersByPathLength",
-                            "values": {"cutoff": "1.5,m"},
+                            "values": {"cutoff": (1.5, "m")},
                         },
                     },
                 ],
@@ -371,7 +371,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "DeleteUsersByPathLength",
-                        "values": {"cutoff": "1.5,m", "events_num": None},
+                        "values": {"cutoff": (1.5, "m"), "events_num": None},
                     },
                 },
             ],
@@ -396,7 +396,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "LostUsersEvents",
-                        "values": {"lost_users_list": None, "lost_cutoff": "4.0,h"},
+                        "values": {"lost_users_list": None, "lost_cutoff": (4.0, "h")},
                     },
                 },
             ],
@@ -414,7 +414,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "LostUsersEvents",
-                            "values": {"lost_users_list": None, "lost_cutoff": "4.0,h"},
+                            "values": {"lost_users_list": None, "lost_cutoff": (4.0, "h")},
                         },
                     },
                 ],
@@ -437,7 +437,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "LostUsersEvents",
-                        "values": {"lost_users_list": None, "lost_cutoff": "4.0,h"},
+                        "values": {"lost_users_list": None, "lost_cutoff": (4.0, "h")},
                     },
                 },
             ],
@@ -728,7 +728,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "SplitSessions",
-                        "values": {"session_cutoff": "30.0,m", "session_col": "session_id", "mark_truncated": True},
+                        "values": {"session_cutoff": (30.0, "m"), "session_col": "session_id", "mark_truncated": True},
                     },
                 },
             ],
@@ -746,7 +746,11 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "SplitSessions",
-                            "values": {"session_cutoff": "30.0,m", "session_col": "session_id", "mark_truncated": True},
+                            "values": {
+                                "session_cutoff": (30.0, "m"),
+                                "session_col": "session_id",
+                                "mark_truncated": True,
+                            },
                         },
                     },
                 ],
@@ -769,7 +773,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "SplitSessions",
-                        "values": {"session_cutoff": "30.0,m", "session_col": "session_id", "mark_truncated": True},
+                        "values": {"session_cutoff": (30.0, "m"), "session_col": "session_id", "mark_truncated": True},
                     },
                 },
             ],

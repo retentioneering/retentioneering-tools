@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 import types
 from dataclasses import dataclass, field
-from typing import Any, Callable, Type, Union
+from typing import Any, Callable, List, Type, Union
 
 from retentioneering.constants import DATETIME_UNITS_LIST
 from retentioneering.exceptions.widget import ParseReteFuncError
@@ -72,12 +72,20 @@ class ReteTimeWidget:
 
     @classmethod
     def _parse(cls: Type[ReteTimeWidget], value: str) -> tuple[float, str]:  # type: ignore
+        TIME, QUANT = 0, 1
+
         if type(value) is tuple:
             return value  # type: ignore
 
-        TIME, QUANT = 0, 1
+        if type(value) is list and len(value) != 2:
+            raise Exception("Incorrect input")
+
+        if type(value) is list:
+            return float(value[TIME]), str(value[QUANT])
+
         data = value.split(",")
-        if len(data) > 2:
+
+        if len(data) != 2:
             raise Exception("Incorrect input")
         return float(data[TIME]), str(data[QUANT])
 
@@ -180,6 +188,30 @@ class ListOfString:
         return value
 
 
+@dataclass
+class RenameRule:
+    group_name: str
+    child_events: List[str]
+
+
+@dataclass
+class RenameRulesWidget:
+    default: list[RenameRule] | None = None
+    widget: str = "rename_rules"
+
+    @classmethod
+    def from_dict(cls: Type[RenameRulesWidget], **kwargs: Any) -> "RenameRulesWidget":
+        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
+
+    @classmethod
+    def _serialize(cls: Type[RenameRulesWidget], value: list[RenameRule] | None) -> list[RenameRule] | None:
+        return value
+
+    @classmethod
+    def _parse(cls: Type[RenameRulesWidget], value: list[RenameRule] | None) -> list[RenameRule] | None:
+        return value
+
+
 WIDGET_TYPE = Union[
     Type[StringWidget],
     Type[IntegerWidget],
@@ -187,8 +219,10 @@ WIDGET_TYPE = Union[
     Type[BooleanWidget],
     Type[ReteTimeWidget],
     Type[ReteFunction],
+    Type[RenameRulesWidget],
 ]
-WIDGET = Union[StringWidget, IntegerWidget, EnumWidget, BooleanWidget, ReteTimeWidget, ReteFunction]
+
+WIDGET = Union[StringWidget, IntegerWidget, EnumWidget, BooleanWidget, ReteTimeWidget, ReteFunction, RenameRulesWidget]
 
 # @TODO: make default dict. Vladimir Makhanov
 WIDGET_MAPPING: dict[str, WIDGET_TYPE] = {

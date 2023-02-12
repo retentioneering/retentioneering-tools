@@ -1,40 +1,52 @@
 import pandas as pd
+import pytest
 
 from retentioneering.data_processor import DataProcessor
+from retentioneering.data_processor.registry import unregister_dataprocessor
 from retentioneering.eventstream import Eventstream, RawDataSchema
 from retentioneering.graph.p_graph import EventsNode, PGraph
 from retentioneering.params_model import ParamsModel
+from retentioneering.params_model.registry import unregister_params_model
 
 
-class DeleteParamsModel(ParamsModel):
-    name: str
+@pytest.fixture
+def delete_processor():
+    class DeleteParamsModel(ParamsModel):
+        name: str
 
+    class DeleteProcessor(DataProcessor):
+        params: DeleteParamsModel
 
-class DeleteProcessor(DataProcessor):
-    params: DeleteParamsModel
+        def __init__(self, params: DeleteParamsModel) -> None:
+            super().__init__(params=params)
 
-    def __init__(self, params: DeleteParamsModel) -> None:
-        super().__init__(params=params)
+        def apply(self, eventstream: Eventstream) -> Eventstream:
+            df = eventstream.to_dataframe(copy=True)
+            event_name = eventstream.schema.event_name
+            data_for_delete = df.loc[df[event_name] == self.params.name]
+            df["ref"] = df[eventstream.schema.event_id]
 
-    def apply(self, eventstream: Eventstream) -> Eventstream:
-        df = eventstream.to_dataframe(copy=True)
-        event_name = eventstream.schema.event_name
-        data_for_delete = df.loc[df[event_name] == self.params.name]
-        df["ref"] = df[eventstream.schema.event_id]
+            eventstream = Eventstream(
+                raw_data_schema=eventstream.schema.to_raw_data_schema(),
+                raw_data=df,
+                relations=[{"raw_col": "ref", "eventstream": eventstream}],
+            )
 
-        eventstream = Eventstream(
-            raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            raw_data=df,
-            relations=[{"raw_col": "ref", "eventstream": eventstream}],
-        )
+            eventstream._soft_delete(data_for_delete)
 
-        eventstream._soft_delete(data_for_delete)
+            return eventstream
 
-        return eventstream
+    yield {"params": DeleteParamsModel, "processor": DeleteProcessor}
+
+    unregister_dataprocessor(DeleteProcessor)
+    unregister_params_model(DeleteParamsModel)
 
 
 class TestGraphDelete:
-    def test_soft_delete_in_graph(self) -> None:
+    def test_soft_delete_in_graph(self, delete_processor) -> None:
+        DeleteParamsModel: ParamsModel = delete_processor["params"]
+        DeleteProcessor: DataProcessor = delete_processor["processor"]
+
         source_df = pd.DataFrame(
             [
                 {"event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},

@@ -105,7 +105,7 @@ class LostUsersEvents(DataProcessor):
             del data_lost["diff_end_to_end"]
 
         if lost_users_list:
-            data_lost = df.groupby(user_col, as_index=False)[time_col].max()
+            data_lost = df.groupby(user_col, as_index=False).last()
             data_lost[type_col] = np.where(data_lost["user_id"].isin(lost_users_list), "lost_user", "absent_user")
             data_lost[event_col] = data_lost[type_col]
             data_lost["ref"] = None

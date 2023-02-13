@@ -3,17 +3,16 @@ from __future__ import annotations
 import pandas as pd
 
 from retentioneering.data_processors_lib import PositiveTarget, PositiveTargetParams
-from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import RawDataSchema
 from retentioneering.eventstream.types import EventstreamType
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 from tests.data_processors_lib.fixtures.positive_target_corr import (
-    apply__1_event_corr,
-    apply__2_events_corr,
     apply__custom_func_corr,
-    graph__1_event_corr,
-    graph__2_events_corr,
+    apply__one_event_corr,
+    apply__two_events_corr,
     graph__custom_func_corr,
+    graph__one_event_corr,
+    graph__two_events_corr,
 )
 from tests.data_processors_lib.fixtures.positive_target_input import test_stream
 
@@ -52,22 +51,22 @@ class TestPositiveTarget(ApplyTestBase):
         event_timestamp="timestamp",
     )
 
-    def test_positive_target_apply__1_event(self, apply__1_event_corr):
+    def test_positive_target_apply__one_event(self, apply__one_event_corr):
         actual = self._apply(
             PositiveTargetParams(
                 positive_target_events=["event3"],
             )
         )
-        expected = apply__1_event_corr
+        expected = apply__one_event_corr
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
-    def test_positive_target_apply__2_events(self, apply__2_events_corr):
+    def test_positive_target_apply__two_events(self, apply__two_events_corr):
         actual = self._apply(
             PositiveTargetParams(
                 positive_target_events=["event3", "event2"],
             )
         )
-        expected = apply__2_events_corr
+        expected = apply__two_events_corr
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
     def test_positive_target_apply__custom_func(self, apply__custom_func_corr):
@@ -121,22 +120,22 @@ class TestPositiveTargetGraph(GraphTestBase):
         event_timestamp="timestamp",
     )
 
-    def test_positive_target_graph__1_event(self, graph__1_event_corr):
+    def test_positive_target_graph__one_event(self, graph__one_event_corr):
         actual = self._apply(
             PositiveTargetParams(
                 positive_target_events=["event3"],
             )
         )
-        expected = graph__1_event_corr
+        expected = graph__one_event_corr
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
-    def test_positive_target_graph__2_events(self, graph__2_events_corr):
+    def test_positive_target_graph__two_events(self, graph__two_events_corr):
         actual = self._apply(
             PositiveTargetParams(
                 positive_target_events=["event3", "event2"],
             )
         )
-        expected = graph__2_events_corr
+        expected = graph__two_events_corr
 
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
@@ -159,17 +158,17 @@ class TestPositiveTargetGraph(GraphTestBase):
 
 
 class TestPositiveTargetHelper:
-    def test_positive_target_graph__1_event(self, test_stream, graph__1_event_corr):
+    def test_positive_target_graph__one_event(self, test_stream, graph__one_event_corr):
         source = test_stream
-        correct_result = graph__1_event_corr
+        correct_result = graph__one_event_corr
         result = source.positive_target(positive_target_events=["event3"])
         result_df = result.to_dataframe()[correct_result.columns].reset_index(drop=True)
 
         assert pd.testing.assert_frame_equal(result_df, correct_result) is None
 
-    def test_positive_target_graph__2_events(self, test_stream, graph__2_events_corr):
+    def test_positive_target_graph__two_events(self, test_stream, graph__two_events_corr):
         source = test_stream
-        correct_result = graph__2_events_corr
+        correct_result = graph__two_events_corr
         result = source.positive_target(positive_target_events=["event3", "event2"])
         result_df = result.to_dataframe()[correct_result.columns].reset_index(drop=True)
 

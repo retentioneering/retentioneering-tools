@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from typing import Literal, Optional, Tuple, Union
 
 import matplotlib
-import numpy as np
 import pandas as pd
 import seaborn as sns
 
 from retentioneering.eventstream.types import EventstreamType
+from retentioneering.tooling.mixins.ended_events import EndedEventsMixin
 
 
 @dataclass
@@ -26,7 +26,7 @@ class CenteredParams:
             raise ValueError("left_gap in 'centered' dictionary must be >=1")
 
 
-class StepMatrix:
+class StepMatrix(EndedEventsMixin):
     """
     Step matrix is a matrix where its ``(i, j)`` element means the frequency
     of event ``i`` occurred as ``j``-th step in user trajectories. This class
@@ -121,7 +121,7 @@ class StepMatrix:
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
-        self.event_index = self.__eventstream.schema.event_index
+        self.event_index_col = self.__eventstream.schema.event_index
         self.data = self.__eventstream.to_dataframe()
         self.max_steps = max_steps
         self.weight_col = weight_col or self.__eventstream.schema.user_id
@@ -201,33 +201,6 @@ class StepMatrix:
             targets, piv_targets = None, None
 
         return piv, piv_targets, fraction_title, targets
-
-    def _add_ended_events(self, data: pd.DataFrame) -> pd.DataFrame:
-        """
-        Adds artificial ``ENDED`` event in the end of a path. If a path already
-        contains ``path_end`` event, it will be replaced with ``ENDED`` event.
-        Otherwise, ``ENDED`` event will be placed into the end of the path.
-        """
-        data[self.event_col] = data[self.event_col].str.replace("path_end", "ENDED")
-        users_with_ended = data[data[self.event_col] == "ENDED"][self.user_col].unique()
-
-        paths_with_ended = data[data[self.user_col].isin(users_with_ended)]
-        paths_without_ended = data[~data[self.user_col].isin(users_with_ended)]
-
-        additional_ended_events = (
-            paths_without_ended.groupby(self.user_col, as_index=False)
-            .last()
-            .assign(
-                **{
-                    self.event_col: "ENDED",
-                    self.event_index: lambda df_: df_[self.event_index]
-                    + (np.where(df_[self.event_col] == "ENDED", 0.5, 0)),
-                }
-            )
-        )
-
-        new_data = pd.concat([paths_with_ended, paths_without_ended, additional_ended_events])
-        return new_data
 
     def _generate_step_matrix(self, data: pd.DataFrame) -> pd.DataFrame:
         agg = data.groupby(["event_rank", self.event_col])[self.weight_col].nunique().reset_index()
@@ -425,7 +398,7 @@ class StepMatrix:
         """
         weight_col = self.weight_col or self.user_col
         data = self.__eventstream.to_dataframe()
-        data = self._add_ended_events(data)
+        data = self._add_ended_events(data, self.__eventstream.schema)
         data["event_rank"] = data.groupby(weight_col).cumcount() + 1
 
         # BY HERE WE NEED TO OBTAIN FINAL DIFF piv and piv_targets before sorting, thresholding and plotting:

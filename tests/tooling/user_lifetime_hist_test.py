@@ -12,12 +12,12 @@ FLOAT_PRECISION_BINS = 1
 
 
 class TestUserLifetimeHist:
-    def test_user_lifetime_hist__default(self, test_stream):
+    def test_user_lifetime_hist__basic(self, test_stream):
         correct_result = np.array(
             [172802.0, 431940.0, 2505540.0, 863940.0, 1900740.0, 172740.0, 518340.0, 1641540.0, 1468740.0]
         )
         correct_bins = np.array([172740.0, 639300.0, 1105860.0, 1572420.0, 2038980.0, 2505540.0])
-        ul = UserLifetimeHist(test_stream)
+        ul = UserLifetimeHist(test_stream, bins=5)
         result = ul.values
 
         assert np.testing.assert_array_equal(result[0].round(FLOAT_PRECISION_VALS), correct_result) is None, "values"

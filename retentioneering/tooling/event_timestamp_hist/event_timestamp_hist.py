@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Literal, Optional
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,12 +13,10 @@ from retentioneering.eventstream.types import EventstreamType
 
 class EventTimestampHist:
     """
-    Plot the distribution of events over time. Can be useful for detecting time-based anomalies, and visualising
-    general timespan of the eventstream.
+    A class for visualize the distribution of events over time.
 
     Parameters
     ----------
-
     raw_events_only : bool, default False
         If ``True`` - statistics will be shown only for raw events.
         If ``False`` - for all events presented in your data.
@@ -28,8 +26,11 @@ class EventTimestampHist:
         Specify the time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
         Specify the time distance quantile as the upper boundary. The values above the boundary are truncated.
-    bins : int or {"auto"}, default "auto"
-        Specify the amount of histogram bins.
+    bins : int or str, default 20
+        Generic bin parameter that can be the name of a reference rule or
+        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`
+    figsize : tuple of float, default (12.0, 7.0)
+        Width, height in inches.
 
     """
 
@@ -40,7 +41,7 @@ class EventTimestampHist:
         event_list: list[str] | None = None,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int | Literal["auto"] = "auto",
+        bins: int | str = 20,
         figsize: tuple[float, float] = (12.0, 7.0),
     ) -> None:
         self.__eventstream = eventstream
@@ -77,6 +78,17 @@ class EventTimestampHist:
 
     @property
     def values(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Calculate values for the histplot.
+
+        Returns
+        -------
+        tuple(np.ndarray, np.ndarray)
+
+            1. The first array contains the values for histogram
+            2. The first array contains the bin edges
+
+        """
         data = self.__eventstream.to_dataframe()
 
         if self.raw_events_only:

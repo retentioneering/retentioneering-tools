@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Literal, Optional
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,9 +14,7 @@ from retentioneering.eventstream.types import EventstreamType
 
 class UserLifetimeHist:
     """
-    Plot the distribution of user lifetimes. A users' lifetime is the timedelta between the first and the last events
-    of the user. Can be useful for finding suitable parameters of various data processors, such as
-    DeleteUsersByPathLength or TruncatedEvents.
+    A class for visualize a ``users' lifetime``.
 
     Parameters
     ----------
@@ -29,8 +27,9 @@ class UserLifetimeHist:
         Specifies the time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
         Specifies the time distance quantile as the upper boundary. The values above the boundary are truncated.
-    bins : int or {"auto"}, default "auto"
-        Specifies the amount of histogram bins.
+    bins : int or str, default 20
+        Generic bin parameter that can be the name of a reference rule or
+        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`
     figsize : tuple of float, default (12.0, 7.0)
         Width, height in inches.
 
@@ -43,7 +42,7 @@ class UserLifetimeHist:
         log_scale: tuple[bool, bool] = (False, False),
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int | Literal["auto"] = "auto",
+        bins: int | str = 20,
         figsize: tuple[float, float] = (12.0, 7.0),
     ) -> None:
         self.__eventstream = eventstream
@@ -83,8 +82,8 @@ class UserLifetimeHist:
         -------
         tuple(np.ndarray, np.ndarray)
 
-            1. Contain the values for histogram
-            2. Contain the bin edges
+            1. The first array contains the values for histogram
+            2. The first array contains the bin edges
 
         """
         data = self.__eventstream.to_dataframe().groupby(self.user_col)[self.time_col].agg(["min", "max"])

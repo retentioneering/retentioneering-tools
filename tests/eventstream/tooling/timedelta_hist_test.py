@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from tests.eventstream.tooling.fixtures.timedelta_hist import (
     source_stream_for_log_scale,

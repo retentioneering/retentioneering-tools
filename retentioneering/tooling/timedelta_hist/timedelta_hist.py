@@ -72,8 +72,11 @@ class TimedeltaHist:
         Specify the time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
         Specify the time distance quantile as the upper boundary. The values above the boundary are truncated.
-    bins : int, default "auto"
-        Specify the amount of histogram bins.
+    bins : int or str, default 20
+        Generic bin parameter that can be the name of a reference rule or
+        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`
+    figsize : tuple of float, default (12.0, 7.0)
+        Width, height in inches.
     """
 
     EVENTSTREAM_EVENTS_LIST = ["eventstream_start", "eventstream_end"]
@@ -89,8 +92,8 @@ class TimedeltaHist:
         log_scale: tuple[bool, bool] = (False, False),
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int | Literal["auto"] = "auto",
-        figsize: tuple[int, int] = (15, 10),
+        bins: int | str = 20,
+        figsize: tuple[float, float] = (12.0, 7.0),
     ) -> None:
 
         self.__eventstream = eventstream
@@ -180,12 +183,14 @@ class TimedeltaHist:
     @property
     def values(self) -> tuple[np.ndarray, np.ndarray]:
         """
+        Calculate values for the histplot.
 
         Returns
         -------
         tuple(np.ndarray, np.ndarray)
-            1. Contains the values for histogram
-            2. Contains the bin edges
+
+            1. The first array contains the values for histogram
+            2. The first array contains the bin edges
         """
         data = self.__eventstream.to_dataframe().sort_values([self.weight_col, self.time_col])
 
@@ -219,10 +224,6 @@ class TimedeltaHist:
         """
         out_hist = self.values[0]
         plt.figure(figsize=self.figsize)
-        if self.log_scale[0]:
-            plt.xscale("log")
-        if self.log_scale[1]:
-            plt.yscale("log")
         plt.title(
             f"Timedelta histogram, event pair {self.event_pair}, weight column {self.weight_col}"
             f"{', group ' + self.aggregation if self.aggregation is not None else ''}"

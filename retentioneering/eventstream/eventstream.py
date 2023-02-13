@@ -782,7 +782,8 @@ class Eventstream(
         log_scale: tuple[bool, bool] = (False, False),
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int = 20,
+        bins: int | str = 20,
+        figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> TimedeltaHist:
         """
@@ -795,8 +796,8 @@ class Eventstream(
         Returns
         -------
         TimedeltaHist
-            A ``TimedeltaHist`` instance fitted to the given parameters.
-            If ``show_plot=True`` also plot sns.hist
+            A ``TimedeltaHist`` class instance with given parameters.
+
         """
         timedelta_hist = TimedeltaHist(
             eventstream=self,
@@ -809,6 +810,7 @@ class Eventstream(
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
+            figsize=figsize,
         )
         if show_plot:
             timedelta_hist.plot()

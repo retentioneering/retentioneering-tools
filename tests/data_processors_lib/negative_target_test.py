@@ -7,6 +7,15 @@ from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import RawDataSchema
 from retentioneering.eventstream.types import EventstreamType
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
+from tests.data_processors_lib.fixtures.negative_target_corr import (
+    apply__1_event_corr,
+    apply__2_events_corr,
+    apply__custom_func_corr,
+    graph__1_event_corr,
+    graph__2_events_corr,
+    graph__custom_func_corr,
+)
+from tests.data_processors_lib.fixtures.negative_target_input import test_stream
 
 
 class TestNegativeTarget(ApplyTestBase):
@@ -42,37 +51,25 @@ class TestNegativeTarget(ApplyTestBase):
         event_timestamp="timestamp",
     )
 
-    def test_negative_target_apply__1_event(self):
+    def test_negative_target_apply__1_event(self, apply__1_event_corr):
         actual = self._apply(
             NegativeTargetParams(
                 negative_target_events=["event3"],
             )
         )
-        expected = pd.DataFrame(
-            [
-                [1, "negative_target_event3", "negative_target", "2022-01-01 00:03:30"],
-                [2, "negative_target_event3", "negative_target", "2022-01-02 00:00:05"],
-            ],
-            columns=["user_id", "event", "event_type", "timestamp"],
-        )
-        assert actual[expected.columns].compare(expected).shape == (0, 0)
+        expected = apply__1_event_corr
+        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
-    def test_negative_target_apply__2_events(self):
+    def test_negative_target_apply__2_events(self, apply__2_events_corr):
         actual = self._apply(
             NegativeTargetParams(
                 negative_target_events=["event3", "event2"],
             )
         )
-        expected = pd.DataFrame(
-            [
-                [1, "negative_target_event2", "negative_target", "2022-01-01 00:01:02"],
-                [2, "negative_target_event3", "negative_target", "2022-01-02 00:00:05"],
-            ],
-            columns=["user_id", "event", "event_type", "timestamp"],
-        )
-        assert actual[expected.columns].compare(expected).shape == (0, 0)
+        expected = apply__2_events_corr
+        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
-    def test_negative_target_apply__custom_func(self):
+    def test_negative_target_apply__custom_func(self, apply__custom_func_corr):
         def custom_func(eventstream: EventstreamType, events: list[str]) -> pd.DataFrame:
             user_col = eventstream.schema.user_id
             time_col = eventstream.schema.event_timestamp
@@ -85,21 +82,9 @@ class TestNegativeTarget(ApplyTestBase):
             return df.loc[events_index]
 
         actual = self._apply(NegativeTargetParams(negative_target_events=["event1"], func=custom_func))
-        expected_columns = ["user_id", "event", "event_type", "timestamp"]
-        expected = pd.DataFrame(
-            [
-                [1, "negative_target_event1", "negative_target", "2022-01-01 00:01:00"],
-                [1, "negative_target_event1", "negative_target", "2022-01-01 00:05:00"],
-                [2, "negative_target_event1", "negative_target", "2022-01-02 00:00:00"],
-                [2, "negative_target_event1", "negative_target", "2022-01-02 00:00:00"],
-                [3, "negative_target_event1", "negative_target", "2022-01-02 00:01:10"],
-                [3, "negative_target_event1", "negative_target", "2022-01-02 00:02:05"],
-            ],
-            columns=expected_columns,
-        )
-        expected["timestamp"] = pd.to_datetime(expected["timestamp"])
+        expected = apply__custom_func_corr
 
-        assert pd.testing.assert_frame_equal(actual[expected_columns], expected) is None
+        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
 
 class TestNegativeTargetGraph(GraphTestBase):
@@ -135,76 +120,25 @@ class TestNegativeTargetGraph(GraphTestBase):
         event_timestamp="timestamp",
     )
 
-    def test_negative_target_graph__1_event(self):
+    def test_negative_target_graph__1_event(self, graph__1_event_corr):
         actual = self._apply(
             NegativeTargetParams(
                 negative_target_events=["event3"],
             )
         )
-        expected = pd.DataFrame(
-            [
-                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "negative_target_event3", "negative_target", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "negative_target_event3", "negative_target", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
-            ],
-            columns=["user_id", "event", "event_type", "timestamp"],
-        )
-        assert actual[expected.columns].compare(expected).shape == (0, 0)
+        expected = graph__1_event_corr
+        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
-    def test_negative_target_graph__2_events(self):
+    def test_negative_target_graph__2_events(self, graph__2_events_corr):
         actual = self._apply(
             NegativeTargetParams(
                 negative_target_events=["event3", "event2"],
             )
         )
-        expected = pd.DataFrame(
-            [
-                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "negative_target_event2", "negative_target", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "negative_target_event3", "negative_target", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
-            ],
-            columns=["user_id", "event", "event_type", "timestamp"],
-        )
+        expected = graph__2_events_corr
+        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
-        assert actual[expected.columns].compare(expected).shape == (0, 0)
-
-    def test_negative_target_graph__custom_func(self) -> bool:
+    def test_negative_target_graph__custom_func(self, graph__custom_func_corr):
         def custom_func(eventstream: EventstreamType, events: list[str]) -> pd.DataFrame:
             user_col = eventstream.schema.user_id
             time_col = eventstream.schema.event_timestamp
@@ -216,147 +150,31 @@ class TestNegativeTargetGraph(GraphTestBase):
 
             return df.loc[events_index]
 
-        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
-        correct_result = pd.DataFrame(
-            [
-                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "negative_target_event1", "negative_target", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [1, "negative_target_event1", "negative_target", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "negative_target_event1", "negative_target", "2022-01-02 00:00:00"],
-                [2, "negative_target_event1", "negative_target", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "negative_target_event1", "negative_target", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "negative_target_event1", "negative_target", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
-            ],
-            columns=correct_result_columns,
-        )
-        correct_result["timestamp"] = pd.to_datetime(correct_result["timestamp"])
-        result = self._apply(NegativeTargetParams(negative_target_events=["event1"], func=custom_func))
+        expected = graph__custom_func_corr
+        actual = self._apply(NegativeTargetParams(negative_target_events=["event1"], func=custom_func))
 
-        assert pd.testing.assert_frame_equal(result[correct_result_columns], correct_result) is None
+        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
 
 class TestNegativeTargetHelper:
-    def test_stream(self):
-        source_df = pd.DataFrame(
-            [
-                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
-            ],
-            columns=["user_id", "event", "event_type", "timestamp"],
-        )
-        raw_data_schema = RawDataSchema(
-            user_id="user_id",
-            event_name="event",
-            event_type="event_type",
-            event_timestamp="timestamp",
-        )
-        return Eventstream(source_df, raw_data_schema=raw_data_schema)
+    def test_negative_target_graph__1_event(self, test_stream, graph__1_event_corr):
+        source = test_stream
+        expected = graph__1_event_corr
+        actual = source.negative_target(negative_target_events=["event3"])
+        actual = actual.to_dataframe()[expected.columns].reset_index(drop=True)
 
-    def test_negative_target_graph__1_event(self):
-        source = self.test_stream()
-        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
-        correct_result = pd.DataFrame(
-            [
-                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "negative_target_event3", "negative_target", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "negative_target_event3", "negative_target", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
-            ],
-            columns=correct_result_columns,
-        )
-        result = source.negative_target(negative_target_events=["event3"])
-        result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
+        assert pd.testing.assert_frame_equal(actual, expected) is None
 
-        assert result_df.compare(correct_result).shape == (0, 0)
+    def test_negative_target_graph__2_events(self, test_stream, graph__2_events_corr):
+        source = test_stream
+        expected = graph__2_events_corr
 
-    def test_negative_target_graph__2_events(self):
-        source = self.test_stream()
-        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
-        correct_result = pd.DataFrame(
-            [
-                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "negative_target_event2", "negative_target", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "negative_target_event3", "negative_target", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
-            ],
-            columns=correct_result_columns,
-        )
+        actual = source.negative_target(negative_target_events=["event3", "event2"])
+        actual = actual.to_dataframe()[expected.columns].reset_index(drop=True)
 
-        result = source.negative_target(negative_target_events=["event3", "event2"])
-        result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
+        assert pd.testing.assert_frame_equal(actual, expected) is None
 
-        assert result_df.compare(correct_result).shape == (0, 0)
-
-    def test_negative_target_graph__custom_func(self) -> bool:
+    def test_negative_target_graph__custom_func(self, test_stream, graph__custom_func_corr):
         def custom_func(eventstream: EventstreamType, events: list[str]) -> pd.DataFrame:
             user_col = eventstream.schema.user_id
             time_col = eventstream.schema.event_timestamp
@@ -368,41 +186,10 @@ class TestNegativeTargetHelper:
             result = df.loc[events_index]
             return result
 
-        source = self.test_stream()
-        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
-        correct_result = pd.DataFrame(
-            [
-                [1, "path_start", "path_start", "2022-01-01 00:01:00"],
-                [1, "event1", "raw", "2022-01-01 00:01:00"],
-                [1, "negative_target_event1", "negative_target", "2022-01-01 00:01:00"],
-                [1, "event2", "raw", "2022-01-01 00:01:02"],
-                [1, "event1", "raw", "2022-01-01 00:02:00"],
-                [1, "event1", "raw", "2022-01-01 00:03:00"],
-                [1, "event1", "synthetic", "2022-01-01 00:03:00"],
-                [1, "session_start", "session_start", "2022-01-01 00:03:30"],
-                [1, "event3", "raw", "2022-01-01 00:03:30"],
-                [1, "event1", "raw", "2022-01-01 00:04:00"],
-                [1, "event3", "raw", "2022-01-01 00:04:30"],
-                [1, "event1", "raw", "2022-01-01 00:05:00"],
-                [1, "negative_target_event1", "negative_target", "2022-01-01 00:05:00"],
-                [2, "event1", "raw", "2022-01-02 00:00:00"],
-                [2, "negative_target_event1", "negative_target", "2022-01-02 00:00:00"],
-                [2, "negative_target_event1", "negative_target", "2022-01-02 00:00:00"],
-                [2, "event3", "raw", "2022-01-02 00:00:05"],
-                [2, "event2", "raw", "2022-01-02 00:01:05"],
-                [2, "path_end", "path_end", "2022-01-02 00:01:05"],
-                [3, "event1", "raw", "2022-01-02 00:01:10"],
-                [3, "negative_target_event1", "negative_target", "2022-01-02 00:01:10"],
-                [3, "event1", "raw", "2022-01-02 00:02:05"],
-                [3, "negative_target_event1", "negative_target", "2022-01-02 00:02:05"],
-                [3, "event4", "raw", "2022-01-02 00:03:05"],
-                [3, "path_end", "path_end", "2022-01-02 00:03:05"],
-            ],
-            columns=correct_result_columns,
-        )
+        source = test_stream
+        expected = graph__custom_func_corr
 
-        correct_result["timestamp"] = pd.to_datetime(correct_result["timestamp"])
         actual = source.negative_target(negative_target_events=["event1"], func=custom_func)
-        result_df = actual.to_dataframe()[correct_result_columns].reset_index(drop=True)
+        actual = actual.to_dataframe()[expected.columns].reset_index(drop=True)
 
-        assert pd.testing.assert_frame_equal(result_df[correct_result_columns], correct_result) is None
+        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None

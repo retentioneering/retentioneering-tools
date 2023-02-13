@@ -848,10 +848,12 @@ class Eventstream(
 
     def event_timestamp_hist(
         self,
-        event_list: Optional[List[str] | str] = "all",
+        event_list: list[str] | None = None,
+        raw_events_only: bool = True,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int = 20,
+        bins: int | Literal["auto"] = "auto",
+        figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> EventTimestampHist:
         """
@@ -868,9 +870,11 @@ class Eventstream(
         event_timestamp_hist = EventTimestampHist(
             eventstream=self,
             event_list=event_list,
+            raw_events_only=raw_events_only,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
+            figsize=figsize,
         )
         if show_plot:
             event_timestamp_hist.plot()

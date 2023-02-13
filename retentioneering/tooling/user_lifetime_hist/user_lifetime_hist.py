@@ -24,13 +24,15 @@ class UserLifetimeHist:
         Specifies the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
     log_scale : tuple of bool, default (False, False)
-        Apply log scaling to the (``x``, ``y``) axises.
+        Apply log scaling to the (``x``, ``y``) axes.
     lower_cutoff_quantile : float, optional
         Specifies the time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
         Specifies the time distance quantile as the upper boundary. The values above the boundary are truncated.
     bins : int or {"auto"}, default "auto"
         Specifies the amount of histogram bins.
+    figsize : tuple of float, default (12.0, 7.0)
+        Width, height in inches.
 
     """
 

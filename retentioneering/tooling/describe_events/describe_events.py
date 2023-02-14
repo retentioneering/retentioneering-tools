@@ -6,6 +6,11 @@ from retentioneering.eventstream.types import EventstreamType
 
 
 class DescribeEvents:
+    TIME_ROUND_UNIT = "s"
+    STATS_ORDER = ["mean", "std", "median", "min", "max"]
+    UNIQUE_SESS = ("basic_statistics", "unique_sessions")
+    SHARE_SESS = ("basic_statistics", "unique_sessions_shared")
+
     def __init__(
         self,
         eventstream: EventstreamType,
@@ -22,100 +27,88 @@ class DescribeEvents:
         self.type_col = self.__eventstream.schema.event_type
         self.event_list = event_list
         self.raw_events_only = raw_events_only
-
-    def _describe(self) -> pd.DataFrame:
-        user_col, event_col, time_col, type_col, session_col, event_list = (
-            self.user_col,
-            self.event_col,
-            self.time_col,
-            self.type_col,
-            self.session_col,
-            self.event_list,
-        )
-
-        df = self.__eventstream.to_dataframe(copy=True)
-        has_sessions = session_col in df.columns
-
+        self.df = self.__eventstream.to_dataframe(copy=True)
+        self.has_session_col: bool = False
         if self.raw_events_only:
-            df = df[df[type_col].isin(["raw"])]
+            self.df = self.df[self.df[self.type_col].isin(["raw"])]
 
-        total_events_base = df.shape[0]
-        unique_users_base = df[user_col].nunique()
+        self.total_events_base: int = self.df.shape[0]
+        self.unique_users_base: int = self.df[self.user_col].nunique()
+        if self.session_col in self.df.columns:
+            self.has_session_col = True
+            self.total_sessions_base: int = self.df[self.session_col].nunique()
 
-        df["__event_trajectory_idx"] = df.groupby(user_col).cumcount()
-        df["__event_trajectory_timedelta"] = df[time_col] - df.groupby(user_col)[time_col].transform("first")
+    def _agg_min_time(self, df: pd.DataFrame, agg_col: str, prefix: str) -> pd.DataFrame:
 
-        if has_sessions:
-            total_sessions_base = df[session_col].nunique()  # type: ignore
-            df["__event_session_idx"] = df.groupby(session_col).cumcount()
-            df["__event_session_timedelta"] = df[time_col] - df.groupby(session_col)[time_col].transform("first")
+        df[f"__event_{prefix}_idx"] = df.groupby(agg_col).cumcount()
+        df[f"__event_{prefix}_timedelta"] = df[self.time_col] - df.groupby(agg_col)[self.time_col].transform("first")
+        return df
 
-        if event_list:
-            df = df[df[event_col].isin(event_list)]
+    def _agg_time_events(self, df: pd.DataFrame, agg_col: str, prefix: str) -> pd.DataFrame:
+
+        first_time = f"time_to_FO_{prefix}_wise"
+        first_event = f"steps_to_FO_{prefix}_wise"
+
+        df_agg_event = (
+            df.groupby([self.event_col, agg_col])
+            .agg(time_to_FO=(f"__event_{prefix}_timedelta", "first"), steps_to_FO=(f"__event_{prefix}_idx", "first"))
+            .reset_index()
+        )
+        df_agg_event.columns = [self.event_col, self.user_col, first_time, first_event]  # type: ignore
+        df_agg_event[first_time] = df_agg_event[first_time].dt.total_seconds()
+        df_agg_event = df_agg_event.groupby([self.event_col])[[first_time, first_event]].agg(
+            DescribeEvents.STATS_ORDER  # type: ignore
+        )
+        df_agg_event[(first_event, "mean")] = df_agg_event[(first_event, "mean")].round(2)
+        df_agg_event[(first_event, "std")] = df_agg_event[(first_event, "std")].round(2)
+
+        for stat in DescribeEvents.STATS_ORDER:
+            mult_ind = (first_time, stat)
+            df_agg_event[mult_ind] = pd.to_timedelta(df_agg_event[mult_ind], unit="s").round(
+                DescribeEvents.TIME_ROUND_UNIT  # type: ignore
+            )
+
+        return df_agg_event
+
+    def _create_basic_info_df(self, df: pd.DataFrame) -> pd.DataFrame:
 
         basic_info = df.groupby("event").agg(
             number_of_occurrences=("event_id", "count"), unique_users=("user_id", "nunique")
         )
 
-        basic_info["number_of_occurrences_shared"] = (basic_info["number_of_occurrences"] / total_events_base).round(2)
-        basic_info["unique_users_shared"] = (basic_info["unique_users"] / unique_users_base).round(2)
+        basic_info["number_of_occurrences_shared"] = (
+            basic_info["number_of_occurrences"] / self.total_events_base
+        ).round(2)
+        basic_info["unique_users_shared"] = (basic_info["unique_users"] / self.unique_users_base).round(2)
 
         basic_info.columns = pd.MultiIndex.from_product([["basic_statistics"], basic_info.columns])
-        stats_order = ["mean", "std", "median", "min", "max"]
-        first_time = "time_to_FO_user_wise"
-        first_event = "steps_to_FO_user_wise"
 
-        df_agg_event = (
-            df.groupby([event_col, user_col])
-            .agg(
-                time_to_FO_user_wise=("__event_trajectory_timedelta", "first"),
-                steps_to_FO_user_wise=("__event_trajectory_idx", "first"),
-            )
-            .reset_index()
-        )
+        if self.has_session_col:
 
-        df_agg_event[first_time] = df_agg_event[first_time].dt.total_seconds()
+            basic_info[DescribeEvents.UNIQUE_SESS] = self.df.groupby("event")[self.session_col].agg("nunique")
+            basic_info[DescribeEvents.SHARE_SESS] = (
+                basic_info[DescribeEvents.UNIQUE_SESS] / self.total_sessions_base
+            ).round(2)
 
-        df_agg_event = df_agg_event.groupby([event_col])[[first_time, first_event]].agg(stats_order)  # type: ignore
-        df_agg_event[(first_event, "mean")] = df_agg_event[(first_event, "mean")].round(2)
-        df_agg_event[(first_event, "std")] = df_agg_event[(first_event, "std")].round(2)
+        return basic_info
 
-        for stat in stats_order:
-            mult_ind = (first_time, stat)
-            df_agg_event[mult_ind] = pd.to_timedelta(df_agg_event[mult_ind], unit="s").round("s")  # type: ignore
+    def _describe(self) -> pd.DataFrame:
+        df = self._agg_min_time(df=self.df, agg_col=self.user_col, prefix="user")
 
-        if has_sessions:
-            first_time = "time_to_FO_session_wise"
-            first_event = "steps_to_FO_session_wise"
-            unique_sess = ("basic_statistics", "unique_sessions")
-            share_sess = ("basic_statistics", "unique_sessions_shared")
+        if self.has_session_col:
+            df = self._agg_min_time(df=df, agg_col=self.session_col, prefix="session")
 
-            basic_info[unique_sess] = df.groupby("event")[session_col].agg("nunique")  # type: ignore
-            basic_info[share_sess] = (basic_info[unique_sess] / total_sessions_base).round(2)  # type: ignore
+        if self.event_list:
+            df = df[df[self.event_col].isin(self.event_list)]
 
-            df_agg_sess = (
-                df.groupby([event_col, session_col])
-                .agg(
-                    time_to_FO_session_wise=("__event_session_timedelta", "first"),
-                    steps_to_FO_session_wise=("__event_session_idx", "first"),
-                )
-                .reset_index()
-            )
+        basic_info = self._create_basic_info_df(df=df)
+        df_agg_event = self._agg_time_events(df=df, agg_col=self.user_col, prefix="user")
 
-            df_agg_sess[first_time] = df_agg_sess[first_time].dt.total_seconds()
-
-            df_agg_sess = df_agg_sess.groupby([event_col])[[first_time, first_event]].agg(stats_order)  # type: ignore
-            df_agg_sess[(first_event, "mean")] = df_agg_sess[(first_event, "mean")].round(2)
-            df_agg_sess[(first_event, "std")] = df_agg_sess[(first_event, "std")].round(2)
-
-            for stat in stats_order:
-                mult_ind = (first_time, stat)
-                df_agg_sess[mult_ind] = pd.to_timedelta(df_agg_sess[mult_ind], unit="s").round("s")  # type: ignore
-
+        if self.has_session_col:
+            df_agg_sess = self._agg_time_events(df=df, agg_col=self.session_col, prefix="session")
             df_agg_event = df_agg_event.merge(df_agg_sess, left_index=True, right_index=True)
 
         res = basic_info.merge(df_agg_event, left_index=True, right_index=True)
-        if has_sessions:
-            res.insert(2, unique_sess, res.pop(unique_sess))  # type: ignore
-
+        if self.has_session_col:
+            res.insert(2, DescribeEvents.UNIQUE_SESS, res.pop(DescribeEvents.UNIQUE_SESS))  # type: ignore
         return res

@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
+from numpy import timedelta64
 
 from retentioneering.eventstream.types import EventstreamType
 
 
 class Describe:
+
+    OUT_COLS = ["value"]
+    INDEX_NAMES = ["category", "metric"]
+    TIME_ROUND_UNIT = "s"
+
     def __init__(
         self, eventstream: EventstreamType, session_col: str = "session_id", raw_events_only: bool = False
     ) -> None:
@@ -13,114 +20,85 @@ class Describe:
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
-        self.session_col = session_col
         self.type_col = self.__eventstream.schema.event_type
-        self.raw_events_only = raw_events_only
+        self.session_col = session_col
 
-    def _describe(self) -> pd.DataFrame:
-        user_col, event_col, time_col, type_col, session_col = (
-            self.user_col,
-            self.event_col,
-            self.time_col,
-            self.type_col,
-            self.session_col,
-        )
-
-        df = self.__eventstream.to_dataframe(copy=True)
-        has_sessions = session_col in df.columns
-
-        if self.raw_events_only:
-            df = df[df[type_col].isin(["raw"])]
-
-        max_time = df[time_col].max()
-        min_time = df[time_col].min()
-
-        values_overall = [
-            df[user_col].nunique(),
-            df[event_col].nunique(),
-            min_time.round("s"),
-            max_time.round("s"),
-            (max_time - min_time).round("s"),
-        ]
-
-        user_agg = df.groupby(user_col).agg({time_col: ["min", "max"], event_col: ["count"]}).reset_index()
-        time_diff_user = user_agg[(time_col, "max")] - user_agg[(time_col, "min")]
-        mean_time_user = time_diff_user.mean().round("s")  # type: ignore
-        median_time_user = time_diff_user.median().round("s")  # type: ignore
-        std_time_user = time_diff_user.std().round("s")  # type: ignore
-        min_length_time_user = time_diff_user.min().round("s")
-        max_length_time_user = time_diff_user.max().round("s")
-
-        event_count_user = user_agg[(event_col, "count")]
-        mean_user = round(event_count_user.mean(), 2)  # type: ignore
-        median_user = event_count_user.median()
-        std_user = round(event_count_user.std(), 2)  # type: ignore
-        min_length_user = event_count_user.min()
-        max_length_user = event_count_user.max()
-
-        values_time_events = [
-            mean_time_user,
-            std_time_user,
-            median_time_user,
-            min_length_time_user,
-            max_length_time_user,
-            mean_user,
-            std_user,
-            median_user,
-            min_length_user,
-            max_length_user,
-        ]
-
-        all_iterables = [
+        self.overall_stats = [
             ["overall"],
             ["unique_users", "unique_events", "eventstream_start", "eventstream_end", "eventstream_length"],
         ]
+        self.time_events_stats = [["path_length_time", "path_length_steps"], ["mean", "std", "median", "min", "max"]]
 
-        time_events_iterables = [["path_length_time", "path_length_steps"], ["mean", "std", "median", "min", "max"]]
+        self.df = self.__eventstream.to_dataframe(copy=True)
+        self.has_session_col: bool = False
+        if self.session_col in self.df.columns:
+            self.has_session_col = True
 
-        if has_sessions:
-            time_events_iterables[0] += ["session_length_time", "session_length_steps"]
-            all_iterables[1].insert(2, "unique_sessions")
+        if raw_events_only:
+            self.df = self.df[self.df[self.type_col].isin(["raw"])]
 
-            values_overall.insert(2, df[session_col].nunique())  # type: ignore
+    def _calc_statistics(self, agg_col: str) -> list[np.timedelta64 | int | float]:
 
-            session_agg = df.groupby(session_col).agg({time_col: ["min", "max"], event_col: ["count"]}).reset_index()
-            time_diff_session = session_agg[(time_col, "max")] - session_agg[(time_col, "min")]
-            mean_time_session = time_diff_session.mean().round("s")  # type: ignore
-            median_time_session = time_diff_session.median().round("s")  # type: ignore
-            std_time_session = time_diff_session.std().round("s")  # type: ignore
-            min_length_time_session = time_diff_session.min().round("s")
-            max_length_time_session = time_diff_session.max().round("s")
+        df_agg = self.df.groupby(agg_col).agg({self.time_col: ["min", "max"], self.event_col: ["count"]}).reset_index()
+        time_diff_user = df_agg[(self.time_col, "max")] - df_agg[(self.time_col, "min")]
+        mean_time_agg_col = time_diff_user.mean().round(Describe.TIME_ROUND_UNIT)  # type: ignore
+        median_time_agg_col = time_diff_user.median().round(Describe.TIME_ROUND_UNIT)  # type: ignore
+        std_time_agg_col = time_diff_user.std().round(Describe.TIME_ROUND_UNIT)  # type: ignore
+        min_length_time_agg_col = time_diff_user.min().round(Describe.TIME_ROUND_UNIT)
+        max_length_time_agg_col = time_diff_user.max().round(Describe.TIME_ROUND_UNIT)
 
-            event_count_session = session_agg[(event_col, "count")]
-            mean_session = round(event_count_session.mean(), 2)  # type: ignore
-            median_session = event_count_session.median()
-            std_session = round(event_count_session.std(), 2)  # type: ignore
-            min_length_session = event_count_session.min()
-            max_length_session = event_count_session.max()
+        event_count_agg_col = df_agg[(self.event_col, "count")]
+        mean_event_agg_col = round(event_count_agg_col.mean(), 2)
+        median_event_agg_col = event_count_agg_col.median()
+        std_event_agg_col = round(event_count_agg_col.std(), 2)
+        min_event_length_agg_col = event_count_agg_col.min()
+        max_event_length_agg_col = event_count_agg_col.max()
 
-            values_time_events += [
-                mean_time_session,
-                std_time_session,
-                median_time_session,
-                min_length_time_session,
-                max_length_time_session,
-                mean_session,
-                std_session,
-                median_session,
-                min_length_session,
-                max_length_session,
-            ]
+        values_time_events = [
+            mean_time_agg_col,
+            std_time_agg_col,
+            median_time_agg_col,
+            min_length_time_agg_col,
+            max_length_time_agg_col,
+            mean_event_agg_col,
+            std_event_agg_col,
+            median_event_agg_col,
+            min_event_length_agg_col,
+            max_event_length_agg_col,
+        ]
+        return values_time_events  # type: ignore
 
-        out_columns = ["value"]
-        index_names = ["category", "metric"]
+    def _output_df_construction(
+        self, values_overall: list[timedelta64 | int | float], values_time_events: list[timedelta64 | int | float]
+    ) -> pd.DataFrame:
+        overall_index = pd.MultiIndex.from_product(self.overall_stats, names=self.INDEX_NAMES)
+        time_events_index = pd.MultiIndex.from_product(self.time_events_stats, names=Describe.INDEX_NAMES)
 
-        overall_index = pd.MultiIndex.from_product(all_iterables, names=index_names)
-        time_events_index = pd.MultiIndex.from_product(time_events_iterables, names=index_names)
+        df_overall = pd.DataFrame(data=values_overall, index=overall_index, columns=Describe.OUT_COLS)
+        df_time_events = pd.DataFrame(data=values_time_events, index=time_events_index, columns=Describe.OUT_COLS)
 
-        df_overall = pd.DataFrame(data=values_overall, index=overall_index, columns=out_columns)
-        df_time_events = pd.DataFrame(data=values_time_events, index=time_events_index, columns=out_columns)
+        return pd.concat([df_overall, df_time_events])
 
-        res = pd.concat([df_overall, df_time_events])
+    def _describe(self) -> pd.DataFrame:
 
-        return res
+        max_time = self.df[self.time_col].max()
+        min_time = self.df[self.time_col].min()
+
+        values_overall = [
+            self.df[self.user_col].nunique(),
+            self.df[self.event_col].nunique(),
+            min_time.round(Describe.TIME_ROUND_UNIT),
+            max_time.round(Describe.TIME_ROUND_UNIT),
+            (max_time - min_time).round(Describe.TIME_ROUND_UNIT),
+        ]
+
+        values_time_events = self._calc_statistics(self.user_col)
+
+        if self.has_session_col:
+            self.time_events_stats[0] += ["session_length_time", "session_length_steps"]
+            self.overall_stats[1].insert(2, "unique_sessions")
+
+            values_overall.insert(2, self.df[self.session_col].nunique())
+            values_time_events += self._calc_statistics(self.session_col)
+
+        return self._output_df_construction(values_overall, values_time_events)  # type: ignore

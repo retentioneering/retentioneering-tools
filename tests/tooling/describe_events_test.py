@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 from retentioneering.tooling.describe_events.describe_events import DescribeEvents
 from tests.tooling.fixtures.describe_events import test_stream

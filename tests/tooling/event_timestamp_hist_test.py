@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.event_timestamp_hist.event_timestamp_hist import (
     EventTimestampHist,
 )
@@ -16,7 +17,7 @@ from tests.tooling.fixtures.event_timestamp_hist_corr import (
 
 
 class TestEventTimestampHist:
-    def test_event_timestamp_hist__default(self, test_stream, correct_basic):
+    def test_event_timestamp_hist__default(self, test_stream: EventstreamType, correct_basic: np.array):
         correct_result = correct_basic
 
         correct_bins = np.array(
@@ -29,7 +30,9 @@ class TestEventTimestampHist:
         assert np.testing.assert_array_equal(result[0], correct_result) is None, "values"
         assert np.testing.assert_array_equal(result[1], correct_bins) is None, "bins"
 
-    def test_event_timestamp_hist__lower_cutoff_quantile(self, test_stream, correct_lower_quantile):
+    def test_event_timestamp_hist__lower_cutoff_quantile(
+        self, test_stream: EventstreamType, correct_lower_quantile: np.array
+    ):
         correct_result = correct_lower_quantile
 
         correct_bins = np.array(
@@ -41,7 +44,9 @@ class TestEventTimestampHist:
         assert np.testing.assert_array_equal(result[0], correct_result) is None, "values"
         assert np.testing.assert_array_equal(result[1], correct_bins) is None, "bins"
 
-    def test_event_timestamp_hist__upper_cutoff_quantile(self, test_stream, correct_upper_quantile):
+    def test_event_timestamp_hist__upper_cutoff_quantile(
+        self, test_stream: EventstreamType, correct_upper_quantile: np.array
+    ):
         correct_result = correct_upper_quantile
 
         correct_bins = np.array(
@@ -53,7 +58,9 @@ class TestEventTimestampHist:
         assert np.testing.assert_array_equal(result[0], correct_result) is None, "values"
         assert np.testing.assert_array_equal(result[1], correct_bins) is None, "bins"
 
-    def test_event_timestamp_hist__upper_lower_cutoff_quantile(self, test_stream, correct_upper_lower_quantile):
+    def test_event_timestamp_hist__upper_lower_cutoff_quantile(
+        self, test_stream: EventstreamType, correct_upper_lower_quantile
+    ):
         correct_result = correct_upper_lower_quantile
 
         correct_bins = np.array(
@@ -65,7 +72,7 @@ class TestEventTimestampHist:
         assert np.testing.assert_array_equal(result[0], correct_result) is None, "values"
         assert np.testing.assert_array_equal(result[1], correct_bins) is None, "bins"
 
-    def test_event_timestamp_hist__raw_events(self, test_stream, correct_raw_events_only):
+    def test_event_timestamp_hist__raw_events(self, test_stream: EventstreamType, correct_raw_events_only: np.array):
         correct_result = correct_raw_events_only
 
         correct_bins = np.array(

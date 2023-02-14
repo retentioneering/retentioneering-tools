@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 
-def read_test_data(filename):
+def read_test_data(filename: str) -> pd.Series:
     current_dir = os.path.dirname(os.path.realpath(__file__))
     test_data_dir = os.path.join(current_dir, "../../../datasets/eventstream/tooling/event_timestamp_hist")
     filepath = os.path.join(test_data_dir, filename)
@@ -14,35 +14,35 @@ def read_test_data(filename):
 
 
 @pytest.fixture
-def correct_basic():
+def correct_basic() -> np.array:
     list_values = read_test_data("basic_values.csv")
     list_values = np.array(pd.to_datetime(list_values))
     return list_values
 
 
 @pytest.fixture
-def correct_lower_quantile():
+def correct_lower_quantile() -> np.array:
     list_values = read_test_data("lower_quantile.csv")
     list_values = np.array(pd.to_datetime(list_values))
     return list_values
 
 
 @pytest.fixture
-def correct_upper_quantile():
+def correct_upper_quantile() -> np.array:
     list_values = read_test_data("upper_quantile.csv")
     list_values = np.array(pd.to_datetime(list_values))
     return list_values
 
 
 @pytest.fixture
-def correct_upper_lower_quantile():
+def correct_upper_lower_quantile() -> np.array:
     list_values = read_test_data("lower_upper_quantile.csv")
     list_values = np.array(pd.to_datetime(list_values))
     return list_values
 
 
 @pytest.fixture
-def correct_raw_events_only():
+def correct_raw_events_only() -> np.array:
     list_values = read_test_data("raw_events_only.csv")
     list_values = np.array(pd.to_datetime(list_values))
     return list_values

@@ -32,7 +32,7 @@ class DescribeEvents:
         if self.raw_events_only:
             self.df = self.df[self.df[self.type_col].isin(["raw"])]
 
-        self.total_events_base: int = self.df.shape[0]
+        self.total_events_base: int = len(self.df)
         self.unique_users_base: int = self.df[self.user_col].nunique()
         if self.session_col in self.df.columns:
             self.has_session_col = True

@@ -9,4 +9,4 @@ Transition Graph Class
 Eventstream
 -----------
 .. automethod:: retentioneering.eventstream.eventstream.Eventstream.transition_graph
-.. automethod:: retentioneering.eventstream.eventstream.Eventstream.transition_adjacency
+.. automethod:: retentioneering.eventstream.eventstream.Eventstream.transition_matrix

@@ -11,7 +11,7 @@
 
 retentioneering documentation
 =============================
-**Date:** Jan 25, 2023 **Version:** 3.0.0 :red:`(beta)`
+**Date:** Feb 8, 2023 **Version:** 3.0.0 :red:`(beta)`
 
 Contents
 ========
@@ -32,6 +32,12 @@ Contents
     :maxdepth: 1
 
     Tutorials <tutorials.rst>
+
+.. toctree::
+    :caption: Datasets:
+    :maxdepth: 1
+
+    Datasets <datasets.rst>
 
 .. toctree::
     :caption: API Reference:

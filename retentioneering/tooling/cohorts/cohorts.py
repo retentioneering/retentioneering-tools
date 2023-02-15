@@ -51,13 +51,13 @@ class Cohorts:
     average : bool, default True
         - If ``True`` - calculating average for each cohort period.
         - If ``False`` - averaged values don't calculated.
-    cut_bottom : int
+    cut_bottom : int, default 0
         Drop 'n' rows from the bottom of the cohort matrix.
         Average is recalculated.
-    cut_right : int
+    cut_right : int, default 0
         Drop 'n' columns from the right side of the cohort matrix.
         Average is recalculated.
-    cut_diagonal : int
+    cut_diagonal : int, default 0
         Replace values in 'n' diagonals (last period-group cells) with ``np.nan``.
         Average is recalculated.
 

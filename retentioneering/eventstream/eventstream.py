@@ -821,10 +821,12 @@ class Eventstream(
     def user_lifetime_hist(
         self,
         timedelta_unit: DATETIME_UNITS = "s",
-        log_scale: bool = False,
+        log_scale_x: bool = False,
+        log_scale_y: bool = False,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int = 20,
+        bins: int | str = 20,
+        figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> UserLifetimeHist:
         """
@@ -839,15 +841,17 @@ class Eventstream(
         Returns
         -------
         UserLifetimeHist
-            A ``UserLifetimeHist`` class instance fitted to the given parameters.
+            A ``UserLifetimeHist`` class instance with given parameters.
         """
         user_lifetime_hist = UserLifetimeHist(
             eventstream=self,
             timedelta_unit=timedelta_unit,
-            log_scale=log_scale,
+            log_scale_x=log_scale_x,
+            log_scale_y=log_scale_y,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
+            figsize=figsize,
         )
         if show_plot:
             user_lifetime_hist.plot()
@@ -855,10 +859,12 @@ class Eventstream(
 
     def event_timestamp_hist(
         self,
-        event_list: Optional[List[str] | str] = "all",
+        event_list: list[str] | None = None,
+        raw_events_only: bool = True,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int = 20,
+        bins: int | str = 20,
+        figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> EventTimestampHist:
         """
@@ -870,14 +876,16 @@ class Eventstream(
         Returns
         -------
         EventTimestampHist
-            A ``EventTimestampHist`` class instance fitted to the given parameters.
+            A ``EventTimestampHist`` class instance with given parameters.
         """
         event_timestamp_hist = EventTimestampHist(
             eventstream=self,
             event_list=event_list,
+            raw_events_only=raw_events_only,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
+            figsize=figsize,
         )
         if show_plot:
             event_timestamp_hist.plot()

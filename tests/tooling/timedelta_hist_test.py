@@ -82,7 +82,7 @@ class TestTimedeltaHist:
         correct_result = np.array([1.0, 1.0, 86398.0, 1.0, 86399.0, 1.0, 1.0, 86400.0, 86400.0, 0.1, 0.1, 0.1])
         correct_bins = np.array([0.1, 1.5, 23.7, 364.7, 5613.2, 86400.0])
         result = source_stream_for_log_scale.timedelta_hist(
-            show_plot=False, timedelta_unit="s", log_scale=(True, False), bins=5
+            show_plot=False, timedelta_unit="s", log_scale_x=True, bins=5
         ).values
 
         assert np.testing.assert_array_equal(result[0], correct_result) is None, "values"

@@ -24,19 +24,15 @@ class TimedeltaHist:
 
     Parameters
     ----------
-    event_pair : tuple of str or {"eventstream_start", "eventstream_end"}, optional
+    event_pair : tuple of str, optional
         Specify an event pair to plot the time distance between. The first
         item corresponds to chronologically first event, the second item corresponds to the second event. If
         ``event_pair=None``, plot distribution of timedelta for all adjacent events.
 
         Examples: ('login', 'purchase'); ['start', 'cabinet']
 
-        If one of elements in ``event_pair`` is ``eventstream_start`` or ``eventstream_end``:
-
-        - | ``eventstream_start`` - timedelta between first event of whole dataset and first specified
-          | event inside selected unit of observation will be calculated.
-        - | ``eventstream_end`` - timedelta between last event of whole dataset and first specified
-          | event inside selected unit of observation will be calculated.
+        Besides the generic eventstream events, ``event_pair`` can accept special ``eventstream_start`` and
+        ``eventstream_end`` events which denote the first and the last event in the entire eventstream correspondingly.
 
         Note that the sequence of events and ``weight_col`` is important.
 
@@ -66,8 +62,10 @@ class TimedeltaHist:
     timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
         Specify the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
-    log_scale : tuple of bool, default (False, False)
-        Apply log scaling to the (``x``, ``y``) axises.
+    log_scale_x : bool, default False
+        Apply log scaling to the ``x`` axis.
+    log_scale_y : bool, default False
+        Apply log scaling to the ``y`` axis.
     lower_cutoff_quantile : float, optional
         Specify the time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
@@ -89,7 +87,8 @@ class TimedeltaHist:
         weight_col: str = "user_id",
         aggregation: Optional[Literal[AGGREGATION_NAMES]] = None,
         timedelta_unit: DATETIME_UNITS = "s",
-        log_scale: tuple[bool, bool] = (False, False),
+        log_scale_x: bool = False,
+        log_scale_y: bool = False,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | str = 20,
@@ -106,7 +105,9 @@ class TimedeltaHist:
             if len(event_pair) != 2:
                 raise ValueError("event_pair should be a tuple or a list of length 2.")
             if len(set(event_pair).intersection(TimedeltaHist.EVENTSTREAM_EVENTS_LIST)) == 2:
-                raise ValueError("Both events can't be of eventstream_<> type")
+                raise ValueError(
+                    "Only one event in the event_pair can be special - ``eventstream_start``" " and ``eventstream_end``"
+                )
         self.event_pair = event_pair
         self.only_adjacent_event_pairs = only_adjacent_event_pairs
         self.weight_col = weight_col
@@ -124,31 +125,22 @@ class TimedeltaHist:
         if lower_cutoff_quantile is not None and upper_cutoff_quantile is not None:
             if lower_cutoff_quantile > upper_cutoff_quantile:
                 warnings.warn("lower_cutoff_quantile exceeds upper_cutoff_quantile; no data passed to the histogram")
-        self.log_scale = log_scale
+
+        self.log_scale = (log_scale_x, log_scale_y)
         self.bins = bins
         self.figsize = figsize
 
-    def _prepare_event_pair_data(self, data: pd.DataFrame) -> pd.DataFrame:
+    def _prepare_time_diff(self, data: pd.DataFrame) -> pd.DataFrame:
         if not self.only_adjacent_event_pairs:
             data = data[data[self.event_col].isin(self.event_pair)].copy()  # type: ignore
 
-        data["time_passed"] = data[self.time_col].diff() / np.timedelta64(1, self.timedelta_unit)  # type: ignore
-        first_user_id_value = data.loc[data.index[0], "user_id"]  # type: ignore
-        shift_series = data[self.weight_col].shift(fill_value=first_user_id_value).copy()
-        data["shift_weight_col"] = shift_series
-        select_ids = (data[self.event_col] == self.event_pair[1]) & (data[self.event_col].shift() == self.event_pair[0])  # type: ignore
-        data = data[select_ids]
-        return data
-
-    def _exclude_multiunit_events(self, data: pd.DataFrame) -> pd.DataFrame:
-        # removes all diffs where the timedelta is computed between different grouping units
-        # e.g. if grouping unit is user, removes all cases where timedelta is between events of different users
-        # example: ['user1_action', 'user1_action', 'user2_action'] - diff between middle and last event is excluded
+        weight_col_group = data.groupby([self.weight_col])
+        data["time_passed"] = weight_col_group[self.time_col].diff() / np.timedelta64(1, self.timedelta_unit)  # type: ignore
         if self.event_pair:
-            data = data[data[self.weight_col] == data["shift_weight_col"]]  # type: ignore
-        else:
-            data = data[data[self.weight_col] == data[self.weight_col].shift()]  # type: ignore
-        return data
+            data["prev_event"] = weight_col_group[self.event_col].shift()
+            data = data[(data[self.event_col] == self.event_pair[1]) & (data["prev_event"] == self.event_pair[0])]
+
+        return data.dropna(subset="time_passed")  # type: ignore
 
     def _aggregate_data(self, data: pd.DataFrame) -> pd.DataFrame:
         if self.aggregation is not None:
@@ -167,7 +159,6 @@ class TimedeltaHist:
         if "eventstream_start" in self.event_pair:  # type: ignore
             global_event_time = data[self.time_col].min()
             global_event = "eventstream_start"
-
         else:
             global_event_time = data[self.time_col].max()
             global_event = "eventstream_end"
@@ -194,13 +185,10 @@ class TimedeltaHist:
         """
         data = self.__eventstream.to_dataframe().sort_values([self.weight_col, self.time_col])
 
-        if self.event_pair is not None:
-            if set(TimedeltaHist.EVENTSTREAM_EVENTS_LIST).intersection(self.event_pair):
-                data = self._prepare_global_events_diff(data)
-            data = self._prepare_event_pair_data(data)
-        else:
-            data["time_passed"] = data[self.time_col].diff() / np.timedelta64(1, self.timedelta_unit)  # type: ignore
-        data = self._exclude_multiunit_events(data)
+        if self.event_pair is not None and set(TimedeltaHist.EVENTSTREAM_EVENTS_LIST).intersection(self.event_pair):
+            data = self._prepare_global_events_diff(data)
+
+        data = self._prepare_time_diff(data)
 
         data = self._aggregate_data(data)
         values_to_plot = data["time_passed"].reset_index(drop=True)
@@ -230,5 +218,3 @@ class TimedeltaHist:
         )
         plt.xlabel(f"Time units: {self.timedelta_unit}")
         sns.histplot(out_hist, bins=self.bins, log_scale=self.log_scale)
-
-        plt.show()

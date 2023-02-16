@@ -115,4 +115,3 @@ class EventTimestampHist:
         plt.figure(figsize=self.figsize)
         plt.title("Event timestamp histogram")
         sns.histplot(out_hist, bins=self.bins)
-        plt.show()

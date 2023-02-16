@@ -21,8 +21,10 @@ class UserLifetimeHist:
     timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
         Specifies the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
-    log_scale : tuple of bool, default (False, False)
-        Apply log scaling to the (``x``, ``y``) axes.
+    log_scale_x : bool, default False
+        Apply log scaling to the ``x`` axis.
+    log_scale_y : bool, default False
+        Apply log scaling to the ``y`` axis.
     lower_cutoff_quantile : float, optional
         Specifies the time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
@@ -39,7 +41,8 @@ class UserLifetimeHist:
         self,
         eventstream: EventstreamType,
         timedelta_unit: DATETIME_UNITS = "s",
-        log_scale: tuple[bool, bool] = (False, False),
+        log_scale_x: bool = False,
+        log_scale_y: bool = False,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | str = 20,
@@ -61,7 +64,7 @@ class UserLifetimeHist:
         if lower_cutoff_quantile is not None and upper_cutoff_quantile is not None:
             if lower_cutoff_quantile > upper_cutoff_quantile:
                 warnings.warn("lower_cutoff_quantile exceeds upper_cutoff_quantile; no data passed to the histogram")
-        self.log_scale = log_scale
+        self.log_scale = (log_scale_x, log_scale_y)
         self.bins = bins
         self.figsize = figsize
 
@@ -116,4 +119,3 @@ class UserLifetimeHist:
         plt.title("User lifetime histogram")
         plt.xlabel(f"Time units: {self.timedelta_unit}")
         sns.histplot(out_hist, bins=self.bins, log_scale=self.log_scale)
-        plt.show()

@@ -37,7 +37,7 @@ class TestUserLifetimeHist:
         correct_result = np.array([48.0, 119.98, 695.98, 239.98, 527.98, 47.98, 143.98, 455.98, 407.98])
         correct_bins = np.array([48.0, 81.9, 139.9, 238.8, 407.7, 696.0])
 
-        ul = UserLifetimeHist(test_stream, bins=5, timedelta_unit="h", log_scale=(True, False))
+        ul = UserLifetimeHist(test_stream, bins=5, timedelta_unit="h", log_scale_x=True)
         result = ul.values
 
         assert np.testing.assert_array_equal(result[0].round(FLOAT_PRECISION_VALS), correct_result) is None, "values"

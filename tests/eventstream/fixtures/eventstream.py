@@ -51,6 +51,15 @@ def test_stream_1():
 
 
 @pytest.fixture
+def test_source_dataframe_with_custom_col():
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    test_data_dir = os.path.join(current_dir, "../../datasets/eventstream")
+    filepath = os.path.join(test_data_dir, "01_data_with_custom_col.csv")
+    df = pd.read_csv(filepath)
+    return df
+
+
+@pytest.fixture
 def test_stream_2():
     current_dir = os.path.dirname(os.path.realpath(__file__))
     test_data_dir = os.path.join(current_dir, "../../datasets/eventstream")

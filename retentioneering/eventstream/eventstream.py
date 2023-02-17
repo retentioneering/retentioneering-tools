@@ -18,6 +18,7 @@ from retentioneering.eventstream.types import (
 from retentioneering.graph import PGraph
 from retentioneering.tooling.clusters import Clusters
 from retentioneering.tooling.cohorts import Cohorts
+from retentioneering.tooling.constants import BINS_ESTIMATORS
 from retentioneering.tooling.describe import Describe
 from retentioneering.tooling.describe_events import DescribeEvents
 from retentioneering.tooling.event_timestamp_hist import EventTimestampHist
@@ -25,7 +26,11 @@ from retentioneering.tooling.funnel import Funnel
 from retentioneering.tooling.stattests import TEST_NAMES, StatTests
 from retentioneering.tooling.step_matrix import StepMatrix
 from retentioneering.tooling.step_sankey import StepSankey
-from retentioneering.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
+from retentioneering.tooling.timedelta_hist import (
+    AGGREGATION_NAMES,
+    EVENTSTREAM_GLOBAL_EVENTS,
+    TimedeltaHist,
+)
 from retentioneering.tooling.transition_matrix import TransitionMatrix
 from retentioneering.tooling.typing.transition_graph import NormType, Threshold
 from retentioneering.tooling.user_lifetime_hist import UserLifetimeHist
@@ -770,15 +775,17 @@ class Eventstream(
 
     def timedelta_hist(
         self,
-        event_pair: Optional[Tuple[str, str] | List[str]] = None,
+        event_pair: Optional[list[str | Literal[EVENTSTREAM_GLOBAL_EVENTS]]] = None,
         only_adjacent_event_pairs: bool = True,
-        weight_col: Optional[str] = None,
+        weight_col: str = "user_id",
         aggregation: Optional[AGGREGATION_NAMES] = None,
         timedelta_unit: DATETIME_UNITS = "s",
-        log_scale: bool = False,
+        log_scale_x: bool = False,
+        log_scale_y: bool = False,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int = 20,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
+        figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> TimedeltaHist:
         """
@@ -791,7 +798,8 @@ class Eventstream(
         Returns
         -------
         TimedeltaHist
-            A ``TimedeltaHist`` instance fitted to the given parameters.
+            A ``TimedeltaHist`` class instance with given parameters.
+
         """
         timedelta_hist = TimedeltaHist(
             eventstream=self,
@@ -800,13 +808,18 @@ class Eventstream(
             aggregation=aggregation,
             weight_col=weight_col,
             timedelta_unit=timedelta_unit,
-            log_scale=log_scale,
+            log_scale_x=log_scale_x,
+            log_scale_y=log_scale_y,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
+            figsize=figsize,
         )
+
+        timedelta_hist._calculate()
         if show_plot:
             timedelta_hist.plot()
+
         return timedelta_hist
 
     def user_lifetime_hist(

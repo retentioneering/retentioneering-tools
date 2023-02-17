@@ -16,6 +16,9 @@ Basic algorithm of ``Cohort Matrix`` calculation:
 - Users divided into ``Cohorts`` or ``CohortGroups`` depending on the time of their first appearance in the eventstream
 - Then the retention rate of active users calculated in each further period (``CohortPeriod``) of observation.
 
+Basic example
+-------------
+
 To better understand how it works let’s first consider an intuitive
 example. Here it is small dataset of event logs:
 
@@ -129,18 +132,14 @@ users from each cohort remained in the clickstream at each time period:
 .. code-block:: python
 
     from retentioneering.eventstream import Eventstream
-    from retentioneering.tooling.cohorts import Cohorts
 
     source = Eventstream(source_df)
-    cohorts = Cohorts(
-        eventstream=source,
-        cohort_start_unit="M",
-        cohort_period=(1,"M"),
-        average=False
-    )
-
-    cohorts.fit()
-    cohorts.heatmap(figsize=(6,5));
+    source.cohorts(
+                    eventstream=source,
+                    cohort_start_unit="M",
+                    cohort_period=(1,"M"),
+                    average=False
+                   )
 
 .. figure:: /_static/user_guides/cohorts/cohorts_1_simple_coh_matrix.png
 
@@ -192,11 +191,8 @@ this cohort reached the second period.
 Below we will explore how to use and customize ``Cohort`` tool using
 ``Retentioneering`` library.
 
-Basic example
--------------
-
 Loading data
-~~~~~~~~~~~~
+-------------
 
 Here we use ``simple_shop`` dataset, which has already converted to ``Eventstream``.
 If you want to know more about ``Eventstream`` and how to use it, please study
@@ -206,173 +202,14 @@ If you want to know more about ``Eventstream`` and how to use it, please study
 
     from retentioneering import datasets
 
-    # load eventstream
     source = datasets.load_simple_shop()
-
-Creating an instance of the Cohorts class
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-At the moment when an instance of a class is created, it is still
-“naive”. In order to start calculation using passed parameters, you need
-to use the :py:meth:`Cohorts.fit()<retentioneering.tooling.cohorts.cohorts.Cohorts.fit>` method.
-
-.. code-block:: python
-
-    from retentioneering.tooling.cohorts import Cohorts
-
-    cohorts = Cohorts(
-        eventstream=source,
-        cohort_start_unit="M",
-        cohort_period=(1,"M")
-    )
-
-    cohorts.fit()
-
-
-Methods and attributes
-~~~~~~~~~~~~~~~~~~~~~~
-
-To visualize data as a heatmap, we can call
-:py:meth:`Cohorts.heatmap()<retentioneering.tooling.cohorts.cohorts.Cohorts.heatmap>` method.
-
-.. code-block:: python
-
-    cohorts.heatmap(figsize=(6,5));
-
-.. figure:: /_static/user_guides/cohorts/cohorts_4_basic.png
-
-To get values of the heatmap, we can use
-:py:meth:`Cohorts.values<retentioneering.tooling.cohorts.cohorts.Cohorts.values>` property, and then the
-output will be a dataframe.
-
-.. code-block:: python
-
-    cohorts.values
-
-.. raw:: html
-
-
-    <div><table class="dataframe">
-      <thead>
-        <tr style="text-align: right;">
-          <th>CohortPeriod</th>
-          <th>0</th>
-          <th>1</th>
-          <th>2</th>
-          <th>3</th>
-          <th>4</th>
-        </tr>
-        <tr>
-          <th>CohortGroup</th>
-          <th></th>
-          <th></th>
-          <th></th>
-          <th></th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>2019-11</th>
-          <td>1.0</td>
-          <td>0.393822</td>
-          <td>0.328185</td>
-          <td>0.250965</td>
-          <td>0.247104</td>
-        </tr>
-        <tr>
-          <th>2019-12</th>
-          <td>1.0</td>
-          <td>0.333333</td>
-          <td>0.257028</td>
-          <td>0.232932</td>
-          <td>NaN</td>
-        </tr>
-        <tr>
-          <th>2020-01</th>
-          <td>1.0</td>
-          <td>0.386179</td>
-          <td>0.284553</td>
-          <td>NaN</td>
-          <td>NaN</td>
-        </tr>
-        <tr>
-          <th>2020-02</th>
-          <td>1.0</td>
-          <td>0.319066</td>
-          <td>NaN</td>
-          <td>NaN</td>
-          <td>NaN</td>
-        </tr>
-        <tr>
-          <th>2020-03</th>
-          <td>1.0</td>
-          <td>0.140000</td>
-          <td>NaN</td>
-          <td>NaN</td>
-          <td>NaN</td>
-        </tr>
-        <tr>
-          <th>2020-04</th>
-          <td>1.0</td>
-          <td>NaN</td>
-          <td>NaN</td>
-          <td>NaN</td>
-          <td>NaN</td>
-        </tr>
-        <tr>
-          <th>Average</th>
-          <td>1.0</td>
-          <td>0.314480</td>
-          <td>0.289922</td>
-          <td>0.241948</td>
-          <td>0.247104</td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
-
-
-There are some NANs in the table. These gaps can mean one of two things:
-
-1. During the specified period, users from the cohort did not perform
-   any actions (and were active again in the next period).
-2. Users from the latest-start cohorts have not yet reached the last
-   periods of the observation. These NaNs are usually concentrated in
-   the lower right corner of the table.
-
-We can also build lineplots based on our data. Where by default each
-line - is one ``CohortGroup``, ``show_plot='cohorts'``.
-
-.. code-block:: python
-
-    cohorts.lineplot(figsize=(5,5), show_plot='cohorts');
-
-.. figure:: /_static/user_guides/cohorts/cohorts_5_lineplot_default.png
-
-In addition, we can plot the average values for cohorts
-
-.. code-block:: python
-
-    cohorts.lineplot(figsize=(7,5), show_plot='average');
-
-.. figure:: /_static/user_guides/cohorts/cohorts_6_lineplot_average.png
-
-Specifying the ``show_plot='all'`` we will get a plot that shows
-lineplot for each cohort and also for their average values
-
-.. code-block:: python
-
-    cohorts.lineplot(figsize=(7,5), show_plot='all');
-
-.. figure:: /_static/user_guides/cohorts/cohorts_7_lineplot_all.png
 
 Customization
 -------------
 
 Now let’s talk about setting cohort parameters in more detail.
 
-Cohort_start_unit and Cohort_period
+Cohort start unit and Cohort period
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the examples we looked at earlier, the parameters
@@ -380,13 +217,10 @@ In the examples we looked at earlier, the parameters
 
 .. code-block:: python
 
-    cohorts = Cohorts(
-        eventstream=source,
-        cohort_start_unit='M',
-        cohort_period=(1, 'M')
-    )
-    cohorts.fit()
-    cohorts.heatmap(figsize=(6,5));
+    source.cohorts(
+                    cohort_start_unit='M',
+                    cohort_period=(1, 'M')
+                    );
 
 .. figure:: /_static/user_guides/cohorts/cohorts_8_MM.png
 
@@ -416,13 +250,10 @@ Let’s try to change those parameters.
 
 .. code-block:: python
 
-    cohorts = Cohorts(
-        eventstream=source,
-        cohort_start_unit='W',
-        cohort_period=(3, 'W')
-    )
-    cohorts.fit()
-    cohorts.heatmap(figsize=(8,7));
+    source.cohorts(
+                    cohort_start_unit='W',
+                    cohort_period=(3, 'W')
+                    );
 
 .. figure:: /_static/user_guides/cohorts/cohorts_10_weeks.png
 
@@ -446,14 +277,11 @@ Average
 
 .. code-block:: python
 
-    cohorts = Cohorts(
-        eventstream=source,
-        cohort_start_unit='M',
-        cohort_period=(1, 'M'),
-        average=False
-    )
-    cohorts.fit()
-    cohorts.heatmap(figsize=(5,5));
+    source.cohorts(
+                    cohort_start_unit='M',
+                    cohort_period=(1, 'M'),
+                    average=False
+                    );
 
 .. figure:: /_static/user_guides/cohorts/cohorts_11_average.png
 
@@ -475,15 +303,12 @@ Average values are always recalculated.
 
 .. code-block:: python
 
-    cohorts = Cohorts(
-        eventstream=source,
-        cohort_start_unit='M',
-        cohort_period=(1, 'M'),
-        average=True,
-        cut_bottom=1
-    )
-    cohorts.fit()
-    cohorts.heatmap(figsize=(6,5));
+    source.cohorts(
+                    cohort_start_unit='M',
+                    cohort_period=(1, 'M'),
+                    average=True,
+                    cut_bottom=1
+                    );
 
 .. figure:: /_static/user_guides/cohorts/cohorts_12_cut_bottom.png
 
@@ -492,17 +317,13 @@ were deleted from our matrix.
 
 .. code-block:: python
 
-    cohorts = Cohorts(
-        eventstream=source,
-        cohort_start_unit='M',
-        cohort_period=(1, 'M'),
-        average=True,
-        cut_bottom=1,
-        cut_right=1
-    )
-
-    cohorts.fit()
-    cohorts.heatmap(figsize=(5,5));
+    source.cohorts(
+                   cohort_start_unit='M',
+                   cohort_period=(1, 'M'),
+                   average=True,
+                   cut_bottom=1,
+                   cut_right=1
+                   );
 
 .. figure:: /_static/user_guides/cohorts/cohorts_13_cut_right.png
 
@@ -511,15 +332,12 @@ reflected information only for the first cohort.
 
 .. code-block:: python
 
-    cohorts = Cohorts(
-        eventstream=source,
-        cohort_start_unit='M',
-        cohort_period=(1, 'M'),
-        average=True,
-        cut_diagonal=1
-    )
-    cohorts.fit()
-    cohorts.heatmap(figsize=(5,5));
+    source.cohorts(
+                    cohort_start_unit='M',
+                    cohort_period=(1, 'M'),
+                    average=True,
+                    cut_diagonal=1
+                    );
 
 .. figure:: /_static/user_guides/cohorts/cohorts_14_cut_diagonal.png
 
@@ -527,46 +345,59 @@ Parameter ``cut diagonal`` - deletes values below the diagonal that runs
 to the left and down from the last period of the first cohort. Thus, we
 get rid of all boundary values.
 
-ShortCut for Cohorts (as an eventstream method)
------------------------------------------------
+Using a separate instance
+-------------------------
 
-We can also use :py:meth:`Eventstream.cohorts()<retentioneering.eventstream.eventstream.Eventstream.cohorts>` method which
-creates an instance of ``Cohorts`` class and applies
-:py:meth:`Cohorts.fit()<retentioneering.tooling.cohorts.cohorts.Cohorts.fit>` method as well.
+By design, :py:meth:`Eventstream.cohorts()<retentioneering.eventstream.eventstream.Eventstream.cohorts>`
+is a shortcut method which uses an instance of
+:py:meth:`Cohorts<retentioneering.tooling.cohorts.cohorts.Cohorts>` under the hood.
+Eventstream method creates an instance of Cohorts object and stores the eventstream internally.
 
-In order to avoid unnessesary recalculations while you need different representations
-of one matrix with the same parameters - that would be helpful to save that fitted
-instance in separate variable.
-
-Heatmap is displayed by default, but :py:meth:`Cohorts.values<retentioneering.tooling.cohorts.cohorts.Cohorts.values>`
-and :py:meth:`Cohorts.lineplot()<retentioneering.tooling.cohorts.cohorts.Cohorts.lineplot>` are also
-available, now it can be done in one line:
-
+Sometimes it's reasonable to work with a separate instance of Cohorts class. In this case you also have to
+call :py:meth:`Cohorts.fit()<retentioneering.tooling.cohorts.cohorts.Cohorts.fit>` and
+:py:meth:`Cohorts.plot()<retentioneering.tooling.cohorts.cohorts.Cohorts.heatmap()>` methods explicitly.
+Here's an example how you can do it.
 
 .. code-block:: python
 
-    source.cohorts(
-        cohort_start_unit='M',
-        cohort_period=(1,'M'),
-        average=False,
-        cut_bottom=0,
-        cut_right=0,
-        cut_diagonal=0
-    );
+    from retentioneering.tooling.cohorts import Cohorts
+
+    coh = Cohorts(
+                      eventstream=source,
+                      cohort_start_unit="M",
+                      cohort_period=(1,"M"),
+                      average=False
+                      )
+
+    coh.fit()
+    coh.heatmap();
 
 .. figure:: /_static/user_guides/cohorts/cohorts_15_eventstream.png
 
+Common tooling properties
+-------------------------
+
+In order to avoid unnessesary recalculations while you need different representations
+of one eventstream with the same parameters - that would be helpful to save that fitted
+instance in separate variable.
+
+
+Heatmap is displayed by default, but :py:meth:`Cohorts.values<retentioneering.tooling.cohorts.cohorts.Cohorts.values>`
+and :py:meth:`Cohorts.lineplot()<retentioneering.tooling.cohorts.cohorts.Cohorts.lineplot>` are also
+available:
+
+values
+~~~~~~
+
 .. code-block:: python
 
-    source.cohorts(
-        cohort_start_unit='M',
-        cohort_period=(1,'M'),
-        average=False,
-        cut_bottom=0,
-        cut_right=0,
-        cut_diagonal=0,
-        show_plot=False
-    ).values
+    coh = source.cohorts(
+                    cohort_start_unit='M',
+                    cohort_period=(1,'M'),
+                    average=False,
+                    show_plot=False
+                     )
+    coh.values
 
 .. raw:: html
 
@@ -643,106 +474,57 @@ available, now it can be done in one line:
     </table>
     </div>
 
+There are some NANs in the table. These gaps can mean one of two things:
+
+1. During the specified period, users from the cohort did not perform
+   any actions (and were active again in the next period).
+2. Users from the latest-start cohorts have not yet reached the last
+   periods of the observation. These NaNs are usually concentrated in
+   the lower right corner of the table.
+
+lineplot
+~~~~~~~~
+We can also build lineplots based on our data. Where by default each
+line - is one ``CohortGroup``, ``show_plot='cohorts'``.
 
 .. code-block:: python
 
-    source.cohorts(
-        cohort_start_unit='M',
-        cohort_period=(1,'M'),
-        average=False,
-        cut_bottom=0,
-        cut_right=0,
-        cut_diagonal=0,
-        show_plot=False
-    ).lineplot();
+    coh.lineplot(figsize=(5,5), show_plot='cohorts');
 
-.. figure:: /_static/user_guides/cohorts/cohorts_16_eventstream_lineplot.png
+.. figure:: /_static/user_guides/cohorts/cohorts_5_lineplot_default.png
 
+In addition, we can plot the average values for cohorts
 
 .. code-block:: python
 
-    ch = source.cohorts(
-        cohort_start_unit='M',
-        cohort_period=(1,'M'),
-        average=False,
-        cut_bottom=0,
-        cut_right=0,
-        cut_diagonal=0,
-        show_plot=False
-    )
-    ch.values
+    cohorts.lineplot(figsize=(7,5), show_plot='average');
 
-.. raw:: html
+.. figure:: /_static/user_guides/cohorts/cohorts_6_lineplot_average.png
 
+Specifying the ``show_plot='all'`` we will get a plot that shows
+lineplot for each cohort and also for their average values
 
-     <div><table class="dataframe">
-      <thead>
-        <tr style="text-align: right;">
-          <th>CohortPeriod</th>
-          <th>0</th>
-          <th>1</th>
-          <th>2</th>
-          <th>3</th>
-          <th>4</th>
-        </tr>
-        <tr>
-          <th>CohortGroup</th>
-          <th></th>
-          <th></th>
-          <th></th>
-          <th></th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>2019-11</th>
-          <td>1.0</td>
-          <td>0.393822</td>
-          <td>0.328185</td>
-          <td>0.250965</td>
-          <td>0.247104</td>
-        </tr>
-        <tr>
-          <th>2019-12</th>
-          <td>1.0</td>
-          <td>0.333333</td>
-          <td>0.257028</td>
-          <td>0.232932</td>
-          <td>NaN</td>
-        </tr>
-        <tr>
-          <th>2020-01</th>
-          <td>1.0</td>
-          <td>0.386179</td>
-          <td>0.284553</td>
-          <td>NaN</td>
-          <td>NaN</td>
-        </tr>
-        <tr>
-          <th>2020-02</th>
-          <td>1.0</td>
-          <td>0.319066</td>
-          <td>NaN</td>
-          <td>NaN</td>
-          <td>NaN</td>
-        </tr>
-        <tr>
-          <th>2020-03</th>
-          <td>1.0</td>
-          <td>0.140000</td>
-          <td>NaN</td>
-          <td>NaN</td>
-          <td>NaN</td>
-        </tr>
-        <tr>
-          <th>2020-04</th>
-          <td>1.0</td>
-          <td>NaN</td>
-          <td>NaN</td>
-          <td>NaN</td>
-          <td>NaN</td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
+.. code-block:: python
+
+    cohorts.lineplot(figsize=(7,5), show_plot='all');
+
+.. figure:: /_static/user_guides/cohorts/cohorts_7_lineplot_all.png
+
+params
+~~~~~~
+
+:py:meth:`Cohorts.params<retentioneering.tooling.cohorts.cohorts.Cohorts.params>` property returns a
+dictionary containing all the parameters (including the defaults) related to the current state of the Cohorts object:
+
+.. code-block:: python
+
+        coh.params
+
+.. parsed-literal::
+
+        {"cohort_start_unit": 'M',
+        "cohort_period": (1,'M'),
+        "average": False,
+        "cut_bottom": 0,
+        "cut_right": 0,
+        "cut_diagonal": 0}

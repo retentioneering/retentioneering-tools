@@ -120,7 +120,7 @@ class ReteFunction:
             try:
                 new_func_type = types.FunctionType(i, {})
                 break
-            except Exception as err:
+            except TypeError as err:
                 continue
 
         if new_func_type is None:

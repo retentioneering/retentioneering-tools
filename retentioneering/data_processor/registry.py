@@ -35,33 +35,27 @@ dataprocessor_view_registry = DataprocessorViewRegistry()
 dataprocessor_registry = DataprocessorRegistry()
 
 
-def register_dataprocessor(cls: type[DataProcessor]) -> None:
+def register_dataprocessor(cls: Type[DataProcessor]) -> None:
     dataprocessor_view_registry[cls.__name__] = cls.get_view()
     dataprocessor_registry[cls.__name__] = cls
 
 
-def unregister_dataprocessor(cls: type[DataProcessor]) -> None:
-    REGISTRY = dataprocessor_registry.get_registry()
-    VIEW_REGISTRY = dataprocessor_view_registry.get_registry()
+def unregister_dataprocessor(cls: Type[DataProcessor]) -> None:
+    registry = dataprocessor_registry.get_registry()
+    view_registry = dataprocessor_view_registry.get_registry()
 
     view = cls.get_view()
     view_name = view["name"]
 
-    found_key: str | None = None
     found_view: dict[str, Any] | None = None
 
-    for key in REGISTRY:
-        d_item = REGISTRY[key]
-        if d_item == cls:
-            found_key = key
+    if cls.__name__ in registry:
+        del dataprocessor_registry[cls.__name__]
 
-    for item in VIEW_REGISTRY:
+    for item in view_registry:
         i_view = list(item.values())[0]
         if i_view["name"] == view_name:
             found_view = item
-
-    if found_key:
-        del dataprocessor_registry[found_key]
 
     if found_view:
         dataprocessor_view_registry.remove(found_view)

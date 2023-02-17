@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+from typing import Type
 
 from retentioneering.utils.registry import RegistryValidationError, ReteRegistry
 
@@ -9,7 +10,7 @@ if typing.TYPE_CHECKING:
 
 
 class ParamsModelRegistry:
-    REGISTRY: dict[str, "type[ParamsModel]"] = {}  # type: ignore
+    REGISTRY: dict[str, "Type[ParamsModel]"] = {}  # type: ignore
 
     objects = "ParamsModel"
 
@@ -33,14 +34,4 @@ def register_params_model(cls: type[ParamsModel]) -> None:
 
 
 def unregister_params_model(cls: type[ParamsModel]) -> None:
-    REGISTRY = params_model_registry.get_registry()
-
-    found_key: str | None = None
-
-    for key in REGISTRY:
-        item = REGISTRY[key]
-        if item == cls:
-            found_key = key
-
-    if found_key:
-        del params_model_registry[found_key]
+    del params_model_registry[cls.__name__]

@@ -361,7 +361,7 @@ class PGraph:
         if isinstance(error, ValidationError):
             return self._build_pydantic_error_desc(
                 node_pk=node_pk,
-                v_error=error,
+                validation_error_exception=error,
             )
 
         if isinstance(error, WidgetParseError):
@@ -382,8 +382,10 @@ class PGraph:
             "fields_errors": [],
         }
 
-    def _build_pydantic_error_desc(self, node_pk: str, v_error: ValidationError) -> CreateNodeErrorDesc:
-        raw_errs = v_error.errors()
+    def _build_pydantic_error_desc(
+        self, node_pk: str, validation_error_exception: ValidationError
+    ) -> CreateNodeErrorDesc:
+        raw_errs = validation_error_exception.errors()
         result_errors: List[FieldErrorDesc] = []
 
         for raw_err in raw_errs:

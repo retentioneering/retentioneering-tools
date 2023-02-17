@@ -9,6 +9,7 @@ from typing_extensions import TypedDict
 
 from retentioneering.exceptions.widget import WidgetParseError
 from retentioneering.params_model.registry import register_params_model
+from retentioneering.utils.dict import clear_dict
 from retentioneering.widget import WIDGET_MAPPING
 
 if TYPE_CHECKING:
@@ -28,7 +29,6 @@ class ParamsModel(BaseModel):
     @classmethod
     def __init_subclass__(cls: Type[ParamsModel], **kwargs: Any):
         super().__init_subclass__(**kwargs)
-        # obj = cls.__new__(cls)
         register_params_model(cls)
 
     @validator("*")
@@ -107,15 +107,15 @@ class ParamsModel(BaseModel):
                 widget = cls._parse_simple_widget(name, params, optional=optionals[name], default=default)
 
             if custom_widget:
-                if default := widget.get("default", None):
-                    custom_widget["default"] = default
-                if optional := widget.get("optional", None):
-                    custom_widget["optional"] = optional
-                if "name" not in custom_widget:
-                    custom_widget["name"] = widget["name"]
-                if "optional" not in custom_widget:
-                    custom_widget["optional"] = False
-                custom_widget["name"] = custom_widget["name"].lower().replace(" ", "_")
+                custom_widget_data = {
+                    "default": widget.get("default", None),
+                    "optional": widget.get("optional", False),
+                    "name": widget["name"] if "name" not in custom_widget else None,
+                }
+                if isinstance(custom_widget_data["name"], str):
+                    custom_widget_data["name"] = custom_widget_data["name"].lower().replace(" ", "_")
+
+                custom_widget.update(clear_dict(custom_widget_data))
                 widgets[name] = custom_widget
             elif widget:
                 widgets[name] = widget
@@ -166,7 +166,7 @@ class ParamsModel(BaseModel):
         default: Any | None = None,
         optional: bool = True,
     ) -> dict[str, Any]:
-        enum_params = cast(list[str], params.get("enum"))
+        enum_params = cast(list[str], params.get("enum"))  # type: ignore
         enum_params = list(filter(lambda x: x is not None, enum_params))
         kwargs: dict = {"name": name, "widget": "enum", "default": default, "optional": optional}
         if len(enum_params) > 0:
@@ -188,19 +188,12 @@ class ParamsModel(BaseModel):
         except KeyError:
             items = params.get("items", [{}])
         widget_params = dict(optional=optional, name=name, widget=widget_type)
-        # widget_params["type"] = widget_type
-        # widget_params["default"] = default
+
         if "enum" in items and widget_type != "enum":
             widget_type = "enum"
             widget_params["params"] = items["enum"]  # type: ignore
 
         return widget_params
-        # try:
-        #     widget: WIDGET_TYPE = WIDGET_MAPPING[widget_type]  # type: ignore
-        #     return widget.from_dict(**widget_params)
-        #
-        # except KeyError:
-        #     raise Exception("Not found widget. Define new widget for <%s> and add it to mapping." % widget_type)
 
     @classmethod
     def _parse_custom_widget(cls, name: str, optional: bool = False) -> dict[str, Any]:

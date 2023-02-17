@@ -35,16 +35,17 @@ class ServerErrorWithResponse(BaseReteException):
 
     def dict(self) -> ServerErrorDict:
         # check errors serializable
+        message = self.message
+        errors = self.errors
+
         try:
             json.dumps(self.errors)
         except:
-            return {
-                "type": self.type,
-                "msg": "serialize error response error!",
-                "errors": None,
-            }
+            message = "serialize error response error!"
+            errors = None
+
         return {
             "type": self.type,
-            "msg": self.message,
-            "errors": self.errors,
+            "msg": message,
+            "errors": errors,
         }

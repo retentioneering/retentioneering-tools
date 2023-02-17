@@ -10,9 +10,9 @@ import seaborn as sns
 
 from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.types import EventstreamType
+from retentioneering.tooling.constants import BINS_ESTIMATORS
 from retentioneering.tooling.timedelta_hist.constants import (
     AGGREGATION_NAMES,
-    BINS_ESTIMATORS,
     EVENTSTREAM_GLOBAL_EVENTS,
 )
 

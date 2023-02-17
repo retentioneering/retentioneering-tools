@@ -18,6 +18,7 @@ from retentioneering.eventstream.types import (
 from retentioneering.graph import PGraph
 from retentioneering.tooling.clusters import Clusters
 from retentioneering.tooling.cohorts import Cohorts
+from retentioneering.tooling.constants import BINS_ESTIMATORS
 from retentioneering.tooling.describe import Describe
 from retentioneering.tooling.describe_events import DescribeEvents
 from retentioneering.tooling.event_timestamp_hist import EventTimestampHist
@@ -27,7 +28,6 @@ from retentioneering.tooling.step_matrix import StepMatrix
 from retentioneering.tooling.step_sankey import StepSankey
 from retentioneering.tooling.timedelta_hist import (
     AGGREGATION_NAMES,
-    BINS_ESTIMATORS,
     EVENTSTREAM_GLOBAL_EVENTS,
     TimedeltaHist,
 )

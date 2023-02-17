@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import asdict
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, Union
 
 from pydantic import BaseModel, ValidationError, validator
 from typing_extensions import TypedDict
@@ -166,7 +166,11 @@ class ParamsModel(BaseModel):
         default: Any | None = None,
         optional: bool = True,
     ) -> dict[str, Any]:
-        enum_params = cast(list[str], params.get("enum"))  # type: ignore
+        enum_params = params.get("enum")
+
+        if not isinstance(enum_params, list):
+            raise ValueError("unexpected enum value")
+
         enum_params = list(filter(lambda x: x is not None, enum_params))
         kwargs: dict = {"name": name, "widget": "enum", "default": default, "optional": optional}
         if len(enum_params) > 0:

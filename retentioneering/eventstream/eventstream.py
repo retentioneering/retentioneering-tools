@@ -27,7 +27,8 @@ from retentioneering.tooling.step_matrix import StepMatrix
 from retentioneering.tooling.step_sankey import StepSankey
 from retentioneering.tooling.timedelta_hist import (
     AGGREGATION_NAMES,
-    EVENTSTREAM_EVENTS,
+    BINS_ESTIMATORS,
+    EVENTSTREAM_GLOBAL_EVENTS,
     TimedeltaHist,
 )
 from retentioneering.tooling.transition_matrix import TransitionMatrix
@@ -774,7 +775,7 @@ class Eventstream(
 
     def timedelta_hist(
         self,
-        event_pair: Optional[list[str | Literal[EVENTSTREAM_EVENTS]]] = None,
+        event_pair: Optional[list[str | Literal[EVENTSTREAM_GLOBAL_EVENTS]]] = None,
         only_adjacent_event_pairs: bool = True,
         weight_col: str = "user_id",
         aggregation: Optional[AGGREGATION_NAMES] = None,
@@ -783,7 +784,7 @@ class Eventstream(
         log_scale_y: bool = False,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int | str = 20,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
         figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> TimedeltaHist:
@@ -814,8 +815,11 @@ class Eventstream(
             bins=bins,
             figsize=figsize,
         )
+
+        timedelta_hist._calculate()
         if show_plot:
             timedelta_hist.plot()
+
         return timedelta_hist
 
     def user_lifetime_hist(

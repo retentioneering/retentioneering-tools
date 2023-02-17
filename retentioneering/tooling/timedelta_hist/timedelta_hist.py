@@ -12,7 +12,8 @@ from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.timedelta_hist.constants import (
     AGGREGATION_NAMES,
-    EVENTSTREAM_EVENTS,
+    BINS_ESTIMATORS,
+    EVENTSTREAM_GLOBAL_EVENTS,
 )
 
 
@@ -70,28 +71,29 @@ class TimedeltaHist:
         Specify the time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
         Specify the time distance quantile as the upper boundary. The values above the boundary are truncated.
-    bins : int or str, default 20
+    bins : int or {"auto", "fd", "doane", "scott", "stone", "rice", "sturges", "sqrt"}, default 20
         Generic bin parameter that can be the name of a reference rule or
         the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`
     figsize : tuple of float, default (12.0, 7.0)
         Width, height in inches.
     """
 
-    EVENTSTREAM_EVENTS_LIST = ["eventstream_start", "eventstream_end"]
+    EVENTSTREAM_START = "eventstream_start"
+    EVENTSTREAM_END = "eventstream_end"
 
     def __init__(
         self,
         eventstream: EventstreamType,
-        event_pair: Optional[list[str | Literal[EVENTSTREAM_EVENTS]]] = None,
+        event_pair: Optional[list[str | EVENTSTREAM_GLOBAL_EVENTS]] = None,
         only_adjacent_event_pairs: bool = True,
         weight_col: str = "user_id",
-        aggregation: Optional[Literal[AGGREGATION_NAMES]] = None,
+        aggregation: Optional[AGGREGATION_NAMES] = None,
         timedelta_unit: DATETIME_UNITS = "s",
         log_scale_x: bool = False,
         log_scale_y: bool = False,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int | str = 20,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
         figsize: tuple[float, float] = (12.0, 7.0),
     ) -> None:
 
@@ -99,14 +101,16 @@ class TimedeltaHist:
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
+
         if event_pair is not None:
             if type(event_pair) not in (list, tuple):
                 raise TypeError("event_pair should be a tuple or a list of length 2.")
             if len(event_pair) != 2:
                 raise ValueError("event_pair should be a tuple or a list of length 2.")
-            if len(set(event_pair).intersection(TimedeltaHist.EVENTSTREAM_EVENTS_LIST)) == 2:
+            check_global_events = event_pair.count(self.EVENTSTREAM_START) + event_pair.count(self.EVENTSTREAM_END)
+            if check_global_events == 2:
                 raise ValueError(
-                    "Only one event in the event_pair can be special - ``eventstream_start``" " and ``eventstream_end``"
+                    "Only one event in the event_pair can be special - 'eventstream_start' or 'eventstream_end'"
                 )
         self.event_pair = event_pair
         self.only_adjacent_event_pairs = only_adjacent_event_pairs
@@ -129,6 +133,8 @@ class TimedeltaHist:
         self.log_scale = (log_scale_x, log_scale_y)
         self.bins = bins
         self.figsize = figsize
+        self.bins_to_show: np.ndarray = np.array([])
+        self.values_to_plot: np.ndarray = np.array([])
 
     def _prepare_time_diff(self, data: pd.DataFrame) -> pd.DataFrame:
         if not self.only_adjacent_event_pairs:
@@ -156,12 +162,12 @@ class TimedeltaHist:
         return series[idx]
 
     def _prepare_global_events_diff(self, data: pd.DataFrame) -> pd.DataFrame:
-        if "eventstream_start" in self.event_pair:  # type: ignore
+        if self.EVENTSTREAM_START in self.event_pair:  # type: ignore
             global_event_time = data[self.time_col].min()
-            global_event = "eventstream_start"
+            global_event = self.EVENTSTREAM_START
         else:
             global_event_time = data[self.time_col].max()
-            global_event = "eventstream_end"
+            global_event = self.EVENTSTREAM_END
 
         global_events = data.groupby([self.weight_col]).first().reset_index().copy()
         global_events[self.time_col] = global_event_time
@@ -171,21 +177,18 @@ class TimedeltaHist:
         data = pd.concat([data, global_events]).sort_values([self.weight_col, self.time_col]).reset_index(drop=True)
         return data
 
-    @property
-    def values(self) -> tuple[np.ndarray, np.ndarray]:
+    def _calculate(self) -> None:
         """
-        Calculate values for the histplot.
-
-        Returns
-        -------
-        tuple(np.ndarray, np.ndarray)
+        Calculate values and bins for the histplot.
 
             1. The first array contains the values for histogram
             2. The first array contains the bin edges
         """
         data = self.__eventstream.to_dataframe().sort_values([self.weight_col, self.time_col])
 
-        if self.event_pair is not None and set(TimedeltaHist.EVENTSTREAM_EVENTS_LIST).intersection(self.event_pair):
+        if self.event_pair is not None and set([self.EVENTSTREAM_START, self.EVENTSTREAM_END]).intersection(
+            self.event_pair
+        ):
             data = self._prepare_global_events_diff(data)
 
         data = self._prepare_time_diff(data)
@@ -202,15 +205,30 @@ class TimedeltaHist:
             bins_to_show = np.histogram_bin_edges(values_to_plot, bins=self.bins)
         if len(values_to_plot) == 0:
             bins_to_show = np.array([])
+        self.bins_to_show = bins_to_show
+        self.values_to_plot = values_to_plot  # type: ignore
 
-        return values_to_plot, bins_to_show  # type: ignore
+    @property
+    def values(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Calculate values for the histplot.
+
+        Returns
+        -------
+        tuple(np.ndarray, np.ndarray)
+
+            1. The first array contains the values for histogram
+            2. The first array contains the bin edges
+        """
+        return self.values_to_plot, self.bins_to_show
 
     def plot(self) -> None:
         """
         Creates a sns.histplot based on the calculated values.
 
         """
-        out_hist = self.values[0]
+
+        out_hist = self.values_to_plot
         plt.figure(figsize=self.figsize)
         plt.title(
             f"Timedelta histogram, event pair {self.event_pair}, weight column {self.weight_col}"

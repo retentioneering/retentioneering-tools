@@ -54,7 +54,7 @@ class TestEventstreamUserLifetimeHist:
         self, test_stream: EventstreamType, correct_log_scale: np.array, correct_log_scale_bins: np.array
     ):
 
-        result = test_stream.user_lifetime_hist(show_plot=False, bins=5, timedelta_unit="h", log_scale_x=True).values
+        result = test_stream.user_lifetime_hist(show_plot=False, bins=5, timedelta_unit="h", log_scale=True).values
 
         assert (
             np.testing.assert_array_equal(result[0].round(FLOAT_PRECISION_VALS), correct_log_scale) is None

@@ -825,8 +825,7 @@ class Eventstream(
     def user_lifetime_hist(
         self,
         timedelta_unit: DATETIME_UNITS = "s",
-        log_scale_x: bool = False,
-        log_scale_y: bool = False,
+        log_scale: bool | tuple[bool, bool] | None = None,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
@@ -850,8 +849,7 @@ class Eventstream(
         user_lifetime_hist = UserLifetimeHist(
             eventstream=self,
             timedelta_unit=timedelta_unit,
-            log_scale_x=log_scale_x,
-            log_scale_y=log_scale_y,
+            log_scale=log_scale,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,

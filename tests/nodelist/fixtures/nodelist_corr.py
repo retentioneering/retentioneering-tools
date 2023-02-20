@@ -3,7 +3,7 @@ import pytest
 
 
 @pytest.fixture
-def simple_corr():
+def nl_simple_corr():
     correct_res = pd.DataFrame(
         [
             ["C", 7, True, False, None, None],
@@ -18,7 +18,7 @@ def simple_corr():
 
 
 @pytest.fixture
-def user_corr():
+def nl_user_corr():
     correct_res = pd.DataFrame(
         [
             ["C", 7, 3, True, False, None, None],
@@ -33,7 +33,7 @@ def user_corr():
 
 
 @pytest.fixture
-def session_corr():
+def nl_session_corr():
     correct_res = pd.DataFrame(
         [
             ["C", 7, 3, True, False, None, None],

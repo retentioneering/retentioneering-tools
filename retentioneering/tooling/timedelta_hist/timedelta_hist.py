@@ -108,7 +108,7 @@ class TimedeltaHist:
             if len(event_pair) != 2:
                 raise ValueError("event_pair should be a tuple or a list of length 2.")
 
-            if set(event_pair) == {"eventstream_start", "eventstream_end"}:
+            if set(event_pair) == {TimedeltaHist.EVENTSTREAM_START, TimedeltaHist.EVENTSTREAM_END}:
                 raise ValueError(
                     "event_pair = ['eventstream_start', 'eventstream_end'] is invalid. Only one event of "
                     "these two events can be a member of the event_pair."

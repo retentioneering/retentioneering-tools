@@ -829,7 +829,7 @@ class Eventstream(
         log_scale_y: bool = False,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int | str = 20,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
         figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> UserLifetimeHist:
@@ -867,7 +867,7 @@ class Eventstream(
         raw_events_only: bool = True,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int | str = 20,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
         figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> EventTimestampHist:

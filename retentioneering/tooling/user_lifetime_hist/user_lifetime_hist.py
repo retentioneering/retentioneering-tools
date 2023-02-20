@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Optional
+from typing import Literal, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,6 +10,7 @@ import seaborn as sns
 
 from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.types import EventstreamType
+from retentioneering.tooling.constants import BINS_ESTIMATORS
 
 
 class UserLifetimeHist:
@@ -45,7 +46,7 @@ class UserLifetimeHist:
         log_scale_y: bool = False,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int | str = 20,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
         figsize: tuple[float, float] = (12.0, 7.0),
     ) -> None:
         self.__eventstream = eventstream

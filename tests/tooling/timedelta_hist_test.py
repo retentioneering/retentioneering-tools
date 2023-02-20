@@ -148,7 +148,7 @@ class TestTimedeltaHist:
         self, source_stream_for_log_scale: EventstreamType, corr_log_scale_x: np.array, corr_log_scale_x_bins: np.array
     ):
 
-        th = TimedeltaHist(source_stream_for_log_scale, timedelta_unit="s", log_scale_x=True, bins=5)
+        th = TimedeltaHist(source_stream_for_log_scale, timedelta_unit="s", log_scale=True, bins=5)
         th._calculate()
         result_values, result_bins = th.values
 

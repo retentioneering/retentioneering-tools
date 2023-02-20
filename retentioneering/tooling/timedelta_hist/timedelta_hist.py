@@ -63,10 +63,11 @@ class TimedeltaHist:
     timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
         Specify the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
-    log_scale_x : bool, default False
-        Apply log scaling to the ``x`` axis.
-    log_scale_y : bool, default False
-        Apply log scaling to the ``y`` axis.
+    log_scale: bool | tuple of bool | None = None,
+
+         - If ``True`` - apply log scaling to the ``x`` axis.
+         - If tuple of bool - apply log scaling to the (``x``,``y``) axes correspondingly.
+
     lower_cutoff_quantile : float, optional
         Specify the time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
@@ -89,8 +90,7 @@ class TimedeltaHist:
         weight_col: str = "user_id",
         aggregation: Optional[AGGREGATION_NAMES] = None,
         timedelta_unit: DATETIME_UNITS = "s",
-        log_scale_x: bool = False,
-        log_scale_y: bool = False,
+        log_scale: bool | tuple[bool, bool] | None = None,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
@@ -107,11 +107,19 @@ class TimedeltaHist:
                 raise TypeError("event_pair should be a tuple or a list of length 2.")
             if len(event_pair) != 2:
                 raise ValueError("event_pair should be a tuple or a list of length 2.")
-            check_global_events = event_pair.count(self.EVENTSTREAM_START) + event_pair.count(self.EVENTSTREAM_END)
-            if check_global_events == 2:
+
+            if set(event_pair) == {"eventstream_start", "eventstream_end"}:
                 raise ValueError(
-                    "Only one event in the event_pair can be special - 'eventstream_start' or 'eventstream_end'"
+                    "event_pair = ['eventstream_start', 'eventstream_end'] is invalid. Only one event of "
+                    "these two events can be a member of the event_pair."
                 )
+            if set(event_pair) in [{"eventstream_start"}, {"eventstream_end"}]:
+                raise ValueError(
+                    "event_pair = ['eventstream_start' and 'eventstream_start'] and "
+                    "event_pair = ['eventstream_end' and 'eventstream_end'] are invalid. "
+                    "Events 'eventstream_start' and 'eventstream_end' couldn't be doubled"
+                )
+
         self.event_pair = event_pair
         self.only_adjacent_event_pairs = only_adjacent_event_pairs
         self.weight_col = weight_col
@@ -130,7 +138,13 @@ class TimedeltaHist:
             if lower_cutoff_quantile > upper_cutoff_quantile:
                 warnings.warn("lower_cutoff_quantile exceeds upper_cutoff_quantile; no data passed to the histogram")
 
-        self.log_scale = (log_scale_x, log_scale_y)
+        if log_scale:
+            if isinstance(log_scale, bool):
+                self.log_scale = (log_scale, False)
+            else:
+                self.log_scale = log_scale
+        else:
+            self.log_scale = (False, False)
         self.bins = bins
         self.figsize = figsize
         self.bins_to_show: np.ndarray = np.array([])
@@ -138,13 +152,15 @@ class TimedeltaHist:
 
     def _prepare_time_diff(self, data: pd.DataFrame) -> pd.DataFrame:
         if not self.only_adjacent_event_pairs:
-            data = data[data[self.event_col].isin(self.event_pair)].copy()  # type: ignore
+            data = data[data[self.event_col].isin(self.event_pair)]  # type: ignore
 
         weight_col_group = data.groupby([self.weight_col])
-        data["time_passed"] = weight_col_group[self.time_col].diff() / np.timedelta64(1, self.timedelta_unit)  # type: ignore
-        if self.event_pair:
-            data["prev_event"] = weight_col_group[self.event_col].shift()
-            data = data[(data[self.event_col] == self.event_pair[1]) & (data["prev_event"] == self.event_pair[0])]
+        with pd.option_context("mode.chained_assignment", None):
+            data["time_passed"] = weight_col_group[self.time_col].diff() / np.timedelta64(1, self.timedelta_unit)  # type: ignore
+            if self.event_pair:
+
+                data["prev_event"] = weight_col_group[self.event_col].shift()
+                data = data[(data[self.event_col] == self.event_pair[1]) & (data["prev_event"] == self.event_pair[0])]
 
         return data.dropna(subset="time_passed")  # type: ignore
 

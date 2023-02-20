@@ -12,6 +12,7 @@ from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
 from retentioneering.eventstream.types import (
     EventstreamType,
+    RawDataCustomColSchema,
     RawDataSchemaType,
     Relation,
 )
@@ -162,7 +163,10 @@ class Eventstream(
     def __init__(
         self,
         raw_data: pd.DataFrame | pd.Series[Any],
-        raw_data_schema: RawDataSchemaType | None = None,
+        raw_data_schema: RawDataSchema
+        | RawDataSchemaType
+        | dict[str, str | list[RawDataCustomColSchema]]
+        | None = None,
         schema: EventstreamSchema | None = None,
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
@@ -178,6 +182,8 @@ class Eventstream(
             raw_data_schema = RawDataSchema()
             if "event_type" in raw_data.columns:
                 raw_data_schema.event_type = "event_type"
+        elif isinstance(raw_data_schema, dict):
+            raw_data_schema = RawDataSchema(**raw_data_schema)  # type: ignore
         self.__raw_data_schema = raw_data_schema
 
         if user_sample_size is not None:

@@ -32,36 +32,45 @@ class TestUserLifetimeHist:
     ):
 
         ul = UserLifetimeHist(test_stream, bins=5)
-        result = ul.values
+        ul.fit()
+        result_values, result_bins = ul.values
 
-        assert np.testing.assert_array_equal(result[0].round(FLOAT_PRECISION_VALS), correct_basic) is None, "values"
-        assert np.testing.assert_array_equal(result[1].round(FLOAT_PRECISION_BINS), correct_basic_bins) is None, "bins"
+        assert (
+            np.testing.assert_array_equal(result_values.round(FLOAT_PRECISION_VALS), correct_basic) is None
+        ), "incorrect histogram values"
+        assert (
+            np.testing.assert_array_equal(result_bins.round(FLOAT_PRECISION_BINS), correct_basic_bins) is None
+        ), "incorrect histogram bins"
 
     def test_user_lifetime_hist__timedelta_unit(
         self, test_stream: EventstreamType, correct_timedelta_unit: np.array, correct_timedelta_unit_bins: np.array
     ):
 
         ul = UserLifetimeHist(test_stream, bins=5, timedelta_unit="h")
-        result = ul.values
+        ul.fit()
+        result_values, result_bins = ul.values
 
         assert (
-            np.testing.assert_array_equal(result[0].round(FLOAT_PRECISION_VALS), correct_timedelta_unit) is None
-        ), "values"
+            np.testing.assert_array_equal(result_values.round(FLOAT_PRECISION_VALS), correct_timedelta_unit) is None
+        ), "incorrect histogram values"
         assert (
-            np.testing.assert_array_equal(result[1].round(FLOAT_PRECISION_BINS), correct_timedelta_unit_bins) is None
-        ), "bins"
+            np.testing.assert_array_equal(result_bins.round(FLOAT_PRECISION_BINS), correct_timedelta_unit_bins) is None
+        ), "incorrect histogram bins"
 
     def test_user_lifetime_hist__log_scale(
         self, test_stream: EventstreamType, correct_log_scale: np.array, correct_log_scale_bins: np.array
     ):
 
         ul = UserLifetimeHist(test_stream, bins=5, timedelta_unit="h", log_scale=True)
-        result = ul.values
+        ul.fit()
+        result_values, result_bins = ul.values
 
-        assert np.testing.assert_array_equal(result[0].round(FLOAT_PRECISION_VALS), correct_log_scale) is None, "values"
         assert (
-            np.testing.assert_array_equal(result[1].round(FLOAT_PRECISION_BINS), correct_log_scale_bins) is None
-        ), "bins"
+            np.testing.assert_array_equal(result_values.round(FLOAT_PRECISION_VALS), correct_log_scale) is None
+        ), "incorrect histogram values"
+        assert (
+            np.testing.assert_array_equal(result_bins.round(FLOAT_PRECISION_BINS), correct_log_scale_bins) is None
+        ), "incorrect histogram bins"
 
     def test_user_lifetime_hist__lower_cutoff_quantile(
         self,
@@ -71,15 +80,17 @@ class TestUserLifetimeHist:
     ):
 
         ul = UserLifetimeHist(test_stream, bins=5, timedelta_unit="h", lower_cutoff_quantile=0.5)
-        result = ul.values
+        ul.fit()
+        result_values, result_bins = ul.values
 
         assert (
-            np.testing.assert_array_equal(result[0].round(FLOAT_PRECISION_VALS), correct_lower_cutoff_quantile) is None
-        ), "values"
-        assert (
-            np.testing.assert_array_equal(result[1].round(FLOAT_PRECISION_BINS), correct_lower_cutoff_quantile_bins)
+            np.testing.assert_array_equal(result_values.round(FLOAT_PRECISION_VALS), correct_lower_cutoff_quantile)
             is None
-        ), "bins"
+        ), "incorrect histogram values"
+        assert (
+            np.testing.assert_array_equal(result_bins.round(FLOAT_PRECISION_BINS), correct_lower_cutoff_quantile_bins)
+            is None
+        ), "incorrect histogram bins"
 
     def test_user_lifetime_hist__upper_cutoff_quantile(
         self,
@@ -89,15 +100,17 @@ class TestUserLifetimeHist:
     ):
 
         ul = UserLifetimeHist(test_stream, bins=5, timedelta_unit="h", upper_cutoff_quantile=0.5)
-        result = ul.values
+        ul.fit()
+        result_values, result_bins = ul.values
 
         assert (
-            np.testing.assert_array_equal(result[0].round(FLOAT_PRECISION_VALS), correct_upper_cutoff_quantile) is None
-        ), "values"
-        assert (
-            np.testing.assert_array_equal(result[1].round(FLOAT_PRECISION_BINS), correct_upper_cutoff_quantile_bins)
+            np.testing.assert_array_equal(result_values.round(FLOAT_PRECISION_VALS), correct_upper_cutoff_quantile)
             is None
-        ), "bins"
+        ), "incorrect histogram values"
+        assert (
+            np.testing.assert_array_equal(result_bins.round(FLOAT_PRECISION_BINS), correct_upper_cutoff_quantile_bins)
+            is None
+        ), "incorrect histogram bins"
 
     def test_user_lifetime_hist__upper_lower_cutoff_quantile(
         self,
@@ -109,15 +122,18 @@ class TestUserLifetimeHist:
         ul = UserLifetimeHist(
             test_stream, bins=5, timedelta_unit="h", upper_cutoff_quantile=0.5, lower_cutoff_quantile=0.5
         )
-        result = ul.values
+        ul.fit()
+        result_values, result_bins = ul.values
 
         assert (
-            np.testing.assert_array_equal(result[0].round(FLOAT_PRECISION_VALS), correct_upper_lower_cutoff_quantile)
-            is None
-        ), "values"
-        assert (
             np.testing.assert_array_equal(
-                result[1].round(FLOAT_PRECISION_BINS), correct_upper_lower_cutoff_quantile_bins
+                result_values.round(FLOAT_PRECISION_VALS), correct_upper_lower_cutoff_quantile
             )
             is None
-        ), "bins"
+        ), "incorrect histogram values"
+        assert (
+            np.testing.assert_array_equal(
+                result_bins.round(FLOAT_PRECISION_BINS), correct_upper_lower_cutoff_quantile_bins
+            )
+            is None
+        ), "incorrect histogram bins"

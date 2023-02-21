@@ -159,6 +159,8 @@ class Eventstream(
     __transition_graph: TransitionGraph | None = None
     __p_graph: PGraph | None = None
     __transition_matrix: TransitionMatrix | None = None
+    __user_lifetime_hist: UserLifetimeHist | None = None
+    __event_timestamp_hist: EventTimestampHist | None = None
 
     def __init__(
         self,
@@ -171,6 +173,7 @@ class Eventstream(
         user_sample_size: Optional[int | float] = None,
         user_sample_seed: Optional[int] = None,
     ) -> None:
+
         self.__clusters = None
         self.__funnel = None
         self.schema = schema if schema else EventstreamSchema()
@@ -846,7 +849,7 @@ class Eventstream(
         UserLifetimeHist
             A ``UserLifetimeHist`` class instance with given parameters.
         """
-        user_lifetime_hist = UserLifetimeHist(
+        self.__user_lifetime_hist = UserLifetimeHist(
             eventstream=self,
             timedelta_unit=timedelta_unit,
             log_scale=log_scale,
@@ -855,9 +858,10 @@ class Eventstream(
             bins=bins,
             figsize=figsize,
         )
+        self.__user_lifetime_hist.fit()
         if show_plot:
-            user_lifetime_hist.plot()
-        return user_lifetime_hist
+            self.__user_lifetime_hist.plot()
+        return self.__user_lifetime_hist
 
     def event_timestamp_hist(
         self,
@@ -880,7 +884,7 @@ class Eventstream(
         EventTimestampHist
             A ``EventTimestampHist`` class instance with given parameters.
         """
-        event_timestamp_hist = EventTimestampHist(
+        self.__event_timestamp_hist = EventTimestampHist(
             eventstream=self,
             event_list=event_list,
             raw_events_only=raw_events_only,
@@ -889,9 +893,11 @@ class Eventstream(
             bins=bins,
             figsize=figsize,
         )
+
+        self.__event_timestamp_hist.fit()
         if show_plot:
-            event_timestamp_hist.plot()
-        return event_timestamp_hist
+            self.__event_timestamp_hist.plot()
+        return self.__event_timestamp_hist
 
     def describe(self, session_col: str = "session_id", raw_events_only: bool = False) -> pd.DataFrame:
         """

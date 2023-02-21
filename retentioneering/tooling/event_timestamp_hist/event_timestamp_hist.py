@@ -3,6 +3,7 @@ from __future__ import annotations
 import warnings
 from typing import Literal, Optional
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -68,6 +69,8 @@ class EventTimestampHist:
                 warnings.warn("lower_cutoff_quantile exceeds upper_cutoff_quantile; no data passed to the histogram")
         self.bins = bins
         self.figsize = figsize
+        self.bins_to_show: np.ndarray = np.array([])
+        self.values_to_plot: np.ndarray = np.array([])
 
     def _remove_cutoff_values(self, series: pd.Series) -> pd.Series:
         idx = [True] * len(series)
@@ -77,14 +80,9 @@ class EventTimestampHist:
             idx &= series >= series.quantile(self.lower_cutoff_quantile)
         return series[idx]
 
-    @property
-    def values(self) -> tuple[np.ndarray, np.ndarray]:
+    def fit(self) -> None:
         """
         Calculate values for the histplot.
-
-        Returns
-        -------
-        tuple(np.ndarray, np.ndarray)
 
             1. The first array contains the values for histogram
             2. The first array contains the bin edges
@@ -105,14 +103,38 @@ class EventTimestampHist:
         bins_to_show = pd.to_datetime(bins_to_show).round("s")
         if len(values_to_plot) == 0:
             bins_to_show = np.array([])
-        return values_to_plot, np.array(bins_to_show)  # type: ignore
 
-    def plot(self) -> None:
+        self.bins_to_show = bins_to_show  # type: ignore
+        self.values_to_plot = values_to_plot  # type: ignore
+
+    @property
+    def values(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+
+        Returns
+        -------
+        tuple(np.ndarray, np.ndarray)
+
+            1. The first array contains the values for histogram
+            2. The first array contains the bin edges
+
+        """
+        return self.values_to_plot, self.bins_to_show
+
+    def plot(self) -> matplotlib.axes.Axesne:
         """
         Create a sns.histplot based on the calculated values.
 
+        Returns
+        -------
+        :matplotlib_axes:`matplotlib.axes.Axes<>`
+            The matplotlib axes containing the plot.
+
         """
-        out_hist = self.values[0]
+
         plt.figure(figsize=self.figsize)
-        plt.title("Event timestamp histogram")
-        sns.histplot(out_hist, bins=self.bins)
+
+        hist = sns.histplot(self.values_to_plot, bins=self.bins)
+        hist.set_title("Event timestamp histogram")
+
+        return hist

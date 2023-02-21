@@ -28,9 +28,10 @@ class TestEventTimestampHist:
         correct_result = correct_basic
 
         et = EventTimestampHist(test_stream, bins=3)
-        result = et.values
-        assert np.testing.assert_array_equal(result[0], correct_result) is None, "values"
-        assert np.testing.assert_array_equal(result[1], correct_basic_bins) is None, "bins"
+        et.fit()
+        result_values, result_bins = et.values
+        assert np.testing.assert_array_equal(result_values, correct_result) is None, "incorrect histogram values"
+        assert np.testing.assert_array_equal(result_bins, correct_basic_bins) is None, "incorrect histogram bins"
 
     def test_event_timestamp_hist__lower_cutoff_quantile(
         self, test_stream: EventstreamType, correct_lower_quantile: np.array, correct_lower_quantile_bins: np.array
@@ -38,9 +39,12 @@ class TestEventTimestampHist:
         correct_result = correct_lower_quantile
 
         et = EventTimestampHist(test_stream, bins=2, lower_cutoff_quantile=0.5)
-        result = et.values
-        assert np.testing.assert_array_equal(result[0], correct_result) is None, "values"
-        assert np.testing.assert_array_equal(result[1], correct_lower_quantile_bins) is None, "bins"
+        et.fit()
+        result_values, result_bins = et.values
+        assert np.testing.assert_array_equal(result_values, correct_result) is None, "incorrect histogram values"
+        assert (
+            np.testing.assert_array_equal(result_bins, correct_lower_quantile_bins) is None
+        ), "incorrect histogram bins"
 
     def test_event_timestamp_hist__upper_cutoff_quantile(
         self, test_stream: EventstreamType, correct_upper_quantile: np.array, correct_upper_quantile_bins: np.array
@@ -48,9 +52,12 @@ class TestEventTimestampHist:
         correct_result = correct_upper_quantile
 
         et = EventTimestampHist(test_stream, bins=2, upper_cutoff_quantile=0.5)
-        result = et.values
-        assert np.testing.assert_array_equal(result[0], correct_result) is None, "values"
-        assert np.testing.assert_array_equal(result[1], correct_upper_quantile_bins) is None, "bins"
+        et.fit()
+        result_values, result_bins = et.values
+        assert np.testing.assert_array_equal(result_values, correct_result) is None, "incorrect histogram values"
+        assert (
+            np.testing.assert_array_equal(result_bins, correct_upper_quantile_bins) is None
+        ), "incorrect histogram bins"
 
     def test_event_timestamp_hist__upper_lower_cutoff_quantile(
         self,
@@ -61,9 +68,12 @@ class TestEventTimestampHist:
         correct_result = correct_upper_lower_quantile
 
         et = EventTimestampHist(test_stream, bins=2, upper_cutoff_quantile=0.8, lower_cutoff_quantile=0.2)
-        result = et.values
-        assert np.testing.assert_array_equal(result[0], correct_result) is None, "values"
-        assert np.testing.assert_array_equal(result[1], correct_upper_lower_quantile_bins) is None, "bins"
+        et.fit()
+        result_values, result_bins = et.values
+        assert np.testing.assert_array_equal(result_values, correct_result) is None, "incorrect histogram values"
+        assert (
+            np.testing.assert_array_equal(result_bins, correct_upper_lower_quantile_bins) is None
+        ), "incorrect histogram bins"
 
     def test_event_timestamp_hist__raw_events(
         self, test_stream: EventstreamType, correct_raw_events_only: np.array, correct_raw_events_only_bins: np.array
@@ -71,6 +81,9 @@ class TestEventTimestampHist:
         correct_result = correct_raw_events_only
 
         et = EventTimestampHist(test_stream, bins=3, raw_events_only=False)
-        result = et.values
-        assert np.testing.assert_array_equal(result[0], correct_result) is None, "values"
-        assert np.testing.assert_array_equal(result[1], correct_raw_events_only_bins) is None, "bins"
+        et.fit()
+        result_values, result_bins = et.values
+        assert np.testing.assert_array_equal(result_values, correct_result) is None, "incorrect histogram values"
+        assert (
+            np.testing.assert_array_equal(result_bins, correct_raw_events_only_bins) is None
+        ), "incorrect histogram bins"

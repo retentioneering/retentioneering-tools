@@ -3,6 +3,7 @@ from __future__ import annotations
 import warnings
 from typing import Literal, Optional
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -75,6 +76,8 @@ class UserLifetimeHist:
 
         self.bins = bins
         self.figsize = figsize
+        self.bins_to_show: np.ndarray = np.array([])
+        self.values_to_plot: np.ndarray = np.array([])
 
     def _remove_cutoff_values(self, series: pd.Series) -> pd.Series:
         idx = [True] * len(series)
@@ -84,14 +87,9 @@ class UserLifetimeHist:
             idx &= series >= series.quantile(self.lower_cutoff_quantile)
         return series[idx]
 
-    @property
-    def values(self) -> tuple[np.ndarray, np.ndarray]:
+    def fit(self) -> None:
         """
         Calculate values for the histplot.
-
-        Returns
-        -------
-        tuple(np.ndarray, np.ndarray)
 
             1. The first array contains the values for histogram
             2. The first array contains the bin edges
@@ -107,23 +105,44 @@ class UserLifetimeHist:
             values_to_plot = self._remove_cutoff_values(values_to_plot).to_numpy()
         if self.log_scale[0]:
             log_adjustment = np.timedelta64(100, "ms") / np.timedelta64(1, self.timedelta_unit)
-            values_to_plot = np.where(
-                values_to_plot != 0, values_to_plot, values_to_plot + log_adjustment
-            )  # type: ignore
+            values_to_plot = np.where(values_to_plot != 0, values_to_plot, values_to_plot + log_adjustment)
             bins_to_show = np.power(10, np.histogram_bin_edges(np.log10(values_to_plot), bins=self.bins))
         else:
             bins_to_show = np.histogram_bin_edges(values_to_plot, bins=self.bins)
         if len(values_to_plot) == 0:
             bins_to_show = np.array([])
-        return values_to_plot, bins_to_show  # type: ignore
 
-    def plot(self) -> None:
+        self.bins_to_show = bins_to_show
+        self.values_to_plot = values_to_plot  # type: ignore
+
+    @property
+    def values(self) -> tuple[np.ndarray, np.ndarray]:
+        """
+
+        Returns
+        -------
+        tuple(np.ndarray, np.ndarray)
+
+            1. The first array contains the values for histogram
+            2. The first array contains the bin edges
+
+        """
+        return self.values_to_plot, self.bins_to_show
+
+    def plot(self) -> matplotlib.axes.Axes:
         """
         Create a sns.histplot based on the calculated values.
-        """
-        out_hist = self.values[0]
-        plt.figure(figsize=self.figsize)
 
-        plt.title("User lifetime histogram")
-        plt.xlabel(f"Time units: {self.timedelta_unit}")
-        sns.histplot(out_hist, bins=self.bins, log_scale=self.log_scale)
+        Returns
+        -------
+        :matplotlib_axes:`matplotlib.axes.Axes<>`
+            The matplotlib axes containing the plot.
+
+        """
+        plt.subplots(figsize=self.figsize)
+
+        hist = sns.histplot(self.values_to_plot, bins=self.bins, log_scale=self.log_scale)
+        hist.set_title("User lifetime histogram")
+        hist.set_xlabel(f"Time units: {self.timedelta_unit}")
+
+        return hist

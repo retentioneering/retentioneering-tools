@@ -11,39 +11,37 @@ from tests.tooling.fixtures.transition_matrix_corr import (
 from tests.tooling.fixtures.transition_matrix_input import test_stream
 
 
-class TestTransitionMatrix:
-    def test_transition_matrix__simple(self, test_stream: EventstreamType, simple_corr: pd.DataFrame) -> bool:
+class VerifyTransitionMatrix:
+    def test_transition_matrix__simple(self, test_stream: EventstreamType, simple_corr: pd.DataFrame) -> None:
 
         tm = TransitionMatrix(eventstream=test_stream)
-        result = tm.values(weights=None, norm_type=None)
+        result = tm.values()  # weights and events are not required parameters
         correct = simple_corr
 
         assert pd.testing.assert_frame_equal(result, correct) is None
 
-
-class VerifyTransitionMatrix:
-    def verify_transition_matrix__norm_full(self, test_stream: EventstreamType, full_corr: pd.DataFrame) -> bool:
+    def verify_transition_matrix__norm_full(self, test_stream: EventstreamType, full_corr: pd.DataFrame) -> None:
 
         tm = TransitionMatrix(eventstream=test_stream)
-        result = tm.values(weights=None, norm_type="full")
+        result = tm.values(norm_type="full")
         correct = full_corr
 
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
-    def verify_transition_matrix__norm_node(self, test_stream: EventstreamType, node_corr: pd.DataFrame) -> bool:
+    def verify_transition_matrix__norm_node(self, test_stream: EventstreamType, node_corr: pd.DataFrame) -> None:
 
         tm = TransitionMatrix(eventstream=test_stream)
-        result = tm.values(weights=None, norm_type="node")
+        result = tm.values(norm_type="node")
         correct = node_corr
 
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def verify_transition_matrix__session_simple(
         self, test_stream: EventstreamType, session_simple_corr: pd.DataFrame
-    ) -> bool:
+    ) -> None:
 
         tm = TransitionMatrix(eventstream=test_stream)
-        result = tm.values(weights={"edges": "session_id", "nodes": "session_id"}, norm_type=None)
+        result = tm.values(weights="session_id")
         correct = session_simple_corr
 
         assert pd.testing.assert_frame_equal(result, correct) is None
@@ -53,7 +51,7 @@ class VerifyTransitionMatrix:
     ) -> bool:
 
         tm = TransitionMatrix(eventstream=test_stream)
-        result = tm.values(weights={"edges": "session_id", "nodes": "session_id"}, norm_type="full")
+        result = tm.values(weights="session_id", norm_type="full")
         correct = session_full_corr
 
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
@@ -63,7 +61,7 @@ class VerifyTransitionMatrix:
     ) -> bool:
 
         tm = TransitionMatrix(eventstream=test_stream)
-        result = tm.values(weights={"edges": "session_id", "nodes": "session_id"}, norm_type="node")
+        result = tm.values(weights="session_id", norm_type="node")
         correct = session_node_corr
 
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
@@ -73,7 +71,7 @@ class VerifyTransitionMatrix:
     ) -> bool:
 
         tm = TransitionMatrix(eventstream=test_stream)
-        result = tm.values(weights={"edges": "user_id", "nodes": "user_id"}, norm_type=None)
+        result = tm.values(weights="user_id", norm_type=None)
         correct = user_simple_corr
 
         assert pd.testing.assert_frame_equal(result, correct) is None
@@ -81,7 +79,7 @@ class VerifyTransitionMatrix:
     def verify_transition_matrix__users_full(self, test_stream: EventstreamType, user_full_corr: pd.DataFrame) -> bool:
 
         tm = TransitionMatrix(eventstream=test_stream)
-        result = tm.values(weights={"edges": "user_id", "nodes": "user_id"}, norm_type="full")
+        result = tm.values(weights="user_id", norm_type="full")
         correct = user_full_corr
 
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
@@ -89,7 +87,7 @@ class VerifyTransitionMatrix:
     def verify_transition_matrix__users_node(self, test_stream: EventstreamType, user_node_corr: pd.DataFrame) -> bool:
 
         tm = TransitionMatrix(eventstream=test_stream)
-        result = tm.values(weights={"edges": "user_id", "nodes": "user_id"}, norm_type="node")
+        result = tm.values(weights="user_id", norm_type="node")
         correct = user_node_corr
 
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None

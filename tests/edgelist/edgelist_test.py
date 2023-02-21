@@ -25,7 +25,7 @@ from tests.nodelist.fixtures.nodelist_corr import (
 class TestEdgelist:
     def test_edgelist__simple(
         self, test_df: pd.DataFrame, nl_simple_corr: pd.DataFrame, el_simple_corr: pd.DataFrame
-    ) -> bool:
+    ) -> None:
         nl = nl_simple_corr
         correct = el_simple_corr
         el = Edgelist(
@@ -38,7 +38,7 @@ class TestEdgelist:
 class VerifyEdgelist:
     def test_edgelist__session_simple(
         self, test_df: pd.DataFrame, nl_session_corr: pd.DataFrame, el_session_corr: pd.DataFrame
-    ) -> bool:
+    ) -> None:
         nl = nl_session_corr
         correct = el_session_corr
         el = Edgelist(
@@ -49,7 +49,7 @@ class VerifyEdgelist:
 
     def test_edgelist__simple_node(
         self, test_df: pd.DataFrame, nl_simple_corr: pd.DataFrame, el_simple_node_corr: pd.DataFrame
-    ) -> bool:
+    ) -> None:
         nl = nl_simple_corr
         correct = el_simple_node_corr
         el = Edgelist(
@@ -60,7 +60,7 @@ class VerifyEdgelist:
 
     def test_edgelist__simple_full(
         self, test_df: pd.DataFrame, nl_simple_corr: pd.DataFrame, el_simple_full_corr: pd.DataFrame
-    ) -> bool:
+    ) -> None:
         nl = nl_simple_corr
         correct = el_simple_full_corr
         el = Edgelist(
@@ -71,7 +71,7 @@ class VerifyEdgelist:
 
     def test_edgelist__user_simple(
         self, test_df: pd.DataFrame, nl_user_corr: pd.DataFrame, el_user__corr: pd.DataFrame
-    ) -> bool:
+    ) -> None:
         nl = nl_user_corr
         correct = el_user__corr
         el = Edgelist(
@@ -82,7 +82,7 @@ class VerifyEdgelist:
 
     def test_edgelist__user_node(
         self, test_df: pd.DataFrame, nl_user_corr: pd.DataFrame, el_user_node_corr: pd.DataFrame
-    ) -> bool:
+    ) -> None:
         nl = nl_user_corr
         correct = el_user_node_corr
         el = Edgelist(
@@ -93,7 +93,7 @@ class VerifyEdgelist:
 
     def test_edgelist__user_full(
         self, test_df: pd.DataFrame, nl_user_corr: pd.DataFrame, el_user_full_corr: pd.DataFrame
-    ) -> bool:
+    ) -> None:
         nl = nl_user_corr
         correct = el_user_full_corr
         el = Edgelist(
@@ -104,7 +104,7 @@ class VerifyEdgelist:
 
     def test_edgelist__session_node(
         self, test_df: pd.DataFrame, nl_session_corr: pd.DataFrame, el_session_node_corr: pd.DataFrame
-    ) -> bool:
+    ) -> None:
         nl = nl_session_corr
         correct = el_session_node_corr
         el = Edgelist(
@@ -115,7 +115,7 @@ class VerifyEdgelist:
 
     def test_edgelist__session_full(
         self, test_df: pd.DataFrame, nl_session_corr: pd.DataFrame, el_session_full_corr: pd.DataFrame
-    ) -> bool:
+    ) -> None:
         nl = nl_session_corr
         correct = el_session_full_corr
         el = Edgelist(

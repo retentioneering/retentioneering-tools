@@ -230,7 +230,6 @@ class TimedeltaHist:
     @property
     def values(self) -> tuple[np.ndarray, np.ndarray]:
         """
-        Calculate values for the histplot.
 
         Returns
         -------

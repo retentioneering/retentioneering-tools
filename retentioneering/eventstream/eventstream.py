@@ -159,6 +159,7 @@ class Eventstream(
     __transition_graph: TransitionGraph | None = None
     __p_graph: PGraph | None = None
     __transition_matrix: TransitionMatrix | None = None
+    __timedelta_hist: TimedeltaHist | None = None
 
     def __init__(
         self,
@@ -797,10 +798,10 @@ class Eventstream(
         Returns
         -------
         TimedeltaHist
-            A ``TimedeltaHist`` class instance with given parameters.
+            A ``TimedeltaHist`` class instance fitted with given parameters.
 
         """
-        timedelta_hist = TimedeltaHist(
+        self.__timedelta_hist = TimedeltaHist(
             eventstream=self,
             event_pair=event_pair,
             only_adjacent_event_pairs=only_adjacent_event_pairs,
@@ -814,11 +815,11 @@ class Eventstream(
             figsize=figsize,
         )
 
-        timedelta_hist._calculate()
+        self.__timedelta_hist.fit()
         if show_plot:
-            timedelta_hist.plot()
+            self.__timedelta_hist.plot()
 
-        return timedelta_hist
+        return self.__timedelta_hist
 
     def user_lifetime_hist(
         self,

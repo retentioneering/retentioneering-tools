@@ -347,6 +347,10 @@ class TestListDataprocessors:
         correct_data = sorted(correct_data, key=lambda x: x["name"])
         real_data = list_dataprocessor(payload={})
 
-        assert json.dumps(correct_data, sort_keys=True, indent=4, separators=(",", ": ")) == json.dumps(
-            real_data, sort_keys=True, indent=4, separators=(",", ": ")
-        )
+        assert len(correct_data) == len(real_data)
+
+        for idx, real_processor in enumerate(real_data):
+            correct_processor = correct_data[idx]
+            assert json.dumps(correct_processor, sort_keys=True, indent=4, separators=(",", ": ")) == json.dumps(
+                real_processor, sort_keys=True, indent=4, separators=(",", ": ")
+            )

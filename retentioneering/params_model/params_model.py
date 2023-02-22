@@ -73,8 +73,10 @@ class ParamsModel(BaseModel):
         params_schema: dict[str, Any] = cls.schema()
         for field_name, field in cls.__fields__.items():
             field_type = getattr(field, "type_", None)
+            # TODO: python3.8 fix
+            field_type_classname_legacy = getattr(field_type, "_name", None)
             field_type_classname = getattr(field_type, "__name__", None)
-            if field_type_classname == "Callable":
+            if field_type_classname == "Callable" or field_type_classname_legacy == "Callable":
                 params_schema["properties"][field_name] = {
                     "title": field_name.title(),
                     "type": "callable",

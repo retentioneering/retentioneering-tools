@@ -1,0 +1,771 @@
+<!-- This template is needed for a toggling solution -->
+<!-- https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Clusters &#8212; Retentioneering 3.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../../_static/styles/bootstrap.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+
+  
+  <link href="../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94">
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94">
+
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/js/custom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/tooling/clusters';</script>
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Step Matrix" href="step_matrix.html" />
+    <link rel="prev" title="Cohorts" href="cohorts.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="docsearch:language" content="en">
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="light">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__primary" id="__primary">
+  <label class="overlay overlay-primary" for="__primary"></label>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__secondary" id="__secondary">
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+      
+<form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+    </div>
+  </div>
+
+  
+  <nav class="bd-header navbar navbar-expand-lg bd-navbar" id="navbar-main"><div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+      <span class="fa-solid fa-bars"></span>
+  </label>
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="../../index.html">
+
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <img src="../../_static/rete_logo.svg" class="logo__image only-light" alt="Logo image">
+    <img src="../../_static/rete_logo_white.svg" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  
+  <div class="col-lg-9 navbar-header-items">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+        <div class="navbar-end-item navbar-persistent--container">
+          
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+        </div>
+      
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+
+
+  
+  
+    <div class="navbar-persistent--mobile">
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+    </div>
+  
+
+  
+  <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+  </label>
+  
+
+</div>
+  </nav>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+      </div>
+    
+
+    
+    
+    <div class="sidebar-header-items__end">
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  
+  <div class="sidebar-start-items sidebar-primary__section">
+    <div class="sidebar-start-items__item"><nav class="bd-links" id="bd-docs-nav" aria-label="Section navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">
+    Section Navigation
+  </p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../eventstream/eventstream_core.html"> Eventstream Core</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../eventstream/eventstream_descriptive.html"> Eventstream Descriptive</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../eventstream/eventstream_descriptive/describe.html"> Describe</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../eventstream/eventstream_descriptive/describe_events.html"> Describe Events</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../eventstream/eventstream_descriptive/user_lifetime_hist.html"> User Lifetime Histogram</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../eventstream/eventstream_descriptive/event_timestamp_hist.html"> Event Timestamp Histogram</a></li>
+</ul>
+</li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../preprocessing_api.html">Preprocessing</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../data_processors/add_start_end.html"> Start End Events</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../data_processors/add_new_users.html"> New users</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../data_processors/lost_users.html"> Lost Users</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../data_processors/negative_target.html"> Negative Target</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../data_processors/positive_target.html"> Positive Target</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../data_processors/truncated_events.html"> Truncated Events</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../data_processors/filter.html"> Filter Events</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../data_processors/group.html"> Group Events</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../data_processors/collapse_loops.html"> Collapse loops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../data_processors/split_sessions.html"> Split Sessions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../data_processors/delete_users.html"> Delete Users By Path Length</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../data_processors/truncate_path.html"> Truncate Path</a></li>
+</ul>
+</li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../tooling_api.html">Core Tools</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="funnel.html"> Funnel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cohorts.html"> Cohorts</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#"> Clusters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="step_matrix.html"> Step Matrix</a></li>
+<li class="toctree-l2"><a class="reference internal" href="step_sankey.html"> Step Sankey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="transition_graph.html"> Transition Graph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stattests.html"> Stattests</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+</nav>
+    </div>
+  </div>
+  
+
+  
+  <div class="sidebar-end-items sidebar-primary__section">
+    <div class="sidebar-end-items__item">
+    </div>
+  </div>
+
+  
+  <div id="rtd-footer-container"></div>
+
+      </div>
+      <main id="main-content" class="bd-main">
+        
+        
+        <div class="bd-content">
+          <div class="bd-article-container">
+            
+            <div class="bd-header-article">
+                
+            </div>
+            
+            
+            <article class="bd-article" role="main">
+              
+  <section id="clusters">
+<h1>Clusters<a class="headerlink" href="#clusters" title="Permalink to this heading">#</a></h1>
+<section id="module-retentioneering.tooling.clusters.clusters">
+<span id="clusters-class"></span><h2>Clusters Class<a class="headerlink" href="#module-retentioneering.tooling.clusters.clusters" title="Permalink to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="retentioneering.tooling.clusters.clusters.Clusters">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">retentioneering.tooling.clusters.clusters.</span></span><span class="sig-name descname"><span class="pre">Clusters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eventstream</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/retentioneering/tooling/clusters/clusters.html#Clusters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#retentioneering.tooling.clusters.clusters.Clusters" title="Permalink to this definition">#</a></dt>
+<dd><p>A class that holds the methods for cluster analysis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>eventstream</strong><span class="classifier">EventstreamType</span></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#retentioneering.eventstream.eventstream.Eventstream.clusters" title="retentioneering.eventstream.eventstream.Eventstream.clusters"><code class="xref py py-func docutils literal notranslate"><span class="pre">retentioneering.eventstream.eventstream.Eventstream.clusters()</span></code></a></dt><dd></dd>
+</dl>
+</div>
+<dl class="py property">
+<dt class="sig sig-object py" id="retentioneering.tooling.clusters.clusters.Clusters.cluster_mapping">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cluster_mapping</span></span><a class="headerlink" href="#retentioneering.tooling.clusters.clusters.Clusters.cluster_mapping" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns <code class="docutils literal notranslate"><span class="pre">cluster_id</span> <span class="pre">-&gt;</span> <span class="pre">list[user_ids]</span></code> mapping.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>dict</dt><dd><p>The keys are cluster_ids, the values are the lists of the user_ids related to the corresponding cluster.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="retentioneering.tooling.clusters.clusters.Clusters.event_dist">
+<span class="sig-name descname"><span class="pre">event_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cluster_id1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_id2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top_n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/retentioneering/tooling/clusters/clusters.html#Clusters.event_dist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#retentioneering.tooling.clusters.clusters.Clusters.event_dist" title="Permalink to this definition">#</a></dt>
+<dd><p>Plots a bar plot illustrating the distribution of <code class="docutils literal notranslate"><span class="pre">top_n</span></code> events in cluster <code class="docutils literal notranslate"><span class="pre">cluster_id1</span></code>
+compared vs the entire dataset or vs cluster <code class="docutils literal notranslate"><span class="pre">cluster_id2</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>cluster_id1</strong><span class="classifier">int</span></dt><dd><p>ID of the cluster to compare.</p>
+</dd>
+<dt><strong>cluster_id2</strong><span class="classifier">int, optional</span></dt><dd><p>ID of the second cluster to compare with top events from first
+cluster. If None, then compares with entire dataset.</p>
+</dd>
+<dt><strong>top_n</strong><span class="classifier">int, default 8</span></dt><dd><p>Number of top events.</p>
+</dd>
+<dt><strong>weight_col</strong><span class="classifier">str, optional</span></dt><dd><p>If None distribution will be compared based on events occurrences in
+datasets. If <code class="docutils literal notranslate"><span class="pre">weight_col</span></code> is specified, percentages of users
+(column name specified by parameter <code class="docutils literal notranslate"><span class="pre">weight_col</span></code>) who have particular
+events will be plotted.</p>
+</dd>
+<dt><strong>targets</strong><span class="classifier">list of str, optional</span></dt><dd><p>List of event names always to include for comparison regardless
+of the parameter top_n value. Target events will appear in the same
+order as specified.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>Plots the distribution barchart.</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="retentioneering.tooling.clusters.clusters.Clusters.extract_features">
+<span class="sig-name descname"><span class="pre">extract_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ngram_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/retentioneering/tooling/clusters/clusters.html#Clusters.extract_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#retentioneering.tooling.clusters.clusters.Clusters.extract_features" title="Permalink to this definition">#</a></dt>
+<dd><p>Calculate vectorized user paths.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>feature_type</strong><span class="classifier">{“tfidf”, “count”, “frequency”, “binary”, “markov”, “time”, “time_fraction”}</span></dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">tfidf</span></code> see details in <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html">sklearn documentation</a></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">count</span></code> see details in <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html">sklearn documentation</a></p></li>
+<li><div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">frequency</span></code> the same as count but normalized to the total number of the events</div>
+<div class="line">in the user’s trajectory.</div>
+</div>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">binary</span></code> 1 if a user had given n-gram at least once and 0 otherwise.</p></li>
+<li><div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">markov</span></code> available for bigrams only. For a given bigram <code class="docutils literal notranslate"><span class="pre">(A,</span> <span class="pre">B)</span></code> the vectorized values</div>
+<div class="line">are the user’s transition probabilities from <code class="docutils literal notranslate"><span class="pre">A</span></code> to <code class="docutils literal notranslate"><span class="pre">B</span></code>.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">time</span></code> Associated with unigrams only. The total number of the seconds spent from the</div>
+<div class="line">beginning of a user’s path until a given event.</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">time_fraction</span></code> the same as <code class="docutils literal notranslate"><span class="pre">time</span></code> but divided by the total length of the user’s trajectory</div>
+<div class="line">(in seconds).</div>
+</div>
+</li>
+</ul>
+</dd>
+<dt><strong>ngram_range</strong><span class="classifier">Tuple(int, int)</span></dt><dd><p>The lower and upper boundary of the range of n-values for different word n-grams or char n-grams to be
+extracted. For example, ngram_range=(1, 1) means only single events, (1, 2) means single events
+and bigrams. Ignored for <code class="docutils literal notranslate"><span class="pre">markov</span></code>, <code class="docutils literal notranslate"><span class="pre">time</span></code>, <code class="docutils literal notranslate"><span class="pre">time_fraction</span></code> feature types.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>pd.DataFrame</dt><dd><p>A DataFrame with the vectorized values. Index contains user_ids, columns contain n-grams.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="retentioneering.tooling.clusters.clusters.Clusters.features">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">features</span></span><a class="headerlink" href="#retentioneering.tooling.clusters.clusters.Clusters.features" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns the calculated features if the clusters are fitted. The index corresponds to user_ids,
+the columns are values of the vectorized user’s trajectory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>pd.DataFrame</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="retentioneering.tooling.clusters.clusters.Clusters.filter_cluster">
+<span class="sig-name descname"><span class="pre">filter_cluster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cluster_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/retentioneering/tooling/clusters/clusters.html#Clusters.filter_cluster"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#retentioneering.tooling.clusters.clusters.Clusters.filter_cluster" title="Permalink to this definition">#</a></dt>
+<dd><p>Truncate the eventstream and leave the trajectories of the users who belong to the selected cluster.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>cluster_id</strong><span class="classifier">int or str</span></dt><dd><p>Cluster identifier to be selected.</p>
+<dl class="simple">
+<dt>If <code class="xref py py-func docutils literal notranslate"><span class="pre">create_clusters()</span></code> was used for cluster generation, then</dt><dd><p>0, 1, … values are possible.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>EventstreamType</dt><dd><p>Eventstream with the users belonging to the selected cluster only.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="retentioneering.tooling.clusters.clusters.Clusters.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_clusters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feature_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ngram_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vector</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/retentioneering/tooling/clusters/clusters.html#Clusters.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#retentioneering.tooling.clusters.clusters.Clusters.fit" title="Permalink to this definition">#</a></dt>
+<dd><p>Fits clusters to the eventstream data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>method</strong><span class="classifier">{“kmeans”, “gmm”}</span></dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">kmeans</span></code> stands for classic K-means algorithm. See details in <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html">sklearn documentation</a></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gmm</span></code> stands for Gaussian mixture model. See details in <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html">sklearn documentation</a></p></li>
+</ul>
+</dd>
+<dt><strong>n_clusters</strong><span class="classifier">int</span></dt><dd><p>The expected number of clusters to be passed to a clustering algorithm.</p>
+</dd>
+<dt><strong>feature_type</strong><span class="classifier">{“tfidf”, “count”, “frequency”, “binary”, “markov”, “time”, “time_fraction”}, default None</span></dt><dd><p>See <a class="reference internal" href="#retentioneering.tooling.clusters.clusters.Clusters.extract_features" title="retentioneering.tooling.clusters.clusters.Clusters.extract_features"><code class="xref py py-func docutils literal notranslate"><span class="pre">extract_features()</span></code></a></p>
+</dd>
+<dt><strong>ngram_range</strong><span class="classifier">Tuple(int, int), optional</span></dt><dd><p>See <a class="reference internal" href="#retentioneering.tooling.clusters.clusters.Clusters.extract_features" title="retentioneering.tooling.clusters.clusters.Clusters.extract_features"><code class="xref py py-func docutils literal notranslate"><span class="pre">extract_features()</span></code></a></p>
+</dd>
+<dt><strong>vector</strong><span class="classifier">pd.DataFrame, optional</span></dt><dd><p><code class="docutils literal notranslate"><span class="pre">pd.DataFrame</span></code> representing custom vectorization of the user paths. The index corresponds to user_ids,
+the columns are vectorized values of the path.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>Clusters</dt><dd><p>A fitted <code class="docutils literal notranslate"><span class="pre">Clusters</span></code> instance.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="retentioneering.tooling.clusters.clusters.Clusters.params">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">params</span></span><a class="headerlink" href="#retentioneering.tooling.clusters.clusters.Clusters.params" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns the parameters used for the last fitting.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="retentioneering.tooling.clusters.clusters.Clusters.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">targets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/retentioneering/tooling/clusters/clusters.html#Clusters.plot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#retentioneering.tooling.clusters.clusters.Clusters.plot" title="Permalink to this definition">#</a></dt>
+<dd><p>Plots a bar plot illustrating the clusters sizes and the conversion rates of
+the <code class="docutils literal notranslate"><span class="pre">targets</span></code> events within the clusters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>targets</strong><span class="classifier">list of str (optional, default None)</span></dt><dd><p>Represents the list of the target events</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="retentioneering.tooling.clusters.clusters.Clusters.projection">
+<span class="sig-name descname"><span class="pre">projection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'tsne'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">targets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'clusters'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/retentioneering/tooling/clusters/clusters.html#Clusters.projection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#retentioneering.tooling.clusters.clusters.Clusters.projection" title="Permalink to this definition">#</a></dt>
+<dd><p>Shows the clusters projection on a plane applying dimension reduction techniques.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>method</strong><span class="classifier">{‘umap’, ‘tsne’}, default ‘tsne’</span></dt><dd><p>Type of manifold transformation.</p>
+</dd>
+<dt><strong>plot_type</strong><span class="classifier">{‘targets’, ‘clusters’}, default ‘clusters’</span></dt><dd><p>Type of color-coding used for projection visualization:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">clusters</span></code> colors trajectories with different colors depending on cluster number.</p></li>
+<li><div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">targets</span></code> colors trajectories based on reach to any event provided in ‘targets’ parameter.</div>
+<div class="line">Must provide <code class="docutils literal notranslate"><span class="pre">targets</span></code> parameter in this case.</div>
+</div>
+</li>
+</ul>
+</dd>
+<dt><strong>targets</strong><span class="classifier">list or tuple of str, optional</span></dt><dd><p>Vector of event_names as str. If user reach any of the specified events, the dot corresponding
+to this user will be highlighted as converted on the resulting projection plot.</p>
+</dd>
+<dt><strong>**kwargs</strong><span class="classifier">optional</span></dt><dd><p>Parameters for <code class="docutils literal notranslate"><span class="pre">sklearn.manifold.TSNE()</span></code> and <code class="docutils literal notranslate"><span class="pre">umap.UMAP()</span></code></p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>sns.scatterplot</dt><dd><p>Plot in the low-dimensional space for user trajectories indexed by user IDs.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="retentioneering.tooling.clusters.clusters.Clusters.set_clusters">
+<span class="sig-name descname"><span class="pre">set_clusters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_clusters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/retentioneering/tooling/clusters/clusters.html#Clusters.set_clusters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#retentioneering.tooling.clusters.clusters.Clusters.set_clusters" title="Permalink to this definition">#</a></dt>
+<dd><p>Sets custom user-cluster mapping.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>user_clusters</strong><span class="classifier">pd.Series</span></dt><dd><p>Series index corresponds to user_ids. Values are cluster_ids.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>Clusters</dt><dd><p>A fitted <code class="docutils literal notranslate"><span class="pre">Clusters</span></code> instance.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="retentioneering.tooling.clusters.clusters.Clusters.user_clusters">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">user_clusters</span></span><a class="headerlink" href="#retentioneering.tooling.clusters.clusters.Clusters.user_clusters" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns <code class="docutils literal notranslate"><span class="pre">user_id</span> <span class="pre">-&gt;</span> <span class="pre">cluster_id</span></code> mapping representing as <code class="docutils literal notranslate"><span class="pre">pd.Series</span></code>. The index corresponds to
+user_ids, the values relate to the corresponding cluster_ids.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>pd.Series</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="eventstream">
+<h2>Eventstream<a class="headerlink" href="#eventstream" title="Permalink to this heading">#</a></h2>
+<dl class="py property">
+<dt class="sig sig-object py" id="retentioneering.eventstream.eventstream.Eventstream.clusters">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">Eventstream.</span></span><span class="sig-name descname"><span class="pre">clusters</span></span><a class="headerlink" href="#retentioneering.eventstream.eventstream.Eventstream.clusters" title="Permalink to this definition">#</a></dt>
+<dd><p>Return a blank (not fitted) instance of <code class="docutils literal notranslate"><span class="pre">Clusters</span></code> class to be used for cluster analysis.
+See <a class="reference internal" href="#module-retentioneering.tooling.clusters.clusters" title="retentioneering.tooling.clusters.clusters"><code class="xref py py-func docutils literal notranslate"><span class="pre">retentioneering.tooling.clusters.clusters()</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>Clusters</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+            </article>
+            
+            
+            
+            <footer class="bd-footer-article">
+                <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+  <a class='left-prev' id="prev-link" href="cohorts.html" title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+          <p class="prev-next-subtitle">previous</p>
+          <p class="prev-next-title">Cohorts</p>
+      </div>
+  </a>
+  <a class='right-next' id="next-link" href="step_matrix.html" title="next page">
+  <div class="prev-next-info">
+      <p class="prev-next-subtitle">next</p>
+      <p class="prev-next-title">Step Matrix</p>
+  </div>
+  <i class="fa-solid fa-angle-right"></i>
+  </a>
+</div>
+            </footer>
+            
+          </div>
+          
+          
+          
+            <div class="bd-sidebar-secondary bd-toc">
+              
+<div class="toc-item">
+  
+<div class="tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+</div>
+<nav id="bd-toc-nav" class="page-toc">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-retentioneering.tooling.clusters.clusters">
+   Clusters Class
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#eventstream">
+   Eventstream
+  </a>
+ </li>
+</ul>
+
+</nav>
+</div>
+
+<div class="toc-item">
+  
+<div id="searchbox"></div>
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+<div class="toc-item">
+  
+<div class="tocsection sourcelink">
+    <a href="../../_sources/api/tooling/clusters.rst.txt">
+        <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+</div>
+
+</div>
+
+            </div>
+          
+          
+        </div>
+        <footer class="bd-footer-content">
+          <div class="bd-footer-content__inner">
+            
+          </div>
+        </footer>
+        
+      </main>
+    </div>
+  </div>
+
+  
+    
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94"></script>
+<script src="../../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94"></script>
+
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+  </body>
+</html>

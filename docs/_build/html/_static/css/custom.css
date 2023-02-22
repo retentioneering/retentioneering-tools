@@ -1,0 +1,44 @@
+/*Make a table tight removing a horizontal scroll bar*/
+.tight-table td {
+    white-space: normal !important;
+}
+
+html[data-theme="dark"] {
+    --pst-color-background: #363634;
+    --pst-color-on-background: #363634;
+}
+
+/* Code copy buttons */
+button.copybtn {
+  webkit-transition: opacity .3s ease-in-out;
+  -o-transition: opacity .3s ease-in-out;
+  transition: opacity .3s ease-in-out;
+  opacity: 0;
+  padding: 2px 6px;
+  position: absolute;
+  right: 4px;
+  top: 4px;
+}
+div.highlight:hover .copybtn, div.highlight .copybtn:focus {
+    opacity: .3;
+}
+div.highlight .copybtn:hover {
+    opacity: 1;
+}
+div.highlight {
+    position: relative;
+}
+
+/* Toggle the content */
+.toggle .header {
+    display: block;
+    clear: both;
+}
+
+.toggle .header:after {
+    content: " ▶";
+}
+
+.toggle .header.open:after {
+    content: " ▼";
+}

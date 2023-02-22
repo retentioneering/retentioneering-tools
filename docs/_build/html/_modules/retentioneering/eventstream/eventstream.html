@@ -1,0 +1,1410 @@
+<!-- This template is needed for a toggling solution -->
+<!-- https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>retentioneering.eventstream.eventstream &#8212; Retentioneering 3.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../../../_static/styles/bootstrap.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94">
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94">
+
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/custom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/retentioneering/eventstream/eventstream';</script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="docsearch:language" content="en">
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="light">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__primary" id="__primary">
+  <label class="overlay overlay-primary" for="__primary"></label>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__secondary" id="__secondary">
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+      
+<form class="bd-search d-flex align-items-center" action="../../../search.html" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+    </div>
+  </div>
+
+  
+  <nav class="bd-header navbar navbar-expand-lg bd-navbar" id="navbar-main"><div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+      <span class="fa-solid fa-bars"></span>
+  </label>
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="../../../index.html">
+
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <img src="../../../_static/rete_logo.svg" class="logo__image only-light" alt="Logo image">
+    <img src="../../../_static/rete_logo_white.svg" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  
+  <div class="col-lg-9 navbar-header-items">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+        <div class="navbar-end-item navbar-persistent--container">
+          
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+        </div>
+      
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+
+
+  
+  
+    <div class="navbar-persistent--mobile">
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+    </div>
+  
+
+  
+  <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+  </label>
+  
+
+</div>
+  </nav>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+      </div>
+    
+
+    
+    
+    <div class="sidebar-header-items__end">
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  
+
+  
+  <div class="sidebar-end-items sidebar-primary__section">
+    <div class="sidebar-end-items__item">
+    </div>
+  </div>
+
+  
+  <div id="rtd-footer-container"></div>
+
+      </div>
+      <main id="main-content" class="bd-main">
+        
+        
+        <div class="bd-content">
+          <div class="bd-article-container">
+            
+            <div class="bd-header-article">
+                
+            </div>
+            
+            
+            <article class="bd-article" role="main">
+              
+  <h1>Source code for retentioneering.eventstream.eventstream</h1><div class="highlight"><pre>
+<span></span><span class="c1"># flake8: noqa</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Collection</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="kn">from</span> <span class="nn">retentioneering.constants</span> <span class="kn">import</span> <span class="n">DATETIME_UNITS</span>
+<span class="kn">from</span> <span class="nn">retentioneering.eventstream.schema</span> <span class="kn">import</span> <span class="n">EventstreamSchema</span><span class="p">,</span> <span class="n">RawDataSchema</span>
+<span class="kn">from</span> <span class="nn">retentioneering.eventstream.types</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">EventstreamType</span><span class="p">,</span>
+    <span class="n">RawDataCustomColSchema</span><span class="p">,</span>
+    <span class="n">RawDataSchemaType</span><span class="p">,</span>
+    <span class="n">Relation</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">retentioneering.graph</span> <span class="kn">import</span> <span class="n">PGraph</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.clusters</span> <span class="kn">import</span> <span class="n">Clusters</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.cohorts</span> <span class="kn">import</span> <span class="n">Cohorts</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.describe</span> <span class="kn">import</span> <span class="n">Describe</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.describe_events</span> <span class="kn">import</span> <span class="n">DescribeEvents</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.event_timestamp_hist</span> <span class="kn">import</span> <span class="n">EventTimestampHist</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.funnel</span> <span class="kn">import</span> <span class="n">Funnel</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.stattests</span> <span class="kn">import</span> <span class="n">TEST_NAMES</span><span class="p">,</span> <span class="n">StatTests</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.step_matrix</span> <span class="kn">import</span> <span class="n">StepMatrix</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.step_sankey</span> <span class="kn">import</span> <span class="n">StepSankey</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.timedelta_hist</span> <span class="kn">import</span> <span class="n">AGGREGATION_NAMES</span><span class="p">,</span> <span class="n">TimedeltaHist</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.transition_matrix</span> <span class="kn">import</span> <span class="n">TransitionMatrix</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.typing.transition_graph</span> <span class="kn">import</span> <span class="n">NormType</span><span class="p">,</span> <span class="n">Threshold</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.user_lifetime_hist</span> <span class="kn">import</span> <span class="n">UserLifetimeHist</span>
+<span class="kn">from</span> <span class="nn">retentioneering.transition_graph</span> <span class="kn">import</span> <span class="n">TransitionGraph</span>
+<span class="kn">from</span> <span class="nn">retentioneering.utils</span> <span class="kn">import</span> <span class="n">get_merged_col</span>
+<span class="kn">from</span> <span class="nn">retentioneering.utils.list</span> <span class="kn">import</span> <span class="n">find_index</span>
+
+<span class="kn">from</span> <span class="nn">.helpers</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CollapseLoopsHelperMixin</span><span class="p">,</span>
+    <span class="n">DeleteUsersByPathLengthHelperMixin</span><span class="p">,</span>
+    <span class="n">FilterHelperMixin</span><span class="p">,</span>
+    <span class="n">GroupHelperMixin</span><span class="p">,</span>
+    <span class="n">LostUsersHelperMixin</span><span class="p">,</span>
+    <span class="n">NegativeTargetHelperMixin</span><span class="p">,</span>
+    <span class="n">NewUsersHelperMixin</span><span class="p">,</span>
+    <span class="n">PositiveTargetHelperMixin</span><span class="p">,</span>
+    <span class="n">RenameHelperMixin</span><span class="p">,</span>
+    <span class="n">SplitSessionsHelperMixin</span><span class="p">,</span>
+    <span class="n">StartEndHelperMixin</span><span class="p">,</span>
+    <span class="n">TruncatedEventsHelperMixin</span><span class="p">,</span>
+    <span class="n">TruncatePathHelperMixin</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">IndexOrder</span> <span class="o">=</span> <span class="n">List</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span>
+<span class="n">FeatureType</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;tfidf&quot;</span><span class="p">,</span> <span class="s2">&quot;count&quot;</span><span class="p">,</span> <span class="s2">&quot;frequency&quot;</span><span class="p">,</span> <span class="s2">&quot;binary&quot;</span><span class="p">,</span> <span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;time_fraction&quot;</span><span class="p">,</span> <span class="s2">&quot;external&quot;</span><span class="p">]</span>
+<span class="n">NgramRange</span> <span class="o">=</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+<span class="n">Method</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;kmeans&quot;</span><span class="p">,</span> <span class="s2">&quot;gmm&quot;</span><span class="p">]</span>
+
+
+<span class="n">DEFAULT_INDEX_ORDER</span><span class="p">:</span> <span class="n">IndexOrder</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;profile&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;path_start&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;new_user&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;existing_user&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;truncated_left&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;session_start&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;session_start_truncated&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;group_alias&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;raw&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;raw_sleep&quot;</span><span class="p">,</span>
+    <span class="kc">None</span><span class="p">,</span>
+    <span class="s2">&quot;synthetic&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;synthetic_sleep&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;positive_target&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;negative_target&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;session_end_truncated&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;session_end&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;session_sleep&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;truncated_right&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;absent_user&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;lost_user&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;path_end&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">RAW_COL_PREFIX</span> <span class="o">=</span> <span class="s2">&quot;raw_&quot;</span>
+<span class="n">DELETE_COL_NAME</span> <span class="o">=</span> <span class="s2">&quot;_deleted&quot;</span>
+
+
+<span class="c1"># TODO проработать резервирование колонок</span>
+
+
+<div class="viewcode-block" id="Eventstream"><a class="viewcode-back" href="../../../api/eventstream/eventstream_core.html#retentioneering.eventstream.eventstream.Eventstream">[docs]</a><span class="k">class</span> <span class="nc">Eventstream</span><span class="p">(</span>
+    <span class="n">CollapseLoopsHelperMixin</span><span class="p">,</span>
+    <span class="n">DeleteUsersByPathLengthHelperMixin</span><span class="p">,</span>
+    <span class="n">FilterHelperMixin</span><span class="p">,</span>
+    <span class="n">GroupHelperMixin</span><span class="p">,</span>
+    <span class="n">LostUsersHelperMixin</span><span class="p">,</span>
+    <span class="n">NegativeTargetHelperMixin</span><span class="p">,</span>
+    <span class="n">NewUsersHelperMixin</span><span class="p">,</span>
+    <span class="n">PositiveTargetHelperMixin</span><span class="p">,</span>
+    <span class="n">SplitSessionsHelperMixin</span><span class="p">,</span>
+    <span class="n">StartEndHelperMixin</span><span class="p">,</span>
+    <span class="n">TruncatedEventsHelperMixin</span><span class="p">,</span>
+    <span class="n">TruncatePathHelperMixin</span><span class="p">,</span>
+    <span class="n">RenameHelperMixin</span><span class="p">,</span>
+    <span class="n">EventstreamType</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Collection of tools for storing and processing clickstream data.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    raw_data : pd.DataFrame or pd.Series</span>
+<span class="sd">        Raw clickstream data.</span>
+<span class="sd">    raw_data_schema : RawDataSchema, optional</span>
+<span class="sd">        Should be specified as an instance of class ``RawDataSchema``:</span>
+
+<span class="sd">        - If ``raw_data`` column names are different from default :py:func:`retentioneering.eventstream.schema.RawDataSchema`.</span>
+<span class="sd">        - If there is at least one ``custom_col`` in ``raw_data``.</span>
+
+<span class="sd">    schema : EventstreamSchema, optional</span>
+<span class="sd">        Schema of created ``eventstream``.</span>
+<span class="sd">        See default schema% :py:func:`retentioneering.eventstream.schema.EventstreamSchema`.</span>
+<span class="sd">    prepare : bool, default True</span>
+
+<span class="sd">        - If ``True`` input data will be transformed in the following way:</span>
+<span class="sd">            - Convert column ``event_timestamp`` to pandas datetime format.</span>
+<span class="sd">            - | Adds ``event_type`` column and fills with ``raw`` value.</span>
+<span class="sd">              | if that column already exists it will remain unchanged.</span>
+<span class="sd">        - If ``False`` - ``raw_data`` will be remained as is.</span>
+
+<span class="sd">    index_order : list of str, default DEFAULT_INDEX_ORDER</span>
+<span class="sd">        Sorting order for ``event_type`` column.</span>
+<span class="sd">    relations : list, optional</span>
+<span class="sd">    user_sample_size : int of float, optional</span>
+<span class="sd">        Number (``int``) or share (``float``) of all users trajectories which will be randomly chosen</span>
+<span class="sd">        and remained in final sample.</span>
+<span class="sd">        See :numpy_random_choice:`numpy documentation&lt;&gt;`.</span>
+<span class="sd">    user_sample_seed : int, optional</span>
+<span class="sd">        Random seed value to generate repeated random users sample.</span>
+<span class="sd">        See :numpy_random_seed:`numpy documentation&lt;&gt;`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">schema</span><span class="p">:</span> <span class="n">EventstreamSchema</span>
+    <span class="n">index_order</span><span class="p">:</span> <span class="n">IndexOrder</span>
+    <span class="n">relations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Relation</span><span class="p">]</span>
+    <span class="n">__raw_data_schema</span><span class="p">:</span> <span class="n">RawDataSchemaType</span>
+    <span class="n">__events</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
+    <span class="n">__clusters</span><span class="p">:</span> <span class="n">Clusters</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">__funnel</span><span class="p">:</span> <span class="n">Funnel</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">__cohorts</span><span class="p">:</span> <span class="n">Cohorts</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">__step_matrix</span><span class="p">:</span> <span class="n">StepMatrix</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">__sankey</span><span class="p">:</span> <span class="n">StepSankey</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">__stattests</span><span class="p">:</span> <span class="n">StatTests</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">__transition_graph</span><span class="p">:</span> <span class="n">TransitionGraph</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">__p_graph</span><span class="p">:</span> <span class="n">PGraph</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">__transition_matrix</span><span class="p">:</span> <span class="n">TransitionMatrix</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">raw_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+        <span class="n">raw_data_schema</span><span class="p">:</span> <span class="n">RawDataSchema</span>
+        <span class="o">|</span> <span class="n">RawDataSchemaType</span>
+        <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">RawDataCustomColSchema</span><span class="p">]]</span>
+        <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">schema</span><span class="p">:</span> <span class="n">EventstreamSchema</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">prepare</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">index_order</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">IndexOrder</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">relations</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Relation</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">user_sample_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">user_sample_seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__clusters</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__funnel</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">schema</span> <span class="o">=</span> <span class="n">schema</span> <span class="k">if</span> <span class="n">schema</span> <span class="k">else</span> <span class="n">EventstreamSchema</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">raw_data_schema</span><span class="p">:</span>
+            <span class="n">raw_data_schema</span> <span class="o">=</span> <span class="n">RawDataSchema</span><span class="p">()</span>
+            <span class="k">if</span> <span class="s2">&quot;event_type&quot;</span> <span class="ow">in</span> <span class="n">raw_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">raw_data_schema</span><span class="o">.</span><span class="n">event_type</span> <span class="o">=</span> <span class="s2">&quot;event_type&quot;</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_data_schema</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">raw_data_schema</span> <span class="o">=</span> <span class="n">RawDataSchema</span><span class="p">(</span><span class="o">**</span><span class="n">raw_data_schema</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__raw_data_schema</span> <span class="o">=</span> <span class="n">raw_data_schema</span>
+
+        <span class="k">if</span> <span class="n">user_sample_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">raw_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__sample_user_paths</span><span class="p">(</span><span class="n">raw_data</span><span class="p">,</span> <span class="n">raw_data_schema</span><span class="p">,</span> <span class="n">user_sample_size</span><span class="p">,</span> <span class="n">user_sample_seed</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">index_order</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">index_order</span> <span class="o">=</span> <span class="n">DEFAULT_INDEX_ORDER</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">index_order</span> <span class="o">=</span> <span class="n">index_order</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">relations</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">relations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">relations</span> <span class="o">=</span> <span class="n">relations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__prepare_events</span><span class="p">(</span><span class="n">raw_data</span><span class="p">)</span> <span class="k">if</span> <span class="n">prepare</span> <span class="k">else</span> <span class="n">raw_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index_events</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Eventstream.copy"><a class="viewcode-back" href="../../../api/eventstream/eventstream_core.html#retentioneering.eventstream.eventstream.Eventstream.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Eventstream</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Make a copy of current ``eventstream``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Eventstream</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Eventstream</span><span class="p">(</span>
+            <span class="n">raw_data_schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__raw_data_schema</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="n">raw_data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__events</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="n">schema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="n">prepare</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">index_order</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">index_order</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="n">relations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">relations</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Eventstream.append_eventstream"><a class="viewcode-back" href="../../../api/eventstream/eventstream_core.html#retentioneering.eventstream.eventstream.Eventstream.append_eventstream">[docs]</a>    <span class="k">def</span> <span class="nf">append_eventstream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eventstream</span><span class="p">:</span> <span class="n">Eventstream</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Append ``eventstream`` with the same schema.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        eventstream : Eventstream</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        eventstream</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If ``EventstreamSchemas`` of two ``eventstreams`` are not equal.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">is_equal</span><span class="p">(</span><span class="n">eventstream</span><span class="o">.</span><span class="n">schema</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;invalid schema: joined eventstream&quot;</span><span class="p">)</span>
+
+        <span class="n">curr_events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">(</span><span class="n">raw_cols</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">show_deleted</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">new_events</span> <span class="o">=</span> <span class="n">eventstream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">(</span><span class="n">raw_cols</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">show_deleted</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">curr_deleted_events</span> <span class="o">=</span> <span class="n">curr_events</span><span class="p">[</span><span class="n">curr_events</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">]</span>
+        <span class="n">new_deleted_events</span> <span class="o">=</span> <span class="n">new_events</span><span class="p">[</span><span class="n">new_events</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">]</span>
+        <span class="n">deleted_events</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">curr_deleted_events</span><span class="p">,</span> <span class="n">new_deleted_events</span><span class="p">])</span>
+        <span class="n">deleted_events</span> <span class="o">=</span> <span class="n">deleted_events</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_id</span><span class="p">])</span>
+
+        <span class="n">merged_events</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="n">curr_events</span><span class="p">,</span>
+            <span class="n">new_events</span><span class="p">,</span>
+            <span class="n">left_on</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_id</span><span class="p">,</span>
+            <span class="n">right_on</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_id</span><span class="p">,</span>
+            <span class="n">how</span><span class="o">=</span><span class="s2">&quot;outer&quot;</span><span class="p">,</span>
+            <span class="n">indicator</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">left_events</span> <span class="o">=</span> <span class="n">merged_events</span><span class="p">[(</span><span class="n">merged_events</span><span class="p">[</span><span class="s2">&quot;_merge&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;left_only&quot;</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">merged_events</span><span class="p">[</span><span class="s2">&quot;_merge&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;both&quot;</span><span class="p">)]</span>
+        <span class="n">right_events</span> <span class="o">=</span> <span class="n">merged_events</span><span class="p">[(</span><span class="n">merged_events</span><span class="p">[</span><span class="s2">&quot;_merge&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;right_only&quot;</span><span class="p">)]</span>
+
+        <span class="n">left_raw_cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_raw_cols</span><span class="p">()</span>
+        <span class="n">right_raw_cols</span> <span class="o">=</span> <span class="n">eventstream</span><span class="o">.</span><span class="n">_get_raw_cols</span><span class="p">()</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">get_cols</span><span class="p">()</span>
+
+        <span class="n">result_left_part</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="n">result_right_part</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">:</span>
+            <span class="n">result_left_part</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">left_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_x&quot;</span><span class="p">)</span>
+            <span class="n">result_right_part</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">right_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_y&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">left_raw_cols</span><span class="p">:</span>
+            <span class="n">result_left_part</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">left_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_x&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">right_raw_cols</span><span class="p">:</span>
+            <span class="n">result_right_part</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">right_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_y&quot;</span><span class="p">)</span>
+
+        <span class="n">result_left_part</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">left_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">DELETE_COL_NAME</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_x&quot;</span><span class="p">)</span>
+        <span class="n">result_right_part</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">right_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">DELETE_COL_NAME</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_y&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__events</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">result_left_part</span><span class="p">,</span> <span class="n">result_right_part</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_soft_delete</span><span class="p">(</span><span class="n">deleted_events</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index_events</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_join_eventstream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eventstream</span><span class="p">:</span> <span class="n">Eventstream</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">is_equal</span><span class="p">(</span><span class="n">eventstream</span><span class="o">.</span><span class="n">schema</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;invalid schema: joined eventstream&quot;</span><span class="p">)</span>
+
+        <span class="n">relation_i</span> <span class="o">=</span> <span class="n">find_index</span><span class="p">(</span>
+            <span class="n">input_list</span><span class="o">=</span><span class="n">eventstream</span><span class="o">.</span><span class="n">relations</span><span class="p">,</span>
+            <span class="n">cond</span><span class="o">=</span><span class="k">lambda</span> <span class="n">rel</span><span class="p">:</span> <span class="n">rel</span><span class="p">[</span><span class="s2">&quot;eventstream&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">relation_i</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;relation not found!&quot;</span><span class="p">)</span>
+
+        <span class="n">relation_col_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;ref_</span><span class="si">{</span><span class="n">relation_i</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="n">curr_events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">(</span><span class="n">raw_cols</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">show_deleted</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">joined_events</span> <span class="o">=</span> <span class="n">eventstream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">(</span><span class="n">raw_cols</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">show_deleted</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">not_related_events</span> <span class="o">=</span> <span class="n">joined_events</span><span class="p">[</span><span class="n">joined_events</span><span class="p">[</span><span class="n">relation_col_name</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()]</span>
+        <span class="n">not_related_events_ids</span> <span class="o">=</span> <span class="n">not_related_events</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_id</span><span class="p">]</span>
+        <span class="n">user_id_type</span> <span class="o">=</span> <span class="n">curr_events</span><span class="o">.</span><span class="n">dtypes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">user_id</span><span class="p">]</span>
+
+        <span class="n">merged_events</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="n">curr_events</span><span class="p">,</span>
+            <span class="n">joined_events</span><span class="p">,</span>
+            <span class="n">left_on</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_id</span><span class="p">,</span>
+            <span class="n">right_on</span><span class="o">=</span><span class="n">relation_col_name</span><span class="p">,</span>
+            <span class="n">how</span><span class="o">=</span><span class="s2">&quot;outer&quot;</span><span class="p">,</span>
+            <span class="n">indicator</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">left_id_colname</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_id</span><span class="si">}</span><span class="s2">_y&quot;</span>
+
+        <span class="n">both_events</span> <span class="o">=</span> <span class="n">merged_events</span><span class="p">[(</span><span class="n">merged_events</span><span class="p">[</span><span class="s2">&quot;_merge&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;both&quot;</span><span class="p">)]</span>
+        <span class="n">left_events</span> <span class="o">=</span> <span class="n">merged_events</span><span class="p">[(</span><span class="n">merged_events</span><span class="p">[</span><span class="s2">&quot;_merge&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;left_only&quot;</span><span class="p">)]</span>
+        <span class="n">right_events</span> <span class="o">=</span> <span class="n">merged_events</span><span class="p">[</span>
+            <span class="p">(</span><span class="n">merged_events</span><span class="p">[</span><span class="s2">&quot;_merge&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;both&quot;</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">merged_events</span><span class="p">[</span><span class="n">left_id_colname</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">not_related_events_ids</span><span class="p">))</span>
+        <span class="p">]</span>
+
+        <span class="n">left_raw_cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_raw_cols</span><span class="p">()</span>
+        <span class="n">right_raw_cols</span> <span class="o">=</span> <span class="n">eventstream</span><span class="o">.</span><span class="n">_get_raw_cols</span><span class="p">()</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_both_cols</span><span class="p">(</span><span class="n">eventstream</span><span class="p">)</span>
+
+        <span class="n">result_left_part</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="n">result_right_part</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="n">result_deleted_events</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">:</span>
+            <span class="n">result_left_part</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">left_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_x&quot;</span><span class="p">)</span>
+            <span class="n">result_deleted_events</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">both_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_x&quot;</span><span class="p">)</span>
+            <span class="n">result_right_part</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">right_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_y&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">left_raw_cols</span><span class="p">:</span>
+            <span class="n">result_left_part</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">left_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_x&quot;</span><span class="p">)</span>
+            <span class="n">result_deleted_events</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">both_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_x&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">right_raw_cols</span><span class="p">:</span>
+            <span class="n">result_right_part</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">right_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_y&quot;</span><span class="p">)</span>
+
+        <span class="n">result_left_part</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_merged_col</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">left_events</span><span class="p">,</span> <span class="n">colname</span><span class="o">=</span><span class="n">DELETE_COL_NAME</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;_x&quot;</span><span class="p">)</span>
+
+        <span class="n">result_deleted_events</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="n">left_delete_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">DELETE_COL_NAME</span><span class="si">}</span><span class="s2">_x&quot;</span>
+        <span class="n">right_delete_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">DELETE_COL_NAME</span><span class="si">}</span><span class="s2">_y&quot;</span>
+        <span class="n">result_right_part</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="n">right_events</span><span class="p">[</span><span class="n">left_delete_col</span><span class="p">]</span> <span class="o">|</span> <span class="n">right_events</span><span class="p">[</span><span class="n">right_delete_col</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__events</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">result_left_part</span><span class="p">,</span> <span class="n">result_right_part</span><span class="p">,</span> <span class="n">result_deleted_events</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__events</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">user_id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__events</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">user_id</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">user_id_type</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">custom_cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_both_custom_cols</span><span class="p">(</span><span class="n">eventstream</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index_events</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_get_both_custom_cols</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eventstream</span><span class="p">:</span> <span class="n">Eventstream</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="n">self_custom_cols</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">custom_cols</span><span class="p">)</span>
+        <span class="n">eventstream_custom_cols</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">custom_cols</span><span class="p">)</span>
+        <span class="n">all_custom_cols</span> <span class="o">=</span> <span class="n">self_custom_cols</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">eventstream_custom_cols</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">all_custom_cols</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_both_cols</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eventstream</span><span class="p">:</span> <span class="n">Eventstream</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="n">self_cols</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">get_cols</span><span class="p">())</span>
+        <span class="n">eventstream_cols</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">get_cols</span><span class="p">())</span>
+        <span class="n">all_cols</span> <span class="o">=</span> <span class="n">self_cols</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">eventstream_cols</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">all_cols</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Eventstream.to_dataframe"><a class="viewcode-back" href="../../../api/eventstream/eventstream_core.html#retentioneering.eventstream.eventstream.Eventstream.to_dataframe">[docs]</a>    <span class="k">def</span> <span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_cols</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">show_deleted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">copy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert ``eventstream`` to ``pd.Dataframe``</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        raw_cols : bool, default False</span>
+<span class="sd">            If ``True`` - original columns of the input ``raw_data`` will be shown.</span>
+<span class="sd">        show_deleted : bool, default False</span>
+<span class="sd">            If ``True`` - show all rows in ``eventstream``</span>
+<span class="sd">        copy : bool, default False</span>
+<span class="sd">            If ``True`` - copy data from current ``eventstream``.</span>
+<span class="sd">            See details :pandas_copy:`pandas documentation&lt;&gt;`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">get_cols</span><span class="p">()</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_relation_cols</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">raw_cols</span><span class="p">:</span>
+            <span class="n">cols</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_raw_cols</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">show_deleted</span><span class="p">:</span>
+            <span class="n">cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DELETE_COL_NAME</span><span class="p">)</span>
+
+        <span class="n">events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__events</span> <span class="k">if</span> <span class="n">show_deleted</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_not_deleted_events</span><span class="p">()</span>
+        <span class="n">view</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">cols</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="n">copy</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">view</span></div>
+
+<div class="viewcode-block" id="Eventstream.index_events"><a class="viewcode-back" href="../../../api/eventstream/eventstream_core.html#retentioneering.eventstream.eventstream.Eventstream.index_events">[docs]</a>    <span class="k">def</span> <span class="nf">index_events</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sort and index eventstream using DEFAULT_INDEX_ORDER.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">order_temp_col_name</span> <span class="o">=</span> <span class="s2">&quot;order&quot;</span>
+        <span class="n">indexed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__events</span>
+
+        <span class="n">indexed</span><span class="p">[</span><span class="n">order_temp_col_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">indexed</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_type</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_event_priority</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+        <span class="n">indexed</span> <span class="o">=</span> <span class="n">indexed</span><span class="o">.</span><span class="n">sort_values</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_timestamp</span><span class="p">,</span> <span class="n">order_temp_col_name</span><span class="p">])</span>  <span class="c1"># type: ignore</span>
+        <span class="n">indexed</span> <span class="o">=</span> <span class="n">indexed</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="n">order_temp_col_name</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># indexed[id_col_col_name] = range(1, len(indexed) + 1)</span>
+        <span class="n">indexed</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">indexed</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">indexed</span><span class="o">.</span><span class="n">index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__events</span> <span class="o">=</span> <span class="n">indexed</span></div>
+
+    <span class="k">def</span> <span class="nf">_get_raw_cols</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="n">cols</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__events</span><span class="o">.</span><span class="n">columns</span>
+        <span class="n">raw_cols</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">RAW_COL_PREFIX</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
+                <span class="n">raw_cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+        <span class="k">return</span> <span class="n">raw_cols</span>
+
+    <span class="k">def</span> <span class="nf">_get_relation_cols</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="n">cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__events</span><span class="o">.</span><span class="n">columns</span>
+        <span class="n">relation_cols</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;ref_&quot;</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
+                <span class="n">relation_cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+        <span class="k">return</span> <span class="n">relation_cols</span>
+
+<div class="viewcode-block" id="Eventstream.add_custom_col"><a class="viewcode-back" href="../../../api/eventstream/eventstream_core.html#retentioneering.eventstream.eventstream.Eventstream.add_custom_col">[docs]</a>    <span class="k">def</span> <span class="nf">add_custom_col</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add custom column to existing ``eventstream``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            New column name.</span>
+<span class="sd">        data : pd.Series</span>
+
+<span class="sd">            - If ``pd.Series`` - new column with given values will be added.</span>
+<span class="sd">            - If ``None`` - new column will be filled with ``np.nan``</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Eventstream</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__raw_data_schema</span><span class="o">.</span><span class="n">custom_cols</span><span class="o">.</span><span class="n">extend</span><span class="p">([{</span><span class="s2">&quot;custom_col&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="s2">&quot;raw_data_col&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">}])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">custom_cols</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">name</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__events</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span></div>
+
+    <span class="k">def</span> <span class="nf">_soft_delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">events</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Delete events either by event_id or by the last relation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">deleted_events</span> <span class="o">=</span> <span class="n">events</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">deleted_events</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">merged</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+            <span class="n">left</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__events</span><span class="p">,</span>
+            <span class="n">right</span><span class="o">=</span><span class="n">deleted_events</span><span class="p">,</span>
+            <span class="n">left_on</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_id</span><span class="p">,</span>
+            <span class="n">right_on</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_id</span><span class="p">,</span>
+            <span class="n">indicator</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">relation_cols</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_relation_cols</span><span class="p">():</span>
+            <span class="n">last_relation_col</span> <span class="o">=</span> <span class="n">relation_cols</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__events</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__events</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">|</span> <span class="n">merged</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">DELETE_COL_NAME</span><span class="si">}</span><span class="s2">_y&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span>
+            <span class="n">merged</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                <span class="n">left</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__events</span><span class="p">,</span>
+                <span class="n">right</span><span class="o">=</span><span class="n">deleted_events</span><span class="p">,</span>
+                <span class="n">left_on</span><span class="o">=</span><span class="n">last_relation_col</span><span class="p">,</span>
+                <span class="n">right_on</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_id</span><span class="p">,</span>
+                <span class="n">indicator</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__events</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__events</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">|</span> <span class="n">merged</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">DELETE_COL_NAME</span><span class="si">}</span><span class="s2">_y&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">__get_not_deleted_events</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__events</span>
+        <span class="k">return</span> <span class="n">events</span><span class="p">[</span><span class="n">events</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">==</span> <span class="kc">False</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__prepare_events</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="n">raw_data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="c1"># add &quot;raw_&quot; prefix for raw cols</span>
+        <span class="n">events</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="k">lambda</span> <span class="n">col</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;raw_</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;columns&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">events</span><span class="p">[</span><span class="n">DELETE_COL_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">events</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">events</span><span class="p">))]</span>
+        <span class="n">events</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_col_from_raw_data</span><span class="p">(</span>
+            <span class="n">raw_data</span><span class="o">=</span><span class="n">raw_data</span><span class="p">,</span>
+            <span class="n">colname</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__raw_data_schema</span><span class="o">.</span><span class="n">event_name</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">events</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_timestamp</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__get_col_from_raw_data</span><span class="p">(</span>
+                <span class="n">raw_data</span><span class="o">=</span><span class="n">raw_data</span><span class="p">,</span>
+                <span class="n">colname</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__raw_data_schema</span><span class="o">.</span><span class="n">event_timestamp</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">events</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">user_id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_col_from_raw_data</span><span class="p">(</span>
+            <span class="n">raw_data</span><span class="o">=</span><span class="n">raw_data</span><span class="p">,</span>
+            <span class="n">colname</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__raw_data_schema</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__raw_data_schema</span><span class="o">.</span><span class="n">event_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">events</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_type</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_col_from_raw_data</span><span class="p">(</span>
+                <span class="n">raw_data</span><span class="o">=</span><span class="n">raw_data</span><span class="p">,</span>
+                <span class="n">colname</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__raw_data_schema</span><span class="o">.</span><span class="n">event_type</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">events</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_type</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;raw&quot;</span>
+
+        <span class="k">for</span> <span class="n">custom_col_schema</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__raw_data_schema</span><span class="o">.</span><span class="n">custom_cols</span><span class="p">:</span>
+            <span class="n">raw_data_col</span> <span class="o">=</span> <span class="n">custom_col_schema</span><span class="p">[</span><span class="s2">&quot;raw_data_col&quot;</span><span class="p">]</span>
+            <span class="n">custom_col</span> <span class="o">=</span> <span class="n">custom_col_schema</span><span class="p">[</span><span class="s2">&quot;custom_col&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">custom_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">custom_cols</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">custom_cols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">custom_col</span><span class="p">)</span>
+
+            <span class="n">events</span><span class="p">[</span><span class="n">custom_col</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__get_col_from_raw_data</span><span class="p">(</span>
+                <span class="n">raw_data</span><span class="o">=</span><span class="n">raw_data</span><span class="p">,</span>
+                <span class="n">colname</span><span class="o">=</span><span class="n">raw_data_col</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">custom_col</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">custom_cols</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">custom_col</span> <span class="ow">in</span> <span class="n">events</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">events</span><span class="p">[</span><span class="n">custom_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+        <span class="c1"># add relations</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">relations</span><span class="p">)):</span>
+            <span class="n">rel_col_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;ref_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">relation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">relations</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">col</span> <span class="o">=</span> <span class="n">raw_data</span><span class="p">[</span><span class="n">relation</span><span class="p">[</span><span class="s2">&quot;raw_col&quot;</span><span class="p">]]</span> <span class="k">if</span> <span class="n">relation</span><span class="p">[</span><span class="s2">&quot;raw_col&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">events</span><span class="p">[</span><span class="n">rel_col_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">col</span>
+
+        <span class="k">return</span> <span class="n">events</span>
+
+    <span class="k">def</span> <span class="nf">__get_col_from_raw_data</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">colname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">create</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span> <span class="o">|</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">colname</span> <span class="ow">in</span> <span class="n">raw_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">raw_data</span><span class="p">[</span><span class="n">colname</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">create</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;invalid raw data. Column &quot;</span><span class="si">{</span><span class="n">colname</span><span class="si">}</span><span class="s1">&quot; does not exists!&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__get_event_priority</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_type</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">event_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">index_order</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">index_order</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">event_type</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index_order</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__sample_user_paths</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">raw_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+        <span class="n">raw_data_schema</span><span class="p">:</span> <span class="n">RawDataSchemaType</span><span class="p">,</span>
+        <span class="n">user_sample_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">user_sample_seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">user_sample_size</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">float</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">user_sample_size</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">int</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;&quot;user_sample_size&quot; has to be a number(float for user share or int for user amount)&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">user_sample_size</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;User sample size/share cannot be negative!&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">user_sample_size</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">float</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">user_sample_size</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;User sample share cannot exceed 1!&quot;</span><span class="p">)</span>
+        <span class="n">user_col_name</span> <span class="o">=</span> <span class="n">raw_data_schema</span><span class="o">.</span><span class="n">user_id</span>
+        <span class="n">unique_users</span> <span class="o">=</span> <span class="n">raw_data</span><span class="p">[</span><span class="n">user_col_name</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">user_sample_size</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">int</span><span class="p">:</span>
+            <span class="n">sample_size</span> <span class="o">=</span> <span class="n">user_sample_size</span>
+        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">user_sample_size</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">float</span><span class="p">:</span>
+            <span class="n">sample_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">user_sample_size</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">unique_users</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">raw_data</span>
+        <span class="k">if</span> <span class="n">user_sample_seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">user_sample_seed</span><span class="p">)</span>
+        <span class="n">sample_users</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">unique_users</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">raw_data_sampled</span> <span class="o">=</span> <span class="n">raw_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">raw_data</span><span class="p">[</span><span class="n">user_col_name</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">sample_users</span><span class="p">),</span> <span class="p">:]</span>  <span class="c1"># type: ignore</span>
+        <span class="k">return</span> <span class="n">raw_data_sampled</span>
+
+<div class="viewcode-block" id="Eventstream.funnel"><a class="viewcode-back" href="../../../api/tooling/funnel.html#retentioneering.eventstream.eventstream.Eventstream.funnel">[docs]</a>    <span class="k">def</span> <span class="nf">funnel</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">stages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">stage_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">funnel_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;open&quot;</span><span class="p">,</span> <span class="s2">&quot;closed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;open&quot;</span><span class="p">,</span>
+        <span class="n">segments</span><span class="p">:</span> <span class="n">Collection</span><span class="p">[</span><span class="n">Collection</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">segment_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">sequence</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">show_plot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Funnel</span><span class="p">:</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Show a visualization of the user sequential events represented as a funnel.</span>
+
+<span class="sd">        See parameters description :py:func:`retentioneering.tooling.funnel.funnel`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Funnel</span>
+<span class="sd">            A ``Funnel`` class instance fitted to the given parameters.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__funnel</span> <span class="o">=</span> <span class="n">Funnel</span><span class="p">(</span>
+            <span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">stages</span><span class="o">=</span><span class="n">stages</span><span class="p">,</span>
+            <span class="n">stage_names</span><span class="o">=</span><span class="n">stage_names</span><span class="p">,</span>
+            <span class="n">funnel_type</span><span class="o">=</span><span class="n">funnel_type</span><span class="p">,</span>
+            <span class="n">segments</span><span class="o">=</span><span class="n">segments</span><span class="p">,</span>
+            <span class="n">segment_names</span><span class="o">=</span><span class="n">segment_names</span><span class="p">,</span>
+            <span class="n">sequence</span><span class="o">=</span><span class="n">sequence</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__funnel</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">show_plot</span><span class="p">:</span>
+            <span class="n">figure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__funnel</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+            <span class="n">figure</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__funnel</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">clusters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Clusters</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a blank (not fitted) instance of ``Clusters`` class to be used for cluster analysis.</span>
+<span class="sd">        See :py:func:`retentioneering.tooling.clusters.clusters`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Clusters</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__clusters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__clusters</span> <span class="o">=</span> <span class="n">Clusters</span><span class="p">(</span><span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__clusters</span>
+
+<div class="viewcode-block" id="Eventstream.step_matrix"><a class="viewcode-back" href="../../../api/tooling/step_matrix.html#retentioneering.eventstream.eventstream.Eventstream.step_matrix">[docs]</a>    <span class="k">def</span> <span class="nf">step_matrix</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">max_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="n">weight_col</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">precision</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="n">targets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">accumulated</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="s2">&quot;only&quot;</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">sorting</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">thresh</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">centered</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">groups</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">list</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">show_plot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StepMatrix</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Show a heatmap visualization of the step matrix.</span>
+
+<span class="sd">        See parameters description :py:func:`retentioneering.tooling.step_matrix.step_matrix`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        StepMatrix</span>
+<span class="sd">            A ``StepMatrix`` class instance fitted to the given parameters.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__step_matrix</span> <span class="o">=</span> <span class="n">StepMatrix</span><span class="p">(</span>
+            <span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">max_steps</span><span class="o">=</span><span class="n">max_steps</span><span class="p">,</span>
+            <span class="n">weight_col</span><span class="o">=</span><span class="n">weight_col</span><span class="p">,</span>
+            <span class="n">precision</span><span class="o">=</span><span class="n">precision</span><span class="p">,</span>
+            <span class="n">targets</span><span class="o">=</span><span class="n">targets</span><span class="p">,</span>
+            <span class="n">accumulated</span><span class="o">=</span><span class="n">accumulated</span><span class="p">,</span>
+            <span class="n">sorting</span><span class="o">=</span><span class="n">sorting</span><span class="p">,</span>
+            <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span>
+            <span class="n">centered</span><span class="o">=</span><span class="n">centered</span><span class="p">,</span>
+            <span class="n">groups</span><span class="o">=</span><span class="n">groups</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__step_matrix</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">show_plot</span><span class="p">:</span>
+            <span class="n">figure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__step_matrix</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+            <span class="n">figure</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__step_matrix</span></div>
+
+<div class="viewcode-block" id="Eventstream.step_sankey"><a class="viewcode-back" href="../../../api/tooling/step_sankey.html#retentioneering.eventstream.eventstream.Eventstream.step_sankey">[docs]</a>    <span class="k">def</span> <span class="nf">step_sankey</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">max_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">thresh</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+        <span class="n">sorting</span><span class="p">:</span> <span class="nb">list</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">autosize</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">height</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">show_plot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StepSankey</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Show a Sankey diagram visualizing the user paths in step-wise manner.</span>
+
+<span class="sd">        See parameters description :py:func:`retentioneering.tooling.step_sankey.step_sankey`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        StepSankey</span>
+<span class="sd">            A ``StepSankey`` class instance fitted to the given parameters.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__sankey</span> <span class="o">=</span> <span class="n">StepSankey</span><span class="p">(</span>
+            <span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">max_steps</span><span class="o">=</span><span class="n">max_steps</span><span class="p">,</span>
+            <span class="n">thresh</span><span class="o">=</span><span class="n">thresh</span><span class="p">,</span>
+            <span class="n">sorting</span><span class="o">=</span><span class="n">sorting</span><span class="p">,</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+            <span class="n">autosize</span><span class="o">=</span><span class="n">autosize</span><span class="p">,</span>
+            <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__sankey</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">show_plot</span><span class="p">:</span>
+            <span class="n">figure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__sankey</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+            <span class="n">figure</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__sankey</span></div>
+
+<div class="viewcode-block" id="Eventstream.cohorts"><a class="viewcode-back" href="../../../api/tooling/cohorts.html#retentioneering.eventstream.eventstream.Eventstream.cohorts">[docs]</a>    <span class="k">def</span> <span class="nf">cohorts</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">cohort_start_unit</span><span class="p">:</span> <span class="n">DATETIME_UNITS</span><span class="p">,</span>
+        <span class="n">cohort_period</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">DATETIME_UNITS</span><span class="p">],</span>
+        <span class="n">average</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">cut_bottom</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">cut_right</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">cut_diagonal</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">figsize</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+        <span class="n">show_plot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Cohorts</span><span class="p">:</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Show a heatmap visualization of the user appearance grouped by cohorts.</span>
+
+<span class="sd">        See parameters description :py:func:`retentioneering.tooling.cohorts.cohorts`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Cohorts</span>
+<span class="sd">            A ``Cohorts`` class instance fitted to the given parameters.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cohorts</span> <span class="o">=</span> <span class="n">Cohorts</span><span class="p">(</span>
+            <span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">cohort_start_unit</span><span class="o">=</span><span class="n">cohort_start_unit</span><span class="p">,</span>
+            <span class="n">cohort_period</span><span class="o">=</span><span class="n">cohort_period</span><span class="p">,</span>
+            <span class="n">average</span><span class="o">=</span><span class="n">average</span><span class="p">,</span>
+            <span class="n">cut_bottom</span><span class="o">=</span><span class="n">cut_bottom</span><span class="p">,</span>
+            <span class="n">cut_right</span><span class="o">=</span><span class="n">cut_right</span><span class="p">,</span>
+            <span class="n">cut_diagonal</span><span class="o">=</span><span class="n">cut_diagonal</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cohorts</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">show_plot</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__cohorts</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span><span class="n">figsize</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cohorts</span></div>
+
+<div class="viewcode-block" id="Eventstream.stattests"><a class="viewcode-back" href="../../../api/tooling/stattests.html#retentioneering.eventstream.eventstream.Eventstream.stattests">[docs]</a>    <span class="k">def</span> <span class="nf">stattests</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test</span><span class="p">:</span> <span class="n">TEST_NAMES</span><span class="p">,</span>
+        <span class="n">groups</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span><span class="p">]],</span>
+        <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+        <span class="n">group_names</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;group_1&quot;</span><span class="p">,</span> <span class="s2">&quot;group_2&quot;</span><span class="p">),</span>
+        <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StatTests</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Determine the statistical difference between the metric values in two user groups.</span>
+
+<span class="sd">        See parameters description :py:func:`retentioneering.tooling.stattests.stattests`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        StatTests</span>
+<span class="sd">            A ``StatTest`` class instance fitted to the given parameters.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__stattests</span> <span class="o">=</span> <span class="n">StatTests</span><span class="p">(</span>
+            <span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="n">groups</span><span class="p">,</span> <span class="n">func</span><span class="o">=</span><span class="n">func</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="n">test</span><span class="p">,</span> <span class="n">group_names</span><span class="o">=</span><span class="n">group_names</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__stattests</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__stattests</span><span class="o">.</span><span class="n">display_results</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__stattests</span></div>
+
+    <span class="k">def</span> <span class="nf">timedelta_hist</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">event_pair</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">only_adjacent_event_pairs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">weight_col</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">aggregation</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AGGREGATION_NAMES</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">timedelta_unit</span><span class="p">:</span> <span class="n">DATETIME_UNITS</span> <span class="o">=</span> <span class="s2">&quot;s&quot;</span><span class="p">,</span>
+        <span class="n">log_scale</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">lower_cutoff_quantile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">upper_cutoff_quantile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">bins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="n">show_plot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TimedeltaHist</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot the distribution of the time deltas between two events. Support various</span>
+<span class="sd">        distribution types, such as distribution of time for adjacent consecutive events, or</span>
+<span class="sd">        for a pair of pre-defined events, or median transition time from event to event per user/session.</span>
+
+<span class="sd">        See parameters description :py:func:`retentioneering.tooling.timedelta_hist.timedelta_hist`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        TimedeltaHist</span>
+<span class="sd">            A ``TimedeltaHist`` instance fitted to the given parameters.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">timedelta_hist</span> <span class="o">=</span> <span class="n">TimedeltaHist</span><span class="p">(</span>
+            <span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">event_pair</span><span class="o">=</span><span class="n">event_pair</span><span class="p">,</span>
+            <span class="n">only_adjacent_event_pairs</span><span class="o">=</span><span class="n">only_adjacent_event_pairs</span><span class="p">,</span>
+            <span class="n">aggregation</span><span class="o">=</span><span class="n">aggregation</span><span class="p">,</span>
+            <span class="n">weight_col</span><span class="o">=</span><span class="n">weight_col</span><span class="p">,</span>
+            <span class="n">timedelta_unit</span><span class="o">=</span><span class="n">timedelta_unit</span><span class="p">,</span>
+            <span class="n">log_scale</span><span class="o">=</span><span class="n">log_scale</span><span class="p">,</span>
+            <span class="n">lower_cutoff_quantile</span><span class="o">=</span><span class="n">lower_cutoff_quantile</span><span class="p">,</span>
+            <span class="n">upper_cutoff_quantile</span><span class="o">=</span><span class="n">upper_cutoff_quantile</span><span class="p">,</span>
+            <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">show_plot</span><span class="p">:</span>
+            <span class="n">timedelta_hist</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">timedelta_hist</span>
+
+<div class="viewcode-block" id="Eventstream.user_lifetime_hist"><a class="viewcode-back" href="../../../api/eventstream/eventstream_descriptive/user_lifetime_hist.html#retentioneering.eventstream.eventstream.Eventstream.user_lifetime_hist">[docs]</a>    <span class="k">def</span> <span class="nf">user_lifetime_hist</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">timedelta_unit</span><span class="p">:</span> <span class="n">DATETIME_UNITS</span> <span class="o">=</span> <span class="s2">&quot;s&quot;</span><span class="p">,</span>
+        <span class="n">log_scale</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">lower_cutoff_quantile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">upper_cutoff_quantile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">bins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="n">show_plot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserLifetimeHist</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot the distribution of user lifetimes. A ``users&#39; lifetime`` is the timedelta between the first and the last</span>
+<span class="sd">        events of the user. Can be useful for finding suitable parameters of various data processors, such as</span>
+<span class="sd">        :py:func:`DeleteUsersByPathLength&lt;retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength&gt;`</span>
+<span class="sd">        or</span>
+<span class="sd">        :py:func:`TruncatedEvents&lt;retentioneering.data_processors_lib.truncated_events.TruncatedEvents&gt;`.</span>
+
+<span class="sd">        See parameters description :py:func:`retentioneering.tooling.user_lifetime_hist.user_lifetime_hist`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        UserLifetimeHist</span>
+<span class="sd">            A ``UserLifetimeHist`` class instance fitted to the given parameters.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">user_lifetime_hist</span> <span class="o">=</span> <span class="n">UserLifetimeHist</span><span class="p">(</span>
+            <span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">timedelta_unit</span><span class="o">=</span><span class="n">timedelta_unit</span><span class="p">,</span>
+            <span class="n">log_scale</span><span class="o">=</span><span class="n">log_scale</span><span class="p">,</span>
+            <span class="n">lower_cutoff_quantile</span><span class="o">=</span><span class="n">lower_cutoff_quantile</span><span class="p">,</span>
+            <span class="n">upper_cutoff_quantile</span><span class="o">=</span><span class="n">upper_cutoff_quantile</span><span class="p">,</span>
+            <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">show_plot</span><span class="p">:</span>
+            <span class="n">user_lifetime_hist</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">user_lifetime_hist</span></div>
+
+<div class="viewcode-block" id="Eventstream.event_timestamp_hist"><a class="viewcode-back" href="../../../api/eventstream/eventstream_descriptive/event_timestamp_hist.html#retentioneering.eventstream.eventstream.Eventstream.event_timestamp_hist">[docs]</a>    <span class="k">def</span> <span class="nf">event_timestamp_hist</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">event_list</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;all&quot;</span><span class="p">,</span>
+        <span class="n">lower_cutoff_quantile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">upper_cutoff_quantile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">bins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="n">show_plot</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EventTimestampHist</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Plot the distribution of events over time. Can be useful for detecting time-based anomalies, and visualising</span>
+<span class="sd">        general timespan of the eventstream.</span>
+
+<span class="sd">        See parameters description :py:func:`retentioneering.tooling.event_timestamp_hist.event_timestamp_hist`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        EventTimestampHist</span>
+<span class="sd">            A ``EventTimestampHist`` class instance fitted to the given parameters.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">event_timestamp_hist</span> <span class="o">=</span> <span class="n">EventTimestampHist</span><span class="p">(</span>
+            <span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">event_list</span><span class="o">=</span><span class="n">event_list</span><span class="p">,</span>
+            <span class="n">lower_cutoff_quantile</span><span class="o">=</span><span class="n">lower_cutoff_quantile</span><span class="p">,</span>
+            <span class="n">upper_cutoff_quantile</span><span class="o">=</span><span class="n">upper_cutoff_quantile</span><span class="p">,</span>
+            <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">show_plot</span><span class="p">:</span>
+            <span class="n">event_timestamp_hist</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">event_timestamp_hist</span></div>
+
+<div class="viewcode-block" id="Eventstream.describe"><a class="viewcode-back" href="../../../api/eventstream/eventstream_descriptive/describe.html#retentioneering.eventstream.eventstream.Eventstream.describe">[docs]</a>    <span class="k">def</span> <span class="nf">describe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;session_id&quot;</span><span class="p">,</span> <span class="n">raw_events_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Display general eventstream information. If ``session_col`` is presented in eventstream, also</span>
+<span class="sd">        output session statistics.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        session_col : str, default &#39;session_id&#39;</span>
+<span class="sd">            Specify name of the session column. If the column is presented in the eventstream,</span>
+<span class="sd">            session statistics will be added to the output.</span>
+
+<span class="sd">        raw_events_only : bool, default False</span>
+<span class="sd">            If ``True`` - statistics will be shown only for raw events.</span>
+<span class="sd">            If ``False`` - for all events presented in your data.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        - All ``float`` values are rounded to 2.</span>
+<span class="sd">        - All ``datetime`` values are rounded to seconds.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">            A dataframe containing descriptive statistics on the eventstream.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">describer</span> <span class="o">=</span> <span class="n">Describe</span><span class="p">(</span><span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_col</span><span class="o">=</span><span class="n">session_col</span><span class="p">,</span> <span class="n">raw_events_only</span><span class="o">=</span><span class="n">raw_events_only</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">describer</span><span class="o">.</span><span class="n">_describe</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Eventstream.describe_events"><a class="viewcode-back" href="../../../api/eventstream/eventstream_descriptive/describe_events.html#retentioneering.eventstream.eventstream.Eventstream.describe_events">[docs]</a>    <span class="k">def</span> <span class="nf">describe_events</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">session_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;session_id&quot;</span><span class="p">,</span> <span class="n">raw_events_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">event_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Display general information on the eventstream events. If ``session_col`` is presented in eventstream, also</span>
+<span class="sd">        output session statistics.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        session_col : str, default &#39;session_id&#39;</span>
+<span class="sd">            Specify name of the session column. If the column is presented in the eventstream,</span>
+<span class="sd">            output session statistics.</span>
+
+<span class="sd">        raw_events_only : bool, default False</span>
+<span class="sd">            If ``True`` - statistics will be shown only for raw events.</span>
+<span class="sd">            If ``False`` - for all events presented in your data.</span>
+
+<span class="sd">        event_list : list of str, optional</span>
+<span class="sd">            Specify the events to be displayed.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+<span class="sd">            **Eventstream statistics**:</span>
+
+<span class="sd">            - | The following metrics are calculated for each event represented in the eventstream</span>
+<span class="sd">              | (or the narrowed eventstream if parameters ``event_list`` or ``raw_events_only`` are used).</span>
+<span class="sd">              | Let all_events, all_users, all_sessions be the number of all events, users,</span>
+<span class="sd">              | and sessions represented in the eventstream. Then:</span>
+
+<span class="sd">                - *number_of_occurrences* - the number of occurrences of a particular event in the eventstream</span>
+<span class="sd">                - *unique_users* - the number of unique users who experienced a particular event</span>
+<span class="sd">                - *unique_sessions* - the number of unique sessions with each event</span>
+<span class="sd">                - *number_of_occurrences_shared* - number_of_occurrences / all_events (raw_events_only, if this parameter = ``True``)</span>
+<span class="sd">                - *unique_users_shared* - unique_users / all_users</span>
+<span class="sd">                - *unique_sessions_shared* - unique_sessions / all_sessions</span>
+
+<span class="sd">            - | **time_to_FO_user_wise** category - timedelta between ``path_start``</span>
+<span class="sd">              | and the first occurrence (FO) of a specified event in each user path.</span>
+<span class="sd">            - | **steps_to_FO_user_wise** category - the number of steps (events) from</span>
+<span class="sd">              | ``path_start`` to the first occurrence (FO) of a specified event in each user path.</span>
+<span class="sd">              | If ``raw_events_only=True`` only raw events will be counted.</span>
+<span class="sd">            - | **time_to_FO_session_wise** category - timedelta  between ``session_start``</span>
+<span class="sd">              | and the first occurrence (FO) of a specified event in each session.</span>
+<span class="sd">            - | **steps_to_FO_session_wise** category - the number of steps (events) from</span>
+<span class="sd">              | ``session_start`` to the first occurrence (FO) of a specified event in each session.</span>
+<span class="sd">              | If ``raw_events_only=True`` only raw events will be counted.</span>
+
+<span class="sd">            Agg functions for each ``first_occurrence*`` category are: mean, std, median, min, max</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        - All ``float`` values rounded to 2.</span>
+<span class="sd">        - All ``datetime`` values are rounded to seconds.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">describer</span> <span class="o">=</span> <span class="n">DescribeEvents</span><span class="p">(</span>
+            <span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_col</span><span class="o">=</span><span class="n">session_col</span><span class="p">,</span> <span class="n">event_list</span><span class="o">=</span><span class="n">event_list</span><span class="p">,</span> <span class="n">raw_events_only</span><span class="o">=</span><span class="n">raw_events_only</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">describer</span><span class="o">.</span><span class="n">_describe</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Eventstream.transition_graph"><a class="viewcode-back" href="../../../api/tooling/transition_graph.html#retentioneering.eventstream.eventstream.Eventstream.transition_graph">[docs]</a>    <span class="k">def</span> <span class="nf">transition_graph</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">thresholds</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Threshold</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">norm_type</span><span class="p">:</span> <span class="n">NormType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">weights</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">targets</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">width</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">960</span><span class="p">,</span>
+        <span class="n">height</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">900</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TransitionGraph</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create interactive graph visualization with callback to input ``eventstream``.</span>
+<span class="sd">        See parameters description :py:func:`retentioneering.transition_graph.transition_graph`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        TransitionGraph</span>
+<span class="sd">            A ``TransitionGraph`` class instance fitted to the given parameters.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__transition_graph</span> <span class="o">=</span> <span class="n">TransitionGraph</span><span class="p">(</span>
+            <span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">graph_settings</span><span class="o">=</span><span class="p">{},</span>  <span class="c1"># type: ignore</span>
+            <span class="n">norm_type</span><span class="o">=</span><span class="n">norm_type</span><span class="p">,</span>
+            <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
+            <span class="n">thresholds</span><span class="o">=</span><span class="n">thresholds</span><span class="p">,</span>
+            <span class="n">targets</span><span class="o">=</span><span class="n">targets</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__transition_graph</span><span class="o">.</span><span class="n">plot_graph</span><span class="p">(</span>
+            <span class="n">thresholds</span><span class="o">=</span><span class="n">thresholds</span><span class="p">,</span> <span class="n">targets</span><span class="o">=</span><span class="n">targets</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">norm_type</span><span class="o">=</span><span class="n">norm_type</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__transition_graph</span></div>
+
+    <span class="k">def</span> <span class="nf">processing_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PGraph</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__p_graph</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__p_graph</span> <span class="o">=</span> <span class="n">PGraph</span><span class="p">(</span><span class="n">source_stream</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__p_graph</span><span class="o">.</span><span class="n">display</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__p_graph</span>
+
+<div class="viewcode-block" id="Eventstream.transition_matrix"><a class="viewcode-back" href="../../../api/tooling/transition_graph.html#retentioneering.eventstream.eventstream.Eventstream.transition_matrix">[docs]</a>    <span class="k">def</span> <span class="nf">transition_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weights</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">norm_type</span><span class="p">:</span> <span class="n">NormType</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TransitionMatrix</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create edge graph in the matrix format. Row indexes are events, from which the transition occurred,</span>
+<span class="sd">        and columns are events, to which the transition occurred.</span>
+<span class="sd">        The values are weights of the edges defined with weights and ``norm_type`` parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        weights :</span>
+<span class="sd">        norm_type : {&quot;full&quot;, &quot;node&quot;, None}, default None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.DataFrame</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__transition_matrix</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__transition_matrix</span> <span class="o">=</span> <span class="n">TransitionMatrix</span><span class="p">(</span>
+                <span class="n">eventstream</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__transition_matrix</span><span class="o">.</span><span class="n">display</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> <span class="n">norm_type</span><span class="o">=</span><span class="n">norm_type</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__transition_matrix</span></div></div>
+</pre></div>
+
+            </article>
+            
+            
+            
+            <footer class="bd-footer-article">
+                <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+</div>
+            </footer>
+            
+          </div>
+          
+          
+          
+            <div class="bd-sidebar-secondary bd-toc">
+              
+<div class="toc-item">
+  
+<div id="searchbox"></div>
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+            </div>
+          
+          
+        </div>
+        <footer class="bd-footer-content">
+          <div class="bd-footer-content__inner">
+            
+          </div>
+        </footer>
+        
+      </main>
+    </div>
+  </div>
+
+  
+    
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94"></script>
+
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+  </body>
+</html>

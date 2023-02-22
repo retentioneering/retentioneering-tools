@@ -1,0 +1,991 @@
+<!-- This template is needed for a toggling solution -->
+<!-- https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Eventstream &#8212; Retentioneering 3.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/bootstrap.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94">
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/custom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guides/eventstream';</script>
+    <link rel="shortcut icon" href="../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="DataProcessor user guide" href="dataprocessors.html" />
+    <link rel="prev" title="User guide" href="../user_guide.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="docsearch:language" content="en">
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="light">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__primary" id="__primary">
+  <label class="overlay overlay-primary" for="__primary"></label>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__secondary" id="__secondary">
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+      
+<form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+    </div>
+  </div>
+
+  
+  <nav class="bd-header navbar navbar-expand-lg bd-navbar" id="navbar-main"><div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+      <span class="fa-solid fa-bars"></span>
+  </label>
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="../index.html">
+
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <img src="../_static/rete_logo.svg" class="logo__image only-light" alt="Logo image">
+    <img src="../_static/rete_logo_white.svg" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  
+  <div class="col-lg-9 navbar-header-items">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+        <div class="navbar-end-item navbar-persistent--container">
+          
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+        </div>
+      
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+
+
+  
+  
+    <div class="navbar-persistent--mobile">
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+    </div>
+  
+
+  
+  <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+  </label>
+  
+
+</div>
+  </nav>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+      </div>
+    
+
+    
+    
+    <div class="sidebar-header-items__end">
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  
+  <div class="sidebar-start-items sidebar-primary__section">
+    <div class="sidebar-start-items__item"><nav class="bd-links" id="bd-docs-nav" aria-label="Section navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">
+    Section Navigation
+  </p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"> Eventstream</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="dataprocessors.html"> DataProcessors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html"> Preprocessing</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="transition_graph.html"> Transition Graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html"> Step Matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_sankey.html"> Step Sankey</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clusters.html"> Clusters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html"> Funnels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cohorts.html"> Cohorts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stattests.html"> Stattests</a></li>
+</ul>
+
+  </div>
+</nav>
+    </div>
+  </div>
+  
+
+  
+  <div class="sidebar-end-items sidebar-primary__section">
+    <div class="sidebar-end-items__item">
+    </div>
+  </div>
+
+  
+  <div id="rtd-footer-container"></div>
+
+      </div>
+      <main id="main-content" class="bd-main">
+        
+        
+        <div class="bd-content">
+          <div class="bd-article-container">
+            
+            <div class="bd-header-article">
+                
+            </div>
+            
+            
+            <article class="bd-article" role="main">
+              
+  <style>
+    .red {color:#24ff83; font-weight:bold;}
+</style><section id="eventstream">
+<h1>Eventstream<a class="headerlink" href="#eventstream" title="Permalink to this heading">#</a></h1>
+<p>The following user guide is also available as <a class="reference external" href="https://colab.research.google.com/drive/1-VuWTmgx57YDmQtdt6CMnV3z2fcjwj32?usp=sharing">Google Colab notebook</a>.</p>
+<section id="what-is-eventstream">
+<h2>What is eventstream<a class="headerlink" href="#what-is-eventstream" title="Permalink to this heading">#</a></h2>
+<p><a class="reference internal" href="../getting_started/eventstream_concept.html"><span class="doc">Eventstream</span></a> is a core class in the retentioneering library. From a user point of view this class is used for three reasons:</p>
+<ul class="simple">
+<li><p>Data container. The initial clickstream is stored in an <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> object.</p></li>
+<li><p>Preprocessing. Eventstream allows you to efficiently work with clickstream data preparation process. <span class="red">TODO set a link to preprocessing user guide</span>.</p></li>
+<li><p>Applying analytical tools. Eventstream provides simple interfaces to retentioneering tools, so you can seamlessly apply them. See a <a class="reference internal" href="../user_guide.html#ug-core-tools"><span class="std std-ref">user guide on retentioneering core tools</span></a>.</p></li>
+</ul>
+<p>The structure of an eventstream is designed as follows. Let <span class="math notranslate nohighlight">\(U\)</span> be a set of unique users, <span class="math notranslate nohighlight">\(E\)</span> be a set of unique events. Eventstream is a set of sequential events <span class="math notranslate nohighlight">\(\{(u_i, e_j, t_k)\}\)</span> which means that user <span class="math notranslate nohighlight">\(u_i\)</span> experienced event <span class="math notranslate nohighlight">\(e_j\)</span> at time <span class="math notranslate nohighlight">\(t_k\)</span>, where <span class="math notranslate nohighlight">\(i = 1, 2, \ldots |U|\)</span>, <span class="math notranslate nohighlight">\(j = 1, 2, \ldots, |E|\)</span>, <span class="math notranslate nohighlight">\(k = 1, 2, \ldots\)</span>.</p>
+</section>
+<section id="eventstream-creation">
+<h2>Eventstream creation<a class="headerlink" href="#eventstream-creation" title="Permalink to this heading">#</a></h2>
+<section id="default-field-names">
+<h3>Default field names<a class="headerlink" href="#default-field-names" title="Permalink to this heading">#</a></h3>
+<p>In some sense, <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> is a container for a clickstream represented by a <code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code>, so an Eventstream instance is created by passing a dataframe to Eventstream constructor. The constructor expects the dataframe to have at least 3 columns: <code class="docutils literal notranslate"><span class="pre">user_id</span></code>, <code class="docutils literal notranslate"><span class="pre">event</span></code>, <code class="docutils literal notranslate"><span class="pre">timestamps</span></code>. Let’s create a dummy dataframe for that:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="n">df1</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="s1">&#39;user_1&#39;</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:00&#39;</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;user_1&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:01&#39;</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;user_2&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:02&#39;</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;user_2&#39;</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:03&#39;</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;user_2&#39;</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:04&#39;</span><span class="p">],</span>
+    <span class="p">],</span>
+    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span> <span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="s1">&#39;timestamp&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Having such a dataframe, you can create an eventstream simply as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering.eventstream</span> <span class="kn">import</span> <span class="n">Eventstream</span>
+<span class="n">stream1</span> <span class="o">=</span> <span class="n">Eventstream</span><span class="p">(</span><span class="n">df1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Before we go further we need to introduce you <a class="reference internal" href="../api/eventstream/eventstream_core.html#retentioneering.eventstream.eventstream.Eventstream.to_dataframe" title="retentioneering.eventstream.eventstream.Eventstream.to_dataframe"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_dataframe()</span></code></a> method which we will use here for displaying eventstream data. According to its name, the method converts an eventstream to <code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream1</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+</pre></div>
+</div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>event_id</th>
+      <th>event_type</th>
+      <th>event_index</th>
+      <th>event</th>
+      <th>timestamp</th>
+      <th>user_id</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>14a6f776-ff43-43aa-859e-db67402f7c93</td>
+      <td>raw</td>
+      <td>0</td>
+      <td>A</td>
+      <td>2023-01-01 00:00:00</td>
+      <td>user_1</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>c0ba82a9-b7fd-4096-b89d-209c04fc9688</td>
+      <td>raw</td>
+      <td>1</td>
+      <td>B</td>
+      <td>2023-01-01 00:00:01</td>
+      <td>user_1</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>72ead540-e997-4168-8ce5-c4cc181a72cb</td>
+      <td>raw</td>
+      <td>2</td>
+      <td>B</td>
+      <td>2023-01-01 00:00:02</td>
+      <td>user_2</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>e7ddad2b-04c1-4360-ac23-f51494bfa3f0</td>
+      <td>raw</td>
+      <td>3</td>
+      <td>A</td>
+      <td>2023-01-01 00:00:03</td>
+      <td>user_2</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5ac8b0dc-ac94-4c68-b0b3-73933a86b65f</td>
+      <td>raw</td>
+      <td>4</td>
+      <td>A</td>
+      <td>2023-01-01 00:00:04</td>
+      <td>user_2</td>
+    </tr>
+  </tbody>
+</table>
+<br><p>We’ll discuss the columns of the resulting dataframe later in <a class="reference internal" href="#displaying-eventstream">Displaying eventstream</a> section.</p>
+</section>
+<section id="custom-field-names">
+<span id="eventstream-custom-fields"></span><h3>Custom field names<a class="headerlink" href="#custom-field-names" title="Permalink to this heading">#</a></h3>
+<p>If the column names of a parent dataframe differ from the default you can either rename them using pandas methods or set a mapping rule which would tell the Eventstream constructor where events, user_ids, and timestamps are located. This can be done with <a class="reference internal" href="../api/eventstream/eventstream_core.html#retentioneering.eventstream.schema.RawDataSchema" title="retentioneering.eventstream.schema.RawDataSchema"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RawDataSchema</span></code></a> class. Here’s how it works. Let’s create a dataframe containing the same data but with different column names (<code class="docutils literal notranslate"><span class="pre">client_id</span></code>, <code class="docutils literal notranslate"><span class="pre">action</span></code> and <code class="docutils literal notranslate"><span class="pre">datetime</span></code>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering.eventstream</span> <span class="kn">import</span> <span class="n">RawDataSchema</span>
+
+<span class="n">df2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="s1">&#39;user_1&#39;</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:00&#39;</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;user_1&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:01&#39;</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;user_2&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:02&#39;</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;user_2&#39;</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:03&#39;</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;user_2&#39;</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:04&#39;</span><span class="p">],</span>
+    <span class="p">],</span>
+     <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;client_id&#39;</span><span class="p">,</span> <span class="s1">&#39;action&#39;</span><span class="p">,</span> <span class="s1">&#39;datetime&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="n">raw_data_schema_df2</span> <span class="o">=</span> <span class="n">RawDataSchema</span><span class="p">(</span>
+    <span class="n">user_id</span><span class="o">=</span><span class="s1">&#39;client_id&#39;</span><span class="p">,</span>
+    <span class="n">event_name</span><span class="o">=</span><span class="s1">&#39;action&#39;</span><span class="p">,</span>
+    <span class="n">event_timestamp</span><span class="o">=</span><span class="s1">&#39;datetime&#39;</span>
+<span class="p">)</span>
+
+<span class="n">stream2</span> <span class="o">=</span> <span class="n">Eventstream</span><span class="p">(</span><span class="n">df2</span><span class="p">,</span> <span class="n">raw_data_schema</span><span class="o">=</span><span class="n">raw_data_schema_df2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As you see, <code class="docutils literal notranslate"><span class="pre">RawDataSchema</span></code> constructor maps fields <code class="docutils literal notranslate"><span class="pre">user_id</span></code>, <code class="docutils literal notranslate"><span class="pre">event_name</span></code>, and <code class="docutils literal notranslate"><span class="pre">event_timestamp</span></code> with the corresponding field names from your sourcing dataframe.</p>
+<p>Another common case is when your dataframe has some important columns which you want to be included in the eventstream. <code class="docutils literal notranslate"><span class="pre">RawDataSchema</span></code> supports this scenario too with a help of <code class="docutils literal notranslate"><span class="pre">custom_cols</span></code> argument. This argument accepts a list of dictionaries, one dict per one custom field. A single dict must contain two fields: <code class="docutils literal notranslate"><span class="pre">raw_data_col</span></code> and <code class="docutils literal notranslate"><span class="pre">custom_col</span></code>. The former stands for a field name from the sourcing dataframe, the latter stands for the corresponding field name to be set at the resulting eventstream.</p>
+<p>Suppose we use a dataframe <code class="docutils literal notranslate"><span class="pre">df3</span></code> similar to the previous <code class="docutils literal notranslate"><span class="pre">df2</span></code> but extended with <code class="docutils literal notranslate"><span class="pre">session</span></code> column which we want to be used in the eventstream as <code class="docutils literal notranslate"><span class="pre">session_id</span></code> column. Here’s an example how we can do this.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">df3</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="s1">&#39;user_1&#39;</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:00&#39;</span><span class="p">,</span> <span class="s1">&#39;session_1&#39;</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;user_1&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:01&#39;</span><span class="p">,</span> <span class="s1">&#39;session_1&#39;</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;user_2&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:02&#39;</span><span class="p">,</span> <span class="s1">&#39;session_2&#39;</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;user_2&#39;</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:03&#39;</span><span class="p">,</span> <span class="s1">&#39;session_3&#39;</span><span class="p">],</span>
+        <span class="p">[</span><span class="s1">&#39;user_2&#39;</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:04&#39;</span><span class="p">,</span> <span class="s1">&#39;session_3&#39;</span><span class="p">],</span>
+    <span class="p">],</span>
+    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;client_id&#39;</span><span class="p">,</span> <span class="s1">&#39;action&#39;</span><span class="p">,</span> <span class="s1">&#39;datetime&#39;</span><span class="p">,</span> <span class="s1">&#39;session&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="n">raw_data_schema_df3</span> <span class="o">=</span> <span class="n">RawDataSchema</span><span class="p">(</span>
+    <span class="n">user_id</span><span class="o">=</span><span class="s1">&#39;client_id&#39;</span><span class="p">,</span>
+    <span class="n">event_name</span><span class="o">=</span><span class="s1">&#39;action&#39;</span><span class="p">,</span>
+    <span class="n">event_timestamp</span><span class="o">=</span><span class="s1">&#39;datetime&#39;</span><span class="p">,</span>
+    <span class="n">custom_cols</span><span class="o">=</span><span class="p">[{</span><span class="s1">&#39;raw_data_col&#39;</span><span class="p">:</span> <span class="s1">&#39;session&#39;</span><span class="p">,</span> <span class="s1">&#39;custom_col&#39;</span><span class="p">:</span> <span class="s1">&#39;session_id&#39;</span><span class="p">}]</span>
+<span class="p">)</span>
+
+<span class="n">stream3</span> <span class="o">=</span> <span class="n">Eventstream</span><span class="p">(</span><span class="n">df3</span><span class="p">,</span> <span class="n">raw_data_schema</span><span class="o">=</span><span class="n">raw_data_schema_df3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If the core triple columns of <code class="docutils literal notranslate"><span class="pre">df3</span></code> dataframe were titled with the default names <code class="docutils literal notranslate"><span class="pre">user_id</span></code>, <code class="docutils literal notranslate"><span class="pre">event</span></code>, <code class="docutils literal notranslate"><span class="pre">timestamp</span></code> (instead of <code class="docutils literal notranslate"><span class="pre">client_id</span></code>, <code class="docutils literal notranslate"><span class="pre">action</span></code>, <code class="docutils literal notranslate"><span class="pre">datetime</span></code>) then you could just ignore their mapping in setting <code class="docutils literal notranslate"><span class="pre">RawDataSchema</span></code> and pass <code class="docutils literal notranslate"><span class="pre">custom_cols</span></code> argument only.</p>
+<p><span class="red">TODO: mention EventstreamSchema</span></p>
+<p><span class="red">TODO: provide an example when raw_data_schema accepts a dict instead of RawDataSchema</span></p>
+</section>
+<section id="user-sampling">
+<h3>User sampling<a class="headerlink" href="#user-sampling" title="Permalink to this heading">#</a></h3>
+<p>Sampling parameters are extremely useful in practice since the clickstreams modern analysts deal with are  large. Large datasets lead to the following three types of effect:</p>
+<ul class="simple">
+<li><p>High computational costs. Yes, the algorithms processing your data might be inefficient, but still it’s a general rule.</p></li>
+<li><p>The messy big picture (especially in case of applying such tools as <a class="reference internal" href="transition_graph.html"><span class="doc">Transition Graph</span></a>, <a class="reference internal" href="step_matrix.html"><span class="doc">StepMatrix</span></a>, and <a class="reference internal" href="step_sankey.html"><span class="doc">StepSankey</span></a>). Insufficient user paths or large number of almost identical paths (especially short paths) often give you no value for the analysis. It might be reasonable to get rid of them.</p></li>
+<li><p>Due to Eventstream design, all the data once uploaded to an Evenstream instance is kept immutable. Even if you remove some eventstream rows while preprocessing, in fact, the data stays untouched: it just becomes hidden and is marked as removed (see <a class="reference internal" href="../getting_started/eventstream_concept.html"><span class="doc">Eventstream concept</span></a>).</p></li>
+</ul>
+<p>The last statement means that the only chance to tailor the dataset to a reasonable size is to sample the user paths at entry point – while applying Eventstream constructor.</p>
+<p>Path sampling seems to be a neat solution for reducing an original dataset. Since the major purpose of retentioneering library is exploring user behaviour, sampling the paths should affect and distort the big picture. However, in case you have some very rare events and behavioral patterns, sampling might reduce them so it will be impossible to analyze them. Hence, use sampling technique carefully.</p>
+<p>We also highlight that user path sampling means that we remove some random paths entirely. We guarantee that the sampled paths contain all the event from the original dataset, and they are not truncated.</p>
+<p>There is a couple sampling parameters in the Eventstream constructor: <code class="docutils literal notranslate"><span class="pre">user_sample_size</span></code> and <code class="docutils literal notranslate"><span class="pre">user_sample_seed</span></code>. The most common way is to set the sample size as a float number. For example, <code class="docutils literal notranslate"><span class="pre">user_sample_size=0.1</span></code> means that we want to leave 10% ot the paths and remove 90% of them. Integer sample size is also possible. In this case a specified number of events will be left. <code class="docutils literal notranslate"><span class="pre">user_sample_seed</span></code> is a standard way to make random sampling reproducible (see <a class="reference external" href="https://stackoverflow.com/questions/21494489/what-does-numpy-random-seed0-do">this Stack Overflow explanation</a>). You can set it to any integer number.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">simple_shop_df</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">(</span><span class="n">as_dataframe</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">sampled_stream</span> <span class="o">=</span> <span class="n">Eventstream</span><span class="p">(</span>
+    <span class="n">simple_shop_df</span><span class="p">,</span>
+    <span class="n">user_sample_size</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">user_sample_seed</span><span class="o">=</span><span class="mi">42</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Original number of the events:&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">simple_shop_df</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Sampled number of the events:&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sampled_stream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()))</span>
+
+<span class="n">unique_users_original</span> <span class="o">=</span> <span class="n">simple_shop_df</span><span class="p">[</span><span class="s1">&#39;user_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+<span class="n">unique_users_sampled</span> <span class="o">=</span> <span class="n">sampled_stream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()[</span><span class="s1">&#39;user_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Original unique users number: &#39;</span><span class="p">,</span> <span class="n">unique_users_original</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Sampled unique users number: &#39;</span><span class="p">,</span> <span class="n">unique_users_sampled</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Original</span> <span class="n">number</span> <span class="n">of</span> <span class="n">the</span> <span class="n">events</span><span class="p">:</span> <span class="mi">35381</span>
+<span class="n">Sampled</span> <span class="n">number</span> <span class="n">of</span> <span class="n">the</span> <span class="n">events</span><span class="p">:</span> <span class="mi">3615</span>
+<span class="n">Original</span> <span class="n">unique</span> <span class="n">users</span> <span class="n">number</span><span class="p">:</span>  <span class="mi">3751</span>
+<span class="n">Sampled</span> <span class="n">unique</span> <span class="n">users</span> <span class="n">number</span><span class="p">:</span>  <span class="mi">375</span>
+</pre></div>
+</div>
+<p>We see that the number of users has been reduced from 3751 to 375 (10% exactly). The number of the events has been reduced from 35381 to 3615 (10.2%), but we didn’t expect to see exact 10% here.</p>
+</section>
+</section>
+<section id="displaying-eventstream">
+<h2>Displaying eventstream<a class="headerlink" href="#displaying-eventstream" title="Permalink to this heading">#</a></h2>
+<p>Now let’s look closely which columns are represented in an eventstream and discuss the work of <a class="reference internal" href="../api/eventstream/eventstream_core.html#retentioneering.eventstream.eventstream.Eventstream.to_dataframe" title="retentioneering.eventstream.eventstream.Eventstream.to_dataframe"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_dataframe()</span></code></a> method using the example of <code class="docutils literal notranslate"><span class="pre">stream3</span></code> eventstream.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream3</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+</pre></div>
+</div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>event_id</th>
+      <th>event_type</th>
+      <th>event_index</th>
+      <th>event</th>
+      <th>timestamp</th>
+      <th>user_id</th>
+      <th>session_id</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>af1efd95-e280-4988-bbb1-30569be06665</td>
+      <td>raw</td>
+      <td>0</td>
+      <td>A</td>
+      <td>2023-01-01 00:00:00</td>
+      <td>user_1</td>
+      <td>session_1</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>06662e65-7bb4-407d-88f0-93a0d7b6dcd2</td>
+      <td>raw</td>
+      <td>1</td>
+      <td>B</td>
+      <td>2023-01-01 00:00:01</td>
+      <td>user_1</td>
+      <td>session_1</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>131b0799-46e8-4370-ac51-e1a9113ebaaa</td>
+      <td>raw</td>
+      <td>2</td>
+      <td>B</td>
+      <td>2023-01-01 00:00:02</td>
+      <td>user_2</td>
+      <td>session_2</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>a85fc194-757d-4573-be53-e7fc53553fcf</td>
+      <td>raw</td>
+      <td>3</td>
+      <td>A</td>
+      <td>2023-01-01 00:00:03</td>
+      <td>user_2</td>
+      <td>session_3</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>01d1a919-a5e5-4359-99f7-cbd29d421394</td>
+      <td>raw</td>
+      <td>4</td>
+      <td>A</td>
+      <td>2023-01-01 00:00:04</td>
+      <td>user_2</td>
+      <td>session_3</td>
+    </tr>
+  </tbody>
+</table>
+<br><p>Among the standard triple <code class="docutils literal notranslate"><span class="pre">user_id</span></code>, <code class="docutils literal notranslate"><span class="pre">event</span></code>, <code class="docutils literal notranslate"><span class="pre">timestamp</span></code> and custom column <code class="docutils literal notranslate"><span class="pre">session_id</span></code> we see the columns <code class="docutils literal notranslate"><span class="pre">event_id</span></code>, <code class="docutils literal notranslate"><span class="pre">event_type</span></code>, <code class="docutils literal notranslate"><span class="pre">event_index</span></code>. They are sort of technical but sometimes they might be useful in preprocessing so here’s their description.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">event_id</span></code>. A string identifier of an evenstream row.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">event_type</span></code>. All the events came from a sourcing dataframe are of <code class="docutils literal notranslate"><span class="pre">raw</span></code> event type. “Raw” means that these event are used as a source for an eventstream, like raw data. However, preprocessing methods can add some so called synthetic events which have different event types. See the details in <a class="reference internal" href="dataprocessors.html"><span class="doc">Preprocessing user guide</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">event_index</span></code>. An integer which is associated with the event order. By default, an eventstream is sorted by timestamp. As for the synthetic events which are often placed at the beginning or in the end of a user’s path, special sorting is applied. See <a class="reference internal" href="dataprocessors.html"><span class="doc">Preprocessing user guide</span></a> for the details. <span class="red">TODO: set a precise link to synthetic events sorting subsection</span>. Please note that the event index might contain gaps. It’s ok due to its design see <a class="reference internal" href="../getting_started/eventstream_concept.html"><span class="doc">Eventstream concept</span></a> for the details. <span class="red">TODO: set a precise link to a subsection</span>.</p></li>
+</ul>
+<p>There are some additional options which one might find useful.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">show_deleted</span></code>. Since all the events once uploaded to an eventstream are immutable (<span class="red">Set an appropriate link to eventstream concept section</span>). By default, <code class="docutils literal notranslate"><span class="pre">show_deleted</span></code> flag is <code class="docutils literal notranslate"><span class="pre">False</span></code>, so the events which are considered as deleted due to preprocessing steps are not showed in the resulting dataframe. If <code class="docutils literal notranslate"><span class="pre">show_deleted=True</span></code>, all the events from the original state of the eventstream and all the in-between preprocessing states are appeared.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">copy</span></code>. When this flag is <code class="docutils literal notranslate"><span class="pre">True</span></code> (by default it’s <code class="docutils literal notranslate"><span class="pre">False</span></code>) then an explicit copy of the dataframe is created.</p></li>
+</ul>
+</section>
+<section id="descriptive-methods">
+<h2>Descriptive methods<a class="headerlink" href="#descriptive-methods" title="Permalink to this heading">#</a></h2>
+<p>As soon as we’ve created an eventstream we usually want to explore it. <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> provides a set of methods for such a first touch exploration. To illustrate the work of these methods we need a larger dataset, so we’ll use our standard demonstration <code class="xref py py-meth docutils literal notranslate"><span class="pre">simple_shop</span></code> dataset. For demonstration purposes we add <code class="docutils literal notranslate"><span class="pre">session_id</span></code> column by applying <a class="reference internal" href="../api/data_processors/split_sessions.html#retentioneering.data_processors_lib.split_sessions.SplitSessions" title="retentioneering.data_processors_lib.split_sessions.SplitSessions"><code class="xref py py-meth docutils literal notranslate"><span class="pre">SplitSessions</span></code></a> data processor.</p>
+<p><span class="red">TODO: fix the link to simple_shop</span></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering</span> <span class="kn">import</span> <span class="n">datasets</span>
+
+<span class="n">stream</span> <span class="o">=</span> <span class="n">datasets</span>\
+    <span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>\
+    <span class="o">.</span><span class="n">split_sessions</span><span class="p">(</span><span class="n">session_cutoff</span><span class="o">=</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="s1">&#39;m&#39;</span><span class="p">))</span>
+<span class="n">stream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<div style="overflow:auto;">
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>event_id</th>
+      <th>event_type</th>
+      <th>event_index</th>
+      <th>event</th>
+      <th>timestamp</th>
+      <th>user_id</th>
+      <th>session_id</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>8c48e664-9d1e-4e90-9d3b-7a2807620862</td>
+      <td>session_start</td>
+      <td>0</td>
+      <td>session_start</td>
+      <td>2019-11-01 17:59:13.273932</td>
+      <td>219483890</td>
+      <td>219483890_1</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0fdffb6e-16ed-4dff-bb7f-ef57a6b5db61</td>
+      <td>raw</td>
+      <td>1</td>
+      <td>catalog</td>
+      <td>2019-11-01 17:59:13.273932</td>
+      <td>219483890</td>
+      <td>219483890_1</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>24bdad84-de40-41d6-8786-90468ecd7b98</td>
+      <td>raw</td>
+      <td>3</td>
+      <td>product1</td>
+      <td>2019-11-01 17:59:28.459271</td>
+      <td>219483890</td>
+      <td>219483890_1</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>696c942d-24da-4fe8-9840-5a69e8744f6e</td>
+      <td>raw</td>
+      <td>5</td>
+      <td>cart</td>
+      <td>2019-11-01 17:59:29.502214</td>
+      <td>219483890</td>
+      <td>219483890_1</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>974dbef0-f7f4-4ea5-8f3f-b70a90f0bfc3</td>
+      <td>raw</td>
+      <td>7</td>
+      <td>catalog</td>
+      <td>2019-11-01 17:59:32.557029</td>
+      <td>219483890</td>
+      <td>219483890_1</td>
+    </tr>
+  </tbody>
+</table>
+</div><section id="general-statistics">
+<h3>General statistics<a class="headerlink" href="#general-statistics" title="Permalink to this heading">#</a></h3>
+<p>Similarly to pandas, we use <a class="reference internal" href="../api/eventstream/eventstream_descriptive/describe.html#retentioneering.eventstream.eventstream.Eventstream.describe" title="retentioneering.eventstream.eventstream.Eventstream.describe"><code class="xref py py-meth docutils literal notranslate"><span class="pre">describe()</span></code></a> for a general description of an eventstream.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><span class="red">TODO: align with adjusted behaviour</span> <a class="reference external" href="https://retentioneering.atlassian.net/browse/PLAT-542">PLAT-542</a></p>
+<p>The output consists of three data blocks: basic statistics, time distribution and events distribution. <code class="docutils literal notranslate"><span class="pre">session_col</span></code> argument points to an eventstream column which contains session ids (<code class="docutils literal notranslate"><span class="pre">session_id</span></code> is the default value). If defined, session statistics is also included. Otherwise all the values related to sessions are not displayed.</p>
+<p>By <cite>eventstream start</cite> and <cite>eventstream end</cite> in the “Basic statistics” block we mean timestamps of the first event and the last events in the eventstream correspondingly. <cite>eventstream length</cite> is a time distance between event stream start and end. “User path/session time length” shows some time-based statistics over user paths and sessions. Blocks “User path/session time length” and “Number of events per user path/session” provides similar information on the length of users paths and sessions (correspondingly), but the former is calculated in days and the latter in the number of events. Often, such time-related information requires deeper analysis, so simple statistics are not enough, and we want to see the entire distribution. For these purposes the following group of methods has been designed.</p>
+</section>
+<section id="time-based-histograms">
+<h3>Time-based histograms<a class="headerlink" href="#time-based-histograms" title="Permalink to this heading">#</a></h3>
+<section id="user-lifetime">
+<h4>User lifetime<a class="headerlink" href="#user-lifetime" title="Permalink to this heading">#</a></h4>
+<p>Proceeding the previous point, one of the most important time-related values is the user lifetime. Since an eventstream has its natural time borders, by lifetime we mean the length of the observed user path as the time distance between the first and the last event represented in the trajectory. The histogram for this value is plotted by <a class="reference internal" href="../api/eventstream/eventstream_descriptive/user_lifetime_hist.html#retentioneering.eventstream.eventstream.Eventstream.user_lifetime_hist" title="retentioneering.eventstream.eventstream.Eventstream.user_lifetime_hist"><code class="xref py py-meth docutils literal notranslate"><span class="pre">user_lifetime_hist()</span></code></a> method.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">user_lifetime_hist</span><span class="p">()</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/01_user_lifetime_hist_simple.png"><img alt="../_images/01_user_lifetime_hist_simple.png" src="../_images/01_user_lifetime_hist_simple.png" style="width: 400px;" /></a>
+</figure>
+<p>The method has multiple parameters. Let’s start with those which are responsible for data formatting.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">bins</span></code> is a common for setting the number of the histogram bins;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">timedelta_unit</span></code> defines a <a class="reference external" href="https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units">datetime unit</a> which is used for the lifetime measuring;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">log_scale</span></code> sets logarithmic scale for the bins;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lower_cutoff_quantile</span></code>, <code class="docutils literal notranslate"><span class="pre">upper_cutoff_quantile</span></code> indicates the lower and upper quantiles (as floats between 0 and 1), the values between the quantiles only are considered for the histogram.</p></li>
+</ul>
+<p><span class="red">Demonstrate the work of the other parameters</span></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The method is especially useful for working together with <a class="reference internal" href="../api/data_processors/delete_users.html#retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength" title="retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength"><code class="xref py py-meth docutils literal notranslate"><span class="pre">DeleteUsersByPathLength</span></code></a> and <a class="reference internal" href="../api/data_processors/truncated_events.html#retentioneering.data_processors_lib.truncated_events.TruncatedEvents" title="retentioneering.data_processors_lib.truncated_events.TruncatedEvents"><code class="xref py py-meth docutils literal notranslate"><span class="pre">TruncatedEvents</span></code></a>. See <a class="reference internal" href="dataprocessors.html"><span class="doc">the user guide on preprocessing</span></a> for the details.</p>
+</div>
+</section>
+<section id="timedelta-between-two-events">
+<h4>Timedelta between two events<a class="headerlink" href="#timedelta-between-two-events" title="Permalink to this heading">#</a></h4>
+<div class="toggle docutils container">
+<div class="header docutils container">
+<p><span class="red">Method timedelta_hist() has a serious bug. Please don’t use it and ignore the hidden documentation below</span></p>
+</div>
+<p>So we’ve defined user lifetime as the timedelta between the beginning and the end of a user’s path. This can be generalized. <code class="xref py py-meth docutils literal notranslate"><span class="pre">timedelta_hist()</span></code> shows a histogram for the distribution of the timedeltas between a couple of specified events.</p>
+<p>The method supports the same formatting arguments (<code class="docutils literal notranslate"><span class="pre">bins</span></code>, <code class="docutils literal notranslate"><span class="pre">timedelta_unit</span></code>, <code class="docutils literal notranslate"><span class="pre">log_scale</span></code>, <code class="docutils literal notranslate"><span class="pre">lower_cutoff_quantile</span></code>, <code class="docutils literal notranslate"><span class="pre">upper_cutoff_quantile</span></code>) as <a class="reference internal" href="../api/eventstream/eventstream_descriptive/user_lifetime_hist.html#retentioneering.eventstream.eventstream.Eventstream.user_lifetime_hist" title="retentioneering.eventstream.eventstream.Eventstream.user_lifetime_hist"><code class="xref py py-meth docutils literal notranslate"><span class="pre">user_lifetime_hist()</span></code></a>.</p>
+<p>If no arguments passed (except formatting arguments), timedeltas between all adjacent events are calculated within each user path. For example, this tiny evenstream</p>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/02_timedelta_trivial_example.png"><img alt="../_images/02_timedelta_trivial_example.png" src="../_images/02_timedelta_trivial_example.png" style="width: 400px;" /></a>
+</figure>
+<p>generates 4 timedeltas <span class="math notranslate nohighlight">\(\Delta_1, \Delta_2, \Delta_3, \Delta_4\)</span> as shown in the diagram. The timedeltas between events B and D, D and C, C and E are not taken into account because two events from each pair are from different users.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">timedelta_hist</span><span class="p">(</span><span class="n">log_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timedelta_unit</span><span class="o">=</span><span class="s1">&#39;m&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/03_timedelta_log_scale.png"><img alt="../_images/03_timedelta_log_scale.png" src="../_images/03_timedelta_log_scale.png" style="width: 400px;" /></a>
+</figure>
+<p>This distribution of the adjacent events is sort of common. It looks like a bimodal (which is not true: remember we use log-scale here), but these two bells help us to estimate a timeout for splitting sessions. From this charts we can see that it is reasonable to set it to somewhat between 10 and 100 minutes.</p>
+<p>Another use case for <code class="xref py py-meth docutils literal notranslate"><span class="pre">timedelta_hist()</span></code> is visualizing the distribution of the timedeltas between two specific events. Assume we want to know how much time it takes for a user to go from product1 to cart. Then we set <cite>event_pair=(‘product1’, ‘cart’)</cite> and pass it to <code class="docutils literal notranslate"><span class="pre">timdelta_hist</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">timedelta_hist</span><span class="p">(</span><span class="n">event_pair</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">),</span> <span class="n">timedelta_unit</span><span class="o">=</span><span class="s1">&#39;m&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/04_timedelta_pair_of_events.png"><img alt="../_images/04_timedelta_pair_of_events.png" src="../_images/04_timedelta_pair_of_events.png" style="width: 400px;" /></a>
+</figure>
+<p>We see that such occurrences are not very numerous. This is because the method still considers only adjacent pairs of events (in this case <code class="docutils literal notranslate"><span class="pre">product1</span></code> and <code class="docutils literal notranslate"><span class="pre">cart</span></code> are assumed to go one right after another in a user’s path). That’s why the histogram is heavily skewed to 0. <code class="docutils literal notranslate"><span class="pre">only_adjacent_event_pairs</span></code> parameter allows to consider any cases when a user goes from <code class="docutils literal notranslate"><span class="pre">product1</span></code> to <code class="docutils literal notranslate"><span class="pre">cart</span></code> non-directly but passing through some other events:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">timedelta_hist</span><span class="p">(</span><span class="n">event_pair</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">),</span> <span class="n">timedelta_unit</span><span class="o">=</span><span class="s1">&#39;m&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/05_timedelta_only_adjacent_event_pairs.png"><img alt="../_images/05_timedelta_only_adjacent_event_pairs.png" src="../_images/05_timedelta_only_adjacent_event_pairs.png" style="width: 400px;" /></a>
+</figure>
+<p>Now, the histogram is still skewed to 0, but this time not so heavily.</p>
+<p>As you may notice from the previous chart, quite many timedeltas have relatively high values. Yes, we can interpret this in a way like the users are picky, so it takes them long to go from <code class="docutils literal notranslate"><span class="pre">product1</span></code> to <code class="docutils literal notranslate"><span class="pre">cart</span></code> or probably <code class="docutils literal notranslate"><span class="pre">product1</span></code> seems not so popular so the users don’t want to purchase it. Anyway, sometimes we are interested to look only at those events which appeared within a user session. So if we’ve already split the paths into sessions we can use <code class="docutils literal notranslate"><span class="pre">weight_col='session_id'</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span>\
+    <span class="o">.</span><span class="n">timedelta_hist</span><span class="p">(</span>
+        <span class="n">event_pair</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">),</span>
+        <span class="n">timedelta_unit</span><span class="o">=</span><span class="s1">&#39;m&#39;</span><span class="p">,</span>
+        <span class="n">only_adjacent_event_pairs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">weight_col</span><span class="o">=</span><span class="s1">&#39;session_id&#39;</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/06_timedelta_sessions.png"><img alt="../_images/06_timedelta_sessions.png" src="../_images/06_timedelta_sessions.png" style="width: 400px;" /></a>
+</figure>
+<p>It’s clear now that within a session the users walk from <code class="docutils literal notranslate"><span class="pre">product1</span></code> to <code class="docutils literal notranslate"><span class="pre">cart</span></code> event in less than 3 minutes.</p>
+<p>For frequently occurring events we might be interested in aggregation some values over sessions or users. For example, transition <code class="docutils literal notranslate"><span class="pre">main</span> <span class="pre">-&gt;</span> <span class="pre">catalog</span></code> is quite frequent. Some users do these transitions quickly, some of them not. It might be reasonable to aggregate the timedeltas over each user path firstly (therefore, we get one value per one user at this step), and then visualize the distribution of these aggregated values. This can be done by passing an additional argument <code class="docutils literal notranslate"><span class="pre">aggregation='mean'</span></code> or <code class="docutils literal notranslate"><span class="pre">aggregation='median'</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span>\
+    <span class="o">.</span><span class="n">timedelta_hist</span><span class="p">(</span>
+        <span class="n">event_pair</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">),</span>
+        <span class="n">timedelta_unit</span><span class="o">=</span><span class="s1">&#39;m&#39;</span><span class="p">,</span>
+        <span class="n">only_adjacent_event_pairs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">weight_col</span><span class="o">=</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span>
+        <span class="n">aggregation</span><span class="o">=</span><span class="s1">&#39;mean&#39;</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p><span class="red">TODO: insert an image with the output histogram</span></p>
+</div>
+</section>
+<section id="events-intensity">
+<h4>Events intensity<a class="headerlink" href="#events-intensity" title="Permalink to this heading">#</a></h4>
+<p>Another nice way to review an eventstream from time point of view is to look how evenly the events are distributed over time. <a class="reference internal" href="../api/eventstream/eventstream_descriptive/event_timestamp_hist.html#retentioneering.eventstream.eventstream.Eventstream.event_timestamp_hist" title="retentioneering.eventstream.eventstream.Eventstream.event_timestamp_hist"><code class="xref py py-meth docutils literal notranslate"><span class="pre">event_timestamp_hist()</span></code></a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">event_timestamp_hist</span><span class="p">()</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/08_event_timestamp_hist.png"><img alt="../_images/08_event_timestamp_hist.png" src="../_images/08_event_timestamp_hist.png" style="width: 400px;" /></a>
+</figure>
+<p>We can notice the heavy skew in the data towards the period between April and May of 2020. Let us check whether it is specific to the <code class="docutils literal notranslate"><span class="pre">cart</span></code>, <code class="docutils literal notranslate"><span class="pre">product1</span></code>, and <code class="docutils literal notranslate"><span class="pre">product2</span></code> events. There’s an argument <code class="docutils literal notranslate"><span class="pre">event_list</span></code> for this.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">event_timestamp_hist</span><span class="p">(</span><span class="n">event_list</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;product2&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/09_event_timestamp_hist_event_list.png"><img alt="../_images/09_event_timestamp_hist_event_list.png" src="../_images/09_event_timestamp_hist_event_list.png" style="width: 400px;" /></a>
+</figure>
+<p>Nothing changed. The skew is probably related to user path sampling or the general popularity of the simple shop over time.</p>
+<p>We could also get rid of the period between April and May, if we think it is too different from the general time frame:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">event_timestamp_hist</span><span class="p">(</span><span class="n">upper_cutoff_quantile</span><span class="o">=</span><span class="mf">0.43</span><span class="p">)</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/10_event_timestamp_hist_quantile.png"><img alt="../_images/10_event_timestamp_hist_quantile.png" src="../_images/10_event_timestamp_hist_quantile.png" style="width: 400px;" /></a>
+</figure>
+</section>
+</section>
+</section>
+</section>
+
+
+            </article>
+            
+            
+            
+            <footer class="bd-footer-article">
+                <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+  <a class='left-prev' id="prev-link" href="../user_guide.html" title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+          <p class="prev-next-subtitle">previous</p>
+          <p class="prev-next-title">User guide</p>
+      </div>
+  </a>
+  <a class='right-next' id="next-link" href="dataprocessors.html" title="next page">
+  <div class="prev-next-info">
+      <p class="prev-next-subtitle">next</p>
+      <p class="prev-next-title">DataProcessor user guide</p>
+  </div>
+  <i class="fa-solid fa-angle-right"></i>
+  </a>
+</div>
+            </footer>
+            
+          </div>
+          
+          
+          
+            <div class="bd-sidebar-secondary bd-toc">
+              
+<div class="toc-item">
+  
+<div class="tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+</div>
+<nav id="bd-toc-nav" class="page-toc">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#what-is-eventstream">
+   What is eventstream
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#eventstream-creation">
+   Eventstream creation
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#default-field-names">
+     Default field names
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#custom-field-names">
+     Custom field names
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#user-sampling">
+     User sampling
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#displaying-eventstream">
+   Displaying eventstream
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#descriptive-methods">
+   Descriptive methods
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#general-statistics">
+     General statistics
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#time-based-histograms">
+     Time-based histograms
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#user-lifetime">
+       User lifetime
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#timedelta-between-two-events">
+       Timedelta between two events
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#events-intensity">
+       Events intensity
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+</div>
+
+<div class="toc-item">
+  
+<div id="searchbox"></div>
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+<div class="toc-item">
+  
+<div class="tocsection sourcelink">
+    <a href="../_sources/user_guides/eventstream.rst.txt">
+        <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+</div>
+
+</div>
+
+            </div>
+          
+          
+        </div>
+        <footer class="bd-footer-content">
+          <div class="bd-footer-content__inner">
+            
+          </div>
+        </footer>
+        
+      </main>
+    </div>
+  </div>
+
+  
+    
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94"></script>
+
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+  </body>
+</html>

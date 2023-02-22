@@ -28,7 +28,7 @@ To get an overview of the eventstream concept, see :doc:`this guide<../getting_s
     stream = datasets.load_simple_shop()
 
 What is a DataProcessor?
-------------------------
+----------------------
 
 Each ``Data Processor`` represents an algorithm that modifies eventstream data.
 
@@ -1435,8 +1435,8 @@ The idea of ``NegativeTarget`` data processor is exactly the same as for
 ``PositiveTarget``, but applied to negative labels instead of
 positive.
 
--  ``negative_target_events`` - list of "positive" ``events``
-    (for instance, associated with some negative result of the user behavior)
+-  ``negative_target_events`` - list of "negative" ``events``(for example, associated with some
+   negative result of the user behavior)
 -  ``func`` - this function accepts parent ``Eventstream`` as an
    argument and returns ``pandas.DataFrame``, containing only the lines
    of the events we would like to label as negative.

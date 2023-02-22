@@ -1,0 +1,549 @@
+<!-- This template is needed for a toggling solution -->
+<!-- https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>retentioneering.data_processors_lib.split_sessions &#8212; Retentioneering 3.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../../../_static/styles/bootstrap.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94">
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94">
+
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/js/custom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/retentioneering/data_processors_lib/split_sessions';</script>
+    <link rel="shortcut icon" href="../../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="docsearch:language" content="en">
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="light">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__primary" id="__primary">
+  <label class="overlay overlay-primary" for="__primary"></label>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__secondary" id="__secondary">
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+      
+<form class="bd-search d-flex align-items-center" action="../../../search.html" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+    </div>
+  </div>
+
+  
+  <nav class="bd-header navbar navbar-expand-lg bd-navbar" id="navbar-main"><div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+      <span class="fa-solid fa-bars"></span>
+  </label>
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="../../../index.html">
+
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <img src="../../../_static/rete_logo.svg" class="logo__image only-light" alt="Logo image">
+    <img src="../../../_static/rete_logo_white.svg" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  
+  <div class="col-lg-9 navbar-header-items">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+        <div class="navbar-end-item navbar-persistent--container">
+          
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+        </div>
+      
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+
+
+  
+  
+    <div class="navbar-persistent--mobile">
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+    </div>
+  
+
+  
+  <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+  </label>
+  
+
+</div>
+  </nav>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+      </div>
+    
+
+    
+    
+    <div class="sidebar-header-items__end">
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  
+
+  
+  <div class="sidebar-end-items sidebar-primary__section">
+    <div class="sidebar-end-items__item">
+    </div>
+  </div>
+
+  
+  <div id="rtd-footer-container"></div>
+
+      </div>
+      <main id="main-content" class="bd-main">
+        
+        
+        <div class="bd-content">
+          <div class="bd-article-container">
+            
+            <div class="bd-header-article">
+                
+            </div>
+            
+            
+            <article class="bd-article" role="main">
+              
+  <h1>Source code for retentioneering.data_processors_lib.split_sessions</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="kn">from</span> <span class="nn">retentioneering.constants</span> <span class="kn">import</span> <span class="n">DATETIME_UNITS</span>
+<span class="kn">from</span> <span class="nn">retentioneering.data_processor</span> <span class="kn">import</span> <span class="n">DataProcessor</span>
+<span class="kn">from</span> <span class="nn">retentioneering.eventstream.schema</span> <span class="kn">import</span> <span class="n">EventstreamSchema</span>
+<span class="kn">from</span> <span class="nn">retentioneering.eventstream.types</span> <span class="kn">import</span> <span class="n">EventstreamType</span>
+<span class="kn">from</span> <span class="nn">retentioneering.params_model</span> <span class="kn">import</span> <span class="n">ParamsModel</span>
+<span class="kn">from</span> <span class="nn">retentioneering.widget.widgets</span> <span class="kn">import</span> <span class="n">ReteTimeWidget</span>
+
+
+<div class="viewcode-block" id="SplitSessionsParams"><a class="viewcode-back" href="../../../api/data_processors/split_sessions.html#retentioneering.data_processors_lib.split_sessions.SplitSessionsParams">[docs]</a><span class="k">class</span> <span class="nc">SplitSessionsParams</span><span class="p">(</span><span class="n">ParamsModel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class with parameters for class :py:func:`SplitSessions`</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">session_cutoff</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">DATETIME_UNITS</span><span class="p">]</span>
+    <span class="n">mark_truncated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">session_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;session_id&quot;</span>
+
+    <span class="n">_widgets</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;session_cutoff&quot;</span><span class="p">:</span> <span class="n">ReteTimeWidget</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="SplitSessions"><a class="viewcode-back" href="../../../api/data_processors/split_sessions.html#retentioneering.data_processors_lib.split_sessions.SplitSessions">[docs]</a><span class="k">class</span> <span class="nc">SplitSessions</span><span class="p">(</span><span class="n">DataProcessor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates new synthetic events, which divide user&#39;s paths on sessions:</span>
+<span class="sd">    ``session_start`` (or ``session_start_truncated``) and ``session_end`` (or ``session_end_truncated``).</span>
+<span class="sd">    Also creates new column which contains session number for each event in input eventstream</span>
+<span class="sd">    Session number will take the form: ``{user_id}_{session_number through one user path}``</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    session_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS&lt;&gt;`)</span>
+<span class="sd">        Threshold value and its unit of measure.</span>
+<span class="sd">        ``session_start`` and ``session_end`` events are always placed before the first and after the last event</span>
+<span class="sd">        in each user&#39;s path.</span>
+<span class="sd">        But user can have more than one session, so that calculates timedelta between every two consecutive events in</span>
+<span class="sd">        each user&#39;s path.</span>
+<span class="sd">        If calculated timedelta is more than selected session_cutoff,</span>
+<span class="sd">        new synthetic events - ``session_start`` and ``session_end`` will occur in the middle of user path.</span>
+
+<span class="sd">    mark_truncated : bool, default False</span>
+<span class="sd">        If ``True`` - calculates timedelta between:</span>
+
+<span class="sd">        - first event in each user&#39;s path and first event in whole ``eventstream``.</span>
+<span class="sd">        - last event in each user&#39;s path and last event in whole ``eventstream``.</span>
+
+<span class="sd">        For users with timedelta less than selected ``session_cutoff``,</span>
+<span class="sd">        new synthetic event - ``session_start_truncated`` or ``session_end_truncated`` will be added.</span>
+
+<span class="sd">    session_col : str, default &quot;session_id&quot;</span>
+<span class="sd">        The name of future ``session_col``</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Eventstream</span>
+<span class="sd">        ``Eventstream`` with new synthetic events and ``session_col``.</span>
+
+<span class="sd">        +-----------------------------+----------------------------+-----------------+</span>
+<span class="sd">        | **event_name**              | **event_type**             | **timestamp**   |</span>
+<span class="sd">        +-----------------------------+----------------------------+-----------------+</span>
+<span class="sd">        | session_start               | session_start              | first_event     |</span>
+<span class="sd">        +-----------------------------+----------------------------+-----------------+</span>
+<span class="sd">        | session_end                 | session_end                | last_event      |</span>
+<span class="sd">        +-----------------------------+----------------------------+-----------------+</span>
+<span class="sd">        | session_start_truncated     | session_start_truncated    | first_event     |</span>
+<span class="sd">        +-----------------------------+----------------------------+-----------------+</span>
+<span class="sd">        | session_end_truncated       | session_end_truncated      | last_event      |</span>
+<span class="sd">        +-----------------------------+----------------------------+-----------------+</span>
+
+<span class="sd">        The user will have more than one session if the delta between timestamps of two consecutive events</span>
+<span class="sd">        (raw_event_n and raw_event_n+1) is greater than the selected ``session_cutoff``:</span>
+
+<span class="sd">        +--------------+-------------------+------------------+-------------------+------------------+</span>
+<span class="sd">        |  **user_id** | **event_name**    | **event_type**   | **timestamp**     | **session_col**  |</span>
+<span class="sd">        +--------------+-------------------+------------------+-------------------+------------------+</span>
+<span class="sd">        |     1        | session_start     | session_start    | first_event       |     1_0          |</span>
+<span class="sd">        +--------------+-------------------+------------------+-------------------+------------------+</span>
+<span class="sd">        |     1        | session_end       | session_end      | raw_event_n       |     1_0          |</span>
+<span class="sd">        +--------------+-------------------+------------------+-------------------+------------------+</span>
+<span class="sd">        |     1        | session_start     | session_start    | raw_event_n+1     |     1_1          |</span>
+<span class="sd">        +--------------+-------------------+------------------+-------------------+------------------+</span>
+<span class="sd">        |     1        | session_end       | session_end      | last_event        |     1_1          |</span>
+<span class="sd">        +--------------+-------------------+------------------+-------------------+------------------+</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Hists</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">params</span><span class="p">:</span> <span class="n">SplitSessionsParams</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">SplitSessionsParams</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eventstream</span><span class="p">:</span> <span class="n">EventstreamType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EventstreamType</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">retentioneering.eventstream.eventstream</span> <span class="kn">import</span> <span class="n">Eventstream</span>
+
+        <span class="n">user_col</span> <span class="o">=</span> <span class="n">eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">user_id</span>
+        <span class="n">time_col</span> <span class="o">=</span> <span class="n">eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_timestamp</span>
+        <span class="n">type_col</span> <span class="o">=</span> <span class="n">eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_type</span>
+        <span class="n">event_col</span> <span class="o">=</span> <span class="n">eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_name</span>
+        <span class="n">session_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">session_col</span>
+        <span class="n">session_cutoff</span><span class="p">,</span> <span class="n">session_cutoff_unit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">session_cutoff</span>
+        <span class="n">mark_truncated</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">mark_truncated</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">eventstream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;ref&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_id</span><span class="p">]</span>
+
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;prev_timedelta&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">time_col</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">user_col</span><span class="p">)[</span><span class="n">time_col</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;next_timedelta&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">user_col</span><span class="p">)[</span><span class="n">time_col</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="n">time_col</span><span class="p">]</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;prev_timedelta&quot;</span><span class="p">]</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">session_cutoff_unit</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;next_timedelta&quot;</span><span class="p">]</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">session_cutoff_unit</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+
+        <span class="n">session_starts_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;prev_timedelta&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">session_cutoff</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;prev_timedelta&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span>
+        <span class="n">session_ends_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;next_timedelta&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">session_cutoff</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;next_timedelta&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span>
+
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;is_session_start&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">session_starts_mask</span>
+        <span class="n">df</span><span class="p">[</span><span class="n">session_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">user_col</span><span class="p">)[</span><span class="s2">&quot;is_session_start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">)</span>
+        <span class="n">df</span><span class="p">[</span><span class="n">session_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">user_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;_&quot;</span> <span class="o">+</span> <span class="n">df</span><span class="p">[</span><span class="n">session_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+
+        <span class="n">session_starts</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">session_starts_mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">session_ends</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">session_ends_mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="n">session_starts</span><span class="p">[</span><span class="n">event_col</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;session_start&quot;</span>
+        <span class="n">session_starts</span><span class="p">[</span><span class="n">type_col</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;session_start&quot;</span>
+        <span class="n">session_starts</span><span class="p">[</span><span class="s2">&quot;ref&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">session_ends</span><span class="p">[</span><span class="n">event_col</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;session_end&quot;</span>
+        <span class="n">session_ends</span><span class="p">[</span><span class="n">type_col</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;session_end&quot;</span>
+        <span class="n">session_ends</span><span class="p">[</span><span class="s2">&quot;ref&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s2">&quot;prev_timedelta&quot;</span><span class="p">,</span> <span class="s2">&quot;next_timedelta&quot;</span><span class="p">,</span> <span class="s2">&quot;is_session_start&quot;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">mark_truncated</span><span class="p">:</span>
+            <span class="n">dataset_start</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">time_col</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+            <span class="n">dataset_end</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">time_col</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+            <span class="n">start_to_start</span> <span class="o">=</span> <span class="p">(</span><span class="n">session_starts</span><span class="p">[</span><span class="n">time_col</span><span class="p">]</span> <span class="o">-</span> <span class="n">dataset_start</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">session_cutoff_unit</span><span class="p">)</span>
+            <span class="n">end_to_end</span> <span class="o">=</span> <span class="p">(</span><span class="n">dataset_end</span> <span class="o">-</span> <span class="n">session_ends</span><span class="p">[</span><span class="n">time_col</span><span class="p">])</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">timedelta64</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">session_cutoff_unit</span><span class="p">)</span>
+
+            <span class="n">session_starts_truncated</span> <span class="o">=</span> <span class="n">session_starts</span><span class="p">[</span><span class="n">start_to_start</span> <span class="o">&lt;</span> <span class="n">session_cutoff</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+            <span class="n">session_ends_truncated</span> <span class="o">=</span> <span class="n">session_ends</span><span class="p">[</span><span class="n">end_to_end</span> <span class="o">&lt;</span> <span class="n">session_cutoff</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+            <span class="n">session_starts_truncated</span><span class="p">[</span><span class="n">event_col</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;session_start_truncated&quot;</span>
+            <span class="n">session_starts_truncated</span><span class="p">[</span><span class="n">type_col</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;session_start_truncated&quot;</span>
+
+            <span class="n">session_ends_truncated</span><span class="p">[</span><span class="n">event_col</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;session_end_truncated&quot;</span>
+            <span class="n">session_ends_truncated</span><span class="p">[</span><span class="n">type_col</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;session_end_truncated&quot;</span>
+
+            <span class="n">session_starts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">session_starts</span><span class="p">,</span> <span class="n">session_starts_truncated</span><span class="p">])</span>
+            <span class="n">session_ends</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">session_ends</span><span class="p">,</span> <span class="n">session_ends_truncated</span><span class="p">])</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">df</span><span class="p">,</span> <span class="n">session_starts</span><span class="p">,</span> <span class="n">session_ends</span><span class="p">])</span>
+
+        <span class="n">raw_data_schema</span> <span class="o">=</span> <span class="n">eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">to_raw_data_schema</span><span class="p">()</span>
+        <span class="n">raw_data_schema</span><span class="o">.</span><span class="n">custom_cols</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;custom_col&quot;</span><span class="p">:</span> <span class="n">session_col</span><span class="p">,</span> <span class="s2">&quot;raw_data_col&quot;</span><span class="p">:</span> <span class="n">session_col</span><span class="p">})</span>
+
+        <span class="n">eventstream</span> <span class="o">=</span> <span class="n">Eventstream</span><span class="p">(</span>
+            <span class="n">schema</span><span class="o">=</span><span class="n">EventstreamSchema</span><span class="p">(</span><span class="n">custom_cols</span><span class="o">=</span><span class="p">[</span><span class="n">session_col</span><span class="p">]),</span>
+            <span class="n">raw_data_schema</span><span class="o">=</span><span class="n">raw_data_schema</span><span class="p">,</span>
+            <span class="n">raw_data</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+            <span class="n">relations</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;raw_col&quot;</span><span class="p">:</span> <span class="s2">&quot;ref&quot;</span><span class="p">,</span> <span class="s2">&quot;eventstream&quot;</span><span class="p">:</span> <span class="n">eventstream</span><span class="p">}],</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">eventstream</span></div>
+</pre></div>
+
+            </article>
+            
+            
+            
+            <footer class="bd-footer-article">
+                <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+</div>
+            </footer>
+            
+          </div>
+          
+          
+          
+            <div class="bd-sidebar-secondary bd-toc">
+              
+<div class="toc-item">
+  
+<div id="searchbox"></div>
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+            </div>
+          
+          
+        </div>
+        <footer class="bd-footer-content">
+          <div class="bd-footer-content__inner">
+            
+          </div>
+        </footer>
+        
+      </main>
+    </div>
+  </div>
+
+  
+    
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94"></script>
+
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+  </body>
+</html>

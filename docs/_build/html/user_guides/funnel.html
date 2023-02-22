@@ -1,0 +1,880 @@
+<!-- This template is needed for a toggling solution -->
+<!-- https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Funnel &#8212; Retentioneering 3.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/bootstrap.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94">
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/custom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guides/funnel';</script>
+    <link rel="shortcut icon" href="../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Cohorts" href="cohorts.html" />
+    <link rel="prev" title="Clusters" href="clusters.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="docsearch:language" content="en">
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="light">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__primary" id="__primary">
+  <label class="overlay overlay-primary" for="__primary"></label>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__secondary" id="__secondary">
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+      
+<form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+    </div>
+  </div>
+
+  
+  <nav class="bd-header navbar navbar-expand-lg bd-navbar" id="navbar-main"><div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+      <span class="fa-solid fa-bars"></span>
+  </label>
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="../index.html">
+
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <img src="../_static/rete_logo.svg" class="logo__image only-light" alt="Logo image">
+    <img src="../_static/rete_logo_white.svg" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  
+  <div class="col-lg-9 navbar-header-items">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+        <div class="navbar-end-item navbar-persistent--container">
+          
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+        </div>
+      
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+
+
+  
+  
+    <div class="navbar-persistent--mobile">
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+    </div>
+  
+
+  
+  <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+  </label>
+  
+
+</div>
+  </nav>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+      </div>
+    
+
+    
+    
+    <div class="sidebar-header-items__end">
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  
+  <div class="sidebar-start-items sidebar-primary__section">
+    <div class="sidebar-start-items__item"><nav class="bd-links" id="bd-docs-nav" aria-label="Section navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">
+    Section Navigation
+  </p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="eventstream.html"> Eventstream</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="dataprocessors.html"> DataProcessors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html"> Preprocessing</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="transition_graph.html"> Transition Graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html"> Step Matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_sankey.html"> Step Sankey</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clusters.html"> Clusters</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"> Funnels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cohorts.html"> Cohorts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stattests.html"> Stattests</a></li>
+</ul>
+
+  </div>
+</nav>
+    </div>
+  </div>
+  
+
+  
+  <div class="sidebar-end-items sidebar-primary__section">
+    <div class="sidebar-end-items__item">
+    </div>
+  </div>
+
+  
+  <div id="rtd-footer-container"></div>
+
+      </div>
+      <main id="main-content" class="bd-main">
+        
+        
+        <div class="bd-content">
+          <div class="bd-article-container">
+            
+            <div class="bd-header-article">
+                
+            </div>
+            
+            
+            <article class="bd-article" role="main">
+              
+  <style>
+    .red {color:#24ff83; font-weight:bold;}
+</style><section id="funnel">
+<h1>Funnel<a class="headerlink" href="#funnel" title="Permalink to this heading">#</a></h1>
+<p>The following user guide is also available as
+<a class="reference external" href="https://colab.research.google.com/drive/1VjFXazgIdMKLyHaqMoKTWhnq5_29lRIs?usp=share_link">Google Colab notebook</a></p>
+<section id="loading-data">
+<h2>Loading data<a class="headerlink" href="#loading-data" title="Permalink to this heading">#</a></h2>
+<p>Here we use <code class="docutils literal notranslate"><span class="pre">simple_shop</span></code> dataset, which has already converted to <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code>.
+If you want to know more about <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> and how to use it, please study
+<a class="reference internal" href="eventstream.html"><span class="doc">this guide</span></a></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering</span> <span class="kn">import</span> <span class="n">datasets</span>
+
+<span class="n">stream</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="basic-example">
+<h2>Basic example<a class="headerlink" href="#basic-example" title="Permalink to this heading">#</a></h2>
+<p>Building a conversion funnel is the basic first step in almost all
+product analytics workflows. To learn how to plot basic funnels using
+the Retentioneering library, let us work through a basic example.</p>
+<p>Funnel tool is mainly available as
+<a class="reference internal" href="../api/tooling/funnel.html#retentioneering.eventstream.eventstream.Eventstream.funnel" title="retentioneering.eventstream.eventstream.Eventstream.funnel"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Eventstream.funnel()</span></code></a> method.
+The implementation is based on <a class="reference external" href="https://plotly.com/python/funnel-charts/">Plotly funnel charts</a>.
+Here’s how it visualizes <code class="docutils literal notranslate"><span class="pre">simple_shop</span></code> eventstream:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">funnel</span><span class="p">(</span><span class="n">stages</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">]);</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="400"
+    src="../_static/user_guides/funnel/funnel_0_basic.html"
+    frameborder="0"
+    align="left"
+    allowfullscreen
+></iframe></section>
+<section id="customization">
+<h2>Customization<a class="headerlink" href="#customization" title="Permalink to this heading">#</a></h2>
+<section id="stages">
+<h3>Stages<a class="headerlink" href="#stages" title="Permalink to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Stages</span></code> is required parameter. It should contain a list of event names
+you would like to observe in the funnel.</p>
+<p>For each specified stage event, the following statistics will be calculated:</p>
+<ul class="simple">
+<li><p>absolute unique number of user_id’s who reach this stage at least once.</p></li>
+<li><p>conversion from the first stage (<cite>% of initial</cite>)</p></li>
+<li><p>conversion from the previous stage (<cite>% of previous</cite>)</p></li>
+</ul>
+<p>The order of stages on the funnel plot corresponds to the order in which
+events are passed in <code class="docutils literal notranslate"><span class="pre">stages</span></code> parameter.</p>
+</section>
+<section id="stage-grouping">
+<h3>Stage grouping<a class="headerlink" href="#stage-grouping" title="Permalink to this heading">#</a></h3>
+<p>In many practical cases, we would like to be able to group multiple
+events as one stage - for example, if it doesn’t matter which particular
+event was reached. We can access this function by passing lists of
+events (along with single events) in the <code class="docutils literal notranslate"><span class="pre">stage</span></code> parameter.</p>
+<p>Let us plot a funnel with <cite>product1</cite> and <cite>product2</cite> grouped that way:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">funnel</span><span class="p">(</span><span class="n">stages</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;product2&#39;</span><span class="p">],</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">]);</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="400"
+    src="../_static/user_guides/funnel/funnel_1_stages.html"
+    frameborder="0"
+    align="left"
+    allowfullscreen
+></iframe><p>As you can see, the new <code class="docutils literal notranslate"><span class="pre">product1</span> <span class="pre">|</span> <span class="pre">product2</span></code> stage is created for
+the funnel. It corresponds to having 2010 unique users who reached
+some product page(<code class="docutils literal notranslate"><span class="pre">product1</span> <span class="pre">or</span> <span class="pre">product2</span></code>).</p>
+<p>NOTE: If a user path has both of the events, the user still counts as one.</p>
+</section>
+<section id="stage-names">
+<h3>Stage names<a class="headerlink" href="#stage-names" title="Permalink to this heading">#</a></h3>
+<p>Grouping big sets of events with the previous method could be less
+practical, as the displayed name of the event group will be hard to
+interpret. You could avoid this problem by doing one of the following:</p>
+<ol class="arabic simple">
+<li><p>use grouping data processor for grouping relevant events.
+See <a class="reference internal" href="../api/data_processors/group.html#retentioneering.data_processors_lib.group_events.GroupEvents" title="retentioneering.data_processors_lib.group_events.GroupEvents"><code class="xref py py-meth docutils literal notranslate"><span class="pre">GroupEvents</span></code></a>)</p></li>
+<li><p>use the <code class="docutils literal notranslate"><span class="pre">stage_names</span></code> funnel parameter</p></li>
+</ol>
+<p>In the following example, let us use the second method. We define
+<code class="docutils literal notranslate"><span class="pre">stage_names</span></code> as a list of funnel stage names (the length of which
+has to be equal to the number of stages):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">funnel</span><span class="p">(</span>
+               <span class="n">stages</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;product2&#39;</span><span class="p">],</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">],</span>
+               <span class="n">stage_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;product&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">]</span>
+               <span class="p">);</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="400"
+    src="../_static/user_guides/funnel/funnel_2_stage_names.html"
+    frameborder="0"
+    align="left"
+    allowfullscreen
+></iframe></section>
+<section id="funnel-type-and-sequence-parameters">
+<h3>Funnel type and sequence parameters<a class="headerlink" href="#funnel-type-and-sequence-parameters" title="Permalink to this heading">#</a></h3>
+<p>Parameter <code class="docutils literal notranslate"><span class="pre">funnel_type</span></code> could take one of the two values:</p>
+<ol class="arabic">
+<li><p><code class="docutils literal notranslate"><span class="pre">open</span></code> (default) - used if the metric of interest is user presence
+on a given stage. The funnel will disregard the user presence on previous
+stages. This means that, for each stage, all stage visits will be
+counted - regardless of whether the previous stages were passed.</p></li>
+<li><div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">closed</span></code> - only users who have the first specified stage will be counted and only part of their path after this stage will be considered.</div>
+<div class="line">The <code class="docutils literal notranslate"><span class="pre">sequence</span></code> parameter further specifies the behaviour:</div>
+</div>
+<blockquote>
+<div><ul>
+<li><div class="line-block">
+<div class="line">If <code class="docutils literal notranslate"><span class="pre">sequence</span></code> is set to <code class="docutils literal notranslate"><span class="pre">False</span></code>, all users who visited the first stage</div>
+<div class="line">who visited all previous stages no matter when will be counted</div>
+</div>
+</li>
+<li><div class="line-block">
+<div class="line">If <code class="docutils literal notranslate"><span class="pre">sequence</span></code> is set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, only users who visited all previous</div>
+<div class="line">stages before will be counted</div>
+</div>
+</li>
+</ul>
+</div></blockquote>
+</li>
+</ol>
+<p>The example below illustrates the behaviour differences:</p>
+<figure class="align-default">
+<img alt="../_images/type_sequence.png" src="../_images/type_sequence.png" />
+</figure>
+<p>Now let’s return to our <code class="docutils literal notranslate"><span class="pre">simple_shop</span></code> dataset and build <code class="docutils literal notranslate"><span class="pre">closed</span></code> funnel with <code class="docutils literal notranslate"><span class="pre">sequence=False</span></code>.</p>
+<p>In comparison to <code class="docutils literal notranslate"><span class="pre">open</span></code> funnel we can see that some users come to
+<code class="docutils literal notranslate"><span class="pre">cart</span></code> without passing <code class="docutils literal notranslate"><span class="pre">catalog</span></code> or <code class="docutils literal notranslate"><span class="pre">product</span></code> beforehand.
+The real forward conversion for these stages is lower than
+we see in the <code class="docutils literal notranslate"><span class="pre">open</span></code> funnel.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">funnel</span><span class="p">(</span>
+              <span class="n">stages</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;product2&#39;</span><span class="p">],</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">],</span>
+              <span class="n">tage_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;product&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">],</span>
+              <span class="n">funnel_type</span><span class="o">=</span><span class="s1">&#39;closed&#39;</span>
+              <span class="p">);</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="400"
+    src="../_static/user_guides/funnel/funnel_3_closed.html"
+    frameborder="0"
+    align="left"
+    allowfullscreen
+></iframe><p>Now we take a look at a funnel with <code class="docutils literal notranslate"><span class="pre">funnel_type=closed</span></code>
+and <code class="docutils literal notranslate"><span class="pre">sequence=True</span></code>. The conversion to the <code class="docutils literal notranslate"><span class="pre">cart</span></code> stage is even lower
+than it is for <code class="docutils literal notranslate"><span class="pre">funnel_type=closed</span></code> and <code class="docutils literal notranslate"><span class="pre">sequence=False</span></code>.
+It means that some users visiting <code class="docutils literal notranslate"><span class="pre">catalog</span></code> go strait to the cart stage,
+which we could interpret as being a specific class of users (for instance,
+those who were on the web-site before, and left some products in the cart
+earlier or there is another way to reach <code class="docutils literal notranslate"><span class="pre">cart</span></code> stage)</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">funnel</span><span class="p">(</span>
+               <span class="n">stages</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;product2&#39;</span><span class="p">],</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">],</span>
+               <span class="n">stage_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;product&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">],</span>
+               <span class="n">funnel_type</span><span class="o">=</span><span class="s1">&#39;closed&#39;</span><span class="p">,</span>
+               <span class="n">sequence</span><span class="o">=</span><span class="kc">True</span>
+               <span class="p">);</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="400"
+    src="../_static/user_guides/funnel/funnel_4_sequence.html"
+    frameborder="0"
+    align="left"
+    allowfullscreen
+></iframe></section>
+<section id="user-segments">
+<h3>User segments<a class="headerlink" href="#user-segments" title="Permalink to this heading">#</a></h3>
+<p>It can be useful to make separate funnels for different user groups,
+and compare them stage-by-stage.</p>
+<p>Groups of users could be represented by:</p>
+<ul class="simple">
+<li><p>users from different channels</p></li>
+<li><p>users from test and control groups in A/B test</p></li>
+<li><p>users from different behavioral segments</p></li>
+</ul>
+<p>To achieve the desired effect, we can pass lists of user ids
+to the <code class="docutils literal notranslate"><span class="pre">groups</span></code> parameter. Let us plot funnels for two user
+groups:</p>
+<ul class="simple">
+<li><p>users who had reached the <code class="docutils literal notranslate"><span class="pre">payment_done</span></code> stage</p></li>
+<li><p>users who had not:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream_df</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+<span class="n">segment1</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">stream_df</span><span class="p">[</span><span class="n">stream_df</span><span class="p">[</span><span class="s1">&#39;event&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">][</span><span class="s1">&#39;user_id&#39;</span><span class="p">])</span>
+<span class="n">segment2</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">stream_df</span><span class="p">[</span><span class="s1">&#39;user_id&#39;</span><span class="p">])</span> <span class="o">-</span> <span class="n">segment1</span>
+
+<span class="n">stream</span><span class="o">.</span><span class="n">funnel</span><span class="p">(</span>
+    <span class="n">stages</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;product2&#39;</span><span class="p">],</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">],</span>
+    <span class="n">stage_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;product&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">],</span>
+    <span class="n">segments</span> <span class="o">=</span> <span class="p">(</span><span class="n">segment1</span><span class="p">,</span> <span class="n">segment2</span><span class="p">),</span>
+    <span class="n">segment_names</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;converted&#39;</span><span class="p">,</span> <span class="s1">&#39;not_converted&#39;</span><span class="p">)</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="400"
+    src="../_static/user_guides/funnel/funnel_5_segments_open.html"
+    frameborder="0"
+    align="left"
+    allowfullscreen
+></iframe><p>We see how the two groups compare to each other at particular stages.
+As expected, the <code class="docutils literal notranslate"><span class="pre">not_converted</span></code> users are the majority, and we can
+see that most of them are “lost” after visiting <code class="docutils literal notranslate"><span class="pre">cart</span></code>. Interestingly,
+we can see that some users add product to cart directly from the catalog,
+without visiting a product page(which is represented by the fact that
+more users have visited <code class="docutils literal notranslate"><span class="pre">cart</span></code> than <code class="docutils literal notranslate"><span class="pre">product</span></code>).</p>
+<p>Now, let us have a look at the <code class="docutils literal notranslate"><span class="pre">closed</span></code> funnel:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">funnel</span><span class="p">(</span>
+    <span class="n">stages</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;product2&#39;</span><span class="p">],</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">],</span>
+    <span class="n">stage_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;product&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">],</span>
+    <span class="n">funnel_type</span><span class="o">=</span><span class="s1">&#39;closed&#39;</span><span class="p">,</span>
+    <span class="n">segments</span><span class="o">=</span><span class="p">(</span><span class="n">segment1</span><span class="p">,</span> <span class="n">segment2</span><span class="p">),</span>
+    <span class="n">segment_names</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;converted&#39;</span><span class="p">,</span> <span class="s1">&#39;not_converted&#39;</span><span class="p">)</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="400"
+    src="../_static/user_guides/funnel/funnel_6_segments_closed.html"
+    frameborder="0"
+    align="left"
+    allowfullscreen
+></iframe><p>Now we see - our assumption that some users add product to cart
+directly from the catalog is incorrect. In fact, those users appear
+in <code class="docutils literal notranslate"><span class="pre">cart</span></code> passing from the others stages, not from <code class="docutils literal notranslate"><span class="pre">catalog</span></code>.</p>
+<section id="clustering">
+<h4>Clustering<a class="headerlink" href="#clustering" title="Permalink to this heading">#</a></h4>
+<p>Consider another example - we compare funnels for multiple users groups,
+segmented according to clusterization results:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering.tooling.clusters</span> <span class="kn">import</span> <span class="n">Clusters</span>
+
+<span class="n">clusters</span> <span class="o">=</span> <span class="n">Clusters</span><span class="p">(</span><span class="n">eventstream</span><span class="o">=</span><span class="n">stream</span><span class="p">)</span>
+<span class="n">clusters</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;kmeans&#39;</span><span class="p">,</span>
+             <span class="n">n_clusters</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+             <span class="n">feature_type</span><span class="o">=</span><span class="s1">&#39;tfidf&#39;</span><span class="p">,</span>
+             <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">));</span>
+</pre></div>
+</div>
+<p>With this clustering procedure, we grouped users based
+on their behavioural patterns. The dictionary containing cluster
+user lists is assigned to the
+<a class="reference internal" href="../api/tooling/clusters.html#retentioneering.tooling.clusters.clusters.Clusters.cluster_mapping" title="retentioneering.tooling.clusters.clusters.Clusters.cluster_mapping"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Clusters.cluster_mapping</span></code></a> attribute.</p>
+<p>Let us plot the cluster funnels to compare cluster conversions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">clus1_ids</span> <span class="o">=</span> <span class="n">clusters</span><span class="o">.</span><span class="n">cluster_mapping</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">clus2_ids</span> <span class="o">=</span> <span class="n">clusters</span><span class="o">.</span><span class="n">cluster_mapping</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+<span class="n">clus3_ids</span> <span class="o">=</span> <span class="n">clusters</span><span class="o">.</span><span class="n">cluster_mapping</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+<span class="n">clus6_ids</span> <span class="o">=</span> <span class="n">clusters</span><span class="o">.</span><span class="n">cluster_mapping</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span>
+
+<span class="n">stream</span><span class="o">.</span><span class="n">funnel</span><span class="p">(</span>
+    <span class="n">eventstream</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span>
+    <span class="n">stages</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;product2&#39;</span><span class="p">],</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">],</span>
+    <span class="n">segments</span><span class="o">=</span><span class="p">(</span><span class="n">clus1_ids</span><span class="p">,</span> <span class="n">clus2_ids</span><span class="p">,</span> <span class="n">clus3_ids</span><span class="p">,</span> <span class="n">clus6_ids</span><span class="p">),</span>
+    <span class="n">segment_names</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;cluster 1&#39;</span><span class="p">,</span> <span class="s1">&#39;cluster 2&#39;</span><span class="p">,</span> <span class="s1">&#39;cluster 3&#39;</span><span class="p">,</span> <span class="s1">&#39;cluster 6&#39;</span><span class="p">));</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="400"
+    src="../_static/user_guides/funnel/funnel_7_clusters.html"
+    frameborder="0"
+    align="left"
+    allowfullscreen
+></iframe><p>We could further expand our user behaviour analysis by plotting
+<a class="reference internal" href="transition_graph.html"><span class="doc">transition graphs</span></a> or <a class="reference internal" href="step_matrix.html"><span class="doc">step matrices</span></a>.</p>
+</section>
+</section>
+</section>
+<section id="using-a-separate-instance">
+<h2>Using a separate instance<a class="headerlink" href="#using-a-separate-instance" title="Permalink to this heading">#</a></h2>
+<p>By design, <a class="reference internal" href="../api/tooling/funnel.html#retentioneering.eventstream.eventstream.Eventstream.funnel" title="retentioneering.eventstream.eventstream.Eventstream.funnel"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Eventstream.funnel()</span></code></a>
+is a shortcut method which uses an instance of
+<a class="reference internal" href="../api/tooling/funnel.html#retentioneering.tooling.funnel.funnel.Funnel" title="retentioneering.tooling.funnel.funnel.Funnel"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Funnel</span></code></a> under the hood.
+Eventstream method creates an instance of Funnel object and stores the eventstream internally.</p>
+<p>Sometimes it’s reasonable to work with a separate instance of Funnel class. In this case you also have to
+call <a class="reference internal" href="../api/tooling/funnel.html#retentioneering.tooling.funnel.funnel.Funnel.fit" title="retentioneering.tooling.funnel.funnel.Funnel.fit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Funnel.fit()</span></code></a> and
+<a class="reference internal" href="../api/tooling/funnel.html#retentioneering.tooling.funnel.funnel.Funnel.plot" title="retentioneering.tooling.funnel.funnel.Funnel.plot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Funnel.plot()</span></code></a> methods explicitly.</p>
+<p>Here’s an example how you can do it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering.tooling.funnel</span> <span class="kn">import</span> <span class="n">Funnel</span>
+
+<span class="n">funnel</span> <span class="o">=</span> <span class="n">Funnel</span><span class="p">(</span>
+                <span class="n">eventstream</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span>
+                <span class="n">stages</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">]</span>
+                 <span class="p">)</span>
+<span class="n">funnel</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+<span class="n">funnel</span><span class="o">.</span><span class="n">plot</span><span class="p">();</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="400"
+    src="../_static/user_guides/funnel/funnel_8_eventstream.html"
+    frameborder="0"
+    align="left"
+    allowfullscreen
+></iframe></section>
+<section id="common-tooling-properties">
+<h2>Common tooling properties<a class="headerlink" href="#common-tooling-properties" title="Permalink to this heading">#</a></h2>
+<section id="values">
+<h3>values<a class="headerlink" href="#values" title="Permalink to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Funnel.plot()</span></code> is displayed by default, but
+<a class="reference internal" href="../api/tooling/funnel.html#retentioneering.tooling.funnel.funnel.Funnel.values" title="retentioneering.tooling.funnel.funnel.Funnel.values"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Funnel.values</span></code></a> property is also available.</p>
+<p>In order to avoid unnessesary recalculations while you need different representations
+of one eventstream with the same parameters - that would be helpful to save that fitted
+instance in separate variable.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ff</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">funnel</span><span class="p">(</span>
+                   <span class="n">stages</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">],</span>
+                   <span class="n">show_plot</span><span class="o">=</span><span class="kc">False</span>
+                   <span class="p">);</span>
+
+<span class="n">ff</span><span class="o">.</span><span class="n">values</span>
+</pre></div>
+</div>
+<div><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th></th>
+      <th>unique_users</th>
+      <th>%_of_initial</th>
+      <th>%_of_total</th>
+    </tr>
+    <tr>
+      <th>segment_name</th>
+      <th>stages</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th rowspan="3" valign="top">all users</th>
+      <th>catalog</th>
+      <td>3611</td>
+      <td>100.00</td>
+      <td>100.00</td>
+    </tr>
+    <tr>
+      <th>cart</th>
+      <td>1924</td>
+      <td>53.28</td>
+      <td>53.28</td>
+    </tr>
+    <tr>
+      <th>payment_done</th>
+      <td>653</td>
+      <td>33.94</td>
+      <td>18.08</td>
+    </tr>
+  </tbody>
+</table>
+</div></section>
+<section id="params">
+<h3>params<a class="headerlink" href="#params" title="Permalink to this heading">#</a></h3>
+</section>
+</section>
+</section>
+
+
+            </article>
+            
+            
+            
+            <footer class="bd-footer-article">
+                <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+  <a class='left-prev' id="prev-link" href="clusters.html" title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+          <p class="prev-next-subtitle">previous</p>
+          <p class="prev-next-title">Clusters</p>
+      </div>
+  </a>
+  <a class='right-next' id="next-link" href="cohorts.html" title="next page">
+  <div class="prev-next-info">
+      <p class="prev-next-subtitle">next</p>
+      <p class="prev-next-title">Cohorts</p>
+  </div>
+  <i class="fa-solid fa-angle-right"></i>
+  </a>
+</div>
+            </footer>
+            
+          </div>
+          
+          
+          
+            <div class="bd-sidebar-secondary bd-toc">
+              
+<div class="toc-item">
+  
+<div class="tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+</div>
+<nav id="bd-toc-nav" class="page-toc">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#loading-data">
+   Loading data
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#basic-example">
+   Basic example
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#customization">
+   Customization
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#stages">
+     Stages
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#stage-grouping">
+     Stage grouping
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#stage-names">
+     Stage names
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#funnel-type-and-sequence-parameters">
+     Funnel type and sequence parameters
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#user-segments">
+     User segments
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#clustering">
+       Clustering
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#using-a-separate-instance">
+   Using a separate instance
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#common-tooling-properties">
+   Common tooling properties
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#values">
+     values
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#params">
+     params
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+</div>
+
+<div class="toc-item">
+  
+<div id="searchbox"></div>
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+<div class="toc-item">
+  
+<div class="tocsection sourcelink">
+    <a href="../_sources/user_guides/funnel.rst.txt">
+        <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+</div>
+
+</div>
+
+            </div>
+          
+          
+        </div>
+        <footer class="bd-footer-content">
+          <div class="bd-footer-content__inner">
+            
+          </div>
+        </footer>
+        
+      </main>
+    </div>
+  </div>
+
+  
+    
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94"></script>
+
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+  </body>
+</html>

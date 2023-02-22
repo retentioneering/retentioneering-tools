@@ -1,0 +1,912 @@
+<!-- This template is needed for a toggling solution -->
+<!-- https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Eventstream class overview &#8212; Retentioneering 3.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/bootstrap.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94">
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/custom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'getting_started/eventstream_concept';</script>
+    <link rel="shortcut icon" href="../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="User guide" href="../user_guide.html" />
+    <link rel="prev" title="Quick start with Retentioneering" href="quick_start.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="docsearch:language" content="en">
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="light">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__primary" id="__primary">
+  <label class="overlay overlay-primary" for="__primary"></label>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__secondary" id="__secondary">
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+      
+<form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+    </div>
+  </div>
+
+  
+  <nav class="bd-header navbar navbar-expand-lg bd-navbar" id="navbar-main"><div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+      <span class="fa-solid fa-bars"></span>
+  </label>
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="../index.html">
+
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <img src="../_static/rete_logo.svg" class="logo__image only-light" alt="Logo image">
+    <img src="../_static/rete_logo_white.svg" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  
+  <div class="col-lg-9 navbar-header-items">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+        <div class="navbar-end-item navbar-persistent--container">
+          
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+        </div>
+      
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+
+
+  
+  
+    <div class="navbar-persistent--mobile">
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+    </div>
+  
+
+  
+  <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+  </label>
+  
+
+</div>
+  </nav>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+      </div>
+    
+
+    
+    
+    <div class="sidebar-header-items__end">
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  
+  <div class="sidebar-start-items sidebar-primary__section">
+    <div class="sidebar-start-items__item"><nav class="bd-links" id="bd-docs-nav" aria-label="Section navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">
+    Section Navigation
+  </p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="what_is_rete.html">What is Retentioneering?</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="quick_start.html">Quick start</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Eventstream concept</a></li>
+</ul>
+
+  </div>
+</nav>
+    </div>
+  </div>
+  
+
+  
+  <div class="sidebar-end-items sidebar-primary__section">
+    <div class="sidebar-end-items__item">
+    </div>
+  </div>
+
+  
+  <div id="rtd-footer-container"></div>
+
+      </div>
+      <main id="main-content" class="bd-main">
+        
+        
+        <div class="bd-content">
+          <div class="bd-article-container">
+            
+            <div class="bd-header-article">
+                
+            </div>
+            
+            
+            <article class="bd-article" role="main">
+              
+  <style>
+    .red {color:#24ff83; font-weight:bold;}
+</style><section id="eventstream-class-overview">
+<h1>Eventstream class overview<a class="headerlink" href="#eventstream-class-overview" title="Permalink to this heading">#</a></h1>
+<section id="why-eventstream">
+<h2>Why Eventstream<a class="headerlink" href="#why-eventstream" title="Permalink to this heading">#</a></h2>
+<p>Let’s start from a review of a process how data analyst (we also use researcher as a synonym) usually work with data. On Fig. 1 you can see a simplified workflow of a typical analytical research. What data analysts actually do: they download collected clickstream data from a data storage, prepare the data, analyze it by applying an analytical tool, and deliver actionable results to stakeholders.</p>
+<figure class="align-default" id="id1">
+<a class="reference internal image-reference" href="../_images/research_workflow.png"><img alt="../_images/research_workflow.png" src="../_images/research_workflow.png" style="width: 800px;" /></a>
+<figcaption>
+<p><span class="caption-text">Fig. 1. A simplified workflow of a typical analytical research</span><a class="headerlink" href="#id1" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+<p>What’s important for us that two of these steps are repeated throughout the research. These steps are:</p>
+<ul>
+<li><div class="line-block">
+<div class="line"><strong>Data reprocessing</strong>. I.e. preparing the data to be analyzed (cleaning the data up, reformatting, etc).</div>
+</div>
+</li>
+<li><p><strong>Applying an analytical tool to prepared data</strong>. By tool we mean a wide range of analytical techniques (fitting a statistical model, making a visualization, etc).</p></li>
+</ul>
+<p>The loop appears mainly due to two reasons:</p>
+<ul class="simple">
+<li><p>The research question is poorly defined, so the data analyst have to formalize it in multiple possible ways. It’s not clear until it’s done whether a particular formalization provides a reasonable result, so the data analyst has to walk through all the possible paths.</p></li>
+<li><p>The data is never perfect. In practice, it’s often inconsistent, full of surprising problems, outliers, technical issues, etc. But even if you’ve cleaned up your data enough you still have to tailor it towards a specific analytical tool. The more tools you’re going to apply, the more data formats you need to convert your data to.</p></li>
+</ul>
+<p>Assume for simplicity, that the goal of a research is to explore users behavior in scope of their first steps in the product. Also, we assume that some cleaning up operations preceded, and the data is consistent now. Obviously, “first steps” are needed to be defined in a clear way, so the data analyst might consider multiple possible cases, e.g.:</p>
+<ul class="simple">
+<li><p>User’s first day,</p></li>
+<li><p>User’s first session,</p></li>
+<li><p>A sub-path from user’s registration to a target event (like completing an onboarding tour).</p></li>
+</ul>
+<p>Next, by “to explore users behavior” one could mean applying different techniques, such as analyzing Markov chain model, performing cluster analysis, analyzing a step-wise Sankey diagram. As a result, we obtain 9 different analytical cases (see Fig. 2).</p>
+<figure class="align-default" id="id2">
+<a class="reference internal image-reference" href="../_images/research_example.png"><img alt="../_images/research_example.png" src="../_images/research_example.png" style="width: 800px;" /></a>
+<figcaption>
+<p><span class="caption-text">Fig. 2. An example of an analytical research with branching logic.</span><a class="headerlink" href="#id2" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+<p>Supporting all the corresponding code in a single Jupyter notebook is often neither convenient nor resource-efficient. Indeed, you have to keep all the dataframes in the notebook’s memory, you have to control the order of executing notebook’s cells, and you need to organize the code so it could be easy-to-read. Things become even worse when a data analyst needs to share this notebook for maintenance with another colleague: diving into the sheets of the code might be tough for a newcomer.</p>
+<p>All the problems described above inclined us to create a solution which could treat a clickstream in an efficient way.</p>
+</section>
+<section id="introducing-eventstream-class">
+<h2>Introducing Eventstream class<a class="headerlink" href="#introducing-eventstream-class" title="Permalink to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> is a core class of the library. The role <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> plays is 3-folded.</p>
+<ul class="simple">
+<li><p>Data container. <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> stores the original clickstream data. All the modified states of the original data a researcher gets throughout the analysis are also <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> instances.</p></li>
+<li><p>Preprocessing. <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> provides a wide range of methods which wrangle clickstream data in many useful ways.</p></li>
+<li><p>Applying analytical tools. Having a particular prepared state of an eventstream, you can apply an analytical tool by calling an appropriate method.</p></li>
+</ul>
+<p>We assume that the original clickstream which generates an <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> class instance is represented by a <code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code> and consists of three columns: user_id, event, timestamp. In this case you can create an eventstream especially easy:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">retentioneering</span> <span class="k">as</span> <span class="nn">rete</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;clickstream_data.csv&quot;</span><span class="p">)</span>
+<span class="n">stream</span> <span class="o">=</span> <span class="n">rete</span><span class="o">.</span><span class="n">Eventstream</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In case your dataframe has columns named differently you can either rename them or use</p>
+<p><span class="red">Simplify the library path to RawDataSchema</span></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">retentioneering</span> <span class="k">as</span> <span class="nn">rete</span>
+<span class="kn">from</span> <span class="nn">retentioneering.eventstream.schema</span> <span class="kn">import</span> <span class="n">RawDataSchema</span>
+
+<span class="n">raw_data_schema</span> <span class="o">=</span> <span class="n">RawDataSchema</span><span class="p">(</span>
+    <span class="n">event_name</span><span class="o">=</span><span class="s1">&#39;action&#39;</span><span class="p">,</span>
+    <span class="n">event_timestamp</span><span class="o">=</span><span class="s1">&#39;datatime&#39;</span><span class="p">,</span>
+    <span class="n">user_id</span><span class="o">=</span><span class="s1">&#39;uid&#39;</span>
+<span class="p">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;clickstream_data.csv&quot;</span><span class="p">)</span>
+<span class="n">stream</span> <span class="o">=</span> <span class="n">rete</span><span class="o">.</span><span class="n">Eventstream</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">raw_data_schema</span><span class="o">=</span><span class="n">raw_data_schema</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>But for demonstrating purposes we’ll use an embedded clickstream <em>simple_shop</em></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">retentioneering</span> <span class="k">as</span> <span class="nn">rete</span>
+
+<span class="n">stream</span> <span class="o">=</span> <span class="n">rete</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">load</span><span class="o">.</span><span class="n">load_simple_shop</span>
+</pre></div>
+</div>
+<p>As soon as you create an eventstream, you can check the underlying dataframe by calling <code class="docutils literal notranslate"><span class="pre">rete.Eventstream.to_dataframe()</span></code> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>\
+    <span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<figure class="align-default" id="id3">
+<a class="reference internal image-reference" href="../_images/eventstream_columns.png"><img alt="../_images/eventstream_columns.png" src="../_images/eventstream_columns.png" style="width: 800px;" /></a>
+<figcaption>
+<p><span class="caption-text">Fig. 3. An example of a preprocessing graph.</span><a class="headerlink" href="#id3" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+<p>As we see on Fig. 3, the underlying dataframe contains 3 original columns <code class="docutils literal notranslate"><span class="pre">event</span></code>, <code class="docutils literal notranslate"><span class="pre">timestamp</span></code>, <code class="docutils literal notranslate"><span class="pre">user_id</span></code>, and 3 additional columns:</p>
+<ul class="simple">
+<li><p>event_id. This is a unique identifier of the event.</p></li>
+<li><p>event_type. All the original events are of <code class="docutils literal notranslate"><span class="pre">raw</span></code> type. Special synthetic events have different type. <span class="red">Give a reference to synthetic events review</span></p></li>
+<li><p>event_index. This column is used for sorting an eventstream. Normally, all the raw events are sorted by timestamp column. However, there are some corner cases for additional synthetic events. <span class="red">Give a reference to synthetic events review</span>.</p></li>
+</ul>
+</section>
+<section id="preprocessing">
+<h2>Preprocessing<a class="headerlink" href="#preprocessing" title="Permalink to this heading">#</a></h2>
+<p>As it was mentioned above, we define <em>preprocessing</em> as any data preparations preceding applying a core analytical tool. The sequence of preprocessing calculations naturally constitutes a directed acyclic graph (DAG). The nodes represent some specific calculations while the edges define the order of the calculations to be run. Here’s an example of such a graph on Fig. 4.</p>
+<figure class="align-default" id="id4">
+<a class="reference internal image-reference" href="../_images/preprocessing_graph.png"><img alt="../_images/preprocessing_graph.png" src="../_images/preprocessing_graph.png" style="width: 800px;" /></a>
+<figcaption>
+<p><span class="caption-text">Fig. 4. An example of a preprocessing graph.</span><a class="headerlink" href="#id4" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+<p>We start the description of preprocessing graph from its elementary part – <em>atomic operation</em>.</p>
+<section id="atomic-operations">
+<h3>Atomic operations<a class="headerlink" href="#atomic-operations" title="Permalink to this heading">#</a></h3>
+<p>On the basic level, there are 3 possible atomic operations one could apply to an eventstream: insert, delete, edit.</p>
+<p>Insert operations are associated with adding so called <em>synthetic events</em> meaning that these events are not represented in the original clickstream. These events aim to bring some additional information about a current state of a user at her particular path step. For example, when we split an eventstream into sessions we add <code class="docutils literal notranslate"><span class="pre">session_start</span></code> and <code class="docutils literal notranslate"><span class="pre">session_end</span></code> synthetic events indicating the explicit beginning and the end of each session.</p>
+<p>Delete operations are used when you need to remove some useless/rubbish/technical events from the eventstream, or remove some paths entirely or partially.</p>
+<p>Edit operations are useful when you need to rename or group some events. In many products user events have their natural taxonomy, so you might want to group them in order to provide different levels of granularity.</p>
+<p>All these operations might be implemented with <code class="docutils literal notranslate"><span class="pre">LEFT</span> <span class="pre">OUTER</span> <span class="pre">JOIN</span></code> operator. Why <code class="docutils literal notranslate"><span class="pre">LEFT</span> <span class="pre">OUTER</span> <span class="pre">JOIN</span></code>? i) It guarantees that the keys from the left table are kept safe and ii) adds some new keys from the right table which are not represented in the left table. These properties allow us to manage all the preprocessing calculations keeping the original events intact. And this fundamental property, in turn, makes switching between eventstream states possible. The exact way how we do this is described in the next section.</p>
+<p><span class="red">TODO: Make nicer images</span></p>
+<table class="table">
+<tbody>
+<tr class="row-odd"><td rowspan="2"><p>Insert</p></td>
+<td rowspan="2"><p><img alt="atomic_insert" src="../_images/atomic_insert.png" /></p></td>
+</tr>
+<tr class="row-even"></tr>
+<tr class="row-odd"><td rowspan="2"><p>Delete</p></td>
+<td rowspan="2"><p><img alt="atomic_delete" src="../_images/atomic_delete.png" /></p></td>
+</tr>
+<tr class="row-even"></tr>
+<tr class="row-odd"><td rowspan="2"><p>Edit</p></td>
+<td rowspan="2"><p><img alt="atomic_edit" src="../_images/atomic_edit.png" /></p></td>
+</tr>
+<tr class="row-even"></tr>
+</tbody>
+</table>
+</section>
+<section id="data-processors">
+<h3>Data processors<a class="headerlink" href="#data-processors" title="Permalink to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">DataProcessor</span></code> is an abstract class for building nodes of a preprocessing graph, and any its child class is called a <em>data processor</em>. Unlike atomic operations which are abstract and doesn’t specify particular logic, data processors define how exactly eventstream should be modified. Each data processor has a supplementary class (a child of abstract <code class="docutils literal notranslate"><span class="pre">ParamsModel</span></code> class) which contains its parameters as attribute references.</p>
+<p>For example, <code class="docutils literal notranslate"><span class="pre">SplitSessions</span></code> data processor adds explicit synthetic events to an eventstream indicating session boundaries. A pair of <code class="docutils literal notranslate"><span class="pre">session_end</span></code> and <code class="docutils literal notranslate"><span class="pre">session_start</span></code> events is added as soon as the distance between two sequential events in a user’s trajectory is greater than a specified threshold – <code class="docutils literal notranslate"><span class="pre">session_cutoff</span></code>. This parameter is embedded into <code class="docutils literal notranslate"><span class="pre">SplitSessionsParams</span></code> as the attribute reference.</p>
+<p>Similar to atomic operations, data processors could be categorized into three parts according to whether they add, remove or group events. Here we provide a brief overview. The comprehensive documentation on data processors is located <span class="red">TODO: here</span>.</p>
+<table class="tight-table table" id="id5">
+<caption><span class="caption-text">Data processors overview</span><a class="headerlink" href="#id5" title="Permalink to this table">#</a></caption>
+<colgroup>
+<col style="width: 15%" />
+<col style="width: 10%" />
+<col style="width: 60%" />
+<col style="width: 15%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Data processor</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>What it does</p></th>
+<th class="head"><p>Helper</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>StartEndEvents</p></td>
+<td><p>Adding</p></td>
+<td><p>Adds two synthetic events in each user’s path: <code class="docutils literal notranslate"><span class="pre">path_start</span></code> and <code class="docutils literal notranslate"><span class="pre">path_end</span></code></p></td>
+<td><p>start_end_event</p></td>
+</tr>
+<tr class="row-odd"><td><p>SplitSessions</p></td>
+<td><p>Adding</p></td>
+<td><p>Cuts user path into sessions and adds synthetic events <code class="docutils literal notranslate"><span class="pre">session_start</span></code>, <code class="docutils literal notranslate"><span class="pre">session_end</span></code>.</p></td>
+<td><p>split_sessions</p></td>
+</tr>
+<tr class="row-even"><td><p>NewUsersEvents</p></td>
+<td><p>Adding</p></td>
+<td><p>Adds synthetic event <code class="docutils literal notranslate"><span class="pre">new_user</span></code> in the beginning of a user’s path if the user is considered as new. Otherwise adds <code class="docutils literal notranslate"><span class="pre">existing_user</span></code>.</p></td>
+<td><p>add_new_users</p></td>
+</tr>
+<tr class="row-odd"><td><p>LostUsersEvents</p></td>
+<td><p>Adding</p></td>
+<td><p>Adds synthetic event <code class="docutils literal notranslate"><span class="pre">lost_user</span></code> in the end of user’s path if the user never comes back to the product. Otherwise adds <code class="docutils literal notranslate"><span class="pre">absent_user</span></code> event.</p></td>
+<td><p>lost_users</p></td>
+</tr>
+<tr class="row-even"><td><p>PositiveTarget</p></td>
+<td><p>Adding</p></td>
+<td><p>Adds synthetic event <code class="docutils literal notranslate"><span class="pre">positive_target</span></code> for all events which are considered as positive.</p></td>
+<td><p>positive_target</p></td>
+</tr>
+<tr class="row-odd"><td><p>NegativeTarget</p></td>
+<td><p>Adding</p></td>
+<td><p>Adds synthetic event <code class="docutils literal notranslate"><span class="pre">negative_target</span></code> for all events which are considered as negative.</p></td>
+<td><p>negative_target</p></td>
+</tr>
+<tr class="row-even"><td><p>TruncatedEvents</p></td>
+<td><p>Adding</p></td>
+<td><p>Adds synthetic events <code class="docutils literal notranslate"><span class="pre">truncated_left</span></code> and/or <code class="docutils literal notranslate"><span class="pre">truncated_right</span></code> for those user paths which are considered as truncated by the edges of the whole dataset.</p></td>
+<td><p>truncated_events</p></td>
+</tr>
+<tr class="row-odd"><td><p>FilterEvents</p></td>
+<td><p>Removing</p></td>
+<td><p>Remove events from an eventstream</p></td>
+<td><p>filter</p></td>
+</tr>
+<tr class="row-even"><td><p>DeleteUsersByPathLength</p></td>
+<td><p>Removing</p></td>
+<td><p>Deletes a too short user paths (in terms of number of events or time duration).</p></td>
+<td><p>delete_users</p></td>
+</tr>
+<tr class="row-odd"><td><p>TruncatePath</p></td>
+<td><p>Removing</p></td>
+<td><p>Leaves a part of an eventstream between a couple of selected events.</p></td>
+<td><p>truncate_path</p></td>
+</tr>
+<tr class="row-even"><td><p>GroupEvents</p></td>
+<td><p>Grouping</p></td>
+<td><p>Group given events into a single synthetic event.</p></td>
+<td><p>group</p></td>
+</tr>
+<tr class="row-odd"><td><p>CollapseLoops</p></td>
+<td><p>Grouping</p></td>
+<td><p>Replaces sequences of repetitive events with new synthetic events. E.g. <code class="docutils literal notranslate"><span class="pre">A,</span> <span class="pre">A,</span> <span class="pre">A</span> <span class="pre">-&gt;</span> <span class="pre">A</span></code>.</p></td>
+<td><p>collapse_loops</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="custom-data-processors">
+<h3>Custom data processors<a class="headerlink" href="#custom-data-processors" title="Permalink to this heading">#</a></h3>
+<p><span class="red">Move to DataProcessors user guide</span></p>
+<p>In case the data processors implemented in the library don’t cover your needs, you can develop your own data processor. The interface is as follows:</p>
+<ul class="simple">
+<li><p>Data processor class must be inherited from <code class="docutils literal notranslate"><span class="pre">DataProcessor</span></code> class, while its parameters class must be a child of <code class="docutils literal notranslate"><span class="pre">ParamsModel</span></code> class.</p></li>
+<li><p>Parameters class must simply describe the parameters as class attributes.</p></li>
+<li><p>Constructor of the data processor class must accept <code class="docutils literal notranslate"><span class="pre">params</span></code> parameter of parameters class.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">apply</span></code> method must be implemented in the data processor class. The method must accept eventstream parameter and return another eventstream representing the changed state of the input eventstream. <code class="docutils literal notranslate"><span class="pre">ref</span></code> column indicates the reference of the original event. It is used in <code class="docutils literal notranslate"><span class="pre">LEFT</span> <span class="pre">OUTER</span> <span class="pre">JOIN</span></code> (see Atomic operations section <span class="red">TODO: set the link</span>). The behavior of the method implementation depends on the type of the data processor: adding, removing or grouping.</p></li>
+</ul>
+<section id="editing-data-processor">
+<h4>Editing data processor<a class="headerlink" href="#editing-data-processor" title="Permalink to this heading">#</a></h4>
+<p>Let’s have an example here. Consider simpleshop_dataset. Suppose you want to round the timestamp column up so seconds/minutes/hours. If you used pure pandas you would implement it like this.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">round_timestamp</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">freq</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;S&quot;</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">freq</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span>
+</pre></div>
+</div>
+<p>Now, you need to wrap this logic into the data processor class, and here things go more complicate.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span>
+<span class="kn">from</span> <span class="nn">retentioneering.eventstream.eventstream</span> <span class="kn">import</span> <span class="n">Eventstream</span>
+<span class="kn">from</span> <span class="nn">retentioneering.data_processor.data_processor</span> <span class="kn">import</span> <span class="n">DataProcessor</span>
+<span class="kn">from</span> <span class="nn">retentioneering.params_model</span> <span class="kn">import</span> <span class="n">ParamsModel</span>
+
+<span class="k">class</span> <span class="nc">RoundTimestampParams</span><span class="p">(</span><span class="n">ParamsModel</span><span class="p">):</span>
+    <span class="n">freq</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;S&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;S&quot;</span>
+
+<span class="k">class</span> <span class="nc">RoundTimestamp</span><span class="p">(</span><span class="n">DataProcessor</span><span class="p">):</span>
+    <span class="n">params</span><span class="p">:</span> <span class="n">RoundTimestampParams</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">RoundTimestampParams</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eventstream</span><span class="p">:</span> <span class="n">Eventstream</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Eventstream</span><span class="p">:</span>
+        <span class="n">time_col</span> <span class="o">=</span> <span class="n">eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_timestamp</span>
+        <span class="n">freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">freq</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">eventstream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>\
+            <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">time_col</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">df_</span><span class="p">:</span> <span class="n">df_</span><span class="p">[</span><span class="n">time_col</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">freq</span><span class="p">)})</span>\
+            <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">ref</span><span class="o">=</span><span class="k">lambda</span> <span class="n">df_</span><span class="p">:</span> <span class="n">df_</span><span class="p">[</span><span class="n">eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_id</span><span class="p">])</span>\
+
+        <span class="n">eventstream</span> <span class="o">=</span> <span class="n">Eventstream</span><span class="p">(</span>
+            <span class="n">schema</span><span class="o">=</span><span class="n">stream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="n">raw_data_schema</span><span class="o">=</span><span class="n">stream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="n">raw_data</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+            <span class="n">relations</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;raw_col&quot;</span><span class="p">:</span> <span class="s2">&quot;ref&quot;</span><span class="p">,</span> <span class="s2">&quot;eventstream&quot;</span><span class="p">:</span> <span class="n">eventstream</span><span class="p">}],</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">eventstream</span>
+</pre></div>
+</div>
+<p>Finally, we need to build a graph with a single node encompassing <code class="docutils literal notranslate"><span class="pre">RoundTimestamp</span></code> data processor.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering.graph.p_graph</span> <span class="kn">import</span> <span class="n">PGraph</span><span class="p">,</span> <span class="n">EventsNode</span>
+
+<span class="n">node</span> <span class="o">=</span> <span class="n">EventsNode</span><span class="p">(</span><span class="n">RoundTimestamp</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">RoundTimestampParams</span><span class="p">()))</span>
+<span class="n">graph</span> <span class="o">=</span> <span class="n">PGraph</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
+<span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="p">[</span><span class="n">graph</span><span class="o">.</span><span class="n">root</span><span class="p">])</span>
+
+<span class="n">graph</span><span class="o">.</span><span class="n">combine</span><span class="p">(</span><span class="n">node</span><span class="o">=</span><span class="n">node</span><span class="p">)</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="adding-data-processor">
+<h4>Adding data processor<a class="headerlink" href="#adding-data-processor" title="Permalink to this heading">#</a></h4>
+<p><span class="red">TODO:</span></p>
+</section>
+<section id="removing-data-processor">
+<h4>Removing data processor<a class="headerlink" href="#removing-data-processor" title="Permalink to this heading">#</a></h4>
+<p><span class="red">TODO:</span></p>
+</section>
+</section>
+<section id="preprocessing-graph">
+<h3>Preprocessing graph<a class="headerlink" href="#preprocessing-graph" title="Permalink to this heading">#</a></h3>
+<section id="nodes-and-edges">
+<h4>Nodes and edges<a class="headerlink" href="#nodes-and-edges" title="Permalink to this heading">#</a></h4>
+<p>The nodes of preprocessing graph belong to <code class="docutils literal notranslate"><span class="pre">EventNode</span></code> class and could be of two types. In general, a node is a shell for its underlying data processor. This regular node accepts a single eventstream as input and defines how it should be modified. The entire structure of this node is illustrated on Fig. 5.</p>
+<figure class="align-default" id="id6">
+<a class="reference internal image-reference" href="../_images/event_node_structure.png"><img alt="../_images/event_node_structure.png" src="../_images/event_node_structure.png" style="width: 200px;" /></a>
+<figcaption>
+<p><span class="caption-text">Fig. 5. The nested structure of EventNode class.</span><a class="headerlink" href="#id6" title="Permalink to this image">#</a></p>
+</figcaption>
+</figure>
+<p>Unlike these regular nodes, merging nodes accept multiple eventstreams as input, concatenate them, and drop possible duplicates.</p>
+<p>Linking graph nodes according to preprocessing logic, we obtain a <code class="docutils literal notranslate"><span class="pre">preprocessing</span> <span class="pre">graph</span></code>. Preprocessing graphs are instances of <code class="docutils literal notranslate"><span class="pre">PGraph</span></code> class. To add a node to the graph use  <code class="docutils literal notranslate"><span class="pre">add_node</span></code> method. The links are set via <code class="docutils literal notranslate"><span class="pre">parents</span></code> parameter of the method. Here’s an tiny example how to create a simple preprocessing graph consisting of two nodes <code class="docutils literal notranslate"><span class="pre">StartEndEvents</span></code> and <code class="docutils literal notranslate"><span class="pre">SplitSessions</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering.graph.p_graph</span> <span class="kn">import</span> <span class="n">PGraph</span><span class="p">,</span> <span class="n">EventsNode</span>
+<span class="kn">from</span> <span class="nn">retentioneering.data_processors_lib</span> <span class="kn">import</span> <span class="n">SplitSessions</span><span class="p">,</span> <span class="n">SplitSessionsParams</span>
+<span class="kn">from</span> <span class="nn">retentioneering.data_processors_lib</span> <span class="kn">import</span> <span class="n">StartEndEvents</span><span class="p">,</span> <span class="n">StartEndParams</span>
+
+<span class="c1"># creating single nodes</span>
+<span class="n">node1</span> <span class="o">=</span> <span class="n">EventsNode</span><span class="p">(</span><span class="n">StartEndEvents</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">StartEndEventsParams</span><span class="p">()))</span>
+<span class="n">node2</span> <span class="o">=</span> <span class="n">EventsNode</span><span class="p">(</span><span class="n">SplitSessions</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">SplitSessionsParams</span><span class="p">(</span><span class="n">session_cutoff</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;h&#39;</span><span class="p">))))</span>
+
+<span class="c1"># creating a preprocessing graph and linking the nodes</span>
+<span class="n">pgraph</span> <span class="o">=</span> <span class="n">PGraph</span><span class="p">(</span><span class="n">source_stream</span><span class="o">=</span><span class="n">stream</span><span class="p">)</span>
+<span class="n">pgraph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">node</span><span class="o">=</span><span class="n">node1</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="p">[</span><span class="n">pgraph</span><span class="o">.</span><span class="n">root</span><span class="p">])</span>
+<span class="n">pgraph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">node</span><span class="o">=</span><span class="n">node2</span><span class="p">,</span> <span class="n">parents</span><span class="o">=</span><span class="p">[</span><span class="n">node1</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+<section id="preprocessing-graph-as-a-calculation-schema">
+<h4>Preprocessing graph as a calculation schema<a class="headerlink" href="#preprocessing-graph-as-a-calculation-schema" title="Permalink to this heading">#</a></h4>
+<p>Now, it’s important to note that when we construct a preprocessing graph we don’t run calculations. Preprocessing graph just profiles a calculation schema defining what exactly and when exactly should be calculated. Particularly, when the calculation logic splits, it doesn’t mean that the split branches are run in parallel simultaneously.</p>
+<p>In order to run a calculation directly, you should call <code class="docutils literal notranslate"><span class="pre">combine</span></code> (<span class="red">TODO: See combine method</span>) method. Here you need to choose a node which you consider as an endpoint meaning that the calculation should run from the root (the initial eventstream state) to the selected node. <code class="docutils literal notranslate"><span class="pre">combine</span></code> returns you the modified eventstream state according to the given preprocessing calculation path.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># run the calculation from the root node to SplitSessions node</span>
+<span class="n">processed_stream</span> <span class="o">=</span> <span class="n">pgraph</span><span class="o">.</span><span class="n">combine</span><span class="p">(</span><span class="n">node</span><span class="o">=</span><span class="n">node2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We also highlight that having an eventstream combined at some graph’s point doesn’t affect the original data – it stays immutable. In fact, the records you see removed are just marked as removed and invisible for you at this state. The renamed or grouped events are shown as renamed, but their predecessors are kept physically untouched. You can check it setting the visibility with <code class="docutils literal notranslate"><span class="pre">show_deleted</span></code> flag of <code class="docutils literal notranslate"><span class="pre">Eventstream.to_dataframe()</span></code> method.</p>
+</section>
+<section id="chaining-preprocessing-methods">
+<h4>Chaining preprocessing methods<a class="headerlink" href="#chaining-preprocessing-methods" title="Permalink to this heading">#</a></h4>
+<p>In many real-world scenarios preprocessing graph has simple linear structure (e.g. no splitting, no merging). For such cases instead of constructing a preprocessing graph it would be useful to chain so-called <em>helpers</em> methods. Helpers are special <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> methods associated with corresponding data processors. They simply take <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> instance as input and return a modified eventstream. Here’s how the implementation of the  graph from the example above could be improved:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">processed_stream</span> <span class="o">=</span> <span class="n">stream</span> \
+    <span class="o">.</span><span class="n">add_start_end</span><span class="p">()</span> \
+    <span class="o">.</span><span class="n">split_sessions</span><span class="p">(</span><span class="n">session_cutoff</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;h&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+<section id="gui">
+<h4>GUI<a class="headerlink" href="#gui" title="Permalink to this heading">#</a></h4>
+<p>There’s another elegant way to construct a preprocessing graph. This could be done using GUI.</p>
+<p><span class="red">TODO: Describe it</span></p>
+</section>
+</section>
+</section>
+<section id="retentioneering-tools">
+<h2>Retentioneering tools<a class="headerlink" href="#retentioneering-tools" title="Permalink to this heading">#</a></h2>
+<p>Retentioneering tools are designed as stand-alone classes, but the instances of these classes might be embedded into <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> class instance. This allows either to create a separate tooling instance and treat it as usual or to use it in chaining manner.</p>
+<p>Suppose we need to split paths of an eventstream into 4 clusters and compare the event distribution in cluster 0 vs cluster 1. Below are two ways how this could be achieved.</p>
+<p>Treating clustering tool as a separate instance:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering.tooling.clusters</span> <span class="kn">import</span> <span class="n">Clusters</span>
+
+<span class="n">clusters</span> <span class="o">=</span> <span class="n">Clusters</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
+<span class="n">clusters</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;kmeans&#39;</span><span class="p">,</span> <span class="n">feature_type</span><span class="o">=</span><span class="s1">&#39;tfidf&#39;</span><span class="p">,</span> <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">n_clusters</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">clusters</span><span class="o">.</span><span class="n">event_dist</span><span class="p">(</span><span class="n">cluster_id1</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">cluster_id2</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Treating clustering tool as chaining methods:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span>\
+    <span class="o">.</span><span class="n">clusters</span>\
+    <span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;kmeans&#39;</span><span class="p">,</span> <span class="n">feature_type</span><span class="o">=</span><span class="s1">&#39;tfidf&#39;</span><span class="p">,</span> <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">n_clusters</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>\
+    <span class="o">.</span><span class="n">event_dist</span><span class="p">(</span><span class="n">cluster_id1</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">cluster_id2</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The table below contains a brief overview of Retentioneering tools. The comprehensive description on all the tools work can be found in these sections: <a class="reference internal" href="../user_guide.html"><span class="doc">User Guide</span></a> and <a class="reference internal" href="../api/tooling_api.html"><span class="doc">API Reference</span></a>.</p>
+<table class="tight-table table" id="id7">
+<caption><span class="caption-text">Retentioneering tools overview</span><a class="headerlink" href="#id7" title="Permalink to this table">#</a></caption>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 80%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Tooling class</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../user_guides/transition_graph.html"><span class="doc">TransitionGraph</span></a></p></td>
+<td><p>Plots an interactive transition graph according to Markov process underlying the eventstream.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../user_guides/step_matrix.html"><span class="doc">StepMatrix</span></a></p></td>
+<td><p>Plots a step-wise matrix showing the distribution of the events over a given step coloured with a heatmap.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../user_guides/step_sankey.html"><span class="doc">StepSankey</span></a></p></td>
+<td><p>Visualizes user paths in step-wise manner using sankey diagram.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../user_guides/clusters.html"><span class="doc">Clusters</span></a></p></td>
+<td><p>Provides a set of instruments for cluster analysis of the user paths.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../user_guides/funnel.html"><span class="doc">Funnel</span></a></p></td>
+<td><p>Plots conversion funnel consisted of given events.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../user_guides/cohorts.html"><span class="doc">Cohorts</span></a></p></td>
+<td><p>Provides a set of the instruments for cohort analysis.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../user_guides/stattests.html"><span class="doc">StatTests</span></a></p></td>
+<td><p>Tests statistical hypothesis</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+            </article>
+            
+            
+            
+            <footer class="bd-footer-article">
+                <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+  <a class='left-prev' id="prev-link" href="quick_start.html" title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+          <p class="prev-next-subtitle">previous</p>
+          <p class="prev-next-title">Quick start with Retentioneering</p>
+      </div>
+  </a>
+  <a class='right-next' id="next-link" href="../user_guide.html" title="next page">
+  <div class="prev-next-info">
+      <p class="prev-next-subtitle">next</p>
+      <p class="prev-next-title">User guide</p>
+  </div>
+  <i class="fa-solid fa-angle-right"></i>
+  </a>
+</div>
+            </footer>
+            
+          </div>
+          
+          
+          
+            <div class="bd-sidebar-secondary bd-toc">
+              
+<div class="toc-item">
+  
+<div class="tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+</div>
+<nav id="bd-toc-nav" class="page-toc">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#why-eventstream">
+   Why Eventstream
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#introducing-eventstream-class">
+   Introducing Eventstream class
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#preprocessing">
+   Preprocessing
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#atomic-operations">
+     Atomic operations
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#data-processors">
+     Data processors
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#custom-data-processors">
+     Custom data processors
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#editing-data-processor">
+       Editing data processor
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#adding-data-processor">
+       Adding data processor
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#removing-data-processor">
+       Removing data processor
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#preprocessing-graph">
+     Preprocessing graph
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#nodes-and-edges">
+       Nodes and edges
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#preprocessing-graph-as-a-calculation-schema">
+       Preprocessing graph as a calculation schema
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#chaining-preprocessing-methods">
+       Chaining preprocessing methods
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#gui">
+       GUI
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#retentioneering-tools">
+   Retentioneering tools
+  </a>
+ </li>
+</ul>
+
+</nav>
+</div>
+
+<div class="toc-item">
+  
+<div id="searchbox"></div>
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+<div class="toc-item">
+  
+<div class="tocsection sourcelink">
+    <a href="../_sources/getting_started/eventstream_concept.rst.txt">
+        <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+</div>
+
+</div>
+
+            </div>
+          
+          
+        </div>
+        <footer class="bd-footer-content">
+          <div class="bd-footer-content__inner">
+            
+          </div>
+        </footer>
+        
+      </main>
+    </div>
+  </div>
+
+  
+    
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94"></script>
+
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+  </body>
+</html>

@@ -1,0 +1,991 @@
+<!-- This template is needed for a toggling solution -->
+<!-- https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Cohorts &#8212; Retentioneering 3.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/bootstrap.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94">
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/custom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guides/cohorts';</script>
+    <link rel="shortcut icon" href="../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Stattests tooling user guide" href="stattests.html" />
+    <link rel="prev" title="Funnel" href="funnel.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="docsearch:language" content="en">
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="light">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__primary" id="__primary">
+  <label class="overlay overlay-primary" for="__primary"></label>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__secondary" id="__secondary">
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+      
+<form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+    </div>
+  </div>
+
+  
+  <nav class="bd-header navbar navbar-expand-lg bd-navbar" id="navbar-main"><div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+      <span class="fa-solid fa-bars"></span>
+  </label>
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="../index.html">
+
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <img src="../_static/rete_logo.svg" class="logo__image only-light" alt="Logo image">
+    <img src="../_static/rete_logo_white.svg" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  
+  <div class="col-lg-9 navbar-header-items">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+        <div class="navbar-end-item navbar-persistent--container">
+          
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+        </div>
+      
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+
+
+  
+  
+    <div class="navbar-persistent--mobile">
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+    </div>
+  
+
+  
+  <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+  </label>
+  
+
+</div>
+  </nav>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+      </div>
+    
+
+    
+    
+    <div class="sidebar-header-items__end">
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  
+  <div class="sidebar-start-items sidebar-primary__section">
+    <div class="sidebar-start-items__item"><nav class="bd-links" id="bd-docs-nav" aria-label="Section navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">
+    Section Navigation
+  </p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="eventstream.html"> Eventstream</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="dataprocessors.html"> DataProcessors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html"> Preprocessing</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="transition_graph.html"> Transition Graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html"> Step Matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_sankey.html"> Step Sankey</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clusters.html"> Clusters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html"> Funnels</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"> Cohorts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stattests.html"> Stattests</a></li>
+</ul>
+
+  </div>
+</nav>
+    </div>
+  </div>
+  
+
+  
+  <div class="sidebar-end-items sidebar-primary__section">
+    <div class="sidebar-end-items__item">
+    </div>
+  </div>
+
+  
+  <div id="rtd-footer-container"></div>
+
+      </div>
+      <main id="main-content" class="bd-main">
+        
+        
+        <div class="bd-content">
+          <div class="bd-article-container">
+            
+            <div class="bd-header-article">
+                
+            </div>
+            
+            
+            <article class="bd-article" role="main">
+              
+  <section id="cohorts">
+<h1>Cohorts<a class="headerlink" href="#cohorts" title="Permalink to this heading">#</a></h1>
+<p>The following user guide is also available as
+<a class="reference external" href="https://colab.research.google.com/drive/11Eqicd5fNLdtr_IqdtyYp4oAFmybNg46?usp=share_link">Google Colab notebook</a></p>
+<section id="cohorts-intro">
+<h2>Cohorts intro<a class="headerlink" href="#cohorts-intro" title="Permalink to this heading">#</a></h2>
+<p>Cohorts it’s a powerfull tool that shows differences and trends in users behavior over time.</p>
+<p>It helps to isolate the impact of different marketing activities or changes in a product for different groups of users.</p>
+<p>Basic algorithm of <code class="docutils literal notranslate"><span class="pre">Cohort</span> <span class="pre">Matrix</span></code> calculation:</p>
+<ul class="simple">
+<li><p>Users divided into <code class="docutils literal notranslate"><span class="pre">Cohorts</span></code> or <code class="docutils literal notranslate"><span class="pre">CohortGroups</span></code> depending on the time of their first appearance in the eventstream</p></li>
+<li><p>Then the retention rate of active users calculated in each further period (<code class="docutils literal notranslate"><span class="pre">CohortPeriod</span></code>) of observation.</p></li>
+</ul>
+</section>
+<section id="basic-example">
+<h2>Basic example<a class="headerlink" href="#basic-example" title="Permalink to this heading">#</a></h2>
+<p>To better understand how it works let’s first consider an intuitive
+example. Here it is small dataset of event logs:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">source_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;2021-01-28 00:01:00&quot;</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;2021-01-30 00:01:00&quot;</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;2021-02-03 00:01:00&quot;</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;2021-02-04 00:01:00&quot;</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;2021-02-05 00:01:00&quot;</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;2021-03-06 00:01:00&quot;</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;2021-03-07 00:01:00&quot;</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;2021-03-07 00:01:00&quot;</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;2021-03-29 00:01:00&quot;</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;2021-03-30 00:01:00&quot;</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;2021-04-06 00:01:00&quot;</span><span class="p">]</span>
+     <span class="p">],</span>
+     <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;user_id&quot;</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;timestamp&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+<span class="n">source_df</span>
+</pre></div>
+</div>
+<div><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>user_id</th>
+      <th>event</th>
+      <th>timestamp</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>event</td>
+      <td>2021-01-28 00:01:00</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>event</td>
+      <td>2021-01-30 00:01:00</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1</td>
+      <td>event</td>
+      <td>2021-02-03 00:01:00</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>event</td>
+      <td>2021-02-04 00:01:00</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>event</td>
+      <td>2021-02-05 00:01:00</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>4</td>
+      <td>event</td>
+      <td>2021-03-06 00:01:00</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>1</td>
+      <td>event</td>
+      <td>2021-03-07 00:01:00</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>2</td>
+      <td>event</td>
+      <td>2021-03-07 00:01:00</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>3</td>
+      <td>event</td>
+      <td>2021-03-29 00:01:00</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>5</td>
+      <td>event</td>
+      <td>2021-03-30 00:01:00</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>4</td>
+      <td>event</td>
+      <td>2021-04-06 00:01:00</td>
+    </tr>
+  </tbody>
+</table>
+</div><p>We can visualize this dataset as a heatmap indicating what fraction of
+users from each cohort remained in the clickstream at each time period:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering.eventstream</span> <span class="kn">import</span> <span class="n">Eventstream</span>
+
+<span class="n">source</span> <span class="o">=</span> <span class="n">Eventstream</span><span class="p">(</span><span class="n">source_df</span><span class="p">)</span>
+<span class="n">source</span><span class="o">.</span><span class="n">cohorts</span><span class="p">(</span>
+                <span class="n">eventstream</span><span class="o">=</span><span class="n">source</span><span class="p">,</span>
+                <span class="n">cohort_start_unit</span><span class="o">=</span><span class="s2">&quot;M&quot;</span><span class="p">,</span>
+                <span class="n">cohort_period</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;M&quot;</span><span class="p">),</span>
+                <span class="n">average</span><span class="o">=</span><span class="kc">False</span>
+               <span class="p">)</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<img alt="../_images/cohorts_1_simple_coh_matrix.png" src="../_images/cohorts_1_simple_coh_matrix.png" />
+</figure>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">CohortGroup</span></code> - start datetime of each cohort.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CohortPeriod</span></code> - the number of defined periods from each
+<code class="docutils literal notranslate"><span class="pre">CohortGroup</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Values</span></code> - percentage of active users during a given period.</p></li>
+</ul>
+<p>Each <code class="docutils literal notranslate"><span class="pre">CohortGroup</span></code> includes users whose acquisition date is within the period from
+start date of current cohort to the start date of the following cohort
+(i.e. the first time a user visits your website).
+So each user has unique <code class="docutils literal notranslate"><span class="pre">CohortGroup</span></code>.</p>
+<p>Let’s take a look at the calculation in details:</p>
+<p>For current <code class="docutils literal notranslate"><span class="pre">Cohort</span> <span class="pre">Matrix</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">CohortGroup</span></code> is a month</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CohortPeriod</span></code> is 1 month</p></li>
+</ul>
+<p>There are 3 <code class="docutils literal notranslate"><span class="pre">CohortGroups</span></code> in total. Each <code class="docutils literal notranslate"><span class="pre">CohortGroup</span></code> represents
+users acquired in a particular month (e.g. the January cohort
+(<code class="docutils literal notranslate"><span class="pre">2021-01</span></code>) includes all users who had their first session in
+January).</p>
+<p>Thus, the value in the column referring to the <code class="docutils literal notranslate"><span class="pre">CohortPeriod</span> <span class="pre">=</span> <span class="pre">0</span></code>
+will contain maximum users for each row (Fig.1), and in final heatmap it
+will be always - 100% (Fig.2), users have just joined the eventstream,
+and no one has left it yet.</p>
+<figure class="align-default">
+<img alt="../_images/cohorts_2_coh_matrix_calc_1.png" src="../_images/cohorts_2_coh_matrix_calc_1.png" />
+</figure>
+<figure class="align-default">
+<img alt="../_images/cohorts_3_coh_matrix_calc_2.png" src="../_images/cohorts_3_coh_matrix_calc_2.png" />
+</figure>
+<p>Now let’s look at the <code class="docutils literal notranslate"><span class="pre">CohortPeriod</span> <span class="pre">=</span> <span class="pre">1</span></code> . In our case, it’s 1 month
+from the start of the observation period. During the next month of
+monitoring users, we can see the activity of <code class="docutils literal notranslate"><span class="pre">50%</span></code> of users from the
+first cohort, <code class="docutils literal notranslate"><span class="pre">100%</span></code> of users from the second cohort. The data on
+which the table was built does not cover period 1 of the last cohort
+(<code class="docutils literal notranslate"><span class="pre">2020-04</span></code>), so there is no data for this cell, it remains empty, like
+all subsequent periods for this cohort.</p>
+<p>And finally <code class="docutils literal notranslate"><span class="pre">CohortPeriod</span> <span class="pre">=</span> <span class="pre">2</span></code>. Users 1 and 2 are present in the data
+for March, so <code class="docutils literal notranslate"><span class="pre">100%</span></code> of the users of the first cohort reached the
+second period. For second cohort (<code class="docutils literal notranslate"><span class="pre">2021-02</span></code>) second period is April,
+so only user 4 is presenting, it means, that only <code class="docutils literal notranslate"><span class="pre">50%</span></code> of users from
+this cohort reached the second period.</p>
+<p>Below we will explore how to use and customize <code class="docutils literal notranslate"><span class="pre">Cohort</span></code> tool using
+<code class="docutils literal notranslate"><span class="pre">Retentioneering</span></code> library.</p>
+</section>
+<section id="loading-data">
+<h2>Loading data<a class="headerlink" href="#loading-data" title="Permalink to this heading">#</a></h2>
+<p>Here we use <code class="docutils literal notranslate"><span class="pre">simple_shop</span></code> dataset, which has already converted to <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code>.
+If you want to know more about <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> and how to use it, please study
+<a class="reference internal" href="eventstream.html"><span class="doc">this guide</span></a></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering</span> <span class="kn">import</span> <span class="n">datasets</span>
+
+<span class="n">source</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="customization">
+<h2>Customization<a class="headerlink" href="#customization" title="Permalink to this heading">#</a></h2>
+<p>Now let’s talk about setting cohort parameters in more detail.</p>
+<section id="cohort-start-unit-and-cohort-period">
+<h3>Cohort start unit and Cohort period<a class="headerlink" href="#cohort-start-unit-and-cohort-period" title="Permalink to this heading">#</a></h3>
+<p>In the examples we looked at earlier, the parameters
+<code class="docutils literal notranslate"><span class="pre">cohort_start_unit='M'</span></code> and <code class="docutils literal notranslate"><span class="pre">cohort_period=(1,'M')</span></code> .</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="o">.</span><span class="n">cohorts</span><span class="p">(</span>
+                <span class="n">cohort_start_unit</span><span class="o">=</span><span class="s1">&#39;M&#39;</span><span class="p">,</span>
+                <span class="n">cohort_period</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">)</span>
+                <span class="p">);</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<img alt="../_images/cohorts_8_MM.png" src="../_images/cohorts_8_MM.png" />
+</figure>
+<p>Parameter <code class="docutils literal notranslate"><span class="pre">cohort_start_unit</span></code> is the way of rounding the moment from
+which the cohort count begins. Minimum timestamp rounding down to the
+selected datetime unit.</p>
+<figure class="align-default">
+<img alt="../_images/cohorts_9_num_expl.png" src="../_images/cohorts_9_num_expl.png" />
+</figure>
+<p>Parameter <code class="docutils literal notranslate"><span class="pre">cohort_period</span></code> is the window of time that you want to
+examine. It is used in calculating:</p>
+<ol class="arabic simple">
+<li><p>Start datetime for each <code class="docutils literal notranslate"><span class="pre">CohortGroup</span></code>. That means that we take the
+rounded with <code class="docutils literal notranslate"><span class="pre">cohort_start_unit</span></code> timestamp of the first click of
+the first user in the clickstream and count the <code class="docutils literal notranslate"><span class="pre">cohort_period</span></code>
+from it. All users who performed actions during this period fall into
+the first cohort (zero period).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CohortPeriods</span></code> for each cohort from it’s start moment. After
+actions described in paragraph 1, we again count the period of the
+cohort. New users who appeared in the clickstream during this period
+become the second cohort (zero period). And users from the first
+cohort who committed actions during this period are counted as the
+first period of the first cohort.</p></li>
+</ol>
+<p>Let’s try to change those parameters.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="o">.</span><span class="n">cohorts</span><span class="p">(</span>
+                <span class="n">cohort_start_unit</span><span class="o">=</span><span class="s1">&#39;W&#39;</span><span class="p">,</span>
+                <span class="n">cohort_period</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">)</span>
+                <span class="p">);</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<img alt="../_images/cohorts_10_weeks.png" src="../_images/cohorts_10_weeks.png" />
+</figure>
+<p>Now the cohort period lasts 3 weeks, our heatmap has become more
+detailed. The number of cohorts also increased from 5 to 8</p>
+<p>Note! Parameters <code class="docutils literal notranslate"><span class="pre">cohort_start_unit</span></code> and <code class="docutils literal notranslate"><span class="pre">cohort_period</span></code> should be
+consistent. Due to “Y” and “M” are non-fixed types it can be used only
+with each other or if <code class="docutils literal notranslate"><span class="pre">cohort_period_unit</span></code> is more detailed than
+<code class="docutils literal notranslate"><span class="pre">cohort_start_unit</span></code>.</p>
+<p>For more details see
+<a class="reference external" href="https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-and-timedelta-arithmetic">numpy documentation</a></p>
+</section>
+<section id="average">
+<h3>Average<a class="headerlink" href="#average" title="Permalink to this heading">#</a></h3>
+<ul class="simple">
+<li><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code> - calculating average for each cohort period. Default
+value.</p></li>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">False</span></code> - averages are not calculated</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="o">.</span><span class="n">cohorts</span><span class="p">(</span>
+                <span class="n">cohort_start_unit</span><span class="o">=</span><span class="s1">&#39;M&#39;</span><span class="p">,</span>
+                <span class="n">cohort_period</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">),</span>
+                <span class="n">average</span><span class="o">=</span><span class="kc">False</span>
+                <span class="p">);</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<img alt="../_images/cohorts_11_average.png" src="../_images/cohorts_11_average.png" />
+</figure>
+</section>
+<section id="cut-matrix">
+<h3>Cut matrix<a class="headerlink" href="#cut-matrix" title="Permalink to this heading">#</a></h3>
+<p>There are three ways to cut the matrix to get rid of boundary values,
+for example, when there is not enough data available at the moment to
+adequately analyze the behavior of the cohort.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">cut_bottom</span></code> - Drop from cohort_matrix ‘n’ rows from the bottom of
+the cohort matrix.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cut_right</span></code> - Drop from cohort_matrix ‘n’ columns from the right
+side.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cut_diagonal</span></code> - Drop from cohort_matrix diagonal with ‘n’ last
+period-group cells.</p></li>
+</ul>
+<p>Average values are always recalculated.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="o">.</span><span class="n">cohorts</span><span class="p">(</span>
+                <span class="n">cohort_start_unit</span><span class="o">=</span><span class="s1">&#39;M&#39;</span><span class="p">,</span>
+                <span class="n">cohort_period</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">),</span>
+                <span class="n">average</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">cut_bottom</span><span class="o">=</span><span class="mi">1</span>
+                <span class="p">);</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<img alt="../_images/cohorts_12_cut_bottom.png" src="../_images/cohorts_12_cut_bottom.png" />
+</figure>
+<p>After applying <code class="docutils literal notranslate"><span class="pre">cut_bottom=1</span></code> <code class="docutils literal notranslate"><span class="pre">CohortGroup</span></code> starts from <code class="docutils literal notranslate"><span class="pre">2020-04</span></code>
+were deleted from our matrix.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="o">.</span><span class="n">cohorts</span><span class="p">(</span>
+               <span class="n">cohort_start_unit</span><span class="o">=</span><span class="s1">&#39;M&#39;</span><span class="p">,</span>
+               <span class="n">cohort_period</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">),</span>
+               <span class="n">average</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+               <span class="n">cut_bottom</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+               <span class="n">cut_right</span><span class="o">=</span><span class="mi">1</span>
+               <span class="p">);</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<img alt="../_images/cohorts_13_cut_right.png" src="../_images/cohorts_13_cut_right.png" />
+</figure>
+<p>Parameter <code class="docutils literal notranslate"><span class="pre">cut_right</span></code> allows to remove the last period column, which
+reflected information only for the first cohort.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="o">.</span><span class="n">cohorts</span><span class="p">(</span>
+                <span class="n">cohort_start_unit</span><span class="o">=</span><span class="s1">&#39;M&#39;</span><span class="p">,</span>
+                <span class="n">cohort_period</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">),</span>
+                <span class="n">average</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">cut_diagonal</span><span class="o">=</span><span class="mi">1</span>
+                <span class="p">);</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<img alt="../_images/cohorts_14_cut_diagonal.png" src="../_images/cohorts_14_cut_diagonal.png" />
+</figure>
+<p>Parameter <code class="docutils literal notranslate"><span class="pre">cut</span> <span class="pre">diagonal</span></code> - deletes values below the diagonal that runs
+to the left and down from the last period of the first cohort. Thus, we
+get rid of all boundary values.</p>
+</section>
+</section>
+<section id="using-a-separate-instance">
+<h2>Using a separate instance<a class="headerlink" href="#using-a-separate-instance" title="Permalink to this heading">#</a></h2>
+<p>By design, <a class="reference internal" href="../api/tooling/cohorts.html#retentioneering.eventstream.eventstream.Eventstream.cohorts" title="retentioneering.eventstream.eventstream.Eventstream.cohorts"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Eventstream.cohorts()</span></code></a>
+is a shortcut method which uses an instance of
+<a class="reference internal" href="../api/tooling/cohorts.html#retentioneering.tooling.cohorts.cohorts.Cohorts" title="retentioneering.tooling.cohorts.cohorts.Cohorts"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Cohorts</span></code></a> under the hood.
+Eventstream method creates an instance of Cohorts object and stores the eventstream internally.</p>
+<p>Sometimes it’s reasonable to work with a separate instance of Cohorts class. In this case you also have to
+call <a class="reference internal" href="../api/tooling/cohorts.html#retentioneering.tooling.cohorts.cohorts.Cohorts.fit" title="retentioneering.tooling.cohorts.cohorts.Cohorts.fit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Cohorts.fit()</span></code></a> and
+<a class="reference internal" href="../api/tooling/cohorts.html#retentioneering.tooling.cohorts.cohorts.Cohorts.heatmap" title="retentioneering.tooling.cohorts.cohorts.Cohorts.heatmap"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Cohorts.plot()</span></code></a> methods explicitly.
+Here’s an example how you can do it.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering.tooling.cohorts</span> <span class="kn">import</span> <span class="n">Cohorts</span>
+
+<span class="n">coh</span> <span class="o">=</span> <span class="n">Cohorts</span><span class="p">(</span>
+                  <span class="n">eventstream</span><span class="o">=</span><span class="n">source</span><span class="p">,</span>
+                  <span class="n">cohort_start_unit</span><span class="o">=</span><span class="s2">&quot;M&quot;</span><span class="p">,</span>
+                  <span class="n">cohort_period</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="s2">&quot;M&quot;</span><span class="p">),</span>
+                  <span class="n">average</span><span class="o">=</span><span class="kc">False</span>
+                  <span class="p">)</span>
+
+<span class="n">coh</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+<span class="n">coh</span><span class="o">.</span><span class="n">heatmap</span><span class="p">();</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<img alt="../_images/cohorts_15_eventstream.png" src="../_images/cohorts_15_eventstream.png" />
+</figure>
+</section>
+<section id="common-tooling-properties">
+<h2>Common tooling properties<a class="headerlink" href="#common-tooling-properties" title="Permalink to this heading">#</a></h2>
+<p>In order to avoid unnessesary recalculations while you need different representations
+of one eventstream with the same parameters - that would be helpful to save that fitted
+instance in separate variable.</p>
+<p>Heatmap is displayed by default, but <a class="reference internal" href="../api/tooling/cohorts.html#retentioneering.tooling.cohorts.cohorts.Cohorts.values" title="retentioneering.tooling.cohorts.cohorts.Cohorts.values"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Cohorts.values</span></code></a>
+and <a class="reference internal" href="../api/tooling/cohorts.html#retentioneering.tooling.cohorts.cohorts.Cohorts.lineplot" title="retentioneering.tooling.cohorts.cohorts.Cohorts.lineplot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Cohorts.lineplot()</span></code></a> are also
+available:</p>
+<section id="values">
+<h3>values<a class="headerlink" href="#values" title="Permalink to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">coh</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">cohorts</span><span class="p">(</span>
+                <span class="n">cohort_start_unit</span><span class="o">=</span><span class="s1">&#39;M&#39;</span><span class="p">,</span>
+                <span class="n">cohort_period</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="s1">&#39;M&#39;</span><span class="p">),</span>
+                <span class="n">average</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">show_plot</span><span class="o">=</span><span class="kc">False</span>
+                 <span class="p">)</span>
+<span class="n">coh</span><span class="o">.</span><span class="n">values</span>
+</pre></div>
+</div>
+<div><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>CohortPeriod</th>
+      <th>0</th>
+      <th>1</th>
+      <th>2</th>
+      <th>3</th>
+      <th>4</th>
+    </tr>
+    <tr>
+      <th>CohortGroup</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2019-11</th>
+      <td>1.0</td>
+      <td>0.393822</td>
+      <td>0.328185</td>
+      <td>0.250965</td>
+      <td>0.247104</td>
+    </tr>
+    <tr>
+      <th>2019-12</th>
+      <td>1.0</td>
+      <td>0.333333</td>
+      <td>0.257028</td>
+      <td>0.232932</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2020-01</th>
+      <td>1.0</td>
+      <td>0.386179</td>
+      <td>0.284553</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2020-02</th>
+      <td>1.0</td>
+      <td>0.319066</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2020-03</th>
+      <td>1.0</td>
+      <td>0.140000</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <th>2020-04</th>
+      <td>1.0</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+</div><p>There are some NANs in the table. These gaps can mean one of two things:</p>
+<ol class="arabic simple">
+<li><p>During the specified period, users from the cohort did not perform
+any actions (and were active again in the next period).</p></li>
+<li><p>Users from the latest-start cohorts have not yet reached the last
+periods of the observation. These NaNs are usually concentrated in
+the lower right corner of the table.</p></li>
+</ol>
+</section>
+<section id="lineplot">
+<h3>lineplot<a class="headerlink" href="#lineplot" title="Permalink to this heading">#</a></h3>
+<p>We can also build lineplots based on our data. Where by default each
+line - is one <code class="docutils literal notranslate"><span class="pre">CohortGroup</span></code>, <code class="docutils literal notranslate"><span class="pre">show_plot='cohorts'</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">coh</span><span class="o">.</span><span class="n">lineplot</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">),</span> <span class="n">show_plot</span><span class="o">=</span><span class="s1">&#39;cohorts&#39;</span><span class="p">);</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<img alt="../_images/cohorts_5_lineplot_default.png" src="../_images/cohorts_5_lineplot_default.png" />
+</figure>
+<p>In addition, we can plot the average values for cohorts</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cohorts</span><span class="o">.</span><span class="n">lineplot</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span><span class="mi">5</span><span class="p">),</span> <span class="n">show_plot</span><span class="o">=</span><span class="s1">&#39;average&#39;</span><span class="p">);</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<img alt="../_images/cohorts_6_lineplot_average.png" src="../_images/cohorts_6_lineplot_average.png" />
+</figure>
+<p>Specifying the <code class="docutils literal notranslate"><span class="pre">show_plot='all'</span></code> we will get a plot that shows
+lineplot for each cohort and also for their average values</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cohorts</span><span class="o">.</span><span class="n">lineplot</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span><span class="mi">5</span><span class="p">),</span> <span class="n">show_plot</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">);</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<img alt="../_images/cohorts_7_lineplot_all.png" src="../_images/cohorts_7_lineplot_all.png" />
+</figure>
+</section>
+<section id="params">
+<h3>params<a class="headerlink" href="#params" title="Permalink to this heading">#</a></h3>
+<p><a class="reference internal" href="../api/tooling/cohorts.html#retentioneering.tooling.cohorts.cohorts.Cohorts.params" title="retentioneering.tooling.cohorts.cohorts.Cohorts.params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Cohorts.params</span></code></a> property returns a
+dictionary containing all the parameters (including the defaults) related to the current state of the Cohorts object:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">coh</span><span class="o">.</span><span class="n">params</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s2">&quot;cohort_start_unit&quot;</span><span class="p">:</span> <span class="s1">&#39;M&#39;</span><span class="p">,</span>
+<span class="s2">&quot;cohort_period&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="s1">&#39;M&#39;</span><span class="p">),</span>
+<span class="s2">&quot;average&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<span class="s2">&quot;cut_bottom&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s2">&quot;cut_right&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s2">&quot;cut_diagonal&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+            </article>
+            
+            
+            
+            <footer class="bd-footer-article">
+                <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+  <a class='left-prev' id="prev-link" href="funnel.html" title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+          <p class="prev-next-subtitle">previous</p>
+          <p class="prev-next-title">Funnel</p>
+      </div>
+  </a>
+  <a class='right-next' id="next-link" href="stattests.html" title="next page">
+  <div class="prev-next-info">
+      <p class="prev-next-subtitle">next</p>
+      <p class="prev-next-title">Stattests tooling user guide</p>
+  </div>
+  <i class="fa-solid fa-angle-right"></i>
+  </a>
+</div>
+            </footer>
+            
+          </div>
+          
+          
+          
+            <div class="bd-sidebar-secondary bd-toc">
+              
+<div class="toc-item">
+  
+<div class="tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+</div>
+<nav id="bd-toc-nav" class="page-toc">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#cohorts-intro">
+   Cohorts intro
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#basic-example">
+   Basic example
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#loading-data">
+   Loading data
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#customization">
+   Customization
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#cohort-start-unit-and-cohort-period">
+     Cohort start unit and Cohort period
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#average">
+     Average
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#cut-matrix">
+     Cut matrix
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#using-a-separate-instance">
+   Using a separate instance
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#common-tooling-properties">
+   Common tooling properties
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#values">
+     values
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#lineplot">
+     lineplot
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#params">
+     params
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+</div>
+
+<div class="toc-item">
+  
+<div id="searchbox"></div>
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+<div class="toc-item">
+  
+<div class="tocsection sourcelink">
+    <a href="../_sources/user_guides/cohorts.rst.txt">
+        <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+</div>
+
+</div>
+
+            </div>
+          
+          
+        </div>
+        <footer class="bd-footer-content">
+          <div class="bd-footer-content__inner">
+            
+          </div>
+        </footer>
+        
+      </main>
+    </div>
+  </div>
+
+  
+    
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94"></script>
+
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+  </body>
+</html>

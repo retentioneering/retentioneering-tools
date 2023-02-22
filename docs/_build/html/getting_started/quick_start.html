@@ -1,0 +1,765 @@
+<!-- This template is needed for a toggling solution -->
+<!-- https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Quick start with Retentioneering &#8212; Retentioneering 3.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/bootstrap.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94">
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/custom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'getting_started/quick_start';</script>
+    <link rel="shortcut icon" href="../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Eventstream class overview" href="eventstream_concept.html" />
+    <link rel="prev" title="What is Retentioneering?" href="what_is_rete.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="docsearch:language" content="en">
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="light">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__primary" id="__primary">
+  <label class="overlay overlay-primary" for="__primary"></label>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__secondary" id="__secondary">
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+      
+<form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+    </div>
+  </div>
+
+  
+  <nav class="bd-header navbar navbar-expand-lg bd-navbar" id="navbar-main"><div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+      <span class="fa-solid fa-bars"></span>
+  </label>
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="../index.html">
+
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <img src="../_static/rete_logo.svg" class="logo__image only-light" alt="Logo image">
+    <img src="../_static/rete_logo_white.svg" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  
+  <div class="col-lg-9 navbar-header-items">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+        <div class="navbar-end-item navbar-persistent--container">
+          
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+        </div>
+      
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+
+
+  
+  
+    <div class="navbar-persistent--mobile">
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+    </div>
+  
+
+  
+  <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+  </label>
+  
+
+</div>
+  </nav>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+      </div>
+    
+
+    
+    
+    <div class="sidebar-header-items__end">
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  
+  <div class="sidebar-start-items sidebar-primary__section">
+    <div class="sidebar-start-items__item"><nav class="bd-links" id="bd-docs-nav" aria-label="Section navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">
+    Section Navigation
+  </p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="what_is_rete.html">What is Retentioneering?</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Quick start</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="eventstream_concept.html">Eventstream concept</a></li>
+</ul>
+
+  </div>
+</nav>
+    </div>
+  </div>
+  
+
+  
+  <div class="sidebar-end-items sidebar-primary__section">
+    <div class="sidebar-end-items__item">
+    </div>
+  </div>
+
+  
+  <div id="rtd-footer-container"></div>
+
+      </div>
+      <main id="main-content" class="bd-main">
+        
+        
+        <div class="bd-content">
+          <div class="bd-article-container">
+            
+            <div class="bd-header-article">
+                
+            </div>
+            
+            
+            <article class="bd-article" role="main">
+              
+  <style>
+    .red {color:#24ff83; font-weight:bold;}
+</style><section id="quick-start-with-retentioneering">
+<h1>Quick start with Retentioneering<a class="headerlink" href="#quick-start-with-retentioneering" title="Permalink to this heading">#</a></h1>
+<p>Retentioneering is a python library for in-depth clickstream analysis. We find <em>clickstream</em> term a bit narrow since user actions might be not necessarily clicks, so we use instead term <em>event</em> referring any user action and <em>eventstream</em> referring a set of actions belonging to multiple users (sometimes we will use <em>CJM, customer journey map</em> term as a synonym). Each event is associated with a user who experienced it and timestamp when the event occurred. Hence, at a basic level eventstream is a set of triples like these:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="s1">&#39;user_1&#39;</span><span class="p">,</span> <span class="s1">&#39;login&#39;</span><span class="p">,</span> <span class="s1">&#39;2019-01-01 00:00:00&#39;</span><span class="p">),</span>
+<span class="p">(</span><span class="s1">&#39;user_1&#39;</span><span class="p">,</span> <span class="s1">&#39;main_page_visit&#39;</span><span class="p">,</span> <span class="s1">&#39;2019-01-01 00:00:00&#39;</span><span class="p">),</span>
+<span class="p">(</span><span class="s1">&#39;user_1&#39;</span><span class="p">,</span> <span class="s1">&#39;cart_button_click&#39;</span><span class="p">,</span> <span class="s1">&#39;2019-01-01 00:00:00&#39;</span><span class="p">),</span>
+<span class="o">...</span>
+</pre></div>
+</div>
+<p>A set of events belonging to a particular user is called <em>user path</em> or <em>user trajectory</em>.</p>
+<p>Any eventstream research consists of three fundamental steps:</p>
+<ul class="simple">
+<li><p>Loading data</p></li>
+<li><p>Preparing the data</p></li>
+<li><p>Applying retentioneering tools</p></li>
+</ul>
+<p>In this document we briefly describe how to follow these steps. For more details see the <a class="reference internal" href="../user_guide.html"><span class="doc">User Guides</span></a>.</p>
+<section id="loading-data">
+<h2>Loading data<a class="headerlink" href="#loading-data" title="Permalink to this heading">#</a></h2>
+<p>Here we introduce you our core class <a class="reference internal" href="../user_guides/eventstream.html"><span class="doc">Eventstream</span></a> which not only stores eventstream events, but also allows to treat them in an efficient way.</p>
+<p>For demonstration purposes we offer you to use our small <a class="reference internal" href="../datasets/simple_shop.html"><span class="doc">simple_shop</span></a> dataset.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering</span> <span class="kn">import</span> <span class="n">datasets</span>
+
+<span class="c1"># load sample user behavior data:</span>
+<span class="n">stream</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>In the shell of eventstream object there is a regular pandas DataFrame which can be revealed by calling <a class="reference internal" href="../api/eventstream/eventstream_core.html#retentioneering.eventstream.eventstream.Eventstream.to_dataframe" title="retentioneering.eventstream.eventstream.Eventstream.to_dataframe"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_dataframe()</span></code></a> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>user_id</th>
+      <th>event</th>
+      <th>timestamp</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>219483890</td>
+      <td>catalog</td>
+      <td>2019-11-01 17:59:13.273932</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>219483890</td>
+      <td>product1</td>
+      <td>2019-11-01 17:59:28.459271</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>219483890</td>
+      <td>cart</td>
+      <td>2019-11-01 17:59:29.502214</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>219483890</td>
+      <td>catalog</td>
+      <td>2019-11-01 17:59:32.557029</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>964964743</td>
+      <td>catalog</td>
+      <td>2019-11-01 21:38:19.283663</td>
+    </tr>
+  </tbody>
+</table>
+</div><p>As you can see in this fragment of the dataset, user with id <code class="docutils literal notranslate"><span class="pre">219483890</span></code> has 4 events on the website with specific timestamps on <code class="docutils literal notranslate"><span class="pre">2019-11-01</span></code>. If you’re ok with the <code class="docutils literal notranslate"><span class="pre">simple_shop</span></code> dataset, you can follow the next section.</p>
+<p>Alternatively, you can create an eventstream by uploading your own dataset. In this case, your data must be represented as a csv-table with at least three columns <code class="docutils literal notranslate"><span class="pre">user_id</span></code>,  <code class="docutils literal notranslate"><span class="pre">event</span></code>, <code class="docutils literal notranslate"><span class="pre">timestamp</span></code>. Upload  it as a pandas DataFrame and create eventstream as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">retentioneering.eventstream</span> <span class="kn">import</span> <span class="n">Eventstream</span>
+
+<span class="c1"># load your own csv</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;your_own_data_file.csv&quot;</span><span class="p">)</span>
+<span class="n">stream</span> <span class="o">=</span> <span class="n">Eventstream</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If the input table columns have different names, you need either to rename them in the pandas DataFrame or explicitly set data schema (see <a class="reference internal" href="../user_guides/eventstream.html#eventstream-custom-fields"><span class="std std-ref">Eventstream user guide</span></a> for the details). Setting the data schema is also required if the input table has additional custom columns.</p>
+<p>How to get a csv-file with data? For example, if you use Google Analytics, raw data in the form of <code class="docutils literal notranslate"><span class="pre">{user,</span> <span class="pre">event,</span> <span class="pre">timestamp}</span></code> triples can be streamed via Google Analytics 360 or free Google Analytics App+Web into BigQuery. From the BigQuery console you can run SQL query and export data into csv file, alternatively you can use the Python BigQuery connector to get directly into the dataframe. For large datasets, we suggest to sample the users in an SQL query, filtering by the user_id (just add this condition to SQL <code class="docutils literal notranslate"><span class="pre">WHERE</span></code> statement to get 10% of your users:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ow">and</span> <span class="n">ABS</span><span class="p">(</span><span class="n">MOD</span><span class="p">(</span><span class="n">FARM_FINGERPRINT</span><span class="p">(</span><span class="n">fullVisitorId</span><span class="p">),</span> <span class="mi">10</span><span class="p">))</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="preparing-the-data">
+<span id="quick-start-preprocessing"></span><h2>Preparing the data<a class="headerlink" href="#preparing-the-data" title="Permalink to this heading">#</a></h2>
+<p>Raw data often needs to be prepared before applying analytical techniques. Retentioneering provides a wide range of preprocessing tools which should become a Swiss knife for a product analytics. We call them <em>data processors</em>. With a help of data processors, a product analyst can easily add, delete or group events, truncate an eventstream in a flexible manner, split the trajectories into sessions, and many more. See <a class="reference internal" href="../user_guides/dataprocessors.html"><span class="doc">Data processors user guide</span></a> for the comprehensive description.</p>
+<p>We provide below a short example so you could catch an idea how the data processors work. Suppose you want to analyze only first session of each user instead of the whole eventstream. Here’s how you can easily achieve this with few lines of code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># eventstream preprocessing example</span>
+<span class="n">stream</span> \
+    <span class="o">.</span><span class="n">split_sessions</span><span class="p">(</span><span class="n">session_cutoff</span><span class="o">=</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="s2">&quot;m&quot;</span><span class="p">))</span> \
+    <span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">func</span><span class="o">=</span><span class="k">lambda</span> <span class="n">df_</span><span class="p">,</span> <span class="n">schema</span><span class="p">:</span> <span class="n">df_</span><span class="p">[</span><span class="s2">&quot;session_id&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_1&quot;</span><span class="p">))</span> \
+    <span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span> \
+    <span class="p">[[</span><span class="s2">&quot;user_id&quot;</span><span class="p">,</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="s2">&quot;timestamp&quot;</span><span class="p">,</span> <span class="s2">&quot;session_id&quot;</span><span class="p">]]</span> \
+    <span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>user_id</th>
+      <th>event</th>
+      <th>timestamp</th>
+      <th>session_id</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>219483890</td>
+      <td>session_start</td>
+      <td>2019-11-01 17:59:13.273932</td>
+      <td>219483890_1</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>219483890</td>
+      <td>catalog</td>
+      <td>2019-11-01 17:59:13.273932</td>
+      <td>219483890_1</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>219483890</td>
+      <td>product1</td>
+      <td>2019-11-01 17:59:28.459271</td>
+      <td>219483890_1</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>219483890</td>
+      <td>cart</td>
+      <td>2019-11-01 17:59:29.502214</td>
+      <td>219483890_1</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>219483890</td>
+      <td>catalog</td>
+      <td>2019-11-01 17:59:32.557029</td>
+      <td>219483890_1</td>
+    </tr>
+  </tbody>
+</table><p>In the beginning we take <code class="docutils literal notranslate"><span class="pre">stream</span></code> variable which contains the eventstream instance created in the previous section. <code class="docutils literal notranslate"><span class="pre">split_sessions</span></code> method creates a new column <code class="docutils literal notranslate"><span class="pre">session_id</span></code> with the values ending with suffix <code class="docutils literal notranslate"><span class="pre">_&lt;int&gt;</span></code> indicating the ordinary number of each user’s session. Finally, we need to leave only those records where <code class="docutils literal notranslate"><span class="pre">session_id</span></code> ends with <code class="docutils literal notranslate"><span class="pre">_1</span></code>. This is exactly what the next method <code class="docutils literal notranslate"><span class="pre">filter</span></code> does. Also, we apply <code class="docutils literal notranslate"><span class="pre">to_dataframe()</span></code> method which you already know and select the standard triple columns plus <code class="docutils literal notranslate"><span class="pre">session_id</span></code>.</p>
+<p>Unlike this toy example, in practice analytical research on an eventstream might be branchy. You may want to wrangle an initial eventstream data in many ways, check multiple hypothesis, look at different parts of the eventstream. All these scenarios might be efficiently managed using the <em>preprocessing graph</em>. It allows you to keep all the records and code related to the research in a calculation graph. We especially recommend to try this tool for those who work in analytical teams and need to share some parts of the analytical code among team members. See <a class="reference internal" href="../user_guides/preprocessing.html"><span class="doc">Preprocessing user guide</span></a> for more details.</p>
+</section>
+<section id="applying-retentioneering-tools">
+<span id="quick-start-rete-tools"></span><h2>Applying retentioneering tools<a class="headerlink" href="#applying-retentioneering-tools" title="Permalink to this heading">#</a></h2>
+<p>Retentioneering has many powerful tools for exploring users’ behavior, including transition graphs, step matrices, step Sankey diagrams, funnels, cluster and cohort analysis. Below we show just a short demo for each of them. For more details, please study <a class="reference internal" href="../user_guide.html#ug-core-tools"><span class="std std-ref">user guides</span></a>.</p>
+<section id="transition-graph">
+<span id="quick-start-transition-graph"></span><h3>Transition graph<a class="headerlink" href="#transition-graph" title="Permalink to this heading">#</a></h3>
+<p>Transition graph is an interactive tool which illustrates how many users jump from one event to another. In fact, it represents user paths as a Markov random walk model. The graph is interactive, and you can drag the graph nodes, zoom-in/zoom-out the graph layout, or use a menu panel on the left edge of the graph. Also, you can highlight the most valuable nodes and hide noisy nodes and edges.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">transition_graph</span><span class="p">(</span>
+    <span class="n">thresholds</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;nodes&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;events&#39;</span><span class="p">:</span> <span class="mf">0.06</span><span class="p">},</span>
+        <span class="s1">&#39;edges&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;events&#39;</span><span class="p">:</span> <span class="mf">0.06</span><span class="p">}</span>
+    <span class="p">},</span>
+    <span class="n">norm_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">targets</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;lost&quot;</span><span class="p">:</span> <span class="s2">&quot;bad&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;payment_done&quot;</span><span class="p">:</span> <span class="s2">&quot;nice&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;main&quot;</span><span class="p">:</span> <span class="s2">&quot;source&quot;</span>
+    <span class="p">}</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="600"
+    src="../_static/getting_started/quick_start/transition_graph.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><p><span class="red">TODO: replace this html with another one once transition graph is fixed</span></p>
+<p>See <a class="reference internal" href="../user_guides/transition_graph.html"><span class="doc">TransitionGraph user guide</span></a> to understand this tool deeper.</p>
+</section>
+<section id="step-matrix">
+<span id="quick-start-step-matrix"></span><h3>Step matrix<a class="headerlink" href="#step-matrix" title="Permalink to this heading">#</a></h3>
+<p>Step matrix provides a stepwise look at CJM. It shows the event distribution with respect to a step ordinal number.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">step_matrix</span><span class="p">(</span>
+    <span class="n">max_steps</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+    <span class="n">thresh</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+    <span class="n">centered</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;event&quot;</span><span class="p">:</span> <span class="s2">&quot;cart&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;left_gap&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="s2">&quot;occurrence&quot;</span><span class="p">:</span> <span class="mi">1</span>
+    <span class="p">},</span>
+    <span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;payment_done&#39;</span><span class="p">]</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/step_matrix.png"><img alt="../_images/step_matrix.png" src="../_images/step_matrix.png" style="width: 900px;" /></a>
+</figure>
+<p>The step matrix above is centered by <code class="docutils literal notranslate"><span class="pre">cart</span></code> event. For example, it shows (see <code class="docutils literal notranslate"><span class="pre">-1</span></code> column) that the events in the user trajectories one step before <code class="docutils literal notranslate"><span class="pre">cart</span></code> event are distributed as follows: 60% of the users have <code class="docutils literal notranslate"><span class="pre">catalog</span></code> event right before <code class="docutils literal notranslate"><span class="pre">cart</span></code>, 24% of the users have <code class="docutils literal notranslate"><span class="pre">product2</span></code> event, and 16% of the users are distributed among 5 events which are folded to an artificial <code class="docutils literal notranslate"><span class="pre">THRESHOLDED_5</span></code> event.</p>
+<p>See <a class="reference internal" href="../user_guides/step_matrix.html"><span class="doc">StepMatrix user guide</span></a> to understand this tool deeper.</p>
+</section>
+<section id="step-sankey-diagram">
+<h3>Step Sankey diagram<a class="headerlink" href="#step-sankey-diagram" title="Permalink to this heading">#</a></h3>
+<p>Step Sankey diagram is similar to step matrix. It also shows the event distribution with respect to step number. However, it has some advances:</p>
+<ul class="simple">
+<li><p>it explicitly shows the user flow from one step to another,</p></li>
+<li><p>it is interactive.</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">step_sankey</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+</pre></div>
+</div>
+<div style="overflow:auto;">
+<iframe
+    width="1200"
+    height="500"
+    src="../_static/getting_started/quick_start/step_sankey.html"
+    frameborder="0"
+    allowfullscreen
+></iframe>
+</div><p>See <a class="reference internal" href="../user_guides/step_sankey.html"><span class="doc">StepSankey user guide</span></a> to understand this tool deeper.</p>
+<p><span class="red">Replace an image with a correct one as soon as https://github.com/retentioneering/retentioneering-tools-new-arch/pull/166 is ready</span>.</p>
+</section>
+<section id="cluster-analysis">
+<span id="quick-start-cluster-analysis"></span><h3>Cluster analysis<a class="headerlink" href="#cluster-analysis" title="Permalink to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering.tooling.clusters</span> <span class="kn">import</span> <span class="n">Clusters</span>
+
+<span class="n">clusters</span> <span class="o">=</span> <span class="n">Clusters</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
+<span class="n">clusters</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;kmeans&quot;</span><span class="p">,</span> <span class="n">n_clusters</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">feature_type</span><span class="o">=</span><span class="s2">&quot;tfidf&quot;</span><span class="p">,</span> <span class="n">ngram_range</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="n">clusters</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">targets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;payment_done&quot;</span><span class="p">,</span> <span class="s2">&quot;cart&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/clusters.png"><img alt="../_images/clusters.png" src="../_images/clusters.png" style="width: 900px;" /></a>
+</figure>
+<p>Users with similar behavior are grouped in the same cluster. Clusters with low conversion rate can indicate a systematic problem in the product: specific behavior pattern which does not lead to product goals. Obtained user segments can be explored deeper to understand problematic behavior pattern. In the example above for instance, cluster 4 has low conversion rate to <code class="docutils literal notranslate"><span class="pre">payment_done</span></code> but high conversion rate to <code class="docutils literal notranslate"><span class="pre">cart</span></code> visit.</p>
+<p>See <a class="reference internal" href="../user_guides/clusters.html"><span class="doc">Clusters user guide</span></a> to understand this tool deeper.</p>
+</section>
+<section id="funnel-analysis">
+<span id="quick-start-funnels"></span><h3>Funnel analysis<a class="headerlink" href="#funnel-analysis" title="Permalink to this heading">#</a></h3>
+<p>For much analytical research building a conversion funnel is a basic part. Funnel is a diagram which shows how many users sequentially walk through specific events (funnel stages) in their paths. For each stage event the following values are calculated:</p>
+<ul class="simple">
+<li><p>absolute unique number of the users who reached this stage at least once;</p></li>
+<li><p>conversion rate from the first stage (<cite>% of initial</cite>);</p></li>
+<li><p>conversion rate from the previous stage (<cite>% of previous</cite>).</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">funnel</span><span class="p">(</span><span class="n">stages</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;catalog&#39;</span><span class="p">,</span> <span class="s1">&#39;cart&#39;</span><span class="p">,</span> <span class="s1">&#39;payment_done&#39;</span><span class="p">]);</span>
+</pre></div>
+</div>
+<iframe
+    width="700"
+    height="400"
+    src="../_static/getting_started/quick_start/funnel.html"
+    frameborder="0"
+    allowfullscreen
+></iframe><p>See <a class="reference internal" href="../user_guides/funnel.html"><span class="doc">Funnel user guide</span></a> to understand this tool deeper.</p>
+</section>
+<section id="cohort-analysis">
+<h3>Cohort analysis<a class="headerlink" href="#cohort-analysis" title="Permalink to this heading">#</a></h3>
+<p>Cohorts is a powerful tool that shows the differences and the trends in user behavior over time. It helps to isolate the impact of different marketing activities or changes in a product for different groups of users.</p>
+<p>Here’s an outline of the <code class="docutils literal notranslate"><span class="pre">Cohort</span> <span class="pre">Matrix</span></code> calculation:</p>
+<ul class="simple">
+<li><p>Users are split into groups (<code class="docutils literal notranslate"><span class="pre">CohortGroups</span></code>) depending on the time of their first appearance in the eventstream;</p></li>
+<li><p>The retention rate of the active users is calculated in each period (<code class="docutils literal notranslate"><span class="pre">CohortPeriod</span></code>) of the observation.</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">cohorts</span><span class="p">(</span>
+    <span class="n">cohort_start_unit</span><span class="o">=</span><span class="s1">&#39;M&#39;</span><span class="p">,</span>
+    <span class="n">cohort_period</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">),</span>
+    <span class="n">average</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">cut_bottom</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">cut_right</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">cut_diagonal</span><span class="o">=</span><span class="mi">0</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<figure class="align-default">
+<a class="reference internal image-reference" href="../_images/cohorts.png"><img alt="../_images/cohorts.png" src="../_images/cohorts.png" style="width: 500px; height: 500px;" /></a>
+</figure>
+<p>See <a class="reference internal" href="../user_guides/cohorts.html"><span class="doc">Cohorts user guide</span></a> to understand this tool deeper.</p>
+</section>
+</section>
+</section>
+
+
+            </article>
+            
+            
+            
+            <footer class="bd-footer-article">
+                <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+  <a class='left-prev' id="prev-link" href="what_is_rete.html" title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+          <p class="prev-next-subtitle">previous</p>
+          <p class="prev-next-title">What is Retentioneering?</p>
+      </div>
+  </a>
+  <a class='right-next' id="next-link" href="eventstream_concept.html" title="next page">
+  <div class="prev-next-info">
+      <p class="prev-next-subtitle">next</p>
+      <p class="prev-next-title">Eventstream class overview</p>
+  </div>
+  <i class="fa-solid fa-angle-right"></i>
+  </a>
+</div>
+            </footer>
+            
+          </div>
+          
+          
+          
+            <div class="bd-sidebar-secondary bd-toc">
+              
+<div class="toc-item">
+  
+<div class="tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+</div>
+<nav id="bd-toc-nav" class="page-toc">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#loading-data">
+   Loading data
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#preparing-the-data">
+   Preparing the data
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#applying-retentioneering-tools">
+   Applying retentioneering tools
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#transition-graph">
+     Transition graph
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#step-matrix">
+     Step matrix
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#step-sankey-diagram">
+     Step Sankey diagram
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#cluster-analysis">
+     Cluster analysis
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#funnel-analysis">
+     Funnel analysis
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#cohort-analysis">
+     Cohort analysis
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+</div>
+
+<div class="toc-item">
+  
+<div id="searchbox"></div>
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+<div class="toc-item">
+  
+<div class="tocsection sourcelink">
+    <a href="../_sources/getting_started/quick_start.rst.txt">
+        <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+</div>
+
+</div>
+
+            </div>
+          
+          
+        </div>
+        <footer class="bd-footer-content">
+          <div class="bd-footer-content__inner">
+            
+          </div>
+        </footer>
+        
+      </main>
+    </div>
+  </div>
+
+  
+    
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94"></script>
+
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+  </body>
+</html>

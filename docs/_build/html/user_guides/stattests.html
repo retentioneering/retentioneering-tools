@@ -1,0 +1,680 @@
+<!-- This template is needed for a toggling solution -->
+<!-- https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Stattests tooling user guide &#8212; Retentioneering 3.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/bootstrap.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94">
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/custom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guides/stattests';</script>
+    <link rel="shortcut icon" href="../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Tutorials" href="../tutorials.html" />
+    <link rel="prev" title="Cohorts" href="cohorts.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="docsearch:language" content="en">
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="light">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__primary" id="__primary">
+  <label class="overlay overlay-primary" for="__primary"></label>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__secondary" id="__secondary">
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+      
+<form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+    </div>
+  </div>
+
+  
+  <nav class="bd-header navbar navbar-expand-lg bd-navbar" id="navbar-main"><div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+      <span class="fa-solid fa-bars"></span>
+  </label>
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="../index.html">
+
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <img src="../_static/rete_logo.svg" class="logo__image only-light" alt="Logo image">
+    <img src="../_static/rete_logo_white.svg" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  
+  <div class="col-lg-9 navbar-header-items">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+        <div class="navbar-end-item navbar-persistent--container">
+          
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+        </div>
+      
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+
+
+  
+  
+    <div class="navbar-persistent--mobile">
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+    </div>
+  
+
+  
+  <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+  </label>
+  
+
+</div>
+  </nav>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+      </div>
+    
+
+    
+    
+    <div class="sidebar-header-items__end">
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  
+  <div class="sidebar-start-items sidebar-primary__section">
+    <div class="sidebar-start-items__item"><nav class="bd-links" id="bd-docs-nav" aria-label="Section navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">
+    Section Navigation
+  </p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="eventstream.html"> Eventstream</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="dataprocessors.html"> DataProcessors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html"> Preprocessing</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="transition_graph.html"> Transition Graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html"> Step Matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_sankey.html"> Step Sankey</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clusters.html"> Clusters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html"> Funnels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cohorts.html"> Cohorts</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"> Stattests</a></li>
+</ul>
+
+  </div>
+</nav>
+    </div>
+  </div>
+  
+
+  
+  <div class="sidebar-end-items sidebar-primary__section">
+    <div class="sidebar-end-items__item">
+    </div>
+  </div>
+
+  
+  <div id="rtd-footer-container"></div>
+
+      </div>
+      <main id="main-content" class="bd-main">
+        
+        
+        <div class="bd-content">
+          <div class="bd-article-container">
+            
+            <div class="bd-header-article">
+                
+            </div>
+            
+            
+            <article class="bd-article" role="main">
+              
+  <section id="stattests-tooling-user-guide">
+<h1>Stattests tooling user guide<a class="headerlink" href="#stattests-tooling-user-guide" title="Permalink to this heading">#</a></h1>
+<p>The following user guide is also available as
+<a class="reference external" href="https://colab.research.google.com/drive/1u0s-aMMnYrufmSTvLFtA1JS7nYBwfqwx?usp=share_link">Google Colab</a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Stattests</span></code> is a simple utility for two-group user hypothesis testing.</p>
+<p>Here we use <code class="docutils literal notranslate"><span class="pre">simple_shop</span></code> dataset, which has already converted to <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code>.
+If you want to know more about <code class="docutils literal notranslate"><span class="pre">Eventstream</span></code> and how to use it, please study
+<a class="reference internal" href="eventstream.html"><span class="doc">this guide</span></a>.</p>
+<section id="loading-data">
+<h2>Loading data<a class="headerlink" href="#loading-data" title="Permalink to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">retentioneering</span> <span class="kn">import</span> <span class="n">datasets</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>
+<span class="n">stream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>event_id</th>
+      <th>event_type</th>
+      <th>event_index</th>
+      <th>event</th>
+      <th>timestamp</th>
+      <th>user_id</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>297683c8-a576-4138-92e5-f47923bc566e</td>
+      <td>raw</td>
+      <td>0</td>
+      <td>catalog</td>
+      <td>2019-11-01 17:59:13.273932</td>
+      <td>219483890</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>fca8899d-5da3-4f99-80fd-27e5751aef73</td>
+      <td>raw</td>
+      <td>1</td>
+      <td>product1</td>
+      <td>2019-11-01 17:59:28.459271</td>
+      <td>219483890</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1e416f4e-a7c4-4e51-a9b6-bbe53d1cc4fb</td>
+      <td>raw</td>
+      <td>2</td>
+      <td>cart</td>
+      <td>2019-11-01 17:59:29.502214</td>
+      <td>219483890</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>ef8ee4e2-c9de-4642-83b8-0c48b9a99341</td>
+      <td>raw</td>
+      <td>3</td>
+      <td>catalog</td>
+      <td>2019-11-01 17:59:32.557029</td>
+      <td>219483890</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>b9c8591e-932c-4c61-a261-b05d8ad1753d</td>
+      <td>raw</td>
+      <td>4</td>
+      <td>catalog</td>
+      <td>2019-11-01 21:38:19.283663</td>
+      <td>964964743</td>
+    </tr>
+  </tbody>
+</table></section>
+<section id="general-stattests-usage">
+<h2>General Stattests usage<a class="headerlink" href="#general-stattests-usage" title="Permalink to this heading">#</a></h2>
+<p>To use the stattests method, we specify <code class="docutils literal notranslate"><span class="pre">groups</span></code> parameter in the
+method. This parameter will contain two lists of user ids, each defining
+a group of users selected for comparison. For our first example, we will
+split users 50/50 based on the index:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+<span class="n">users</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;user_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+<span class="n">user_groups</span> <span class="o">=</span> <span class="n">users</span><span class="p">[:</span><span class="nb">int</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="mi">2</span><span class="p">)],</span> <span class="n">users</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="mi">2</span><span class="p">):]</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">user_groups</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">array</span><span class="p">([</span><span class="mi">219483890</span><span class="p">,</span> <span class="mi">964964743</span><span class="p">,</span> <span class="mi">629881394</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="mi">901422808</span><span class="p">,</span> <span class="mi">523047643</span><span class="p">,</span>
+       <span class="mi">724268790</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">user_groups</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">array</span><span class="p">([</span><span class="mi">315196393</span><span class="p">,</span> <span class="mi">443659932</span><span class="p">,</span> <span class="mi">865093748</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="mi">965024600</span><span class="p">,</span> <span class="mi">831491833</span><span class="p">,</span>
+       <span class="mi">962761227</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">group_names</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;random_group_1&#39;</span><span class="p">,</span> <span class="s1">&#39;random_group_2&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We also need to define a <code class="docutils literal notranslate"><span class="pre">func</span></code> parameter - this needs to be the
+function of interest, i.e. that the difference of which we are trying to
+detect between the user groups.</p>
+<p>Let us say we are interested in number of <code class="docutils literal notranslate"><span class="pre">cart</span></code> events to all other user events ratio:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">cart_share</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;event&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;cart&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">df</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">some_user</span> <span class="o">=</span> <span class="n">user_groups</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">378</span><span class="p">]</span>
+<span class="n">cart_share</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;user_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">some_user</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mf">0.14285714285714285</span>
+</pre></div>
+</div>
+<p>Let us run the test. There is no need to specify a test hypothesis type
+- where applicable, the method computes the statistics for both
+one-sided hypothesis tests. <code class="docutils literal notranslate"><span class="pre">Stattests</span></code> outputs the statistic that could
+be significant, indicating which of the groups could be <em>greater</em>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">stattests</span><span class="p">(</span>
+    <span class="n">groups</span><span class="o">=</span><span class="n">user_groups</span><span class="p">,</span>
+    <span class="n">func</span><span class="o">=</span><span class="n">cart_share</span><span class="p">,</span>
+    <span class="n">group_names</span><span class="o">=</span><span class="n">group_names</span><span class="p">,</span>
+    <span class="n">test</span><span class="o">=</span><span class="s1">&#39;ttest&#39;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>random_group_1 (mean ± SD): 0.067 ± 0.077, n = 1875
+random_group_2 (mean ± SD): 0.068 ± 0.081, n = 1876
+&#39;random_group_1&#39; is greater than &#39;random_group_2&#39; with P-value: 0.34855
+power of the test: 6.40%
+</pre></div>
+</div>
+<p>The method outputs the test P-value, along with group statistics and an
+estimate of test power (which is a heuristic designed for t-test). As
+expected, we see that the P-value is too high to register a statistical
+difference.</p>
+<section id="test-power">
+<h3>Test power<a class="headerlink" href="#test-power" title="Permalink to this heading">#</a></h3>
+<p>Changing the <code class="docutils literal notranslate"><span class="pre">alpha</span></code> parameter will influence estimated power of the
+test. For example, if we lower if to 0.01(from the default 0.05), we
+would expect the power to also drop:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">stattests</span><span class="p">(</span><span class="n">groups</span><span class="o">=</span><span class="n">user_groups</span><span class="p">,</span> <span class="n">func</span><span class="o">=</span><span class="n">cart_share</span><span class="p">,</span> <span class="n">group_names</span><span class="o">=</span><span class="n">group_names</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="s1">&#39;ttest&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>random_group_1 (mean ± SD): 0.067 ± 0.077, n = 1875
+random_group_2 (mean ± SD): 0.068 ± 0.081, n = 1876
+&#39;random_group_1&#39; is greater than &#39;random_group_2&#39; with P-value: 0.34855
+power of the test: 1.38%
+</pre></div>
+</div>
+</section>
+<section id="categorical-variables">
+<h3>Categorical variables<a class="headerlink" href="#categorical-variables" title="Permalink to this heading">#</a></h3>
+<p>We might be interested in testing for difference in a categorical
+variable - for instance, in an indicator variable that indicates whether
+a user entered <code class="docutils literal notranslate"><span class="pre">cart</span></code> state zero, one, two or more than two times. In
+such cases, a contingency table independence test could be suitable.</p>
+<p>Let us check if the distribution of the mentioned variable differs
+between users who checked:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">product1</span></code> exclusively</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">product2</span></code> exclusively:</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">user_group_1</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;event&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;product1&#39;</span><span class="p">][</span><span class="s1">&#39;user_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+<span class="n">user_group_2</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;event&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;product2&#39;</span><span class="p">][</span><span class="s1">&#39;user_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+
+<span class="n">user_group_1</span> <span class="o">=</span> <span class="n">user_group_1</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">user_group_1</span><span class="p">,</span> <span class="n">user_group_2</span><span class="p">)]</span>
+<span class="n">user_group_2</span> <span class="o">=</span> <span class="n">user_group_2</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">user_group_2</span><span class="p">,</span> <span class="n">user_group_1</span><span class="p">)]</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">cart_count</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+    <span class="n">cart_count</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;event&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;cart&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">cart_count</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">cart_count</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s1">&#39;&gt;=3&#39;</span>
+
+<span class="n">some_user</span> <span class="o">=</span> <span class="n">user_groups</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">378</span><span class="p">]</span>
+<span class="n">cart_count</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;user_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">some_user</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s1">&#39;2&#39;</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">some_user</span> <span class="o">=</span> <span class="n">user_groups</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">379</span><span class="p">]</span>
+<span class="n">cart_count</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;user_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">some_user</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s1">&#39;0&#39;</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">stattests</span><span class="p">(</span>
+    <span class="n">groups</span><span class="o">=</span><span class="p">(</span><span class="n">user_group_1</span><span class="p">,</span> <span class="n">user_group_2</span><span class="p">),</span>
+    <span class="n">func</span><span class="o">=</span><span class="n">cart_count</span><span class="p">,</span>
+    <span class="n">group_names</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;product_1_group&#39;</span><span class="p">,</span> <span class="s1">&#39;product_2_group&#39;</span><span class="p">),</span>
+    <span class="n">test</span><span class="o">=</span><span class="s1">&#39;chi2_contingency&#39;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">product_1_group</span> <span class="p">(</span><span class="n">size</span><span class="p">):</span> <span class="n">n</span> <span class="o">=</span> <span class="mi">580</span>
+<span class="n">product_2_group</span> <span class="p">(</span><span class="n">size</span><span class="p">):</span> <span class="n">n</span> <span class="o">=</span> <span class="mi">1430</span>
+<span class="n">Group</span> <span class="n">difference</span> <span class="n">test</span> <span class="k">with</span> <span class="n">P</span><span class="o">-</span><span class="n">value</span><span class="p">:</span> <span class="mf">0.00000</span>
+</pre></div>
+</div>
+<p>In this case, the output contains only the <code class="docutils literal notranslate"><span class="pre">group_names</span></code>, group sizes and
+the resulting test statistics. We can see that the variable of interest
+indeed differs between the exclusive users of two products.</p>
+<p>To learn more about tests calculation see</p>
+</section>
+</section>
+</section>
+
+
+            </article>
+            
+            
+            
+            <footer class="bd-footer-article">
+                <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+  <a class='left-prev' id="prev-link" href="cohorts.html" title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+          <p class="prev-next-subtitle">previous</p>
+          <p class="prev-next-title">Cohorts</p>
+      </div>
+  </a>
+  <a class='right-next' id="next-link" href="../tutorials.html" title="next page">
+  <div class="prev-next-info">
+      <p class="prev-next-subtitle">next</p>
+      <p class="prev-next-title">Tutorials</p>
+  </div>
+  <i class="fa-solid fa-angle-right"></i>
+  </a>
+</div>
+            </footer>
+            
+          </div>
+          
+          
+          
+            <div class="bd-sidebar-secondary bd-toc">
+              
+<div class="toc-item">
+  
+<div class="tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+</div>
+<nav id="bd-toc-nav" class="page-toc">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#loading-data">
+   Loading data
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#general-stattests-usage">
+   General Stattests usage
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#test-power">
+     Test power
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#categorical-variables">
+     Categorical variables
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+</div>
+
+<div class="toc-item">
+  
+<div id="searchbox"></div>
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+<div class="toc-item">
+  
+<div class="tocsection sourcelink">
+    <a href="../_sources/user_guides/stattests.rst.txt">
+        <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+</div>
+
+</div>
+
+            </div>
+          
+          
+        </div>
+        <footer class="bd-footer-content">
+          <div class="bd-footer-content__inner">
+            
+          </div>
+        </footer>
+        
+      </main>
+    </div>
+  </div>
+
+  
+    
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94"></script>
+
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+  </body>
+</html>

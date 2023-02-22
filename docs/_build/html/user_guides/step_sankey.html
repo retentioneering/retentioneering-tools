@@ -1,0 +1,830 @@
+<!-- This template is needed for a toggling solution -->
+<!-- https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>StepSankey &#8212; Retentioneering 3.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/bootstrap.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94">
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94">
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/custom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guides/step_sankey';</script>
+    <link rel="shortcut icon" href="../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Clusters" href="clusters.html" />
+    <link rel="prev" title="StepMatrix" href="step_matrix.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="docsearch:language" content="en">
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="light">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__primary" id="__primary">
+  <label class="overlay overlay-primary" for="__primary"></label>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__secondary" id="__secondary">
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+      
+<form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+    </div>
+  </div>
+
+  
+  <nav class="bd-header navbar navbar-expand-lg bd-navbar" id="navbar-main"><div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+      <span class="fa-solid fa-bars"></span>
+  </label>
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="../index.html">
+
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <img src="../_static/rete_logo.svg" class="logo__image only-light" alt="Logo image">
+    <img src="../_static/rete_logo_white.svg" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  
+  <div class="col-lg-9 navbar-header-items">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+        <div class="navbar-end-item navbar-persistent--container">
+          
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+        </div>
+      
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+
+
+  
+  
+    <div class="navbar-persistent--mobile">
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+    </div>
+  
+
+  
+  <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+  </label>
+  
+
+</div>
+  </nav>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+      </div>
+    
+
+    
+    
+    <div class="sidebar-header-items__end">
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  
+  <div class="sidebar-start-items sidebar-primary__section">
+    <div class="sidebar-start-items__item"><nav class="bd-links" id="bd-docs-nav" aria-label="Section navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">
+    Section Navigation
+  </p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="eventstream.html"> Eventstream</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="dataprocessors.html"> DataProcessors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preprocessing.html"> Preprocessing</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="transition_graph.html"> Transition Graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="step_matrix.html"> Step Matrix</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"> Step Sankey</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clusters.html"> Clusters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="funnel.html"> Funnels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cohorts.html"> Cohorts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stattests.html"> Stattests</a></li>
+</ul>
+
+  </div>
+</nav>
+    </div>
+  </div>
+  
+
+  
+  <div class="sidebar-end-items sidebar-primary__section">
+    <div class="sidebar-end-items__item">
+    </div>
+  </div>
+
+  
+  <div id="rtd-footer-container"></div>
+
+      </div>
+      <main id="main-content" class="bd-main">
+        
+        
+        <div class="bd-content">
+          <div class="bd-article-container">
+            
+            <div class="bd-header-article">
+                
+            </div>
+            
+            
+            <article class="bd-article" role="main">
+              
+  <style>
+    .red {color:#24ff83; font-weight:bold;}
+</style><section id="stepsankey">
+<h1>StepSankey<a class="headerlink" href="#stepsankey" title="Permalink to this heading">#</a></h1>
+<p>The following user guide is also available as <a class="reference external" href="https://colab.research.google.com/drive/1o6npbrtscHqg1AUAkIIemA3h4a1XslSV?usp=share_link">Google Colab notebook</a>.</p>
+<section id="loading-data">
+<h2>Loading data<a class="headerlink" href="#loading-data" title="Permalink to this heading">#</a></h2>
+<p>We use <code class="docutils literal notranslate"><span class="pre">simple_shop</span></code> dataset for demonstration purposes. If you want to use your own dataset, upload it following <a class="reference internal" href="eventstream.html"><span class="doc">this instruction</span></a>.</p>
+<p><span class="red">TODO: change the anchored link when rst doc is ready</span></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">retentioneering</span> <span class="kn">import</span> <span class="n">datasets</span>
+
+<span class="n">stream</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_simple_shop</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="basic-example">
+<h2>Basic example<a class="headerlink" href="#basic-example" title="Permalink to this heading">#</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">StepSankey</span></code> diagram represents eventstream as a step-wise directed graph. The nodes are associated with events appeared at a specified step in a user’s trajectory. The nodes are sorted from left to right according to the ordinal number of step (1, 2, etc). The edges visualize how often transition from event <code class="docutils literal notranslate"><span class="pre">A</span></code> happened at <code class="docutils literal notranslate"><span class="pre">i</span></code>-th step to event <code class="docutils literal notranslate"><span class="pre">B</span></code> happened at <code class="docutils literal notranslate"><span class="pre">i+1</span></code>-th step occurred. The nodes and edges sizes reflect the number of unique users involved in them.</p>
+<p><code class="docutils literal notranslate"><span class="pre">StepSankey</span></code> diagram in some sense is an extension of <a class="reference internal" href="step_matrix.html"><span class="doc">StepMatrix</span></a> diagram. The latter shows the distribution of the events with respect to an ordinal step, but in addition <code class="docutils literal notranslate"><span class="pre">StepSankey</span></code> reflects the connection between adjacent steps which <code class="docutils literal notranslate"><span class="pre">StepMatrix</span></code> has a lack of.</p>
+<p>The implementation is based on <a class="reference external" href="https://plotly.com/python/sankey-diagram/">Plotly Sankey diagram</a> and inherits all the benefits from its parent. In particular, the diagram is interactive, so you can hover the nodes and edges and look at the detailed info, move the nodes, and even merge them (for merging use <cite>Box Select</cite> or <cite>Lasso Select</cite> tools located at the top-right corner on hover).</p>
+<p>StepSankey tool is mainly available as <a class="reference internal" href="../api/tooling/step_sankey.html#retentioneering.eventstream.eventstream.Eventstream.step_sankey" title="retentioneering.eventstream.eventstream.Eventstream.step_sankey"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Eventstream.step_sankey()</span></code></a> method. Here’s how it visualizes <code class="docutils literal notranslate"><span class="pre">simple_shop</span></code> eventstream:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span><span class="o">.</span><span class="n">step_sankey</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+<div style="overflow:auto;">
+<iframe
+    width="700"
+    height="500"
+    src="../_static/user_guides/step_sankey/basic_step_sankey.html"
+    frameborder="0"
+    allowfullscreen
+></iframe>
+</div><p>Here we can see user flow. The nodes are grouped into columns in step-wise manner, so the first column corresponds to the events occurred at users’ first step, the second column corresponds to the second step and so on. The height of a rectangular representing a node is proportional to the frequency this particular event occurred at this particular step. From this diagram we can see (if we hover the mouse cursor on the node) that at first step event <code class="docutils literal notranslate"><span class="pre">catalog</span></code> appeared 2.69K times (71.61% of the users) whereas event <code class="docutils literal notranslate"><span class="pre">main</span></code> appeared 1.07K times (28.39% of the users). That’s why the red rectangular (for <code class="docutils literal notranslate"><span class="pre">catalog</span></code> event) is ~2.5 times higher than the green rectangular (for <code class="docutils literal notranslate"><span class="pre">main</span></code> event). The percentage of the users is calculated with respect to all the users participating in the parent eventstream.</p>
+<p>An edge’s width is proportional to the frequency the corresponding transition occurred in the eventstream. Hovering the mouse on the edges, you can reveal not only this information, but also the info on how long the transition took the users in average. For example, we can see that the transition <code class="docutils literal notranslate"><span class="pre">catalog</span> <span class="pre">(1st</span> <span class="pre">step)</span> <span class="pre">-&gt;</span> <span class="pre">catalog</span> <span class="pre">(2nd</span> <span class="pre">step)</span></code> appeared in 869 paths, and it took 29 seconds in average.</p>
+<table class="table" id="id1">
+<caption><span class="caption-text">The screenshots of the data chunks on mouse hovering.</span><a class="headerlink" href="#id1" title="Permalink to this table">#</a></caption>
+<tbody>
+<tr class="row-odd"><td><p><img alt="hover_node1" src="../_images/hover_node1.png" /></p></td>
+<td><p><img alt="hover_node2" src="../_images/hover_node2.png" /></p></td>
+<td><p><img alt="hover_edge" src="../_images/hover_edge.png" /></p></td>
+</tr>
+</tbody>
+</table>
+<p>Finally, <code class="docutils literal notranslate"><span class="pre">max_steps</span></code> denotes the maximum number of steps available for displaying in the diagram (starting from the 1st step).</p>
+</section>
+<section id="terminating-event">
+<h2>Terminating event<a class="headerlink" href="#terminating-event" title="Permalink to this heading">#</a></h2>
+<p>As you may know, <code class="docutils literal notranslate"><span class="pre">path_end</span></code> is a special synthetic event which explicitly indicates a trajectory’s end. It is yielded as a result of <a class="reference internal" href="../api/data_processors/add_start_end.html#retentioneering.data_processors_lib.start_end_events.StartEndEvents" title="retentioneering.data_processors_lib.start_end_events.StartEndEvents"><code class="xref py py-meth docutils literal notranslate"><span class="pre">StartEndEvents</span></code></a> data processor. Like for <a class="reference internal" href="step_matrix.html"><span class="doc">StepMatrix</span></a>, <code class="docutils literal notranslate"><span class="pre">path_end</span></code> event has the same meaning for StepSankey. If a user’s path is shorter than <code class="docutils literal notranslate"><span class="pre">max_steps</span></code> parameter, <code class="docutils literal notranslate"><span class="pre">path_end</span></code> is padded the path so that it becomes exactly of length <code class="docutils literal notranslate"><span class="pre">max_steps</span></code>. Having this behavior implemented, we can guarantee that the sum of the user fractions over each column (i.e. each step) is exactly 1.
+<code class="docutils literal notranslate"><span class="pre">path_end</span></code> is always placed to the bottom. The following example demonstrates this (we temporarily set <code class="docutils literal notranslate"><span class="pre">thresh=0</span></code> for the comparison purposes, see the next section).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span>\
+    <span class="o">.</span><span class="n">add_start_end</span><span class="p">()</span>\
+    <span class="o">.</span><span class="n">step_sankey</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<div style="overflow:auto;">
+<iframe
+    width="1000"
+    height="500"
+    src="../_static/user_guides/step_sankey/path_end.html"
+    frameborder="0"
+    allowfullscreen
+></iframe>
+</div><p>At this diagram we see that <code class="docutils literal notranslate"><span class="pre">path_end</span></code> appears at the 4th step and involves 443 users. At the 5th step <code class="docutils literal notranslate"><span class="pre">path_end</span></code> event contains 823 users, and for 443 of them the event has been propagated from the previous step.</p>
+</section>
+<section id="collapsing-rare-events">
+<h2>Collapsing rare events<a class="headerlink" href="#collapsing-rare-events" title="Permalink to this heading">#</a></h2>
+<p>As in the case of the <a class="reference internal" href="step_matrix.html"><span class="doc">StepMatrix</span></a>, we often want to collapse rare events in the StepSankey diagram since these events make it excessively noisy. This behaviour is controlled by <code class="docutils literal notranslate"><span class="pre">thresh</span></code> argument. An event is considered as rare if its maximum frequency over all the steps represented in the diagram is less than <code class="docutils literal notranslate"><span class="pre">thresh</span></code>. The threshold might be of whether <code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">float</span></code> type. The former stands for the limit for the absolute number of the users, the latter stands for the percentage of the users. All these rare events are not removed from the diagram, but collapsed to <code class="docutils literal notranslate"><span class="pre">thresholded_N</span></code> artificial event instead where <code class="docutils literal notranslate"><span class="pre">N</span></code> stands for the number of the collapsed events. <code class="docutils literal notranslate"><span class="pre">thresholded_N</span></code> event appears in the StepSankey diagram only and is not added to the parent eventstream.</p>
+<p>The default value for <code class="docutils literal notranslate"><span class="pre">thresh</span></code> is 0.05. Let’s look how the events are adsorbed if we set <code class="docutils literal notranslate"><span class="pre">thresh=0.1</span></code> and compare the result with the previous diagram (with <code class="docutils literal notranslate"><span class="pre">thresh=0</span></code> parameter).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span>\
+    <span class="o">.</span><span class="n">add_start_end</span><span class="p">()</span>\
+    <span class="o">.</span><span class="n">step_sankey</span><span class="p">(</span><span class="n">max_steps</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+</pre></div>
+</div>
+<div style="overflow:auto;">
+<iframe
+    width="1200"
+    height="500"
+    src="../_static/user_guides/step_sankey/thresh_0.1.html"
+    frameborder="0"
+    allowfullscreen
+></iframe>
+</div><p>We see that <code class="docutils literal notranslate"><span class="pre">thresholded_4</span></code> event has appeared. As you might guess, it contains <code class="docutils literal notranslate"><span class="pre">product1</span></code>, <code class="docutils literal notranslate"><span class="pre">delivery_choice</span></code>, <code class="docutils literal notranslate"><span class="pre">delivery_courier</span></code>, <code class="docutils literal notranslate"><span class="pre">delivery_pickup</span></code>. Why has <code class="docutils literal notranslate"><span class="pre">product1</span></code> collapsed?
+At step 3 this event contains 7.01% of the users, 4.51% at step 4, and 4.27% at step 5. Since the maximum value (7.01%) is less than <code class="docutils literal notranslate"><span class="pre">thresh=0.1</span></code>, the event is collapsed.</p>
+<p>Please also note that the number <code class="docutils literal notranslate"><span class="pre">_4</span></code> in the <code class="docutils literal notranslate"><span class="pre">thresholded_4</span></code> event name carries no information on a specific step. For example, from the chart with <code class="docutils literal notranslate"><span class="pre">thresh=0</span></code> we see that at step 3 only one event among these 4 is represented (<code class="docutils literal notranslate"><span class="pre">product1</span></code>), so it is the only event which is collapsed at this step. On the other hand, at step 4 <code class="docutils literal notranslate"><span class="pre">product1</span></code> and <code class="docutils literal notranslate"><span class="pre">delivery_choice</span></code> appear, so they are collapsed to <code class="docutils literal notranslate"><span class="pre">thresholded_4</span></code> event. Finally, at step 5 all these 4 events are collapsed.</p>
+<p>It you want to prevent some events from the collapsing, use <code class="docutils literal notranslate"><span class="pre">target</span></code> parameter then. We evolve the previous example, but now we’re aiming to drag <code class="docutils literal notranslate"><span class="pre">product1</span></code> and <code class="docutils literal notranslate"><span class="pre">delivery_choice</span></code> events out from <code class="docutils literal notranslate"><span class="pre">thresholded_4</span></code> event, so we put them into <code class="docutils literal notranslate"><span class="pre">target</span></code> list.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span>\
+    <span class="o">.</span><span class="n">add_start_end</span><span class="p">()</span>\
+    <span class="o">.</span><span class="n">step_sankey</span><span class="p">(</span>
+        <span class="n">max_steps</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+        <span class="n">thresh</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">target</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;product1&#39;</span><span class="p">,</span> <span class="s1">&#39;delivery_choice&#39;</span><span class="p">]</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<div style="overflow:auto;">
+<iframe
+    width="1200"
+    height="500"
+    src="../_static/user_guides/step_sankey/thresh_and_target.html"
+    frameborder="0"
+    allowfullscreen
+></iframe>
+</div><p>Look at step 3. What we see is that <code class="docutils literal notranslate"><span class="pre">thresholded_4</span></code> event has disappeared completely, and <code class="docutils literal notranslate"><span class="pre">product1</span></code> has been revealed instead. At step 4 there is no <code class="docutils literal notranslate"><span class="pre">thresholded_4</span></code> event too. It has been replaced by <code class="docutils literal notranslate"><span class="pre">product1</span></code> and <code class="docutils literal notranslate"><span class="pre">delivery_choice</span></code>. Finally, at step 5 we see a couple of target events <code class="docutils literal notranslate"><span class="pre">product1</span></code> and <code class="docutils literal notranslate"><span class="pre">delivery_choice</span></code>, but <code class="docutils literal notranslate"><span class="pre">thresholded_2</span></code> event is also represented here. It still contains two events: <code class="docutils literal notranslate"><span class="pre">delivery_courier</span></code> and <code class="docutils literal notranslate"><span class="pre">delivery_pickup</span></code>.</p>
+</section>
+<section id="events-sorting">
+<h2>Events sorting<a class="headerlink" href="#events-sorting" title="Permalink to this heading">#</a></h2>
+<p>Intuitively, the events order within a column depends on the frequency of this event appeared at a particular step. It is true in many cases, but this is not the only logic considered. The sorting algorithm also takes into account when (at which step) an event appears in the diagram for the first time. The algorithm ranks higher the events which appear earlier even if their frequency is low at a particular step.</p>
+<p>To illustrate this logic consider a dummy eventstream:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering.eventstream</span> <span class="kn">import</span> <span class="n">Eventstream</span>
+
+<span class="n">dummy_stream</span> <span class="o">=</span> <span class="n">Eventstream</span><span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;event1&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:00&#39;</span><span class="p">],</span>
+            <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;event1&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:00&#39;</span><span class="p">],</span>
+            <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;event1&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:00&#39;</span><span class="p">],</span>
+            <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;event2&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:00&#39;</span><span class="p">],</span>
+            <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;event1&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:00&#39;</span><span class="p">],</span>
+            <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;event2&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:00&#39;</span><span class="p">],</span>
+            <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;event1&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:00&#39;</span><span class="p">],</span>
+            <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;event2&#39;</span><span class="p">,</span> <span class="s1">&#39;2023-01-01 00:00:00&#39;</span><span class="p">],</span>
+        <span class="p">],</span>
+        <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;user_id&#39;</span><span class="p">,</span> <span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="s1">&#39;timestamp&#39;</span><span class="p">]</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">dummy_stream</span><span class="o">.</span><span class="n">step_sankey</span><span class="p">()</span>
+</pre></div>
+</div>
+<div style="overflow:auto;">
+<iframe
+    width="600"
+    height="300"
+    src="../_static/user_guides/step_sankey/dummy_sorting.html"
+    frameborder="0"
+    allowfullscreen
+></iframe>
+</div><p>From this chart we see that there’s no <code class="docutils literal notranslate"><span class="pre">event2</span></code> spotted at step 1. However, despite the its dominance at step 2, <code class="docutils literal notranslate"><span class="pre">event1</span></code> is placed higher since it is considered as “older” than <code class="docutils literal notranslate"><span class="pre">event2</span></code>.</p>
+</section>
+<section id="using-a-separate-instance">
+<h2>Using a separate instance<a class="headerlink" href="#using-a-separate-instance" title="Permalink to this heading">#</a></h2>
+<p>By design, <a class="reference internal" href="../api/tooling/step_sankey.html#retentioneering.eventstream.eventstream.Eventstream.step_sankey" title="retentioneering.eventstream.eventstream.Eventstream.step_sankey"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Eventstream.step_sankey()</span></code></a> is a shortcut method which uses an instance of <a class="reference internal" href="../api/tooling/step_sankey.html#retentioneering.tooling.step_sankey.step_sankey.StepSankey" title="retentioneering.tooling.step_sankey.step_sankey.StepSankey"><code class="xref py py-meth docutils literal notranslate"><span class="pre">StepSankey</span></code></a> under the hood. Eventstream method creates an instance of StepSankey object and stores it the eventstream internally.</p>
+<p>Sometimes it’s reasonable to work with a separate instance of StepSankey class. In this case you also have to call <code class="docutils literal notranslate"><span class="pre">StepSankey.fit()</span></code> and <code class="docutils literal notranslate"><span class="pre">StepSankey.plot()</span></code> methods explicitly. Here’s an example how you can do it.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">retentioneering.tooling.step_sankey</span> <span class="kn">import</span> <span class="n">StepSankey</span>
+
+<span class="n">step_sankey</span> <span class="o">=</span> <span class="n">StepSankey</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">max_steps</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">thresh</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+<span class="n">step_sankey</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+<span class="n">step_sankey</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="common-tooling-properties">
+<h2>Common tooling properties<a class="headerlink" href="#common-tooling-properties" title="Permalink to this heading">#</a></h2>
+<section id="values">
+<h3>values<a class="headerlink" href="#values" title="Permalink to this heading">#</a></h3>
+<p>Since the StepSankey object is essentially a graph, it natural to get the underlying values as the data on the graph’s nodes and edges. So <a class="reference internal" href="../api/tooling/step_sankey.html#retentioneering.tooling.step_sankey.step_sankey.StepSankey.values" title="retentioneering.tooling.step_sankey.step_sankey.StepSankey.values"><code class="xref py py-meth docutils literal notranslate"><span class="pre">StepSankey.values</span></code></a> property returns two <code class="docutils literal notranslate"><span class="pre">pandas.DataFrame</span></code> objects. The first relates to the nodes, the second relates to the edges. <code class="docutils literal notranslate"><span class="pre">show_plot=False</span></code> in the examples below is needed to supress displaying the diagram.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># StepSankey graph nodes</span>
+<span class="n">stream</span>\
+    <span class="o">.</span><span class="n">step_sankey</span><span class="p">(</span><span class="n">show_plot</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>\
+    <span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+<div style="overflow:auto;">
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>step</th>
+      <th>event</th>
+      <th>usr_cnt</th>
+      <th>usr_cnt_total</th>
+      <th>perc</th>
+      <th>color</th>
+      <th>index</th>
+      <th>sorting</th>
+      <th>order_by</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>catalog</td>
+      <td>2686</td>
+      <td>3751</td>
+      <td>71.61</td>
+      <td>(80, 190, 151)</td>
+      <td>0</td>
+      <td>100</td>
+      <td>100</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>main</td>
+      <td>1065</td>
+      <td>3751</td>
+      <td>28.39</td>
+      <td>(228, 101, 92)</td>
+      <td>1</td>
+      <td>100</td>
+      <td>100</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>catalog</td>
+      <td>1670</td>
+      <td>3751</td>
+      <td>44.52</td>
+      <td>(80, 190, 151)</td>
+      <td>2</td>
+      <td>100</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2</td>
+      <td>main</td>
+      <td>609</td>
+      <td>3751</td>
+      <td>16.24</td>
+      <td>(228, 101, 92)</td>
+      <td>3</td>
+      <td>100</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2</td>
+      <td>lost</td>
+      <td>443</td>
+      <td>3751</td>
+      <td>11.81</td>
+      <td>(62, 80, 102)</td>
+      <td>4</td>
+      <td>100</td>
+      <td>100</td>
+    </tr>
+  </tbody>
+</table>
+</div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># StepSankey graph edges</span>
+<span class="n">stream</span>\
+    <span class="o">.</span><span class="n">step_sankey</span><span class="p">(</span><span class="n">show_plot</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>\
+    <span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+<div style="overflow:auto;">
+<table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>step</th>
+      <th>event</th>
+      <th>next_event</th>
+      <th>usr_cnt</th>
+      <th>time_to_next_sum</th>
+      <th>index</th>
+      <th>next_step</th>
+      <th>next_index</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>catalog</td>
+      <td>catalog</td>
+      <td>869</td>
+      <td>0 days 07:05:31.308030</td>
+      <td>0</td>
+      <td>2</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>catalog</td>
+      <td>main</td>
+      <td>452</td>
+      <td>2228 days 01:07:48.656824</td>
+      <td>0</td>
+      <td>2</td>
+      <td>3</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1</td>
+      <td>catalog</td>
+      <td>product2</td>
+      <td>429</td>
+      <td>0 days 01:12:27.870236</td>
+      <td>0</td>
+      <td>2</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>1</td>
+      <td>catalog</td>
+      <td>cart</td>
+      <td>337</td>
+      <td>0 days 02:31:57.294871</td>
+      <td>0</td>
+      <td>2</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>1</td>
+      <td>catalog</td>
+      <td>lost</td>
+      <td>336</td>
+      <td>0 days 00:05:36</td>
+      <td>0</td>
+      <td>2</td>
+      <td>4</td>
+    </tr>
+  </tbody>
+</table>
+</div><p><span class="red">TODO: briefly explain the meaning of the columns</span></p>
+</section>
+<section id="params">
+<h3>params<a class="headerlink" href="#params" title="Permalink to this heading">#</a></h3>
+<p><a class="reference internal" href="../api/tooling/step_sankey.html#retentioneering.tooling.step_sankey.step_sankey.StepSankey.params" title="retentioneering.tooling.step_sankey.step_sankey.StepSankey.params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">StepSankey.params</span></code></a> property returns a dictionary containing all the parameters (including the defaults) related to the current state of the StepSankey object:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># StepSankey graph nodes</span>
+<span class="n">stream</span>\
+    <span class="o">.</span><span class="n">step_sankey</span><span class="p">(</span><span class="n">show_plot</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>\
+    <span class="o">.</span><span class="n">params</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s1">&#39;max_steps&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+ <span class="s1">&#39;thresh&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+ <span class="s1">&#39;sorting&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+ <span class="s1">&#39;target&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+ <span class="s1">&#39;autosize&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+ <span class="s1">&#39;width&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+ <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+            </article>
+            
+            
+            
+            <footer class="bd-footer-article">
+                <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+  <a class='left-prev' id="prev-link" href="step_matrix.html" title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+          <p class="prev-next-subtitle">previous</p>
+          <p class="prev-next-title">StepMatrix</p>
+      </div>
+  </a>
+  <a class='right-next' id="next-link" href="clusters.html" title="next page">
+  <div class="prev-next-info">
+      <p class="prev-next-subtitle">next</p>
+      <p class="prev-next-title">Clusters</p>
+  </div>
+  <i class="fa-solid fa-angle-right"></i>
+  </a>
+</div>
+            </footer>
+            
+          </div>
+          
+          
+          
+            <div class="bd-sidebar-secondary bd-toc">
+              
+<div class="toc-item">
+  
+<div class="tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+</div>
+<nav id="bd-toc-nav" class="page-toc">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#loading-data">
+   Loading data
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#basic-example">
+   Basic example
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#terminating-event">
+   Terminating event
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#collapsing-rare-events">
+   Collapsing rare events
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#events-sorting">
+   Events sorting
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#using-a-separate-instance">
+   Using a separate instance
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#common-tooling-properties">
+   Common tooling properties
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#values">
+     values
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#params">
+     params
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+</div>
+
+<div class="toc-item">
+  
+<div id="searchbox"></div>
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+<div class="toc-item">
+  
+<div class="tocsection sourcelink">
+    <a href="../_sources/user_guides/step_sankey.rst.txt">
+        <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+</div>
+
+</div>
+
+            </div>
+          
+          
+        </div>
+        <footer class="bd-footer-content">
+          <div class="bd-footer-content__inner">
+            
+          </div>
+        </footer>
+        
+      </main>
+    </div>
+  </div>
+
+  
+    
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94"></script>
+
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+  </body>
+</html>

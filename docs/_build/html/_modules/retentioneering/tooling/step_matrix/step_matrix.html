@@ -1,0 +1,890 @@
+<!-- This template is needed for a toggling solution -->
+<!-- https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>retentioneering.tooling.step_matrix.step_matrix &#8212; Retentioneering 3.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../../../../_static/styles/bootstrap.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=796348d33e8b1d947c94" rel="stylesheet">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94">
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94">
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/jquery.js"></script>
+    <script src="../../../../_static/underscore.js"></script>
+    <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/js/custom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/retentioneering/tooling/step_matrix/step_matrix';</script>
+    <link rel="shortcut icon" href="../../../../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="docsearch:language" content="en">
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="light">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__primary" id="__primary">
+  <label class="overlay overlay-primary" for="__primary"></label>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__secondary" id="__secondary">
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+      
+<form class="bd-search d-flex align-items-center" action="../../../../search.html" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+    </div>
+  </div>
+
+  
+  <nav class="bd-header navbar navbar-expand-lg bd-navbar" id="navbar-main"><div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+      <span class="fa-solid fa-bars"></span>
+  </label>
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="../../../../index.html">
+
+  
+  
+  
+  
+  
+  
+  
+
+  
+    <img src="../../../../_static/rete_logo.svg" class="logo__image only-light" alt="Logo image">
+    <img src="../../../../_static/rete_logo_white.svg" class="logo__image only-dark" alt="Logo image">
+  
+  
+</a>
+    
+  </div>
+
+  
+  <div class="col-lg-9 navbar-header-items">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+        <div class="navbar-end-item navbar-persistent--container">
+          
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+        </div>
+      
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+
+
+  
+  
+    <div class="navbar-persistent--mobile">
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+    </div>
+  
+
+  
+  <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+  </label>
+  
+
+</div>
+  </nav>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../getting_started.html">
+                        Getting Started
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../datasets.html">
+                        Datasets
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+      </div>
+    
+
+    
+    
+    <div class="sidebar-header-items__end">
+      
+      <div class="navbar-end-item">
+        <button class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" aria-label="light/dark" data-toggle="tooltip">
+    <span class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></span>
+    <span class="theme-switch" data-mode="dark"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></span>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  
+
+  
+  <div class="sidebar-end-items sidebar-primary__section">
+    <div class="sidebar-end-items__item">
+    </div>
+  </div>
+
+  
+  <div id="rtd-footer-container"></div>
+
+      </div>
+      <main id="main-content" class="bd-main">
+        
+        
+        <div class="bd-content">
+          <div class="bd-article-container">
+            
+            <div class="bd-header-article">
+                
+            </div>
+            
+            
+            <article class="bd-article" role="main">
+              
+  <h1>Source code for retentioneering.tooling.step_matrix.step_matrix</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">seaborn</span> <span class="k">as</span> <span class="nn">sns</span>
+
+<span class="kn">from</span> <span class="nn">retentioneering.eventstream.types</span> <span class="kn">import</span> <span class="n">EventstreamType</span>
+<span class="kn">from</span> <span class="nn">retentioneering.tooling.mixins.ended_events</span> <span class="kn">import</span> <span class="n">EndedEventsMixin</span>
+
+
+<div class="viewcode-block" id="CenteredParams"><a class="viewcode-back" href="../../../../api/tooling/step_matrix.html#retentioneering.tooling.step_matrix.step_matrix.CenteredParams">[docs]</a><span class="nd">@dataclass</span>
+<span class="k">class</span> <span class="nc">CenteredParams</span><span class="p">:</span>
+    <span class="n">event</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">left_gap</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">occurrence</span><span class="p">:</span> <span class="nb">int</span>
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">occurrence</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Occurrence in &#39;centered&#39; dictionary must be &gt;=1&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_gap</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;left_gap in &#39;centered&#39; dictionary must be &gt;=1&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StepMatrix"><a class="viewcode-back" href="../../../../api/tooling/step_matrix.html#retentioneering.tooling.step_matrix.step_matrix.StepMatrix">[docs]</a><span class="k">class</span> <span class="nc">StepMatrix</span><span class="p">(</span><span class="n">EndedEventsMixin</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Step matrix is a matrix where its ``(i, j)`` element means the frequency</span>
+<span class="sd">    of event ``i`` occurred as ``j``-th step in user trajectories. This class</span>
+<span class="sd">    provides methods for a step matrix calculation and visualization.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    eventstream : EventstreamType</span>
+<span class="sd">    max_steps : int, default=20</span>
+<span class="sd">        Maximum number of steps in ``user path`` to include.</span>
+<span class="sd">    weight_col : str, optional</span>
+<span class="sd">        Aggregation column for edge weighting. If ``None``, specified ``user_id``</span>
+<span class="sd">        from ``eventstream.schema`` will be used. For example, can be specified as</span>
+<span class="sd">        ``session_id`` if ``eventstream`` has such ``custom_col``.</span>
+<span class="sd">    precision : int, default=2</span>
+<span class="sd">        Number of decimal digits after 0 to show as fractions in the ``heatmap``.</span>
+<span class="sd">    targets : list of str or str, optional</span>
+<span class="sd">        List of event names to include in the bottom of ``step_matrix`` as individual rows.</span>
+<span class="sd">        Each specified target will have separate color-coding space for clear visualization.</span>
+<span class="sd">        `Example: [&#39;product_page&#39;, &#39;cart&#39;, &#39;payment&#39;]`</span>
+
+<span class="sd">        If multiple targets need to be compared and plotted using same color-coding scale,</span>
+<span class="sd">        such targets must be combined in sub-list.</span>
+<span class="sd">        `Examples: [&#39;product_page&#39;, [&#39;cart&#39;, &#39;payment&#39;]]`</span>
+<span class="sd">    accumulated : {&quot;both&quot;, &quot;only&quot;}, optional</span>
+<span class="sd">        Option to include accumulated values for targets.</span>
+
+<span class="sd">        - If ``None`` accumulated tartes  do not show.</span>
+<span class="sd">        - If ``both`` show step values and accumulated values.</span>
+<span class="sd">        - If ``only`` show targets only as accumulated.</span>
+<span class="sd">    sorting : list of str, optional</span>
+<span class="sd">        - | If list of event names specified - lines in the heatmap will be shown in</span>
+<span class="sd">          | passed order.</span>
+<span class="sd">        - | If ``None`` - rows will be ordered according to i`th value (first row,</span>
+<span class="sd">          | where 1st element is max, second row, where second element is max, etc)</span>
+<span class="sd">    thresh : float, default=0</span>
+<span class="sd">        Used to remove rare events. Aggregates all rows where all values are</span>
+<span class="sd">        less than specified threshold.</span>
+<span class="sd">    centered : dict, optional</span>
+<span class="sd">        Parameter used to align user paths at specific event at specific step.</span>
+<span class="sd">        Has to contain three keys:</span>
+<span class="sd">        - ``event``: str, name of event to align</span>
+<span class="sd">        - ``left_gap``: int, number of events to include before specified event</span>
+<span class="sd">        - ``occurrence`` : int which occurrence of event to align (typical 1)</span>
+
+<span class="sd">        If not ``None`` - only users who have selected events with specified</span>
+<span class="sd">        ``occurrence`` in their paths will be included.</span>
+<span class="sd">        ``Fraction`` of such remaining users is specified in the title of centered</span>
+<span class="sd">        step_matrix.</span>
+<span class="sd">        `Example: {&#39;event&#39;: &#39;cart&#39;, &#39;left_gap&#39;: 8, &#39;occurrence&#39;: 1}`</span>
+<span class="sd">    groups : tuple[list, list], optional</span>
+<span class="sd">        Can be specified to plot differential step_matrix. Must contain</span>
+<span class="sd">        tuple of two elements (g_1, g_2): where g_1 and g_2 are collections</span>
+<span class="sd">        of user_id`s. Two separate step_matrices M1 and M2 will be calculated</span>
+<span class="sd">        for users from g_1 and g_2, respectively. Resulting matrix will be the matrix</span>
+<span class="sd">        M = M1-M2.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    During step matrix calculation an artificial ``ENDED`` event is created. If a path already</span>
+<span class="sd">    contains ``path_end`` event (See :py:func:`retentioneering.data_processors_lib.start_end_event`), it</span>
+<span class="sd">    will be temporarily replaced with ``ENDED`` (within step matrix only). Otherwise, ``ENDED``</span>
+<span class="sd">    event will be explicitly added to the end of each path.</span>
+
+<span class="sd">    Event ``ENDED`` is cumulated so that the values in its row are summed up from</span>
+<span class="sd">    the first step to the last. ``ENDED`` row is always placed at the last line of step matrix.</span>
+
+<span class="sd">    Also, such a cumulative design guarantees that the sum of any step matrix&#39;s column is 1</span>
+<span class="sd">    (0 for a differential step matrix).</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    :py:func:`retentioneering.eventstream.eventstream.Eventstream.step_matrix`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">__eventstream</span><span class="p">:</span> <span class="n">EventstreamType</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">eventstream</span><span class="p">:</span> <span class="n">EventstreamType</span><span class="p">,</span>
+        <span class="n">max_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="n">weight_col</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">precision</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="n">targets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">accumulated</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="s2">&quot;only&quot;</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">sorting</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">thresh</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">centered</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">groups</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">list</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__eventstream</span> <span class="o">=</span> <span class="n">eventstream</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">user_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">event_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_timestamp</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">event_index_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">event_index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eventstream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span> <span class="o">=</span> <span class="n">max_steps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weight_col</span> <span class="o">=</span> <span class="n">weight_col</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eventstream</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">user_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">precision</span> <span class="o">=</span> <span class="n">precision</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="n">targets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">accumulated</span> <span class="o">=</span> <span class="n">accumulated</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sorting</span> <span class="o">=</span> <span class="n">sorting</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thresh</span> <span class="o">=</span> <span class="n">thresh</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">centered</span><span class="p">:</span> <span class="n">CenteredParams</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">CenteredParams</span><span class="p">(</span><span class="o">**</span><span class="n">centered</span><span class="p">)</span> <span class="k">if</span> <span class="n">centered</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">groups</span> <span class="o">=</span> <span class="n">groups</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">result_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result_targets</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fraction_title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">targets_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_pad_to_center</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df_</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">center_event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span><span class="o">.</span><span class="n">event</span>
+        <span class="n">occurrence</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span><span class="o">.</span><span class="n">occurrence</span>
+        <span class="n">window</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span><span class="o">.</span><span class="n">left_gap</span>
+        <span class="n">position</span> <span class="o">=</span> <span class="n">df_</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">df_</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">event_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">center_event</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df_</span><span class="p">[</span><span class="s2">&quot;occurrence_counter&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">occurrence</span><span class="p">)][</span>
+            <span class="s2">&quot;event_rank&quot;</span>
+        <span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+        <span class="n">shift</span> <span class="o">=</span> <span class="n">position</span> <span class="o">-</span> <span class="n">window</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">df_</span><span class="p">[</span><span class="s2">&quot;event_rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_</span><span class="p">[</span><span class="s2">&quot;event_rank&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">shift</span>
+        <span class="k">return</span> <span class="n">df_</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_align_index</span><span class="p">(</span><span class="n">df1</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">df2</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+        <span class="n">df1</span> <span class="o">=</span> <span class="n">df1</span><span class="o">.</span><span class="n">align</span><span class="p">(</span><span class="n">df2</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+        <span class="n">df2</span> <span class="o">=</span> <span class="n">df2</span><span class="o">.</span><span class="n">align</span><span class="p">(</span><span class="n">df1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+        <span class="k">return</span> <span class="n">df1</span><span class="p">,</span> <span class="n">df2</span>  <span class="c1"># type: ignore</span>
+
+    <span class="k">def</span> <span class="nf">_pad_cols</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        df : pd.Dataframe</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pd.Dataframe</span>
+<span class="sd">            With columns from 0 to ``max_steps``</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">max</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span><span class="p">:</span>  <span class="c1"># type: ignore</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
+                <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># add missing cols if needed:</span>
+        <span class="k">if</span> <span class="nb">min</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># type: ignore</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)):</span>  <span class="c1"># type: ignore</span>
+                <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># sort cols</span>
+        <span class="k">return</span> <span class="n">df</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))]</span>
+
+    <span class="k">def</span> <span class="nf">_step_matrix_values</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># ALIGN DATA IF CENTRAL</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">,</span> <span class="n">fraction_title</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_center_matrix</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fraction_title</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="c1"># calculate step matrix elements:</span>
+        <span class="n">piv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_step_matrix</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="c1"># ADD ROWS FOR TARGETS:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">:</span>
+            <span class="n">piv_targets</span><span class="p">,</span> <span class="n">targets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_targets</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">targets</span><span class="p">,</span> <span class="n">piv_targets</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="n">piv</span><span class="p">,</span> <span class="n">piv_targets</span><span class="p">,</span> <span class="n">fraction_title</span><span class="p">,</span> <span class="n">targets</span>
+
+    <span class="k">def</span> <span class="nf">_generate_step_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="n">agg</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;event_rank&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_col</span><span class="p">])[</span><span class="bp">self</span><span class="o">.</span><span class="n">weight_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="n">agg</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">weight_col</span><span class="p">]</span> <span class="o">/=</span> <span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">weight_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+        <span class="n">agg</span> <span class="o">=</span> <span class="n">agg</span><span class="p">[</span><span class="n">agg</span><span class="p">[</span><span class="s2">&quot;event_rank&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span><span class="p">]</span>
+        <span class="n">agg</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;event_rank&quot;</span><span class="p">,</span> <span class="s2">&quot;event_name&quot;</span><span class="p">,</span> <span class="s2">&quot;freq&quot;</span><span class="p">]</span>  <span class="c1"># type: ignore</span>
+        <span class="n">piv</span> <span class="o">=</span> <span class="n">agg</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;event_name&quot;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">&quot;event_rank&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s2">&quot;freq&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># add missing cols if number of events &lt; max_steps:</span>
+        <span class="n">piv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_cols</span><span class="p">(</span><span class="n">piv</span><span class="p">)</span>
+        <span class="n">piv</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">piv</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># MAKE TERMINATED STATE ACCUMULATED:</span>
+        <span class="k">if</span> <span class="s2">&quot;ENDED&quot;</span> <span class="ow">in</span> <span class="n">piv</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
+            <span class="n">piv</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;ENDED&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">piv</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;ENDED&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">piv</span>
+
+    <span class="k">def</span> <span class="nf">_process_targets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="c1"># format targets to list of lists. E.g. [[&#39;a&#39;, &#39;b&#39;], &#39;c&#39;] -&gt; [[&#39;a&#39;, &#39;b&#39;], [&#39;c&#39;]]</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                    <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">t</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">targets</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">])</span>
+
+        <span class="c1"># obtain flatten list of targets. E.g. [[&#39;a&#39;, &#39;b&#39;], &#39;c&#39;] -&gt; [&#39;a&#39;, &#39;b&#39;, &#39;c&#39;]</span>
+        <span class="n">targets_flatten</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span><span class="o">*</span><span class="n">targets</span><span class="p">))</span>
+
+        <span class="n">agg_targets</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;event_rank&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_col</span><span class="p">])[</span><span class="bp">self</span><span class="o">.</span><span class="n">time_col</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="n">agg_targets</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">time_col</span><span class="p">]</span> <span class="o">/=</span> <span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">weight_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+        <span class="n">agg_targets</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;event_rank&quot;</span><span class="p">,</span> <span class="s2">&quot;event_name&quot;</span><span class="p">,</span> <span class="s2">&quot;freq&quot;</span><span class="p">]</span>  <span class="c1"># type: ignore</span>
+        <span class="n">agg_targets</span> <span class="o">=</span> <span class="n">agg_targets</span><span class="p">[</span><span class="n">agg_targets</span><span class="p">[</span><span class="s2">&quot;event_rank&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span><span class="p">]</span>
+        <span class="n">piv_targets</span> <span class="o">=</span> <span class="n">agg_targets</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">&quot;event_name&quot;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">&quot;event_rank&quot;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s2">&quot;freq&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">piv_targets</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pad_cols</span><span class="p">(</span><span class="n">piv_targets</span><span class="p">)</span>
+        <span class="c1"># if target is not present in dataset add zeros:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">targets_flatten</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">piv_targets</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
+                <span class="n">piv_targets</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">piv_targets</span> <span class="o">=</span> <span class="n">piv_targets</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">targets_flatten</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">piv_targets</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">piv_targets</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">accumulated</span> <span class="o">==</span> <span class="s2">&quot;only&quot;</span><span class="p">:</span>
+            <span class="n">piv_targets</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s2">&quot;ACC_&quot;</span> <span class="o">+</span> <span class="n">x</span><span class="p">,</span> <span class="n">piv_targets</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">piv_targets</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
+                <span class="n">piv_targets</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">piv_targets</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="c1"># change names is targets list:</span>
+            <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">target</span><span class="p">):</span>
+                    <span class="n">target</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ACC_&quot;</span> <span class="o">+</span> <span class="n">item</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">accumulated</span> <span class="o">==</span> <span class="s2">&quot;both&quot;</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">piv_targets</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
+                <span class="n">piv_targets</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="s2">&quot;ACC_&quot;</span> <span class="o">+</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">piv_targets</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+
+            <span class="c1"># add accumulated targets to the list:</span>
+            <span class="n">targets_not_acc</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">target</span><span class="p">):</span>
+                    <span class="n">target</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ACC_&quot;</span> <span class="o">+</span> <span class="n">item</span>
+            <span class="n">targets</span> <span class="o">=</span> <span class="n">targets_not_acc</span> <span class="o">+</span> <span class="n">targets</span>
+        <span class="k">return</span> <span class="n">piv_targets</span><span class="p">,</span> <span class="n">targets</span>
+
+    <span class="k">def</span> <span class="nf">_center_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(),</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="n">center_event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span><span class="o">.</span><span class="n">event</span>
+        <span class="n">occurrence</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span><span class="o">.</span><span class="n">occurrence</span>
+        <span class="k">if</span> <span class="n">center_event</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">event_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">():</span>
+            <span class="n">error_text</span> <span class="o">=</span> <span class="s1">&#39;Event &quot;</span><span class="si">{}</span><span class="s1">&quot; from </span><span class="se">\&#39;</span><span class="s1">centered</span><span class="se">\&#39;</span><span class="s1"> dict not found in the column: &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">center_event</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_col</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">error_text</span><span class="p">)</span>
+        <span class="c1"># keep only users who have center_event at least N = occurrence times</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;occurrence&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">event_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">center_event</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;occurrence_counter&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight_col</span><span class="p">)[</span><span class="s2">&quot;occurrence&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span> <span class="o">*</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;occurrence&quot;</span><span class="p">]</span>
+        <span class="n">users_to_keep</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;occurrence_counter&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">occurrence</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">weight_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">users_to_keep</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;no records found with event &quot;</span><span class="si">{</span><span class="n">center_event</span><span class="si">}</span><span class="s1">&quot; occurring N=</span><span class="si">{</span><span class="n">occurrence</span><span class="si">}</span><span class="s1"> times&#39;</span><span class="p">)</span>
+
+        <span class="n">fraction_used</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">users_to_keep</span><span class="p">)</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">weight_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="k">if</span> <span class="n">fraction_used</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
+            <span class="n">fraction_title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">fraction_used</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">% of total records)&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fraction_title</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">weight_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">users_to_keep</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight_col</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pad_to_center</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;event_rank&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">fraction_title</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_sort_matrix</span><span class="p">(</span><span class="n">step_matrix</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">step_matrix</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">x</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">new_r</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()</span>
+            <span class="n">order</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_r</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">new_r</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="n">order</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">step_matrix</span><span class="o">.</span><span class="n">index</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">order</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">step_matrix</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">order</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_render_plot</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">targets</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">targets_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">fraction_title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">axes</span><span class="o">.</span><span class="n">Axes</span><span class="p">:</span>
+        <span class="n">n_rows</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">targets_list</span><span class="p">)</span> <span class="k">if</span> <span class="n">targets_list</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">n_cols</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">title_part1</span> <span class="o">=</span> <span class="s2">&quot;centered&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">title_part2</span> <span class="o">=</span> <span class="s2">&quot;differential &quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">title_part1</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">title_part2</span><span class="si">}</span><span class="s2">step matrix </span><span class="si">{</span><span class="n">fraction_title</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">grid_specs</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;wspace&quot;</span><span class="p">:</span> <span class="mf">0.08</span><span class="p">,</span> <span class="s2">&quot;hspace&quot;</span><span class="p">:</span> <span class="mf">0.04</span><span class="p">,</span> <span class="s2">&quot;height_ratios&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">*</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">len</span><span class="p">,</span> <span class="n">targets_list</span><span class="p">))]}</span>
+            <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">targets_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="p">{}</span>
+        <span class="p">)</span>
+        <span class="n">figure</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">mpl</span><span class="o">.</span><span class="n">pyplot</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+            <span class="n">n_rows</span><span class="p">,</span>
+            <span class="n">n_cols</span><span class="p">,</span>
+            <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">figsize</span><span class="o">=</span><span class="p">(</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.7</span><span class="p">),</span>
+                <span class="nb">round</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span> <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">0</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.6</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="n">gridspec_kw</span><span class="o">=</span><span class="n">grid_specs</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">heatmap</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span>
+            <span class="n">data</span><span class="p">,</span>
+            <span class="n">yticklabels</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+            <span class="n">annot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">fmt</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;.</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">precision</span><span class="si">}</span><span class="s2">f&quot;</span><span class="p">,</span>
+            <span class="n">ax</span><span class="o">=</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">axs</span><span class="p">,</span>
+            <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdGy&quot;</span><span class="p">,</span>
+            <span class="n">center</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">cbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">heatmap</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">targets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">targets_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">target_cmaps</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">cycle</span><span class="p">([</span><span class="s2">&quot;BrBG&quot;</span><span class="p">,</span> <span class="s2">&quot;PuOr&quot;</span><span class="p">,</span> <span class="s2">&quot;PRGn&quot;</span><span class="p">,</span> <span class="s2">&quot;RdBu&quot;</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">targets_list</span><span class="p">):</span>
+                <span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span>
+                    <span class="n">targets</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                    <span class="n">yticklabels</span><span class="o">=</span><span class="n">targets</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+                    <span class="n">annot</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">fmt</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;.</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">precision</span><span class="si">}</span><span class="s2">f&quot;</span><span class="p">,</span>
+                    <span class="n">ax</span><span class="o">=</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span> <span class="o">+</span> <span class="n">n</span><span class="p">],</span>
+                    <span class="n">cmap</span><span class="o">=</span><span class="nb">next</span><span class="p">(</span><span class="n">target_cmaps</span><span class="p">),</span>
+                    <span class="n">center</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">vmin</span><span class="o">=</span><span class="n">targets</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span>
+                    <span class="n">vmax</span><span class="o">=</span><span class="n">targets</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="ow">or</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="n">cbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="n">axs</span><span class="p">:</span>
+                <span class="n">sns</span><span class="o">.</span><span class="n">mpl</span><span class="o">.</span><span class="n">pyplot</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">ax</span><span class="p">)</span>
+                <span class="n">sns</span><span class="o">.</span><span class="n">mpl</span><span class="o">.</span><span class="n">pyplot</span><span class="o">.</span><span class="n">yticks</span><span class="p">(</span><span class="n">rotation</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+                <span class="c1"># add vertical lines for central step-matrix</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">centered_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span><span class="o">.</span><span class="n">left_gap</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">vlines</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">centered_position</span> <span class="o">-</span> <span class="mf">0.02</span><span class="p">,</span> <span class="n">centered_position</span> <span class="o">+</span> <span class="mf">0.98</span><span class="p">],</span>
+                        <span class="o">*</span><span class="n">ax</span><span class="o">.</span><span class="n">get_ylim</span><span class="p">(),</span>
+                        <span class="n">colors</span><span class="o">=</span><span class="s2">&quot;Black&quot;</span><span class="p">,</span>
+                        <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sns</span><span class="o">.</span><span class="n">mpl</span><span class="o">.</span><span class="n">pyplot</span><span class="o">.</span><span class="n">sca</span><span class="p">(</span><span class="n">axs</span><span class="p">)</span>
+            <span class="n">sns</span><span class="o">.</span><span class="n">mpl</span><span class="o">.</span><span class="n">pyplot</span><span class="o">.</span><span class="n">yticks</span><span class="p">(</span><span class="n">rotation</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="c1"># add vertical lines for central step-matrix</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">centered_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span><span class="o">.</span><span class="n">left_gap</span>
+                <span class="n">axs</span><span class="o">.</span><span class="n">vlines</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">centered_position</span> <span class="o">-</span> <span class="mf">0.02</span><span class="p">,</span> <span class="n">centered_position</span> <span class="o">+</span> <span class="mf">0.98</span><span class="p">],</span> <span class="o">*</span><span class="n">axs</span><span class="o">.</span><span class="n">get_ylim</span><span class="p">(),</span> <span class="n">colors</span><span class="o">=</span><span class="s2">&quot;Black&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.7</span>
+                <span class="p">)</span>
+        <span class="k">return</span> <span class="n">figure</span>
+
+<div class="viewcode-block" id="StepMatrix.fit"><a class="viewcode-back" href="../../../../api/tooling/step_matrix.html#retentioneering.tooling.step_matrix.step_matrix.StepMatrix.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates the step matrix internal values with the defined parameters.</span>
+<span class="sd">        Applying ``fit`` method is mandatory for the following usage</span>
+<span class="sd">        of any visualization or descriptive ``StepMatrix`` methods.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">weight_col</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight_col</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_col</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eventstream</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_ended_events</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__eventstream</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;event_rank&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">weight_col</span><span class="p">)</span><span class="o">.</span><span class="n">cumcount</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="c1"># BY HERE WE NEED TO OBTAIN FINAL DIFF piv and piv_targets before sorting, thresholding and plotting:</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+            <span class="n">data_pos</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="n">weight_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_pos</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s2">&quot;Users from positive group are not present in dataset&quot;</span><span class="p">)</span>
+            <span class="n">piv_pos</span><span class="p">,</span> <span class="n">piv_targets_pos</span><span class="p">,</span> <span class="n">fraction_title</span><span class="p">,</span> <span class="n">targets_plot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step_matrix_values</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data_pos</span><span class="p">)</span>
+
+            <span class="n">data_neg</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="n">weight_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_pos</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s2">&quot;Users from negative group are not present in dataset&quot;</span><span class="p">)</span>
+            <span class="n">piv_neg</span><span class="p">,</span> <span class="n">piv_targets_neg</span><span class="p">,</span> <span class="n">fraction_title</span><span class="p">,</span> <span class="n">targets_plot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step_matrix_values</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data_neg</span><span class="p">)</span>
+
+            <span class="n">piv_pos</span><span class="p">,</span> <span class="n">piv_neg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_align_index</span><span class="p">(</span><span class="n">piv_pos</span><span class="p">,</span> <span class="n">piv_neg</span><span class="p">)</span>
+            <span class="n">piv</span> <span class="o">=</span> <span class="n">piv_pos</span> <span class="o">-</span> <span class="n">piv_neg</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="ow">and</span> <span class="n">piv_targets_pos</span> <span class="ow">and</span> <span class="n">piv_targets_neg</span><span class="p">:</span>
+                <span class="n">piv_targets_pos</span><span class="p">,</span> <span class="n">piv_targets_neg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_align_index</span><span class="p">(</span><span class="n">piv_targets_pos</span><span class="p">,</span> <span class="n">piv_targets_neg</span><span class="p">)</span>
+                <span class="n">piv_targets</span> <span class="o">=</span> <span class="n">piv_targets_pos</span> <span class="o">-</span> <span class="n">piv_targets_neg</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">piv_targets</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">piv</span><span class="p">,</span> <span class="n">piv_targets</span><span class="p">,</span> <span class="n">fraction_title</span><span class="p">,</span> <span class="n">targets_plot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step_matrix_values</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="n">thresh_index</span> <span class="o">=</span> <span class="s2">&quot;THRESHOLDED_&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresh</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># find if there are any rows to threshold:</span>
+            <span class="n">thresholded</span> <span class="o">=</span> <span class="n">piv</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">piv</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresh</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">piv</span><span class="o">.</span><span class="n">index</span> <span class="o">!=</span> <span class="s2">&quot;ENDED&quot;</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">thresholded</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">piv</span> <span class="o">=</span> <span class="n">piv</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">piv</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresh</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">piv</span><span class="o">.</span><span class="n">index</span> <span class="o">==</span> <span class="s2">&quot;ENDED&quot;</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="n">thresh_index</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;THRESHOLDED_</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">thresholded</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">piv</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">thresh_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">thresholded</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sorting</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">piv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sort_matrix</span><span class="p">(</span><span class="n">piv</span><span class="p">)</span>
+
+            <span class="n">keep_in_the_end</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">keep_in_the_end</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;ENDED&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="s2">&quot;ENDED&quot;</span> <span class="ow">in</span> <span class="n">piv</span><span class="o">.</span><span class="n">index</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">keep_in_the_end</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">thresh_index</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="n">thresh_index</span> <span class="ow">in</span> <span class="n">piv</span><span class="o">.</span><span class="n">index</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+
+            <span class="n">events_order</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="p">(</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">piv</span><span class="o">.</span><span class="n">index</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">keep_in_the_end</span><span class="p">),</span> <span class="o">*</span><span class="n">keep_in_the_end</span><span class="p">]</span>
+            <span class="n">piv</span> <span class="o">=</span> <span class="n">piv</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">events_order</span><span class="p">]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">{</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">sorting</span><span class="p">}</span> <span class="o">!=</span> <span class="p">{</span><span class="o">*</span><span class="n">piv</span><span class="o">.</span><span class="n">index</span><span class="p">}:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;The sorting list provided does not match the list of events. &quot;</span>
+                    <span class="s2">&quot;Run with `sorting` = None to get the actual list&quot;</span>
+                <span class="p">)</span>
+
+            <span class="n">piv</span> <span class="o">=</span> <span class="n">piv</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sorting</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span><span class="p">:</span>
+            <span class="n">window</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span><span class="o">.</span><span class="n">left_gap</span>
+            <span class="n">piv</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">-</span> <span class="n">window</span> <span class="o">-</span> <span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">piv</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>  <span class="c1"># type: ignore</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets</span> <span class="ow">and</span> <span class="n">piv_targets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">piv_targets</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">-</span> <span class="n">window</span> <span class="o">-</span> <span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">piv_targets</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>  <span class="c1"># type: ignore</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">result_data</span> <span class="o">=</span> <span class="n">piv</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result_targets</span> <span class="o">=</span> <span class="n">piv_targets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fraction_title</span> <span class="o">=</span> <span class="n">fraction_title</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">targets_list</span> <span class="o">=</span> <span class="n">targets_plot</span></div>
+
+<div class="viewcode-block" id="StepMatrix.plot"><a class="viewcode-back" href="../../../../api/tooling/step_matrix.html#retentioneering.tooling.step_matrix.step_matrix.StepMatrix.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a heatmap plot based on the calculated step matrix values.</span>
+<span class="sd">        Should be used after :py:func:`fit`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sns.heatmap</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">figure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_render_plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">result_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">result_targets</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets_list</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fraction_title</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">figure</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">values</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the calculated step matrix as a pd.DataFrame.</span>
+<span class="sd">        Should be used after :py:func:`fit`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple[pd.DataFrame, pd.DataFrame | None]</span>
+<span class="sd">            1. Stands for the step matrix.</span>
+<span class="sd">            2. Stands for a separate step matrix related for target events only.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">result_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">result_targets</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">params</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the parameters used for the last fitting.</span>
+<span class="sd">        Should be used after :py:func:`fit`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;max_steps&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_steps</span><span class="p">,</span>
+            <span class="s2">&quot;weight_col&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight_col</span><span class="p">,</span>
+            <span class="s2">&quot;precision&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">precision</span><span class="p">,</span>
+            <span class="s2">&quot;targets&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span>
+            <span class="s2">&quot;accumulated&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">accumulated</span><span class="p">,</span>
+            <span class="s2">&quot;sorting&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sorting</span><span class="p">,</span>
+            <span class="s2">&quot;thresh&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">thresh</span><span class="p">,</span>
+            <span class="s2">&quot;centered&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">centered</span><span class="p">,</span>
+            <span class="s2">&quot;groups&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">,</span>
+        <span class="p">}</span></div>
+</pre></div>
+
+            </article>
+            
+            
+            
+            <footer class="bd-footer-article">
+                <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+</div>
+            </footer>
+            
+          </div>
+          
+          
+          
+            <div class="bd-sidebar-secondary bd-toc">
+              
+<div class="toc-item">
+  
+<div id="searchbox"></div>
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+            </div>
+          
+          
+        </div>
+        <footer class="bd-footer-content">
+          <div class="bd-footer-content__inner">
+            
+          </div>
+        </footer>
+        
+      </main>
+    </div>
+  </div>
+
+  
+    
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=796348d33e8b1d947c94"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=796348d33e8b1d947c94"></script>
+
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+  </body>
+</html>

@@ -15,6 +15,7 @@ from tests.eventstream.fixtures.eventstream import (
     test_data_join_2,
     test_data_sampling,
     test_schema_1,
+    test_source_dataframe_with_custom_col,
     test_stream_1,
     test_stream_2,
 )
@@ -35,6 +36,24 @@ class TestEventstream:
         for [_, event] in df.iterrows():
             assert event[schema.event_type] == "raw"
             assert isinstance(event[schema.event_id], uuid.UUID)
+
+    def test_create_eventstream__dict_raw_data_schema(self, test_source_dataframe_with_custom_col):
+        stream = Eventstream(
+            raw_data=test_source_dataframe_with_custom_col,
+            raw_data_schema={
+                "event_timestamp": "event_timestamp",
+                "user_id": "user_id",
+                "event_name": "action",
+                "custom_cols": [{"raw_data_col": "random_col", "custom_col": "random_col"}],
+            },
+        )
+        df = stream.to_dataframe()
+        assert "event" in df.columns
+        assert "random_col" in df.columns
+        try:
+            stream.add_start_end()
+        except Exception as e:
+            raise pytest.UsageError(e)
 
     def test_create_custom_cols(self, test_data_1, test_schema_1):
         custom_cols = ["custom_col_1", "custom_col_2"]

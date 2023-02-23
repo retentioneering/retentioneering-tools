@@ -12,6 +12,7 @@ from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
 from retentioneering.eventstream.types import (
     EventstreamType,
+    RawDataCustomColSchema,
     RawDataSchemaType,
     Relation,
 )
@@ -160,11 +161,16 @@ class Eventstream(
     __p_graph: PGraph | None = None
     __transition_matrix: TransitionMatrix | None = None
     __timedelta_hist: TimedeltaHist | None = None
+    __user_lifetime_hist: UserLifetimeHist | None = None
+    __event_timestamp_hist: EventTimestampHist | None = None
 
     def __init__(
         self,
         raw_data: pd.DataFrame | pd.Series[Any],
-        raw_data_schema: RawDataSchemaType | None = None,
+        raw_data_schema: RawDataSchema
+        | RawDataSchemaType
+        | dict[str, str | list[RawDataCustomColSchema]]
+        | None = None,
         schema: EventstreamSchema | None = None,
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
@@ -172,6 +178,7 @@ class Eventstream(
         user_sample_size: Optional[int | float] = None,
         user_sample_seed: Optional[int] = None,
     ) -> None:
+
         self.__clusters = None
         self.__funnel = None
         self.schema = schema if schema else EventstreamSchema()
@@ -180,6 +187,8 @@ class Eventstream(
             raw_data_schema = RawDataSchema()
             if "event_type" in raw_data.columns:
                 raw_data_schema.event_type = "event_type"
+        elif isinstance(raw_data_schema, dict):
+            raw_data_schema = RawDataSchema(**raw_data_schema)  # type: ignore
         self.__raw_data_schema = raw_data_schema
 
         if user_sample_size is not None:
@@ -824,10 +833,11 @@ class Eventstream(
     def user_lifetime_hist(
         self,
         timedelta_unit: DATETIME_UNITS = "s",
-        log_scale: bool = False,
+        log_scale: bool | tuple[bool, bool] | None = None,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int = 20,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
+        figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> UserLifetimeHist:
         """
@@ -842,26 +852,30 @@ class Eventstream(
         Returns
         -------
         UserLifetimeHist
-            A ``UserLifetimeHist`` class instance fitted to the given parameters.
+            A ``UserLifetimeHist`` class instance with given parameters.
         """
-        user_lifetime_hist = UserLifetimeHist(
+        self.__user_lifetime_hist = UserLifetimeHist(
             eventstream=self,
             timedelta_unit=timedelta_unit,
             log_scale=log_scale,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
+            figsize=figsize,
         )
+        self.__user_lifetime_hist.fit()
         if show_plot:
-            user_lifetime_hist.plot()
-        return user_lifetime_hist
+            self.__user_lifetime_hist.plot()
+        return self.__user_lifetime_hist
 
     def event_timestamp_hist(
         self,
-        event_list: Optional[List[str] | str] = "all",
+        event_list: list[str] | None = None,
+        raw_events_only: bool = True,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int = 20,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
+        figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> EventTimestampHist:
         """
@@ -873,18 +887,22 @@ class Eventstream(
         Returns
         -------
         EventTimestampHist
-            A ``EventTimestampHist`` class instance fitted to the given parameters.
+            A ``EventTimestampHist`` class instance with given parameters.
         """
-        event_timestamp_hist = EventTimestampHist(
+        self.__event_timestamp_hist = EventTimestampHist(
             eventstream=self,
             event_list=event_list,
+            raw_events_only=raw_events_only,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
+            figsize=figsize,
         )
+
+        self.__event_timestamp_hist.fit()
         if show_plot:
-            event_timestamp_hist.plot()
-        return event_timestamp_hist
+            self.__event_timestamp_hist.plot()
+        return self.__event_timestamp_hist
 
     def describe(self, session_col: str = "session_id", raw_events_only: bool = False) -> pd.DataFrame:
         """

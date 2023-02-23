@@ -49,7 +49,7 @@ class TestTimedeltaHist:
         self, test_stream: EventstreamType, corr_default: np.array, corr_default_bins: np.array
     ):
         th = TimedeltaHist(test_stream, bins=5)
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -61,7 +61,7 @@ class TestTimedeltaHist:
         self, test_stream: EventstreamType, corr_event_pair: np.array, corr_event_pair_bins: np.array
     ):
         th = TimedeltaHist(test_stream, event_pair=["A", "B"], bins=5)
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -76,7 +76,7 @@ class TestTimedeltaHist:
     ):
 
         th = TimedeltaHist(test_stream, event_pair=["A", "B"], only_adjacent_event_pairs=False, bins=5)
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -92,7 +92,7 @@ class TestTimedeltaHist:
     ):
 
         th = TimedeltaHist(test_stream, event_pair=["A", "B"], timedelta_unit="m", bins=5)
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
         result_values = result_values.round(4)
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -104,7 +104,7 @@ class TestTimedeltaHist:
     ):
 
         th = TimedeltaHist(test_stream, timedelta_unit="s", lower_cutoff_quantile=0.52, bins=5)
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -116,7 +116,7 @@ class TestTimedeltaHist:
     ):
 
         th = TimedeltaHist(test_stream, timedelta_unit="s", upper_cutoff_quantile=0.52, bins=5)
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -133,7 +133,7 @@ class TestTimedeltaHist:
         th = TimedeltaHist(
             test_stream, timedelta_unit="s", lower_cutoff_quantile=0.52, upper_cutoff_quantile=0.8, bins=5
         )
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -148,8 +148,8 @@ class TestTimedeltaHist:
         self, source_stream_for_log_scale: EventstreamType, corr_log_scale_x: np.array, corr_log_scale_x_bins: np.array
     ):
 
-        th = TimedeltaHist(source_stream_for_log_scale, timedelta_unit="s", log_scale_x=True, bins=5)
-        th._calculate()
+        th = TimedeltaHist(source_stream_for_log_scale, timedelta_unit="s", log_scale=True, bins=5)
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -159,7 +159,7 @@ class TestTimedeltaHist:
     def test_timedelta_hist__agg(self, test_stream: EventstreamType, corr_agg: np.array, corr_agg_bins: np.array):
 
         th = TimedeltaHist(test_stream, timedelta_unit="s", aggregation="mean", bins=5)
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -179,7 +179,7 @@ class TestTimedeltaHist:
             only_adjacent_event_pairs=False,
             bins=5,
         )
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -204,7 +204,7 @@ class TestTimedeltaHist:
             only_adjacent_event_pairs=False,
             bins=5,
         )
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -229,7 +229,7 @@ class TestTimedeltaHist:
             only_adjacent_event_pairs=False,
             bins=5,
         )
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -250,7 +250,7 @@ class TestTimedeltaHist:
             only_adjacent_event_pairs=True,
             bins=5,
         )
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -273,7 +273,7 @@ class TestTimedeltaHist:
             only_adjacent_event_pairs=False,
             bins=5,
         )
-        th._calculate()
+        th.fit()
         result_values, result_bins = th.values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)

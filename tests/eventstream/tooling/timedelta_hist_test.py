@@ -136,7 +136,7 @@ class TestEventstreamTimedeltaHist:
         self, source_stream_for_log_scale: EventstreamType, corr_log_scale_x: np.array, corr_log_scale_x_bins: np.array
     ):
         result_values, result_bins = source_stream_for_log_scale.timedelta_hist(
-            show_plot=False, timedelta_unit="s", log_scale_x=True, bins=5
+            show_plot=False, timedelta_unit="s", log_scale=True, bins=5
         ).values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)

@@ -130,6 +130,7 @@ extlinks = {
         "https://numpy.org/doc/stable/reference/generated/numpy.histogram_bin_edges.html#numpy.histogram_bin_edges%s",
         None,
     ),
+    "matplotlib_axes": ("https://matplotlib.org/stable/api/axes_api.html#matplotlib.axes.Axes%s", None),
 }
 
 

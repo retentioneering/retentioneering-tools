@@ -3,6 +3,7 @@ from __future__ import annotations
 import warnings
 from typing import Literal, Optional
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -63,10 +64,11 @@ class TimedeltaHist:
     timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
         Specify the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
-    log_scale_x : bool, default False
-        Apply log scaling to the ``x`` axis.
-    log_scale_y : bool, default False
-        Apply log scaling to the ``y`` axis.
+    log_scale: bool | tuple of bool | None = None,
+
+         - If ``True`` - apply log scaling to the ``x`` axis.
+         - If tuple of bool - apply log scaling to the (``x``,``y``) axes correspondingly.
+
     lower_cutoff_quantile : float, optional
         Specify the time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
@@ -74,7 +76,7 @@ class TimedeltaHist:
     bins : int or {"auto", "fd", "doane", "scott", "stone", "rice", "sturges", "sqrt"}, default 20
         Generic bin parameter that can be the name of a reference rule or
         the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`
-    figsize : tuple of float, default (12.0, 7.0)
+    figsize : tuple of float, default (6.0, 4.5)
         Width, height in inches.
     """
 
@@ -89,12 +91,11 @@ class TimedeltaHist:
         weight_col: str = "user_id",
         aggregation: Optional[AGGREGATION_NAMES] = None,
         timedelta_unit: DATETIME_UNITS = "s",
-        log_scale_x: bool = False,
-        log_scale_y: bool = False,
+        log_scale: bool | tuple[bool, bool] | None = None,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
+        figsize: tuple[float, float] = (6.0, 4.5),
     ) -> None:
 
         self.__eventstream = eventstream
@@ -107,11 +108,20 @@ class TimedeltaHist:
                 raise TypeError("event_pair should be a tuple or a list of length 2.")
             if len(event_pair) != 2:
                 raise ValueError("event_pair should be a tuple or a list of length 2.")
-            check_global_events = event_pair.count(self.EVENTSTREAM_START) + event_pair.count(self.EVENTSTREAM_END)
-            if check_global_events == 2:
+
+            if set(event_pair) == {TimedeltaHist.EVENTSTREAM_START, TimedeltaHist.EVENTSTREAM_END}:
                 raise ValueError(
-                    "Only one event in the event_pair can be special - 'eventstream_start' or 'eventstream_end'"
+                    f"event_pair = ['{TimedeltaHist.EVENTSTREAM_START}', '{TimedeltaHist.EVENTSTREAM_END}'] "
+                    f"is invalid. Only one event of these two events can be a member of the event_pair."
                 )
+            if set(event_pair) in [{TimedeltaHist.EVENTSTREAM_START}, {TimedeltaHist.EVENTSTREAM_END}]:
+                raise ValueError(
+                    f"event_pair = ['{TimedeltaHist.EVENTSTREAM_START}', '{TimedeltaHist.EVENTSTREAM_END}'] and "
+                    f"event_pair = ['{TimedeltaHist.EVENTSTREAM_START}', '{TimedeltaHist.EVENTSTREAM_END}'] "
+                    f"are invalid. Events '{TimedeltaHist.EVENTSTREAM_START}' "
+                    f"and '{TimedeltaHist.EVENTSTREAM_END}' couldn't be doubled."
+                )
+
         self.event_pair = event_pair
         self.only_adjacent_event_pairs = only_adjacent_event_pairs
         self.weight_col = weight_col
@@ -130,7 +140,13 @@ class TimedeltaHist:
             if lower_cutoff_quantile > upper_cutoff_quantile:
                 warnings.warn("lower_cutoff_quantile exceeds upper_cutoff_quantile; no data passed to the histogram")
 
-        self.log_scale = (log_scale_x, log_scale_y)
+        if log_scale:
+            if isinstance(log_scale, bool):
+                self.log_scale = (log_scale, False)
+            else:
+                self.log_scale = log_scale
+        else:
+            self.log_scale = (False, False)
         self.bins = bins
         self.figsize = figsize
         self.bins_to_show: np.ndarray = np.array([])
@@ -138,13 +154,15 @@ class TimedeltaHist:
 
     def _prepare_time_diff(self, data: pd.DataFrame) -> pd.DataFrame:
         if not self.only_adjacent_event_pairs:
-            data = data[data[self.event_col].isin(self.event_pair)].copy()  # type: ignore
+            data = data[data[self.event_col].isin(self.event_pair)]  # type: ignore
 
         weight_col_group = data.groupby([self.weight_col])
-        data["time_passed"] = weight_col_group[self.time_col].diff() / np.timedelta64(1, self.timedelta_unit)  # type: ignore
-        if self.event_pair:
-            data["prev_event"] = weight_col_group[self.event_col].shift()
-            data = data[(data[self.event_col] == self.event_pair[1]) & (data["prev_event"] == self.event_pair[0])]
+        with pd.option_context("mode.chained_assignment", None):
+            data["time_passed"] = weight_col_group[self.time_col].diff() / np.timedelta64(1, self.timedelta_unit)  # type: ignore
+            if self.event_pair:
+
+                data["prev_event"] = weight_col_group[self.event_col].shift()
+                data = data[(data[self.event_col] == self.event_pair[1]) & (data["prev_event"] == self.event_pair[0])]
 
         return data.dropna(subset="time_passed")  # type: ignore
 
@@ -177,12 +195,13 @@ class TimedeltaHist:
         data = pd.concat([data, global_events]).sort_values([self.weight_col, self.time_col]).reset_index(drop=True)
         return data
 
-    def _calculate(self) -> None:
+    def fit(self) -> None:
         """
         Calculate values and bins for the histplot.
 
             1. The first array contains the values for histogram
             2. The first array contains the bin edges
+
         """
         data = self.__eventstream.to_dataframe().sort_values([self.weight_col, self.time_col])
 
@@ -211,7 +230,6 @@ class TimedeltaHist:
     @property
     def values(self) -> tuple[np.ndarray, np.ndarray]:
         """
-        Calculate values for the histplot.
 
         Returns
         -------
@@ -222,17 +240,22 @@ class TimedeltaHist:
         """
         return self.values_to_plot, self.bins_to_show
 
-    def plot(self) -> None:
+    def plot(self) -> matplotlib.axes.Axes:
         """
         Creates a sns.histplot based on the calculated values.
 
+        Returns
+        -------
+        :matplotlib_axes:`matplotlib.axes.Axes<>`
+            The matplotlib axes containing the plot.
         """
 
-        out_hist = self.values_to_plot
-        plt.figure(figsize=self.figsize)
-        plt.title(
-            f"Timedelta histogram, event pair {self.event_pair}, weight column {self.weight_col}"
-            f"{', group ' + self.aggregation if self.aggregation is not None else ''}"
+        plt.subplots(figsize=self.figsize)
+
+        hist = sns.histplot(self.values_to_plot, bins=self.bins, log_scale=self.log_scale)
+        hist.set_title(
+            f"Timedelta histogram, event pair - {self.event_pair}, weight column - {self.weight_col}"
+            f"{', group - ' + self.aggregation if self.aggregation is not None else ''}"
         )
-        plt.xlabel(f"Time units: {self.timedelta_unit}")
-        sns.histplot(out_hist, bins=self.bins, log_scale=self.log_scale)
+        hist.set_xlabel(f"Time units: {self.timedelta_unit}")
+        return hist

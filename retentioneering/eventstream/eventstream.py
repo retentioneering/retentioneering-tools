@@ -160,6 +160,7 @@ class Eventstream(
     __transition_graph: TransitionGraph | None = None
     __p_graph: PGraph | None = None
     __transition_matrix: TransitionMatrix | None = None
+    __timedelta_hist: TimedeltaHist | None = None
     __user_lifetime_hist: UserLifetimeHist | None = None
     __event_timestamp_hist: EventTimestampHist | None = None
 
@@ -789,8 +790,7 @@ class Eventstream(
         weight_col: str = "user_id",
         aggregation: Optional[AGGREGATION_NAMES] = None,
         timedelta_unit: DATETIME_UNITS = "s",
-        log_scale_x: bool = False,
-        log_scale_y: bool = False,
+        log_scale: bool | tuple[bool, bool] | None = None,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
@@ -807,29 +807,28 @@ class Eventstream(
         Returns
         -------
         TimedeltaHist
-            A ``TimedeltaHist`` class instance with given parameters.
+            A ``TimedeltaHist`` class instance fitted with given parameters.
 
         """
-        timedelta_hist = TimedeltaHist(
+        self.__timedelta_hist = TimedeltaHist(
             eventstream=self,
             event_pair=event_pair,
             only_adjacent_event_pairs=only_adjacent_event_pairs,
             aggregation=aggregation,
             weight_col=weight_col,
             timedelta_unit=timedelta_unit,
-            log_scale_x=log_scale_x,
-            log_scale_y=log_scale_y,
+            log_scale=log_scale,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
             figsize=figsize,
         )
 
-        timedelta_hist._calculate()
+        self.__timedelta_hist.fit()
         if show_plot:
-            timedelta_hist.plot()
+            self.__timedelta_hist.plot()
 
-        return timedelta_hist
+        return self.__timedelta_hist
 
     def user_lifetime_hist(
         self,

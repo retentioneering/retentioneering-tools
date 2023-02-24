@@ -22,8 +22,8 @@ class TruncatedEventsParams(ParamsModel):
     right_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
 
     _widgets = {
-        "left_truncated_cutoff": ReteTimeWidget,
-        "right_truncated_cutoff": ReteTimeWidget,
+        "left_truncated_cutoff": ReteTimeWidget(),
+        "right_truncated_cutoff": ReteTimeWidget(),
     }
 
 

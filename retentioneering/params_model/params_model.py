@@ -7,8 +7,10 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, Union
 from pydantic import BaseModel, ValidationError, validator
 from typing_extensions import TypedDict
 
+from retentioneering.exceptions.widget import WidgetParseError
 from retentioneering.params_model.registry import register_params_model
-from retentioneering.widget import WIDGET, WIDGET_MAPPING, WIDGET_TYPE
+from retentioneering.utils.dict import clear_dict
+from retentioneering.widget import WIDGET_MAPPING
 
 if TYPE_CHECKING:
     from pydantic.typing import AbstractSetIntStr, MappingIntStrAny
@@ -27,8 +29,7 @@ class ParamsModel(BaseModel):
     @classmethod
     def __init_subclass__(cls: Type[ParamsModel], **kwargs: Any):
         super().__init_subclass__(**kwargs)
-        obj = cls.__new__(cls)
-        register_params_model(obj)
+        register_params_model(cls)
 
     @validator("*")
     def validate_subiterable(cls, value: Any) -> Any:
@@ -53,10 +54,14 @@ class ParamsModel(BaseModel):
     ) -> None:
         try:
             super().__init__(**data)
-        except ValidationError:
+        except ValidationError as v_error:
             for key in data:
                 if key in self._widgets:
-                    data[key] = self._widgets[key]._parse(data[key])
+                    try:
+                        data[key] = self._widgets[key]._parse(data[key])
+                    except WidgetParseError as parse_err:
+                        parse_err.field_name = key
+                        raise parse_err
             super().__init__(**data)
 
     def __call__(self, **data: Dict[str, Any]) -> ParamsModel:
@@ -67,11 +72,14 @@ class ParamsModel(BaseModel):
     def _parse_schemas(cls) -> dict[str, str | dict | list]:
         params_schema: dict[str, Any] = cls.schema()
         for field_name, field in cls.__fields__.items():
-            if getattr(field, "type_", None) is Callable:
+            field_type = getattr(field, "type_", None)
+            # TODO: python3.8 fix
+            field_type_classname_legacy = getattr(field_type, "_name", None)
+            field_type_classname = getattr(field_type, "__name__", None)
+            if field_type_classname == "Callable" or field_type_classname_legacy == "Callable":
                 params_schema["properties"][field_name] = {
                     "title": field_name.title(),
                     "type": "callable",
-                    "_source_code": cls._widgets[field_name]._serialize(value=field.default),
                 }
         properties: dict[str, dict] = params_schema.get("properties", {})
         required: list[str] = params_schema.get("required", [])
@@ -80,12 +88,19 @@ class ParamsModel(BaseModel):
         widgets = {}
         custom_widgets = cls._widgets
         for name, params in properties.items():
-            widget = None
+            custom_widget: dict[str, Any] | None = None
             default = params.get("default")
             if name in custom_widgets:  # type: ignore
-                widget = cls._parse_custom_widget(name=name, optional=optionals[name])
-            elif "$ref" in params or "allOf" in params:
-                widget = cls._parse_schema_definition(params, definitions, default=default, optional=optionals[name])
+                custom_widget = cls._parse_custom_widget(name=name, optional=optionals[name])
+
+            if "$ref" in params or "allOf" in params:
+                widget: dict[str, Any] = cls._parse_schema_definition(
+                    params=params, definitions=definitions, default=default, optional=optionals[name]
+                )
+            elif params.get("type") == "string" and "enum" in params:
+                widget = cls._parse_enum_schema_definition(
+                    name=name, params=params, definitions=definitions, default=default, optional=optionals[name]
+                )
             elif "anyOf" in params:
                 widget = cls._parse_anyof_schema_definition(
                     params, definitions, default=default, optional=optionals[name]
@@ -93,8 +108,21 @@ class ParamsModel(BaseModel):
             else:
                 widget = cls._parse_simple_widget(name, params, optional=optionals[name], default=default)
 
-            if widget:
-                widgets[name] = asdict(widget)
+            if custom_widget:
+                custom_widget_data = {
+                    "default": widget.get("default", None),
+                    "optional": widget.get("optional", False),
+                    "name": widget["name"] if "name" not in custom_widget else None,
+                }
+                if isinstance(custom_widget_data["name"], str):
+                    custom_widget_data["name"] = custom_widget_data["name"].lower().replace(" ", "_")
+
+                custom_widget.update(clear_dict(custom_widget_data))
+                widgets[name] = custom_widget
+            elif widget:
+                widgets[name] = widget
+            else:
+                raise ValueError("Not created widget")
         return widgets  # type: ignore
 
     @classmethod
@@ -104,55 +132,86 @@ class ParamsModel(BaseModel):
         definitions: dict[str, Any],
         default: Any | None = None,
         optional: bool = True,
-    ) -> WIDGET:
+    ) -> dict[str, Any]:
         ref: str = params.get("$ref", "") or params.get("allOf", [{}])[0].get("$ref", "")  # type: ignore
         definition_name = ref.split("/")[-1]
         definition = definitions[definition_name]
         params = definition.get("enum", [])
         kwargs = {"name": definition_name, "widget": "enum", "default": default, "optional": optional, "params": params}
-        return WIDGET_MAPPING["enum"].from_dict(**kwargs)
+        return asdict(WIDGET_MAPPING["enum"].from_dict(**kwargs))
 
     @classmethod
     def _parse_anyof_schema_definition(
         cls,
-        params: dict[str, dict[str, Any]] | Any,
+        params: dict[str, dict[str, Any] | list[dict[str, Any]]] | Any,
         definitions: dict[str, Any],
         default: Any | None = None,
         optional: bool = True,
-    ) -> WIDGET:
+    ) -> dict[str, Any]:
         definition_name = params.get("title")
-        kwargs = {"name": definition_name, "widget": "array", "default": default, "optional": optional}
-        return WIDGET_MAPPING["array"].from_dict(**kwargs)
+        enum_params = [x.get("enum", [None])[0] for x in params["anyOf"] if hasattr(x, "get")]  # type: ignore
+        enum_params = list(filter(lambda x: x is not None, enum_params))
+        kwargs: dict = {"name": definition_name, "widget": "enum", "default": default, "optional": optional}
+        if len(enum_params) > 0:
+            kwargs["params"] = enum_params
+
+        widget_data: dict[str, Any] = asdict(WIDGET_MAPPING["enum"].from_dict(**kwargs))
+        kwargs.update(widget_data)
+        return kwargs
+
+    @classmethod
+    def _parse_enum_schema_definition(
+        cls,
+        name: str,
+        params: dict[str, dict[str, Any] | list[dict[str, Any]]] | Any,
+        definitions: dict[str, Any],
+        default: Any | None = None,
+        optional: bool = True,
+    ) -> dict[str, Any]:
+        enum_params = params.get("enum")
+
+        if not isinstance(enum_params, list):
+            raise ValueError("unexpected enum value")
+
+        enum_params = list(filter(lambda x: x is not None, enum_params))
+        kwargs: dict = {"name": name, "widget": "enum", "default": default, "optional": optional}
+        if len(enum_params) > 0:
+            kwargs["params"] = enum_params
+
+        widget_data: dict[str, Any] = asdict(WIDGET_MAPPING["enum"].from_dict(**kwargs))
+        kwargs.update(widget_data)
+        return kwargs
 
     @classmethod
     def _parse_simple_widget(
         cls, name: str, params: dict[str, Any], default: Any | None = None, optional: bool = False
-    ) -> WIDGET:
+    ) -> dict[str, Any]:
         widget_type = params.get("type")
+        if widget_type == "array":
+            widget_type = "enum"
         try:
             items = params.get("items", [{}])[-1]
         except KeyError:
             items = params.get("items", [{}])
         widget_params = dict(optional=optional, name=name, widget=widget_type)
-        widget_params["type"] = widget_type
-        widget_params["default"] = default
+
         if "enum" in items and widget_type != "enum":
             widget_type = "enum"
             widget_params["params"] = items["enum"]  # type: ignore
 
-        try:
-            widget: WIDGET_TYPE = WIDGET_MAPPING[widget_type]  # type: ignore
-            return widget.from_dict(**widget_params)
-
-        except KeyError:
-            raise Exception("Not found widget. Define new widget for <%s> and add it to mapping." % widget_type)
+        return widget_params
 
     @classmethod
-    def _parse_custom_widget(cls, name: str, optional: bool = False) -> WIDGET:
+    def _parse_custom_widget(cls, name: str, optional: bool = False) -> dict[str, Any]:
         custom_widget = cls._widgets[name]  # type: ignore
-        _widget = WIDGET_MAPPING[custom_widget["widget"]] if isinstance(custom_widget, dict) else custom_widget
-        widget_type = custom_widget["widget"] if isinstance(custom_widget, dict) else custom_widget.widget
-        return _widget.from_dict(**dict(optional=optional, name=name, widget=widget_type, value=None))
+        if isinstance(custom_widget, dict):
+            _widget = WIDGET_MAPPING[custom_widget["widget"]]
+            widget_type = custom_widget["widget"]
+            return asdict(_widget.from_dict(**dict(optional=optional, name=name, widget=widget_type, value=None)))
+        else:
+            widget = asdict(custom_widget)
+            widget["optional"] = optional
+            return widget
 
     @classmethod
     def get_widgets(cls) -> dict[str, str | dict | list]:

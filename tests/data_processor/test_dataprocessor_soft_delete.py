@@ -4,37 +4,14 @@ from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream import Eventstream, RawDataSchema
 from retentioneering.graph.p_graph import EventsNode, PGraph
 from retentioneering.params_model import ParamsModel
-
-
-class DeleteParamsModel(ParamsModel):
-    name: str
-
-
-class DeleteProcessor(DataProcessor):
-    params: DeleteParamsModel
-
-    def __init__(self, params: DeleteParamsModel) -> None:
-        super().__init__(params=params)
-
-    def apply(self, eventstream: Eventstream) -> Eventstream:
-        df = eventstream.to_dataframe(copy=True)
-        event_name = eventstream.schema.event_name
-        data_for_delete = df.loc[df[event_name] == self.params.name]
-        df["ref"] = df[eventstream.schema.event_id]
-
-        eventstream = Eventstream(
-            raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            raw_data=df,
-            relations=[{"raw_col": "ref", "eventstream": eventstream}],
-        )
-
-        eventstream._soft_delete(data_for_delete)
-
-        return eventstream
+from tests.data_processor.fixtures.delete_processor import delete_processor
 
 
 class TestGraphDelete:
-    def test_soft_delete_in_graph(self) -> None:
+    def test_soft_delete_in_graph(self, delete_processor) -> None:
+        DeleteParamsModel: ParamsModel = delete_processor["params"]
+        DeleteProcessor: DataProcessor = delete_processor["processor"]
+
         source_df = pd.DataFrame(
             [
                 {"event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},

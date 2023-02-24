@@ -17,8 +17,7 @@ class DataProcessor:
     @classmethod
     def __init_subclass__(cls: type[DataProcessor], **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
-        obj = cls.__new__(cls)
-        register_dataprocessor(obj)
+        register_dataprocessor(cls)
 
     def __init__(self, params: ParamsModel | Any) -> None:
         if not issubclass(type(params), ParamsModel):

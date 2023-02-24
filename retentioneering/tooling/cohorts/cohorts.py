@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from retentioneering.constants import DATETIME_UNITS
+from retentioneering.constants import DATETIME_UNITS, DATETIME_UNITS_LIST
 from retentioneering.eventstream.types import EventstreamType
 
 # @TODO Подумать над сокращением списка поддерживаемых типов для когорт? dpanina
@@ -80,7 +80,6 @@ class Cohorts:
     cohort_period: int
     cohort_period_unit: DATETIME_UNITS
     cohort_start_unit: DATETIME_UNITS
-    DATETIME_UNITS_LIST = ["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "μs", "ns", "ps", "fs", "as"]
 
     def __init__(
         self,
@@ -131,7 +130,7 @@ class Cohorts:
         data["user_min_date_gr"] = data.groupby(self.user_col)[self.time_col].transform(min)
         min_cohort_date = data["user_min_date_gr"].min().to_period(freq).start_time
         max_cohort_date = data["user_min_date_gr"].max()
-        if Cohorts.DATETIME_UNITS_LIST.index(cohort_start_unit) < Cohorts.DATETIME_UNITS_LIST.index(cohort_period_unit):
+        if DATETIME_UNITS_LIST.index(cohort_start_unit) < DATETIME_UNITS_LIST.index(cohort_period_unit):
             freq = cohort_period_unit
 
         if freq == "W":

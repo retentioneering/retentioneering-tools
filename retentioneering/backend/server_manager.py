@@ -6,6 +6,7 @@ from typing import Any, Optional
 from ipykernel.comm.comm import Comm
 
 from retentioneering.backend import JupyterServer
+from retentioneering.exceptions.server import ServerErrorWithResponse
 from retentioneering.utils.singleton import Singleton
 
 
@@ -33,16 +34,37 @@ class ServerManager:
                     "result": str(err),
                 }
             )
-        result = target_server.dispatch_method(method=method, payload=payload)
-        return json.dumps(
-            {
-                "success": True,
-                "server_id": server_id,
-                "request_id": request_id,
-                "method": method,
-                "result": result,
-            }
-        )
+        try:
+            result = target_server.dispatch_method(method=method, payload=payload)
+            return json.dumps(
+                {
+                    "success": True,
+                    "server_id": server_id,
+                    "request_id": request_id,
+                    "method": method,
+                    "result": result,
+                }
+            )
+        except ServerErrorWithResponse as err:
+            return json.dumps(
+                {
+                    "success": False,
+                    "server_id": server_id,
+                    "request_id": request_id,
+                    "method": method,
+                    "result": err.dict(),
+                }
+            )
+        except Exception as err:
+            return json.dumps(
+                {
+                    "success": False,
+                    "server_id": server_id,
+                    "request_id": request_id,
+                    "method": method,
+                    "result": str(err),
+                }
+            )
 
     def _on_comm_message(self, comm: Comm, open_msg: Any) -> None:
         @comm.on_msg  # type: ignore
@@ -66,6 +88,16 @@ class ServerManager:
                         "request_id": request_id,
                         "method": method,
                         "result": result,
+                    }
+                )
+            except ServerErrorWithResponse as err:
+                comm.send(
+                    {
+                        "success": False,
+                        "server_id": server_id,
+                        "request_id": request_id,
+                        "method": method,
+                        "result": err.dict(),
                     }
                 )
             except Exception as err:

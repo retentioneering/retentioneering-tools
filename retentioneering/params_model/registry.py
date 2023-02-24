@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+from typing import Type
 
 from retentioneering.utils.registry import RegistryValidationError, ReteRegistry
 
@@ -9,15 +10,16 @@ if typing.TYPE_CHECKING:
 
 
 class ParamsModelRegistry:
-    REGISTRY: dict[str, "ParamsModel"] = {}  # type: ignore
+    REGISTRY: dict[str, "Type[ParamsModel]"] = {}  # type: ignore
 
     objects = "ParamsModel"
 
-    def __setitem__(self, key: str, value: "ParamsModel") -> None:
+    def __setitem__(self, key: str, value: "type[ParamsModel]") -> None:
         if key not in self.REGISTRY:
             self.REGISTRY[key] = value
-        else:
-            raise RegistryValidationError("%s <%s> already exists" % (self.objects, key))
+
+    def __delitem__(self, key: str) -> None:
+        del self.REGISTRY[key]
 
     @classmethod
     def get_registry(cls: typing.Type[ParamsModelRegistry]) -> dict:
@@ -27,5 +29,9 @@ class ParamsModelRegistry:
 params_model_registry = ParamsModelRegistry()
 
 
-def register_params_model(cls: ParamsModel) -> None:
-    params_model_registry[cls.__class__.__name__] = cls
+def register_params_model(cls: type[ParamsModel]) -> None:
+    params_model_registry[cls.__name__] = cls
+
+
+def unregister_params_model(cls: type[ParamsModel]) -> None:
+    del params_model_registry[cls.__name__]

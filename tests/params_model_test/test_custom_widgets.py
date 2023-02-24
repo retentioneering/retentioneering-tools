@@ -22,4 +22,4 @@ class TestCustomWidgets:
 
         schema = params.get_widgets()
         assert (1, "asd") == params.a
-        assert {"name": "a", "optional": False, "widget": "string"} == schema["a"]
+        assert {"name": "a", "optional": False, "widget": "string", "default": None} == schema["a"]

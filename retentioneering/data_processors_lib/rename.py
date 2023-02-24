@@ -7,6 +7,7 @@ from pydantic.dataclasses import dataclass
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.params_model import ParamsModel
+from retentioneering.widget.widgets import RenameRulesWidget
 
 
 @dataclass
@@ -24,6 +25,10 @@ class RenameParams(ParamsModel):
     """
 
     rules: List[RenameRule]
+
+    _widgets = {
+        "rules": RenameRulesWidget(),
+    }
 
 
 class RenameProcessor(DataProcessor):

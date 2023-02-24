@@ -25,7 +25,7 @@ class TestEventstreamSankey:
 
         correct_nodes, correct_edges = correct_res_test("02_threshold_float")
 
-        correct_edges["time_to_next_sum"] = correct_edges["time_to_next_sum"].astype("timedelta64")
+        correct_edges["time_to_next_sum"] = pd.to_timedelta(correct_edges["time_to_next_sum"])
 
         assert (
             pd.testing.assert_frame_equal(res_nodes[correct_nodes.columns], correct_nodes) is None
@@ -45,8 +45,8 @@ class TestEventstreamSankey:
 
         correct_nodes_1, correct_edges_1 = correct_res_test("02_threshold_float")
         correct_nodes_2, correct_edges_2 = correct_res_test("04_target")
-        correct_edges_1["time_to_next_sum"] = correct_edges_1["time_to_next_sum"].astype("timedelta64")
-        correct_edges_2["time_to_next_sum"] = correct_edges_2["time_to_next_sum"].astype("timedelta64")
+        correct_edges_1["time_to_next_sum"] = pd.to_timedelta(correct_edges_1["time_to_next_sum"])
+        correct_edges_2["time_to_next_sum"] = pd.to_timedelta(correct_edges_2["time_to_next_sum"])
 
         assert (
             pd.testing.assert_frame_equal(res_nodes_1[correct_nodes_1.columns], correct_nodes_1) is None

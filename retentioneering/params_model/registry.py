@@ -29,9 +29,9 @@ class ParamsModelRegistry:
 params_model_registry = ParamsModelRegistry()
 
 
-def register_params_model(cls: type[ParamsModel]) -> None:
+def register_params_model(cls: Type[ParamsModel]) -> None:
     params_model_registry[cls.__name__] = cls
 
 
-def unregister_params_model(cls: type[ParamsModel]) -> None:
+def unregister_params_model(cls: Type[ParamsModel]) -> None:
     del params_model_registry[cls.__name__]

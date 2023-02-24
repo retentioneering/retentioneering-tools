@@ -14,7 +14,7 @@ class ParamsModelRegistry:
 
     objects = "ParamsModel"
 
-    def __setitem__(self, key: str, value: "type[ParamsModel]") -> None:
+    def __setitem__(self, key: str, value: "Type[ParamsModel]") -> None:
         if key not in self.REGISTRY:
             self.REGISTRY[key] = value
 

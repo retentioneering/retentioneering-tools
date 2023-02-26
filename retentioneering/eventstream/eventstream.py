@@ -785,6 +785,7 @@ class Eventstream(
 
     def timedelta_hist(
         self,
+        raw_events_only: bool = False,
         event_pair: Optional[list[str | Literal[EVENTSTREAM_GLOBAL_EVENTS]]] = None,
         only_adjacent_event_pairs: bool = True,
         weight_col: str = "user_id",
@@ -812,6 +813,7 @@ class Eventstream(
         """
         self.__timedelta_hist = TimedeltaHist(
             eventstream=self,
+            raw_events_only=raw_events_only,
             event_pair=event_pair,
             only_adjacent_event_pairs=only_adjacent_event_pairs,
             aggregation=aggregation,
@@ -871,7 +873,7 @@ class Eventstream(
     def event_timestamp_hist(
         self,
         event_list: list[str] | None = None,
-        raw_events_only: bool = True,
+        raw_events_only: bool = False,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,

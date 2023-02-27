@@ -44,13 +44,13 @@ class Describe:
         mean_time_agg_col = time_diff_user.mean().round(Describe.TIME_ROUND_UNIT)  # type: ignore
         median_time_agg_col = time_diff_user.median().round(Describe.TIME_ROUND_UNIT)  # type: ignore
         std_time_agg_col = time_diff_user.std().round(Describe.TIME_ROUND_UNIT)  # type: ignore
-        min_length_time_agg_col = time_diff_user.min().round(Describe.TIME_ROUND_UNIT)
-        max_length_time_agg_col = time_diff_user.max().round(Describe.TIME_ROUND_UNIT)
+        min_length_time_agg_col = time_diff_user.min().round(Describe.TIME_ROUND_UNIT)  # type: ignore
+        max_length_time_agg_col = time_diff_user.max().round(Describe.TIME_ROUND_UNIT)  # type: ignore
 
         event_count_agg_col = df_agg[(self.event_col, "count")]
-        mean_event_agg_col = round(event_count_agg_col.mean(), 2)
+        mean_event_agg_col = round(event_count_agg_col.mean(), 2)  # type: ignore
         median_event_agg_col = event_count_agg_col.median()
-        std_event_agg_col = round(event_count_agg_col.std(), 2)
+        std_event_agg_col = round(event_count_agg_col.std(), 2)  # type: ignore
         min_event_length_agg_col = event_count_agg_col.min()
         max_event_length_agg_col = event_count_agg_col.max()
 

@@ -23,12 +23,12 @@
     container.id = "root"
 
     const script = fDocument.createElement("script")
-    script.src = "https://static.server.retentioneering.com/viztools/preprocessing-graph/v3/preprocessing-graph.umd.js"
+    script.src = "https://static.server.retentioneering.com/viztools/preprocessing-graph/v3/preprocessing-graph.umd.js?block={{block_id}}"
     script.type = "text/javascript"
 
     const link = fDocument.createElement("link")
     link.rel = "stylesheet"
-    link.href = "https://static.server.retentioneering.com/viztools/preprocessing-graph/v3/style.css"
+    link.href = "https://static.server.retentioneering.com/viztools/preprocessing-graph/v3/style.css?block={{block_id}}"
 
     const font1 = fDocument.createElement("link")
     font1.rel = "stylesheet"

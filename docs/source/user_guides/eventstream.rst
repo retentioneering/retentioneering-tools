@@ -214,7 +214,7 @@ then you could just ignore their mapping in setting ``raw_data_schema`` and pass
 Eventstream field names
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-With ``schema`` attribute you can:
+Using the ``schema`` attribute you can:
 
 #. get access to the eventstream columns which will be needed further in other library tools,
    for example in dataprocessors:
@@ -228,8 +228,10 @@ With ``schema`` attribute you can:
    :py:meth:`to_dataframe()<retentioneering.eventstream.eventstream.Eventstream.to_dataframe>` method.
    For example, it can be useful if it is more common and important to operate with custom column names.
 
-Here’s how it works with the help of :py:meth:`EventstreamSchema<retentioneering.eventstream.schema.EventstreamSchema>`
-class. Before we go further, let's see once again default eventstream displayed columns.
+Before we go further, let's see once again default eventstream displayed columns.
+The standard triple column names are displayed: ``user_id``, ``event``, ``timestamp``
+With the help of :py:meth:`EventstreamSchema<retentioneering.eventstream.schema.EventstreamSchema>`
+class under the hood.
 
 .. code-block:: python
 
@@ -290,9 +292,9 @@ class. Before we go further, let's see once again default eventstream displayed 
       </tbody>
     </table>
 
-As we can see by default the standard triple ``user_id``, ``event``, ``timestamp`` displayed.
 
 And now let's create an Eventstream once again but with ``schema`` attribute passed.
+
 
 .. code-block:: python
 
@@ -352,9 +354,12 @@ And now let's create an Eventstream once again but with ``schema`` attribute pas
       </tbody>
     </table>
 
-Now our main columns changed.
+Now names of our main columns are changed.
+It is possible because an ``Eventstream`` object stores an instance of the
+``EventstreamSchema`` class with the mapping between eventstream internal
+ and custom displayed column names.
 
-One more way to see ``EventstreamSchema`` without convering to ``pd.DataFrame`` is to call it directly
+There is one more way to see ``EventstreamSchema`` without converting it to ``pd.DataFrame`` - to call it directly
 from ``Eventstream`` instance, just like ``dataframe.columns``.
 
 .. code-block:: python
@@ -552,8 +557,9 @@ There are some additional options which one might find useful.
 Eventstream reindex
 -------------------
 
-In the previous section we've already mentioned sorting algorithm talking about special ``Eventstream`` columns
-``index`` and ``event_type``. Default ``event_type`` order is:
+In the previous section we've already mentioned sorting algorithm talking about special
+``Eventstream`` columns ``event_type`` and ``event_index``. There is a kit of pre-designed
+event_types in following default order:
 
 .. code-block:: python
 
@@ -582,21 +588,22 @@ In the previous section we've already mentioned sorting algorithm talking about 
                   "path_end"
                 ]
 
+Most of those types are created by build-in :ref:`dataprocessors<dataprocessors_library>`.
+But some of those types are not used right now and were created for future development.
+
 To see full explanation about which dataprocessor creates which ``event_type`` you can explore
-:doc:`the user guide on dataprocessors</user_guides/dataprocessors>`.
+:doc:`the dataprocessors user guide</user_guides/dataprocessors>`.
 
-Now not all of those types are used in build-in :ref:`dataprocessors<dataprocessors_library>`.
-But they were designed for the future extension of those tools.
+If you need you can pass your own order to the ``Eventstream`` instance constructor using
+the parameter ``index_order``.
 
-You can pass you own order to the ``Eventstream`` instance constructor using the parameter ``index_order``.
-
-In case you already have an eventstream you can call ``Eventstream.index_order`` attribute and pass
+In case you already have an eventstream instance you can call ``Eventstream.index_order`` attribute and pass
 a new order in it. But after you should use
 :py:meth:`index_events()<retentioneering.eventstream.eventstream.Eventstream.index_events>` method to
 apply this new order.
 For the demonstration purposes we use here a
 :py:meth:`PositiveTarget<retentioneering.data_processors_lib.positive_target.PositiveTarget>` dataprocessor
-which adds new event with preffix ``positive_target_``.
+which adds new event with prefix ``positive_target_``.
 
 .. code-block:: python
 
@@ -814,7 +821,8 @@ follow their ``raw`` parent event ``B``. Assume we would like to change their or
       </tbody>
     </table>
 
-As we can see now the events order changed and ``raw`` events ``B`` follow ``positive_target_B`` events.
+As we can see, the order of the events changed, and now ``raw`` events ``B``
+follow ``positive_target_B`` events.
 
 Descriptive methods
 -------------------
@@ -1068,7 +1076,7 @@ The output consists of three main blocks:
 Otherwise the the values related to sessions are not displayed.
 
 There is one more parameter - ``raw_events_only`` (default False) that could be useful if the preprocessing
-was started and some ``syntetic_events`` were added to the eventstream. Because those events affect
+was started and some ``synthetic_events`` were added to the eventstream. Because those events affect
 all "step-statistics".
 
 Now let's go through main blocks and take a closer look at some of the metrics:
@@ -1374,7 +1382,7 @@ Thus we will get statistics for each event present in our data.
       </tbody>
     </table>
 
-If there are a lot events in our data we can specify the list of them in order to
+If there are a lot of events in our data you can specify the list of them in order to
 make output more easy to analyse. For that purpose we have the parameter ``event_list``:
 
 .. code:: ipython3
@@ -1726,7 +1734,7 @@ And it can be caused by two reasons:
 - the user path is truncated and it was start before the first event of our eventstream
 
 Sometimes we need to mark those users and analyse them separately.
-See :ref:`TruncatedEvents explanation<truncated_events>` for the detailes.
+See :ref:`TruncatedEvents explanation<truncated_events>` for the details.
 
 
 Events intensity

@@ -434,6 +434,8 @@ Using helper methods, we can replicate the *General Usage* coding blocks output:
 
 We will also use ``helpers`` in the section below.
 
+.. _dataprocessors_library:
+
 Data Processors library
 -----------------------
 
@@ -1535,7 +1537,7 @@ case, it will add negative event next to the ``delivery_courier`` event:
     </table>
     </div>
 
-
+.. _truncated_events:
 
 TruncatedEvents
 ^^^^^^^^^^^^^^^

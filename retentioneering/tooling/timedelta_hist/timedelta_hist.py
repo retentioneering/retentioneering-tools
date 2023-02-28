@@ -26,6 +26,9 @@ class TimedeltaHist:
 
     Parameters
     ----------
+    raw_events_only : bool, default True
+        If ``True`` - statistics will be shown only for raw events.
+        If ``False`` - for all events presented in your data.
     event_pair : tuple of str, optional
         Specify an event pair to plot the time distance between. The first
         item corresponds to chronologically first event, the second item corresponds to the second event. If
@@ -86,6 +89,7 @@ class TimedeltaHist:
     def __init__(
         self,
         eventstream: EventstreamType,
+        raw_events_only: bool = False,
         event_pair: Optional[list[str | EVENTSTREAM_GLOBAL_EVENTS]] = None,
         only_adjacent_event_pairs: bool = True,
         weight_col: str = "user_id",
@@ -102,7 +106,12 @@ class TimedeltaHist:
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
+        self.type_col = self.__eventstream.schema.event_type
+        self.raw_events_only = raw_events_only
 
+        self.data: pd.DataFrame = eventstream.to_dataframe(copy=True)
+        if raw_events_only:
+            self.data = self.data[self.data[self.type_col].isin(["raw"])]
         if event_pair is not None:
             if type(event_pair) not in (list, tuple):
                 raise TypeError("event_pair should be a tuple or a list of length 2.")
@@ -203,7 +212,7 @@ class TimedeltaHist:
             2. The first array contains the bin edges
 
         """
-        data = self.__eventstream.to_dataframe().sort_values([self.weight_col, self.time_col])
+        data = self.data.sort_values([self.weight_col, self.time_col])
 
         if self.event_pair is not None and set([self.EVENTSTREAM_START, self.EVENTSTREAM_END]).intersection(
             self.event_pair

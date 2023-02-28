@@ -39,7 +39,7 @@ class EventTimestampHist:
     def __init__(
         self,
         eventstream: EventstreamType,
-        raw_events_only: bool = True,
+        raw_events_only: bool = False,
         event_list: list[str] | None = None,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,

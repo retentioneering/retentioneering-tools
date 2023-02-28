@@ -12,6 +12,5 @@ class ConnectorProtocol(metaclass=ABCMeta):
 
 
 class TrackerMainConnector(ConnectorProtocol):
-
     def send_message(self, data: dict[str, Any]) -> None:
         pass

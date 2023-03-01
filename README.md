@@ -23,9 +23,9 @@ event streams, trajectories, and event logs. You can segment users, clients
  target event based on historical data.
 
 In a common scenario you can use raw data from Google Analytics BigQuery stream 
-or any other silimal streams in form of events and their timestamps for users, 
+or any other similar streams in form of events and their timestamps for users, 
 and Retentioneering is all you need to explore the user behavior from that data, 
-it can reveal much more isights than funnel analytics, as it will automatically 
+it can reveal much more insights than funnel analytics, as it will automatically 
 build the behavioral segments and their patterns, highlighting what events and 
 pattern impact your conversion rates, retention and revenue.
 

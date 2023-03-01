@@ -527,7 +527,7 @@ class TestPGraphExportImport:
                                 "df[df[event_col].isin(negative_target_events)].groupby"
                                 "(user_col)[time_col].idxmin()\n"
                                 "\n"
-                                "    return df.iloc[negative_events_index]\n",
+                                "    return df.iloc[negative_events_index]",
                             },
                         },
                     },
@@ -564,7 +564,7 @@ class TestPGraphExportImport:
                             "df[df[event_col].isin(negative_target_events)].groupby"
                             "(user_col)[time_col].idxmin()\n"
                             "\n"
-                            "    return df.iloc[negative_events_index]\n",
+                            "    return df.iloc[negative_events_index]",
                         },
                     },
                 },

@@ -1033,7 +1033,7 @@ class Eventstream(
         self.__p_graph.display()
         return self.__p_graph
 
-    def transition_matrix(self, weights: list[str] | None = None, norm_type: NormType = None) -> TransitionMatrix:
+    def transition_matrix(self, weight: str | None = None, norm_type: NormType = None) -> TransitionMatrix:
         """
         Create edge graph in the matrix format. Row indexes are events, from which the transition occurred,
         and columns are events, to which the transition occurred.
@@ -1042,7 +1042,7 @@ class Eventstream(
         Parameters
         ----------
 
-        weights :
+        weight :
         norm_type : {"full", "node", None}, default None
 
         Returns
@@ -1054,5 +1054,5 @@ class Eventstream(
             self.__transition_matrix = TransitionMatrix(
                 eventstream=self,
             )
-        self.__transition_matrix.display(weights=weights, norm_type=norm_type)
+        self.__transition_matrix.display(weight=weight, norm_type=norm_type)
         return self.__transition_matrix

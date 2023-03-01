@@ -92,7 +92,7 @@ class TransitionGraph:
         self.edgelist: Edgelist = Edgelist(
             event_col=self.event_col,
             time_col=self.event_time_col,
-            default_weight_col=self.edgelist_default_col,
+            weight_col=self.edgelist_default_col,
             nodelist=self.nodelist.nodelist_df,
             index_col=self.user_col,
         )

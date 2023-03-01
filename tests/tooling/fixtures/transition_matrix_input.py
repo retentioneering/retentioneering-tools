@@ -14,10 +14,12 @@ def test_stream():
 
     raw_data_schema = RawDataSchema(
         user_id="user_id",
-        event_name="event",
+        event_name="event_col",
         event_timestamp="timestamp",
         custom_cols=[{"custom_col": "session_id", "raw_data_col": "session_id"}],
     )
-    stream = Eventstream(raw_data=pd.read_csv(filepath), raw_data_schema=raw_data_schema)
+    raw_data: pd.DataFrame = pd.read_csv(filepath)
+    raw_data = raw_data.rename(columns={"event": "event_col"})
+    stream = Eventstream(raw_data=raw_data, raw_data_schema=raw_data_schema)
 
     return stream

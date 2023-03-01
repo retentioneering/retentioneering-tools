@@ -29,11 +29,11 @@ def el_simple_node_corr():
             ["B", "A", 0.5],
             ["B", "C", 0.5],
             ["C", "A", 0.167],
-            ["C", "C", 0, 333],
+            ["C", "C", 0.333],
             ["C", "D", 0.5],
             ["D", "C", 1],
         ],
-        columns=pd.Index(["event", "next_event", "event"]),
+        columns=pd.Index(["event_col", "next_event_col", "event"]),
     )
     return correct_res
 
@@ -51,7 +51,7 @@ def el_simple_full_corr():
             ["C", "D", 0.2142],
             ["D", "C", 0.1428],
         ],
-        columns=pd.Index(["event", "next_event", "event"]),
+        columns=pd.Index(["event_col", "next_event_col", "event"]),
     )
     return correct_res
 
@@ -117,12 +117,12 @@ def el_session_corr():
         [
             ["A", "B", 3],
             ["A", "C", 1],
-            ["B", "A", 0],
-            ["B", "C", 0],
-            ["C", "A", 0],
-            ["C", "C", 1],
-            ["C", "D", 1],
-            ["D", "C", 1],
+            ["B", "A", 1],
+            ["B", "C", 1],
+            ["C", "A", 1],
+            ["C", "C", 2],
+            ["C", "D", 3],
+            ["D", "C", 2],
         ],
         columns=pd.Index(["event", "next_event", "session_id"]),
     )

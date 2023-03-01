@@ -26,16 +26,16 @@ class TransitionMatrix:
         self.__edgelist = Edgelist(
             event_col=eventstream.schema.event_name,
             time_col=eventstream.schema.event_timestamp,
-            default_weight_col=eventstream.schema.event_name,
+            weight_col=eventstream.schema.event_name,
             index_col=eventstream.schema.user_id,
             nodelist=self.__nodelist.nodelist_df,
         )
 
-    def values(self, weights: list[str] | None, norm_type: NormType) -> pd.DataFrame:
+    def values(self, weight: str | None = None, norm_type: NormType = None) -> pd.DataFrame:
         """
         Parameters
         ----------
-        weights : list of str or None
+        weight : str or None
         norm_type : {"full", "node", None}
 
         Returns
@@ -43,15 +43,16 @@ class TransitionMatrix:
         pd.DataFrame
             Transition matrix
         """
-
+        if weight is None:
+            weight = "events"
         self.__edgelist.calculate_edgelist(
-            data=self.__eventstream.to_dataframe(), norm_type=norm_type, custom_cols=weights
+            data=self.__eventstream.to_dataframe(), norm_type=norm_type, custom_weight=weight
         )
         edgelist: pd.DataFrame = self.__edgelist.edgelist_df
         graph = nx.DiGraph()
         graph.add_weighted_edges_from(edgelist.values)
         return nx.to_pandas_adjacency(G=graph)
 
-    def display(self, weights: list[str] | None, norm_type: NormType) -> None:
-        transition_matrix = self.values(weights=weights, norm_type=norm_type)
+    def display(self, weight: str | None, norm_type: NormType) -> None:
+        transition_matrix = self.values(weight=weight, norm_type=norm_type)
         display(transition_matrix)

@@ -27,10 +27,10 @@ class Funnel:
     funnel_type: 'open', 'closed' or 'hybrid', default 'closed'
         - if ``open`` - all users will be counted on each stage;
         - if ``closed`` - each stage will include only users, who was on all previous stages;
-        - |if ``hybrid`` - combination of 2 previous types. The first stage is required for
-          |to go further. And for the second and subsequent stages it is important have
-          |all previous stages in their path, but the order of these events is not taken
-          |into account.
+        - | if ``hybrid`` - combination of 2 previous types. The first stage is required for
+          | to go further. And for the second and subsequent stages it is important have
+          | all previous stages in their path, but the order of these events is not taken
+          | into account.
 
     segments: Collection[Collection[int]], optional
         List of user_ids collections. Funnel for each user_id collection will be plotted.
@@ -131,15 +131,19 @@ class Funnel:
 
         return data
 
-    def _prepare_data_for_closed_funnel(self) -> dict[str, dict]:
+    def _prepare_data_for_closed_and_hybrid_funnel(
+        self,
+        data: pd.DataFrame,
+        stages: list[str],
+        stage_names: list[str],
+        segments: Collection[Collection[int]],
+        segment_names: list[str],
+    ) -> dict[str, dict]:
 
         min_time_0stage = (
-            self.data[self.data[self.event_col].isin(self.stages[0])]
-            .groupby(self.user_col)[[self.time_col]]
-            .min()
-            .reset_index()
+            data[data[self.event_col].isin(stages[0])].groupby(self.user_col)[[self.time_col]].min().reset_index()
         )
-        data = self.data.merge(min_time_0stage, "left", on=self.user_col, suffixes=("", "_min"))
+        data = data.merge(min_time_0stage, "left", on=self.user_col, suffixes=("", "_min"))
         data.rename(columns={data.columns[-1]: "min_date"}, inplace=True)
 
         # filtered NA and only events that occurred after the user entered the first funnel event remain
@@ -147,20 +151,25 @@ class Funnel:
         data.drop(columns="min_date", inplace=True)
 
         res_dict = {}
-        for segment, name in zip(self.segments, self.segment_names):
-            vals, _df = self._crop_df(data, self.stages, segment)
-            res_dict[name] = {"stages": self.stage_names, "values": vals}
+        for segment, name in zip(segments, segment_names):
+            vals, _df = self._crop_df(data, stages, segment)
+            res_dict[name] = {"stages": stage_names, "values": vals}
         return res_dict
 
-    def _prepare_data_for_open_funnel(self) -> dict[str, dict]:
+    def _prepare_data_for_open_funnel(
+        self,
+        data: pd.DataFrame,
+        stages: list[str],
+        stage_names: list[str],
+        segments: Collection[Collection[int]],
+        segment_names: list[str],
+    ) -> dict[str, dict]:
         res_dict = {}
-        for segment, name in zip(self.segments, self.segment_names):
+        for segment, name in zip(segments, segment_names):
             # isolate users from group
-            group_data = self.data[self.data[self.user_col].isin(segment)]
-            vals = [
-                group_data[group_data[self.event_col].isin(stage)][self.user_col].nunique() for stage in self.stages
-            ]
-            res_dict[name] = {"stages": self.stage_names, "values": vals}
+            group_data = data[data[self.user_col].isin(segment)]
+            vals = [group_data[group_data[self.event_col].isin(stage)][self.user_col].nunique() for stage in stages]
+            res_dict[name] = {"stages": stage_names, "values": vals}
         return res_dict
 
     def _crop_df(self, df: pd.DataFrame, stages: list[str], segment: Collection[int]) -> tuple[list[int], pd.DataFrame]:
@@ -215,10 +224,22 @@ class Funnel:
         """
 
         if self.funnel_type in ["closed", "hybrid"]:
-            self.res_dict = self._prepare_data_for_closed_funnel()
+            self.res_dict = self._prepare_data_for_closed_and_hybrid_funnel(
+                data=self.data,
+                stages=self.stages,
+                segments=self.segments,
+                segment_names=self.segment_names,
+                stage_names=self.stage_names,
+            )
 
         elif self.funnel_type == "open":
-            self.res_dict = self._prepare_data_for_open_funnel()
+            self.res_dict = self._prepare_data_for_open_funnel(
+                data=self.data,
+                stages=self.stages,
+                segments=self.segments,
+                segment_names=self.segment_names,
+                stage_names=self.stage_names,
+            )
 
         del self.data
         self.data = pd.DataFrame()

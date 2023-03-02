@@ -591,10 +591,9 @@ class Eventstream(
         self,
         stages: list[str],
         stage_names: list[str] | None = None,
-        funnel_type: Literal["open", "closed"] = "open",
+        funnel_type: Literal["open", "closed", "hybrid"] = "closed",
         segments: Collection[Collection[int]] | None = None,
         segment_names: list[str] | None = None,
-        sequence: bool = False,
         show_plot: bool = True,
     ) -> Funnel:
 
@@ -616,7 +615,6 @@ class Eventstream(
             funnel_type=funnel_type,
             segments=segments,
             segment_names=segment_names,
-            sequence=sequence,
         )
         self.__funnel.fit()
         if show_plot:

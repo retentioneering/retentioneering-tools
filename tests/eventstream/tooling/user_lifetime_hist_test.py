@@ -27,7 +27,6 @@ class TestEventstreamUserLifetimeHist:
     def test_user_lifetime_hist_eventstream__basic(
         self, test_stream: EventstreamType, correct_basic: np.array, correct_basic_bins: np.array
     ):
-
         result = test_stream.user_lifetime_hist(show_plot=False, bins=5).values
 
         assert (
@@ -40,7 +39,6 @@ class TestEventstreamUserLifetimeHist:
     def test_user_lifetime_hist_eventstream__timedelta_unit(
         self, test_stream: EventstreamType, correct_timedelta_unit: np.array, correct_timedelta_unit_bins: np.array
     ):
-
         result = test_stream.user_lifetime_hist(show_plot=False, bins=5, timedelta_unit="h").values
 
         assert (
@@ -53,7 +51,6 @@ class TestEventstreamUserLifetimeHist:
     def test_user_lifetime_hist_eventstream__log_scale(
         self, test_stream: EventstreamType, correct_log_scale: np.array, correct_log_scale_bins: np.array
     ):
-
         result = test_stream.user_lifetime_hist(show_plot=False, bins=5, timedelta_unit="h", log_scale=True).values
 
         assert (
@@ -69,7 +66,6 @@ class TestEventstreamUserLifetimeHist:
         correct_lower_cutoff_quantile: np.array,
         correct_lower_cutoff_quantile_bins: np.array,
     ):
-
         result = test_stream.user_lifetime_hist(
             show_plot=False, bins=5, timedelta_unit="h", lower_cutoff_quantile=0.5
         ).values

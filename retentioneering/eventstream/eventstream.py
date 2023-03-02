@@ -178,7 +178,6 @@ class Eventstream(
         user_sample_size: Optional[int | float] = None,
         user_sample_seed: Optional[int] = None,
     ) -> None:
-
         self.__clusters = None
         self.__funnel = None
         self.schema = schema if schema else EventstreamSchema()
@@ -596,7 +595,6 @@ class Eventstream(
         segment_names: list[str] | None = None,
         show_plot: bool = True,
     ) -> Funnel:
-
         """
         Show a visualization of the user sequential events represented as a funnel.
 
@@ -729,7 +727,6 @@ class Eventstream(
         figsize: Tuple[float, float] = (10, 10),
         show_plot: bool = True,
     ) -> Cohorts:
-
         """
         Show a heatmap visualization of the user appearance grouped by cohorts.
 

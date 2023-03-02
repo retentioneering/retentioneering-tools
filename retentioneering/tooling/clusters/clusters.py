@@ -513,13 +513,11 @@ class Clusters:
         ngram_range: NgramRange | None = None,
         vector: pd.DataFrame | None = None,
     ) -> tuple[Method | None, int | None, FeatureType | None, NgramRange | None, pd.DataFrame | None]:
-
         _method = method or self._method
         _n_clusters = n_clusters or self._n_clusters
         _user_clusters = None
 
         if vector is not None:
-
             if not isinstance(vector, pd.DataFrame):  # type: ignore
                 raise ValueError("Vector is not a DataFrame!")
             if np.all(np.all(vector.dtypes == "float") and vector.isna().sum().sum() != 0):
@@ -711,7 +709,6 @@ class Clusters:
 
     # TODO: add save
     def _cluster_bar(self, clusters: ndarray, target: list[list[bool]], target_names: list[str]) -> go.Figure:
-
         cl = pd.DataFrame([clusters, *target], index=["clusters", *target_names]).T
         cl["cluster size"] = 1
         for t_n in target_names:

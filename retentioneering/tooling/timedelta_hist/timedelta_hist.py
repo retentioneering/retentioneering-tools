@@ -101,7 +101,6 @@ class TimedeltaHist:
         bins: int | Literal[BINS_ESTIMATORS] = 20,
         figsize: tuple[float, float] = (6.0, 4.5),
     ) -> None:
-
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
@@ -169,7 +168,6 @@ class TimedeltaHist:
         with pd.option_context("mode.chained_assignment", None):
             data["time_passed"] = weight_col_group[self.time_col].diff() / np.timedelta64(1, self.timedelta_unit)  # type: ignore
             if self.event_pair:
-
                 data["prev_event"] = weight_col_group[self.event_col].shift()
                 data = data[(data[self.event_col] == self.event_pair[1]) & (data["prev_event"] == self.event_pair[0])]
 

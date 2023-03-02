@@ -9,7 +9,6 @@ from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
 class TestCollapseLoops(ApplyTestBase):
-
     _Processor = CollapseLoops
     _source_df = pd.DataFrame(
         [

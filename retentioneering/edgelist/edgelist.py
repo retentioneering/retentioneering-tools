@@ -32,7 +32,6 @@ class Edgelist:
     def calculate_edgelist(
         self, data: pd.DataFrame, norm_type: NormType | None = None, custom_cols: MutableSequence[str] | None = None
     ) -> pd.DataFrame:
-
         if norm_type not in [None, "full", "node"]:
             raise ValueError(f"unknown normalization type: {norm_type}")
 

@@ -100,7 +100,6 @@ class TruncatePath(DataProcessor):
             col_mark, occurrence, shift = truncate_type[1]
 
             if truncate_type[0]:
-
                 mask_events = df[event_col] == truncate_type[0]
                 df[f"{col_mark}_mark_target"] = mask_events.astype(int)
                 df[f"{col_mark}_mark_target"] = df.groupby([user_col, time_col])[f"{col_mark}_mark_target"].transform(

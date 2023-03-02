@@ -91,7 +91,6 @@ class Cohorts:
         cut_right: int = 0,
         cut_diagonal: int = 0,
     ):
-
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
@@ -125,7 +124,6 @@ class Cohorts:
         cohort_period: int,
         cohort_period_unit: DATETIME_UNITS,
     ) -> pd.DataFrame:
-
         freq = cohort_start_unit
         data["user_min_date_gr"] = data.groupby(self.user_col)[self.time_col].transform(min)
         min_cohort_date = data["user_min_date_gr"].min().to_period(freq).start_time
@@ -173,7 +171,6 @@ class Cohorts:
     def _cut_cohort_matrix(
         df: pd.DataFrame, cut_bottom: int = 0, cut_right: int = 0, cut_diagonal: int = 0
     ) -> pd.DataFrame:
-
         for row in df.index:
             df.loc[row, max(0, df.loc[row].notna()[::-1].idxmax() + 1 - cut_diagonal) :] = None  # type: ignore
 

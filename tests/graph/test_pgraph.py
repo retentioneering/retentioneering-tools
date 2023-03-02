@@ -238,7 +238,8 @@ class TestPGraph:
                     event_name="add_to_cart",
                     func=lambda df, schema: df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"]),
                 )
-            )
+            ),
+            description="some description",
         )
         cart_events.pk = "07921cb0-60b8-45af-928d-272d1b622b25"
         logout_events = EventsNode(
@@ -265,6 +266,7 @@ class TestPGraph:
                         "name": "GroupEvents",
                         "values": {"event_name": "add_to_cart", "event_type": "group_alias"},
                     },
+                    "description": "some description",
                 },
                 {
                     "name": "EventsNode",

@@ -109,8 +109,9 @@ class ReteFunction:
 
     @classmethod
     def _parse(cls, value: str) -> Callable:  # type: ignore
+        func_str = value.strip()
         try:
-            code_obj = compile(value, "<string>", "exec")
+            code_obj = compile(func_str, "<string>", "exec")
         except:
             raise ParseReteFuncError("parsing error. You must implement a python function here")
 
@@ -118,7 +119,7 @@ class ReteFunction:
 
         for i in code_obj.co_consts:
             try:
-                new_func_type = types.FunctionType(i, {})
+                new_func_type = types.FunctionType(i, globals=globals())
                 break
             except TypeError as err:
                 continue
@@ -126,7 +127,7 @@ class ReteFunction:
         if new_func_type is None:
             raise ParseReteFuncError("parsing error. You must implement a python function here")
 
-        setattr(new_func_type, "_source_code", value)
+        setattr(new_func_type, "_source_code", func_str)
         return new_func_type
 
 

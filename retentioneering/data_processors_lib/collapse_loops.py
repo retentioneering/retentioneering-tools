@@ -11,7 +11,7 @@ from retentioneering.params_model import ParamsModel
 
 class CollapseLoopsParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`CollapseLoops`.
+    Class with parameters for class :py:class:`.CollapseLoops`.
     """
 
     suffix: Optional[Literal["loop", "count"]] = "loop"

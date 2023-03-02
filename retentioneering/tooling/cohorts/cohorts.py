@@ -73,7 +73,7 @@ class Cohorts:
 
     See Also
     --------
-    :py:func:`retentioneering.eventstream.eventstream.Eventstream.cohorts`
+    :py:meth:`.Eventstream.cohorts`
     """
 
     __eventstream: EventstreamType

@@ -36,7 +36,7 @@ class Clusters:
 
     See Also
     --------
-    :py:func:`retentioneering.eventstream.eventstream.Eventstream.clusters`
+    :py:meth:`.Eventstream.clusters`
     """
 
     def __init__(self, eventstream: EventstreamType):

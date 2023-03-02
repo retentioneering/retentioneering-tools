@@ -41,7 +41,7 @@ class Funnel:
 
     See Also
     --------
-    :py:func:`retentioneering.eventstream.eventstream.Eventstream.funnel`
+    :py:meth:`.Eventstream.funnel`
 
     """
 

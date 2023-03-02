@@ -43,7 +43,7 @@ def _default_func(eventstream: EventstreamType, positive_target_events: list[str
 
 class PositiveTargetParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`PositiveTarget`
+    Class with parameters for class :py:class:`.PositiveTarget`
     """
 
     positive_target_events: List[str]

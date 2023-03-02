@@ -11,7 +11,7 @@ from retentioneering.params_model import ParamsModel
 
 class TruncatePathParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`TruncatePath`
+    Class with parameters for class :py:class:`.TruncatePath`
     """
 
     drop_before: Optional[str]

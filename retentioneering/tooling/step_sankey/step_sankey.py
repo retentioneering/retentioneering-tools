@@ -48,7 +48,7 @@ class StepSankey(EndedEventsMixin):
 
     See Also
     --------
-    :py:func:`retentioneering.eventstream.eventstream.Eventstream.step_sankey`
+    :py:meth:`.Eventstream.step_sankey`
 
     """
 

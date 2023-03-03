@@ -298,6 +298,11 @@ class Funnel:
 
     @property
     def params(self) -> dict:
+        """
+        Returns the parameters used for the last fitting.
+
+        """
+
         return {
             "stages": self.stages,
             "stage_names": self.stage_names,

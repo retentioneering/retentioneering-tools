@@ -66,8 +66,6 @@ class TestParamsModel:
 
         @dataclass
         class TestWidget:
-            name: str
-            optional: bool
             widget: str = "string"
 
             @classmethod
@@ -81,7 +79,7 @@ class TestParamsModel:
         class ExampleModelExport(ParamsModel):
             a: str
 
-            _widgets = {"a": TestWidget}
+            _widgets = {"a": TestWidget()}
 
         model = ExampleModelExport(a="asd")
         data = model.dict()

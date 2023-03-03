@@ -5,6 +5,7 @@ import pandas as pd
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamSchemaType, EventstreamType
 from retentioneering.params_model import ParamsModel
+from retentioneering.widget.widgets import ReteFunction
 
 EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchemaType], Any]
 
@@ -17,6 +18,10 @@ class GroupEventsParams(ParamsModel):
     event_name: str
     func: EventstreamFilter
     event_type: Optional[str] = "group_alias"
+
+    _widgets = {
+        "func": ReteFunction(),
+    }
 
 
 class GroupEvents(DataProcessor):

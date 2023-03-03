@@ -4,63 +4,14 @@ from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
 from retentioneering.graph.p_graph import EventsNode, PGraph
 from retentioneering.params_model import ParamsModel
-
-
-class AddColParamsModel(ParamsModel):
-    event_name: str
-    column_name: str
-
-
-class HelperAddColProcessor(DataProcessor):
-    params: AddColParamsModel
-
-    def __init__(self, params: AddColParamsModel) -> None:
-        super().__init__(params=params)
-
-    def apply(self, eventstream: Eventstream) -> Eventstream:
-        df = eventstream.to_dataframe(copy=True)
-        new_data = df[eventstream.schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
-        df[self.params.column_name] = new_data
-        df["ref"] = df[eventstream.schema.event_id]
-
-        eventstream.add_custom_col(name=self.params.column_name, data=new_data)
-        eventstream = Eventstream(
-            raw_data_schema=eventstream.schema.to_raw_data_schema(),
-            raw_data=df,
-            relations=[{"raw_col": "ref", "eventstream": eventstream}],
-        )
-
-        return eventstream
-
-
-class NoHelperAddColProcessor(DataProcessor):
-    params: AddColParamsModel
-
-    def __init__(self, params: AddColParamsModel) -> None:
-        super().__init__(params=params)
-
-    def apply(self, eventstream: Eventstream) -> Eventstream:
-        df = eventstream.to_dataframe(copy=True)
-        new_data = df[eventstream.schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
-        df[self.params.column_name] = new_data
-        df["ref"] = df[eventstream.schema.event_id]
-
-        raw_data_schema = eventstream.schema.to_raw_data_schema()
-        raw_data_schema.custom_cols.append(
-            {"custom_col": self.params.column_name, "raw_data_col": self.params.column_name}
-        )
-        eventstream = Eventstream(
-            schema=EventstreamSchema(custom_cols=[self.params.column_name]),
-            raw_data_schema=raw_data_schema,
-            raw_data=df,
-            relations=[{"raw_col": "ref", "eventstream": eventstream}],
-        )
-
-        return eventstream
+from tests.data_processor.fixtures.add_col_processor import add_col_processor
 
 
 class TestGraphAddColumn:
-    def test_add_column_in_graph_with_helper(self) -> None:
+    def test_add_column_in_graph_with_helper(self, add_col_processor) -> None:
+        AddColParamsModel: ParamsModel = add_col_processor["AddColParamsModel"]
+        HelperAddColProcessor: DataProcessor = add_col_processor["HelperAddColProcessor"]
+
         source_df = pd.DataFrame(
             [
                 {"event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
@@ -80,7 +31,7 @@ class TestGraphAddColumn:
         )
         graph = PGraph(source)
         add_col_node = EventsNode(
-            HelperAddColProcessor(params=AddColParamsModel(event_name="pageview", column_name="bucket"))
+            HelperAddColProcessor(params=AddColParamsModel(event_name="pageview", column_name="bucket"))  # type: ignore
         )
         graph.add_node(node=add_col_node, parents=[graph.root])
         result = graph.combine(add_col_node)
@@ -98,7 +49,10 @@ class TestGraphAddColumn:
         assert required_columns == columns
         assert 6 == len(result_df)
 
-    def test_add_column_in_graph_without_helper(self) -> None:
+    def test_add_column_in_graph_without_helper(self, add_col_processor) -> None:
+        AddColParamsModel: ParamsModel = add_col_processor["AddColParamsModel"]
+        NoHelperAddColProcessor: DataProcessor = add_col_processor["NoHelperAddColProcessor"]
+
         source_df = pd.DataFrame(
             [
                 {"event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
@@ -118,7 +72,7 @@ class TestGraphAddColumn:
         )
         graph = PGraph(source)
         add_col_node = EventsNode(
-            NoHelperAddColProcessor(params=AddColParamsModel(event_name="pageview", column_name="bucket"))
+            NoHelperAddColProcessor(params=AddColParamsModel(event_name="pageview", column_name="bucket"))  # type: ignore
         )
         graph.add_node(node=add_col_node, parents=[graph.root])
         result = graph.combine(add_col_node)

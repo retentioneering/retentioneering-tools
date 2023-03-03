@@ -7,6 +7,7 @@ from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.eventstream.types import EventstreamSchemaType, EventstreamType
 from retentioneering.params_model import ParamsModel
+from retentioneering.widget.widgets import ReteFunction
 
 
 class FilterEventsParams(ParamsModel):
@@ -16,6 +17,10 @@ class FilterEventsParams(ParamsModel):
     """
 
     func: Callable[[DataFrame, EventstreamSchema], bool]
+
+    _widgets = {
+        "func": ReteFunction(),
+    }
 
 
 class FilterEvents(DataProcessor):

@@ -3,13 +3,15 @@ from __future__ import annotations
 import inspect
 import types
 from dataclasses import dataclass, field
-from typing import Any, Callable, Type, Union
+from typing import Any, Callable, List, Type, Union
+
+from retentioneering.constants import DATETIME_UNITS_LIST
+from retentioneering.exceptions.widget import ParseReteFuncError
 
 
 @dataclass
 class StringWidget:
-    name: str
-    optional: bool
+    default: str | None = None
     widget: str = "string"
 
     @classmethod
@@ -19,8 +21,7 @@ class StringWidget:
 
 @dataclass
 class IntegerWidget:
-    name: str
-    optional: bool
+    default: int | None = None
     widget: str = "integer"
 
     @classmethod
@@ -30,10 +31,8 @@ class IntegerWidget:
 
 @dataclass
 class EnumWidget:
-    name: str
-    optional: bool
-    params: list[str]
-    default: str = ""
+    default: Any | None = None
+    params: list[str] | None = None
     widget: str = "enum"
 
     @classmethod
@@ -42,21 +41,8 @@ class EnumWidget:
 
 
 @dataclass
-class ArrayWidget:
-    name: str
-    optional: bool
-    default: str = ""
-    widget: str = "array"
-
-    @classmethod
-    def from_dict(cls: Type[ArrayWidget], **kwargs: Any) -> "ArrayWidget":
-        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
-
-
-@dataclass
 class BooleanWidget:
-    name: str
-    optional: bool
+    default: bool = False
     widget: str = "boolean"
 
     @classmethod
@@ -66,11 +52,11 @@ class BooleanWidget:
 
 @dataclass
 class ReteTimeWidget:
-    name: str
-    optional: bool
+    default: tuple[float, str] | None = None
     widget: str = "time_widget"
-
-    params: list = field(default_factory=list)
+    params: list = field(
+        default_factory=lambda: [{"widget": "float"}, {"params": DATETIME_UNITS_LIST, "widget": "enum"}]
+    )
 
     @classmethod
     def from_dict(cls: Type[ReteTimeWidget], **kwargs: Any) -> "ReteTimeWidget":
@@ -81,53 +67,73 @@ class ReteTimeWidget:
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
     @classmethod
-    def _serialize(cls: Type[ReteTimeWidget], value: tuple[float, str]) -> str:
-        return ",".join([str(x) for x in value])
+    def _serialize(cls, value: tuple[float, str]) -> tuple[float, str]:
+        return value
 
     @classmethod
     def _parse(cls: Type[ReteTimeWidget], value: str) -> tuple[float, str]:  # type: ignore
+        TIME, QUANT = 0, 1
+
         if type(value) is tuple:
             return value  # type: ignore
 
-        TIME, QUANT = 0, 1
+        if type(value) is list and len(value) != 2:
+            raise Exception("Incorrect input")
+
+        if type(value) is list:
+            return float(value[TIME]), str(value[QUANT])
+
         data = value.split(",")
-        if len(data) > 2:
+
+        if len(data) != 2:
             raise Exception("Incorrect input")
         return float(data[TIME]), str(data[QUANT])
 
 
 @dataclass
 class ReteFunction:
-    name: str
-    optional: bool
+    default: Callable | None = None
     widget: str = "function"
-    _source_code: str = ""
 
     @classmethod
     def from_dict(cls: Type[ReteFunction], **kwargs: Any) -> "ReteFunction":
         return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
 
     @classmethod
-    def _serialize(cls: Type[ReteFunction], value: Callable) -> str:
+    def _serialize(cls, value: Callable) -> str:
         try:
             code = inspect.getsource(value)
-            cls._source_code = code
             return code
         except OSError:
-            return cls._source_code
+            return getattr(value, "_source_code", "")
 
     @classmethod
-    def _parse(cls: Type[ReteFunction], value: str) -> Callable:  # type: ignore
-        code_obj = compile(value, "<string>", "exec")
-        new_func_type = types.FunctionType(code_obj.co_consts[2], {})
-        cls._source_code = value
+    def _parse(cls, value: str) -> Callable:  # type: ignore
+        func_str = value.strip()
+        try:
+            code_obj = compile(func_str, "<string>", "exec")
+        except:
+            raise ParseReteFuncError("parsing error. You must implement a python function here")
+
+        new_func_type = None
+
+        for i in code_obj.co_consts:
+            try:
+                new_func_type = types.FunctionType(i, globals=globals())
+                break
+            except TypeError as err:
+                continue
+
+        if new_func_type is None:
+            raise ParseReteFuncError("parsing error. You must implement a python function here")
+
+        setattr(new_func_type, "_source_code", func_str)
         return new_func_type
 
 
 @dataclass
 class ListOfInt:
-    name: str
-    optional: bool
+    default: list[int] | None = None
     widget: str = "list_of_int"
 
     @classmethod
@@ -146,9 +152,9 @@ class ListOfInt:
 @dataclass
 class ListOfIntNewUsers:
     # @TODO: remove this widget and make his functionality in ListOfInt. Vladimir Makhanov
-    name: str
-    optional: bool
-    params: list[str]
+    default: list[int] | None = None
+    name: str = "new_users_list"
+    params: dict[str, str] | None = field(default_factory=lambda: {"disable_value": "all"})
     widget: str = "list_of_int"
 
     @classmethod
@@ -167,8 +173,7 @@ class ListOfIntNewUsers:
 
 @dataclass
 class ListOfString:
-    name: str
-    optional: bool
+    default: list[str] | None = None
     widget: str = "list_of_string"
 
     @classmethod
@@ -184,22 +189,48 @@ class ListOfString:
         return value
 
 
+@dataclass
+class RenameRule:
+    group_name: str
+    child_events: List[str]
+
+
+@dataclass
+class RenameRulesWidget:
+    default: list[RenameRule] | None = None
+    widget: str = "rename_rules"
+
+    @classmethod
+    def from_dict(cls: Type[RenameRulesWidget], **kwargs: Any) -> "RenameRulesWidget":
+        return cls(**{k: v for k, v in kwargs.items() if k in inspect.signature(cls).parameters})
+
+    @classmethod
+    def _serialize(cls: Type[RenameRulesWidget], value: list[RenameRule] | None) -> list[RenameRule] | None:
+        return value
+
+    @classmethod
+    def _parse(cls: Type[RenameRulesWidget], value: list[RenameRule] | None) -> list[RenameRule] | None:
+        return value
+
+
 WIDGET_TYPE = Union[
     Type[StringWidget],
     Type[IntegerWidget],
     Type[EnumWidget],
-    Type[ArrayWidget],
     Type[BooleanWidget],
     Type[ReteTimeWidget],
+    Type[ReteFunction],
+    Type[RenameRulesWidget],
 ]
-WIDGET = Union[StringWidget, IntegerWidget, EnumWidget, ArrayWidget, BooleanWidget, ReteTimeWidget]
+
+WIDGET = Union[StringWidget, IntegerWidget, EnumWidget, BooleanWidget, ReteTimeWidget, ReteFunction, RenameRulesWidget]
 
 # @TODO: make default dict. Vladimir Makhanov
 WIDGET_MAPPING: dict[str, WIDGET_TYPE] = {
     "string": StringWidget,
     "integer": IntegerWidget,
     "enum": EnumWidget,
-    "array": ArrayWidget,
     "boolean": BooleanWidget,
     "tuple": ReteTimeWidget,
+    "callable": ReteFunction,
 }

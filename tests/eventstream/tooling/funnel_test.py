@@ -8,7 +8,7 @@ from tests.eventstream.tooling.fixtures.funnel import test_stream
 
 class TestEventstreamFunnel:
     def test_funnel_eventstream__simple(self, test_stream):
-        params = {"stages": ["catalog", ["product1", "product2"], "cart", "payment_done"]}
+        params = {"funnel_type": "open", "stages": ["catalog", ["product1", "product2"], "cart", "payment_done"]}
 
         idx = pd.MultiIndex.from_product(
             [["all users"], ["catalog", "product1 | product2", "cart", "payment_done"]],
@@ -23,10 +23,10 @@ class TestEventstreamFunnel:
         res = test_stream.funnel(**params, show_plot=False).values
         assert pd.testing.assert_frame_equal(res[correct_res.columns], correct_res, check_dtype=False) is None
 
-    def test_cohorts_eventstream__refit(self, test_stream):
-        params_1 = {"stages": ["catalog", ["product1", "product2"], "cart", "payment_done"]}
+    def test_funnel_eventstream__refit(self, test_stream):
+        params_1 = {"funnel_type": "open", "stages": ["catalog", ["product1", "product2"], "cart", "payment_done"]}
 
-        params_2 = {"stages": ["catalog", ["product1", "product2"], "cart", "payment_done"], "funnel_type": "closed"}
+        params_2 = {"stages": ["catalog", ["product1", "product2"], "cart", "payment_done"], "funnel_type": "hybrid"}
 
         idx = pd.MultiIndex.from_product(
             [["all users"], ["catalog", "product1 | product2", "cart", "payment_done"]],

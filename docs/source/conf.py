@@ -126,6 +126,11 @@ extlinks = {
     "sklearn_gmm": ("https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html%s", None),
     "sklearn_tsne": ("https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html%s", None),
     "umap": ("https://umap-learn.readthedocs.io/en/latest/index.html%s", None),
+    "numpy_bins_link": (
+        "https://numpy.org/doc/stable/reference/generated/numpy.histogram_bin_edges.html#numpy.histogram_bin_edges%s",
+        None,
+    ),
+    "matplotlib_axes": ("https://matplotlib.org/stable/api/axes_api.html#matplotlib.axes.Axes%s", None),
 }
 
 

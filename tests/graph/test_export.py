@@ -54,6 +54,7 @@ class TestPGraphExportImport:
     def test_start_end__export(self) -> None:
         graph = self.create_graph()
         node = EventsNode(processor=StartEndEvents(params=StartEndEventsParams(**{})))
+        node.description = "description"
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -66,7 +67,11 @@ class TestPGraphExportImport:
             "directed": True,
             "nodes": [
                 {"name": "SourceNode"},
-                {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
+                {
+                    "name": "EventsNode",
+                    "processor": {"values": {}, "name": "StartEndEvents"},
+                    "description": "description",
+                },
             ],
         } == export_data
 
@@ -128,7 +133,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "TruncatedEvents",
-                        "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
+                        "values": {"left_truncated_cutoff": (1.0, "h"), "right_truncated_cutoff": (1.0, "h")},
                     },
                 },
             ],
@@ -145,7 +150,7 @@ class TestPGraphExportImport:
                         "name": "EventsNode",
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
-                            "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
+                            "values": {"left_truncated_cutoff": (1.0, "h"), "right_truncated_cutoff": (1.0, "h")},
                             "name": "TruncatedEvents",
                         },
                     },
@@ -169,7 +174,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "TruncatedEvents",
-                        "values": {"left_truncated_cutoff": "1.0,h", "right_truncated_cutoff": "1.0,h"},
+                        "values": {"left_truncated_cutoff": (1.0, "h"), "right_truncated_cutoff": (1.0, "h")},
                     },
                 },
             ],
@@ -330,7 +335,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "DeleteUsersByPathLength",
-                        "values": {"cutoff": "1.5,m", "events_num": None},
+                        "values": {"cutoff": (1.5, "m"), "events_num": None},
                     },
                 },
             ],
@@ -348,7 +353,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "DeleteUsersByPathLength",
-                            "values": {"cutoff": "1.5,m"},
+                            "values": {"cutoff": (1.5, "m")},
                         },
                     },
                 ],
@@ -371,7 +376,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "DeleteUsersByPathLength",
-                        "values": {"cutoff": "1.5,m", "events_num": None},
+                        "values": {"cutoff": (1.5, "m"), "events_num": None},
                     },
                 },
             ],
@@ -396,7 +401,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "LostUsersEvents",
-                        "values": {"lost_users_list": None, "lost_cutoff": "4.0,h"},
+                        "values": {"lost_users_list": None, "lost_cutoff": (4.0, "h")},
                     },
                 },
             ],
@@ -414,7 +419,7 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "LostUsersEvents",
-                            "values": {"lost_users_list": None, "lost_cutoff": "4.0,h"},
+                            "values": {"lost_users_list": None, "lost_cutoff": (4.0, "h")},
                         },
                     },
                 ],
@@ -437,7 +442,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "LostUsersEvents",
-                        "values": {"lost_users_list": None, "lost_cutoff": "4.0,h"},
+                        "values": {"lost_users_list": None, "lost_cutoff": (4.0, "h")},
                     },
                 },
             ],
@@ -527,7 +532,7 @@ class TestPGraphExportImport:
                                 "df[df[event_col].isin(negative_target_events)].groupby"
                                 "(user_col)[time_col].idxmin()\n"
                                 "\n"
-                                "    return df.iloc[negative_events_index]\n",
+                                "    return df.iloc[negative_events_index]",
                             },
                         },
                     },
@@ -564,7 +569,7 @@ class TestPGraphExportImport:
                             "df[df[event_col].isin(negative_target_events)].groupby"
                             "(user_col)[time_col].idxmin()\n"
                             "\n"
-                            "    return df.iloc[negative_events_index]\n",
+                            "    return df.iloc[negative_events_index]",
                         },
                     },
                 },
@@ -728,7 +733,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "SplitSessions",
-                        "values": {"session_cutoff": "30.0,m", "session_col": "session_id", "mark_truncated": True},
+                        "values": {"session_cutoff": (30.0, "m"), "session_col": "session_id", "mark_truncated": True},
                     },
                 },
             ],
@@ -746,7 +751,11 @@ class TestPGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "SplitSessions",
-                            "values": {"session_cutoff": "30.0,m", "session_col": "session_id", "mark_truncated": True},
+                            "values": {
+                                "session_cutoff": (30.0, "m"),
+                                "session_col": "session_id",
+                                "mark_truncated": True,
+                            },
                         },
                     },
                 ],
@@ -769,7 +778,7 @@ class TestPGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "SplitSessions",
-                        "values": {"session_cutoff": "30.0,m", "session_col": "session_id", "mark_truncated": True},
+                        "values": {"session_cutoff": (30.0, "m"), "session_col": "session_id", "mark_truncated": True},
                     },
                 },
             ],

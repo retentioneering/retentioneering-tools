@@ -25,15 +25,9 @@ from retentioneering.tooling.typing.transition_graph import (
     Threshold,
     Weight,
 )
+from retentioneering.utils.dict import clear_dict
 
 RenameRule = Dict[str, Union[List[str], str]]
-
-
-def clear_dict(d: dict) -> dict:
-    for k, v in dict(d).items():
-        if v is None:
-            del d[k]
-    return d
 
 
 class TransitionGraph:

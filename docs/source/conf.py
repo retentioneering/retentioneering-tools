@@ -80,6 +80,10 @@ html_css_files = [
     "css/custom.css",
 ]
 
+# This is a solution for deeply nested lists while building the doc as a pdf-file.
+# https://stackoverflow.com/a/28454426
+latex_elements = {"preamble": "\\usepackage{enumitem}\\setlistdepth{99}"}
+
 
 extlinks = {
     "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units/%s", None),
@@ -122,6 +126,11 @@ extlinks = {
     "sklearn_gmm": ("https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html%s", None),
     "sklearn_tsne": ("https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html%s", None),
     "umap": ("https://umap-learn.readthedocs.io/en/latest/index.html%s", None),
+    "numpy_bins_link": (
+        "https://numpy.org/doc/stable/reference/generated/numpy.histogram_bin_edges.html#numpy.histogram_bin_edges%s",
+        None,
+    ),
+    "matplotlib_axes": ("https://matplotlib.org/stable/api/axes_api.html#matplotlib.axes.Axes%s", None),
 }
 
 

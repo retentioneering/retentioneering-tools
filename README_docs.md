@@ -153,3 +153,7 @@ fig.write_html("funnel_0.html")
                 allowfullscreen
             ></iframe>
 ```
+
+
+.. _anchor name:
+:ref:`Eventstream concept<anchor name>`

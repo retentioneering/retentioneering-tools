@@ -52,7 +52,7 @@ class NegativeTargetParams(ParamsModel):
     negative_target_events: List[str]
     func: Callable = _default_func
 
-    _widgets = {"func": ReteFunction, "negative_target_events": ListOfString}
+    _widgets = {"func": ReteFunction(), "negative_target_events": ListOfString()}
 
 
 class NegativeTarget(DataProcessor):

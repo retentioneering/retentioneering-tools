@@ -19,7 +19,7 @@ class NewUsersHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`src.data_processors_lib.new_users.NewUsersEvents`
+        :py:func:`retentioneering.data_processors_lib.new_users.NewUsersEvents`
         """
         # avoid circular import
         from retentioneering.data_processors_lib import NewUsersEvents, NewUsersParams

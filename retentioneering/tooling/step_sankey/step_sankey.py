@@ -6,12 +6,12 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
-from pydantic import ValidationError
 
 from retentioneering.eventstream.types import EventstreamType
+from retentioneering.tooling.mixins.ended_events import EndedEventsMixin
 
 
-class StepSankey:
+class StepSankey(EndedEventsMixin):
     """
     A class for the visualization of user paths in step-wise manner using Sankey diagram.
 
@@ -48,7 +48,7 @@ class StepSankey:
 
     See Also
     --------
-    :py:func:`src.eventstream.eventstream.Eventstream.step_sankey`
+    :py:func:`retentioneering.eventstream.eventstream.Eventstream.step_sankey`
 
     """
 
@@ -181,8 +181,8 @@ class StepSankey:
                 y_step = round(y_range / total_sum, 2)
                 # NOTE cumulative sum for understanding do we need use default step size or not
                 cumulative_sum = 0
-                # NOTE path_end action
-                ended_sum = df[(df["step"] == step) & (df[self.event_col] == "path_end")]["usr_cnt"].sum()
+                # NOTE ENDED action
+                ended_sum = df[(df["step"] == step) & (df[self.event_col] == "ENDED")]["usr_cnt"].sum()
                 last_point = self._round_up(ended_sum / total_sum, 0.05)
 
                 iterate_sum = 0
@@ -204,7 +204,7 @@ class StepSankey:
                     else:
 
                         # NOTE we found out that 70% of total sum is the best cap for doing this case
-                        if iterate_sum / total_sum > 0.2 and event != "path_end":
+                        if iterate_sum / total_sum > 0.2 and event != "ENDED":
 
                             # NOTE placing first point after the biggest one at the next position
                             # but inside [.1; .3] range
@@ -230,7 +230,7 @@ class StepSankey:
     def _pad_end_events(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         If the number of events in a user's path is less than self.max_steps, then the function pads the path with
-        multiplied path_end events. It is required for correct visualization of the trajectories which are
+        multiply ENDED events. It is required for correct visualization of the trajectories which are
         shorter than self.max_steps.
         """
         pad = (
@@ -240,11 +240,12 @@ class StepSankey:
             .assign(repeat_number=lambda df_: self.max_steps - df_[self.event_col])
         )
         repeats = pd.DataFrame({self.user_col: np.repeat(pad[self.user_col], pad["repeat_number"])})
-        padded_end_events = pd.merge(repeats, data[data[self.event_col] == "path_end"], on=self.user_col)
+        padded_end_events = pd.merge(repeats, data[data[self.event_col] == "ENDED"], on=self.user_col)
         result = pd.concat([data, padded_end_events]).sort_values([self.user_col, self.event_index_col])
         return result
 
     def _prepare_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        data = self._add_ended_events(data, self.__eventstream.schema)
         data = self._pad_end_events(data)
         # NOTE set new columns using declared functions
         data[self.time_col] = pd.to_datetime(data[self.time_col])
@@ -264,7 +265,7 @@ class StepSankey:
                 # assume that self.thresh must be of int type here
                 column_to_compare = "event_users"
 
-            events_to_keep = ["path_end"]
+            events_to_keep = ["ENDED"]
             if self.target is not None:
                 events_to_keep += self.target
 
@@ -457,8 +458,8 @@ class StepSankey:
             for n, s in enumerate(self.sorting):
                 data_grp_nodes.loc[data_grp_nodes[self.event_col] == s, "sorting"] = n
             data_grp_nodes.loc[:, "sorting"].fillna(100, inplace=True)
-        # NOTE placing path_end at the end
-        data_grp_nodes.loc[data_grp_nodes[self.event_col] == "path_end", "sorting"] = 101
+        # NOTE placing ENDED at the end
+        data_grp_nodes.loc[data_grp_nodes[self.event_col] == "ENDED", "sorting"] = 101
         # NOTE using custom ordering
         data_grp_nodes.loc[:, "sorting"] = data_grp_nodes.loc[:, "sorting"].astype(int)
 
@@ -470,8 +471,8 @@ class StepSankey:
                 data_grp_nodes.groupby(by=[self.event_col])["index"].transform("shift").fillna(100).astype(int)
             )
 
-            # NOTE placing path_end events at the end
-            data_grp_nodes.loc[data_grp_nodes[self.event_col] == "path_end", "sorting"] = 101
+            # NOTE placing ENDED events at the end
+            data_grp_nodes.loc[data_grp_nodes[self.event_col] == "ENDED", "sorting"] = 101
 
             # NOTE creating new indexes
             data_grp_nodes.sort_values(

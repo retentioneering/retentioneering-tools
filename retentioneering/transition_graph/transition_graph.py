@@ -14,8 +14,7 @@ from retentioneering.edgelist import Edgelist
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.nodelist import Nodelist
 from retentioneering.templates.transition_graph import TransitionGraphRenderer
-
-from .typing import (
+from retentioneering.tooling.typing.transition_graph import (
     GraphSettings,
     LayoutNode,
     NodeParams,
@@ -26,21 +25,18 @@ from .typing import (
     Threshold,
     Weight,
 )
+from retentioneering.utils.dict import clear_dict
 
 RenameRule = Dict[str, Union[List[str], str]]
-
-
-def clear_dict(d: dict) -> dict:
-    for k, v in dict(d).items():
-        if v is None:
-            del d[k]
-    return d
 
 
 class TransitionGraph:
     """
     Class that holds methods for graph visualization.
     """
+
+    _weights: MutableMapping[str, str] | None = None
+    _norm_type: NormType = None
 
     def __init__(
         self,
@@ -53,7 +49,9 @@ class TransitionGraph:
     ) -> None:
         from retentioneering.eventstream.eventstream import Eventstream
 
-        self.weights = weights if weights else {"edges": "edge_weight", "nodes": "events"}
+        self.nodelist_default_col = "events"
+        self.edgelist_default_col = "events"
+
         self.targets = targets if targets else {"positive": None, "negative": None, "source": None}
         self.thresholds = thresholds if thresholds else {"edges": {"events": 0.03}, "nodes": {"events": 0.03}}
         sm = ServerManager()
@@ -67,18 +65,19 @@ class TransitionGraph:
 
         self.eventstream: Eventstream = eventstream  # type: ignore
 
+        self.event_col = self.eventstream.schema.event_name
+        self.event_time_col = self.eventstream.schema.event_timestamp
+        self.user_col = self.eventstream.schema.user_id
+        self.id_col = self.eventstream.schema.event_id
+        self.custom_cols = [self.eventstream.schema.user_id] + self.eventstream.schema.custom_cols
+
+        self.weights = weights if weights else {"edges": "events", "nodes": "events"}
+
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
         self.layout: pd.DataFrame | None = None
         self.graph_settings = graph_settings
 
-        self.event_col = self.eventstream.schema.event_name
-        self.event_time_col = self.eventstream.schema.event_timestamp
-        self.user_col = self.eventstream.schema.user_id
-        self.id_col = self.eventstream.schema.event_id
-        self.custom_cols = self.eventstream.schema.custom_cols
-
-        self.nodelist_default_col = self.weights["nodes"]
         self.norm_type: NormType | None = norm_type
 
         self.nodelist: Nodelist = Nodelist(
@@ -90,7 +89,6 @@ class TransitionGraph:
 
         self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
 
-        self.edgelist_default_col = self.weights["edges"]
         self.edgelist: Edgelist = Edgelist(
             event_col=self.event_col,
             time_col=self.event_time_col,
@@ -103,6 +101,34 @@ class TransitionGraph:
         )
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
+
+    @property
+    def weights(self) -> MutableMapping[str, str] | None:
+        return self._weights
+
+    @weights.setter
+    def weights(self, value: MutableMapping[str, str] | None) -> None:
+        available_cols = self.__get_nodelist_cols()
+
+        if value and ("edges" not in value or "nodes" not in value):
+            raise ValueError("Allowed only: %s" % {"edges": "col_name", "nodes": "col_name"})
+
+        if value and (value["edges"] not in available_cols or value["nodes"] not in available_cols):
+            raise ValueError("Allowed only: %s" % {"edges": "col_name", "nodes": "col_name"})
+
+        self._weights = value
+
+    @property
+    def norm_type(self) -> NormType:  # type: ignore
+        return self._norm_type
+
+    @norm_type.setter
+    def norm_type(self, norm_type: NormType) -> None:  # type: ignore
+        allowed_norm_types: list[str | None] = [None, "full", "node"]
+        if norm_type in allowed_norm_types:
+            self._norm_type = norm_type
+        else:
+            raise ValueError("Norm type should be one of: %s" % allowed_norm_types)
 
     def _on_recalc_request(
         self, rename_rules: list[RenameRule]
@@ -271,7 +297,7 @@ class TransitionGraph:
 
     def __get_nodelist_cols(self) -> list[str]:
         default_col = self.nodelist_default_col
-        custom_cols = self.eventstream.schema.custom_cols
+        custom_cols = self.custom_cols
         return list([default_col]) + list(custom_cols)
 
     def _prepare_nodes(
@@ -330,7 +356,7 @@ class TransitionGraph:
         source_col = edgelist.columns[0]
         target_col = edgelist.columns[1]
         weight_col = edgelist.columns[2]
-        custom_cols: list[str] = self.eventstream.schema.custom_cols
+        custom_cols: list[str] = self.custom_cols
         edges: MutableSequence[PreparedLink] = []
 
         edgelist["weight_norm"] = edgelist[weight_col] / edgelist[weight_col].abs().max()
@@ -436,6 +462,9 @@ class TransitionGraph:
     def generateId(size: int = 6, chars: str = string.ascii_uppercase + string.digits) -> str:
         return "el" + "".join(random.choice(chars) for _ in range(size))
 
+    def _norm_type_to_json_value(self, norm_type: NormType) -> str:
+        return "none" if norm_type is None else str(norm_type).lower()
+
     def plot_graph(
         self,
         thresholds: dict[str, Threshold] | None = None,
@@ -523,16 +552,26 @@ class TransitionGraph:
             height=height,
         )
 
+        shown_nodes_col = self.weights["nodes"] if self.weights else "events"
+        shown_links_weight = self.weights["edges"] if self.weights else "events"
+        selected_nodes_col_for_thresholds = shown_nodes_col
+        selected_links_weight_for_thresholds = shown_links_weight
+
         init_graph_js = self.render.init(
             **dict(
                 server_id=self.server.pk,
                 env=self.env,
+                norm_type=self._norm_type_to_json_value(self.norm_type),
                 links=self._to_json(links),
                 nodes=self._to_json(nodes),
                 node_params=self._to_json(node_params),
                 layout_dump=1 if self.layout is not None else 0,
                 links_weights_names=cols,
                 node_cols_names=cols,
+                shown_nodes_col=shown_nodes_col,
+                shown_links_weight=shown_links_weight,
+                selected_nodes_col_for_thresholds=selected_nodes_col_for_thresholds,
+                selected_links_weight_for_thresholds=selected_links_weight_for_thresholds,
                 show_weights=self._get_option("show_weights", settings),
                 show_percents=self._get_option("show_percents", settings),
                 show_nodes_names=self._get_option("show_nodes_names", settings),
@@ -555,12 +594,17 @@ class TransitionGraph:
             **dict(
                 server_id=self.server.pk,
                 env=self.env,
+                norm_type=self._norm_type_to_json_value(self.norm_type),
                 node_params=self._to_json(node_params),
                 links="<%= links %>",
                 nodes="<%= nodes %>",
                 layout_dump=1,
                 links_weights_names=cols,
                 node_cols_names=cols,
+                shown_nodes_col="<%= shown_nodes_col %>",
+                shown_links_weight="<%= shown_links_weight %>",
+                selected_nodes_col_for_thresholds="<%= selected_nodes_col_for_thresholds %>",
+                selected_links_weight_for_thresholds="<%= selected_links_weight_for_thresholds %>",
                 show_weights="<%= show_weights %>",
                 show_percents="<%= show_percents %>",
                 show_nodes_names="<%= show_nodes_names %>",
@@ -605,21 +649,3 @@ class TransitionGraph:
         if name in settings:
             return self._to_json(settings[name])
         return "undefined"
-
-    def get_adjacency(self, weights: list[str] | None, norm_type: NormType) -> pd.DataFrame:
-        """
-        Parameters
-        ----------
-        weights : list of str or None
-        norm_type : {"full", "node", None}
-
-        Returns
-        -------
-        pd.DataFrame
-            Transition matrix
-        """
-        self.edgelist.calculate_edgelist(data=self.eventstream.to_dataframe(), norm_type=norm_type, custom_cols=weights)
-        edgelist: pd.DataFrame = self.edgelist.edgelist_df
-        graph = nx.DiGraph()
-        graph.add_weighted_edges_from(edgelist.values)
-        return nx.to_pandas_adjacency(G=graph)

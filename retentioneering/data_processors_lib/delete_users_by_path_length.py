@@ -20,7 +20,7 @@ class DeleteUsersByPathLengthParams(ParamsModel):
     cutoff: Optional[Tuple[float, DATETIME_UNITS]]
 
     _widgets = {
-        "cutoff": ReteTimeWidget,
+        "cutoff": ReteTimeWidget(),
     }
 
 

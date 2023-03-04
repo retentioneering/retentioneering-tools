@@ -19,6 +19,10 @@ class ReteRegistry:
             raise RegistryValidationError("%s <%s> already exists" % (self.objects, key))
 
     @classmethod
+    def remove(cls: Type[ReteRegistry], value: Any) -> None:
+        cls.REGISTRY.remove(value)
+
+    @classmethod
     def get_registry(cls: Type[ReteRegistry]) -> list[dict[str, Any]]:
         return cls.REGISTRY
 

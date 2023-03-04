@@ -12,12 +12,14 @@ from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
 from retentioneering.eventstream.types import (
     EventstreamType,
+    RawDataCustomColSchema,
     RawDataSchemaType,
     Relation,
 )
-from retentioneering.graph import PGraph, SourceNode
+from retentioneering.graph import PGraph
 from retentioneering.tooling.clusters import Clusters
 from retentioneering.tooling.cohorts import Cohorts
+from retentioneering.tooling.constants import BINS_ESTIMATORS
 from retentioneering.tooling.describe import Describe
 from retentioneering.tooling.describe_events import DescribeEvents
 from retentioneering.tooling.event_timestamp_hist import EventTimestampHist
@@ -25,10 +27,15 @@ from retentioneering.tooling.funnel import Funnel
 from retentioneering.tooling.stattests import TEST_NAMES, StatTests
 from retentioneering.tooling.step_matrix import StepMatrix
 from retentioneering.tooling.step_sankey import StepSankey
-from retentioneering.tooling.timedelta_hist import AGGREGATION_NAMES, TimedeltaHist
+from retentioneering.tooling.timedelta_hist import (
+    AGGREGATION_NAMES,
+    EVENTSTREAM_GLOBAL_EVENTS,
+    TimedeltaHist,
+)
+from retentioneering.tooling.transition_matrix import TransitionMatrix
+from retentioneering.tooling.typing.transition_graph import NormType, Threshold
 from retentioneering.tooling.user_lifetime_hist import UserLifetimeHist
-from retentioneering.transition_graph import NormType, TransitionGraph
-from retentioneering.transition_graph.typing import Threshold
+from retentioneering.transition_graph import TransitionGraph
 from retentioneering.utils import get_merged_col
 from retentioneering.utils.list import find_index
 
@@ -112,12 +119,12 @@ class Eventstream(
     raw_data_schema : RawDataSchema, optional
         Should be specified as an instance of class ``RawDataSchema``:
 
-        - If ``raw_data`` column names are different from default :py:func:`src.eventstream.schema.RawDataSchema`.
+        - If ``raw_data`` column names are different from default :py:func:`retentioneering.eventstream.schema.RawDataSchema`.
         - If there is at least one ``custom_col`` in ``raw_data``.
 
     schema : EventstreamSchema, optional
         Schema of created ``eventstream``.
-        See default schema% :py:func:`src.eventstream.schema.EventstreamSchema`.
+        See default schema% :py:func:`retentioneering.eventstream.schema.EventstreamSchema`.
     prepare : bool, default True
 
         - If ``True`` input data will be transformed in the following way:
@@ -152,11 +159,18 @@ class Eventstream(
     __stattests: StatTests | None = None
     __transition_graph: TransitionGraph | None = None
     __p_graph: PGraph | None = None
+    __transition_matrix: TransitionMatrix | None = None
+    __timedelta_hist: TimedeltaHist | None = None
+    __user_lifetime_hist: UserLifetimeHist | None = None
+    __event_timestamp_hist: EventTimestampHist | None = None
 
     def __init__(
         self,
         raw_data: pd.DataFrame | pd.Series[Any],
-        raw_data_schema: RawDataSchemaType | None = None,
+        raw_data_schema: RawDataSchema
+        | RawDataSchemaType
+        | dict[str, str | list[RawDataCustomColSchema]]
+        | None = None,
         schema: EventstreamSchema | None = None,
         prepare: bool = True,
         index_order: Optional[IndexOrder] = None,
@@ -164,6 +178,7 @@ class Eventstream(
         user_sample_size: Optional[int | float] = None,
         user_sample_seed: Optional[int] = None,
     ) -> None:
+
         self.__clusters = None
         self.__funnel = None
         self.schema = schema if schema else EventstreamSchema()
@@ -172,6 +187,8 @@ class Eventstream(
             raw_data_schema = RawDataSchema()
             if "event_type" in raw_data.columns:
                 raw_data_schema.event_type = "event_type"
+        elif isinstance(raw_data_schema, dict):
+            raw_data_schema = RawDataSchema(**raw_data_schema)  # type: ignore
         self.__raw_data_schema = raw_data_schema
 
         if user_sample_size is not None:
@@ -574,17 +591,16 @@ class Eventstream(
         self,
         stages: list[str],
         stage_names: list[str] | None = None,
-        funnel_type: Literal["open", "closed"] = "open",
+        funnel_type: Literal["open", "closed", "hybrid"] = "closed",
         segments: Collection[Collection[int]] | None = None,
         segment_names: list[str] | None = None,
-        sequence: bool = False,
         show_plot: bool = True,
     ) -> Funnel:
 
         """
         Show a visualization of the user sequential events represented as a funnel.
 
-        See parameters description :py:func:`src.tooling.funnel.funnel`
+        See parameters description :py:func:`retentioneering.tooling.funnel.funnel`
 
         Returns
         -------
@@ -599,7 +615,6 @@ class Eventstream(
             funnel_type=funnel_type,
             segments=segments,
             segment_names=segment_names,
-            sequence=sequence,
         )
         self.__funnel.fit()
         if show_plot:
@@ -611,7 +626,7 @@ class Eventstream(
     def clusters(self) -> Clusters:
         """
         Return a blank (not fitted) instance of ``Clusters`` class to be used for cluster analysis.
-        See :py:func:`src.tooling.clusters.clusters`
+        See :py:func:`retentioneering.tooling.clusters.clusters`
 
         Returns
         -------
@@ -637,7 +652,7 @@ class Eventstream(
         """
         Show a heatmap visualization of the step matrix.
 
-        See parameters description :py:func:`src.tooling.step_matrix.step_matrix`
+        See parameters description :py:func:`retentioneering.tooling.step_matrix.step_matrix`
 
         Returns
         -------
@@ -678,7 +693,7 @@ class Eventstream(
         """
         Show a Sankey diagram visualizing the user paths in step-wise manner.
 
-        See parameters description :py:func:`src.tooling.step_sankey.step_sankey`
+        See parameters description :py:func:`retentioneering.tooling.step_sankey.step_sankey`
 
         Returns
         -------
@@ -718,7 +733,7 @@ class Eventstream(
         """
         Show a heatmap visualization of the user appearance grouped by cohorts.
 
-        See parameters description :py:func:`src.tooling.cohorts.cohorts`
+        See parameters description :py:func:`retentioneering.tooling.cohorts.cohorts`
 
         Returns
         -------
@@ -752,7 +767,7 @@ class Eventstream(
         """
         Determine the statistical difference between the metric values in two user groups.
 
-        See parameters description :py:func:`src.tooling.stattests.stattests`
+        See parameters description :py:func:`retentioneering.tooling.stattests.stattests`
 
         Returns
         -------
@@ -768,15 +783,17 @@ class Eventstream(
 
     def timedelta_hist(
         self,
-        event_pair: Optional[Tuple[str, str] | List[str]] = None,
+        raw_events_only: bool = False,
+        event_pair: Optional[list[str | Literal[EVENTSTREAM_GLOBAL_EVENTS]]] = None,
         only_adjacent_event_pairs: bool = True,
-        weight_col: Optional[str] = None,
+        weight_col: str = "user_id",
         aggregation: Optional[AGGREGATION_NAMES] = None,
         timedelta_unit: DATETIME_UNITS = "s",
-        log_scale: bool = False,
+        log_scale: bool | tuple[bool, bool] | None = None,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int = 20,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
+        figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> TimedeltaHist:
         """
@@ -784,15 +801,17 @@ class Eventstream(
         distribution types, such as distribution of time for adjacent consecutive events, or
         for a pair of pre-defined events, or median transition time from event to event per user/session.
 
-        See parameters description :py:func:`src.tooling.timedelta_hist.timedelta_hist`
+        See parameters description :py:func:`retentioneering.tooling.timedelta_hist.timedelta_hist`
 
         Returns
         -------
         TimedeltaHist
-            A ``TimedeltaHist`` instance fitted to the given parameters.
+            A ``TimedeltaHist`` class instance fitted with given parameters.
+
         """
-        timedelta_hist = TimedeltaHist(
+        self.__timedelta_hist = TimedeltaHist(
             eventstream=self,
+            raw_events_only=raw_events_only,
             event_pair=event_pair,
             only_adjacent_event_pairs=only_adjacent_event_pairs,
             aggregation=aggregation,
@@ -802,98 +821,178 @@ class Eventstream(
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
+            figsize=figsize,
         )
+
+        self.__timedelta_hist.fit()
         if show_plot:
-            timedelta_hist.plot()
-        return timedelta_hist
+            self.__timedelta_hist.plot()
+
+        return self.__timedelta_hist
 
     def user_lifetime_hist(
         self,
         timedelta_unit: DATETIME_UNITS = "s",
-        log_scale: bool = False,
+        log_scale: bool | tuple[bool, bool] | None = None,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int = 20,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
+        figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> UserLifetimeHist:
         """
         Plot the distribution of user lifetimes. A ``users' lifetime`` is the timedelta between the first and the last
         events of the user. Can be useful for finding suitable parameters of various data processors, such as
-        :py:func:`DeleteUsersByPathLength<src.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>`
+        :py:func:`DeleteUsersByPathLength<retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>`
         or
-        :py:func:`TruncatedEvents<src.data_processors_lib.truncated_events.TruncatedEvents>`.
+        :py:func:`TruncatedEvents<retentioneering.data_processors_lib.truncated_events.TruncatedEvents>`.
 
-        See parameters description :py:func:`src.tooling.user_lifetime_hist.user_lifetime_hist`
+        See parameters description :py:func:`retentioneering.tooling.user_lifetime_hist.user_lifetime_hist`
 
         Returns
         -------
         UserLifetimeHist
-            A ``UserLifetimeHist`` class instance fitted to the given parameters.
+            A ``UserLifetimeHist`` class instance with given parameters.
         """
-        user_lifetime_hist = UserLifetimeHist(
+        self.__user_lifetime_hist = UserLifetimeHist(
             eventstream=self,
             timedelta_unit=timedelta_unit,
             log_scale=log_scale,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
+            figsize=figsize,
         )
+        self.__user_lifetime_hist.fit()
         if show_plot:
-            user_lifetime_hist.plot()
-        return user_lifetime_hist
+            self.__user_lifetime_hist.plot()
+        return self.__user_lifetime_hist
 
     def event_timestamp_hist(
         self,
-        event_list: Optional[List[str] | str] = "all",
+        event_list: list[str] | None = None,
+        raw_events_only: bool = False,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
-        bins: int = 20,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
+        figsize: tuple[float, float] = (12.0, 7.0),
         show_plot: bool = True,
     ) -> EventTimestampHist:
         """
         Plot the distribution of events over time. Can be useful for detecting time-based anomalies, and visualising
         general timespan of the eventstream.
 
-        See parameters description :py:func:`src.tooling.event_timestamp_hist.event_timestamp_hist`
+        See parameters description :py:func:`retentioneering.tooling.event_timestamp_hist.event_timestamp_hist`
 
         Returns
         -------
         EventTimestampHist
-            A ``EventTimestampHist`` class instance fitted to the given parameters.
+            A ``EventTimestampHist`` class instance with given parameters.
         """
-        event_timestamp_hist = EventTimestampHist(
+        self.__event_timestamp_hist = EventTimestampHist(
             eventstream=self,
             event_list=event_list,
+            raw_events_only=raw_events_only,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
+            figsize=figsize,
         )
+
+        self.__event_timestamp_hist.fit()
         if show_plot:
-            event_timestamp_hist.plot()
-        return event_timestamp_hist
+            self.__event_timestamp_hist.plot()
+        return self.__event_timestamp_hist
 
-    def describe(self, session_col: Optional[str] = "session_id") -> None:
+    def describe(self, session_col: str = "session_id", raw_events_only: bool = False) -> pd.DataFrame:
         """
-        Display general eventstream information. If ``session_col`` is present in eventstream columns, also
-        output session statistics, assuming ``session_col`` is the session identifier column.
+        Display general eventstream information. If ``session_col`` is presented in eventstream, also
+        output session statistics.
 
-        See parameters description :py:func:`src.tooling.describe.describe`
+        Parameters
+        ----------
+        session_col : str, default 'session_id'
+            Specify name of the session column. If the column is presented in the eventstream,
+            session statistics will be added to the output.
+
+        raw_events_only : bool, default False
+            If ``True`` - statistics will be shown only for raw events.
+            If ``False`` - for all events presented in your data.
+
+        Notes
+        -----
+        - All ``float`` values are rounded to 2.
+        - All ``datetime`` values are rounded to seconds.
+
+        Returns
+        -------
+        pd.DataFrame
+            A dataframe containing descriptive statistics on the eventstream.
+
         """
-        describer = Describe(eventstream=self, session_col=session_col)
-        describer.display()
+        describer = Describe(eventstream=self, session_col=session_col, raw_events_only=raw_events_only)
+        return describer._describe()
 
     def describe_events(
-        self, session_col: Optional[str] = "session_id", event_list: Optional[List[str] | str] = "all"
-    ) -> None:
+        self, session_col: str = "session_id", raw_events_only: bool = False, event_list: list[str] | None = None
+    ) -> pd.DataFrame:
         """
-        Display general information on the eventstream events.
-        If ``session_col`` is present in eventstream columns, also
-        output session statistics, assuming ``session_col`` is the session identifier column.
+        Display general information on the eventstream events. If ``session_col`` is presented in eventstream, also
+        output session statistics.
 
-        See parameters description :py:func:`src.tooling.describe_events.describe_events`
+        Parameters
+        ----------
+        session_col : str, default 'session_id'
+            Specify name of the session column. If the column is presented in the eventstream,
+            output session statistics.
+
+        raw_events_only : bool, default False
+            If ``True`` - statistics will be shown only for raw events.
+            If ``False`` - for all events presented in your data.
+
+        event_list : list of str, optional
+            Specify the events to be displayed.
+
+        Returns
+        -------
+        pd.DataFrame
+            **Eventstream statistics**:
+
+            - | The following metrics are calculated for each event represented in the eventstream
+              | (or the narrowed eventstream if parameters ``event_list`` or ``raw_events_only`` are used).
+              | Let all_events, all_users, all_sessions be the number of all events, users,
+              | and sessions represented in the eventstream. Then:
+
+                - *number_of_occurrences* - the number of occurrences of a particular event in the eventstream
+                - *unique_users* - the number of unique users who experienced a particular event
+                - *unique_sessions* - the number of unique sessions with each event
+                - *number_of_occurrences_shared* - number_of_occurrences / all_events (raw_events_only, if this parameter = ``True``)
+                - *unique_users_shared* - unique_users / all_users
+                - *unique_sessions_shared* - unique_sessions / all_sessions
+
+            - | **time_to_FO_user_wise** category - timedelta between ``path_start``
+              | and the first occurrence (FO) of a specified event in each user path.
+            - | **steps_to_FO_user_wise** category - the number of steps (events) from
+              | ``path_start`` to the first occurrence (FO) of a specified event in each user path.
+              | If ``raw_events_only=True`` only raw events will be counted.
+            - | **time_to_FO_session_wise** category - timedelta  between ``session_start``
+              | and the first occurrence (FO) of a specified event in each session.
+            - | **steps_to_FO_session_wise** category - the number of steps (events) from
+              | ``session_start`` to the first occurrence (FO) of a specified event in each session.
+              | If ``raw_events_only=True`` only raw events will be counted.
+
+            Agg functions for each ``first_occurrence*`` category are: mean, std, median, min, max
+
+        Notes
+        -----
+        - All ``float`` values rounded to 2.
+        - All ``datetime`` values are rounded to seconds.
+
         """
-        describer = DescribeEvents(eventstream=self, session_col=session_col, event_list=event_list)
-        describer.display()
+        describer = DescribeEvents(
+            eventstream=self, session_col=session_col, event_list=event_list, raw_events_only=raw_events_only
+        )
+        return describer._describe()
 
     def transition_graph(
         self,
@@ -906,7 +1005,7 @@ class Eventstream(
     ) -> TransitionGraph:
         """
         Create interactive graph visualization with callback to input ``eventstream``.
-        See parameters description :py:func:`src.transition_graph.transition_graph`
+        See parameters description :py:func:`retentioneering.transition_graph.transition_graph`
 
         Returns
         -------
@@ -932,7 +1031,7 @@ class Eventstream(
         self.__p_graph.display()
         return self.__p_graph
 
-    def transition_adjacency(self, weights: list[str] | None = None, norm_type: NormType = None) -> pd.DataFrame:
+    def transition_matrix(self, weights: list[str] | None = None, norm_type: NormType = None) -> TransitionMatrix:
         """
         Create edge graph in the matrix format. Row indexes are events, from which the transition occurred,
         and columns are events, to which the transition occurred.
@@ -949,11 +1048,9 @@ class Eventstream(
         pd.DataFrame
 
         """
-        if self.__transition_graph is None:
-            self.__transition_graph = TransitionGraph(
+        if self.__transition_matrix is None:
+            self.__transition_matrix = TransitionMatrix(
                 eventstream=self,
-                graph_settings={},  # type: ignore
-                norm_type=norm_type,
             )
-        adjacency = self.__transition_graph.get_adjacency(weights=weights, norm_type=norm_type)
-        return adjacency
+        self.__transition_matrix.display(weights=weights, norm_type=norm_type)
+        return self.__transition_matrix

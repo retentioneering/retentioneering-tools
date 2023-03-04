@@ -1,12 +1,14 @@
 Stattests tooling user guide
-----------------------------
+============================
 
-`Google Colab <https://colab.research.google.com/drive/1u0s-aMMnYrufmSTvLFtA1JS7nYBwfqwx?usp=share_link>`_
+The following user guide is also available as
+`Google Colab <https://colab.research.google.com/drive/1u0s-aMMnYrufmSTvLFtA1JS7nYBwfqwx?usp=share_link>`_.
 
-This notebook is a user guide on eventstream *stattests* - a simple
-utility for two-group user hypothesis testing.
+``Stattests`` is a simple utility for two-group user hypothesis testing.
 
-We will be using the simple-onlineshop dataset as a sample clickstream:
+Here we use ``simple_shop`` dataset, which has already converted to ``Eventstream``.
+If you want to know more about ``Eventstream`` and how to use it, please study
+:doc:`this guide<eventstream>`.
 
 
 Loading data
@@ -86,13 +88,13 @@ Loading data
       </tbody>
     </table>
 
-General stattests usage
+General Stattests usage
 -----------------------
 
 To use the stattests method, we specify ``groups`` parameter in the
 method. This parameter will contain two lists of user ids, each defining
 a group of users selected for comparison. For our first example, we will
-split users 50/50 based on index:
+split users 50/50 based on the index:
 
 .. code-block:: python
 
@@ -122,10 +124,11 @@ split users 50/50 based on index:
 
     group_names = ('random_group_1', 'random_group_2')
 
-We also need to define a user path function - this needs to be the
-function of interest, i.e. that the difference of which we are trying to
-detect between the user groups. Let us say we are interested in the rate
-of “cart” events relative to all other events of a user:
+We also need to define a ``func`` parameter - this needs to be the
+function of interest, i.e. that the difference of which we are trying to
+detect between the user groups.
+
+Let us say we are interested in number of ``cart`` events to all other user events ratio:
 
 .. code-block:: python
 
@@ -144,8 +147,8 @@ of “cart” events relative to all other events of a user:
 
 Let us run the test. There is no need to specify a test hypothesis type
 - where applicable, the method computes the statistics for both
-one-sided hypothesis tests. stattests outputs the statistic that could
-be significant, indicating which of the groups could be “greater”:
+one-sided hypothesis tests. ``Stattests`` outputs the statistic that could
+be significant, indicating which of the groups could be *greater*:
 
 .. code-block:: python
 
@@ -165,11 +168,14 @@ be significant, indicating which of the groups could be “greater”:
     power of the test: 6.40%
 
 The method outputs the test P-value, along with group statistics and an
-estimate of test power(which is a heuristic designed for t-test). As
+estimate of test power (which is a heuristic designed for t-test). As
 expected, we see that the P-value is too high to register a statistical
 difference.
 
-Changing the “alpha” parameter will influence estimated power of the
+Test power
+~~~~~~~~~~
+
+Changing the ``alpha`` parameter will influence estimated power of the
 test. For example, if we lower if to 0.01(from the default 0.05), we
 would expect the power to also drop:
 
@@ -184,19 +190,25 @@ would expect the power to also drop:
     'random_group_1' is greater than 'random_group_2' with P-value: 0.34855
     power of the test: 1.38%
 
+
+Categorical variables
+~~~~~~~~~~~~~~~~~~~~~
+
 We might be interested in testing for difference in a categorical
 variable - for instance, in an indicator variable that indicates whether
-a user entered “cart” state zero, one, two or more than two times. In
+a user entered ``cart`` state zero, one, two or more than two times. In
 such cases, a contingency table independence test could be suitable.
 
 Let us check if the distribution of the mentioned variable differs
-between users who checked product 1 exclusively and useers who checked
-product 2 exclusively:
+between users who checked:
+
+- ``product1`` exclusively
+- ``product2`` exclusively:
 
 .. code-block:: python
 
-    user_group_1 = data[data['event']=='product1']['user_id'].unique()
-    user_group_2 = data[data['event']=='product2']['user_id'].unique()
+    user_group_1 = data[data['event'] == 'product1']['user_id'].unique()
+    user_group_2 = data[data['event'] == 'product2']['user_id'].unique()
 
     user_group_1 = user_group_1[~np.isin(user_group_1, user_group_2)]
     user_group_2 = user_group_2[~np.isin(user_group_2, user_group_1)]
@@ -204,13 +216,13 @@ product 2 exclusively:
 .. code-block:: python
 
     def cart_count(df):
-        cart_count = df[df['event']=='cart'].shape[0]
+        cart_count = df[df['event'] == 'cart'].shape[0]
         if cart_count < 3:
             return str(cart_count)
         return '>=3'
 
     some_user = user_groups[0][378]
-    cart_count(data[data['user_id']==some_user])
+    cart_count(data[data['user_id'] == some_user])
 
 .. parsed-literal::
 
@@ -219,7 +231,7 @@ product 2 exclusively:
 .. code-block:: python
 
     some_user = user_groups[0][379]
-    cart_count(data[data['user_id']==some_user])
+    cart_count(data[data['user_id'] == some_user])
 
 .. parsed-literal::
 
@@ -234,6 +246,14 @@ product 2 exclusively:
         test='chi2_contingency'
     )
 
-In this case, the output contains only the group names, group sizes and
+.. parsed-literal::
+
+    product_1_group (size): n = 580
+    product_2_group (size): n = 1430
+    Group difference test with P-value: 0.00000
+
+In this case, the output contains only the ``group_names``, group sizes and
 the resulting test statistics. We can see that the variable of interest
 indeed differs between the exclusive users of two products.
+
+To learn more about tests calculation see

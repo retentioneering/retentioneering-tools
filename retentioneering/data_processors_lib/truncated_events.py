@@ -22,8 +22,8 @@ class TruncatedEventsParams(ParamsModel):
     right_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
 
     _widgets = {
-        "left_truncated_cutoff": ReteTimeWidget,
-        "right_truncated_cutoff": ReteTimeWidget,
+        "left_truncated_cutoff": ReteTimeWidget(),
+        "right_truncated_cutoff": ReteTimeWidget(),
     }
 
 
@@ -104,11 +104,9 @@ class TruncatedEvents(DataProcessor):
             timedelta = (userpath["end"] - events[time_col].min()) / np.timedelta64(
                 1, left_truncated_unit  # type: ignore
             )
-            left_truncated_events = (
-                userpath[timedelta < left_truncated_cutoff][["start"]]
-                .rename(columns={"start": time_col})  # type: ignore
-                .reset_index()
-            )
+            truncated_users_index = userpath[timedelta < left_truncated_cutoff].index
+            left_truncated_events = events.groupby(user_col).first().reindex(truncated_users_index).reset_index()
+
             left_truncated_events[event_col] = "truncated_left"
             left_truncated_events[type_col] = "truncated_left"
             left_truncated_events["ref"] = None
@@ -118,11 +116,9 @@ class TruncatedEvents(DataProcessor):
             timedelta = (events[time_col].max() - userpath["start"]) / np.timedelta64(
                 1, right_truncated_unit  # type: ignore
             )
-            right_truncated_events = (
-                userpath[timedelta < right_truncated_cutoff][["end"]]
-                .rename(columns={"end": time_col})  # type: ignore
-                .reset_index()
-            )
+            truncated_users_index = userpath[timedelta < right_truncated_cutoff].index
+            right_truncated_events = events.groupby(user_col).last().reindex(truncated_users_index).reset_index()
+
             right_truncated_events[event_col] = "truncated_right"
             right_truncated_events[type_col] = "truncated_right"
             right_truncated_events["ref"] = None

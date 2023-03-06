@@ -15,7 +15,7 @@ def el_simple_corr():
             ["C", "D", 3],
             ["D", "C", 2],
         ],
-        columns=pd.Index(["event", "next_event", "event"]),
+        columns=pd.Index(["event", "next_event", "event_id"]),
     )
     return correct_res
 
@@ -33,7 +33,7 @@ def el_simple_node_corr():
             ["C", "D", 0.5],
             ["D", "C", 1],
         ],
-        columns=pd.Index(["event_col", "next_event_col", "event"]),
+        columns=pd.Index(["event", "next_event", "event_id"]),
     )
     return correct_res
 
@@ -51,7 +51,7 @@ def el_simple_full_corr():
             ["C", "D", 0.2142],
             ["D", "C", 0.1428],
         ],
-        columns=pd.Index(["event_col", "next_event_col", "event"]),
+        columns=pd.Index(["event", "next_event", "event_id"]),
     )
     return correct_res
 

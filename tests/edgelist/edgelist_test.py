@@ -3,6 +3,8 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from retentioneering.eventstream import RawDataSchema
+from retentioneering.eventstream import Eventstream
 from retentioneering.edgelist import Edgelist
 from tests.edgelist.fixtures.edgelist_corr import (
     el_session_corr,
@@ -27,10 +29,12 @@ class TestEdgelist:
     def test_edgelist__simple(
         self, test_df: pd.DataFrame, nl_simple_corr: pd.DataFrame, el_simple_corr: pd.DataFrame
     ) -> None:
-        nl = nl_simple_corr
+        stream = Eventstream(test_df)
         correct = el_simple_corr
-        el = Edgelist(event_col="event", time_col="timestamp", weight_col="event", index_col="user_id", nodelist=nl)
-        result = el.calculate_edgelist(test_df)
+        el = Edgelist(eventstream=stream)
+        result = el.calculate_edgelist(
+            weight_col="event_id"
+        )
         assert pd.testing.assert_frame_equal(result, correct) is None
 
 
@@ -38,79 +42,90 @@ class TestVerifyEdgelist:
     def test_edgelist__session_simple(
         self, test_df: pd.DataFrame, nl_session_corr: pd.DataFrame, el_session_corr: pd.DataFrame
     ) -> None:
+        raw_data_schema = RawDataSchema(
+            user_id='user_id',
+            event_name='event',
+            event_timestamp='timestamp',
+            custom_cols=[{'custom_col': 'session_id', 'raw_data_col': 'session_id'}]
+        )
+        stream = Eventstream(test_df, raw_data_schema=raw_data_schema)
         nl = nl_session_corr
         correct = el_session_corr
         el = Edgelist(
-            event_col="event", time_col="timestamp", weight_col="session_id", index_col="user_id", nodelist=nl
+            eventstream=stream
         )
-        result = el.calculate_edgelist(test_df)
+        result = el.calculate_edgelist(weight_col="session_id")
         assert pd.testing.assert_frame_equal(result, correct) is None
 
     def test_edgelist__simple_node(
         self, test_df: pd.DataFrame, nl_simple_corr: pd.DataFrame, el_simple_node_corr: pd.DataFrame
     ) -> None:
-        test_df = test_df.rename(columns={"event": "event_col"})
+        stream = Eventstream(test_df)
         nl = nl_simple_corr
         correct = el_simple_node_corr
-        el = Edgelist(event_col="event_col", time_col="timestamp", weight_col="event", index_col="user_id", nodelist=nl)
-        result = el.calculate_edgelist(test_df, norm_type="node")
+        el = Edgelist(eventstream=stream)
+        result = el.calculate_edgelist(norm_type="node", weight_col="event_id")
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_edgelist__simple_full(
         self, test_df: pd.DataFrame, nl_simple_corr: pd.DataFrame, el_simple_full_corr: pd.DataFrame
     ) -> None:
-        test_df = test_df.rename(columns={"event": "event_col"})
+        stream = Eventstream(test_df)
         nl = nl_simple_corr
         correct = el_simple_full_corr
-        el = Edgelist(event_col="event_col", time_col="timestamp", weight_col="event", index_col="user_id", nodelist=nl)
-        result = el.calculate_edgelist(test_df, norm_type="full")
+        el = Edgelist(eventstream=stream)
+        result = el.calculate_edgelist(norm_type="full", weight_col="event_id")
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_edgelist__user_simple(
         self, test_df: pd.DataFrame, nl_user_corr: pd.DataFrame, el_user__corr: pd.DataFrame
     ) -> None:
+        stream = Eventstream(test_df)
+
         nl = nl_user_corr
         correct = el_user__corr
-        with pytest.raises(ValueError):
-            el = Edgelist(
-                event_col="event", time_col="timestamp", weight_col="user_id", index_col="user_id", nodelist=nl
-            )
-            result = el.calculate_edgelist(test_df)
-            assert pd.testing.assert_frame_equal(result, correct) is None
+        el = Edgelist(
+            eventstream=stream
+        )
+        result = el.calculate_edgelist(weight_col="user_id")
+        assert pd.testing.assert_frame_equal(result, correct) is None
 
     def test_edgelist__user_node(
         self, test_df: pd.DataFrame, nl_user_corr: pd.DataFrame, el_user_node_corr: pd.DataFrame
     ) -> None:
         nl = nl_user_corr
         correct = el_user_node_corr
-        with pytest.raises(ValueError):
-            el = Edgelist(
-                event_col="event", time_col="timestamp", weight_col="user_id", index_col="user_id", nodelist=nl
-            )
-            result = el.calculate_edgelist(test_df, norm_type="node")
-            assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
+        stream = Eventstream(test_df)
+        el = Edgelist(
+            eventstream=stream
+        )
+        result = el.calculate_edgelist(weight_col="user_id", norm_type="node")
+        assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_edgelist__user_full(
         self, test_df: pd.DataFrame, nl_user_corr: pd.DataFrame, el_user_full_corr: pd.DataFrame
     ) -> None:
+        stream = Eventstream(test_df)
         nl = nl_user_corr
         correct = el_user_full_corr
-        with pytest.raises(ValueError):
-            el = Edgelist(
-                event_col="event", time_col="timestamp", weight_col="user_id", index_col="user_id", nodelist=nl
-            )
-            result = el.calculate_edgelist(test_df, norm_type="full")
-            assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
+        el = Edgelist(eventstream=stream)
+        result = el.calculate_edgelist(weight_col="user_id", norm_type="full")
+        assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_edgelist__session_node(
         self, test_df: pd.DataFrame, nl_session_corr: pd.DataFrame, el_session_node_corr: pd.DataFrame
     ) -> None:
         nl = nl_session_corr
         correct = el_session_node_corr
-        el = Edgelist(
-            event_col="event", time_col="timestamp", weight_col="session_id", index_col="user_id", nodelist=nl
+        raw_data_schema = RawDataSchema(
+            user_id='user_id',
+            event_name='event',
+            event_timestamp='timestamp',
+            custom_cols=[{'custom_col': 'session_id', 'raw_data_col': 'session_id'}]
         )
-        result = el.calculate_edgelist(test_df, norm_type="node")
+        stream = Eventstream(test_df, raw_data_schema=raw_data_schema)
+        el = Edgelist(eventstream=stream)
+        result = el.calculate_edgelist(weight_col="session_id", norm_type="node")
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_edgelist__session_full(
@@ -118,8 +133,13 @@ class TestVerifyEdgelist:
     ) -> None:
         nl = nl_session_corr
         correct = el_session_full_corr
-        el = Edgelist(
-            event_col="event", time_col="timestamp", weight_col="session_id", index_col="user_id", nodelist=nl
+        raw_data_schema = RawDataSchema(
+            user_id='user_id',
+            event_name='event',
+            event_timestamp='timestamp',
+            custom_cols=[{'custom_col': 'session_id', 'raw_data_col': 'session_id'}]
         )
-        result = el.calculate_edgelist(test_df, norm_type="full")
+        stream = Eventstream(test_df, raw_data_schema=raw_data_schema)
+        el = Edgelist(eventstream=stream)
+        result = el.calculate_edgelist(weight_col="session_id", norm_type="full")
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None

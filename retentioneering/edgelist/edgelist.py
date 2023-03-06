@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, MutableMapping, MutableSequence
+from typing import Callable
 
 import pandas as pd
 
@@ -12,7 +12,7 @@ NormFunc = Callable[[pd.DataFrame, pd.DataFrame, pd.DataFrame], pd.Series]
 
 class Edgelist:
     edgelist_df: pd.DataFrame
-    eventstream: EventstreamType
+    eventstream: EventstreamType | None
 
     norm_type: NormType = None
     _weight_col: str
@@ -33,6 +33,9 @@ class Edgelist:
             self.event_id_col = eventstream.schema.event_id
             self.time_col = eventstream.schema.event_timestamp
             self.user_col = eventstream.schema.user_id
+        else:
+            self.eventstream = None
+            self.event_id_col = 'event_id'
 
     @property
     def weight_col(self) -> str:
@@ -70,8 +73,8 @@ class Edgelist:
 
     @user_col.setter
     def user_col(self, value: str) -> None:
-        if not value:
-            raise ValueError("User col cannot be empty")
+        # if not value:
+        #     raise ValueError("User col cannot be empty")
         self._user_col = value
 
     @property
@@ -110,6 +113,7 @@ class Edgelist:
             self.time_col = time_col
             self.user_col = user_col
 
+        self.norm_type = norm_type
         self.weight_col = weight_col
         edge_from, edge_to = self.event_col, self.next_event_col
 
@@ -122,8 +126,6 @@ class Edgelist:
         bigrams = data.assign(**{edge_to: lambda _df: _df.groupby(self.group_col)[edge_from].shift(-1)})\
             .dropna(subset=[edge_to])
 
-        bigrams2 = data.assign(**{'next_event': lambda _df: _df.groupby('event')['event'].shift(-1)}).dropna(subset=['next_event'])
-
         abs_values = bigrams.groupby([edge_from, edge_to])[self.weight_col].nunique()
 
         if self.weight_col != self.event_id_col:
@@ -132,16 +134,20 @@ class Edgelist:
 
         # denumerator_full = total number of transitions/users/sessions
         if self.norm_type == 'full':
-            denumerator_full = bigrams[weight_col].nunique()
+            denumerator_full = bigrams[self.weight_col].nunique()
             edgelist = abs_values / denumerator_full
 
         # denumerator_node = total number of transitions/users/sessions that started with edge_from event
         if self.norm_type == 'node':
-            denumerator_node = bigrams.groupby([edge_from])[weight_col].nunique()
+            denumerator_node = bigrams.groupby([edge_from])[self.weight_col].nunique()
             edgelist = abs_values / denumerator_node
 
         if weight_col not in [self.event_id_col, self.user_col]:
             edgelist = edgelist.fillna(0)
-        edgelist = edgelist.reset_index()
+
+            if self.norm_type is None:
+                edgelist = edgelist.astype(int)
+
+        edgelist = edgelist.reset_index(allow_duplicates=True)
         self.edgelist_df = edgelist
         return edgelist

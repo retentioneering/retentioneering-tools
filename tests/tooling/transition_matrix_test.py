@@ -77,30 +77,27 @@ class TestVerifyTransitionMatrix:
     def test_verify_transition_matrix__user_simple(
         self, test_stream: EventstreamType, user_simple_corr: pd.DataFrame
     ) -> None:
-        with pytest.raises(ValueError):
 
-            tm = TransitionMatrix(eventstream=test_stream)
-            result = tm.values(weight="user_id", norm_type=None)
-            correct = user_simple_corr
+        tm = TransitionMatrix(eventstream=test_stream)
+        result = tm.values(weight="user_id", norm_type=None)
+        correct = user_simple_corr
 
-            assert pd.testing.assert_frame_equal(result, correct) is None
+        assert pd.testing.assert_frame_equal(result, correct) is None
 
     def test_verify_transition_matrix__users_full(
         self, test_stream: EventstreamType, user_full_corr: pd.DataFrame
     ) -> None:
-        with pytest.raises(ValueError):
-            tm = TransitionMatrix(eventstream=test_stream)
-            result = tm.values(weight="user_id", norm_type="full")
-            correct = user_full_corr
+        tm = TransitionMatrix(eventstream=test_stream)
+        result = tm.values(weight="user_id", norm_type="full")
+        correct = user_full_corr
 
-            assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
+        assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_verify_transition_matrix__users_node(
         self, test_stream: EventstreamType, user_node_corr: pd.DataFrame
     ) -> None:
-        with pytest.raises(ValueError):
-            tm = TransitionMatrix(eventstream=test_stream)
-            result = tm.values(weight="user_id", norm_type="node")
-            correct = user_node_corr
+        tm = TransitionMatrix(eventstream=test_stream)
+        result = tm.values(weight="user_id", norm_type="node")
+        correct = user_node_corr
 
-            assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
+        assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None

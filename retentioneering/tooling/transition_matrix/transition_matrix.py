@@ -24,11 +24,7 @@ class TransitionMatrix:
         )
         self.__nodelist.calculate_nodelist(self.__eventstream.to_dataframe())
         self.__edgelist = Edgelist(
-            event_col=eventstream.schema.event_name,
-            time_col=eventstream.schema.event_timestamp,
-            weight_col=eventstream.schema.event_name,
-            index_col=eventstream.schema.user_id,
-            nodelist=self.__nodelist.nodelist_df,
+            eventstream=eventstream
         )
 
     def values(self, weight: str | None = None, norm_type: NormType = None) -> pd.DataFrame:
@@ -44,9 +40,9 @@ class TransitionMatrix:
             Transition matrix
         """
         if weight is None:
-            weight = "events"
+            weight = "event_id"
         self.__edgelist.calculate_edgelist(
-            data=self.__eventstream.to_dataframe(), norm_type=norm_type, custom_weight=weight
+            data=self.__eventstream, norm_type=norm_type, weight_col=weight
         )
         edgelist: pd.DataFrame = self.__edgelist.edgelist_df
         graph = nx.DiGraph()

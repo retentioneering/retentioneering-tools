@@ -149,10 +149,14 @@ Finally we demonstrate how to set weighting options for a graph. As it has been 
 
 :red:`TODO: provide actual code and graph, and rewrite the paragraph`.
 
+.. _transition_graph_thresholds:
+
 Thresholds
 ~~~~~~~~~~
 
 The weights that we have discussed above are associated with importance of the edges and the nodes. In practice, a transition graph often contains enormous number of the nodes and the edges. The threshold mechanism sets the minimal weight for nodes and edges to be displayed in the canvas.
+
+Note that the thresholds may use their own weighting columns both for nodes and for edges independently of those weighting columns defined in ``weights`` target. So the weights displayed on a graph might be different from the weights that thresholds use in making their decision for hiding the nodes/edges. Moreover, multiple weighting columns might be used. In this case, the decision whether an item (a node or an edge) should be hidden is made applying logical AND: an item is hidden if it does not meet all the threshold conditions.
 
 :red:`TODO: provide a code example with the correct threshold parameter names`.
 
@@ -272,7 +276,9 @@ Also, note that grouping actions require graph recalculation.
 Thresholds
 ~~~~~~~~~~
 
-Thresholds block contains two sliders: one is associated with the nodes, another one with the edges. You can set up a threshold value either by moving a slider or by entering a value explicitly (to activate this click on a number over the slider).
+Thresholds block contains two sliders: one is associated with the nodes, another one with the edges. You can set up a threshold value either by moving a slider or by entering a value explicitly. Also, you can set up a weighting column for each slider independently of the weighting column defined in Weights block (we have already mentioned it :ref:`here <transition_graph_thresholds>`. Using multiple weighting columns per one slider is also supported. As soon as you select a weighting column in the dropdown menu, the threshold slider connects to it, but the threshold values set for the previous weighting column are still kept.
+
+:red:`TODO: insert actual code & html`.
 
 Export
 ~~~~~~
@@ -293,8 +299,20 @@ The following displaying options are available:
 Graph properties
 ~~~~~~~~~~~~~~~~
 
+A summary with all the important chosen graph settings is available by clicking ⓘ icon in the bottom right corner.
+
+:red:`TODO: insert an actual screenshot`
+
 Transition matrix
 -----------------
+
+Transition matrix is a sub-part of transition graph. It contains edge weights only so that the weight of, say, ``A → B`` transition is located at ``A`` row and ``B`` column of the transition matrix. The calculation logic is exactly the same as we have described :ref:`here <transition_graph_edge_weights>`, and the arguments are similar to :ref:`weights-related arguments <transition_graph_setting_the_weights>` of transition graph (use ``weight_col`` instead of ``weights``).
+
+.. code-block:: python
+
+    stream.transition_matrix(norm_type='node', weight_col='user_id')
+
+:red:`TODO: replace with the actual parameters.`
 
 Using a separate instance
 -------------------------

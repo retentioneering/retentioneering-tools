@@ -7,6 +7,7 @@ from typing import Any, Callable, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from IPython.core.display_functions import display
 
 from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
@@ -201,6 +202,7 @@ class Eventstream(
             self.relations = []
         else:
             self.relations = relations
+        raw_data = self.__required_cleanup(events=raw_data)
         self.__events = self.__prepare_events(raw_data) if prepare else raw_data
         self.index_events()
 
@@ -487,6 +489,18 @@ class Eventstream(
     def __get_not_deleted_events(self) -> pd.DataFrame | pd.Series[Any]:
         events = self.__events
         return events[events[DELETE_COL_NAME] == False]
+
+    def __required_cleanup(self, events: pd.DataFrame | pd.Series[Any]) -> pd.DataFrame | pd.Series[Any]:
+        income_size = len(events)
+        events = events.dropna(  # type: ignore
+            subset=[self.schema.event_name, self.schema.event_timestamp, self.schema.user_id]
+        )
+        size_after_cleanup = len(events)
+        if (removed_rows := income_size - size_after_cleanup) > 0:
+            display(
+                f"Removed {removed_rows} rows because some events " f"have empty event_name or timestamp or user_id"
+            )
+        return events
 
     def __prepare_events(self, raw_data: pd.DataFrame | pd.Series[Any]) -> pd.DataFrame | pd.Series[Any]:
         events = raw_data.copy()

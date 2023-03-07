@@ -26,7 +26,7 @@ class Edgelist:
     ) -> None:
         self.__extract_init_data_from_eventstream(eventstream)
 
-    def __extract_init_data_from_eventstream(self, eventstream):
+    def __extract_init_data_from_eventstream(self, eventstream: EventstreamType | None) -> None:
         if eventstream is not None:
             self.eventstream = eventstream
             self.event_col = eventstream.schema.event_name
@@ -35,7 +35,7 @@ class Edgelist:
             self.user_col = eventstream.schema.user_id
         else:
             self.eventstream = None
-            self.event_id_col = 'event_id'
+            self.event_id_col = "event_id"
 
     @property
     def weight_col(self) -> str:
@@ -52,7 +52,7 @@ class Edgelist:
         return self._event_col
 
     @event_col.setter
-    def event_col(self, value: str) -> None:
+    def event_col(self, value: str | None) -> None:
         if not value:
             raise ValueError("Event col cannot be empty")
         self._event_col = value
@@ -62,7 +62,7 @@ class Edgelist:
         return self._time_col
 
     @time_col.setter
-    def time_col(self, value: str) -> None:
+    def time_col(self, value: str | None) -> None:
         if not value:
             raise ValueError("Time col cannot be empty")
         self._time_col = value
@@ -72,9 +72,9 @@ class Edgelist:
         return self._user_col
 
     @user_col.setter
-    def user_col(self, value: str) -> None:
-        # if not value:
-        #     raise ValueError("User col cannot be empty")
+    def user_col(self, value: str | None) -> None:
+        if not value:
+            raise ValueError("User col cannot be empty")
         self._user_col = value
 
     @property
@@ -102,29 +102,36 @@ class Edgelist:
             raise ValueError(f"unknown normalization type: {norm_type}")
 
         if self.eventstream is not None and data is None:
-            data = self.eventstream.to_dataframe()
+            df = self.eventstream.to_dataframe()
 
         elif isinstance(data, EventstreamType):
             self.__extract_init_data_from_eventstream(eventstream=data)
-            data: pd.DataFrame = self.eventstream.to_dataframe()
+            self.eventstream = data
+            df = self.eventstream.to_dataframe()
 
         elif isinstance(data, pd.DataFrame):
-            self.event_col = event_col
-            self.time_col = time_col
-            self.user_col = user_col
+            df = data
+            self.event_col = event_col  # type: ignore
+            self.time_col = time_col  # type: ignore
+            self.user_col = user_col  # type: ignore
+        else:
+            raise ValueError("Incorrect input data")
 
         self.norm_type = norm_type
         self.weight_col = weight_col
         edge_from, edge_to = self.event_col, self.next_event_col
 
-        possible_transitions = data.assign(**{edge_to: lambda _df: _df.groupby(self.user_col)[edge_from].shift(-1)}) \
-            .dropna(subset=[edge_to]) \
-            .groupby([edge_from, edge_to]) \
-            .size() \
-            .index
-
-        bigrams = data.assign(**{edge_to: lambda _df: _df.groupby(self.group_col)[edge_from].shift(-1)})\
+        possible_transitions = (
+            df.assign(**{edge_to: lambda _df: _df.groupby(self.user_col)[edge_from].shift(-1)})
             .dropna(subset=[edge_to])
+            .groupby([edge_from, edge_to])
+            .size()
+            .index
+        )
+
+        bigrams = df.assign(**{edge_to: lambda _df: _df.groupby(self.group_col)[edge_from].shift(-1)}).dropna(
+            subset=[edge_to]
+        )
 
         abs_values = bigrams.groupby([edge_from, edge_to])[self.weight_col].nunique()
 
@@ -133,12 +140,12 @@ class Edgelist:
         edgelist = abs_values
 
         # denumerator_full = total number of transitions/users/sessions
-        if self.norm_type == 'full':
+        if self.norm_type == "full":
             denumerator_full = bigrams[self.weight_col].nunique()
             edgelist = abs_values / denumerator_full
 
         # denumerator_node = total number of transitions/users/sessions that started with edge_from event
-        if self.norm_type == 'node':
+        if self.norm_type == "node":
             denumerator_node = bigrams.groupby([edge_from])[self.weight_col].nunique()
             edgelist = abs_values / denumerator_node
 

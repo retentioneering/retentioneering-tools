@@ -202,8 +202,8 @@ class Eventstream(
             self.relations = []
         else:
             self.relations = relations
-        raw_data = self.__required_cleanup(events=raw_data)
         self.__events = self.__prepare_events(raw_data) if prepare else raw_data
+        self.__events = self.__required_cleanup(events=self.__events)
         self.index_events()
 
     def copy(self) -> Eventstream:
@@ -492,10 +492,15 @@ class Eventstream(
 
     def __required_cleanup(self, events: pd.DataFrame | pd.Series[Any]) -> pd.DataFrame | pd.Series[Any]:
         income_size = len(events)
-        events = events.dropna(  # type: ignore
-            subset=[self.schema.event_name, self.schema.event_timestamp, self.schema.user_id]
+        print(events)
+        print(self.schema)
+        print(self.__raw_data_schema)
+        print(events.columns)
+        events.dropna(  # type: ignore
+            subset=[self.schema.event_name, self.schema.event_timestamp, self.schema.user_id], inplace=True
         )
         size_after_cleanup = len(events)
+        print(events)
         if (removed_rows := income_size - size_after_cleanup) > 0:
             display(
                 f"Removed {removed_rows} rows because some events " f"have empty event_name or timestamp or user_id"

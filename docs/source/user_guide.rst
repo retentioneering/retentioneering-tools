@@ -29,6 +29,6 @@ Core tools
     Step Matrix <user_guides/step_matrix.rst>
     Step Sankey <user_guides/step_sankey.rst>
     Clusters <user_guides/clusters.rst>
-    Funnels <user_guides/funnel.rst>
+    Funnel <user_guides/funnel.rst>
     Cohorts <user_guides/cohorts.rst>
     Stattests <user_guides/stattests.rst>

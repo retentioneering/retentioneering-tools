@@ -296,7 +296,6 @@ class TestSplitSessionsHelper:
         assert res.compare(correct_result).shape == (0, 0)
 
     def test_params_model__incorrect_datetime_unit(self):
-
         with pytest.raises(ValidationError):
             source_df = pd.DataFrame(
                 [

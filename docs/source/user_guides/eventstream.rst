@@ -358,7 +358,7 @@ And now let's create an Eventstream once again but with ``schema`` attribute pas
 Now names of our main columns are changed.
 It is possible because an ``Eventstream`` object stores an instance of the
 ``EventstreamSchema`` class with the mapping between eventstream internal
- and custom displayed column names.
+and custom displayed column names.
 
 There is one more way to see ``EventstreamSchema`` without converting it to ``pd.DataFrame`` - to call it directly
 from ``Eventstream`` instance, just like ``dataframe.columns``.

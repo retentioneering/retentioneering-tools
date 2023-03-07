@@ -116,7 +116,6 @@ class ServerManager:
                 )
 
     def _create_main_listener(self) -> None:
-
         env = self.check_env()
 
         if env == "colab":

@@ -22,25 +22,26 @@ class Funnel:
         number of users who reached specified events at least once will be
         plotted. Multiple events can be grouped together as individual state
         by combining them as sub list.
-    stage_names: list of str | None (default None)
+    stage_names: list of str, optional
         List of stage names, this is especially necessary for stages that include several events.
-    funnel_type: 'open' or 'closed' (optional, default 'open')
-        if ``open`` - all users will be counted on each stage.
-        if ``closed`` - Each stage will include only users, who was on all previous stages.
-    segments: Collection[Collection[int]] | None (default None)
+    funnel_type: 'open', 'closed' or 'hybrid', default 'closed'
+        - if ``open`` - all users will be counted on each stage;
+        - if ``closed`` - each stage will include only users, who was on all previous stages;
+        - | if ``hybrid`` - combination of 2 previous types. The first stage is required for
+          | to go further. And for the second and subsequent stages it is important have
+          | all previous stages in their path, but the order of these events is not taken
+          | into account.
+
+    segments: Collection[Collection[int]], optional
         List of user_ids collections. Funnel for each user_id collection will be plotted.
         If ``None`` - all users from dataset will be plotted. A user can only belong to one segment at a time.
-    segment_names: list of strings | None (default None)
+    segment_names: list of str, optional
         Names of segments. Should be a list from unique values of the ``segment_col``.
         If ``None`` and ``segment_col`` is given - all values from ``segment_col`` will be used.
-    sequence: Boolean (default False)
-        Used for closed funnels only
-        If ``True``, the sequence and timestamp of events is taken into account when constructing the funnel.
-        In another case, the standard closed funnel rules will be implemented.
 
     See Also
     --------
-    :py:func:`retentioneering.eventstream.eventstream.Eventstream.funnel`
+    :py:meth:`.Eventstream.funnel`
 
     """
 
@@ -58,20 +59,17 @@ class Funnel:
         eventstream: EventstreamType,
         stages: list[str],
         stage_names: list[str] | None = None,
-        funnel_type: Literal["open", "closed"] = "open",
+        funnel_type: Literal["open", "closed", "hybrid"] = "closed",
         segments: Collection[Collection[int]] | None = None,
         segment_names: list[str] | None = None,
-        sequence: bool = False,
     ) -> None:
-
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
 
         self.stages = stages
-        self.funnel_type: Literal["open", "closed"] = funnel_type
-        self.sequence = sequence
+        self.funnel_type: Literal["open", "closed", "hybrid"] = funnel_type
 
         data = self.__eventstream.to_dataframe()
         data = data[data[self.event_col].isin([i for i in flatten(stages)])]  # type: ignore
@@ -99,8 +97,8 @@ class Funnel:
         self.segments = segments
         self.segment_names = segment_names
 
-        if funnel_type not in ["open", "closed"]:
-            raise ValueError("funnel_type should be 'open' or 'closed'!")
+        if funnel_type not in ["open", "closed", "hybrid"]:
+            raise ValueError("funnel_type should be 'open', 'closed' or 'hybrid'!")
 
         for idx, stage in enumerate(self.stages):
             if type(stage) is not list:
@@ -132,16 +130,14 @@ class Funnel:
 
         return data
 
-    def _prepare_data_for_closed_funnel(
+    def _prepare_data_for_closed_and_hybrid_funnel(
         self,
         data: pd.DataFrame,
         stages: list[str],
         stage_names: list[str],
         segments: Collection[Collection[int]],
         segment_names: list[str],
-        sequence: bool = False,
     ) -> dict[str, dict]:
-
         min_time_0stage = (
             data[data[self.event_col].isin(stages[0])].groupby(self.user_col)[[self.time_col]].min().reset_index()
         )
@@ -154,7 +150,7 @@ class Funnel:
 
         res_dict = {}
         for segment, name in zip(segments, segment_names):
-            vals, _df = self._crop_df(data, stages, segment, sequence)
+            vals, _df = self._crop_df(data, stages, segment)
             res_dict[name] = {"stages": stage_names, "values": vals}
         return res_dict
 
@@ -174,9 +170,7 @@ class Funnel:
             res_dict[name] = {"stages": stage_names, "values": vals}
         return res_dict
 
-    def _crop_df(
-        self, df: pd.DataFrame, stages: list[str], segment: Collection[int], sequence: bool = False
-    ) -> tuple[list[int], pd.DataFrame]:
+    def _crop_df(self, df: pd.DataFrame, stages: list[str], segment: Collection[int]) -> tuple[list[int], pd.DataFrame]:
         first_stage = stages[0]
         next_stages = stages[1:]
 
@@ -198,7 +192,7 @@ class Funnel:
 
             vals.append(len(user_stage))
 
-            if sequence:
+            if self.funnel_type == "closed":
                 stage_min_df = (
                     df[df[self.event_col].isin(stage)].groupby(self.user_col)[[self.time_col]].min().reset_index()
                 )
@@ -227,14 +221,13 @@ class Funnel:
 
         """
 
-        if self.funnel_type == "closed":
-            self.res_dict = self._prepare_data_for_closed_funnel(
+        if self.funnel_type in ["closed", "hybrid"]:
+            self.res_dict = self._prepare_data_for_closed_and_hybrid_funnel(
                 data=self.data,
                 stages=self.stages,
                 segments=self.segments,
                 segment_names=self.segment_names,
                 stage_names=self.stage_names,
-                sequence=self.sequence,
             )
 
         elif self.funnel_type == "open":
@@ -245,6 +238,9 @@ class Funnel:
                 segment_names=self.segment_names,
                 stage_names=self.stage_names,
             )
+
+        del self.data
+        self.data = pd.DataFrame()
 
     def plot(self) -> go.Figure:
         """
@@ -298,11 +294,15 @@ class Funnel:
 
     @property
     def params(self) -> dict:
+        """
+        Returns the parameters used for the last fitting.
+
+        """
+
         return {
             "stages": self.stages,
             "stage_names": self.stage_names,
             "funnel_type": self.funnel_type,
             "segments": self.segments,
             "segment_names": self.segment_names,
-            "sequence": self.sequence,
         }

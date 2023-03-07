@@ -54,6 +54,7 @@ class TestPGraphExportImport:
     def test_start_end__export(self) -> None:
         graph = self.create_graph()
         node = EventsNode(processor=StartEndEvents(params=StartEndEventsParams(**{})))
+        node.description = "description"
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -66,7 +67,11 @@ class TestPGraphExportImport:
             "directed": True,
             "nodes": [
                 {"name": "SourceNode"},
-                {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
+                {
+                    "name": "EventsNode",
+                    "processor": {"values": {}, "name": "StartEndEvents"},
+                    "description": "description",
+                },
             ],
         } == export_data
 
@@ -527,7 +532,7 @@ class TestPGraphExportImport:
                                 "df[df[event_col].isin(negative_target_events)].groupby"
                                 "(user_col)[time_col].idxmin()\n"
                                 "\n"
-                                "    return df.iloc[negative_events_index]\n",
+                                "    return df.iloc[negative_events_index]",
                             },
                         },
                     },
@@ -564,7 +569,7 @@ class TestPGraphExportImport:
                             "df[df[event_col].isin(negative_target_events)].groupby"
                             "(user_col)[time_col].idxmin()\n"
                             "\n"
-                            "    return df.iloc[negative_events_index]\n",
+                            "    return df.iloc[negative_events_index]",
                         },
                     },
                 },

@@ -25,6 +25,7 @@ from retentioneering.templates import PGraphRenderer
 class NodeData(TypedDict):
     name: str
     pk: str
+    description: Optional[str]
     processor: Optional[dict]
 
 
@@ -321,6 +322,7 @@ class PGraph:
             processor = node.get("processor", {})
             processor_name = processor.get("name", None) if processor else None
             processor_params = processor.get("values", None) if processor else None
+            description = node.get("description", None)
 
             try:
                 actual_node = build_node(
@@ -329,6 +331,7 @@ class PGraph:
                     node_name=node["name"],
                     processor_name=processor_name,
                     processor_params=processor_params,
+                    descriptionn=description,
                 )
                 nodes.append(actual_node)
             except Exception as error:

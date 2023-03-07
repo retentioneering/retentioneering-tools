@@ -21,7 +21,6 @@ from tests.tooling.fixtures.transition_matrix_input import test_stream
 
 class TestVerifyTransitionMatrix:
     def test_transition_matrix__simple(self, test_stream: EventstreamType, simple_corr: pd.DataFrame) -> None:
-
         tm = TransitionMatrix(eventstream=test_stream)
         result = tm.values()  # weight and events are not required parameters
         correct = simple_corr
@@ -29,7 +28,6 @@ class TestVerifyTransitionMatrix:
         assert pd.testing.assert_frame_equal(result, correct) is None
 
     def test_verify_transition_matrix__norm_full(self, test_stream: EventstreamType, full_corr: pd.DataFrame) -> None:
-
         tm = TransitionMatrix(eventstream=test_stream)
         result = tm.values(norm_type="full")
         correct = full_corr
@@ -37,7 +35,6 @@ class TestVerifyTransitionMatrix:
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_verify_transition_matrix__norm_node(self, test_stream: EventstreamType, node_corr: pd.DataFrame) -> None:
-
         tm = TransitionMatrix(eventstream=test_stream)
         result = tm.values(norm_type="node")
         correct = node_corr
@@ -47,7 +44,6 @@ class TestVerifyTransitionMatrix:
     def test_verify_transition_matrix__session_simple(
         self, test_stream: EventstreamType, session_simple_corr: pd.DataFrame
     ) -> None:
-
         tm = TransitionMatrix(eventstream=test_stream)
         result = tm.values(weight="session_id")
         correct = session_simple_corr
@@ -57,7 +53,6 @@ class TestVerifyTransitionMatrix:
     def test_verify_transition_matrix__session_full(
         self, test_stream: EventstreamType, session_full_corr: pd.DataFrame
     ) -> None:
-
         tm = TransitionMatrix(eventstream=test_stream)
         result = tm.values(weight="session_id", norm_type="full")
         correct = session_full_corr
@@ -67,7 +62,6 @@ class TestVerifyTransitionMatrix:
     def test_verify_transition_matrix__session_node(
         self, test_stream: EventstreamType, session_node_corr: pd.DataFrame
     ) -> None:
-
         tm = TransitionMatrix(eventstream=test_stream)
         result = tm.values(weight="session_id", norm_type="node")
         correct = session_node_corr
@@ -77,7 +71,6 @@ class TestVerifyTransitionMatrix:
     def test_verify_transition_matrix__user_simple(
         self, test_stream: EventstreamType, user_simple_corr: pd.DataFrame
     ) -> None:
-
         tm = TransitionMatrix(eventstream=test_stream)
         result = tm.values(weight="user_id", norm_type=None)
         correct = user_simple_corr

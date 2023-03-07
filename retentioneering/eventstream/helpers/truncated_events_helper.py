@@ -26,7 +26,7 @@ class TruncatedEventsHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`retentioneering.data_processors_lib.truncated_events.TruncatedEvents`
+        :py:class:`.TruncatedEvents`
         """
         # avoid circular import
         from retentioneering.data_processors_lib import (

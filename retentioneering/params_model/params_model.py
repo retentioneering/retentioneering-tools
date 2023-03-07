@@ -23,7 +23,6 @@ class CustomWidgetProperties(TypedDict):
 
 
 class ParamsModel(BaseModel):
-
     _widgets: dict = {}
 
     @classmethod

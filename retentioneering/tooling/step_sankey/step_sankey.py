@@ -48,7 +48,7 @@ class StepSankey(EndedEventsMixin):
 
     See Also
     --------
-    :py:func:`retentioneering.eventstream.eventstream.Eventstream.step_sankey`
+    :py:meth:`.Eventstream.step_sankey`
 
     """
 
@@ -159,7 +159,6 @@ class StepSankey(EndedEventsMixin):
 
         # NOTE going inside ranked events
         for step in sorted(df["step"].unique()):
-
             # NOTE placing x-axis points as well
             for _ in df[df["step"] == step][self.event_col]:
                 x_positions.append([round(x, 2) for x in np.linspace(0.05, 0.95, x_len)][step - 1])
@@ -174,7 +173,6 @@ class StepSankey(EndedEventsMixin):
 
             # NOTE jumping in to complex part
             else:
-
                 # NOTE total sum for understanding do we need extra step size or not
                 total_sum = df[df["step"] == step]["usr_cnt"].sum()
                 # NOTE step size for middle points
@@ -189,23 +187,18 @@ class StepSankey(EndedEventsMixin):
 
                 # NOTE going deeper inside each event
                 for n, event in enumerate(df[df["step"] == step][self.event_col]):
-
                     # NOTE placing first event at first possible position
                     if n == 0:
-
                         y_positions.append(0.05)
 
                     # NOTE placing last event at last possible position
                     elif n + 1 == y_len:
-
                         y_positions.append(0.95)
 
                     # NOTE placing middle points
                     else:
-
                         # NOTE we found out that 70% of total sum is the best cap for doing this case
                         if iterate_sum / total_sum > 0.2 and event != "ENDED":
-
                             # NOTE placing first point after the biggest one at the next position
                             # but inside [.1; .3] range
                             y_positions.append(
@@ -214,7 +207,6 @@ class StepSankey(EndedEventsMixin):
 
                         # NOTE placing points after the biggest
                         else:
-
                             # NOTE placing little points at the all available space
                             y_positions.append(
                                 round(y_positions[-1] + (0.95 - last_point - y_positions[-1]) / (y_len - n), 2)
@@ -385,7 +377,6 @@ class StepSankey(EndedEventsMixin):
         data_for_plot.update({"links_dict": dict()})
         for index in data_grp_links["index"].unique():
             for next_index in data_grp_links[data_grp_links["index"] == index]["next_index"].unique():
-
                 _unique_users, _avg_time_to_next = (
                     data_grp_links.loc[
                         (data_grp_links["index"] == index) & (data_grp_links["next_index"] == next_index),

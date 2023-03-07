@@ -97,7 +97,6 @@ class Edgelist:
         time_col: str | None = None,
         user_col: str | None = None,
     ) -> pd.DataFrame:
-
         if norm_type not in (None, "full", "node"):
             raise ValueError(f"unknown normalization type: {norm_type}")
 

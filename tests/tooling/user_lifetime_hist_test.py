@@ -30,7 +30,6 @@ class TestUserLifetimeHist:
     def test_user_lifetime_hist__basic(
         self, test_stream: EventstreamType, correct_basic: np.array, correct_basic_bins: np.array
     ):
-
         ul = UserLifetimeHist(test_stream, bins=5)
         ul.fit()
         result_values, result_bins = ul.values
@@ -45,7 +44,6 @@ class TestUserLifetimeHist:
     def test_user_lifetime_hist__timedelta_unit(
         self, test_stream: EventstreamType, correct_timedelta_unit: np.array, correct_timedelta_unit_bins: np.array
     ):
-
         ul = UserLifetimeHist(test_stream, bins=5, timedelta_unit="h")
         ul.fit()
         result_values, result_bins = ul.values
@@ -60,7 +58,6 @@ class TestUserLifetimeHist:
     def test_user_lifetime_hist__log_scale(
         self, test_stream: EventstreamType, correct_log_scale: np.array, correct_log_scale_bins: np.array
     ):
-
         ul = UserLifetimeHist(test_stream, bins=5, timedelta_unit="h", log_scale=True)
         ul.fit()
         result_values, result_bins = ul.values
@@ -78,7 +75,6 @@ class TestUserLifetimeHist:
         correct_lower_cutoff_quantile: np.array,
         correct_lower_cutoff_quantile_bins: np.array,
     ):
-
         ul = UserLifetimeHist(test_stream, bins=5, timedelta_unit="h", lower_cutoff_quantile=0.5)
         ul.fit()
         result_values, result_bins = ul.values
@@ -98,7 +94,6 @@ class TestUserLifetimeHist:
         correct_upper_cutoff_quantile: np.array,
         correct_upper_cutoff_quantile_bins: np.array,
     ):
-
         ul = UserLifetimeHist(test_stream, bins=5, timedelta_unit="h", upper_cutoff_quantile=0.5)
         ul.fit()
         result_values, result_bins = ul.values
@@ -118,7 +113,6 @@ class TestUserLifetimeHist:
         correct_upper_lower_cutoff_quantile: np.array,
         correct_upper_lower_cutoff_quantile_bins: np.array,
     ):
-
         ul = UserLifetimeHist(
             test_stream, bins=5, timedelta_unit="h", upper_cutoff_quantile=0.5, lower_cutoff_quantile=0.5
         )

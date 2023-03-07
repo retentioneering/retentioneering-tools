@@ -87,7 +87,7 @@ class StepMatrix(EndedEventsMixin):
     Notes
     -----
     During step matrix calculation an artificial ``ENDED`` event is created. If a path already
-    contains ``path_end`` event (See :py:func:`retentioneering.data_processors_lib.start_end_event`), it
+    contains ``path_end`` event (See :py:class:`.StartEndEvents`), it
     will be temporarily replaced with ``ENDED`` (within step matrix only). Otherwise, ``ENDED``
     event will be explicitly added to the end of each path.
 
@@ -99,7 +99,7 @@ class StepMatrix(EndedEventsMixin):
 
     See Also
     --------
-    :py:func:`retentioneering.eventstream.eventstream.Eventstream.step_matrix`
+    :py:meth:`.Eventstream.step_matrix`
     """
 
     __eventstream: EventstreamType

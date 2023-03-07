@@ -50,7 +50,6 @@ class TestRename:
         simple_rules: list[dict[str, str]],
         simple_expected_results: pd.DataFrame,
     ):
-
         source = Eventstream(simple_dataset_for_rename)
 
         actual = source.rename(rules=simple_rules)

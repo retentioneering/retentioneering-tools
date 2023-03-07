@@ -14,7 +14,7 @@ from retentioneering.widget.widgets import ListOfInt, ReteTimeWidget
 
 class LostUsersParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`LostUsersEvents`
+    Class with parameters for class :py:class:`.LostUsersEvents`
     """
 
     lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]]

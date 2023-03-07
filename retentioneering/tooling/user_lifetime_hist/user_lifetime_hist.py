@@ -105,7 +105,7 @@ class UserLifetimeHist:
             values_to_plot = self._remove_cutoff_values(values_to_plot).to_numpy()
         if self.log_scale[0]:
             log_adjustment = np.timedelta64(100, "ms") / np.timedelta64(1, self.timedelta_unit)
-            values_to_plot = np.where(values_to_plot != 0, values_to_plot, values_to_plot + log_adjustment)
+            values_to_plot = np.where(values_to_plot != 0, values_to_plot, values_to_plot + log_adjustment)  # type: ignore
             bins_to_show = np.power(10, np.histogram_bin_edges(np.log10(values_to_plot), bins=self.bins))
         else:
             bins_to_show = np.histogram_bin_edges(values_to_plot, bins=self.bins)

@@ -210,6 +210,7 @@ If the core triple columns of ``df3`` dataframe were titled with the default nam
 ``user_id``, ``event``, ``timestamp`` (instead of ``client_id``, ``action``, ``datetime``)
 then you could just ignore their mapping in setting ``raw_data_schema`` and pass ``custom_cols`` key only.
 
+.. _eventstream_field_names:
 
 Eventstream field names
 ~~~~~~~~~~~~~~~~~~~~~~~

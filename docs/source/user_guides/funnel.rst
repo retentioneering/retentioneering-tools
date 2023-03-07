@@ -11,14 +11,12 @@ Funnel
 ======
 
 The following user guide is also available as
-`Google Colab notebook <https://colab.research.google.com/drive/1VjFXazgIdMKLyHaqMoKTWhnq5_29lRIs?usp=share_link>`_
+`Google Colab notebook <https://colab.research.google.com/drive/1VjFXazgIdMKLyHaqMoKTWhnq5_29lRIs?usp=share_link>`_.
 
 Loading data
 ------------
 
-Here we use ``simple_shop`` dataset, which has already converted to ``Eventstream``.
-If you want to know more about ``Eventstream`` and how to use it, please study
-:doc:`this guide<eventstream>`
+Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simple_shop>` dataset. It has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable.
 
 .. code-block:: python
 
@@ -26,248 +24,152 @@ If you want to know more about ``Eventstream`` and how to use it, please study
 
     stream = datasets.load_simple_shop()
 
+.. _funnel_basic_example:
+
 Basic example
 -------------
 
-Building a conversion funnel is the basic first step in almost all
-product analytics workflows. To learn how to plot basic funnels using
-the Retentioneering library, let us work through a basic example.
+Building a conversion funnel is a basic first step for many product analysis studies. Basically, funnel is an approach to quantify how many users followed a specific event pattern. The simplest way to build a funnel using retentioneering library is to call :py:meth:`Eventstream.funnel()<retentioneering.eventstream.eventstream.Eventstream.funnel>` method. The implementation is based on `Plotly funnel charts <https://plotly.com/python/funnel-charts/>`_.
 
-Funnel tool is mainly available as
-:py:meth:`Eventstream.funnel()<retentioneering.eventstream.eventstream.Eventstream.funnel>` method.
-The implementation is based on `Plotly funnel charts <https://plotly.com/python/funnel-charts/>`_.
-Here's how it visualizes ``simple_shop`` eventstream:
+Here's the funnel visualisation on how many users walked through ``catalog → cart → payment_done`` route in ``simple_shop`` eventstream:
 
 .. code-block:: python
 
-    stream.funnel(stages = ['catalog', 'cart', 'payment_done']);
+    stream.funnel(stages=['catalog', 'cart', 'payment_done'])
 
 .. raw:: html
 
-            <iframe
-                width="700"
-                height="400"
-                src="../_static/user_guides/funnel/funnel_0_basic.html"
-                frameborder="0"
-                align="left"
-                allowfullscreen
-            ></iframe>
+    <iframe
+        width="700"
+        height="400"
+        src="../_static/user_guides/funnel/funnel_0_basic.html"
+        frameborder="0"
+        align="left"
+        allowfullscreen
+    ></iframe>
 
-Customization
+This funnel illustrates that there are 3611 users who reached ``catalog`` event. 1924 of them also reached ``cart`` event after they had already reached ``catalog`` event (perhaps, there were some other events between ``catalog`` and ``cart``). 653 out of these 1924 users followed ``catalog`` → ``...`` → ``cart`` → ``...`` → ``payment_done`` path. Thus, we guarantee that the users who form a specific stage of a funnel appeared at all the previous stages. This type of the funnel is called *closed funnel*. Some other types are supported as well. See :ref:`here <funnel_types>` here for details. The percentage values show the conversion rates either from the previous or from the first stage.
+
+Funnel stages
 -------------
 
-Stages
-~~~~~~
+``stages`` is a required parameter. It should contain a list of event names you would like to observe in the funnel. For each stage event specified, the following statistics are calculated:
 
-``Stages`` is required parameter. It should contain a list of event names
-you would like to observe in the funnel.
+- the number of the users who reached this stage according to the funnel logic defined in :ref:`funnel_type <funnel_types>` parameter;
+- the conversion rate from the first stage to the current one (`% of initial`);
+- the conversionrate from the previous stage to the current one (`% of previous`).
 
-For each specified stage event, the following statistics will be calculated:
-
-- absolute unique number of user_id’s who reach this stage at least once.
-- conversion from the first stage (`% of initial`)
-- conversion from the previous stage (`% of previous`)
-
-The order of stages on the funnel plot corresponds to the order in which
-events are passed in ``stages`` parameter.
+The order of the stages on the funnel plot is induced by the stage order represented in ``stages`` parameter.
 
 Stage grouping
-~~~~~~~~~~~~~~
+--------------
 
-In many practical cases, we would like to be able to group multiple
-events as one stage - for example, if it doesn’t matter which particular
-event was reached. We can access this function by passing lists of
-events (along with single events) in the ``stage`` parameter.
+In many practical cases, we would like to group multiple events into a single stage - for example, if it does not matter which particular event was reached. We can access this by passing lists of events (along with single events) in the ``stage`` parameter.
 
-Let us plot a funnel with `product1` and `product2` grouped that way:
+Let us plot a funnel where ``product1`` and ``product2`` events are grouped into a single stage:
 
 .. code-block:: python
 
-    stream.funnel(stages = ['catalog', ['product1', 'product2'], 'cart', 'payment_done']);
+    stream.funnel(stages=['catalog', ['product1', 'product2'], 'cart', 'payment_done'])
 
 .. raw:: html
 
-            <iframe
-                width="700"
-                height="400"
-                src="../_static/user_guides/funnel/funnel_1_stages.html"
-                frameborder="0"
-                align="left"
-                allowfullscreen
-            ></iframe>
+    <iframe
+        width="700"
+        height="400"
+        src="../_static/user_guides/funnel/funnel_1_stages.html"
+        frameborder="0"
+        align="left"
+        allowfullscreen
+    ></iframe>
 
-As you can see, the new ``product1 | product2`` stage is created for
-the funnel. It corresponds to having 2010 unique users who reached
-some product page(``product1 or product2``).
+As you can see, a new ``product1 | product2`` stage is created in the funnel. It means that 2010 unique users reached a product page (at least one of ``product1`` or ``product2``) after they had reached ``catalog`` event.
 
-NOTE: If a user path has both of the events, the user still counts as one.
+.. note::
+
+    If a user has both of the events ``product1`` and ``product2`` appeared after ``catalog`` event, the user is still counted as one at this stage.
 
 Stage names
-~~~~~~~~~~~
+-----------
 
-Grouping big sets of events with the previous method could be less
-practical, as the displayed name of the event group will be hard to
-interpret. You could avoid this problem by doing one of the following:
-
-#. use grouping data processor for grouping relevant events.
-   See :py:meth:`GroupEvents<retentioneering.data_processors_lib.group_events.GroupEvents>`)
-#. use the ``stage_names`` funnel parameter
-
-In the following example, let us use the second method. We define
-``stage_names`` as a list of funnel stage names (the length of which
-has to be equal to the number of stages):
+As you may have noticed, providing the grouped stage values like ``['product1', 'product2']`` induces complex stage names in the funnel plot. It might be fixed by assigning the aliases for stage names with ``stage_names`` parameter. The length of the ``stage_names`` list must be the same as the length of the ``stages`` list.
 
 .. code-block:: python
 
     stream.funnel(
-                   stages = ['catalog', ['product1', 'product2'], 'cart', 'payment_done'],
-                   stage_names = ['catalog', 'product', 'cart', 'payment_done']
-                   );
+        stages=['catalog', ['product1', 'product2'], 'cart', 'payment_done'],
+        stage_names=['catalog', 'product', 'cart', 'payment_done']
+    )
 
 .. raw:: html
 
+    <iframe
+        width="700"
+        height="400"
+        src="../_static/user_guides/funnel/funnel_2_stage_names.html"
+        frameborder="0"
+        align="left"
+        allowfullscreen
+    ></iframe>
 
-            <iframe
-                width="700"
-                height="400"
-                src="../_static/user_guides/funnel/funnel_2_stage_names.html"
-                frameborder="0"
-                align="left"
-                allowfullscreen
-            ></iframe>
+.. note::
 
-Funnel type and sequence parameters
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    In case you have many events to group, it would be reasonable to use :py:meth:`GroupEvents<retentioneering.data_processors_lib.group_events.GroupEvents>` data processor before applying funnel tool instead of grouping the events with ``stages`` parameter.
 
-Parameter ``funnel_type`` could take one of the two values:
+.. _funnel_types:
 
-#. ``open`` (default) - used if the metric of interest is user presence
-   on a given stage. The funnel will disregard the user presence on previous
-   stages. This means that, for each stage, all stage visits will be
-   counted - regardless of whether the previous stages were passed.
-#. | ``closed`` - only users who have the first specified stage will be counted and only part of their path after this stage will be considered.
-   | The ``sequence`` parameter further specifies the behaviour:
+Funnel types
+------------
 
-    - | If ``sequence`` is set to ``False``, all users who visited the first stage
-      | who visited all previous stages no matter when will be counted
-    - | If ``sequence`` is set to ``True``, only users who visited all previous
-      | stages before will be counted
+Three funnel types are supported. ``funnel_type`` parameter accepts one of ``open``, ``closed``, and ``hybrid`` parameters. In this section we will step back from the ``simple_shop`` dataset and will explain how all three funnel types are designed on a simplified example.
 
-The example below illustrates the behaviour differences:
+Suppose we have an evenstream that consists of 5 users and 4 unique events ``A``, ``B``, ``C``, and ``D`` as it is shown on the image below.
 
-.. figure:: /_static/user_guides/funnel/type_sequence.png
+.. figure:: /_static/user_guides/funnel/funnel_types.png
 
+Suppose also that we want to build the funnels of all three types with the same parameter ``stages=['A', 'B', 'C']``. The table on the right shows the distribution of the user ids over each stage for each funnel type. Below are the explanations on how each funnel type is designed.
 
-Now let’s return to our ``simple_shop`` dataset and build ``closed`` funnel with ``sequence=False``.
-
-In comparison to ``open`` funnel we can see that some users come to
-``cart`` without passing ``catalog`` or ``product`` beforehand.
-The real forward conversion for these stages is lower than
-we see in the ``open`` funnel.
-
-.. code-block:: python
-
-    stream.funnel(
-                  stages = ['catalog', ['product1', 'product2'], 'cart', 'payment_done'],
-                  tage_names = ['catalog', 'product', 'cart', 'payment_done'],
-                  funnel_type='closed'
-                  );
-
-
-.. raw:: html
-
-
-            <iframe
-                width="700"
-                height="400"
-                src="../_static/user_guides/funnel/funnel_3_closed.html"
-                frameborder="0"
-                align="left"
-                allowfullscreen
-            ></iframe>
-
-Now we take a look at a funnel with ``funnel_type=closed``
-and ``sequence=True``. The conversion to the ``cart`` stage is even lower
-than it is for ``funnel_type=closed`` and ``sequence=False``.
-It means that some users visiting ``catalog`` go strait to the cart stage,
-which we could interpret as being a specific class of users (for instance,
-those who were on the web-site before, and left some products in the cart
-earlier or there is another way to reach ``cart`` stage)
-
-.. code-block:: python
-
-    stream.funnel(
-                   stages = ['catalog', ['product1', 'product2'], 'cart', 'payment_done'],
-                   stage_names = ['catalog', 'product', 'cart', 'payment_done'],
-                   funnel_type='closed',
-                   sequence=True
-                   );
-
-.. raw:: html
-
-
-            <iframe
-                width="700"
-                height="400"
-                src="../_static/user_guides/funnel/funnel_4_sequence.html"
-                frameborder="0"
-                align="left"
-                allowfullscreen
-            ></iframe>
-
-User segments
+Closed funnel
 ~~~~~~~~~~~~~
 
-It can be useful to make separate funnels for different user groups,
-and compare them stage-by-stage.
+As we have already discussed in the :ref:`basic example <funnel_basic_example>`, for closed funnel these stages define a path pattern ``A`` → ``...`` → ``B`` → ``...`` → ``C``. This means that the users at the first stage of the funnel must contain ``A`` event (4 users), the users at the second stage must have a sub-path ``A`` → ``...`` → ``B`` (2 users), and finally the users at the third stage must contain ``A`` → ``...`` → ``B`` → ``...`` → ``C`` (1 user). The ellipsis means that any number of any events may lay in place of it.
 
-Groups of users could be represented by:
+This sequential manner of building the stages guarantees that the users at each stage have passed all the previous stages. That is actually why funnel has its name: the set of the users narrows passing from on stage to another (or, strictly speaking, it does not extend). Closed funnels are useful when we need to track how the users move from one step in their paths to another according to ``stages`` pattern.
 
-- users from different channels
-- users from test and control groups in A/B test
-- users from different behavioral segments
+Open funnel
+~~~~~~~~~~~
 
-To achieve the desired effect, we can pass lists of user ids
-to the ``groups`` parameter. Let us plot funnels for two user
-groups:
+In contrast to closed funnel, open funnel pays attention to the fact whether a stage event is represented in a user's path or not. It ignores the order of appearance of events in user paths. Thus, at the first stage there are users who had at least one ``A`` event (4 users), at the second stage there are the users who had at least one ``B`` event (4 users), and the same for the third stage (5 users). As you may have noticed, according to the open funnel definition, the funnel numbers will not change if we change the order of ``stages`` events.
 
-- users who had reached the ``payment_done`` stage
-- users who had not:
+Hybrid funnel
+~~~~~~~~~~~~~
+
+Hybrid funnels inherit the logic of both open and closed funnels. The first stage of a hybrid funnel is formed by the users who experienced ``A`` event (4 users). That is why the users at this stage are identical to the users of open and closed funnel at this stage. Next, to form the second stage of the funnel we consider only the users who experienced event ``B`` after event ``A``. So far the logic is the same as for closed funnel, and that is why the users at the second level of the hybrid funnel are the same as the users at the second level of the closed funnel (2 users). However, at the third stage we can see some differences with the closed funnel.
+
+We consider the users from the previous stage. Among these users we select only those who experienced event ``C`` after event ``A`` disregard whether it happened after ``B`` event or not. Hence, we include ``user 2``at the third stage: she has ``C`` appeared after event ``A``, and she also has event ``B`` appeared after event ``A``. We are not interested in the fact that ``C`` happened before ``B``. On the other hand, we do not include ``user 5`` at the third stage despite the fact she has event ``C`` appeared after event ``A``. The reason is that she did not appear at the previous stage.
+
+User segments
+-------------
+
+It can be useful to build separate funnels for different user groups, and compare them stage-by-stage in a single plot image.
+
+Groups of users can be represented by:
+
+- the users from different marketing channels,
+- the users from experimental and control groups in A/B test,
+- the users from different behavioral segments.
+
+To make this, we can pass collections of the user ids to ``groups`` parameter. Let us plot funnels for two user cohorts: for January 2021 and for February 2021.
 
 .. code-block:: python
 
     stream_df = stream.to_dataframe()
-    segment1 = set(stream_df[stream_df['event'] == 'payment_done']['user_id'])
-    segment2 = set(stream_df['user_id']) - segment1
 
-    stream.funnel(
-        stages = ['catalog', ['product1', 'product2'], 'cart', 'payment_done'],
-        stage_names = ['catalog', 'product', 'cart', 'payment_done'],
-        segments = (segment1, segment2),
-        segment_names = ('converted', 'not_converted')
-    );
+    # pandas.Series, indicies are user_ids, values are months when users appear
+    cohorts = stream_df.groupby('user_id').first()['timestamp'].dt.strftime('%Y-%m')
 
-.. raw:: html
-
-            <iframe
-                width="700"
-                height="400"
-                src="../_static/user_guides/funnel/funnel_5_segments_open.html"
-                frameborder="0"
-                align="left"
-                allowfullscreen
-            ></iframe>
-
-We see how the two groups compare to each other at particular stages.
-As expected, the ``not_converted`` users are the majority, and we can
-see that most of them are "lost" after visiting ``cart``. Interestingly,
-we can see that some users add product to cart directly from the catalog,
-without visiting a product page(which is represented by the fact that
-more users have visited ``cart`` than ``product``).
-
-Now, let us have a look at the ``closed`` funnel:
-
-.. code-block:: python
+    segment1 = cohorts[cohorts == '2020-01'].index
+    segment2 = cohorts[cohorts == '2020-02'].index
 
     stream.funnel(
         stages=['catalog', ['product1', 'product2'], 'cart', 'payment_done'],
@@ -275,112 +177,51 @@ Now, let us have a look at the ``closed`` funnel:
         funnel_type='closed',
         segments=(segment1, segment2),
         segment_names=('converted', 'not_converted')
-    );
+    )
 
 .. raw:: html
 
+    <iframe
+        width="700"
+        height="400"
+        src="../_static/user_guides/funnel/funnel_3_segments.html"
+        frameborder="0"
+        align="left"
+        allowfullscreen
+    ></iframe>
 
-            <iframe
-                width="700"
-                height="400"
-                src="../_static/user_guides/funnel/funnel_6_segments_closed.html"
-                frameborder="0"
-                align="left"
-                allowfullscreen
-            ></iframe>
-
-Now we see - our assumption that some users add product to cart
-directly from the catalog is incorrect. In fact, those users appear
-in ``cart`` passing from the others stages, not from ``catalog``.
-
-Clustering
-^^^^^^^^^^
-
-Consider another example - we compare funnels for multiple users groups,
-segmented according to clusterization results:
-
-.. code-block:: python
-
-    from retentioneering.tooling.clusters import Clusters
-
-    clusters = Clusters(eventstream=stream)
-    clusters.fit(method='kmeans',
-                 n_clusters=8,
-                 feature_type='tfidf',
-                 ngram_range=(1,1));
-
-
-With this clustering procedure, we grouped users based
-on their behavioural patterns. The dictionary containing cluster
-user lists is assigned to the
-:py:meth:`Clusters.cluster_mapping<retentioneering.tooling.clusters.clusters.Clusters.cluster_mapping>` attribute.
-
-Let us plot the cluster funnels to compare cluster conversions:
-
-.. code-block:: python
-
-    clus1_ids = clusters.cluster_mapping[1]
-    clus2_ids = clusters.cluster_mapping[2]
-    clus3_ids = clusters.cluster_mapping[3]
-    clus6_ids = clusters.cluster_mapping[6]
-
-    stream.funnel(
-        eventstream=stream,
-        stages=['catalog', ['product1', 'product2'], 'cart', 'payment_done'],
-        segments=(clus1_ids, clus2_ids, clus3_ids, clus6_ids),
-        segment_names=('cluster 1', 'cluster 2', 'cluster 3', 'cluster 6'));
-
-
-.. raw:: html
-
-            <iframe
-                width="700"
-                height="400"
-                src="../_static/user_guides/funnel/funnel_7_clusters.html"
-                frameborder="0"
-                align="left"
-                allowfullscreen
-            ></iframe>
-
-We could further expand our user behaviour analysis by plotting
-:doc:`transition graphs<transition_graph>` or :doc:`step matrices<step_matrix>`.
+Now we see how the two groups differ at particular stages. Namely, we notice that the January cohort has better conversion rates at each stage: 57.5% VS 52 % for ``catalog`` → ``product`` transition, 70.8% VS 66.4% for ``product`` → ``cart`` transition, and 33.7% VS 25.9% for ``cart`` → ``payment_done`` transition. As a result, the overall conversion rate for ``catalog`` → ``payment_done`` for the January cohort is better (13.7% VS 8.9%). However, the observed difference might be obtained by chance. To estimate this explicitly, we need to test statistical hypothesis.
 
 Using a separate instance
 -------------------------
 
-By design, :py:meth:`Eventstream.funnel()<retentioneering.eventstream.eventstream.Eventstream.funnel>`
-is a shortcut method which uses an instance of
-:py:meth:`Funnel<retentioneering.tooling.funnel.funnel.Funnel>` under the hood.
-Eventstream method creates an instance of Funnel object and stores the eventstream internally.
+By design, :py:meth:`Eventstream.funnel()<retentioneering.eventstream.eventstream.Eventstream.funnel>` is a shortcut method that uses an instance of :py:meth:`Funnel<retentioneering.tooling.funnel.funnel.Funnel>` class under the hood. This method creates an instance of Funnel class and embeds it into the eventstream object. Eventually, ``Eventstream.funnel()`` returns exactly this instance.
 
-Sometimes it's reasonable to work with a separate instance of Funnel class. In this case you also have to
-call :py:meth:`Funnel.fit()<retentioneering.tooling.funnel.funnel.Funnel.fit>` and
-:py:meth:`Funnel.plot()<retentioneering.tooling.funnel.funnel.Funnel.plot()>` methods explicitly.
+Sometimes it is reasonable to work with a separate instance of Funnel class. An alternative way to get the same visualization that ``Eventstream.funnel()`` produces is to call :py:meth:`Funnel.fit()<retentioneering.tooling.funnel.funnel.Funnel.fit>` and :py:meth:`Funnel.plot()<retentioneering.tooling.funnel.funnel.Funnel.plot>` methods explicitly. The former method calculates all the values needed for the visualization, the latter displays these values as a visualization.
 
-Here's an example how you can do it:
+Here is an example how you can manage it:
 
 .. code-block:: python
 
     from retentioneering.tooling.funnel import Funnel
 
     funnel = Funnel(
-                    eventstream=stream,
-                    stages = ['catalog', 'cart', 'payment_done']
-                     )
+        eventstream=stream,
+        stages=['catalog', 'cart', 'payment_done']
+    )
     funnel.fit()
-    funnel.plot();
+    funnel.plot()
 
 .. raw:: html
 
-
-            <iframe
-                width="700"
-                height="400"
-                src="../_static/user_guides/funnel/funnel_8_eventstream.html"
-                frameborder="0"
-                align="left"
-                allowfullscreen
-            ></iframe>
+    <iframe
+        width="700"
+        height="400"
+        src="../_static/user_guides/funnel/funnel_4_eventstream.html"
+        frameborder="0"
+        align="left"
+        allowfullscreen
+    ></iframe>
 
 Common tooling properties
 -------------------------
@@ -388,25 +229,18 @@ Common tooling properties
 values
 ~~~~~~
 
-``Funnel.plot()`` is displayed by default, but
-:py:meth:`Funnel.values<retentioneering.tooling.funnel.funnel.Funnel.values>` property is also available.
-
-In order to avoid unnessesary recalculations while you need different representations
-of one eventstream with the same parameters - that would be helpful to save that fitted
-instance in separate variable.
+:py:meth:`Funnel.values<retentioneering.tooling.funnel.funnel.Funnel.values>` property returns the values underlying recent ``Funnel.plot()`` call. The property is common for many retentioneering tools and allows you to avoid unnecessary calculations if the tool object has already been fitted.
 
 .. code-block:: python
 
-    ff = stream.funnel(
-                       stages = ['catalog', 'cart', 'payment_done'],
-                       show_plot=False
-                       );
-
-    ff.values
+    stream.funnel(
+        stages=['catalog', 'cart', 'payment_done'],
+        show_plot=False
+    ).values
 
 .. raw:: html
 
-    <div><table class="dataframe">
+    <table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>
@@ -445,7 +279,22 @@ instance in separate variable.
         </tr>
       </tbody>
     </table>
-    </div>
 
 params
 ~~~~~~
+
+:py:meth:`Funnel.params<retentioneering.tooling.funnel.funnel.Funnel.params>` property returns the Funnel parameters that was used in the last ``Funnel.fit()`` call.
+
+.. code-block:: python
+
+    stream.funnel(
+        stages=['catalog', 'cart', 'payment_done'],
+        show_plot=False
+    ).params
+
+.. parsed-literal::
+
+    {'stages': [['catalog'], ['cart'], ['payment_done']],
+     'stage_names': ['catalog', 'cart', 'payment_done'],
+     'funnel_type': 'closed',
+     'segment_names': ['all users']}

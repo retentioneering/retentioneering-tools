@@ -492,15 +492,10 @@ class Eventstream(
 
     def __required_cleanup(self, events: pd.DataFrame | pd.Series[Any]) -> pd.DataFrame | pd.Series[Any]:
         income_size = len(events)
-        print(events)
-        print(self.schema)
-        print(self.__raw_data_schema)
-        print(events.columns)
         events.dropna(  # type: ignore
             subset=[self.schema.event_name, self.schema.event_timestamp, self.schema.user_id], inplace=True
         )
         size_after_cleanup = len(events)
-        print(events)
         if (removed_rows := income_size - size_after_cleanup) > 0:
             display(
                 f"Removed {removed_rows} rows because some events " f"have empty event_name or timestamp or user_id"

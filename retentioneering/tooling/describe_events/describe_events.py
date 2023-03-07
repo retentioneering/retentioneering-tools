@@ -18,7 +18,6 @@ class DescribeEvents:
         raw_events_only: bool = False,
         event_list: list[str] | None = None,
     ) -> None:
-
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
@@ -39,13 +38,11 @@ class DescribeEvents:
             self.total_sessions_base: int = self.df[self.session_col].nunique()
 
     def _agg_min_time(self, df: pd.DataFrame, agg_col: str, prefix: str) -> pd.DataFrame:
-
         df[f"__event_{prefix}_idx"] = df.groupby(agg_col).cumcount()
         df[f"__event_{prefix}_timedelta"] = df[self.time_col] - df.groupby(agg_col)[self.time_col].transform("first")
         return df
 
     def _agg_time_events(self, df: pd.DataFrame, agg_col: str, prefix: str) -> pd.DataFrame:
-
         first_time = f"time_to_FO_{prefix}_wise"
         first_event = f"steps_to_FO_{prefix}_wise"
 
@@ -69,7 +66,6 @@ class DescribeEvents:
         return df_agg_event
 
     def _create_basic_info_df(self, df: pd.DataFrame) -> pd.DataFrame:
-
         basic_info = df.groupby("event").agg(
             number_of_occurrences=("event_id", "count"), unique_users=("user_id", "nunique")
         )
@@ -82,7 +78,6 @@ class DescribeEvents:
         basic_info.columns = pd.MultiIndex.from_product([["basic_statistics"], basic_info.columns])
 
         if self.has_session_col:
-
             basic_info[DescribeEvents.UNIQUE_SESS] = self.df.groupby("event")[self.session_col].agg("nunique")
             basic_info[DescribeEvents.SHARE_SESS] = (
                 basic_info[DescribeEvents.UNIQUE_SESS] / self.total_sessions_base

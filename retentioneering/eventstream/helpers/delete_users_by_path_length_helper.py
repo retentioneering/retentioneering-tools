@@ -23,7 +23,7 @@ class DeleteUsersByPathLengthHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength`
+        :py:class:`.DeleteUsersByPathLength`
         """
 
         # avoid circular import

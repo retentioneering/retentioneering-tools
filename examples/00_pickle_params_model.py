@@ -20,7 +20,6 @@ data1 = {"a": 1, "b": "asd", "c": lambda x: x > 10}
 data2 = {"a": 1, "b": "asd", "c": f}
 
 if __name__ == "__main__":
-
     # Cant pickle lambdas
     try:
         t = Test(**data1)

@@ -30,7 +30,7 @@ class SplitSessionsHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        Parameters and details :py:func:`retentioneering.data_processors_lib.split_sessions.SplitSessions`
+        Parameters and details :py:class:`.SplitSessions`
         """
 
         # avoid circular import

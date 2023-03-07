@@ -13,7 +13,6 @@ class Nodelist:
         self.custom_cols = custom_cols
 
     def calculate_nodelist(self, data: pd.DataFrame) -> pd.DataFrame:
-
         res: pd.DataFrame = data.groupby([self.event_col])[self.time_col].count().reset_index()
         if self.custom_cols is not None:
             for weight_col in self.custom_cols:

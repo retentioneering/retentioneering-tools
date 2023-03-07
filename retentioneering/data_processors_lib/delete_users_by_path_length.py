@@ -13,7 +13,7 @@ from retentioneering.widget.widgets import ReteTimeWidget
 
 class DeleteUsersByPathLengthParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`DeleteUsersByPathLength`
+    Class with parameters for class :py:class:`.DeleteUsersByPathLength`
     """
 
     events_num: Optional[int]

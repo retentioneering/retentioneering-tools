@@ -46,7 +46,6 @@ def apply_processor_with_graph(
 
 
 class ApplyTestBase:
-
     _Processor: DataProcessor
 
     def _apply(self, params: ParamsModel, source_df: pd.DataFrame = None, return_with_original: bool = False):
@@ -62,7 +61,6 @@ class ApplyTestBase:
 
 
 class GraphTestBase:
-
     _Processor: DataProcessor
 
     def _apply(self, params: ParamsModel, source_df: pd.DataFrame = None, return_with_original: bool = False):

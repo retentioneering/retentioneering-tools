@@ -23,7 +23,7 @@ class LostUsersHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`retentioneering.data_processors_lib.lost_users.LostUsersEvents`
+        :py:class:`.LostUsersEvents`
 
         """
 

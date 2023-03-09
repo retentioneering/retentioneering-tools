@@ -1,0 +1,91 @@
+
+
+
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin="" rel="preconnect" href="https://fonts.gstatic.com">
+    <link crossorigin="" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+    <title>Retentioneering Transition Graph Application</title>
+
+
+
+<noscript>You need to enable JavaScript to run this app.</noscript>
+<iframe id="elE9EZ7A" src="about:blank" width="960" height="900" onload="window.reteLoadedIframes = window.reteLoadedIframes || []; window.reteLoadedIframes.push('elE9EZ7A')">
+</iframe>
+
+<script>
+  (function() {
+    console.info('Initialize graph IFRAME')
+
+    const iframe = document.getElementById('elE9EZ7A')
+    const iframeLoaded = window.reteLoadedIframes && window.reteLoadedIframes.includes('elE9EZ7A')
+
+    const init = () => {
+      console.info('Graph IFRAME loaded')
+
+      const iframeDocument = document.getElementById('elE9EZ7A').contentDocument
+
+      iframeDocument.body.innerHTML = '<div id="root"></div>'
+
+      const graphScript = iframeDocument.createElement('script')
+
+      graphScript.src = `https://static.server.retentioneering.com/viztools/transition-graph/v3/transition-graph.umd.js?id=elKJMJKK`
+
+      graphScript.addEventListener('load', () => {
+        console.info('JavaScript library loaded')
+
+        const initGraph = iframeDocument.createElement('script')
+
+        initGraph.innerHTML = `
+    initialize({
+    serverId: 'a3ae65cf-69fa-4b52-ace3-3dd6aeabb789',
+    env: 'classic',
+    selectedNormalizationTypeId: 'none',
+    configNodes: [{"index":0,"name":"delivery_courier","changed_name":"delivery_courier","x":548,"y":432,"active":true,"alias":false,"degree":{"events":{"degree":5.72337787574046,"source":834},"user_id":{"degree":10.214345056770977,"source":748}},"type":"suit_node","parent":null},{"index":1,"name":"payment_done","changed_name":"payment_done","x":341,"y":529,"active":true,"alias":false,"degree":{"events":{"degree":5.458878633420581,"source":706},"user_id":{"degree":9.425090002769316,"source":653}},"type":"suit_node","parent":null},{"index":2,"name":"payment_cash","changed_name":"payment_cash","x":475,"y":249,"active":true,"alias":false,"degree":{"events":{"degree":4.407080865132938,"source":197},"user_id":{"degree":5.578510108003323,"source":190}},"type":"suit_node","parent":null},{"index":3,"name":"delivery_pickup","changed_name":"delivery_pickup","x":604,"y":606,"active":true,"alias":false,"degree":{"events":{"degree":5.045598567295771,"source":506},"user_id":{"degree":7.89642758238715,"source":469}},"type":"suit_node","parent":null},{"index":4,"name":"catalog","changed_name":"catalog","x":188,"y":389,"active":true,"alias":false,"degree":{"events":{"degree":34,"source":14518},"user_id":{"degree":34,"source":3611}},"type":"suit_node","parent":null},{"index":5,"name":"payment_card","changed_name":"payment_card","x":712,"y":286,"active":true,"alias":false,"degree":{"events":{"degree":5.16751618680259,"source":565},"user_id":{"degree":8.32844087510385,"source":521}},"type":"suit_node","parent":null},{"index":6,"name":"cart","changed_name":"cart","x":372,"y":720,"active":true,"alias":false,"degree":{"events":{"degree":9.872709739633558,"source":2842},"user_id":{"degree":19.98449183051786,"source":1924}},"type":"suit_node","parent":null},{"index":7,"name":"delivery_choice","changed_name":"delivery_choice","x":294,"y":149,"active":true,"alias":false,"degree":{"events":{"degree":7.483950957432153,"source":1686},"user_id":{"degree":15.265577402381613,"source":1356}},"type":"suit_node","parent":null},{"index":8,"name":"product1","changed_name":"product1","x":810,"y":549,"active":true,"alias":false,"degree":{"events":{"degree":7.13059650089544,"source":1515},"user_id":{"degree":13.321517585156467,"source":1122}},"type":"suit_node","parent":null},{"index":9,"name":"payment_choice","changed_name":"payment_choice","x":90,"y":570,"active":true,"alias":false,"degree":{"events":{"degree":6.287505166000827,"source":1107},"user_id":{"degree":11.959014123511494,"source":958}},"type":"suit_node","parent":null},{"index":10,"name":"main","changed_name":"main","x":634,"y":90,"active":true,"alias":false,"degree":{"events":{"degree":15.644165863066538,"source":5635},"user_id":{"degree":23.814455829410136,"source":2385}},"type":"suit_node","parent":null},{"index":11,"name":"product2","changed_name":"product2","x":588,"y":810,"active":true,"alias":false,"degree":{"events":{"degree":8.488221518115443,"source":2172},"user_id":{"degree":15.880365549709222,"source":1430}},"type":"suit_node","parent":null}],
+    configLinks: [{"sourceIndex":6,"targetIndex":6,"type":"suit","weights":{"events":{"weight":1,"weight_norm":0.00020588840848260242},"user_id":{"weight":1,"weight_norm":0.0004962779156327543}}},{"sourceIndex":6,"targetIndex":4,"type":"suit","weights":{"events":{"weight":571,"weight_norm":0.11756228124356599},"user_id":{"weight":478,"weight_norm":0.23722084367245658}}},{"sourceIndex":6,"targetIndex":7,"type":"suit","weights":{"events":{"weight":1686,"weight_norm":0.3471278567016677},"user_id":{"weight":1356,"weight_norm":0.6729528535980149}}},{"sourceIndex":6,"targetIndex":10,"type":"suit","weights":{"events":{"weight":233,"weight_norm":0.047971999176446366},"user_id":{"weight":204,"weight_norm":0.10124069478908189}}},{"sourceIndex":4,"targetIndex":6,"type":"suit","weights":{"events":{"weight":1709,"weight_norm":0.35186329009676753},"user_id":{"weight":1324,"weight_norm":0.6570719602977667}}},{"sourceIndex":4,"targetIndex":4,"type":"suit","weights":{"events":{"weight":4857,"weight_norm":1},"user_id":{"weight":2004,"weight_norm":0.9945409429280397}}},{"sourceIndex":4,"targetIndex":10,"type":"suit","weights":{"events":{"weight":2545,"weight_norm":0.5239859995882232},"user_id":{"weight":1480,"weight_norm":0.7344913151364765}}},{"sourceIndex":4,"targetIndex":8,"type":"suit","weights":{"events":{"weight":1515,"weight_norm":0.3119209388511427},"user_id":{"weight":1122,"weight_norm":0.5568238213399503}}},{"sourceIndex":4,"targetIndex":11,"type":"suit","weights":{"events":{"weight":2172,"weight_norm":0.44718962322421246},"user_id":{"weight":1430,"weight_norm":0.7096774193548387}}},{"sourceIndex":7,"targetIndex":4,"type":"suit","weights":{"events":{"weight":178,"weight_norm":0.03664813670990323},"user_id":{"weight":172,"weight_norm":0.08535980148883375}}},{"sourceIndex":7,"targetIndex":0,"type":"suit","weights":{"events":{"weight":834,"weight_norm":0.17171093267449042},"user_id":{"weight":748,"weight_norm":0.37121588089330027}}},{"sourceIndex":7,"targetIndex":3,"type":"suit","weights":{"events":{"weight":506,"weight_norm":0.10417953469219683},"user_id":{"weight":469,"weight_norm":0.2327543424317618}}},{"sourceIndex":7,"targetIndex":10,"type":"suit","weights":{"events":{"weight":71,"weight_norm":0.014618077002264772},"user_id":{"weight":68,"weight_norm":0.0337468982630273}}},{"sourceIndex":0,"targetIndex":10,"type":"suit","weights":{"events":{"weight":34,"weight_norm":0.007000205888408483},"user_id":{"weight":34,"weight_norm":0.01687344913151365}}},{"sourceIndex":0,"targetIndex":9,"type":"suit","weights":{"events":{"weight":752,"weight_norm":0.15482808317891703},"user_id":{"weight":683,"weight_norm":0.3389578163771712}}},{"sourceIndex":3,"targetIndex":10,"type":"suit","weights":{"events":{"weight":56,"weight_norm":0.011529750875025736},"user_id":{"weight":55,"weight_norm":0.02729528535980149}}},{"sourceIndex":3,"targetIndex":9,"type":"suit","weights":{"events":{"weight":355,"weight_norm":0.07309038501132387},"user_id":{"weight":332,"weight_norm":0.16476426799007443}}},{"sourceIndex":10,"targetIndex":4,"type":"suit","weights":{"events":{"weight":4064,"weight_norm":0.8367304920732963},"user_id":{"weight":2015,"weight_norm":1}}},{"sourceIndex":10,"targetIndex":10,"type":"suit","weights":{"events":{"weight":1042,"weight_norm":0.21453572163887172},"user_id":{"weight":603,"weight_norm":0.2992555831265509}}},{"sourceIndex":5,"targetIndex":10,"type":"suit","weights":{"events":{"weight":20,"weight_norm":0.0041177681696520484},"user_id":{"weight":20,"weight_norm":0.009925558312655087}}},{"sourceIndex":5,"targetIndex":1,"type":"suit","weights":{"events":{"weight":507,"weight_norm":0.10438542310067943},"user_id":{"weight":475,"weight_norm":0.23573200992555832}}},{"sourceIndex":2,"targetIndex":10,"type":"suit","weights":{"events":{"weight":47,"weight_norm":0.009676755198682314},"user_id":{"weight":45,"weight_norm":0.022332506203473945}}},{"sourceIndex":2,"targetIndex":1,"type":"suit","weights":{"events":{"weight":104,"weight_norm":0.021412394482190653},"user_id":{"weight":102,"weight_norm":0.050620347394540945}}},{"sourceIndex":9,"targetIndex":4,"type":"suit","weights":{"events":{"weight":114,"weight_norm":0.02347127856701668},"user_id":{"weight":108,"weight_norm":0.05359801488833747}}},{"sourceIndex":9,"targetIndex":10,"type":"suit","weights":{"events":{"weight":42,"weight_norm":0.008647313156269302},"user_id":{"weight":41,"weight_norm":0.020347394540942927}}},{"sourceIndex":9,"targetIndex":5,"type":"suit","weights":{"events":{"weight":565,"weight_norm":0.11632695079267037},"user_id":{"weight":521,"weight_norm":0.25856079404466503}}},{"sourceIndex":9,"targetIndex":2,"type":"suit","weights":{"events":{"weight":197,"weight_norm":0.04056001647107268},"user_id":{"weight":190,"weight_norm":0.09429280397022333}}},{"sourceIndex":9,"targetIndex":1,"type":"suit","weights":{"events":{"weight":95,"weight_norm":0.01955939880584723},"user_id":{"weight":94,"weight_norm":0.04665012406947891}}},{"sourceIndex":1,"targetIndex":10,"type":"suit","weights":{"events":{"weight":269,"weight_norm":0.05538398188182005},"user_id":{"weight":242,"weight_norm":0.12009925558312655}}},{"sourceIndex":8,"targetIndex":6,"type":"suit","weights":{"events":{"weight":472,"weight_norm":0.09717932880378835},"user_id":{"weight":431,"weight_norm":0.2138957816377171}}},{"sourceIndex":8,"targetIndex":4,"type":"suit","weights":{"events":{"weight":750,"weight_norm":0.15441630636195183},"user_id":{"weight":620,"weight_norm":0.3076923076923077}}},{"sourceIndex":8,"targetIndex":10,"type":"suit","weights":{"events":{"weight":120,"weight_norm":0.02470660901791229},"user_id":{"weight":114,"weight_norm":0.05657568238213399}}},{"sourceIndex":11,"targetIndex":6,"type":"suit","weights":{"events":{"weight":660,"weight_norm":0.13588634959851761},"user_id":{"weight":582,"weight_norm":0.288833746898263}}},{"sourceIndex":11,"targetIndex":4,"type":"suit","weights":{"events":{"weight":1298,"weight_norm":0.26724315421041794},"user_id":{"weight":934,"weight_norm":0.4635235732009926}}},{"sourceIndex":11,"targetIndex":10,"type":"suit","weights":{"events":{"weight":91,"weight_norm":0.018735845171916822},"user_id":{"weight":88,"weight_norm":0.04367245657568238}}}],
+    nodesColsNames: ['events', 'user_id'],
+    linksWeightsNames: ['events', 'user_id'],
+    nodesThreshold: {"events":0,"user_id":0},
+    linksThreshold: {"events":0,"user_id":0},
+    shownNodesCol: 'events',
+    shownLinksWeight: 'events',
+    selectedNodesColForThresholds: 'events',
+    selectedLinksWeightForThresholds: 'events',
+    showWeights: true,
+    showPercents: false,
+    showNodesNames: true,
+    showAllEdgesForTargets: true,
+    showNodesWithoutLinks: false,
+    useLayoutDump: Boolean(1),
+    weightTemplate: undefined
+})
+`
+        iframeDocument.body.appendChild(initGraph)
+      })
+
+      iframeDocument.head.appendChild(graphScript)
+      iframeDocument.body.dataset.templateId = 'elE9EZ7A_template'
+
+      console.info('Graph IFRAME initialized')
+    }
+
+    console.log(`Graph IFRAME loaded: ` + iframeLoaded)
+
+    if (iframeLoaded) {
+      init()
+      return
+    }
+
+    iframe.onload = () => {
+      init()
+      window.reteLoadedIframes.push('elE9EZ7A')
+    }
+  })()
+</script>
+
+<template id="elE9EZ7A_template">
+
+</template>

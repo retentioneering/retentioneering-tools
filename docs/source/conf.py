@@ -49,8 +49,6 @@ html_theme_options = {
     "logo": {"image_light": "rete_logo.svg", "image_dark": "rete_logo_white.svg"},
     "show_toc_level": 1,
     "github_url": "https://github.com/retentioneering/retentioneering-tools-new-arch",
-    "pygment_light_style": "tango",
-    "pygment_dark_style": "monokai"
     # "use_edit_page_button": True
 }
 

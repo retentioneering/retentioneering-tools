@@ -7,7 +7,7 @@
 .. role:: red
 
 
-Data Processor user guide
+DataProcessor user guide
 =========================
 
 The following user guide is also available as
@@ -330,8 +330,6 @@ Using helper methods, we can replicate the *General Usage* coding blocks output:
     res[res['user_id'] == 219483890]
 
 
-
-
 .. raw:: html
 
 
@@ -438,6 +436,76 @@ Using helper methods, we can replicate the *General Usage* coding blocks output:
 We will also use ``helpers`` in all further examples below.
 See complex example in our preprocessing user guide :ref:`general usage<preprocessing_solution_plan>`
 and :ref:`method chaining<chain_usage_complex_example>`.
+
+Synthetic events order
+----------------------
+
+Before we move to the detailed explanation of each data processor let us summarize
+the information about event type and event order in the eventstream.
+As we have already discussed in the eventstream guide:
+
+- :ref:`event_type column<event_type_explanation>`;
+- :ref:`reindex method<reindex_explanation>`.
+
+All events came from a sourcing dataframe are of ``raw`` event type.
+When we apply adding or editing data processors new synthetic events are created.
+General idea is that each synthetic event has a "parent" or "parents" that
+defines its timestamp.
+
+When you apply multiple data processors, timestamp collisions might occur, so it is
+unclear how the events should be ordered. For colliding events,
+the following sorting order is applied, based on event types (earlier event types
+are added earlier), also you can see which data processor
+for which event_type is responsible:
+
++-------------------------+------------------+
+| event_type              | helper           |
++=========================+==================+
+| profile                 |                  |
++-------------------------+------------------+
+| path_start              | add_start_end    |
++-------------------------+------------------+
+| new_user                | add_new_users    |
++-------------------------+------------------+
+| existing_user           | add_new_users    |
++-------------------------+------------------+
+| truncated_left          | truncated_events |
++-------------------------+------------------+
+| session_start           | split_sessions   |
++-------------------------+------------------+
+| session_start_truncated | split_sessions   |
++-------------------------+------------------+
+| group_alias             | group            |
++-------------------------+------------------+
+| raw                     |                  |
++-------------------------+------------------+
+| raw_sleep               |                  |
++-------------------------+------------------+
+| None                    |                  |
++-------------------------+------------------+
+| synthetic               |                  |
++-------------------------+------------------+
+| synthetic_sleep         |                  |
++-------------------------+------------------+
+| positive_target         | positive_target  |
++-------------------------+------------------+
+| negative_target         | negative_target  |
++-------------------------+------------------+
+| session_end_truncated   | split_sessions   |
++-------------------------+------------------+
+| session_end             | split_sessions   |
++-------------------------+------------------+
+| session_sleep           |                  |
++-------------------------+------------------+
+| truncated_right         | truncated_events |
++-------------------------+------------------+
+| absent_user             | lost_users       |
++-------------------------+------------------+
+| lost_user               | lost_users       |
++-------------------------+------------------+
+| path_end                | add_start_end    |
++-------------------------+------------------+
+
 
 .. _dataprocessors_library:
 
@@ -555,7 +623,7 @@ session ordinal number within a user path and always starts with 1.
 .. figure:: /_static/user_guides/data_processor/dp_2_split_sessions.png
 
 Applying ``SplitSessions`` to split user paths into sessions with
-session cutoff = 10 minutes:
+session cutoff=10 minutes:
 
 .. code-block:: python
 
@@ -654,8 +722,12 @@ consecutive events within each session is less than 10 minutes.
 Splitting user paths into sessions is an essential step in clickstream
 analysis. Sometimes, it needs to be clarified which session cutoff to
 choose. In such cases, generating multiple session splits and comparing them
-in some fashion can be a good practice
-:red:`TODO: link to timedelta_hist. dpanina`
+in some fashion can be a good practice.
+
+It can be helpful to explore the distribution between all consecutive events
+in each user path. For this purpose you can use one of eventstream descriptive methods
+:py:meth:`TimedeltaHist<retentioneering.tooling.timedelta_hist.TimedeltaHist>`
+See more about :ref:`eventstream descriptive methods<eventstream_descriptive_methods>`.
 
 
 .. _add_new_users:
@@ -1133,7 +1205,7 @@ PositiveTarget
 data processor supports two parameters:
 
 -  ``positive_target_events`` - list of "positive" events
-    (for instance, associated with some conversion goal of the user behavior)
+   (for instance, associated with some conversion goal of the user behavior)
 -  ``func`` - this function accepts parent ``Eventstream`` as an
    argument and returns ``pandas.DataFrame`` contains only the lines
    of the events we would like to label as positive.
@@ -1149,10 +1221,12 @@ type.
 .. code-block:: python
 
     positive_events = ['cart', 'payment_done']
-    res = stream.positive_target(positive_target_events=positive_events).to_dataframe()
+    res = stream.positive_target(
+        positive_target_events=positive_events
+        ).to_dataframe()
 
 Consider user ``219483890``, whose ``cart`` event appeared in her
-trajectory with ``event_index = 2``. A synthetic event
+trajectory with ``event_index=2``. A synthetic event
 ``positive_target_cart`` is added right after it.
 
 .. code-block:: python
@@ -1336,7 +1410,10 @@ first one:
 
         return df[df[event_col].isin(positive_target_events)]
 
-    res = stream.positive_target(positive_target_events=positive_events, func=custom_func).to_dataframe()
+    res = stream.positive_target(
+              positive_target_events=positive_events,
+              func=custom_func
+              ).to_dataframe()
 
 
 .. code-block:: python
@@ -1469,7 +1546,9 @@ applied to negative labels instead of positive ones.
 
     negative_events = ['delivery_courier']
 
-    res = stream.negative_target(negative_target_events=negative_events).to_dataframe()
+    res = stream.negative_target(
+              negative_target_events=negative_events
+              ).to_dataframe()
 
 Works similarly to the ``PositiveTarget`` data processor - in this
 case, it will add negative event next to the ``delivery_courier`` event:
@@ -1604,10 +1683,14 @@ policy:
 
 
 Sometimes, it can be a good practice to use different cutoff values and
-compare them in some fashion to select the best. timedelta_hist
-:red:`TODO: link to timedelta_hist. dpanina` method
-with specified ``event_pair=('path_start', 'cart')`` can be helpful for this.
+compare them in some fashion to select the best.
 
+It can be helpful to use
+:py:meth:`TimedeltaHist<retentioneering.tooling.timedelta_hist.TimedeltaHist>` method
+with specified ``event_pair=('eventstream_start', 'path_end')`` for choosing ``left_truncated_cutoff``
+value and ``event_pair=('path_start', 'eventstream_end')`` for choosing ``right_truncated_cutoff``.
+
+See more about :ref:`eventstream descriptive methods<eventstream_descriptive_methods>`.
 
 
 .. code-block:: python
@@ -1770,40 +1853,6 @@ right:
     </table>
     </div>
 
-
-
-Synthetic events order
-^^^^^^^^^^^^^^^^^^^^^^
-
-As you may have noticed, each synthetic event has a "parent" that
-defines the timestamp. When you apply
-multiple data processors, timestamp collisions might occur, so it is
-unclear how the events should be ordered. For colliding events,
-the following sorting order is applied, based on event types(earlier event types
-are added earlier):
-
--  profile
--  path_start
--  new_user
--  existing_user
--  truncated_left
--  session_start
--  session_start_truncated
--  group_alias
--  raw
--  raw_sleep
--  None
--  synthetic
--  synthetic_sleep
--  positive_target
--  negative_target
--  session_end_truncated
--  session_end
--  session_sleep
--  truncated_right
--  absent_user
--  lost_user
--  path_end
 
 Removing processors
 ~~~~~~~~~~~~~~~~~~~
@@ -2053,7 +2102,10 @@ To do this, we can use ``TruncatePath`` with specified
 
 .. code-block:: python
 
-    res = stream.truncate_path(drop_before='cart', shift_before=-2).to_dataframe()
+    res = stream.truncate_path(
+              drop_before='cart',
+              shift_before=-2
+              ).to_dataframe()
 
 Now some users have their trajectories truncated, because they had at
 least one ``cart`` in their path:
@@ -2135,9 +2187,9 @@ least one ``cart`` in their path:
 
 
 As we can see, this path now starts with the two events preceding the
-``cart`` (``event_index = 0, 1``) and the ``cart`` event right after them
-(``event_index = 2``). Another ``cart`` event occurred here
-(``event_index = 5827``), but since the default
+``cart`` (``event_index=0,1``) and the ``cart`` event right after them
+(``event_index=2``). Another ``cart`` event occurred here
+(``event_index=5827``), but since the default
 ``occurrence_before='first'`` was triggered, the data processor
 ignored this second cart.
 
@@ -2206,12 +2258,15 @@ trajectories have not been changed:
 
 We can also perform truncation from the right, or specify for the truncation
 point to be not the first but the last occurrence of the ``cart``. To
-demonstrate both, let us set ``drop_after = "cart"`` and
-``occurrence_after = "last"``:
+demonstrate both, let us set ``drop_after="cart"`` and
+``occurrence_after="last"``:
 
 .. code-block:: python
 
-    res = stream.truncate_path(drop_after='cart', occurrence_after="last").to_dataframe()
+    res = stream.truncate_path(
+              drop_after='cart',
+              occurrence_after="last"
+              ).to_dataframe()
 
 Now, any trajectory which includes a ``cart`` is truncated to the end with the
 last ``cart``:
@@ -2300,7 +2355,7 @@ Editing processors
 GroupEvents
 ^^^^^^^^^^^
 
-Given a masking function passed as ``func``,
+Given a masking function passed as a ``func``,
 :py:meth:`GroupEvents<retentioneering.data_processors_lib.group_events.GroupEvents>` replaces
 all the events marked by ``func`` with newly created synthetic events
 of ``event_name`` name and ``event_type`` type (``group_alias`` by
@@ -2309,8 +2364,6 @@ parents'. ``func`` can be any function that returns a series of
 boolean (``True/False``) variables that can be used as a filter for the
 DataFrame underlying the eventstream.
 
-
-:red:`TODO: Replace ‘filter’ with ‘func’ on the diagram. dpanina`
 
 .. figure:: /_static/user_guides/data_processor/dp_12_group.png
 
@@ -2334,7 +2387,7 @@ we need to assign a common name ``product`` to events ``product1`` and
     res = stream.group(**params).to_dataframe()
 
 As we can see, user ``456870964`` now has two ``product`` events
-(``event_index = 160, 164``) with ``event_type = ‘group_alias’``).
+(``event_index=160, 164``) with ``event_type=‘group_alias’``).
 
 .. code-block:: python
 
@@ -2537,20 +2590,16 @@ The ``suffix`` parameter defines the name of the new event:
 
 -  given ``suffix=None``, names new event with the old event_name, i.e. passes along
    the name of the repeating event;
-
 -  given ``suffix="loop"``, names new event ``event_name_loop``;
-
 -  given ``suffix="count"``, names new event
    ``event_name_loop_{number of event repetitions}``.
 
-The ``timestamp_aggregation_type`` value determines
-the new event timestamp::
+The ``timestamp_aggregation_type`` value determines the new event timestamp:
 
--  given ``timestamp_aggregation_type="max"`` (the default option), passes the timestamp of the last event from the loop;
-
+-  given ``timestamp_aggregation_type="max"`` (the default option), passes the
+   timestamp of the last event from the loop;
 -  given ``timestamp_aggregation_type="min"``, passes the timestamp of
    the first event from the loop;
-
 -  given ``timestamp_aggregation_type="mean"``, passes the average loop
    timestamp.
 
@@ -2750,7 +2799,7 @@ we set it to ``mean``.
 
 
 Now, the synthetic ``catalog_loop_3`` event has ``12:58:23`` time -
-the average of ``12:58:08``, ``12:58:16``, ``12:58:44``.
+the average of ``12:58:08``, ``12:58:16`` and ``12:58:44``.
 
 The ``CollapseLoops`` data processor can be useful for compressing the
 data:

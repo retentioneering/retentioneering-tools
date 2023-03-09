@@ -530,6 +530,8 @@ here's their description.
 
 - ``event_id`` - a string identifier of an eventstream row.
 
+.. _event_type_explanation:
+
 - ``event_type`` - all the events came from a sourcing dataframe are of ``raw`` event type.
   "Raw" means that these event are used as a source for an eventstream, like raw data.
   However, preprocessing methods can add some so called synthetic events which have different event types.
@@ -823,6 +825,9 @@ follow their ``raw`` parent event ``B``. Assume we would like to change their or
 
 As we can see, the order of the events changed, and now ``raw`` events ``B``
 follow ``positive_target_B`` events.
+
+
+.. _eventstream_descriptive_methods:
 
 Descriptive methods
 -------------------

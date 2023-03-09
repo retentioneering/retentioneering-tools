@@ -667,15 +667,13 @@ event they consist of:
 This transition graph is much more comprehensible. After applying the
 data processors, we can see that:
 
--  all sessions start from browsing
-   to cart (small but noticeable share of users who probably spent over
-   30 minutes on product specifications)
+- All sessions start with a "browsing" event. And more than 30% of transitions
+  from "browsing" lead to the end of the session.
 
--  after finishing a session, about 47.5% of users leave the website for
-   good
+- There many returning sessions - 2459 transitions lead to further sessions.
 
--  after transitioning from "cart" to "delivery", about 30% of users do
-   not proceed to "payment"
+- After transitioning from "cart" to "delivery", about 30% of transitions
+  do not proceed to "payment".
 
 We can also see the general user flow quite clearly now, which is a huge
 improvement compared to the original plot.

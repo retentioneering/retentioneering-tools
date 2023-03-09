@@ -69,7 +69,11 @@ class TransitionGraph:
         self.event_time_col = self.eventstream.schema.event_timestamp
         self.user_col = self.eventstream.schema.user_id
         self.id_col = self.eventstream.schema.event_id
-        self.custom_cols = [self.eventstream.schema.user_id] + self.eventstream.schema.custom_cols
+        self.custom_cols = [
+            self.eventstream.schema.user_id,
+            self.eventstream.schema.event_id,
+            *self.eventstream.schema.custom_cols,
+        ]
 
         self.weights = weights if weights else {"edges": "events", "nodes": "events"}
 
@@ -88,49 +92,13 @@ class TransitionGraph:
         )
 
         self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
-
+        self.rename_cols = {self.eventstream.schema.event_id: self.weights["edges"]}
         self.edgelist: Edgelist = Edgelist(eventstream=self.eventstream)
-        self.computed_edgelist = self._calculate_edgelist()
+        self.computed_edgelist = self.edgelist.calculate_edgelist(
+            weight_cols=self.custom_cols, norm_type=self.norm_type, rename_cols=self.rename_cols
+        )
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
-
-    def _calculate_edgelist(
-        self, custom_cols: list[str] | None = None, eventstream: EventstreamType | None = None
-    ) -> pd.DataFrame:
-        if custom_cols is None:
-            custom_cols = self.eventstream.schema.custom_cols
-        if eventstream is None:
-            eventstream = self.eventstream
-        edgelists_data: list[pd.DataFrame] = []
-        cols = [
-            self.eventstream.schema.event_id,
-            self.eventstream.schema.user_id,
-            *custom_cols,
-        ]
-        for col in cols:
-            edgelists_data.append(
-                self.edgelist.calculate_edgelist(data=eventstream, norm_type=self.norm_type, weight_col=col)
-            )
-        computed_edgelist = edgelists_data[0]
-
-        for edgelist in edgelists_data[1:]:
-            computed_edgelist = pd.merge(
-                computed_edgelist,
-                edgelist,
-                how="outer",
-                left_on=["event", "next_event"],
-                right_on=["event", "next_event"],
-                suffixes=["", "_del"],
-            )
-            computed_edgelist = computed_edgelist[
-                [c for c in computed_edgelist.columns if not c.endswith("_del")]  # type: ignore
-            ]
-
-        computed_edgelist = computed_edgelist.rename(
-            columns={self.eventstream.schema.event_id: self.edgelist_default_col}
-        )
-        self.computed_edgelist = computed_edgelist
-        return computed_edgelist
 
     @property
     def weights(self) -> MutableMapping[str, str] | None:
@@ -184,12 +152,15 @@ class TransitionGraph:
 
     def _recalculate(self, rename_rules: list[RenameRule]) -> None:
         eventstream = self.eventstream.copy()
-        renamed_df = eventstream.rename(rules=rename_rules).to_dataframe()
+        renamed_eventstream = eventstream.rename(rules=rename_rules)
+        renamed_df = renamed_eventstream.to_dataframe()
 
         # save norm type
         recalculated_nodelist = self.nodelist.calculate_nodelist(data=renamed_df)
-
-        recalculated_edgelist = self._calculate_edgelist(eventstream=eventstream, custom_cols=self.custom_cols)
+        self.edgelist.eventstream = renamed_eventstream
+        recalculated_edgelist = self.edgelist.calculate_edgelist(
+            weight_cols=self.custom_cols, norm_type=self.norm_type, rename_cols=self.rename_cols
+        )
 
         curr_nodelist = self.nodelist.nodelist_df
 
@@ -568,7 +539,9 @@ class TransitionGraph:
         norm_nodes_threshold = nodes_threshold if nodes_threshold else self._get_norm_node_threshold(nodes_threshold)
         norm_links_threshold = links_threshold if links_threshold else self._get_norm_link_threshold(links_threshold)
 
-        self.computed_edgelist = self._calculate_edgelist(custom_cols=self.custom_cols, eventstream=self.eventstream)
+        self.computed_edgelist = self.edgelist.calculate_edgelist(
+            weight_cols=self.custom_cols, norm_type=self.norm_type
+        )
         node_params = self._make_node_params(targets)
         cols = self.__get_nodelist_cols()
 

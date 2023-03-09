@@ -31,7 +31,7 @@ class TestEdgelist:
         stream = Eventstream(test_df)
         correct = el_simple_corr
         el = Edgelist(eventstream=stream)
-        result = el.calculate_edgelist(weight_col="event_id")
+        result = el.calculate_edgelist(weight_cols=["event_id"])
         assert pd.testing.assert_frame_equal(result, correct) is None
 
 
@@ -49,7 +49,7 @@ class TestVerifyEdgelist:
         nl = nl_session_corr
         correct = el_session_corr
         el = Edgelist(eventstream=stream)
-        result = el.calculate_edgelist(weight_col="session_id")
+        result = el.calculate_edgelist(weight_cols=["session_id"])
         assert pd.testing.assert_frame_equal(result, correct) is None
 
     def test_edgelist__simple_node(
@@ -59,7 +59,7 @@ class TestVerifyEdgelist:
         nl = nl_simple_corr
         correct = el_simple_node_corr
         el = Edgelist(eventstream=stream)
-        result = el.calculate_edgelist(norm_type="node", weight_col="event_id")
+        result = el.calculate_edgelist(norm_type="node", weight_cols=["event_id"])
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_edgelist__simple_full(
@@ -69,7 +69,7 @@ class TestVerifyEdgelist:
         nl = nl_simple_corr
         correct = el_simple_full_corr
         el = Edgelist(eventstream=stream)
-        result = el.calculate_edgelist(norm_type="full", weight_col="event_id")
+        result = el.calculate_edgelist(norm_type="full", weight_cols=["event_id"])
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_edgelist__user_simple(
@@ -80,7 +80,7 @@ class TestVerifyEdgelist:
         nl = nl_user_corr
         correct = el_user__corr
         el = Edgelist(eventstream=stream)
-        result = el.calculate_edgelist(weight_col="user_id")
+        result = el.calculate_edgelist(weight_cols=["user_id"])
         assert pd.testing.assert_frame_equal(result, correct) is None
 
     def test_edgelist__user_node(
@@ -90,7 +90,7 @@ class TestVerifyEdgelist:
         correct = el_user_node_corr
         stream = Eventstream(test_df)
         el = Edgelist(eventstream=stream)
-        result = el.calculate_edgelist(weight_col="user_id", norm_type="node")
+        result = el.calculate_edgelist(weight_cols=["user_id"], norm_type="node")
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_edgelist__user_full(
@@ -100,7 +100,7 @@ class TestVerifyEdgelist:
         nl = nl_user_corr
         correct = el_user_full_corr
         el = Edgelist(eventstream=stream)
-        result = el.calculate_edgelist(weight_col="user_id", norm_type="full")
+        result = el.calculate_edgelist(weight_cols=["user_id"], norm_type="full")
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_edgelist__session_node(
@@ -116,7 +116,7 @@ class TestVerifyEdgelist:
         )
         stream = Eventstream(test_df, raw_data_schema=raw_data_schema)
         el = Edgelist(eventstream=stream)
-        result = el.calculate_edgelist(weight_col="session_id", norm_type="node")
+        result = el.calculate_edgelist(weight_cols=["session_id"], norm_type="node")
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_edgelist__session_full(
@@ -132,5 +132,5 @@ class TestVerifyEdgelist:
         )
         stream = Eventstream(test_df, raw_data_schema=raw_data_schema)
         el = Edgelist(eventstream=stream)
-        result = el.calculate_edgelist(weight_col="session_id", norm_type="full")
+        result = el.calculate_edgelist(weight_cols=["session_id"], norm_type="full")
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None

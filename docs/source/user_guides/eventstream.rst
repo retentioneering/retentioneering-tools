@@ -925,10 +925,9 @@ Describe
 Similarly to pandas, we use :py:meth:`describe()<retentioneering.eventstream.eventstream.Eventstream.describe>`
 for a general description of an eventstream.
 
-.. code:: ipython3
+.. code-block:: python
 
     stream_with_sessions.describe()
-
 
 .. raw:: html
 
@@ -1125,7 +1124,7 @@ Thus we will get statistics for each event present in our data.
 ``session_col`` and ``raw_events_only`` parameters work right in the same way as in the
 :ref:`describe()<explain_describe_params>` method.
 
-.. code:: ipython3
+.. code-block:: python
 
     stream = datasets.load_simple_shop()
     stream.describe_events()
@@ -1386,7 +1385,7 @@ Thus we will get statistics for each event present in our data.
 If there are a lot of events in our data you can specify the list of them in order to
 make output more easy to analyse. For that purpose we have the parameter ``event_list``:
 
-.. code:: ipython3
+.. code-block:: python
 
     stream.describe_events()
     stream.describe_events(event_list=['payment_done', 'cart']).T

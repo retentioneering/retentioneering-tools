@@ -195,7 +195,7 @@ Now we see how the two groups differ at particular stages. Namely, we notice tha
 Using a separate instance
 -------------------------
 
-By design, :py:meth:`Eventstream.funnel()<retentioneering.eventstream.eventstream.Eventstream.funnel>` is a shortcut method that uses an instance of :py:meth:`Funnel<retentioneering.tooling.funnel.funnel.Funnel>` class under the hood. This method creates an instance of Funnel class and embeds it into the eventstream object. Eventually, ``Eventstream.funnel()`` returns exactly this instance.
+By design, :py:meth:`Eventstream.funnel()<retentioneering.eventstream.eventstream.Eventstream.funnel>` is a shortcut method that uses :py:meth:`Funnel<retentioneering.tooling.funnel.funnel.Funnel>` class under the hood. This method creates an instance of Funnel class and embeds it into the eventstream object. Eventually, ``Eventstream.funnel()`` returns exactly this instance.
 
 Sometimes it is reasonable to work with a separate instance of Funnel class. An alternative way to get the same visualization that ``Eventstream.funnel()`` produces is to call :py:meth:`Funnel.fit()<retentioneering.tooling.funnel.funnel.Funnel.fit>` and :py:meth:`Funnel.plot()<retentioneering.tooling.funnel.funnel.Funnel.plot>` methods explicitly. The former method calculates all the values needed for the visualization, the latter displays these values as a visualization.
 

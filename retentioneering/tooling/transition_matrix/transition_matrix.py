@@ -44,6 +44,6 @@ class TransitionMatrix:
         graph.add_weighted_edges_from(edgelist.values)
         return nx.to_pandas_adjacency(G=graph)
 
-    def display(self, weight: str | None, norm_type: NormType) -> None:
-        transition_matrix = self.values(weight_col=weight, norm_type=norm_type)
+    def display(self, weight_col: str | None, norm_type: NormType) -> None:
+        transition_matrix = self.values(weight_col=weight_col, norm_type=norm_type)
         display(transition_matrix)

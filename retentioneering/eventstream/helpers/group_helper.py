@@ -28,7 +28,7 @@ class GroupHelperMixin:
         Notes
         -----
         See parameters and details of dataprocessor functionality
-        :py:func:`retentioneering.data_processors_lib.group_events.GroupEvents`
+        :py:class:`.GroupEvents`
 
         """
 

@@ -19,7 +19,7 @@ class FilterHelperMixin:
 
         See Also
         --------
-        :py:func:`retentioneering.data_processors_lib.filter_events.FilterEvents`
+        :py:class:`.FilterEvents`
         """
         # avoid circular import
         from retentioneering.data_processors_lib import FilterEvents, FilterEventsParams

@@ -12,7 +12,7 @@ from retentioneering.widget.widgets import ReteFunction
 
 class FilterEventsParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`FilterEvents`
+    Class with parameters for class :py:class:`.FilterEvents`
 
     """
 

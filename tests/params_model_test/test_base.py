@@ -61,7 +61,6 @@ class TestParamsModel:
         assert "asd" == model.a
 
     def test_get_values(self) -> None:
-
         import inspect
 
         @dataclass

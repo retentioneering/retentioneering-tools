@@ -11,7 +11,6 @@ from retentioneering.tooling.typing.transition_graph import NormType
 
 
 class TransitionMatrix:
-
     __edgelist: Edgelist
 
     def __init__(self, eventstream: EventstreamType) -> None:

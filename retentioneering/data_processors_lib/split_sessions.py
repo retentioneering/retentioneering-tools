@@ -15,7 +15,7 @@ from retentioneering.widget.widgets import ReteTimeWidget
 
 class SplitSessionsParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`SplitSessions`
+    Class with parameters for class :py:class:`.SplitSessions`
 
     """
 

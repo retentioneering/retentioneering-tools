@@ -60,7 +60,7 @@ class StatTests:
 
     See Also
     --------
-    :py:func:`retentioneering.eventstream.eventstream.Eventstream.stattests`
+    :py:meth:`.Eventstream.stattests`
 
     """
 

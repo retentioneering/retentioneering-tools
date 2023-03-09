@@ -15,7 +15,7 @@ from retentioneering.widget.widgets import ReteTimeWidget
 
 class TruncatedEventsParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`TruncatedEvents`
+    Class with parameters for class :py:class:`.TruncatedEvents`
     """
 
     left_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]

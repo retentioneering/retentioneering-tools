@@ -18,7 +18,6 @@ from tests.data_processors_lib.fixtures.positive_target_input import test_stream
 
 
 class TestPositiveTarget(ApplyTestBase):
-
     _Processor = PositiveTarget
     _source_df = pd.DataFrame(
         [

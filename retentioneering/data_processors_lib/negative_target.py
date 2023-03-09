@@ -46,7 +46,7 @@ def _default_func(eventstream: EventstreamType, negative_target_events: List[str
 
 class NegativeTargetParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`NegativeTarget`
+    Class with parameters for class :py:class:`.NegativeTarget`
     """
 
     negative_target_events: List[str]

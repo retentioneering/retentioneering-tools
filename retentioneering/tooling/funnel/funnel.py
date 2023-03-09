@@ -41,7 +41,7 @@ class Funnel:
 
     See Also
     --------
-    :py:func:`retentioneering.eventstream.eventstream.Eventstream.funnel`
+    :py:meth:`.Eventstream.funnel`
 
     """
 
@@ -63,7 +63,6 @@ class Funnel:
         segments: Collection[Collection[int]] | None = None,
         segment_names: list[str] | None = None,
     ) -> None:
-
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
@@ -139,7 +138,6 @@ class Funnel:
         segments: Collection[Collection[int]],
         segment_names: list[str],
     ) -> dict[str, dict]:
-
         min_time_0stage = (
             data[data[self.event_col].isin(stages[0])].groupby(self.user_col)[[self.time_col]].min().reset_index()
         )
@@ -296,6 +294,11 @@ class Funnel:
 
     @property
     def params(self) -> dict:
+        """
+        Returns the parameters used for the last fitting.
+
+        """
+
         return {
             "stages": self.stages,
             "stage_names": self.stage_names,

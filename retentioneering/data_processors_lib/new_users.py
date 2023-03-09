@@ -12,7 +12,7 @@ from retentioneering.widget.widgets import ListOfIntNewUsers
 
 class NewUsersParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`NewUsersEvents`
+    Class with parameters for class :py:class:`.NewUsersEvents`
     """
 
     new_users_list: Union[List[int], List[str], Literal["all"]]

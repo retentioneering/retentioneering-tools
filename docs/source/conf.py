@@ -84,6 +84,19 @@ html_css_files = [
 # https://stackoverflow.com/a/28454426
 latex_elements = {"preamble": "\\usepackage{enumitem}\\setlistdepth{99}"}
 
+rst_epilog = """
+.. raw:: html
+
+    <style>
+        .red {color:#24ff83; font-weight:bold;}
+    </style>
+
+.. role:: red
+
+.. |warning| replace:: ⚠️
+
+"""
+
 
 extlinks = {
     "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units/%s", None),

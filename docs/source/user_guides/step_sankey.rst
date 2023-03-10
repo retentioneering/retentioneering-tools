@@ -14,13 +14,10 @@ The following user guide is also available as `Google Colab notebook <https://co
 Loading data
 ------------
 
-We use ``simple_shop`` dataset for demonstration purposes. If you want to use your own dataset, upload it following :doc:`this instruction</user_guides/eventstream>`.
-
-:red:`TODO: change the anchored link when rst doc is ready`
+Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simple_shop>` dataset. It has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable. If you want to use your own dataset, upload it following :doc:`this instruction</user_guides/eventstream>`.
 
 .. code-block:: python
 
-    import pandas as pd
     from retentioneering import datasets
 
     stream = datasets.load_simple_shop()

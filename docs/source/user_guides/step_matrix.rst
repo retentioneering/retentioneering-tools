@@ -7,27 +7,19 @@ The following user guide is also available as
 Step matrix definition
 ----------------------
 
-Step matrix is a powerful tool in the retentioneering arsenal. It allows
-getting a quick high-level understanding of user behavior. Step matrix
-has powerful customization options to tailor the output depending on the
-goal of the analysis.
+Step matrix is a powerful tool in the Retentioneering arsenal. It allows and getting a quick high-level understanding of user behavior. The step matrix features powerful customization options to tailor the output depending on the goal of the analysis.
 
-To better understand how step matrix works let’s first consider an
-intuitive example. Suppose we are analyze web-store logs and have a
-dataset with event logs from four user sessions with the following
-events in the following order:
+To better understand how the step matrix works, let us first consider an intuitive example. Assume we have an eventstream as follows:
 
 .. image:: /_static/user_guides/step_matrix/step_matrix_demo.png
 
 
-We can visualize this dataset as a step-wise heatmap indicating the
-distribution of the events appeared at a specific step:
+We can visualize this dataset as a step-wise heatmap, indicating the distribution of the events appeared at a specific step:
 
 .. code-block:: python
 
-    from retentioneering.eventstream import Eventstream
     import pandas as pd
-
+    from retentioneering.eventstream import Eventstream
 
 
 .. code-block:: python
@@ -55,15 +47,14 @@ distribution of the events appeared at a specific step:
     )
 
 
-    Eventstream(simple_example).step_matrix(max_steps=7);
+    Eventstream(simple_example)\
+        .step_matrix(max_steps=7);
 
 .. image:: /_static/user_guides/step_matrix/output_6_1.png
 
 
-This is the simplest step matrix. The matrix rows correspond to the
-unique events, and the columns correspond to the steps in the user
-trajectories. So that ``(i, j)`` matrix element show the percantage of
-the users who had event ``i`` appeared at step ``j``.
+The matrix rows correspond to the unique events, and the columns correspond to the steps in the user
+trajectories. That is, ``(i, j)`` matrix element shows the share of the users with event ``i`` appeared at step ``j``.
 
 Below we will explore how to plot and customize the step matrix.
 
@@ -79,89 +70,44 @@ Loading data
 Basic example
 -------------
 
-StepMatrix tool is mainly available as ``Eventstream.step_matrix()``
-method. Here’s how it visualizes ``simple_shop`` eventstream:
+The primary way to visualize a step matrix is to call :py:meth:`Eventstream.step_matrix()<retentioneering.eventstream.eventstream.Eventstream.step_matrix>` method. Here is how it is applied to ``simple_shop`` eventstream:
 
 .. code-block:: python
 
     stream.step_matrix(max_steps=12)
 
-
-
-
-
 .. image:: /_static/user_guides/step_matrix/output_12_2.png
 
-
-As you can see, the sum of the values in the cells of the matrix at each
-step is 1. Looking at the first column we can immediately say that the
-users in the analyzed eventstream start their sessions from events
-``catalog`` (72%) and ``main`` (28%). We are potentially interested in
-the payment_done event, and the step matrix shows that it appears in the
-trajectories no earlier than the seventh step (row payment_done have
-0.02 at step 7).
-
+As we can see, the sum of the values in the matrix columns is 1 (i.e. at each step). Looking at the first column we can say that the users start their sessions from events ``catalog`` (72%) and ``main`` (28%). Also, we notice that ``payment_done`` event, which might be considered as an event of interest, appears in the trajectories no earlier than at the 7th step (row ``payment_done`` has zeros until step 7).
 
 Terminating event
 -----------------
 
-As you may know, ``ENDED`` is a special synthetic event which explicitly
-indicates a trajectory’s end. If a user’s path is shorter than
-``max_steps`` parameter, ``path_end`` is padded the path so that it
-becomes exactly of length ``max_steps``. Having this behavior
-implemented, we can guarantee that the sum of the user fractions over
-each column (i.e each step) is exactly 1. ``ENDED`` is always placed to
-the bottom. This line calculates the cumulative share of users who left
-the clickstream at each step.
+As you may have noticed, the step matrix above has ``ENDED`` event which is located in the last row, whereas this event is not represented in the ``simple_shop`` eventstream. ``ENDED`` is a special synthetic event that explicitly indicates a trajectory’s end. If a user’s path is shorter than ``max_steps`` parameter, then ``ENDED`` event is padded to the path so that it becomes exactly of length ``max_steps``. With this behavior, the sum of the user fractions over each column (i.e each step) is exactly 1. Essentially, ``ENDED`` row represents the cumulative share of leaving users. The event exists in scope of step matrix only, so that it does not affect the sourcing eventstream at all.
 
 Collapsing rare events
-------------------------
+----------------------
 
-Often we need to collapse rare events in the step matrix since these
-events make it excessively noisy. This behaviour is controlled by
-``thresh`` argument. An event is considered as rare if its maximum
-frequency over all the steps represented in the diagram is less than
-``thresh``. All these rare events are not removed from the matrix, but
-collapsed to ``thresholded_N`` artificial event instead where ``N``
-stands for the number of the collapsed events. ``thresholded_N`` event
-appears in the step matrix only and is not added to the parent
-eventstream.
+In a typical scenario, it can be useful to hide rare events in a step matrix, not removing them from the step matrix calculation. If we remove them, the matrix values will be distorted. This behaviour is controlled by the ``thresh`` argument. An event is considered as rare if its maximum frequency over all the steps is less than ``thresh``. All such rare events are not removed from the matrix, but instead collapsed to ``thresholded_N`` artificial event, where ``N`` stands for the number of the collapsed events. The ``thresholded_N`` event appears in step matrix only, and is not added to the sourcing eventstream.
 
-Let’s look how the events are adsorbed if we set ``thresh=0.05`` and
-compare the result with the previous step matrix (with default
-``thresh=0`` parameter).
+Let us look how the events are collapsed if we set ``thresh=0.05``, and compare the result with the previous step matrix (which had the default ``thresh=0`` parameter).
 
 .. code-block:: python
 
-    stream.step_matrix(max_steps=16, thresh=0.05);
-
-
+    stream.step_matrix(max_steps=16, thresh=0.05)
 
 .. image:: /_static/user_guides/step_matrix/output_16_1.png
 
 
-All the rare events cutted away by thresholding are grouped
-together in ``THRESHOLDED_N`` row, where N - is the total number of
-dropped events. We see that thresholded_6 contains delivery_courier,
-delivery_pickup, payment_cash, payment_card, payment_done,
-payment_choice. Look at the ``payment_choice`` event in the previous
-step matrix: at step 5 this event contains 3% of the users, 4% at step
-6, and 3% at step 7. Since the maximum value (3%) is less than
-thresh=0.05, the event is collapsed.
+Now, we see that all 6 rare events are hidden and grouped together in the ``THRESHOLDED_6`` row. We also notice that ``THRESHOLDED_6`` event contains ``delivery_courier``, ``delivery_pickup``, ``payment_cash``, ``payment_card``, ``payment_done``, and ``payment_choice`` events. Let us check why, say, the ``payment_choice`` event has been collapsed. In the previous step matrix we see that at step 5 this event contains 3% of the users, 4% at step 6, and 3% at step 7, etc. Since the maximum value (4%) is less than
+``thresh=0.05``, the event is collapsed.
 
-Please also note that the number \_6 in the thresholded_6 event name
-carries no information on a specific step. For example, from the matrix
-with thresh=0 we see that at step 4 only one event among these 6 is
-represented (delivery_courier), so it is the only event which is
-collapsed at this step. On the other hand, at step 5 delivery_pickup and
-payment_choice appear, so they are collapsed to thresholded_6 event.
-Finally, at step 7 all these 6 events are collapsed.
+Note that the number ``_6`` in ``THRESHOLDED_6`` event name contains no information on specific steps. For example, from the matrix with ``thresh=0`` we see that at step 4 only one event among these 6 is represented (``delivery_courier``), so it is the only event that is collapsed at this step. On the other hand, at step 5 ``delivery_pickup`` and ``payment_choice`` appear, so they are collapsed to the ``THRESHOLDED_6`` event. Finally, at step 7, all these 6 events are collapsed.
 
-It you want to prevent some events from the collapsing, use target
-parameter then.
+You can use the ``target`` parameter if you want to prevent some events from the collapsing.
 
-Targets analysis
------------------
+Target events analysis
+----------------------
 
 In product analysis we often deal with the events of particular
 importance. This includes events such as adding an item to the cart,

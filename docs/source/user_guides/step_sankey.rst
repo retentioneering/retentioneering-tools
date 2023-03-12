@@ -1,11 +1,3 @@
-.. raw:: html
-
-    <style>
-        .red {color:#24ff83; font-weight:bold;}
-    </style>
-
-.. role:: red
-
 StepSankey
 ==========
 
@@ -25,13 +17,13 @@ Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simp
 Basic example
 -------------
 
-The ``StepSankey`` diagram represents eventstream as a step-wise directed graph. The nodes are associated with events appeared at a specified step in a user's trajectory. The nodes are sorted from left to right according to the ordinal number of step (1, 2, etc). The edges visualize how often transition from event ``A`` happened at ``i``-th step to event ``B`` happened at ``i+1``-th step occurred. The nodes and edges sizes reflect the number of unique users involved in them.
+The step Sankey diagram represents eventstream as a stepwise directed graph. The nodes are associated with events that appear at a particular step in a user's trajectory. The nodes are sorted from left to right according to the ordinal number of step (1, 2, etc). The edges visualize how often transition from, say, event ``A`` happened at ``i``-th step to event ``B`` happened at ``i+1``-th step occurred. The nodes and edges sizes reflect the number of unique users involved.
 
-``StepSankey`` diagram in some sense is an extension of :doc:`StepMatrix</user_guides/step_matrix>` diagram. The latter shows the distribution of the events with respect to an ordinal step, but in addition ``StepSankey`` reflects the connection between adjacent steps which ``StepMatrix`` has a lack of.
+The step Sankey diagram in some sense is an extension of the :doc:`step matrix</user_guides/step_matrix>` diagram. The latter shows the distribution of the events with respect to an ordinal step, but in addition the step Sankey chart reflects the connection between adjacent steps which the step matrix lacks of. Hence, step Sankey inherits many features that step matrix have, so we recommend you to read :doc:`Step matrix user guide</user_guides/step_matrix>` before you read this document.
 
-The implementation is based on `Plotly Sankey diagram <https://plotly.com/python/sankey-diagram/>`_ and inherits all the benefits from its parent. In particular, the diagram is interactive, so you can hover the nodes and edges and look at the detailed info, move the nodes, and even merge them (for merging use `Box Select` or `Lasso Select` tools located at the top-right corner on hover).
+The implementation is based on the `Plotly Sankey diagram <https://plotly.com/python/sankey-diagram/>`_ and inherits all the benefits from its parent. In particular, the diagram is interactive, so you can hover the nodes and edges and look at the detailed info, move the nodes, and even merge them (to merge use *Box Select* or *Lasso Select* tools located at the top-right corner on hover).
 
-StepSankey tool is mainly available as :py:meth:`Eventstream.step_sankey()<retentioneering.eventstream.eventstream.Eventstream.step_sankey>` method. Here's how it visualizes ``simple_shop`` eventstream:
+The primary way to build a step Sankey diagram graph is to call :py:meth:`Eventstream.step_sankey()<retentioneering.eventstream.eventstream.Eventstream.step_sankey>` method. Here is how it visualizes ``simple_shop`` eventstream:
 
 .. code-block:: python
 
@@ -49,9 +41,9 @@ StepSankey tool is mainly available as :py:meth:`Eventstream.step_sankey()<reten
     ></iframe>
     </div>
 
-Here we can see user flow. The nodes are grouped into columns in step-wise manner, so the first column corresponds to the events occurred at users' first step, the second column corresponds to the second step and so on. The height of a rectangular representing a node is proportional to the frequency this particular event occurred at this particular step. From this diagram we can see (if we hover the mouse cursor on the node) that at first step event ``catalog`` appeared 2.69K times (71.61% of the users) whereas event ``main`` appeared 1.07K times (28.39% of the users). That's why the red rectangular (for ``catalog`` event) is ~2.5 times higher than the green rectangular (for ``main`` event). The percentage of the users is calculated with respect to all the users participating in the parent eventstream.
+Here we can see user flow. The nodes are grouped into columns in stepwise manner. The first column corresponds to the events that occurred at the users' first step, the second column corresponds to the second step and so on. The height of a rectangle representing a node is proportional to the frequency this particular event occurred at this particular step. From this diagram we can see (if we hover the mouse cursor on the node) that at the first step the ``catalog`` event appeared 2.69K times (71.61% of the users) whereas the ``main`` event appeared 1.07K times (28.39% of the users). That is why the red rectangular (for the ``catalog`` event) is ~2.5 times higher than the green rectangular (for the ``main`` event). The percentage of the users is calculated with respect to all the users participating in the parent eventstream.
 
-An edge's width is proportional to the frequency the corresponding transition occurred in the eventstream. Hovering the mouse on the edges, you can reveal not only this information, but also the info on how long the transition took the users in average. For example, we can see that the transition ``catalog (1st step) -> catalog (2nd step)`` appeared in 869 paths, and it took 29 seconds in average.
+An edge's width is proportional to the frequency of this transition in the eventstream. Hovering the mouse on the edges, you can reveal not only these frequencies, but also the info on how long a transition took the users on average. For example, we can see that the transition ``catalog (1st step) -> catalog (2nd step)`` appeared in 869 paths, and it took 29 seconds on average.
 
 .. |hover_node1| image:: /_static/user_guides/step_sankey/hover_node1.png
 .. |hover_node2| image:: /_static/user_guides/step_sankey/hover_node2.png
@@ -63,13 +55,14 @@ An edge's width is proportional to the frequency the corresponding transition oc
     | |hover_node1| | |hover_node2| | |hover_edge| |
     +---------------+---------------+--------------+
 
-Finally, ``max_steps`` denotes the maximum number of steps available for displaying in the diagram (starting from the 1st step).
+Finally, we mention that ``max_steps`` denotes the number of the steps to be displayed in the diagram (starting from the 1st step, by design).
 
 Terminating event
 -----------------
 
-As you may know, ``path_end`` is a special synthetic event which explicitly indicates a trajectory's end. It is yielded as a result of :py:meth:`StartEndEvents<retentioneering.data_processors_lib.start_end_events.StartEndEvents>` data processor. Like for :doc:`StepMatrix</user_guides/step_matrix>`, ``path_end`` event has the same meaning for StepSankey. If a user's path is shorter than ``max_steps`` parameter, ``path_end`` is padded the path so that it becomes exactly of length ``max_steps``. Having this behavior implemented, we can guarantee that the sum of the user fractions over each column (i.e. each step) is exactly 1.
-``path_end`` is always placed to the bottom. The following example demonstrates this (we temporarily set ``thresh=0`` for the comparison purposes, see the next section).
+Similar to step matrix, step Sankey diagram uses the idea of synthetic ``ENDED`` event. This event is padded in the end of short paths (meaning that their length is less than ``max_steps``) so that their length becomes exactly ``max_path``. See :ref:`Step matrix user guide <transition_matrix_terminating_event>` for the details.
+
+Having ``ENDED`` event implemented guarantees that the sum of the user shares over each column (i.e. each step) is exactly 1. ``ENDED`` is always placed at the bottom of the diagram. The following example demonstrates this (we temporarily set ``thresh=0`` for the comparison purposes, see the next section).
 
 .. code-block:: python
 
@@ -89,7 +82,7 @@ As you may know, ``path_end`` is a special synthetic event which explicitly indi
     ></iframe>
     </div>
 
-At this diagram we see that ``path_end`` appears at the 4th step and involves 443 users. At the 5th step ``path_end`` event contains 823 users, and for 443 of them the event has been propagated from the previous step.
+In this diagram we see that ``path_end`` appears at the 4th step and involves 443 users. At the 5th step ``path_end`` event contains 823 users, and for 443 of them the event has been propagated from the previous step.
 
 Collapsing rare events
 ----------------------

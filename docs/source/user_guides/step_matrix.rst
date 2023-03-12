@@ -79,6 +79,8 @@ The primary way to visualize a step matrix is to call :py:meth:`Eventstream.step
 
 As we can see, the sum of the values in the matrix columns is 1 (i.e. at each step). Looking at the first column we can say that the users start their sessions from events ``catalog`` (72%) and ``main`` (28%). Also, we notice that ``payment_done`` event, which might be considered as an event of interest, appears in the trajectories no earlier than at the 7th step (row ``payment_done`` has zeros until step 7).
 
+.. _transition_matrix_terminating_event:
+
 Terminating event
 -----------------
 

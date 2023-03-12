@@ -140,7 +140,7 @@ class TransitionGraph:
         self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
         self.rename_cols = {self.eventstream.schema.event_id: self.weights["edges"]}
         self.edgelist: Edgelist = Edgelist(eventstream=self.eventstream)
-        self.computed_edgelist = self.edgelist.calculate_edgelist(
+        self.edgelist.calculate_edgelist(
             weight_cols=self.custom_cols, norm_type=self.norm_type, rename_cols=self.rename_cols
         )
 
@@ -184,9 +184,9 @@ class TransitionGraph:
                 nodelist=self.nodelist.nodelist_df,
             )
             self._on_nodelist_updated(nodes)
-
-            self.computed_edgelist["type"] = "suit"
-            links = self._prepare_edges(edgelist=self.computed_edgelist, nodes_set=nodes_set)
+            edgelist = self.edgelist.edgelist_df
+            edgelist["type"] = "suit"
+            links = self._prepare_edges(edgelist=edgelist, nodes_set=nodes_set)
             result: dict[str, MutableSequence[PreparedNode] | MutableSequence[PreparedLink] | list] = {
                 "nodes": nodes,
                 "links": links,
@@ -213,7 +213,7 @@ class TransitionGraph:
         self.nodelist.nodelist_df = curr_nodelist.apply(
             lambda x: self._update_node_after_recalc(recalculated_nodelist, x), axis=1
         )
-        self.computed_edgelist = recalculated_edgelist
+        self.edgelist.edgelist_df = recalculated_edgelist
 
     def _replace_grouped_events(self, grouped: pd.Series, row: pd.Series) -> pd.Series:
         event_name = row[self.event_col]
@@ -281,7 +281,7 @@ class TransitionGraph:
     def _get_norm_link_threshold(self, links_threshold: Threshold | None = None) -> dict[str, float] | None:
         nodelist_default_col = self.nodelist_default_col
         edgelist_default_col = self.edgelist_default_col
-        scale = float(cast(float, self.computed_edgelist[edgelist_default_col].abs().max()))
+        scale = float(cast(float, self.edgelist.edgelist_df[edgelist_default_col].abs().max()))
         norm_links_threshold = None
 
         if links_threshold is not None:
@@ -290,7 +290,7 @@ class TransitionGraph:
                 if key == nodelist_default_col:
                     norm_links_threshold[nodelist_default_col] = links_threshold[nodelist_default_col] / scale
                 else:
-                    s = float(cast(float, self.computed_edgelist[key].abs().max()))
+                    s = float(cast(float, self.edgelist.edgelist_df[key].abs().max()))
                     norm_links_threshold[key] = links_threshold[key] / s
         return norm_links_threshold
 
@@ -446,7 +446,7 @@ class TransitionGraph:
     def _make_template_data(
         self, node_params: NodeParams, width: int, height: int
     ) -> tuple[MutableSequence, MutableSequence]:
-        edgelist = self.computed_edgelist.copy()
+        edgelist = self.edgelist.edgelist_df.copy()
         nodelist = self.nodelist.nodelist_df.copy()
 
         source_col = edgelist.columns[0]
@@ -599,9 +599,7 @@ class TransitionGraph:
         norm_nodes_threshold = nodes_threshold if nodes_threshold else self._get_norm_node_threshold(nodes_threshold)
         norm_links_threshold = links_threshold if links_threshold else self._get_norm_link_threshold(links_threshold)
 
-        self.computed_edgelist = self.edgelist.calculate_edgelist(
-            weight_cols=self.custom_cols, norm_type=self.norm_type
-        )
+        self.edgelist.calculate_edgelist(weight_cols=self.custom_cols, norm_type=self.norm_type)
         node_params = self._make_node_params(targets)
         cols = self.__get_nodelist_cols()
 

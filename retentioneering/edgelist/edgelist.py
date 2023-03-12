@@ -10,25 +10,13 @@ class Edgelist:
     edgelist_df: pd.DataFrame
     eventstream: EventstreamType
 
-    norm_type: NormType = None
     _weight_col: str
-    event_col: str
-    event_id_col: str
-    time_col: str
-    user_col: str
 
     def __init__(
         self,
         eventstream: EventstreamType,
     ) -> None:
-        self.__extract_init_data_from_eventstream(eventstream)
-
-    def __extract_init_data_from_eventstream(self, eventstream: EventstreamType) -> None:
         self.eventstream = eventstream
-        self.event_col = eventstream.schema.event_name
-        self.event_id_col = eventstream.schema.event_id
-        self.time_col = eventstream.schema.event_timestamp
-        self.user_col = eventstream.schema.user_id
 
     @property
     def weight_col(self) -> str:
@@ -42,14 +30,14 @@ class Edgelist:
 
     @property
     def group_col(self) -> str:
-        if self.weight_col in (self.event_id_col, self.user_col):
-            return self.user_col
+        if self.weight_col in (self.eventstream.schema.event_id, self.eventstream.schema.user_id):
+            return self.eventstream.schema.user_id
         else:
             return self.weight_col
 
     @property
     def next_event_col(self) -> str:
-        return f"next_{self.event_col}"
+        return f"next_{self.eventstream.schema.event_name}"
 
     def calculate_edgelist(
         self, weight_cols: list[str], norm_type: NormType | None = None, rename_cols: dict[str, str] | None = None
@@ -57,13 +45,14 @@ class Edgelist:
         if norm_type not in (None, "full", "node"):
             raise ValueError(f"unknown normalization type: {norm_type}")
 
-        self.norm_type = norm_type
-        edge_from, edge_to = self.event_col, self.next_event_col
+        edge_from, edge_to = self.eventstream.schema.event_name, self.next_event_col
         df = self.eventstream.to_dataframe()
         calculated_edgelist: pd.DataFrame = pd.DataFrame()
         for weight_col in weight_cols:
             self.weight_col = weight_col
-            edgelist = self._calculate_edgelist_for_selected_weight(df, edge_from, edge_to)
+            edgelist = self._calculate_edgelist_for_selected_weight(
+                df=df, norm_type=norm_type, edge_from=edge_from, edge_to=edge_to
+            )
             if calculated_edgelist.empty:
                 calculated_edgelist = edgelist
             else:
@@ -91,9 +80,11 @@ class Edgelist:
         ]
         return calculated_edgelist
 
-    def _calculate_edgelist_for_selected_weight(self, df: pd.DataFrame, edge_from: str, edge_to: str) -> pd.DataFrame:
+    def _calculate_edgelist_for_selected_weight(
+        self, df: pd.DataFrame, norm_type: NormType, edge_from: str, edge_to: str
+    ) -> pd.DataFrame:
         possible_transitions = (
-            df.assign(**{edge_to: lambda _df: _df.groupby(self.user_col)[edge_from].shift(-1)})
+            df.assign(**{edge_to: lambda _df: _df.groupby(self.eventstream.schema.user_id)[edge_from].shift(-1)})
             .dropna(subset=[edge_to])
             .groupby([edge_from, edge_to])
             .size()
@@ -103,21 +94,21 @@ class Edgelist:
             subset=[edge_to]
         )
         abs_values = bigrams.groupby([edge_from, edge_to])[self.weight_col].nunique()
-        if self.weight_col != self.event_id_col:
+        if self.weight_col != self.eventstream.schema.event_id:
             abs_values = abs_values.reindex(possible_transitions)
         edgelist = abs_values
         # denumerator_full = total number of transitions/users/sessions
-        if self.norm_type == "full":
+        if norm_type == "full":
             denumerator_full = bigrams[self.weight_col].nunique()
             edgelist = abs_values / denumerator_full
         # denumerator_node = total number of transitions/users/sessions that started with edge_from event
-        if self.norm_type == "node":
+        if norm_type == "node":
             denumerator_node = bigrams.groupby([edge_from])[self.weight_col].nunique()
             edgelist = abs_values / denumerator_node
-        if self.weight_col not in [self.event_id_col, self.user_col]:
+        if self.weight_col not in [self.eventstream.schema.event_id, self.eventstream.schema.user_id]:
             edgelist = edgelist.fillna(0)
 
-            if self.norm_type is None:
+            if norm_type is None:
                 edgelist = edgelist.astype(int)
         edgelist = edgelist.reset_index(allow_duplicates=True)
         return edgelist

@@ -1,51 +1,35 @@
-.. raw:: html
-
-    <style>
-        .red {color:#24ff83; font-weight:bold;}
-    </style>
-
-.. role:: red
-
 E-wallet dataset
 ================
 
-SUMMARY
+Summary
 -------
 
-The dataset was obtained from a e-wallet system to provide a real-world example for testing Retentioneering tools. The dataset contains a stream of user actions on the web platform. The data was collected during three months. To protect end users privacy, as well as the the platform, all dates and keys have been modified. Do not try to reveal the identity of the platform.
+The dataset was obtained from an e-wallet system to provide a real-world example for testing Retentioneering tools. The dataset contains a stream of user actions on the web platform. The data was collected during three months. To protect end users privacy, as well as the the platform, all dates and keys have been modified. Do not try to reveal the identity of the platform.
 
-LICENSE
+License
 -------
 
 This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International 4.0 License. To view a copy of this license, visit `https://creativecommons.org/licenses/by-nc-sa/4.0/ <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_. Retentioneering command cannot guarantee the completeness and correctness of the data or the validity of results based on the use of the dataset.  If you have any further questions or comments, please contact `retentioneering support <https://t.me/retentioneering_support>`_.
 
-HOW TO USE
+How to use
 ----------
 
-The dataset can be loaded either as a pandas DataFrame or as an ``Eventstream``.
+The dataset is available as a CSV-file following this link.
 
+:red:`TODO: insert the link`
 
-.. code-block:: python
-
-    from retentioneering import datasets
-
-    dataframe = datasets.load_e_wallet(as_dataframe=True)
-    stream = datasets.load_e_wallet()
-
-:red:`TODO: check the correctness of the code as soon as the dataset is available`
-
-DATASET DESCRIPTION
+Dataset description
 -------------------
 
-The dataset contains the list of visited pages where an action was performed. Each record/line in the file has the following fields/format:
+The dataset contains the list of the web-site pages visited by a user. Each record has the following fields:
 
 — ``user_id``: the unique user identifier;
 
-— ``event``: the name of a page on which the action was performed;
+— ``event``: the name of a visited page;
 
-— ``timestamp``: the time of the action. The format is ``YYYY-MM-DDThh:mm:ss``.
+— ``timestamp``: the time of the visit. The format is ``YYYY-MM-DDThh:mm:ss``.
 
-The full  list of events:
+Here is the full list of events:
 
 .. raw:: html
 

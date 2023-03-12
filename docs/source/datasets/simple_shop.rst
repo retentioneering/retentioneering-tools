@@ -1,24 +1,25 @@
 Simple shop dataset
 ===================
 
-SUMMARY
+Summary
 -------
 
-The Simple shop dataset is our artificial dataset simulating purchases in an online store. There are two products in the store catalog, two delivery methods and two types of payment.
+The Simple shop dataset is our semi-artificial dataset that simulates user activity in an online store. There are two products in the store catalog, two delivery methods and two types of payment.
 
-HOW TO USE
+How to use
 ----------
 
-The dataset can be loaded either as a pandas DataFrame or as an ``Eventstream``.
+It is recommended to load the dataset as an :doc:`Eventstream</user_guides/eventstream>`. However, ``as_dataframe=True`` flag allows to load the dataset as pandas.DataFrame.
 
 .. code-block:: python
 
     from retentioneering import datasets
 
-    dataframe = datasets.load_simple_shop(as_dataframe=True)
     stream = datasets.load_simple_shop()
+    dataframe = datasets.load_simple_shop(as_dataframe=True)
 
-DATASET DESCRIPTION
+
+Dataset description
 -------------------
 
 The dataset contains a list of customer actions and choices on the website. Each record/line in the file has the following fields/format:
@@ -29,7 +30,7 @@ The dataset contains a list of customer actions and choices on the website. Each
 
 — ``timestamp``: a visit time. The format is ``YYYY-MM-DDThh:mm:ss.mmmmmm``.
 
-The full  list of events:
+The full list of events:
 
 .. raw:: html
 

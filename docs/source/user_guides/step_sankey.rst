@@ -33,7 +33,7 @@ The primary way to build a step Sankey diagram graph is to call :py:meth:`Events
 
     <div style="overflow:auto;">
     <iframe
-        width="700"
+        width="1100"
         height="500"
         src="../_static/user_guides/step_sankey/basic_step_sankey.html"
         frameborder="0"
@@ -74,7 +74,7 @@ Having ``ENDED`` event implemented guarantees that the sum of the user shares ov
 
     <div style="overflow:auto;">
     <iframe
-        width="1000"
+        width="1200"
         height="500"
         src="../_static/user_guides/step_sankey/path_end.html"
         frameborder="0"
@@ -100,7 +100,7 @@ The default value for ``thresh`` is 0.05. Let's look how the events are adsorbed
 
     <div style="overflow:auto;">
     <iframe
-        width="1200"
+        width="1100"
         height="500"
         src="../_static/user_guides/step_sankey/thresh_0.1.html"
         frameborder="0"
@@ -165,7 +165,7 @@ To illustrate this logic consider a dummy eventstream:
             columns=['user_id', 'event', 'timestamp']
         )
     )
-    dummy_stream.step_sankey()
+    dummy_stream.step_sankey(max_steps=4)
 
 .. raw:: html
 
@@ -180,6 +180,25 @@ To illustrate this logic consider a dummy eventstream:
     </div>
 
 From this chart we see that there's no ``event2`` spotted at step 1. However, despite the its dominance at step 2, ``event1`` is placed higher since it is considered as "older" than ``event2``.
+
+By default, the max_steps parameter is 10, so our trajectory consisting of only two steps is padded with the ENDED event. To avoid this, we limit the maximum number of steps to 4.
+It is recommended to use the max_steps parameter for all short trajectories, in order to avoid long uninformative chains from the ended event, like this one:
+
+.. code-block:: python
+
+    dummy_stream.step_sankey()
+
+.. raw:: html
+
+    <div style="overflow:auto;">
+    <iframe
+        width="1000"
+        height="300"
+        src="../_static/user_guides/step_sankey/dummy_sorting_long.html"
+        frameborder="0"
+        allowfullscreen
+    ></iframe>
+    </div>
 
 Using a separate instance
 -------------------------
@@ -214,6 +233,7 @@ Since the StepSankey object is essentially a graph, it natural to get the underl
 
 .. raw:: html
 
+    <div>
     <div style="overflow:auto;">
     <table class="dataframe">
       <thead>
@@ -282,11 +302,11 @@ Since the StepSankey object is essentially a graph, it natural to get the underl
         <tr>
           <th>4</th>
           <td>2</td>
-          <td>lost</td>
-          <td>443</td>
+          <td>product2</td>
+          <td>429</td>
           <td>3751</td>
-          <td>11.81</td>
-          <td>(62, 80, 102)</td>
+          <td>11.44</td>
+          <td>(53, 58, 62)</td>
           <td>4</td>
           <td>100</td>
           <td>100</td>
@@ -303,8 +323,11 @@ Since the StepSankey object is essentially a graph, it natural to get the underl
         .step_sankey(show_plot=False)\
         .values[1]
 
+
+
 .. raw:: html
 
+    <div>
     <div style="overflow:auto;">
     <table class="dataframe">
       <thead>
@@ -352,7 +375,7 @@ Since the StepSankey object is essentially a graph, it natural to get the underl
           <td>0 days 01:12:27.870236</td>
           <td>0</td>
           <td>2</td>
-          <td>5</td>
+          <td>4</td>
         </tr>
         <tr>
           <th>3</th>
@@ -363,22 +386,25 @@ Since the StepSankey object is essentially a graph, it natural to get the underl
           <td>0 days 02:31:57.294871</td>
           <td>0</td>
           <td>2</td>
-          <td>6</td>
+          <td>5</td>
         </tr>
         <tr>
           <th>4</th>
           <td>1</td>
           <td>catalog</td>
-          <td>lost</td>
+          <td>ENDED</td>
           <td>336</td>
-          <td>0 days 00:05:36</td>
+          <td>0 days 00:00:00</td>
           <td>0</td>
           <td>2</td>
-          <td>4</td>
+          <td>7</td>
         </tr>
       </tbody>
     </table>
     </div>
+
+
+
 
 :red:`TODO: briefly explain the meaning of the columns`
 

@@ -180,6 +180,8 @@ Cluster analysis
 Visualization
 ~~~~~~~~~~~~~
 
+.. _clusters_plot:
+
 Basic cluster statistics
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -351,6 +353,8 @@ with ``cluster 1`` value.
     comparison you can also try to use differential :doc:`step matrix </api/tooling/step_matrix>`
     (i.e. with ``groups`` argument defined) or :doc:`funnel </api/tooling/funnel>`
     with ``segments`` argument.
+
+.. _clusers_clustering_results:
 
 Getting clustering results
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

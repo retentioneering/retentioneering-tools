@@ -229,7 +229,7 @@ Common tooling properties
 values
 ~~~~~~
 
-:py:meth:`Funnel.values<retentioneering.tooling.funnel.funnel.Funnel.values>` property returns the values underlying recent ``Funnel.plot()`` call. The property is common for many retentioneering tools and allows you to avoid unnecessary calculations if the tool object has already been fitted.
+:py:meth:`Funnel.values<retentioneering.tooling.funnel.funnel.Funnel.values>` property returns the values underlying recent ``Funnel.plot()`` call. The property is common for many retentioneering tools. It allows you to avoid unnecessary calculations if the tool object has already been fitted.
 
 .. code-block:: python
 

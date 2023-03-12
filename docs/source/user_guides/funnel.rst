@@ -16,7 +16,7 @@ The following user guide is also available as
 Loading data
 ------------
 
-Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simple_shop>` dataset. It has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable.
+Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simple_shop>` dataset. It has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable. If you want to use your own dataset, upload it following :doc:`this instruction</user_guides/eventstream>`.
 
 .. code-block:: python
 
@@ -229,7 +229,7 @@ Common tooling properties
 values
 ~~~~~~
 
-:py:meth:`Funnel.values<retentioneering.tooling.funnel.funnel.Funnel.values>` property returns the values underlying recent ``Funnel.plot()`` call. The property is common for many retentioneering tools and allows you to avoid unnecessary calculations if the tool object has already been fitted.
+:py:meth:`Funnel.values<retentioneering.tooling.funnel.funnel.Funnel.values>` property returns the values underlying recent ``Funnel.plot()`` call. The property is common for many retentioneering tools. It allows you to avoid unnecessary calculations if the tool object has already been fitted.
 
 .. code-block:: python
 

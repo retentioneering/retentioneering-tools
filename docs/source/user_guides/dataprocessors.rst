@@ -7,7 +7,7 @@
 .. role:: red
 
 
-DataProcessor user guide
+Data Processor user guide
 =========================
 
 The following user guide is also available as
@@ -28,8 +28,8 @@ To get an overview of the eventstream concept, see :doc:`this guide<../getting_s
 
     stream = datasets.load_simple_shop()
 
-What is a DataProcessor?
-------------------------
+What is a Data Processor?
+-------------------------
 
 Each ``Data Processor`` represents an algorithm that modifies eventstream data.
 

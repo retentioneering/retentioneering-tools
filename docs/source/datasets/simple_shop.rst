@@ -30,7 +30,7 @@ The dataset contains a list of customer actions and choices on the website. Each
 
 — ``timestamp``: a visit time. The format is ``YYYY-MM-DDThh:mm:ss.mmmmmm``.
 
-The full list of events:
+Here is the full list of events:
 
 .. raw:: html
 

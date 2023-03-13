@@ -14,14 +14,12 @@ This work is licensed under the Creative Commons Attribution-NonCommercial-Share
 How to use
 ----------
 
-The dataset is available as a CSV-file following this link.
-
-:red:`TODO: insert the link`
+The dataset is available as a CSV-file following this `link<https://drive.google.com/file/d/11fBfp7-SEPKJ7hNihfk5nF3ilN4Wfu2w/view?usp=sharing>`_.
 
 Dataset description
 -------------------
 
-The dataset contains the list of the web-site pages visited by a user. Each record has the following fields:
+The dataset contains the list of the web-site pages visited by a user. The data includes 338,828 unique users and covers user activity between 2021-01-01 and 2021-07-04. The user trajectory averages about 7.5 events and has a duration of about 2 days and 21 hours on average. Each record has the following fields:
 
 — ``user_id``: the unique user identifier;
 

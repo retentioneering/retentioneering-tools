@@ -79,10 +79,14 @@ The primary way to visualize a step matrix is to call :py:meth:`Eventstream.step
 
 As we can see, the sum of the values in the matrix columns is 1 (i.e. at each step). Looking at the first column we can say that the users start their sessions from events ``catalog`` (72%) and ``main`` (28%). Also, we notice that ``payment_done`` event, which might be considered as an event of interest, appears in the trajectories no earlier than at the 7th step (row ``payment_done`` has zeros until step 7).
 
+.. _transition_matrix_terminating_event:
+
 Terminating event
 -----------------
 
 As you may have noticed, the step matrix above has ``ENDED`` event which is located in the last row, whereas this event is not represented in the ``simple_shop`` eventstream. ``ENDED`` is a special synthetic event that explicitly indicates a trajectory’s end. If a user’s path is shorter than ``max_steps`` parameter, then ``ENDED`` event is padded to the path so that it becomes exactly of length ``max_steps``. With this behavior, the sum of the user fractions over each column (i.e each step) is exactly 1. Essentially, ``ENDED`` row represents the cumulative share of leaving users. The event exists in scope of step matrix only, so that it does not affect the sourcing eventstream at all.
+
+.. _transition_matrix_collapsing_events:
 
 Collapsing rare events
 ----------------------

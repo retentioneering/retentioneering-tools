@@ -12,24 +12,23 @@ Eventstream
 
 The following user guide is also available as `Google Colab notebook <https://colab.research.google.com/drive/1-VuWTmgx57YDmQtdt6CMnV3z2fcjwj32?usp=sharing>`_.
 
-What is eventstream
+What is Eventstream
 -------------------
 
-:doc:`Eventstream</getting_started/eventstream_concept>` is a core class in the retentioneering library.
-From a user point of view this class is used for three reasons:
+:doc:`Eventstream</getting_started/eventstream_concept>` is the core
+class in the retentioneering library. This data structure is designed
+around three following purposes:
 
-- **Data container**. The initial clickstream is stored in an ``Eventstream`` object.
+- **Data container**. Evenstream class provides a convenient approach to storing clickstream data.
 
-- **Preprocessing**. Eventstream allows you to efficiently work with clickstream data preparation process.
+- **Preprocessing**. Eventstream allows to efficiently implement a data
+  preparation process.
   See :doc:`Preprocessing user guide <../user_guides/preprocessing>` for more details.
 
-- **Applying analytical tools**. Eventstream provides simple interfaces to retentioneering tools, so you can seamlessly apply them.
+- **Applying analytical tools**. Evenstream integrates with retentioneering tools and
+  allows you to seamlessly apply them.
   See a :ref:`user guide on retentioneering core tools<UG core tools>`.
 
-The structure of an eventstream is designed as follows. Let :math:`U` be a set of unique users,
-:math:`E` be a set of unique events. Eventstream is a set of sequential events :math:`\{(u_i, e_j, t_k)\}`
-which means that user :math:`u_i` experienced event :math:`e_j` at time :math:`t_k`,
-where :math:`i = 1, 2, \ldots |U|`, :math:`j = 1, 2, \ldots, |E|`, :math:`k = 1, 2, \ldots`.
 
 Eventstream creation
 --------------------
@@ -37,10 +36,11 @@ Eventstream creation
 Default field names
 ~~~~~~~~~~~~~~~~~~~
 
-In some sense, ``Eventstream`` is a container for a clickstream represented by a ``pandas.DataFrame``,
-so an Eventstream instance is created by passing a dataframe to Eventstream constructor.
-The constructor expects the dataframe to have at least 3 columns: ``user_id``, ``event``, ``timestamps``.
-Let's create a dummy dataframe for that:
+An ``Eventstream`` is a container for a clickstream data, that is initialized from a ``pandas.DataFrame``.
+The class constructor expects the DataFrame to have at least 3 columns:
+``user_id``, ``event``, ``timestamps``.
+
+Let us create a dummy DataFrame to illustrate Eventstream init process:
 
 .. code-block:: python
 
@@ -64,10 +64,9 @@ Having such a dataframe, you can create an eventstream simply as follows:
     from retentioneering.eventstream import Eventstream
     stream1 = Eventstream(df1)
 
-Before we go further we need to introduce you
-:py:meth:`to_dataframe()<retentioneering.eventstream.eventstream.Eventstream.to_dataframe>` method which
-we will use here for displaying eventstream data. According to its name,
-the method converts an eventstream to ``pandas.DataFrame``.
+To do the inverse transformation (i.e. obtain a DataFrame from an eventstream object),
+:py:meth:`to_dataframe()<retentioneering.eventstream.eventstream.Eventstream.to_dataframe>` method can be used.
+However, it is not just a converter. Using it, we can display the internal ``Eventstream`` structure:
 
 .. code-block:: python
 
@@ -137,21 +136,23 @@ the method converts an eventstream to ``pandas.DataFrame``.
     </table>
     <br>
 
-We'll discuss the columns of the resulting dataframe later in `Displaying eventstream`_ section.
+We will describe the columns of the resulting DataFrame later in `Displaying eventstream`_ section.
 
 .. _eventstream_custom_fields:
 
 Custom field names
 ~~~~~~~~~~~~~~~~~~
 
-If the column names of a parent dataframe differ from the default you can either rename them
-using pandas methods or set a mapping rule which would tell the Eventstream constructor where
-events, user_ids, and timestamps are located.
+For custom DataFrame column names you can either rename them
+using pandas, or set a mapping rule that would tell the Eventstream constructor
+that would tell the constructor the mapping to the correct column names.
 This can be done with Eventstream attribute ``raw_data_schema`` with uses
-:py:meth:`RawDataSchema<retentioneering.eventstream.schema.RawDataSchema>` class under the hood.
+:py:meth:`RawDataSchema<retentioneering.eventstream.schema.RawDataSchema>`
+class under the hood.
 
-Here's how it works. Let's create a dataframe containing the same data but with different
-column names (``client_id``, ``action`` and ``datetime``):
+Let us illustrate its usage with the following example with the same dataframe
+containing the same data but with different column names
+(``client_id``, ``action`` and ``datetime``):
 
 .. code-block:: python
 
@@ -170,20 +171,23 @@ column names (``client_id``, ``action`` and ``datetime``):
                                                 'event_name': 'action',
                                                 'event_timestamp': 'datetime'})
 
-As you see, ``raw_data_schema`` argument maps fields ``user_id``, ``event_name``, and ``event_timestamp``
-with the corresponding field names from your sourcing dataframe.
+As we see, ``raw_data_schema`` argument maps fields ``user_id``, ``event_name``,
+and ``event_timestamp`` with the corresponding field names from
+the initial dataframe.
 
-Another common case is when your dataframe has some important columns which you want to be
-included in the eventstream. ``raw_data_schema`` argument supports this scenario too with a help of
-``custom_cols`` key. The value for this key - is a list of dictionaries, one dict per one custom field.
+Another common case is when your DataFrame has some additional columns
+that you want to be included in the eventstream. ``raw_data_schema``
+argument supports this scenario too with the help of ``custom_cols``
+key value. The value for this key - is a list of dictionaries,
+one dict per one custom field.
 
 A single dict must contain two fields: ``raw_data_col`` and ``custom_col``.
-The former stands for a field name from the sourcing dataframe, the latter stands for the corresponding
-field name to be set at the resulting eventstream.
+The former stands for a field name from the sourcing dataframe, the latter
+stands for the corresponding field name to be set at the resulting eventstream.
 
-Suppose we use a dataframe ``df3`` similar to the previous ``df2`` but extended with ``session``
-column which we want to be used in the eventstream as ``session_id`` column. Here's an example how
-we can do this.
+Suppose the initial DataFrame now also contains a session identifier.
+``session_id`` column. In that case, ``raw_data_schema`` supports the
+following method to handle ``session_id`` support:
 
 .. code-block:: python
 
@@ -199,14 +203,17 @@ we can do this.
     )
 
 
-    stream3 = Eventstream(df3, raw_data_schema={'user_id': 'client_id',
-                                                'event_name': 'action',
-                                                'event_timestamp': 'datetime',
-                                                'custom_cols': [{
-                                                       'raw_data_col': 'session',
-                                                       'custom_col': 'session_id'}]})
+    stream3 = Eventstream(
+                  df3,
+                  raw_data_schema={
+                      'user_id': 'client_id',
+                      'event_name': 'action',
+                      'event_timestamp': 'datetime',
+                      'custom_cols': [{
+                          'raw_data_col': 'session',
+                          'custom_col': 'session_id'}]})
 
-If the core triple columns of ``df3`` dataframe were titled with the default names
+If the core triple columns of the DataFrame were titled with the default names
 ``user_id``, ``event``, ``timestamp`` (instead of ``client_id``, ``action``, ``datetime``)
 then you could just ignore their mapping in setting ``raw_data_schema`` and pass ``custom_cols`` key only.
 
@@ -217,22 +224,20 @@ Eventstream field names
 
 Using the ``schema`` attribute you can:
 
-#. get access to the eventstream columns which will be needed further in other library tools,
-   for example in dataprocessors:
+1. get access to the eventstream columns which will be needed further in other library tools,
+   for example in data processors:
 
-    - :py:meth:`PositiveTarget <retentioneering.data_processors_lib.positive_target>`
-    - :py:meth:`NegativeTarget <retentioneering.data_processors_lib.negative_target>`
-    - :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events>`
-    - :py:meth:`GroupEvents <retentioneering.data_processors_lib.group_events>`
+- :py:meth:`PositiveTarget <retentioneering.data_processors_lib.positive_target>`
+- :py:meth:`NegativeTarget <retentioneering.data_processors_lib.negative_target>`
+- :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events>`
+- :py:meth:`GroupEvents <retentioneering.data_processors_lib.group_events>`
 
-#. regulate how ``Eventstream`` column names will be displayed using
+2. regulate how ``Eventstream`` column names will be displayed using
    :py:meth:`to_dataframe()<retentioneering.eventstream.eventstream.Eventstream.to_dataframe>` method.
    For example, it can be useful if it is more common and important to operate with custom column names.
 
-Before we go further, let's see once again default eventstream displayed columns.
-The standard triple column names are displayed: ``user_id``, ``event``, ``timestamp``
-With the help of :py:meth:`EventstreamSchema<retentioneering.eventstream.schema.EventstreamSchema>`
-class under the hood.
+Before we go further, let us once again see the default eventstream columns.
+The standard three column names are displayed: ``user_id``, ``event``, ``timestamp``
 
 .. code-block:: python
 
@@ -292,9 +297,9 @@ class under the hood.
         </tr>
       </tbody>
     </table>
+    <br>
 
-
-And now let's create an Eventstream once again but with ``schema`` attribute passed.
+Now let us create an Eventstream once again, but with ``schema`` attribute passed.
 
 
 .. code-block:: python
@@ -354,14 +359,16 @@ And now let's create an Eventstream once again but with ``schema`` attribute pas
         </tr>
       </tbody>
     </table>
+    <br>
 
-Now names of our main columns are changed.
-It is possible because an ``Eventstream`` object stores an instance of the
-``EventstreamSchema`` class with the mapping between eventstream internal
-and custom displayed column names.
+As we can see, the names of the main columns have changed.
+It happened because an ``Eventstream`` object stores an instance of the
+:py:meth:`EventstreamSchema<retentioneering.eventstream.schema.EventstreamSchema>`
+class with the mapping to custom column names.
 
-There is one more way to see ``EventstreamSchema`` without converting it to ``pd.DataFrame`` - to call it directly
-from ``Eventstream`` instance, just like ``dataframe.columns``.
+There is one more way to see ``EventstreamSchema`` without converting it to
+``pandas.DataFrame`` - to call it directly from ``Eventstream`` instance,
+just like ``dataframe.columns``.
 
 .. code-block:: python
 
@@ -376,39 +383,40 @@ from ``Eventstream`` instance, just like ``dataframe.columns``.
 User sampling
 ~~~~~~~~~~~~~
 
-Sampling parameters are extremely useful in practice since the clickstreams modern analysts deal
-with are large. Large datasets lead to the following three types of effect:
+Contemporary data analytics usually involve working with large datasets.
+Using retentioneering to work with such datasets might cause the following
+undesirable effects:
 
-- High computational costs. Yes, the algorithms processing your data might be inefficient,
-  but still it's a general rule.
+- High computational costs.
 
 - The messy big picture (especially in case of applying such tools as
-  :doc:`Transition Graph</user_guides/transition_graph>`, :doc:`StepMatrix</user_guides/step_matrix>`,
+  :doc:`Transition Graph</user_guides/transition_graph>`, :doc:`StepMatrix</user_guides/step_matrix>`
   and :doc:`StepSankey</user_guides/step_sankey>`). Insufficient user paths or large number of almost
-  identical paths (especially short paths) often give you no value for the analysis.
+  identical paths (especially short paths) often add no value to the analysis.
   It might be reasonable to get rid of them.
 
-- Due to Eventstream design, all the data once uploaded to an Eventstream instance is kept immutable.
-  Even if you remove some eventstream rows while preprocessing, in fact, the data stays untouched:
+- Due to Eventstream design, all the data uploaded to an Eventstream instance is kept immutable.
+  Even if you remove some eventstream rows while preprocessing, the data stays untouched:
   it just becomes hidden and is marked as removed
   (see :doc:`Eventstream concept</getting_started/eventstream_concept>`).
+  Thus, the only chance to tailor the dataset to a reasonable size is to sample the user
+  paths at entry point - while applying Eventstream constructor.
 
-The last statement means that the only chance to tailor the dataset to a reasonable size is to sample the user
-paths at entry point -- while applying Eventstream constructor.
-
-Path sampling seems to be a neat solution for reducing an original dataset. Since the major purpose
-of retentioneering library is exploring user behaviour, sampling the paths should affect and distort
-the big picture. However, in case you have some very rare events and behavioral patterns, sampling
+The size of the original dataset can be reduced by path sampling. This procedure would affect and distort
+the big picture. However, in case you have rare events and behavioral patterns, sampling
 might reduce them so it will be impossible to analyze them. Hence, use sampling technique carefully.
 
 We also highlight that user path sampling means that we remove some random paths entirely. We guarantee
-that the sampled paths contain all the event from the original dataset, and they are not truncated.
+that the sampled paths contain all the events from the original dataset, and they are not truncated.
 
-There is a couple sampling parameters in the Eventstream constructor: ``user_sample_size`` and ``user_sample_seed``.
-The most common way is to set the sample size as a float number. For example, ``user_sample_size=0.1``
-means that we want to leave 10% ot the paths and remove 90% of them. Integer sample size is also possible.
-In this case a specified number of events will be left. ``user_sample_seed`` is a standard way to
-make random sampling reproducible
+There are a couple sampling parameters in the Eventstream constructor: ``user_sample_size``
+and ``user_sample_seed``. There are two ways of setting the sample size:
+
+- A float number. For example, ``user_sample_size=0.1`` means that we want to leave 10%
+  ot the paths and remove 90% of them.
+- An integer sample size is also possible. In this case a specified number of events will be left.
+
+``user_sample_seed`` is a standard way to make random sampling reproducible
 (see `this Stack Overflow explanation <https://stackoverflow.com/questions/21494489/what-does-numpy-random-seed0-do>`_).
 You can set it to any integer number.
 
@@ -446,7 +454,7 @@ of the events has been reduced from 35381 to 3615 (10.2%), but we didn't expect 
 Displaying eventstream
 ----------------------
 
-Now let's look closely at columns represented in an eventstream and discuss the work of
+Now let us look at columns represented in an eventstream and discuss
 :py:meth:`to_dataframe()<retentioneering.eventstream.eventstream.Eventstream.to_dataframe>`
 method using the example of ``stream3`` eventstream.
 
@@ -524,33 +532,33 @@ method using the example of ``stream3`` eventstream.
     </table>
     <br>
 
-Among the standard triple ``user_id``, ``event``, ``timestamp`` and custom column ``session_id``
+Besides the standard triple ``user_id``, ``event``, ``timestamp`` and custom column ``session_id``
 we see the columns ``event_id``, ``event_type``, ``event_index``.
-They are sort of technical but sometimes they might be useful in preprocessing so
-here's their description.
+These are some technical columns, containing the following:
 
 - ``event_id`` - a string identifier of an eventstream row.
 
-- ``event_type`` - all the events came from a sourcing dataframe are of ``raw`` event type.
-  "Raw" means that these event are used as a source for an eventstream, like raw data.
-  However, preprocessing methods can add some so called synthetic events which have different event types.
-  See the details in :doc:`Preprocessing user guide</user_guides/dataprocessors>`.
+- ``event_type`` - all the events that come from the sourcing DataFrame are of ``raw`` event type.
+  However, preprocessing methods can add some synthetic events that have various event types.
+  See the details in :doc:`data processors</user_guides/dataprocessors>` user guide.
 
 - ``event_index`` - an integer which is associated with the event order. By default, an eventstream
   is sorted by timestamp. As for the synthetic events which are often placed at the beginning or in the
   end of a user's path, special sorting is applied. See explanation of :ref:`reindex <reindex_explanation>`
-  for the details and also :doc:`Preprocessing user guide</user_guides/dataprocessors>`.
-  Please note that the event index might contain gaps. It's ok due to its design
+  for the details and also :doc:`data processors</user_guides/dataprocessors>` user guide.
+  Please note that the event index might contain gaps. It is ok due to its design
   see :ref:`Eventstream concept<join algorithm>` for the details.
 
-There are some additional options which one might find useful.
+There are additional options that may be useful.
 
--  ``show_deleted`` - since all the events once uploaded to an eventstream are immutable
+-  ``show_deleted`` - all events uploaded to an eventstream are immutable
    (:ref:`Eventstream concept<join algorithm>`). By default, ``show_deleted``
-   flag is ``False``, so the events which are considered as deleted due to preprocessing steps are
-   not showed in the resulting dataframe. If ``show_deleted=True``, all the events from the original state
-   of the eventstream and all the in-between preprocessing states are appeared.
--  ``copy`` - when this flag is ``True`` (by default it's ``False``) then an explicit copy of the dataframe is created.
+   flag is ``False``, so the events that are considered deleted at preprocessing steps are
+   not shown in the resulting dataframe. If ``show_deleted=True``, all the events from the original state
+   of the eventstream and all the in-between preprocessing states are displayed.
+-  ``copy`` - when this flag is ``True`` (by default it is ``False``) then an explicit copy
+   of the DataFrame is created. See details in
+   `pandas documentation <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#:~:text=If%20None%2C%20infer.-,copybool,-or%20None%2C%20default>`_
 -  ``raw_cols`` -  if ``True`` - original columns of the source data will be shown.
 
 .. _reindex_explanation:
@@ -558,9 +566,9 @@ There are some additional options which one might find useful.
 Eventstream reindex
 -------------------
 
-In the previous section we've already mentioned sorting algorithm talking about special
+In the previous section, we have already mentioned the sorting algorithm when describing special
 ``Eventstream`` columns ``event_type`` and ``event_index``. There is a kit of pre-designed
-event_types in following default order:
+event_types, that are arranged in the following default order:
 
 .. code-block:: python
 
@@ -589,22 +597,22 @@ event_types in following default order:
                   "path_end"
                 ]
 
-Most of those types are created by build-in :ref:`dataprocessors<dataprocessors_library>`.
-But some of those types are not used right now and were created for future development.
+Most of these types are created by build-in :ref:`data processors<dataprocessors_library>`.
+Note that some of the types are not used right now and were created for future development.
 
-To see full explanation about which dataprocessor creates which ``event_type`` you can explore
-:doc:`the dataprocessors user guide</user_guides/dataprocessors>`.
+To see full explanation about which data processor creates which ``event_type`` you can explore
+the :doc:`data processors</user_guides/dataprocessors>` user guide.
 
-If you need you can pass your own order to the ``Eventstream`` instance constructor using
+If needed you can pass your own order to the ``Eventstream`` instance constructor using
 the parameter ``index_order``.
 
-In case you already have an eventstream instance you can call ``Eventstream.index_order`` attribute and pass
-a new order in it. But after you should use
+In case you already have an eventstream instance, you can call ``Eventstream.index_order`` attribute and pass
+a new order in it. Afterwards, you should use
 :py:meth:`index_events()<retentioneering.eventstream.eventstream.Eventstream.index_events>` method to
 apply this new order.
-For the demonstration purposes we use here a
-:py:meth:`PositiveTarget<retentioneering.data_processors_lib.positive_target.PositiveTarget>` dataprocessor
-which adds new event with prefix ``positive_target_``.
+For demonstration purposes we use here a
+:py:meth:`PositiveTarget<retentioneering.data_processors_lib.positive_target.PositiveTarget>`
+data processor, which adds new event with prefix ``positive_target_``.
 
 .. code-block:: python
 
@@ -700,8 +708,9 @@ which adds new event with prefix ``positive_target_``.
         </tr>
       </tbody>
     </table>
+    <br>
 
-We see, that ``positive_target_B`` events with type ``positive_target``
+We see that ``positive_target_B`` events with type ``positive_target``
 follow their ``raw`` parent event ``B``. Assume we would like to change their order.
 
 .. code-block:: python
@@ -821,6 +830,7 @@ follow their ``raw`` parent event ``B``. Assume we would like to change their or
         </tr>
       </tbody>
     </table>
+    <br>
 
 As we can see, the order of the events changed, and now ``raw`` events ``B``
 follow ``positive_target_B`` events.
@@ -828,21 +838,22 @@ follow ``positive_target_B`` events.
 Descriptive methods
 -------------------
 
-As soon as we've created an eventstream we usually want to explore it. ``Eventstream`` provides a set
-of methods for such a first touch exploration. To illustrate the work of these methods we
-need a larger dataset, so we'll use our standard demonstration
-:py:meth:`simple_shop<retentioneering.datasets.load.load_simple_shop>` dataset.
-For demonstration purposes we add ``session_id`` column by applying
-:py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>` dataprocessor.
+``Eventstream`` provides a set of methods for a first touch data
+exploration. To showcase how these methods work, we
+need a larger dataset, so we will use our :doc:`simple_shop<../datasets/simple_shop>`
+dataset.
+For demonstration purposes, we add ``session_id`` column by applying
+:py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>` data processor.
 
-:red:`TODO: fix the link to simple_shop`
 
 .. code-block:: python
 
     from retentioneering import datasets
 
-    stream_with_sessions = datasets.load_simple_shop()\
-                                   .split_sessions(session_cutoff=(30, 'm'))
+    stream_with_sessions = datasets\
+                                .load_simple_shop()\
+                                .split_sessions(session_cutoff=(30, 'm'))
+
     stream_with_sessions.to_dataframe().head()
 
 .. raw:: html
@@ -914,7 +925,7 @@ For demonstration purposes we add ``session_id`` column by applying
         </tr>
       </tbody>
     </table>
-
+    <br>
 
 General statistics
 ~~~~~~~~~~~~~~~~~~
@@ -922,7 +933,7 @@ General statistics
 Describe
 ^^^^^^^^
 
-Similarly to pandas, we use :py:meth:`describe()<retentioneering.eventstream.eventstream.Eventstream.describe>`
+In a similar fashion to Pandas, we use :py:meth:`describe()<retentioneering.eventstream.eventstream.Eventstream.describe>`
 for a general description of an eventstream.
 
 .. code-block:: python
@@ -1057,7 +1068,7 @@ for a general description of an eventstream.
         </tr>
       </tbody>
     </table>
-
+    <br>
 
 The output consists of three main blocks:
 
@@ -1071,42 +1082,42 @@ The output consists of three main blocks:
 
 .. _explain_describe_params:
 
-``session_col`` parameter is optional and points to an eventstream column which contains session ids
-(``session_id`` is the default value). If such a column defined, session statistics is also included.
-Otherwise the the values related to sessions are not displayed.
+``session_col`` parameter is optional and points to the eventstream column that contains session ids
+(``session_id`` is the default value). If such a column is defined, session statistics are also included.
+Otherwise the values related to sessions are not displayed.
 
 There is one more parameter - ``raw_events_only`` (default False) that could be useful if the preprocessing
-was started and some ``synthetic_events`` were added to the eventstream. Because those events affect
+was started and some ``synthetic_events`` were added to the eventstream, note that those events affect
 all "step-statistics".
 
-Now let's go through main blocks and take a closer look at some of the metrics:
+Now let us go through the main blocks and take a closer look at some of the metrics:
 
 **overall**
 
-By ``eventstream start`` and ``eventstream end`` in the "Overall" block we mean timestamps of the
-first event and the last events in the eventstream correspondingly. ``eventstream length``
-is a time distance between event stream start and end.
+By ``eventstream start`` and ``eventstream end`` in the "Overall" block we denote timestamps of the
+first event and the last event in the eventstream correspondingly. ``eventstream length``
+is the time distance between event stream start and end.
 
 **path/session length time** and **path/session length steps**
 
-Show some time-based  statistics over user paths and sessions.
+These two blocks show some time-based  statistics over user paths and sessions.
 Blocks "path/session_length_time" and "path/session length steps" provide similar information
 on the length of users paths and sessions correspondingly, but the former is calculated in
 days and the latter in the number of events.
 
-Also it is important to mention that all "step-statistics" rounded to the 2nd decimal place digit.
-And "time-statistics" - to seconds. This is also true for the following method.
+It is important to mention that all "step-statistics" are rounded to the 2nd decimal place digit
+and "time-statistics" - to seconds. This is also true for the following method.
 
 
 Describe events
 ^^^^^^^^^^^^^^^
 
-The next :py:meth:`describe_events()<retentioneering.eventstream.eventstream.Eventstream.describe_events>`
-method could provide event-level statistics about our data:
+The :py:meth:`describe_events()<retentioneering.eventstream.eventstream.Eventstream.describe_events>`
+method provides event-level statistics about our data.
 
 **The output consists of three main blocks:**
 
-#. basic statistics
+#. **basic statistics**
 #. full user-path statistics
     - time to first occurrence (FO) of each event
     - steps to first occurrence (FO) of each event
@@ -1114,14 +1125,13 @@ method could provide event-level statistics about our data:
     - time to first occurrence (FO) of each event
     - steps to first occurrence (FO) of each event
 
-Detailed explanation of each metric you can find in the
+You can find detailed explanations of each metric in
 :py:meth:`api documentation<retentioneering.eventstream.eventstream.Eventstream.describe_events>`.
 
-
 Default parameters are ``session_col='session_id'``, ``raw_events_only=False``.
-Thus we will get statistics for each event present in our data.
+With them, we will get statistics for each event present in our data.
 
-``session_col`` and ``raw_events_only`` parameters work right in the same way as in the
+``session_col`` and ``raw_events_only`` parameters work exactly the same way as in the
 :ref:`describe()<explain_describe_params>` method.
 
 .. code-block:: python
@@ -1381,17 +1391,18 @@ Thus we will get statistics for each event present in our data.
         </tr>
       </tbody>
     </table>
+    <br>
 
-If there are a lot of events in our data you can specify the list of them in order to
-make output more easy to analyse. For that purpose we have the parameter ``event_list``:
+If there are a lot of events in our data we can display the results only for some of the events
+in order to make output more easy to analyse. For that purpose we have the parameter ``event_list``:
 
 .. code-block:: python
 
     stream.describe_events()
     stream.describe_events(event_list=['payment_done', 'cart']).T
 
-In our example those events are 'cart' and 'payment_done'. So we can get first impression about
-target events and their basic characteristics.
+In our example those events are 'cart' and 'payment_done'. For our case, we select these events to
+get first impression about target events and their basic characteristics.
 
 
 .. raw:: html
@@ -1481,9 +1492,7 @@ target events and their basic characteristics.
         </tr>
       </tbody>
     </table>
-
-
-
+    <br>
 
 Often, such time-related information requires deeper analysis, so simple statistics are not enough,
 and we want to see the entire distribution. For these purposes the following group of methods has been designed.
@@ -1496,10 +1505,9 @@ Time-based histograms
 User lifetime
 ^^^^^^^^^^^^^
 
-Proceeding the previous point, one of the most important time-related values is the user lifetime.
-Since an eventstream has its natural time borders, by lifetime we mean the length of the observed
-user path as the time distance between the first and the last event represented in the trajectory.
-The histogram for this value is plotted by
+One of the most important time-related statistics is user lifetime. By lifetime we
+mean the time distance between the first and the last event represented
+in the trajectory. The histogram for this statistic is plotted by
 :py:meth:`user_lifetime_hist()<retentioneering.eventstream.eventstream.Eventstream.user_lifetime_hist>` method.
 
 .. code-block:: python
@@ -1516,39 +1524,39 @@ The method has multiple parameters:
 
 - ``timedelta_unit`` defines a
   `datetime unit <https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units>`_
-  which is used for the lifetime measuring;
+  that is used for the lifetime measuring;
 
 - ``log_scale`` sets logarithmic scale for the bins;
 
 - ``lower_cutoff_quantile``, ``upper_cutoff_quantile`` indicate the lower and upper quantiles
   (as floats between 0 and 1), the values between the quantiles only are considered for the histogram;
 
-- ``bins`` is a common for setting the number of the histogram bins. Also can be the name of a reference rule or
-  the number of bins. See details in
+- ``bins`` defines the number of histogram bins. Also can be the name of a reference rule or
+  number of bins. See details in
   `numpy documentation <https://numpy.org/doc/stable/reference/generated/numpy.histogram_bin_edges.html>`_
 
 - ``figsize`` sets figure width and height in inches.
 
 .. note::
 
-    The method is especially useful for working together with
+    The method is especially useful for selecting parameters to
     :py:meth:`DeleteUsersByPathLength<retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>`
-    See :doc:`the user guide on preprocessing</user_guides/dataprocessors>` for the details.
+    See :doc:`the user guide on preprocessing</user_guides/dataprocessors>` for details.
 
 
 Timedelta between two events
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-So we've defined user lifetime as the timedelta between the beginning and the end of a user's path.
+Previously, we have defined user lifetime as the timedelta between the beginning and the end of a user's path.
 This can be generalized.
 :py:meth:`timedelta_hist()<retentioneering.eventstream.eventstream.Eventstream.timedelta_hist>`
-method shows a histogram for the distribution of the timedeltas between a couple of specified events.
+method shows a histogram for the distribution of timedeltas between a couple of specified events.
 
-The method supports the same formatting arguments (``timedelta_unit``, ``log_scale``,
-``lower_cutoff_quantile``, ``upper_cutoff_quantile``, ``bins``, ``figsize``) as we've already mentioned
+The method supports similar formatting arguments (``timedelta_unit``, ``log_scale``,
+``lower_cutoff_quantile``, ``upper_cutoff_quantile``, ``bins``, ``figsize``) as we have already mentioned
 in :ref:`user_lifetime_hist<common_hist_params>` method.
 
-If no arguments passed (except formatting arguments), timedeltas between all adjacent events are
+If no arguments are passed (except formatting arguments), timedeltas between all adjacent events are
 calculated within each user path. For example, this tiny eventstream
 
 .. figure:: /_static/user_guides/eventstream/02_timedelta_trivial_example.png
@@ -1556,7 +1564,7 @@ calculated within each user path. For example, this tiny eventstream
 
 generates 4 timedeltas :math:`\Delta_1, \Delta_2, \Delta_3, \Delta_4` as shown in the diagram.
 The timedeltas between events B and D, D and C, C and E are not taken into account because two events
-from each pair are from different users.
+from each pair belong to different users.
 
 .. code-block:: python
 
@@ -1565,17 +1573,17 @@ from each pair are from different users.
 .. figure:: /_static/user_guides/eventstream/03_timedelta_log_scale.png
     :width: 400
 
-This distribution of the adjacent events is sort of common. It looks like a bimodal (which is not true:
+This distribution of the adjacent events fairly common. It looks like a bimodal (which is not true:
 remember we use log-scale here), but these two bells help us to estimate a timeout for splitting sessions.
-From this charts we can see that it is reasonable to set it to somewhat between 10 and 100 minutes.
+From this charts we can see that it is reasonable to set it to some value between 10 and 100 minutes.
 
-Be careful if there are some ``synthetic events`` in the data. Usually those events added with the same
+Be careful if there are some ``synthetic events`` in the data. Usually those events are assigned with the same
 timestamp as their corresponding ``raw`` events. Thus the distribution of timedeltas between
-events will be heavily skewed to 0. Parameter ``raw_events_only=True`` can help in such situation.
-Let's add to our common dataset some common synthetic events using
+events will be heavily skewed to 0. Parameter ``raw_events_only=True`` can help in such a situation.
+Let us add to our dataset some common synthetic events using
 :py:meth:`StartEndEvents<retentioneering.data_processors_lib.start_end_events.StartEndEvents>` and
-:py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>` dataprocessors.
-To understand it deeply please see :doc:`Dataprocessors user guide <../user_guides/dataprocessors>`.
+:py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>` data processors.
+To learn more about this please see :doc:`data processors user guide <../user_guides/dataprocessors>`.
 
 
 .. code-block:: python
@@ -1595,11 +1603,12 @@ To understand it deeply please see :doc:`Dataprocessors user guide <../user_guid
 .. figure:: /_static/user_guides/eventstream/05_timedelta_raw_events_only_true.png
     :width: 400
 
-You can see, that on the second plot there is no high histogram bar and we can observe only natural users behaviour.
+You can see that on the second plot there is no high histogram bar and
+and the user behaviour we observe looks natural.
 
 
 Another use case for :py:meth:`timedelta_hist()<retentioneering.eventstream.eventstream.Eventstream.timedelta_hist>`
-is visualizing the distribution of the timedeltas between two specific events. Assume we want to
+is visualizing the distribution of timedeltas between two specific events. Assume we want to
 know how much time it takes for a user to go from product1 to cart.
 Then we set `event_pair=('product1', 'cart')` and pass it to ``timedelta_hist``:
 
@@ -1610,10 +1619,10 @@ Then we set `event_pair=('product1', 'cart')` and pass it to ``timedelta_hist``:
 .. figure:: /_static/user_guides/eventstream/06_timedelta_pair_of_events.png
     :width: 400
 
-We see that such occurrences are not very numerous. This is because the method still considers only
+We see that such occurrences are not very numerous. This is because the method still works with only
 adjacent pairs of events (in this case ``product1`` and ``cart`` are assumed to go one right after
-another in a user's path). That's why the histogram is heavily skewed to 0.
-``only_adjacent_event_pairs`` parameter allows to consider any cases when a user goes from
+another in a user's path). That is why the histogram is heavily skewed to 0.
+``only_adjacent_event_pairs`` parameter allows us to work with any cases when a user goes from
 ``product1`` to ``cart`` non-directly but passing through some other events:
 
 .. code-block:: python
@@ -1626,35 +1635,32 @@ another in a user's path). That's why the histogram is heavily skewed to 0.
     :width: 400
 
 We see that the number of observations has grown, especially around 0.
-As you can see on those both plots - there are quite a lot of users, for whom it takes
-not so long to go from product1 to the cart not directly, but through other events. However there
+As you can see from both plots - there are quite a lot of users, for whom it takes
+not too long to go from product1 to the cart not directly, but through other events. However there
 are also some users who have a long path between those two points.
-We can interpret this in a way like the users are picky, so it takes them long to go from ``product1``
+We can interpret this as the users being picky, so it takes them a long time to go from ``product1``
 to ``cart``.
 
-Here we should make a stop for the explanation of how timedeltas between event pairs calculated.
-Below you can see the picture with one user path and timedeltas that will be displayed in the ``timedelta_hist``
+Here we should make a stop and explain how timedeltas between event pairs are calculated.
+Below you can see the picture of one user path and timedeltas that are displayed in a ``timedelta_hist``
 with the parameters:
 
-- event_pair=('A', 'B')
-- only_adjacent_event_pairs=False
+- event_pair=('A', 'B');
+- only_adjacent_event_pairs=False.
 
 .. figure:: /_static/user_guides/eventstream/08_event_pair_explanation.png
     :width: 400
 
-Now we get back to our example and assume we would like to look at those users
-(with long path from ``product1``to ``cart``).
-There are several ways how we can do it with parameters or combination of parameters below:
+Now let us get back to our example and assume we would like to look at such users
+(with long path from ``product1`` to ``cart``).
+There are several ways we can do it with a combination of the parameters below:
 
-- ``lower_cutoff_quantile``
-- ``upper_cutoff_quantile``
-- ``log_scale``
+- ``lower_cutoff_quantile``;
+- ``upper_cutoff_quantile``;
+- ``log_scale``.
 
-We are not going to go into detail with those params because there are quite common for distribution analysis.
-:py:meth:`timedelta_hist()<retentioneering.eventstream.eventstream.Eventstream.timedelta_hist>`
-
-Let's turn to another case, sometimes we are interested to look only at those events which appeared
-within a user session. So if we've already split the paths into sessions we can use ``weight_col='session_id'``:
+Let us turn to another case. Sometimes we are interested in looking only at events that appear
+within a user session. If we have already split the paths into sessions we can use ``weight_col='session_id'``:
 
 .. code-block:: python
 
@@ -1669,12 +1675,12 @@ within a user session. So if we've already split the paths into sessions we can 
 .. figure:: /_static/user_guides/eventstream/09_timedelta_sessions.png
     :width: 400
 
-It's clear now that within a session the users walk from ``product1`` to ``cart`` event in less than 3 minutes.
+It is clear now that within a session the users walk from ``product1`` to ``cart`` event in less than 3 minutes.
 
-For frequently occurring events we might be interested in aggregation some values over sessions or users.
+For frequently occurring events we might be interested in aggregating some values over sessions or users.
 For example, transition ``main -> catalog`` is quite frequent. Some users do these transitions quickly,
-some of them not. It might be reasonable to aggregate the timedeltas over each user path firstly
-(therefore, we get one value per one user at this step), and then visualize the distribution of
+some of them do not. It might be reasonable to aggregate the timedeltas over each user path first
+(we would get one value per one user at this step), and then visualize the distribution of
 these aggregated values. This can be done by passing an additional argument
 ``aggregation='mean'`` or ``aggregation='median'``.
 
@@ -1698,16 +1704,15 @@ Timedelta between user event and eventstream global event
 
 Sometimes it can be useful to understand the distribution of the time between:
 
-#. first occurrence of the event in the user path ond the whole eventstream start
-#. last occurrence of the event in the user path ond the whole eventstream end
+#. the first occurrence of the event in user path and the whole eventstream start;
+#. the last occurrence of the event in user path and the whole eventstream end.
 
-It can be done with the parameter ``event_pair`` which we've already considered.
-But one of the events in the pair should be global: ``eventstream_start`` or ``eventstream_end``.
+It can be done with the parameter ``event_pair`` which we have already considered.
+Note that one of the events in the pair should be global: ``eventstream_start`` or ``eventstream_end``.
 
-It will be especially useful for choosing ``cutoff`` parameter for
-:py:meth:`TruncatedEvents dataprocessor<retentioneering.data_processors_lib.truncated_events.TruncatedEvents>`.
-
-Let's see the logic of the timedeltas calculation on the example:
+It is especially useful for choosing the ``cutoff`` parameter for
+:py:meth:`TruncatedEvents<retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` data processor.
+Let us see the logic of the timedeltas calculation on the example:
 
 .. figure:: /_static/user_guides/eventstream/11_timedelta_event_pair_with_global.png
     :width: 400
@@ -1716,33 +1721,34 @@ Let's see the logic of the timedeltas calculation on the example:
 .. code-block:: python
 
     stream_with_synthetic\
-                    .timedelta_hist(
-                        event_pair=('eventstream_start', 'path_end'),
-                        timedelta_unit='h',
-                        only_adjacent_event_pairs=False
-                    )
+        .timedelta_hist(
+            event_pair=('eventstream_start', 'path_end'),
+            timedelta_unit='h',
+            only_adjacent_event_pairs=False
+        )
 
 
 .. figure:: /_static/user_guides/eventstream/12_timedelta_eventstream_start_path_end.png
     :width: 400
 
-Looking on this distribution we can see that most of the users their trajectory rather
-far from the start of eventstream but there are some of them who ends it right after the eventstream starts
-And it can be caused by two reasons:
+Looking at this distribution we can see that most of the users start trajectory rather
+far from the start of eventstream, but there are some of them who finish the path right
+after the eventstream starts. It is possible in two cases:
 
-- very short trajectory right at the beginning of dataset
-- the user path is truncated and it was start before the first event of our eventstream
+- the user has a very short trajectory right at the beginning of dataset;
+- the user path is truncated and it started before the first event of our eventstream.
 
-Sometimes we need to mark those users and analyse them separately.
+Sometimes we need to mark such users and analyse them separately.
 See :ref:`TruncatedEvents explanation<truncated_events>` for the details.
 
 
-Events intensity
-^^^^^^^^^^^^^^^^
+Event intensity
+^^^^^^^^^^^^^^^
 
-Another nice way to review an eventstream from time point of view is to look how evenly the events are
-distributed over time.
-:py:meth:`event_timestamp_hist()<retentioneering.eventstream.eventstream.Eventstream.event_timestamp_hist>`.
+Another nice way to review an eventstream is to look how uniformly the events are
+distributed over time. The histogram for this distribution is plotted by
+:py:meth:`event_timestamp_hist()<retentioneering.eventstream.eventstream.Eventstream.event_timestamp_hist>`
+method.
 
 .. code-block:: python
 
@@ -1753,7 +1759,7 @@ distributed over time.
 
 We can notice the heavy skew in the data towards the period between April and May of 2020.
 Let us check whether it is specific to the ``cart``, ``product1``, and ``product2`` events.
-There's an argument ``event_list`` for this.
+There is an argument ``event_list`` for this.
 
 .. code-block:: python
 
@@ -1762,10 +1768,10 @@ There's an argument ``event_list`` for this.
 .. figure:: /_static/user_guides/eventstream/14_event_timestamp_hist_event_list.png
     :width: 400
 
-Nothing changed. The skew is probably related to user path sampling or the general
-popularity of the simple shop over time.
+Nothing changed, meaning that the skew is probably related to user path sampling or the general
+popularity of the shop over time.
 
-We could also get rid of the period between April and May, if we think it is too different
+We could also get rid of the period between April and May, if we think it differs too much
 from the general time frame:
 
 .. code-block:: python
@@ -1775,4 +1781,4 @@ from the general time frame:
 .. figure:: /_static/user_guides/eventstream/15_event_timestamp_hist_quantile.png
     :width: 400
 
-This method also has parameters ``raw_events_only``, ``lower_cutoff_quantile``,``bins`` and ``figsize``.
+This method also has parameters ``raw_events_only``, ``lower_cutoff_quantile``, ``bins`` and ``figsize``.

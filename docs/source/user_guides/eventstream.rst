@@ -31,6 +31,8 @@ The structure of an eventstream is designed as follows. Let :math:`U` be a set o
 which means that user :math:`u_i` experienced event :math:`e_j` at time :math:`t_k`,
 where :math:`i = 1, 2, \ldots |U|`, :math:`j = 1, 2, \ldots, |E|`, :math:`k = 1, 2, \ldots`.
 
+.. _eventstream_creation:
+
 Eventstream creation
 --------------------
 

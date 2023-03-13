@@ -86,6 +86,8 @@ Terminating event
 
 As you may have noticed, the step matrix above has ``ENDED`` event which is located in the last row, whereas this event is not represented in the ``simple_shop`` eventstream. ``ENDED`` is a special synthetic event that explicitly indicates a trajectory’s end. If a user’s path is shorter than ``max_steps`` parameter, then ``ENDED`` event is padded to the path so that it becomes exactly of length ``max_steps``. With this behavior, the sum of the user fractions over each column (i.e each step) is exactly 1. Essentially, ``ENDED`` row represents the cumulative share of leaving users. The event exists in scope of step matrix only, so that it does not affect the sourcing eventstream at all.
 
+.. _transition_matrix_collapsing_events:
+
 Collapsing rare events
 ----------------------
 

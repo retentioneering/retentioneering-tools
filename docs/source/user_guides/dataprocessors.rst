@@ -36,220 +36,10 @@ Each ``Data Processor`` represents an algorithm that modifies eventstream data.
 Data processors are designed to be nodes of a
 ``Preprocessing graph``, which allows us to apply data processors sequentially, in a custom order.
 
-More about preprocessing graph :doc:`preprocessing guide<preprocessing>`.
+More about preprocessing graph see in :doc:`preprocessing guide<preprocessing>`.
 
 
 .. figure:: /_static/user_guides/data_processor/dp_0_PGraph.png
-
-
-General usage
--------------
-In order to use each ``DataProcessor``, we need to import its class and its parameter class.
-
-.. code-block:: python
-
-    from retentioneering.graph.p_graph import PGraph, EventsNode
-
-    from retentioneering.data_processors_lib import CollapseLoops, CollapseLoopsParams
-    from retentioneering.data_processors_lib import DeleteUsersByPathLength, DeleteUsersByPathLengthParams
-    from retentioneering.data_processors_lib import FilterEvents, FilterEventsParams
-    from retentioneering.data_processors_lib import GroupEvents, GroupEventsParams
-    from retentioneering.data_processors_lib import NewUsersEvents, NewUsersParams
-    from retentioneering.data_processors_lib import LostUsersEvents, LostUsersParams
-    from retentioneering.data_processors_lib import SplitSessions, SplitSessionsParams
-    from retentioneering.data_processors_lib import StartEndEvents, StartEndEventsParams
-    from retentioneering.data_processors_lib import TruncatePath, TruncatePathParams
-    from retentioneering.data_processors_lib import TruncatedEvents, TruncatedEventsParams
-    from retentioneering.data_processors_lib import PositiveTarget, PositiveTargetParams
-    from retentioneering.data_processors_lib import NegativeTarget, NegativeTargetParams
-
-
-We will showcase the usage of data processors by:
-
--  creating a preprocessing graph instance (:py:meth:`PGraph<retentioneering.graph.p_graph.PGraph>`);
--  creating a data processor instance with specified parameters
--  creating a node (:py:meth:`node<retentioneering.graph.nodes.EventsNode>`)
--  :py:meth:`adding<retentioneering.graph.p_graph.PGraph.add_node>`) node to ``PGraph``
--  :py:meth:`combining<retentioneering.graph.p_graph.PGraph.combine>`) ``PGraph``
-
-Let us create a simple graph with one node:
-
-.. code-block:: python
-
-    graph = PGraph(source_stream=stream)
-    dp_start_end = StartEndEvents(StartEndEventsParams())
-    node_0 = EventsNode(dp_start_end)
-    graph.add_node(node=node_0, parents=[graph.root])
-    res = graph.combine(node_0).to_dataframe()
-    res[res['user_id'] == 219483890]
-
-
-.. raw:: html
-
-    <div><table class="dataframe">
-      <thead>
-        <tr style="text-align: right;">
-          <th></th>
-          <th>event_type</th>
-          <th>event_index</th>
-          <th>event</th>
-          <th>timestamp</th>
-          <th>user_id</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>0</th>
-          <td>path_start</td>
-          <td>0</td>
-          <td>path_start</td>
-          <td>2019-11-01 17:59:13</td>
-          <td>219483890</td>
-        </tr>
-        <tr>
-          <th>1</th>
-          <td>raw</td>
-          <td>1</td>
-          <td>catalog</td>
-          <td>2019-11-01 17:59:13</td>
-          <td>219483890</td>
-        </tr>
-        <tr>
-          <th>...</th>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-        </tr>
-        <tr>
-          <th>10213</th>
-          <td>path_end</td>
-          <td>10213</td>
-          <td>path_end</td>
-          <td>2020-02-14 21:04:52</td>
-          <td>219483890</td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
-
-
-Adding another node - :ref:`SplitSessions<split_sessions>`:
-
-.. code-block:: python
-
-    dp_split_sessions = SplitSessions(SplitSessionsParams(session_cutoff=(10, 'm')))
-    node_1 = EventsNode(dp_split_sessions)
-
-    graph.add_node(node=node_1, parents=[node_0])
-
-    res = graph.combine(node_1).to_dataframe()
-    res[res['user_id'] == 219483890]
-
-
-
-
-.. raw:: html
-
-
-    <div><table class="dataframe">
-      <thead>
-        <tr style="text-align: right;">
-          <th></th>
-          <th>event_type</th>
-          <th>event_index</th>
-          <th>event</th>
-          <th>timestamp</th>
-          <th>user_id</th>
-          <th>session_id</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>0</th>
-          <td>path_start</td>
-          <td>0</td>
-          <td>path_start</td>
-          <td>2019-11-01 17:59:13</td>
-          <td>219483890</td>
-          <td>219483890_1</td>
-        </tr>
-        <tr>
-          <th>2</th>
-          <td>session_start</td>
-          <td>2</td>
-          <td>session_start</td>
-          <td>2019-11-01 17:59:13</td>
-          <td>219483890</td>
-          <td>219483890_1</td>
-        </tr>
-        <tr>
-          <th>3</th>
-          <td>raw</td>
-          <td>3</td>
-          <td>catalog</td>
-          <td>2019-11-01 17:59:13</td>
-          <td>219483890</td>
-          <td>219483890_1</td>
-        </tr>
-        <tr>
-          <th>...</th>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-        </tr>
-        <tr>
-          <th>11</th>
-          <td>session_end</td>
-          <td>11</td>
-          <td>session_end</td>
-          <td>2019-11-01 17:59:32</td>
-          <td>219483890</td>
-          <td>219483890_1</td>
-        </tr>
-        <tr>
-          <th>6256</th>
-          <td>session_start</td>
-          <td>6256</td>
-          <td>session_start</td>
-          <td>2019-12-06 16:22:57</td>
-          <td>219483890</td>
-          <td>219483890_2</td>
-        </tr>
-        <tr>
-          <th>...</th>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-        </tr>
-        <tr>
-          <th>23997</th>
-          <td>session_end</td>
-          <td>23997</td>
-          <td>session_end</td>
-          <td>2020-02-14 21:04:52</td>
-          <td>219483890</td>
-          <td>219483890_4</td>
-        </tr>
-        <tr>
-          <th>23998</th>
-          <td>path_end</td>
-          <td>23998</td>
-          <td>path_end</td>
-          <td>2020-02-14 21:04:52</td>
-          <td>219483890</td>
-          <td>219483890_4</td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
 
 
 .. _helpers_and_chain_usage:
@@ -332,8 +122,6 @@ Using helper methods, we can replicate the *General Usage* coding blocks output:
 
 .. raw:: html
 
-
-
     <div><table class="dataframe">
       <thead>
         <tr style="text-align: right;">
@@ -430,81 +218,11 @@ Using helper methods, we can replicate the *General Usage* coding blocks output:
         </tr>
       </tbody>
     </table>
-    </div>
-
+    <br>
 
 We will also use ``helpers`` in all further examples below.
 See complex example in our preprocessing user guide :ref:`general usage<preprocessing_solution_plan>`
 and :ref:`method chaining<chain_usage_complex_example>`.
-
-Synthetic events order
-----------------------
-
-Before we move to the detailed explanation of each data processor let us summarize
-the information about event type and event order in the eventstream.
-As we have already discussed in the eventstream guide:
-
-- :ref:`event_type column<event_type_explanation>`;
-- :ref:`reindex method<reindex_explanation>`.
-
-All events came from a sourcing dataframe are of ``raw`` event type.
-When we apply adding or editing data processors new synthetic events are created.
-General idea is that each synthetic event has a "parent" or "parents" that
-defines its timestamp.
-
-When you apply multiple data processors, timestamp collisions might occur, so it is
-unclear how the events should be ordered. For colliding events,
-the following sorting order is applied, based on event types (earlier event types
-are added earlier), also you can see which data processor
-for which event_type is responsible:
-
-+-------------------------+------------------+
-| event_type              | helper           |
-+=========================+==================+
-| profile                 |                  |
-+-------------------------+------------------+
-| path_start              | add_start_end    |
-+-------------------------+------------------+
-| new_user                | add_new_users    |
-+-------------------------+------------------+
-| existing_user           | add_new_users    |
-+-------------------------+------------------+
-| truncated_left          | truncated_events |
-+-------------------------+------------------+
-| session_start           | split_sessions   |
-+-------------------------+------------------+
-| session_start_truncated | split_sessions   |
-+-------------------------+------------------+
-| group_alias             | group            |
-+-------------------------+------------------+
-| raw                     |                  |
-+-------------------------+------------------+
-| raw_sleep               |                  |
-+-------------------------+------------------+
-| None                    |                  |
-+-------------------------+------------------+
-| synthetic               |                  |
-+-------------------------+------------------+
-| synthetic_sleep         |                  |
-+-------------------------+------------------+
-| positive_target         | positive_target  |
-+-------------------------+------------------+
-| negative_target         | negative_target  |
-+-------------------------+------------------+
-| session_end_truncated   | split_sessions   |
-+-------------------------+------------------+
-| session_end             | split_sessions   |
-+-------------------------+------------------+
-| session_sleep           |                  |
-+-------------------------+------------------+
-| truncated_right         | truncated_events |
-+-------------------------+------------------+
-| absent_user             | lost_users       |
-+-------------------------+------------------+
-| lost_user               | lost_users       |
-+-------------------------+------------------+
-| path_end                | add_start_end    |
-+-------------------------+------------------+
 
 
 .. _dataprocessors_library:
@@ -545,7 +263,6 @@ Applying ``StartEndEvents`` to mark user trajectory start and finish:
 
 
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -593,10 +310,9 @@ Applying ``StartEndEvents`` to mark user trajectory start and finish:
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
-
-As the dataframe above shows, the generated events ``path_start``
+As the DataFrame above shows, the generated events ``path_start``
 and ``path_end`` have identical timestamps as the corresponding first and
 last events.
 
@@ -632,7 +348,6 @@ session cutoff=10 minutes:
 
 
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -712,8 +427,7 @@ session cutoff=10 minutes:
         </tr>
       </tbody>
     </table>
-    </div>
-
+    <br>
 
 The result for one user is displayed above. We see that the user
 trajectory is partitioned into three sessions. The time distance between
@@ -752,10 +466,7 @@ passed 'all' instead of a list.
     res[res['user_id'] == 219483890].head()
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -811,9 +522,7 @@ passed 'all' instead of a list.
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 We can see that user ``219483890`` is marked as a new user.
 
@@ -824,10 +533,7 @@ But user ``501098384`` is marked as an existing user:
     res[res['user_id'] == 501098384].head()
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -883,8 +589,7 @@ But user ``501098384`` is marked as an existing user:
         </tr>
       </tbody>
     </table>
-    </div>
-
+    <br>
 
 This data processor can be helpful when you have data that chronologically
 precedes the clickstream you are working with. For instance, your clickstream
@@ -920,8 +625,6 @@ exceeds ``lost_cutoff``, label as ``lost_user``; otherwise, label as
     lost_users_list = [219483890, 964964743, 965024600]
     res = stream.lost_users(lost_users_list=lost_users_list).to_dataframe()
     res[res['user_id'] == 219483890].tail()
-
-
 
 
 .. raw:: html
@@ -972,8 +675,7 @@ exceeds ``lost_cutoff``, label as ``lost_user``; otherwise, label as
         </tr>
       </tbody>
     </table>
-    </div>
-
+    <br>
 
 As opposed to user ``219483890``, the user ``501098384`` is labeled as an
 ``absent_user``.
@@ -983,11 +685,7 @@ As opposed to user ``219483890``, the user ``501098384`` is labeled as an
     res[res['user_id'] == 501098384].tail()
 
 
-
-
 .. raw:: html
-
-
 
     <div><table class="dataframe">
       <thead>
@@ -1035,9 +733,7 @@ As opposed to user ``219483890``, the user ``501098384`` is labeled as an
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 The function of this data processor is similar to
 ``NewUsersEvents``, except that it adds labels to the end
@@ -1051,6 +747,7 @@ absent if there have been no events for 30 days:
 
     res = stream.lost_users(lost_cutoff=(30, 'D')).to_dataframe()
 
+
 Before we inspect the results of applying the data processor,
 notice that the eventstream ends at ``2020-04-29 12:48:07``.
 
@@ -1059,12 +756,9 @@ notice that the eventstream ends at ``2020-04-29 12:48:07``.
     res['timestamp'].max()
 
 
-
-
 .. parsed-literal::
 
     Timestamp('2020-04-29 12:48:07.595390')
-
 
 
 User ``495985018`` is labeled as lost since her last event occurred
@@ -1076,11 +770,7 @@ eventstream.
     res[res['user_id'] == 495985018]
 
 
-
-
 .. raw:: html
-
-
 
     <div><table class="dataframe">
       <thead>
@@ -1120,9 +810,7 @@ eventstream.
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 On the other hand, user ``819489198`` is labeled ``absent`` because
 her last event occurred on ``2020-04-15``, less than 30 days
@@ -1133,11 +821,7 @@ before ``2020-04-29``.
     res[res['user_id'] == 819489198]
 
 
-
-
 .. raw:: html
-
-
 
     <div><table class="dataframe">
       <thead>
@@ -1193,8 +877,7 @@ before ``2020-04-29``.
         </tr>
       </tbody>
     </table>
-    </div>
-
+    <br>
 
 .. _positive_target:
 
@@ -1234,10 +917,7 @@ trajectory with ``event_index=2``. A synthetic event
     res[res['user_id'] == 219483890]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1325,9 +1005,7 @@ trajectory with ``event_index=2``. A synthetic event
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 In opposite to this user, user ``24427596`` has no positive events, so
 her path remains unchanged:
@@ -1337,10 +1015,7 @@ her path remains unchanged:
     res[res['user_id'] == 24427596]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1388,9 +1063,7 @@ her path remains unchanged:
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 This data processor can make it easier to label events that we would
 like to consider as positive. It might be helpful for further analysis
@@ -1421,10 +1094,7 @@ first one:
     res[res['user_id'] == 219483890]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1520,8 +1190,7 @@ first one:
         </tr>
       </tbody>
     </table>
-    </div>
-
+    <br>
 
 .. _negative_target:
 
@@ -1558,10 +1227,7 @@ case, it will add negative event next to the ``delivery_courier`` event:
     res[res['user_id'] == 629881394]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1633,7 +1299,7 @@ case, it will add negative event next to the ``delivery_courier`` event:
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
 .. _truncated_events:
 
@@ -1726,10 +1392,7 @@ from the left:
     res[res['user_id'] == 495985018]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1769,9 +1432,7 @@ from the left:
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 The trajectory of the following user starts at ``2020-04-29 12:24:21`` - which is too
 close to the eventstream end(for the given ``right_truncated_cutoff``
@@ -1784,10 +1445,7 @@ right:
     res[res['user_id'] == 831491833]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1851,7 +1509,7 @@ right:
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
 
 Removing processors
@@ -1865,7 +1523,7 @@ FilterEvents
 :py:meth:`FilterEvents<retentioneering.data_processors_lib.filter_events.FilterEvents>`
 keeps events based on the masking function ``func``.
 The function should return a boolean mask for the input dataframe(a series
-of boolean True or False variables that filter the dataframe underlying
+of boolean True or False variables that filter the DataFrame underlying
 the eventstream).
 
 .. figure:: /_static/user_guides/data_processor/dp_9_filter.png
@@ -1890,12 +1548,9 @@ The resulting eventstream includes these three users only:
     res['user_id'].unique().astype(int)
 
 
-
-
 .. parsed-literal::
 
     array([219483890, 964964743, 965024600])
-
 
 
 Note that the masking function accepts not just ``pandas.DataFrame``
@@ -1920,14 +1575,11 @@ us:
         [lambda s: s.index.isin(['catalog', 'main'])]
 
 
-
-
 .. parsed-literal::
 
     catalog    14518
     main        5635
     Name: event, dtype: int64
-
 
 
 .. code-block:: python
@@ -1938,15 +1590,13 @@ us:
 
     res = stream.filter(func=exclude_events).to_dataframe()
 
-We can see that ``res`` dataframe does not have "useless" events anymore.
+We can see that ``res`` DataFrame does not have "useless" events anymore.
 
 .. code-block:: python
 
     res['event']\
         .value_counts()\
         [lambda s: s.index.isin(['catalog', 'main'])]
-
-
 
 
 .. parsed-literal::
@@ -1999,11 +1649,9 @@ Any remaining user has at least 25 events. For example, user
     len(res[res['user_id'] == 629881394])
 
 
-
 .. parsed-literal::
 
     48
-
 
 
 A minimum path length (user lifetime) is specified:
@@ -2011,6 +1659,7 @@ A minimum path length (user lifetime) is specified:
 .. code-block:: python
 
     res = stream.delete_users(cutoff=(1, 'M')).to_dataframe()
+
 
 Any remaining user has been "alive" for at least a month. For
 example, user ``964964743`` started her trajectory on ``2019-11-01`` and
@@ -2021,10 +1670,7 @@ ended on ``2019-12-09``.
     res[res['user_id'] == 964964743].iloc[[0, -1]]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2056,7 +1702,7 @@ ended on ``2019-12-09``.
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
 .. _truncate_path:
 
@@ -2115,10 +1761,7 @@ least one ``cart`` in their path:
     res[res['user_id'] == 219483890]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2182,9 +1825,7 @@ least one ``cart`` in their path:
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 As we can see, this path now starts with the two events preceding the
 ``cart`` (``event_index=0,1``) and the ``cart`` event right after them
@@ -2201,10 +1842,7 @@ trajectories have not been changed:
     res[res['user_id'] == 24427596]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2252,9 +1890,7 @@ trajectories have not been changed:
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 We can also perform truncation from the right, or specify for the truncation
 point to be not the first but the last occurrence of the ``cart``. To
@@ -2274,8 +1910,6 @@ last ``cart``:
 .. code-block:: python
 
     res[res['user_id'] == 219483890]
-
-
 
 
 .. raw:: html
@@ -2343,9 +1977,7 @@ last ``cart``:
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 Editing processors
 ~~~~~~~~~~~~~~~~~~
@@ -2394,9 +2026,7 @@ As we can see, user ``456870964`` now has two ``product`` events
     res[res['user_id'] == 456870964]
 
 
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2476,9 +2106,7 @@ As we can see, user ``456870964`` now has two ``product`` events
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 Previously, both events were named
 ``product1`` and ``product2`` and had ``raw`` event types:
@@ -2488,10 +2116,7 @@ Previously, both events were named
     stream.to_dataframe().query('user_id == 456870964')
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2571,9 +2196,7 @@ Previously, both events were named
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 You can also notice that the newly created ``product`` events have
 ``event_id`` that differs from their parents' event_ids.
@@ -2585,7 +2208,7 @@ CollapseLoops
 
 :py:meth:`CollapseLoops<retentioneering.data_processors_lib.collapse_loops.CollapseLoops>`
 replaces all uninterrupted series of repetitive user
-events (loops) with one new ``loop``-like event.
+events (loops) with one new ``loop`` - like event.
 The ``suffix`` parameter defines the name of the new event:
 
 -  given ``suffix=None``, names new event with the old event_name, i.e. passes along
@@ -2619,7 +2242,6 @@ had three consecutive ``catalog`` events.
 
 
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2675,9 +2297,7 @@ had three consecutive ``catalog`` events.
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 In the resulting DataFrame, the repeating "catalog" events have been collapsed to a single
 ``catalog_loop`` event. The timestamp of this synthetic event is the
@@ -2689,10 +2309,7 @@ same as the timestamp of the last looping event:
     res[res['user_id'] == 2112338]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2732,9 +2349,7 @@ same as the timestamp of the last looping event:
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 We can set the suffix to see the length of the loops we removed.
 Also, let us see how ``timestamp_aggregation_type`` works if
@@ -2751,10 +2366,7 @@ we set it to ``mean``.
     res[res['user_id'] == 2112338]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2794,9 +2406,7 @@ we set it to ``mean``.
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 Now, the synthetic ``catalog_loop_3`` event has ``12:58:23`` time -
 the average of ``12:58:08``, ``12:58:16`` and ``12:58:44``.
@@ -2807,6 +2417,79 @@ data:
 - by packing loop information into single events,
 - removing looping events, in case they are not desirable
   (which can be a common case in clickstream visualization).
+
+.. _synthetic_events_order:
+
+Synthetic events order
+----------------------
+
+Let us summarize the information about event type and event order in the eventstream.
+As we have already discussed in the eventstream guide: :ref:`event_type column<event_type_explanation>` and
+:ref:`reindex method<reindex_explanation>`.
+
+All events came from a sourcing DataFrame are of ``raw`` event type.
+When we apply adding or editing data processors new synthetic events are created.
+General idea is that each synthetic event has a "parent" or "parents" that
+defines its timestamp.
+
+When you apply multiple data processors, timestamp collisions might occur, so it is
+unclear how the events should be ordered. For colliding events,
+the following sorting order is applied, based on event types (earlier event types
+are added earlier), also you can see which data processor
+for which event_type is responsible:
+
+.. table:: Mapping of event_types and data processors.
+    :widths: 10 40 40
+    :class: tight-table
+
+    +-------+-------------------------+-------------------------------------------+
+    | Order | event_type              | helper                                    |
+    +=======+=========================+===========================================+
+    |  1    | profile                 |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  2    | path_start              | :ref:`add_start_end<add_start_end>`       |
+    +-------+-------------------------+-------------------------------------------+
+    |  3    | new_user                | :ref:`add_new_users<add_new_users>`       |
+    +-------+-------------------------+-------------------------------------------+
+    |  4    | existing_user           | :ref:`add_new_users<add_new_users>`       |
+    +-------+-------------------------+-------------------------------------------+
+    |  5    | truncated_left          | :ref:`truncated_events<truncated_events>` |
+    +-------+-------------------------+-------------------------------------------+
+    |  6    | session_start           | :ref:`split_sessions<split_sessions>`     |
+    +-------+-------------------------+-------------------------------------------+
+    |  7    | session_start_truncated | :ref:`split_sessions<split_sessions>`     |
+    +-------+-------------------------+-------------------------------------------+
+    |  8    | group_alias             | :ref:`group<group>`                       |
+    +-------+-------------------------+-------------------------------------------+
+    |  9    | raw                     |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  10   | raw_sleep               |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  11   | None                    |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  12   | synthetic               |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  13   | synthetic_sleep         |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  14   | positive_target         | :ref:`positive_target<positive_target>`   |
+    +-------+-------------------------+-------------------------------------------+
+    |  15   | negative_target         | :ref:`negative_target<negative_target>`   |
+    +-------+-------------------------+-------------------------------------------+
+    |  16   | session_end_truncated   | :ref:`split_sessions<split_sessions>`     |
+    +-------+-------------------------+-------------------------------------------+
+    |  17   | session_end             | :ref:`split_sessions<split_sessions>`     |
+    +-------+-------------------------+-------------------------------------------+
+    |  18   | session_sleep           |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  19   | truncated_right         | :ref:`truncated_events<truncated_events>` |
+    +-------+-------------------------+-------------------------------------------+
+    |  20   | absent_user             | :ref:`lost_users<lost_users>`             |
+    +-------+-------------------------+-------------------------------------------+
+    |  21   | lost_user               | :ref:`lost_users<lost_users>`             |
+    +-------+-------------------------+-------------------------------------------+
+    |  22   | path_end                | :ref:`add_start_end<add_start_end>`       |
+    +-------+-------------------------+-------------------------------------------+
+
 
 Custom data processors
 ----------------------

@@ -457,6 +457,7 @@ The result is represented as the
         </tr>
       </tbody>
     </table>
+    <br>
 
 .. note::
 

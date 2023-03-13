@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from __future__ import annotations
+
 from typing import Any, Literal, MutableMapping, Optional, Sequence, TypedDict, Union
 
 
@@ -27,7 +29,7 @@ class PlotParamsType(TypedDict):
 
 AllowedColors = Literal["red", "green", "yellow", "blue", "magenta", "cyan"]
 
-Threshold = MutableMapping[str, float]
+Threshold = MutableMapping[str, float | int]
 NodeParams = MutableMapping[str, Optional[str]]
 Position = MutableMapping[str, Sequence[float]]
 

@@ -20,6 +20,8 @@ around three following purposes:
   allows you to seamlessly apply them. See a :ref:`user guide on retentioneering core tools<UG core tools>`.
 
 
+.. _eventstream_creation:
+
 Eventstream creation
 --------------------
 
@@ -591,6 +593,13 @@ These are some technical columns, containing the following:
   However, preprocessing methods can add some synthetic events that have various event types.
   See the details in :ref:`data processors user guide<dataprocessors_adding_processors>`.
 
+.. _event_type_explanation:
+
+- ``event_type`` - all the events came from a sourcing dataframe are of ``raw`` event type.
+  "Raw" means that these event are used as a source for an eventstream, like raw data.
+  However, preprocessing methods can add some so called synthetic events which have different event types.
+  See the details in :doc:`Preprocessing user guide</user_guides/dataprocessors>`.
+
 - ``event_index`` - an integer which is associated with the event order. By default, an eventstream
   is sorted by timestamp. As for the synthetic events which are often placed at the beginning or in the
   end of a user's path, special sorting is applied. See explanation of :ref:`reindex <reindex_explanation>`
@@ -883,6 +892,9 @@ follow their ``raw`` parent event ``B``. Assume we would like to change their or
 
 As we can see, the order of the events changed, and now ``raw`` events ``B``
 follow ``positive_target_B`` events.
+
+
+.. _eventstream_descriptive_methods:
 
 Descriptive methods
 -------------------

@@ -1,0 +1,91 @@
+
+
+
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin="" rel="preconnect" href="https://fonts.gstatic.com">
+    <link crossorigin="" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+    <title>Retentioneering Transition Graph Application</title>
+
+
+
+<noscript>You need to enable JavaScript to run this app.</noscript>
+<iframe id="el5BO5UJ" src="about:blank" width="700" height="600" onload="window.reteLoadedIframes = window.reteLoadedIframes || []; window.reteLoadedIframes.push('el5BO5UJ')">
+</iframe>
+
+<script>
+  (function() {
+    console.info('Initialize graph IFRAME')
+
+    const iframe = document.getElementById('el5BO5UJ')
+    const iframeLoaded = window.reteLoadedIframes && window.reteLoadedIframes.includes('el5BO5UJ')
+
+    const init = () => {
+      console.info('Graph IFRAME loaded')
+
+      const iframeDocument = document.getElementById('el5BO5UJ').contentDocument
+
+      iframeDocument.body.innerHTML = '<div id="root"></div>'
+
+      const graphScript = iframeDocument.createElement('script')
+
+      graphScript.src = `https://static.server.retentioneering.com/viztools/transition-graph/v3/transition-graph.umd.js?id=el4WKMO0`
+
+      graphScript.addEventListener('load', () => {
+        console.info('JavaScript library loaded')
+
+        const initGraph = iframeDocument.createElement('script')
+
+        initGraph.innerHTML = `
+    initialize({
+    serverId: '00a9dbb2-02ee-491d-a241-d2e6eab20858',
+    env: 'classic',
+    selectedNormalizationTypeId: 'none',
+    configNodes: [{"index":0,"name":"delivery","changed_name":"delivery","x":397,"y":288,"active":true,"alias":false,"degree":{"events":{"degree":5.932045303131246,"source":290},"user_id":{"degree":7.977495107632095,"source":271},"session_id":{"degree":5.878747501665556,"source":282}},"type":"suit_node","parent":null},{"index":1,"name":"path_start","changed_name":"path_start","x":254,"y":353,"active":true,"alias":false,"degree":{"events":{"degree":17.617588274483676,"source":2044},"user_id":{"degree":34,"source":2044},"session_id":{"degree":17.617588274483676,"source":2044}},"type":"suit_node","parent":null},{"index":2,"name":"cart","changed_name":"cart","x":346,"y":166,"active":true,"alias":false,"degree":{"events":{"degree":20.722185209860093,"source":2510},"user_id":{"degree":27.498043052837573,"source":1601},"session_id":{"degree":18.20386409060626,"source":2132}},"type":"suit_node","parent":null},{"index":3,"name":"browsing_loop","changed_name":"browsing_loop","x":435,"y":404,"active":true,"alias":false,"degree":{"events":{"degree":32.960692871419056,"source":4347},"user_id":{"degree":30.947162426614483,"source":1836},"session_id":{"degree":4,"source":0}},"type":"suit_node","parent":null},{"index":4,"name":"session_end","changed_name":"session_end","x":150,"y":260,"active":true,"alias":false,"degree":{"events":{"degree":34,"source":4503},"user_id":{"degree":34,"source":2044},"session_id":{"degree":34,"source":4503}},"type":"suit_node","parent":null},{"index":5,"name":"payment_loop","changed_name":"payment_loop","x":509,"y":190,"active":true,"alias":false,"degree":{"events":{"degree":9.709526982011992,"source":857},"user_id":{"degree":15.360078277886497,"source":774},"session_id":{"degree":4,"source":0}},"type":"suit_node","parent":null},{"index":6,"name":"browsing","changed_name":"browsing","x":276,"y":480,"active":true,"alias":false,"degree":{"events":{"degree":22.64756828780813,"source":2799},"user_id":{"degree":24.60665362035225,"source":1404},"session_id":{"degree":18.5836109260493,"source":2189}},"type":"suit_node","parent":null},{"index":7,"name":"path_end","changed_name":"path_end","x":223,"y":99,"active":true,"alias":false,"degree":{"events":{"degree":17.617588274483676,"source":2044},"user_id":{"degree":34,"source":2044},"session_id":{"degree":17.617588274483676,"source":2044}},"type":"suit_node","parent":null},{"index":8,"name":"product","changed_name":"product","x":576,"y":366,"active":true,"alias":false,"degree":{"events":{"degree":25.38574283810793,"source":3210},"user_id":{"degree":26.86692759295499,"source":1558},"session_id":{"degree":18.20386409060626,"source":2132}},"type":"suit_node","parent":null},{"index":9,"name":"session_start","changed_name":"session_start","x":83,"y":380,"active":true,"alias":false,"degree":{"events":{"degree":34,"source":4503},"user_id":{"degree":34,"source":2044},"session_id":{"degree":34,"source":4503}},"type":"suit_node","parent":null},{"index":10,"name":"payment","changed_name":"payment","x":455,"y":60,"active":true,"alias":false,"degree":{"events":{"degree":5.61892071952032,"source":243},"user_id":{"degree":7.287671232876712,"source":224},"session_id":{"degree":5.552298467688208,"source":233}},"type":"suit_node","parent":null},{"index":11,"name":"cart_loop","changed_name":"cart_loop","x":424,"y":540,"active":true,"alias":false,"degree":{"events":{"degree":4.006662225183211,"source":1},"user_id":{"degree":4.014677103718199,"source":1},"session_id":{"degree":4,"source":0}},"type":"suit_node","parent":null},{"index":12,"name":"delivery_loop","changed_name":"delivery_loop","x":64,"y":150,"active":true,"alias":false,"degree":{"events":{"degree":12.66755496335776,"source":1301},"user_id":{"degree":20.159491193737768,"source":1101},"session_id":{"degree":4,"source":0}},"type":"suit_node","parent":null}],
+    configLinks: [{"sourceIndex":6,"targetIndex":2,"type":"suit","weights":{"events":{"weight":528,"weight_norm":0.16671929270603095},"user_id":{"weight":473,"weight_norm":0.23140900195694716},"session_id":{"weight":500,"weight_norm":0.15787811809283234}}},{"sourceIndex":6,"targetIndex":8,"type":"suit","weights":{"events":{"weight":1132,"weight_norm":0.3574360593621724},"user_id":{"weight":800,"weight_norm":0.3913894324853229},"session_id":{"weight":877,"weight_norm":0.2769182191348279}}},{"sourceIndex":6,"targetIndex":4,"type":"suit","weights":{"events":{"weight":1139,"weight_norm":0.35964635301547204},"user_id":{"weight":681,"weight_norm":0.33317025440313114},"session_id":{"weight":1139,"weight_norm":0.35964635301547204}}},{"sourceIndex":3,"targetIndex":2,"type":"suit","weights":{"events":{"weight":957,"weight_norm":0.3021787180296811},"user_id":{"weight":771,"weight_norm":0.37720156555772993},"session_id":{"weight":0,"weight_norm":0}}},{"sourceIndex":3,"targetIndex":11,"type":"suit","weights":{"events":{"weight":1,"weight_norm":0.00031575623618566466},"user_id":{"weight":1,"weight_norm":0.0004892367906066536},"session_id":{"weight":0,"weight_norm":0}}},{"sourceIndex":3,"targetIndex":8,"type":"suit","weights":{"events":{"weight":2078,"weight_norm":0.6561414587938111},"user_id":{"weight":1266,"weight_norm":0.6193737769080235},"session_id":{"weight":0,"weight_norm":0}}},{"sourceIndex":3,"targetIndex":4,"type":"suit","weights":{"events":{"weight":1311,"weight_norm":0.4139564256394064},"user_id":{"weight":894,"weight_norm":0.43737769080234834},"session_id":{"weight":0,"weight_norm":0}}},{"sourceIndex":2,"targetIndex":6,"type":"suit","weights":{"events":{"weight":279,"weight_norm":0.08809598989580045},"user_id":{"weight":242,"weight_norm":0.11839530332681017},"session_id":{"weight":256,"weight_norm":0.08083359646353015}}},{"sourceIndex":2,"targetIndex":3,"type":"suit","weights":{"events":{"weight":238,"weight_norm":0.07514998421218819},"user_id":{"weight":224,"weight_norm":0.1095890410958904},"session_id":{"weight":230,"weight_norm":0.07262393432270288}}},{"sourceIndex":2,"targetIndex":0,"type":"suit","weights":{"events":{"weight":290,"weight_norm":0.09156930849384275},"user_id":{"weight":271,"weight_norm":0.13258317025440314},"session_id":{"weight":282,"weight_norm":0.08904325860435744}}},{"sourceIndex":2,"targetIndex":12,"type":"suit","weights":{"events":{"weight":1300,"weight_norm":0.4104831070413641},"user_id":{"weight":1101,"weight_norm":0.5386497064579256},"session_id":{"weight":1269,"weight_norm":0.40069466371960843}}},{"sourceIndex":2,"targetIndex":4,"type":"suit","weights":{"events":{"weight":403,"weight_norm":0.12724976318282286},"user_id":{"weight":356,"weight_norm":0.17416829745596868},"session_id":{"weight":403,"weight_norm":0.12724976318282286}}},{"sourceIndex":11,"targetIndex":12,"type":"suit","weights":{"events":{"weight":1,"weight_norm":0.00031575623618566466},"user_id":{"weight":1,"weight_norm":0.0004892367906066536},"session_id":{"weight":0,"weight_norm":0}}},{"sourceIndex":0,"targetIndex":6,"type":"suit","weights":{"events":{"weight":90,"weight_norm":0.02841806125670982},"user_id":{"weight":86,"weight_norm":0.04207436399217221},"session_id":{"weight":90,"weight_norm":0.02841806125670982}}},{"sourceIndex":0,"targetIndex":3,"type":"suit","weights":{"events":{"weight":75,"weight_norm":0.02368171771392485},"user_id":{"weight":75,"weight_norm":0.03669275929549902},"session_id":{"weight":75,"weight_norm":0.02368171771392485}}},{"sourceIndex":0,"targetIndex":4,"type":"suit","weights":{"events":{"weight":125,"weight_norm":0.039469529523208084},"user_id":{"weight":121,"weight_norm":0.059197651663405085},"session_id":{"weight":125,"weight_norm":0.039469529523208084}}},{"sourceIndex":12,"targetIndex":10,"type":"suit","weights":{"events":{"weight":243,"weight_norm":0.07672876539311652},"user_id":{"weight":224,"weight_norm":0.1095890410958904},"session_id":{"weight":0,"weight_norm":0}}},{"sourceIndex":12,"targetIndex":5,"type":"suit","weights":{"events":{"weight":857,"weight_norm":0.27060309441111463},"user_id":{"weight":774,"weight_norm":0.3786692759295499},"session_id":{"weight":0,"weight_norm":0}}},{"sourceIndex":12,"targetIndex":4,"type":"suit","weights":{"events":{"weight":201,"weight_norm":0.0634670034733186},"user_id":{"weight":192,"weight_norm":0.09393346379647749},"session_id":{"weight":0,"weight_norm":0}}},{"sourceIndex":1,"targetIndex":9,"type":"suit","weights":{"events":{"weight":2044,"weight_norm":0.6454057467634986},"user_id":{"weight":2044,"weight_norm":1},"session_id":{"weight":2044,"weight_norm":0.6454057467634986}}},{"sourceIndex":10,"targetIndex":6,"type":"suit","weights":{"events":{"weight":60,"weight_norm":0.01894537417113988},"user_id":{"weight":58,"weight_norm":0.02837573385518591},"session_id":{"weight":58,"weight_norm":0.01831386169876855}}},{"sourceIndex":10,"targetIndex":3,"type":"suit","weights":{"events":{"weight":54,"weight_norm":0.017050836754025894},"user_id":{"weight":53,"weight_norm":0.02592954990215264},"session_id":{"weight":53,"weight_norm":0.01673508051784023}}},{"sourceIndex":10,"targetIndex":4,"type":"suit","weights":{"events":{"weight":129,"weight_norm":0.040732554467950745},"user_id":{"weight":128,"weight_norm":0.06262230919765166},"session_id":{"weight":129,"weight_norm":0.040732554467950745}}},{"sourceIndex":5,"targetIndex":4,"type":"suit","weights":{"events":{"weight":857,"weight_norm":0.27060309441111463},"user_id":{"weight":774,"weight_norm":0.3786692759295499},"session_id":{"weight":0,"weight_norm":0}}},{"sourceIndex":8,"targetIndex":6,"type":"suit","weights":{"events":{"weight":1034,"weight_norm":0.32649194821597727},"user_id":{"weight":733,"weight_norm":0.3586105675146771},"session_id":{"weight":849,"weight_norm":0.2680770445216293}}},{"sourceIndex":8,"targetIndex":3,"type":"suit","weights":{"events":{"weight":813,"weight_norm":0.2567098200189454},"user_id":{"weight":636,"weight_norm":0.3111545988258317},"session_id":{"weight":692,"weight_norm":0.21850331544047996}}},{"sourceIndex":8,"targetIndex":2,"type":"suit","weights":{"events":{"weight":1025,"weight_norm":0.3236501420903063},"user_id":{"weight":834,"weight_norm":0.4080234833659491},"session_id":{"weight":953,"weight_norm":0.30091569308493843}}},{"sourceIndex":8,"targetIndex":4,"type":"suit","weights":{"events":{"weight":338,"weight_norm":0.10672560783075466},"user_id":{"weight":305,"weight_norm":0.14921722113502936},"session_id":{"weight":338,"weight_norm":0.10672560783075466}}},{"sourceIndex":4,"targetIndex":7,"type":"suit","weights":{"events":{"weight":2044,"weight_norm":0.6454057467634986},"user_id":{"weight":2044,"weight_norm":1},"session_id":{"weight":2044,"weight_norm":0.6454057467634986}}},{"sourceIndex":4,"targetIndex":9,"type":"suit","weights":{"events":{"weight":2459,"weight_norm":0.7764445847805495},"user_id":{"weight":1113,"weight_norm":0.5445205479452054},"session_id":{"weight":2459,"weight_norm":0.7764445847805495}}},{"sourceIndex":9,"targetIndex":6,"type":"suit","weights":{"events":{"weight":1336,"weight_norm":0.421850331544048},"user_id":{"weight":917,"weight_norm":0.4486301369863014},"session_id":{"weight":1336,"weight_norm":0.421850331544048}}},{"sourceIndex":9,"targetIndex":3,"type":"suit","weights":{"events":{"weight":3167,"weight_norm":1},"user_id":{"weight":1675,"weight_norm":0.8194716242661448},"session_id":{"weight":3167,"weight_norm":1}}}],
+    nodesColsNames: ['events', 'user_id', 'session_id'],
+    linksWeightsNames: ['events', 'user_id', 'session_id'],
+    nodesThreshold: {"events":1,"user_id":1,"session_id":0},
+    linksThreshold: {"events":1,"user_id":1,"session_id":0},
+    shownNodesCol: 'events',
+    shownLinksWeight: 'events',
+    selectedNodesColForThresholds: 'events',
+    selectedLinksWeightForThresholds: 'events',
+    showWeights: true,
+    showPercents: false,
+    showNodesNames: true,
+    showAllEdgesForTargets: true,
+    showNodesWithoutLinks: false,
+    useLayoutDump: Boolean(1),
+    weightTemplate: undefined
+})
+`
+        iframeDocument.body.appendChild(initGraph)
+      })
+
+      iframeDocument.head.appendChild(graphScript)
+      iframeDocument.body.dataset.templateId = 'el5BO5UJ_template'
+
+      console.info('Graph IFRAME initialized')
+    }
+
+    console.log(`Graph IFRAME loaded: ` + iframeLoaded)
+
+    if (iframeLoaded) {
+      init()
+      return
+    }
+
+    iframe.onload = () => {
+      init()
+      window.reteLoadedIframes.push('el5BO5UJ')
+    }
+  })()
+</script>
+
+<template id="el5BO5UJ_template">
+
+</template>

@@ -31,14 +31,13 @@ release = "3.0.0"
 extensions = [
     "sphinx.ext.autodoc",
     "numpydoc",
-    "sphinx.ext.napoleon",
-    "sphinx.ext.viewcode",
+    "sphinx.ext.viewcode",  # add link to source code
     "sphinx.ext.extlinks",
     "sphinx.ext.autosectionlabel",
 ]
 
 # -- Options for HTML output -------------------------------------------------
-
+autodoc_member_order = "groupwise"
 numpydoc_show_inherited_class_members = False
 numpydoc_class_members_toctree = False
 numpydoc_show_class_members = False
@@ -49,6 +48,8 @@ html_context = {"default_mode": "light"}
 html_theme_options = {
     "logo": {"image_light": "rete_logo.svg", "image_dark": "rete_logo_white.svg"},
     "show_toc_level": 1,
+    # TODO: fix when a new repo name appears. Vladimir Kukushkin
+    "github_url": "https://github.com/retentioneering/retentioneering-tools-new-arch",
     # "use_edit_page_button": True
 }
 

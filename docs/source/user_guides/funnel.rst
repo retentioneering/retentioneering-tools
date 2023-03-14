@@ -16,7 +16,7 @@ The following user guide is also available as
 Loading data
 ------------
 
-Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simple_shop>` dataset. It has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable.
+Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simple_shop>` dataset. It has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable. If you want to use your own dataset, upload it following :ref:`this instruction<eventstream_creation>`.
 
 .. code-block:: python
 
@@ -48,7 +48,7 @@ Here's the funnel visualisation on how many users walked through ``catalog → c
         allowfullscreen
     ></iframe>
 
-This funnel illustrates that there are 3611 users who reached ``catalog`` event. 1924 of them also reached ``cart`` event after they had already reached ``catalog`` event (perhaps, there were some other events between ``catalog`` and ``cart``). 653 out of these 1924 users followed ``catalog`` → ``...`` → ``cart`` → ``...`` → ``payment_done`` path. Thus, we guarantee that the users who form a specific stage of a funnel appeared at all the previous stages. This type of the funnel is called *closed funnel*. Some other types are supported as well. See :ref:`here <funnel_types>` here for details. The percentage values show the conversion rates either from the previous or from the first stage.
+This funnel illustrates that there are 3611 users who reached ``catalog`` event. 1924 of them also reached ``cart`` event after they had already reached ``catalog`` event (perhaps, there were some other events between ``catalog`` and ``cart``). 653 out of these 1924 users followed ``catalog`` → ``...`` → ``cart`` → ``...`` → ``payment_done`` path. Thus, we guarantee that the users who form a specific stage of a funnel appeared at all the previous stages. This type of the funnel is called *closed funnel*. Some other types are supported as well. See :ref:`here <funnel_types>` for details. The percentage values show the conversion rates either from the previous or from the first stage.
 
 Funnel stages
 -------------
@@ -197,7 +197,7 @@ Using a separate instance
 
 By design, :py:meth:`Eventstream.funnel()<retentioneering.eventstream.eventstream.Eventstream.funnel>` is a shortcut method that uses :py:meth:`Funnel<retentioneering.tooling.funnel.funnel.Funnel>` class under the hood. This method creates an instance of Funnel class and embeds it into the eventstream object. Eventually, ``Eventstream.funnel()`` returns exactly this instance.
 
-Sometimes it is reasonable to work with a separate instance of Funnel class. An alternative way to get the same visualization that ``Eventstream.funnel()`` produces is to call :py:meth:`Funnel.fit()<retentioneering.tooling.funnel.funnel.Funnel.fit>` and :py:meth:`Funnel.plot()<retentioneering.tooling.funnel.funnel.Funnel.plot>` methods explicitly. The former method calculates all the values needed for the visualization, the latter displays these values as a visualization.
+Sometimes it is reasonable to work with a separate instance of Funnel class. An alternative way to get the same visualization that ``Eventstream.funnel()`` produces is to call :py:meth:`Funnel.fit()<retentioneering.tooling.funnel.funnel.Funnel.fit>` and :py:meth:`Funnel.plot()<retentioneering.tooling.funnel.funnel.Funnel.plot>` methods explicitly. The former method calculates all the values needed for the visualization, the latter displays these values as a funnel.
 
 Here is an example how you can manage it:
 
@@ -229,7 +229,7 @@ Common tooling properties
 values
 ~~~~~~
 
-:py:meth:`Funnel.values<retentioneering.tooling.funnel.funnel.Funnel.values>` property returns the values underlying recent ``Funnel.plot()`` call. The property is common for many retentioneering tools and allows you to avoid unnecessary calculations if the tool object has already been fitted.
+:py:meth:`Funnel.values<retentioneering.tooling.funnel.funnel.Funnel.values>` property returns the values underlying recent ``Funnel.plot()`` call. The property is common for many retentioneering tools. It allows you to avoid unnecessary calculations if the tool object has already been fitted.
 
 .. code-block:: python
 

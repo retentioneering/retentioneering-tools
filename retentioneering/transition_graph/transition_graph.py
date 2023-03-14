@@ -115,7 +115,11 @@ class TransitionGraph:
         self.event_time_col = self.eventstream.schema.event_timestamp
         self.user_col = self.eventstream.schema.user_id
         self.id_col = self.eventstream.schema.event_id
-        self.custom_cols = [self.eventstream.schema.user_id] + self.eventstream.schema.custom_cols
+        self.custom_cols = [
+            self.eventstream.schema.user_id,
+            self.eventstream.schema.event_id,
+            *self.eventstream.schema.custom_cols,
+        ]
 
         self.weights = weights if weights else {"edges": "events", "nodes": "events"}
 
@@ -134,16 +138,10 @@ class TransitionGraph:
         )
 
         self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
-
-        self.edgelist: Edgelist = Edgelist(
-            event_col=self.event_col,
-            time_col=self.event_time_col,
-            default_weight_col=self.edgelist_default_col,
-            nodelist=self.nodelist.nodelist_df,
-            index_col=self.user_col,
-        )
+        self.rename_cols = {self.eventstream.schema.event_id: self.weights["edges"]}
+        self.edgelist: Edgelist = Edgelist(eventstream=self.eventstream)
         self.edgelist.calculate_edgelist(
-            norm_type=self.norm_type, custom_cols=self.custom_cols, data=self.eventstream.to_dataframe()
+            weight_cols=self.custom_cols, norm_type=self.norm_type, rename_cols=self.rename_cols
         )
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
@@ -186,9 +184,9 @@ class TransitionGraph:
                 nodelist=self.nodelist.nodelist_df,
             )
             self._on_nodelist_updated(nodes)
-
-            self.edgelist.edgelist_df["type"] = "suit"
-            links = self._prepare_edges(edgelist=self.edgelist.edgelist_df, nodes_set=nodes_set)
+            edgelist = self.edgelist.edgelist_df
+            edgelist["type"] = "suit"
+            links = self._prepare_edges(edgelist=edgelist, nodes_set=nodes_set)
             result: dict[str, MutableSequence[PreparedNode] | MutableSequence[PreparedLink] | list] = {
                 "nodes": nodes,
                 "links": links,
@@ -200,12 +198,14 @@ class TransitionGraph:
 
     def _recalculate(self, rename_rules: list[RenameRule]) -> None:
         eventstream = self.eventstream.copy()
-        renamed_df = eventstream.rename(rules=rename_rules).to_dataframe()
+        renamed_eventstream = eventstream.rename(rules=rename_rules)
+        renamed_df = renamed_eventstream.to_dataframe()
 
         # save norm type
         recalculated_nodelist = self.nodelist.calculate_nodelist(data=renamed_df)
+        self.edgelist.eventstream = renamed_eventstream
         recalculated_edgelist = self.edgelist.calculate_edgelist(
-            norm_type=self.norm_type, custom_cols=self.custom_cols, data=renamed_df
+            weight_cols=self.custom_cols, norm_type=self.norm_type, rename_cols=self.rename_cols
         )
 
         curr_nodelist = self.nodelist.nodelist_df
@@ -346,6 +346,12 @@ class TransitionGraph:
         custom_cols = self.custom_cols
         return list([default_col]) + list(custom_cols)
 
+    def __round_value(self, value: float) -> float:
+        if self.norm_type in ["full", "node"]:
+            # @TODO: make this magical number as constant or variable from config dict. Vladimir Makhanov
+            return round(value, 5)
+        return value
+
     def _prepare_nodes(
         self, nodelist: pd.DataFrame, node_params: NodeParams | None = None, pos: Position | None = None
     ) -> tuple[list, MutableMapping]:
@@ -363,8 +369,8 @@ class TransitionGraph:
                 r = r.tolist()
                 value = r[0]
                 curr_degree = {}
-                curr_degree["degree"] = (abs(value)) / abs(max_degree) * 30 + 4
-                curr_degree["source"] = value
+                curr_degree["degree"] = self.__round_value((abs(value)) / abs(max_degree) * 30 + 4)
+                curr_degree["source"] = self.__round_value(value)
                 degree[weight_col] = curr_degree
 
             node_pos = pos.get(node_name) if pos is not None else None
@@ -406,7 +412,6 @@ class TransitionGraph:
         edges: MutableSequence[PreparedLink] = []
 
         edgelist["weight_norm"] = edgelist[weight_col] / edgelist[weight_col].abs().max()
-
         for _, row in edgelist.iterrows():
             default_col_weight: Weight = {
                 "weight_norm": row.weight_norm,
@@ -600,9 +605,7 @@ class TransitionGraph:
         norm_nodes_threshold = nodes_threshold if nodes_threshold else self._get_norm_node_threshold(nodes_threshold)
         norm_links_threshold = links_threshold if links_threshold else self._get_norm_link_threshold(links_threshold)
 
-        self.edgelist.calculate_edgelist(
-            norm_type=self.norm_type, custom_cols=self.custom_cols, data=self.eventstream.to_dataframe()
-        )
+        self.edgelist.calculate_edgelist(weight_cols=self.custom_cols, norm_type=self.norm_type)
         node_params = self._make_node_params(targets)
         cols = self.__get_nodelist_cols()
 

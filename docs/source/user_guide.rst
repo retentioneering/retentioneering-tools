@@ -1,4 +1,4 @@
-.. title:: User Guide
+.. title:: User guide
 
 User guide
 ==========
@@ -15,8 +15,8 @@ Preprocessing
 .. toctree::
    :maxdepth: 2
 
-    DataProcessors <user_guides/dataprocessors.rst>
-    Preprocessing <user_guides/preprocessing.rst>
+    Data processors <user_guides/dataprocessors.rst>
+    Preprocessing graph <user_guides/preprocessing.rst>
 
 .. _UG core tools:
 
@@ -25,8 +25,8 @@ Core tools
 .. toctree::
    :maxdepth: 2
 
-    Transition Graph <user_guides/transition_graph.rst>
-    Step Matrix <user_guides/step_matrix.rst>
+    Transition graph <user_guides/transition_graph.rst>
+    Step matrix <user_guides/step_matrix.rst>
     Step Sankey <user_guides/step_sankey.rst>
     Clusters <user_guides/clusters.rst>
     Funnel <user_guides/funnel.rst>

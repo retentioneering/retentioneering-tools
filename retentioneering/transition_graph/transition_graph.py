@@ -302,6 +302,7 @@ class TransitionGraph:
 
     def __round_value(self, value: float) -> float:
         if self.norm_type in ["full", "node"]:
+            # @TODO: make this magical number as constant or variable from config dict. Vladimir Makhanov
             return round(value, 5)
         return value
 

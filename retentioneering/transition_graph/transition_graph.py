@@ -83,11 +83,11 @@ class TransitionGraph:
 
     _weights: MutableMapping[str, str] | None = None
     _edge_norm_type: NormType = None
-    _nodes_threshold: dict
-    _edges_threshold: dict
+    _nodes_threshold: Threshold
+    _edges_threshold: Threshold
 
     @property
-    def nodes_thresholds(self) -> dict:
+    def nodes_thresholds(self) -> Threshold:
         return self._nodes_threshold
 
     @nodes_thresholds.setter
@@ -96,7 +96,7 @@ class TransitionGraph:
             self._nodes_threshold = value
 
     @property
-    def edges_thresholds(self) -> dict:
+    def edges_thresholds(self) -> Threshold:
         return self._edges_threshold
 
     @edges_thresholds.setter
@@ -111,7 +111,7 @@ class TransitionGraph:
             if not all(map(lambda x: x >= 0, value.values())):
                 raise ValueError(f"For normalization type {self.edge_norm_type} all thresholds must be positive")
         else:
-            if not all(map(lambda x: isinstance(x, (float, None)), value.values())):
+            if not all(map(lambda x: type(x) in (float, None), value.values())):
                 raise ValueError(f"For normalization type {self.edge_norm_type} all thresholds must be float or None")
             if not all(map(lambda x: x is None or 0 <= x <= 1, value.values())):
                 raise ValueError(
@@ -125,7 +125,7 @@ class TransitionGraph:
         graph_settings: GraphSettings | None = None,
         edge_norm_type: NormType = None,
         targets: MutableMapping[str, str | None] | None = None,
-        nodes_threshold: Threshold | None = None,
+        nodes_threshold: dict[str, float | int] | None = None,
         edges_threshold: Threshold | None = None,
         nodes_weight_col: str | None = None,
         edges_weight_col: str | None = None,
@@ -134,14 +134,14 @@ class TransitionGraph:
         from retentioneering.eventstream.eventstream import Eventstream
 
         if graph_settings is None:
-            graph_settings = {}
+            graph_settings = {}  # type: ignore
         if nodes_threshold is None:
-            nodes_threshold = {"user_id": None, "event_id": None}
-        self.nodes_threshold = nodes_threshold
+            nodes_threshold = {"user_id": 0, "event_id": 0}
+        self.nodes_thresholds = nodes_threshold
 
         if edges_threshold is None:
-            edges_threshold = {"user_id": None, "event_id": None}
-        self.edges_threshold = edges_threshold
+            edges_threshold = {"user_id": 0, "event_id": 0}
+        self.edges_thresholds = edges_threshold
 
         self.nodelist_default_col = eventstream.schema.event_id
         self.edgelist_default_col = eventstream.schema.event_id
@@ -195,7 +195,7 @@ class TransitionGraph:
             index_col=self.user_col,
         )
         self.edgelist.calculate_edgelist(
-            edge_norm_type=self.edge_norm_type, custom_cols=self.custom_cols, data=self.eventstream.to_dataframe()
+            norm_type=self.edge_norm_type, custom_cols=self.custom_cols, data=self.eventstream.to_dataframe()
         )
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
@@ -257,7 +257,7 @@ class TransitionGraph:
         # save norm type
         recalculated_nodelist = self.nodelist.calculate_nodelist(data=renamed_df)
         recalculated_edgelist = self.edgelist.calculate_edgelist(
-            edge_norm_type=self.edge_norm_type, custom_cols=self.custom_cols, data=renamed_df
+            norm_type=self.edge_norm_type, custom_cols=self.custom_cols, data=renamed_df
         )
 
         curr_nodelist = self.nodelist.nodelist_df

@@ -6,9 +6,11 @@ The following user guide is also available as `Google Colab notebook <https://co
 What is Eventstream?
 --------------------
 
-:doc:`Eventstream</getting_started/eventstream_concept>` is the core
-class in the retentioneering library. This data structure is designed
+Eventstream is the core class in the retentioneering library. This data structure is designed
 around three following purposes:
+
+..
+    TODO: set a link to eventstream concept as soon as it is ready. Vladimir Kukushkin
 
 - **Data container**. Eventstream class implements a convenient approach to storing clickstream data.
 
@@ -28,7 +30,7 @@ Eventstream creation
 Default field names
 ~~~~~~~~~~~~~~~~~~~
 
-An ``Eventstream`` is a container for a clickstream data, that is initialized from a ``pandas.DataFrame``.
+An ``Eventstream`` is a container for clickstream data, that is initialized from a ``pandas.DataFrame``.
 The class constructor expects the DataFrame to have at least 3 columns:
 ``user_id``, ``event``, ``timestamps``.
 
@@ -603,72 +605,78 @@ These are some technical columns, containing the following:
 - ``event_index`` - an integer which is associated with the event order. By default, an eventstream
   is sorted by timestamp. As for the synthetic events which are often placed at the beginning or in the
   end of a user's path, special sorting is applied. See explanation of :ref:`reindex <reindex_explanation>`
-  for the details and also :doc:`data processors</user_guides/dataprocessors>` user guide.
-  Please note that the event index might contain gaps. It is ok due to its design
-  see :ref:`Eventstream concept<join algorithm>` for the details.
+  for the details and also :ref:`data processors<synthetic_events_order>` user guide.
+  Please note that the event index might contain gaps. It is ok due to its design.
 
-There are additional options that may be useful.
+..
+    TODO: set a link to eventstream concept as soon as it is ready. Vladimir Kukushkin
+    see :ref:`Eventstream concept<join algorithm>` for the details.
 
--  ``show_deleted`` - all events uploaded to an eventstream are immutable
-   (:ref:`Eventstream concept<join algorithm>`). By default, ``show_deleted``
-   flag is ``False``, so the events that are considered deleted at preprocessing steps are
-   not shown in the resulting dataframe. If ``show_deleted=True``, all the events from the original state
-   of the eventstream and all the in-between preprocessing states are displayed.
+There are additional arguments that may be useful.
+
+-  ``show_deleted``. Eventstream is immutable data container. It means that all the events
+    once uploaded to an eventstream are kept. Even if we remove some events, they are just
+    marked as removed. By default, ``show_deleted=False`` so these events are hidden in the
+    output DataFrame. If ``show_deleted=True``, all the events from the original state
+    of the eventstream and all the in-between preprocessing states are displayed.
+
+..
+    TODO: set a link to eventstream concept as soon as it is ready. Vladimir Kukushkin
+    see :ref:`Eventstream concept<join algorithm>` for the details.
+
 -  ``copy`` - when this flag is ``True`` (by default it is ``False``) then an explicit copy
    of the DataFrame is created. See details in
-   `pandas documentation <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#:~:text=If%20None%2C%20infer.-,copybool,-or%20None%2C%20default>`_
--  ``raw_cols`` -  if ``True`` - original columns of the source data will be shown.
+   `pandas documentation <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#:~:text=If%20None%2C%20infer.-,copybool,-or%20None%2C%20default>`_.
 
 .. _reindex_explanation:
 
 Eventstream reindex
 -------------------
 
-In the previous section, we have already mentioned the sorting algorithm when describing special
-``Eventstream`` columns ``event_type`` and ``event_index``. There is a kit of pre-designed
-event_types, that are arranged in the following default order:
+In the previous section, we have already mentioned the sorting algorithm when we described special
+``event_type`` and ``event_index`` eventstream columns. There is a set of pre-defined
+event types, that are arranged in the following default order:
 
 .. code-block:: python
 
     IndexOrder = [
-                  "profile",
-                  "path_start",
-                  "new_user",
-                  "existing_user",
-                  "truncated_left",
-                  "session_start",
-                  "session_start_truncated",
-                  "group_alias",
-                  "raw",
-                  "raw_sleep",
-                  None,
-                  "synthetic",
-                  "synthetic_sleep",
-                  "positive_target",
-                  "negative_target",
-                  "session_end_truncated",
-                  "session_end",
-                  "session_sleep",
-                  "truncated_right",
-                  "absent_user",
-                  "lost_user",
-                  "path_end"
-                ]
+        "profile",
+        "path_start",
+        "new_user",
+        "existing_user",
+        "truncated_left",
+        "session_start",
+        "session_start_truncated",
+        "group_alias",
+        "raw",
+        "raw_sleep",
+        None,
+        "synthetic",
+        "synthetic_sleep",
+        "positive_target",
+        "negative_target",
+        "session_end_truncated",
+        "session_end",
+        "session_sleep",
+        "truncated_right",
+        "absent_user",
+        "lost_user",
+        "path_end"
+    ]
 
 Most of these types are created by build-in :ref:`data processors<dataprocessors_library>`.
 Note that some of the types are not used right now and were created for future development.
 
 To see full explanation about which data processor creates which ``event_type`` you can explore
-the :doc:`data processors</user_guides/dataprocessors>` user guide.
+the :ref:`data processors user guide<dataprocessors_adding_processors>`.
 
-If needed you can pass your own order to the ``Eventstream`` instance constructor using
-the parameter ``index_order``.
+If needed, you can pass a custom sorting list to the Eventstream constructor as
+the ``index_order`` argument.
 
-In case you already have an eventstream instance, you can call ``Eventstream.index_order`` attribute and pass
-a new order in it. Afterwards, you should use
+In case you already have an eventstream instance, you can assign a custom sorting list
+to ``Eventstream.index_order`` attribute. Afterwards, you should use
 :py:meth:`index_events()<retentioneering.eventstream.eventstream.Eventstream.index_events>` method to
-apply this new order.
-For demonstration purposes we use here a
+apply this new sorting. For demonstration purposes we use here a
 :py:meth:`PositiveTarget<retentioneering.data_processors_lib.positive_target.PositiveTarget>`
 data processor, which adds new event with prefix ``positive_target_``.
 
@@ -773,30 +781,32 @@ follow their ``raw`` parent event ``B``. Assume we would like to change their or
 
 .. code-block:: python
 
-    new_order = ['profile',
-                 'path_start',
-                 'new_user',
-                 'existing_user',
-                 'truncated_left',
-                 'session_start',
-                 'session_start_truncated',
-                 'group_alias',
-                 'positive_target',
-                 'raw',
-                 'raw_sleep',
-                 None,
-                 'synthetic',
-                 'synthetic_sleep',
-                 'negative_target',
-                 'session_end_truncated',
-                 'session_end',
-                 'session_sleep',
-                 'truncated_right',
-                 'absent_user',
-                 'lost_user',
-                 'path_end']
+    custom_sorting = [
+        'profile',
+        'path_start',
+        'new_user',
+        'existing_user',
+        'truncated_left',
+        'session_start',
+        'session_start_truncated',
+        'group_alias',
+        'positive_target',
+        'raw',
+        'raw_sleep',
+        None,
+        'synthetic',
+        'synthetic_sleep',
+        'negative_target',
+        'session_end_truncated',
+        'session_end',
+        'session_sleep',
+        'truncated_right',
+        'absent_user',
+        'lost_user',
+        'path_end'
+    ]
 
-    add_events_stream.index_order = new_order
+    add_events_stream.index_order = custom_sorting
     add_events_stream.index_events()
     add_events_stream.to_dataframe()
 
@@ -899,9 +909,9 @@ follow ``positive_target_B`` events.
 Descriptive methods
 -------------------
 
-``Eventstream`` provides a set of methods for a first touch data
+Eventstream provides a set of methods for a first touch data
 exploration. To showcase how these methods work, we
-need a larger dataset, so we will use our :doc:`simple_shop<../datasets/simple_shop>`
+need a larger dataset, so we will use our :doc:`simple_shop</datasets/simple_shop>`
 dataset.
 For demonstration purposes, we add ``session_id`` column by applying
 :py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>` data processor.
@@ -912,8 +922,8 @@ For demonstration purposes, we add ``session_id`` column by applying
     from retentioneering import datasets
 
     stream_with_sessions = datasets\
-                                .load_simple_shop()\
-                                .split_sessions(session_cutoff=(30, 'm'))
+        .load_simple_shop()\
+        .split_sessions(session_cutoff=(30, 'm'))
 
     stream_with_sessions.to_dataframe().head()
 
@@ -994,8 +1004,8 @@ General statistics
 Describe
 ^^^^^^^^
 
-In a similar fashion to Pandas, we use :py:meth:`describe()<retentioneering.eventstream.eventstream.Eventstream.describe>`
-for a general description of an eventstream.
+In a similar fashion to pandas, we use :py:meth:`describe()<retentioneering.eventstream.eventstream.Eventstream.describe>`
+for getting a general description of an eventstream.
 
 .. code-block:: python
 
@@ -1131,7 +1141,7 @@ for a general description of an eventstream.
     </table>
     <br>
 
-The output consists of three main blocks:
+The output consists of three main categories:
 
 - **overall statistics**
 - full user-path statistics
@@ -1145,55 +1155,51 @@ The output consists of three main blocks:
 
 ``session_col`` parameter is optional and points to the eventstream column that contains session ids
 (``session_id`` is the default value). If such a column is defined, session statistics are also included.
-Otherwise the values related to sessions are not displayed.
+Otherwise, the values related to sessions are not displayed.
 
-There is one more parameter - ``raw_events_only`` (default False) that could be useful if the preprocessing
-was started and some ``synthetic_events`` were added to the eventstream, note that those events affect
-all "step-statistics".
+There is one more parameter - ``raw_events_only`` (default False) that could be useful if some synthetic
+events have already been added by :ref:`adding data processors <dataprocessors_adding_processors>`.
+Note that those events affect all "\*_steps" categories.
 
-Now let us go through the main blocks and take a closer look at some of the metrics:
+Now let us go through the main categories and take a closer look at some of the metrics:
 
 **overall**
 
 By ``eventstream start`` and ``eventstream end`` in the "Overall" block we denote timestamps of the
-first event and the last event in the eventstream correspondingly. ``eventstream length``
+first event and the last event in the eventstream correspondingly. ``eventstream_length``
 is the time distance between event stream start and end.
 
 **path/session length time** and **path/session length steps**
 
-These two blocks show some time-based  statistics over user paths and sessions.
-Blocks "path/session_length_time" and "path/session length steps" provide similar information
-on the length of users paths and sessions correspondingly, but the former is calculated in
+These two blocks show some time-based statistics over user paths and sessions.
+Categories "path/session_length_time" and "path/session length steps" provide similar information
+on the length of users paths and sessions correspondingly. The former is calculated in
 days and the latter in the number of events.
 
-It is important to mention that all "step-statistics" are rounded to the 2nd decimal place digit
-and "time-statistics" - to seconds. This is also true for the following method.
+It is important to mention that all the values in "\*_steps" categories are rounded to the 2nd decimal digit,
+and in "\*_time" categories - to seconds. This is also true for the next method.
 
 
 Describe events
 ^^^^^^^^^^^^^^^
 
 The :py:meth:`describe_events()<retentioneering.eventstream.eventstream.Eventstream.describe_events>`
-method provides event-level statistics about our data.
-
-**The output consists of three main blocks:**
+method provides event-wise statistics about an eventstream. Its output consists of three main blocks:
 
 #. **basic statistics**
-#. full user-path statistics
-    - time to first occurrence (FO) of each event
-    - steps to first occurrence (FO) of each event
-#. sessions statistics (if this column exists)
-    - time to first occurrence (FO) of each event
-    - steps to first occurrence (FO) of each event
+#. full user-path statistics,
+    - time to first occurrence (FO) of each event,
+    - steps to first occurrence (FO) of each event,
+#. sessions statistics (if this column exists),
+    - time to first occurrence (FO) of each event,
+    - steps to first occurrence (FO) of each event.
 
 You can find detailed explanations of each metric in
 :py:meth:`api documentation<retentioneering.eventstream.eventstream.Eventstream.describe_events>`.
 
-Default parameters are ``session_col='session_id'``, ``raw_events_only=False``.
-With them, we will get statistics for each event present in our data.
-
-``session_col`` and ``raw_events_only`` parameters work exactly the same way as in the
-:ref:`describe()<explain_describe_params>` method.
+The default parameters are ``session_col='session_id'``, ``raw_events_only=False``.
+With them, we will get statistics for each event present in our data. These two arguments
+work exactly the same way as in the :ref:`describe()<explain_describe_params>` method.
 
 .. code-block:: python
 
@@ -1202,6 +1208,7 @@ With them, we will get statistics for each event present in our data.
 
 .. raw:: html
 
+    <div style="overflow:auto;">
     <table class="dataframe">
       <thead>
         <tr>
@@ -1452,19 +1459,18 @@ With them, we will get statistics for each event present in our data.
         </tr>
       </tbody>
     </table>
+    </div>
     <br>
 
-If there are a lot of events in our data we can display the results only for some of the events
-in order to make output more easy to analyse. For that purpose we have the parameter ``event_list``:
+If the number of unique events in an eventstream is high,
+we can leave events only from the list defined in ``event_list`` parameter.
+In the example below we leave the ``cart`` and ``payment_done`` events only as the events of high importance.
+We also transpose the output DataFrame for a nicer view.
 
 .. code-block:: python
 
     stream.describe_events()
     stream.describe_events(event_list=['payment_done', 'cart']).T
-
-In our example those events are 'cart' and 'payment_done'. For our case, we select these events to
-get first impression about target events and their basic characteristics.
-
 
 .. raw:: html
 
@@ -1555,9 +1561,8 @@ get first impression about target events and their basic characteristics.
     </table>
     <br>
 
-Often, such time-related information requires deeper analysis, so simple statistics are not enough,
-and we want to see the entire distribution. For these purposes the following group of methods has been designed.
-
+Often, such simple descriptive statistics are not enough to deeply understand the time-related values,
+so we want to see their distribution. For these purposes the following group of methods has been implemented.
 
 
 Time-based histograms
@@ -1568,7 +1573,7 @@ User lifetime
 
 One of the most important time-related statistics is user lifetime. By lifetime we
 mean the time distance between the first and the last event represented
-in the trajectory. The histogram for this statistic is plotted by
+in a user's trajectory. The histogram for this variable is plotted by
 :py:meth:`user_lifetime_hist()<retentioneering.eventstream.eventstream.Eventstream.user_lifetime_hist>` method.
 
 .. code-block:: python
@@ -1594,7 +1599,7 @@ The method has multiple parameters:
 
 - ``bins`` defines the number of histogram bins. Also can be the name of a reference rule or
   number of bins. See details in
-  `numpy documentation <https://numpy.org/doc/stable/reference/generated/numpy.histogram_bin_edges.html>`_
+  `numpy documentation <https://numpy.org/doc/stable/reference/generated/numpy.histogram_bin_edges.html>`_;
 
 - ``figsize`` sets figure width and height in inches.
 

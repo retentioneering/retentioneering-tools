@@ -1094,7 +1094,7 @@ class Eventstream(
         self.__p_graph.display()
         return self.__p_graph
 
-    def transition_matrix(self, weights: list[str] | None = None, norm_type: NormType = None) -> TransitionMatrix:
+    def transition_matrix(self, weight_col: str | None = None, norm_type: NormType = None) -> TransitionMatrix:
         """
         Get transition weights as a matrix for each unique pair of events. The calculation logic is the same
         that is used for edge weights calculation of transition graph.
@@ -1102,7 +1102,7 @@ class Eventstream(
         Parameters
         ----------
 
-        weights : str, default None
+        weight_col : str, default None
             Weighting column for the transition weights calculation.
             See :ref:`transition graph user guide <transition_graph_weights>` for the details.
 
@@ -1119,5 +1119,5 @@ class Eventstream(
             self.__transition_matrix = TransitionMatrix(
                 eventstream=self,
             )
-        self.__transition_matrix.display(weights=weights, norm_type=norm_type)
+        self.__transition_matrix.display(weight_col=weight_col, norm_type=norm_type)
         return self.__transition_matrix

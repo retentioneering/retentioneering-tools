@@ -346,6 +346,12 @@ class TransitionGraph:
         custom_cols = self.custom_cols
         return list([default_col]) + list(custom_cols)
 
+    def __round_value(self, value: float) -> float:
+        if self.norm_type in ["full", "node"]:
+            # @TODO: make this magical number as constant or variable from config dict. Vladimir Makhanov
+            return round(value, 5)
+        return value
+
     def _prepare_nodes(
         self, nodelist: pd.DataFrame, node_params: NodeParams | None = None, pos: Position | None = None
     ) -> tuple[list, MutableMapping]:
@@ -363,8 +369,8 @@ class TransitionGraph:
                 r = r.tolist()
                 value = r[0]
                 curr_degree = {}
-                curr_degree["degree"] = (abs(value)) / abs(max_degree) * 30 + 4
-                curr_degree["source"] = value
+                curr_degree["degree"] = self.__round_value((abs(value)) / abs(max_degree) * 30 + 4)
+                curr_degree["source"] = self.__round_value(value)
                 degree[weight_col] = curr_degree
 
             node_pos = pos.get(node_name) if pos is not None else None

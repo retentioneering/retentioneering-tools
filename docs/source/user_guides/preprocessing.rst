@@ -43,6 +43,8 @@ get an eventstream state corresponding to a specific graph node, we need to
 run the calculation explicitly. See :ref:`Running the calculation
 <preprocessing_running_the_calculation>` section for the details.
 
+.. _preprocessing_case_study:
+
 Case study
 ----------
 
@@ -554,7 +556,7 @@ simply copy and paste it and see the results.
     processed_stream = graph.combine_result
     processed_stream.to_dataframe().head()
 
-.. _chain_usage_complex_example:
+.. _preprocessing_chain_usage_complex_example:
 
 Method chaining preprocessing graph
 -----------------------------------

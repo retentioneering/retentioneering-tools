@@ -1,25 +1,14 @@
-.. raw:: html
-
-    <style>
-        .red {color:#24ff83; font-weight:bold;}
-    </style>
-
-.. role:: red
-
-
-Data Processor user guide
-=========================
+Data processors user guide
+==========================
 
 The following user guide is also available as
-`Google Colab <https://colab.research.google.com/drive/1uXTt14stXKjWR_paEzqPl5_rZLFyclrm?usp=share_link>`_.
+`Google Colab notebook <https://colab.research.google.com/drive/1uXTt14stXKjWR_paEzqPl5_rZLFyclrm?usp=share_link>`_.
 
 
 Creating an eventstream
 -----------------------
 
-Here we use ``simple_shop`` dataset, which we load as an ``Eventstream`` object. You can learn more about
-``Eventstream`` in our :doc:`eventstream guide<eventstream>`.
-To get an overview of the eventstream concept, see :doc:`this guide<../getting_started/eventstream_concept>`.
+Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simple_shop>` dataset. It has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable. If you want to use your own dataset, upload it following :ref:`this instruction<eventstream_creation>`.
 
 .. code-block:: python
 
@@ -28,97 +17,34 @@ To get an overview of the eventstream concept, see :doc:`this guide<../getting_s
 
     stream = datasets.load_simple_shop()
 
-What is a Data Processor?
+What is a data processor?
 -------------------------
 
-Each ``Data Processor`` represents an algorithm that modifies eventstream data.
-
-Data processors are designed to be nodes of a
-``Preprocessing graph``, which allows us to apply data processors sequentially, in a custom order.
-
-More about preprocessing graph see in :doc:`preprocessing guide<preprocessing>`.
-
+*Data processor* is a class that can modify eventstream data in some special and narrow way. For example, data processors can filter events, add some artificial but useful events, truncate user paths according to custom logic, and much more. Data processors are designed to be nodes of a
+:doc:`Preprocessing graph<preprocessing>`, which allows us creating complex data processing pipelines.
 
 .. figure:: /_static/user_guides/data_processor/dp_0_PGraph.png
 
+    An outline of a preprocessing graph
 
 .. _helpers_and_chain_usage:
 
-Helpers and chain usage
------------------------
+Helpers and chaining usage
+--------------------------
 
-A ``Helper`` is an ``Eventstream`` method that applies a single data processor to the data. It is a useful shortcut for
-when one wants to avoid creating a preprocessing graph. Each data processor has a corresponding helper method -
-the table below showcases the mapping between them:
+A *helper* is an ``Eventstream`` method that applies a single data processor to the eventstream data and returns a new modified eventstream.
+Essentially, it is a shortcut for the cases when you want to avoid creating a preprocessing graph.
 
-.. table:: Data processors overview
-    :align: center
-    :widths: 15 60
-    :class: tight-table
-
-    +--------------------------------------------+-----------------------------------------------------+
-    | | Data processor                           | What it does                                        |
-    | | Helper                                   |                                                     |
-    +============================================+=====================================================+
-    | | StartEndEvents                           | Adds two synthetic events in each user’s path:      |
-    | | :ref:`add_start_end<add_start_end>`      | ``path_start`` and ``path_end``.                    |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | SplitSessions                            | Cuts user path into sessions and adds synthetic     |
-    | | :ref:`split_sessions<split_sessions>`    | events ``session_start``, ``session_end``.          |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | NewUsersEvents                           | Adds synthetic event ``new_user`` in the beginning  |
-    | | :ref:`add_new_users<add_new_users>`      | of a user’s path if the user is considered as new.  |
-    |                                            | Otherwise adds ``existing_user``.                   |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | LostUsersEvents                          | Adds synthetic event ``lost_user`` in the end of    |
-    | | :ref:`lost_users<lost_users>`            | user’s path if the user never comes back to the     |
-    |                                            | product. Otherwise adds ``absent_user`` event.      |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | PositiveTarget                           | Adds synthetic event ``positive_target`` for all    |
-    | | :ref:`positive_target<positive_target>`  | events which are considered as positive.            |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | NegativeTarget                           | Adds synthetic event ``negative_target`` for all    |
-    | | :ref:`negative_target<negative_target>`  | events which are considered as positive.            |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | TruncatedEvents                          | Adds synthetic events ``truncated_left`` and/or     |
-    | | :ref:`truncated_events<truncated_events>`| ``truncated_right`` for those user paths which are  |
-    |                                            | considered as truncated by the edges of the whole   |
-    |                                            | dataset.                                            |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | FilterEvents                             | Removes events from an eventstream.                 |
-    | | :ref:`filter<filter>`                    |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | DeleteUsersByPathLength                  | Removes a too short user paths (in terms of number  |
-    | | :ref:`delete_users<delete_users>`        | of events or time duration).                        |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | TruncatePath                             | Leaves a part of an eventstream between a couple    |
-    | | :ref:`truncate_path<truncate_path>`      | of selected events.                                 |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | GroupEvents                              | Groups given events into a single synthetic event.  |
-    | | :ref:`group<group>`                      |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | CollapseLoops                            | Groups sequences of repetitive events with new      |
-    | | :ref:`collapse_loops<collapse_loops>`    | synthetic events. E.g. ``A, A, A -> A``.            |
-    +--------------------------------------------+-----------------------------------------------------+
-
-Method chaining is supported for ``helpers`` as it is present in other
-python libraries, for example in Pandas.
-
-Using helper methods, we can replicate the *General Usage* coding blocks output:
+Since an outcome of a helper method is a new eventstream, it is convenient to use method chaining code style
+as it is present in other python libraries, such as Pandas, PySpark, etc. For example, here is how to apply :py:meth:`StartEndEvents<retentioneering.data_processors_lib.start_end_events.StartEndEvents>` and :py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>` sequentially:
 
 .. code-block:: python
 
-    res = stream.add_start_end().split_sessions(session_cutoff=(10, 'm')).to_dataframe()
+    res = stream\
+        .add_start_end()\
+        .split_sessions(session_cutoff=(10, 'm'))\
+        .to_dataframe()
     res[res['user_id'] == 219483890]
-
 
 .. raw:: html
 
@@ -220,15 +146,72 @@ Using helper methods, we can replicate the *General Usage* coding blocks output:
     </table>
     <br>
 
-We will also use ``helpers`` in all further examples below.
-See complex example in our preprocessing user guide :ref:`general usage<preprocessing_solution_plan>`
-and :ref:`method chaining<chain_usage_complex_example>`.
-
+Hereafter we will use helpers instead of original data processor classes due to simplicity reasons. See some more complex examples of preprocessing :ref:`here <preprocessing_case_study>` and :ref:`here <preprocessing_chain_usage_complex_example>`.
 
 .. _dataprocessors_library:
 
-Data Processors library
+Data processors library
 -----------------------
+
+The table below summarizes all the data processors implemented in retentioneering library.
+
+.. table:: Data processors overview
+    :align: center
+    :widths: 15 60
+    :class: tight-table
+
+    +--------------------------------------------+-----------------------------------------------------+
+    | | Data processor                           | What it does                                        |
+    | | Helper                                   |                                                     |
+    +============================================+=====================================================+
+    | | StartEndEvents                           | Adds two synthetic events in each user’s path:      |
+    | | :ref:`add_start_end<add_start_end>`      | ``path_start`` and ``path_end``.                    |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | SplitSessions                            | Cuts user path into sessions and adds synthetic     |
+    | | :ref:`split_sessions<split_sessions>`    | events ``session_start``, ``session_end``.          |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | NewUsersEvents                           | Adds synthetic event ``new_user`` in the beginning  |
+    | | :ref:`add_new_users<add_new_users>`      | of a user’s path if the user is considered as new.  |
+    |                                            | Otherwise adds ``existing_user``.                   |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | LostUsersEvents                          | Adds synthetic event ``lost_user`` in the end of    |
+    | | :ref:`lost_users<lost_users>`            | user’s path if the user never comes back to the     |
+    |                                            | product. Otherwise adds ``absent_user`` event.      |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | PositiveTarget                           | Adds synthetic event ``positive_target`` for all    |
+    | | :ref:`positive_target<positive_target>`  | events which are considered as positive.            |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | NegativeTarget                           | Adds synthetic event ``negative_target`` for all    |
+    | | :ref:`negative_target<negative_target>`  | events which are considered as positive.            |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | TruncatedEvents                          | Adds synthetic events ``truncated_left`` and/or     |
+    | | :ref:`truncated_events<truncated_events>`| ``truncated_right`` for those user paths which are  |
+    |                                            | considered as truncated by the edges of the whole   |
+    |                                            | dataset.                                            |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | FilterEvents                             | Removes events from an eventstream.                 |
+    | | :ref:`filter<filter>`                    |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | DeleteUsersByPathLength                  | Removes a too short user paths (in terms of number  |
+    | | :ref:`delete_users<delete_users>`        | of events or time duration).                        |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | TruncatePath                             | Leaves a part of an eventstream between a couple    |
+    | | :ref:`truncate_path<truncate_path>`      | of selected events.                                 |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | GroupEvents                              | Groups given events into a single synthetic event.  |
+    | | :ref:`group<group>`                      |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | CollapseLoops                            | Groups sequences of repetitive events with new      |
+    | | :ref:`collapse_loops<collapse_loops>`    | synthetic events. E.g. ``A, A, A → A``.             |
+    +--------------------------------------------+-----------------------------------------------------+
 
 Data processors can be partitioned into three groups:
 
@@ -236,10 +219,12 @@ Data processors can be partitioned into three groups:
 - Removing: processors that remove events from an eventstream;
 - Editing: processors that modify existing events in an eventstream (including grouping operations).
 
+In the next sections we organise our narrative according to these partitions.
+
 Adding processors
 ~~~~~~~~~~~~~~~~~
 
-The processors of that type add some artificial (*synthetic*) events to an eventstream.
+The processors of that type add some artificial (we also call them *synthetic*) events to an eventstream.
 Let us go through each of them.
 
 .. _add_start_end:
@@ -252,7 +237,6 @@ generates an event called ``path_start`` right before the first user event, and 
 ``path_end`` right after the last user event.
 
 .. figure:: /_static/user_guides/data_processor/dp_1_start_end.png
-
 
 Applying ``StartEndEvents`` to mark user trajectory start and finish:
 
@@ -316,11 +300,11 @@ As the DataFrame above shows, the generated events ``path_start``
 and ``path_end`` have identical timestamps as the corresponding first and
 last events.
 
-We recommend applying this data processor each time you analyze an
-eventstream - since it explicitly sets the borders of an eventstream. It
-can help plot and explore user lifetime across all users,
-or conveniently display user trajectory borders in
-``TransitionGraph``, ``StepMatrix``, and ``StepSankey`` tools.
+.. note::
+
+    We recommend applying this data processor each time you analyze an
+    eventstream - since it explicitly sets the borders of an eventstream. It
+    can help displaying user paths in :doc:`TransitionGraph </user_guides/transition_graph>`, :doc:`StepMatrix </user_guides/step_matrix>`, and :doc:`StepSankey </user_guides/step_sankey>` tools or calculating user lifetime.
 
 .. _split_sessions:
 
@@ -440,7 +424,7 @@ in some fashion can be a good practice.
 
 It can be helpful to explore the distribution between all consecutive events
 in each user path. For this purpose you can use one of eventstream descriptive methods
-:py:meth:`TimedeltaHist<retentioneering.tooling.timedelta_hist.TimedeltaHist>`
+:py:meth:`TimedeltaHist<retentioneering.tooling.timedelta_hist.timedelta_hist.TimedeltaHist>`
 See more about :ref:`eventstream descriptive methods<eventstream_descriptive_methods>`.
 
 
@@ -615,7 +599,9 @@ timedelta between the user last event and the eventstream last event
 exceeds ``lost_cutoff``, label as ``lost_user``; otherwise, label as
 ``absent_user``.
 
-:red:`TODO: Make an image illustrating lost_cutoff parameter. dpanina`
+..
+
+    Make an image illustrating lost_cutoff parameter. dpanina`
 
 .. figure:: /_static/user_guides/data_processor/dp_4_lost_users.png
 
@@ -1352,7 +1338,7 @@ Sometimes, it can be a good practice to use different cutoff values and
 compare them in some fashion to select the best.
 
 It can be helpful to use
-:py:meth:`TimedeltaHist<retentioneering.tooling.timedelta_hist.TimedeltaHist>` method
+:py:meth:`TimedeltaHist<retentioneering.tooling.timedelta_hist.timedelta_hist.TimedeltaHist>` method
 with specified ``event_pair=('eventstream_start', 'path_end')`` for choosing ``left_truncated_cutoff``
 value and ``event_pair=('path_start', 'eventstream_end')`` for choosing ``right_truncated_cutoff``.
 
@@ -2489,15 +2475,3 @@ for which event_type is responsible:
     +-------+-------------------------+-------------------------------------------+
     |  22   | path_end                | :ref:`add_start_end<add_start_end>`       |
     +-------+-------------------------+-------------------------------------------+
-
-
-Custom data processors
-----------------------
-
-We have covered all data processors that currently exist in our
-library.
-
-You can create a custom data processor to implement the data transformations you
-often use. For details, please refer to our custom data processors User Guide.
-
-:red:`TODO: Create UG and add link. dpanina`

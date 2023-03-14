@@ -15,21 +15,21 @@ from retentioneering.eventstream.types import EventstreamType
 
 class Cohorts:
     """
-    A class which provides methods for cohort analysis. The users are split into groups
-    depending on the time of their first appearance in the eventstream so each user is
-    associated with some ``cohort_group``. The retention rate of the active users
-    belonging to each ``cohort_group`` is  calculated within each ``cohort_period``.
+    A class that provides methods for cohort analysis. The users are split into groups
+    depending on the time of their first appearance in the eventstream; thus each user is
+    associated with some ``cohort_group``. Retention rates of the active users
+    belonging to each ``cohort_group`` are  calculated within each ``cohort_period``.
 
     Parameters
     ----------
     eventstream : EventstreamType
     cohort_start_unit : :numpy_link:`DATETIME_UNITS<>`
-        The way of rounding and format of the moment from which the cohort count begins.
-        Minimum timestamp rounding down to the selected datetime unit.
+        The way of rounding and formatting of the moment from which the cohort count begins.
+        The minimum timestamp is rounded down to the selected datetime unit.
 
         For example:
-        We have eventstream with minimum timestamp - "2021-12-28 09:08:34.432456"
-        The result of roundings with different ``DATETIME_UNITS`` is in the table below:
+        assume we have an eventstream with the following minimum timestamp - "2021-12-28 09:08:34.432456".
+        The result of roundings with different ``DATETIME_UNITS`` is shown in the table below:
 
         +------------------------+-------------------------+
         | **cohort_start_unit**  | **cohort_start_moment** |
@@ -46,11 +46,11 @@ class Cohorts:
     cohort_period : Tuple(int, :numpy_link:`DATETIME_UNITS<>`)
         The cohort_period size and its ``DATETIME_UNIT``. This parameter is used in calculating:
 
-        - Start moments for each cohort from the moment defined with the ``cohort_start_unit`` parameter
-        - Cohort periods for each cohort from ifs start moment.
+        - Start moments for each cohort from the moment specified with the ``cohort_start_unit`` parameter
+        - Cohort periods for each cohort from its start moment.
     average : bool, default True
         - If ``True`` - calculating average for each cohort period.
-        - If ``False`` - averaged values don't calculated.
+        - If ``False`` - averaged values aren't calculated.
     cut_bottom : int, default 0
         Drop 'n' rows from the bottom of the cohort matrix.
         Average is recalculated.
@@ -64,16 +64,15 @@ class Cohorts:
     Notes
     -----
     Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
-    Due to "Y" and "M" are non-fixed types it can be used only with each other
+    Due to "Y" and "M" being non-fixed types, it can be used only with each other
     or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``.
     More information - :numpy_timedelta_link:`about numpy timedelta<>`
 
-
-    Only cohorts with at least 1 user in any period - are shown.
+    Only cohorts with at least 1 user in some period are shown.
 
     See Also
     --------
-    :py:meth:`.Eventstream.cohorts`
+    .Eventstream.cohorts
     """
 
     __eventstream: EventstreamType
@@ -179,7 +178,7 @@ class Cohorts:
     def fit(self) -> None:
         """
         Calculates the cohort internal values with the defined parameters.
-        Applying ``fit`` method is mandatory for the following usage
+        Applying ``fit`` method is necessary for the following usage
         of any visualization or descriptive ``Cohorts`` methods.
 
         """
@@ -240,7 +239,7 @@ class Cohorts:
         figsize: Tuple[float, float] = (10, 10),
     ) -> sns.lineplot:
         """
-        Creates a chart representing each cohort dynamics over time.
+        Create a chart representing each cohort dynamics over time.
         Should be used after :py:func:`fit`.
 
         Parameters

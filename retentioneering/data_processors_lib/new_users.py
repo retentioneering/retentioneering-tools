@@ -21,7 +21,7 @@ class NewUsersParams(ParamsModel):
 
 class NewUsersEvents(DataProcessor):
     """
-    Creates new synthetic event for each user:
+    Create a new synthetic event for each user:
     ``new_user`` or ``existing_user``.
 
     Parameters
@@ -36,7 +36,7 @@ class NewUsersEvents(DataProcessor):
     Returns
     -------
     Eventstream
-        Eventstream with new synthetic events one for each user:
+        Eventstream with new synthetic events, one for each user:
 
         +-----------------+-----------------+------------------------+
         | **event_name**  | **event_type**  | **timestamp**          |

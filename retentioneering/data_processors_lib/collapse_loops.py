@@ -20,34 +20,34 @@ class CollapseLoopsParams(ParamsModel):
 
 class CollapseLoops(DataProcessor):
     """
-    Finds ``loops`` and creates new synthetic events in each user's path who have such sequences.
+    Find ``loops`` and create new synthetic events in the paths of all users having such sequences.
 
-    ``Loop`` - is the sequence of repetitive events in user's path.
+    A ``loop`` - is a sequence of repetitive events.
     For example *"event1 -> event1"*
 
     Parameters
     ----------
     suffix : {"loop", "count", None}, default "loop"
 
-        - If ``loop`` event_name will be event_name_loop.\n
-        For example *"event1 - event1 - event1"* --> event1_loop
+        - If ``loop``, event_name will be event_name_loop.\n
+        For example *"event1 - event1 - event1"* --> event1_loop.
 
-        - If ``count`` event_name will be event_name_loop_{number of events}.\n
-        For example *"event1 - event1 - event1"* --> event1_loop_3
+        - If ``count``, event_name will be event_name_loop_{number of events}.\n
+        For example *"event1 - event1 - event1"* --> event1_loop_3.
 
-        - If ``None`` event_name will be - event_name without any changes.\n
-        For example *"event1 - event1 - event1"* --> event1
+        - If ``None``, event_name will be event_name without any changes.\n
+        For example *"event1 - event1 - event1"* --> event1.
 
     timestamp_aggregation_type : {"max", "min", "mean"}, default "max"
-        Aggregation method to define ``timestamp`` for new group.
+        Aggregation method to calculate timestamp values for new groups.
 
     Returns
     -------
     Eventstream
-        ``Eventstream`` with:
+        Eventstream with:
 
-        - raw events: that will be soft-deleted from input ``eventstream`` marked ``_deleted=True``.
-        - new synthetic events: that can be added to the input ``eventstream`` with columns below.
+        - raw events: the returned events will be marked ``_deleted=True`` and soft-deleted from input eventstream.
+        - new synthetic events: the returned events will be added to the input eventstream with columns below.
 
         +------------------------+----------------+--------------------------------------------+
         | **event_name**         | **event_type** | **timestamp**                              |

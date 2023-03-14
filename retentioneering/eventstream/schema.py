@@ -19,8 +19,8 @@ from retentioneering.eventstream.types import (
 @dataclass
 class EventstreamSchema(EventstreamSchemaType):
     """
-    Create schema for ``eventstream`` columns names.
-    If names of the columns are different from default names they should be
+    Define a schema for ``eventstream`` columns names.
+    If names of the columns are different from default names, they need to be
     specified.
 
     Parameters
@@ -31,7 +31,11 @@ class EventstreamSchema(EventstreamSchemaType):
     event_name : str, default "event"
     event_timestamp : str, default "timestamp"
     user_id : str, default "user_id"
-    custom_cols : list, optional
+    custom_cols : list of str, optional
+
+    Notes
+    -----
+    See :ref:`Eventstream user guide<eventstream_field_names>` for the details.
 
     """
 
@@ -93,8 +97,8 @@ class EventstreamSchema(EventstreamSchemaType):
 @dataclass
 class RawDataSchema(RawDataSchemaType):
     """
-    Create schema for ``raw_data`` columns names.
-    If names of the columns are different from default names they should be
+    Define schema for ``raw_data`` columns names.
+    If names of the columns are different from default names, they need to be
     specified.
 
     Parameters
@@ -104,6 +108,11 @@ class RawDataSchema(RawDataSchemaType):
     user_id : str, default "user_id"
     event_type : str, optional
     custom_cols : list, optional
+
+    Notes
+    -----
+    See :ref:`Eventstream user guide<eventstream_custom_fields>` for the details.
+
     """
 
     event_name: str = "event"

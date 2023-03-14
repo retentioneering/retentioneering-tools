@@ -15,25 +15,39 @@ from retentioneering.tooling.constants import BINS_ESTIMATORS
 
 class EventTimestampHist:
     """
-    A class for visualize the distribution of events over time.
+    Class for visualizing distribution of events over time.
 
     Parameters
     ----------
     raw_events_only : bool, default False
-        If ``True`` - statistics will be shown only for raw events.
-        If ``False`` - for all events presented in your data.
+        If ``True`` - statistics will only be shown for raw events.
+        If ``False`` - statistics will be shown for all events presented in your data.
     event_list : list of str, optional
-        Specify the events to be displayed.
+        Specify events to be displayed.
     lower_cutoff_quantile : float, optional
-        Specify the time distance quantile as the lower boundary. The values below the boundary are truncated.
+        Specify time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
-        Specify the time distance quantile as the upper boundary. The values above the boundary are truncated.
+        Specify time distance quantile as the upper boundary. The values above the boundary are truncated.
     bins : int or str, default 20
         Generic bin parameter that can be the name of a reference rule or
-        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`
+        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`.
     figsize : tuple of float, default (12.0, 7.0)
         Width, height in inches.
 
+
+
+    See Also
+    --------
+    .Cohorts :
+    .TruncatedEvents : Can be useful for finding suitable values of parameters for this data processor.
+    .TimedeltaHist
+    .UserLifetimeHist :
+    .Eventstream.describe
+    .Eventstream.describe_events
+
+    Notes
+    -----
+    See :ref:`Eventstream user guide<eventstream_events_timestamp>` for the details.
     """
 
     def __init__(
@@ -84,8 +98,9 @@ class EventTimestampHist:
         """
         Calculate values for the histplot.
 
-            1. The first array contains the values for histogram
-            2. The first array contains the bin edges
+        Returns
+        -------
+        None
 
         """
         data = self.__eventstream.to_dataframe()
@@ -115,8 +130,8 @@ class EventTimestampHist:
         -------
         tuple(np.ndarray, np.ndarray)
 
-            1. The first array contains the values for histogram
-            2. The first array contains the bin edges
+            1. The first array contains the values for histogram.
+            2. The first array contains the bin edges.
 
         """
         return self.values_to_plot, self.bins_to_show

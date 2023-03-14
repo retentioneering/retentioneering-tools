@@ -8,9 +8,9 @@ from ..types import EventstreamType
 class NegativeTargetHelperMixin:
     def negative_target(self, negative_target_events: List[str], func: Optional[Callable] = None) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which creates new synthetic events in each user's path
-        who have specified event(s) - ``negative_target_RAW_EVENT_NAME``.
-        And adds them to the input ``eventstream``.
+        A method of ``Eventstream`` class that creates new synthetic
+        events in paths of all users having the specified events - ``negative_target_RAW_EVENT_NAME``.
+
 
         Returns
         -------

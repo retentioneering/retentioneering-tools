@@ -20,28 +20,29 @@ class Funnel:
     stages: list of str
         List of events used as stages for the funnel. Absolute and relative
         number of users who reached specified events at least once will be
-        plotted. Multiple events can be grouped together as individual state
-        by combining them as sub list.
+        plotted. Multiple events can be grouped together as an individual state
+        by combining them as a sub list.
     stage_names: list of str, optional
-        List of stage names, this is especially necessary for stages that include several events.
+        List of stage names, this is necessary for stages that include several events.
     funnel_type: 'open', 'closed' or 'hybrid', default 'closed'
         - if ``open`` - all users will be counted on each stage;
-        - if ``closed`` - each stage will include only users, who was on all previous stages;
-        - | if ``hybrid`` - combination of 2 previous types. The first stage is required for
-          | to go further. And for the second and subsequent stages it is important have
+        - if ``closed`` - each stage will include only users, that were present on all previous stages;
+        - | if ``hybrid`` - combination of 2 previous types. The first stage is required
+          | to go further. And for the second and subsequent stages it is important to have
           | all previous stages in their path, but the order of these events is not taken
           | into account.
 
     segments: Collection[Collection[int]], optional
         List of user_ids collections. Funnel for each user_id collection will be plotted.
-        If ``None`` - all users from dataset will be plotted. A user can only belong to one segment at a time.
+        If ``None`` - all users from the dataset will be plotted. A user can only belong to one segment at a time.
     segment_names: list of str, optional
         Names of segments. Should be a list from unique values of the ``segment_col``.
         If ``None`` and ``segment_col`` is given - all values from ``segment_col`` will be used.
 
     See Also
     --------
-    :py:meth:`.Eventstream.funnel`
+    .Eventstream.funnel
+
 
     """
 
@@ -215,8 +216,8 @@ class Funnel:
 
     def fit(self) -> None:
         """
-        Calculates the funnel internal values with the defined parameters.
-        Applying ``fit`` method is mandatory for the following usage
+        Calculate the funnel internal values with the defined parameters.
+        Applying ``fit`` method is necessary for the following usage
         of any visualization or descriptive ``Funnel`` methods.
 
         """
@@ -244,7 +245,7 @@ class Funnel:
 
     def plot(self) -> go.Figure:
         """
-        Creates a funnel plot based on the calculated funnel values.
+        Create a funnel plot based on the calculated funnel values.
         Should be used after :py:func:`fit`.
 
         Returns

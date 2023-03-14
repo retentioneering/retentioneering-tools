@@ -26,20 +26,21 @@ class GroupEventsParams(ParamsModel):
 
 class GroupEvents(DataProcessor):
     """
-    Filters specified events from input ``eventstream`` and creates on their basis
-    new synthetic events with new name.
+    Filter the specified events from the input ``eventstream`` and create
+    new synthetic events, with names based on the old events' names.
 
     Parameters
     ----------
     event_name : str
-        Name of new, grouped event
+        Name of the created event.
     func : Callable[[DataFrame, EventstreamSchema], Any]
-        Custom function which returns boolean mask the same length as input Eventstream
-        If ``True`` - events, that will be grouped
-        If ``False`` - events, that will be remained
+        Custom function that returns boolean mask with the same length as input eventstream.
+
+        - If ``True`` - events will be grouped.
+        - If ``False`` - events will be remained.
     event_type : str, default="group_alias"
-        Event_type name for the grouped events
-        If custom event_type is created - it is important to add it to the ``DEFAULT_INDEX_ORDER``
+        Event_type name for the grouped events.
+        If custom event_type is created, it should be added to the ``DEFAULT_INDEX_ORDER``.
 
     Returns
     -------

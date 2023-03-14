@@ -10,12 +10,12 @@ from ..types import EventstreamSchemaType, EventstreamType
 class FilterHelperMixin:
     def filter(self, func: Callable[[DataFrame, EventstreamSchemaType], Any]) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which filters input ``eventstream`` on the basis of custom conditions.
+        A method of ``Eventstream`` class that filters input ``eventstream`` based on custom conditions.
 
         Returns
         -------
         Eventstream
-            Filtered ``eventstream``.
+            The filtered ``eventstream``.
 
         See Also
         --------

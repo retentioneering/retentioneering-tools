@@ -16,26 +16,41 @@ from retentioneering.tooling.constants import BINS_ESTIMATORS
 
 class UserLifetimeHist:
     """
-    A class for visualize a ``users' lifetime``.
+    Class for visualize users lifetime.
 
     Parameters
     ----------
     timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
-        Specifies the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
+        Specify units of time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
     log_scale : bool or tuple of bool, optional
 
         - If ``True`` - apply log scaling to the ``x`` axis.
         - If tuple of bool - apply log scaling to the (``x``,``y``) axes correspondingly.
     lower_cutoff_quantile : float, optional
-        Specifies the time distance quantile as the lower boundary. The values below the boundary are truncated.
+        Specify time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
-        Specifies the time distance quantile as the upper boundary. The values above the boundary are truncated.
+        Specify time distance quantile as the upper boundary. The values above the boundary are truncated.
     bins : int or str, default 20
         Generic bin parameter that can be the name of a reference rule or
-        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`
+        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`.
     figsize : tuple of float, default (12.0, 7.0)
         Width, height in inches.
+
+
+
+    See Also
+    --------
+    .DeleteUsersByPathLength : Can be useful for finding suitable values of parameters for this data processor.
+    .TruncatedEvents : Can be useful for finding suitable values of parameters for this data processor.
+    .EventTimestampHist :
+    .TimedeltaHist
+    .Eventstream.describe
+    .Eventstream.describe_events
+
+    Notes
+    -----
+    See :ref:`Eventstream user guide<eventstream_user_lifetime>` for the details.
 
     """
 
@@ -91,9 +106,9 @@ class UserLifetimeHist:
         """
         Calculate values for the histplot.
 
-            1. The first array contains the values for histogram
-            2. The first array contains the bin edges
-
+        Returns
+        -------
+        None
         """
         data = self.__eventstream.to_dataframe().groupby(self.user_col)[self.time_col].agg(["min", "max"])
         data["time_passed"] = data["max"] - data["min"]
@@ -122,9 +137,8 @@ class UserLifetimeHist:
         Returns
         -------
         tuple(np.ndarray, np.ndarray)
-
-            1. The first array contains the values for histogram
-            2. The first array contains the bin edges
+            1. The first array contains the values for histogram.
+            2. The first array contains the bin edges.
 
         """
         return self.values_to_plot, self.bins_to_show

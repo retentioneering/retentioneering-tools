@@ -12,10 +12,10 @@ class CollapseLoopsHelperMixin:
         timestamp_aggregation_type: Literal["max", "min", "mean"] = "max",
     ) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which finds ``loops`` and creates new synthetic events
-        in each user's path who have such sequences.
+        A method of ``Eventstream`` class that finds ``loops`` and creates new synthetic events
+        in paths of all users having such sequences.
 
-        ``Loop`` - is the sequence of repetitive events in user's path.
+        A ``loop`` - is a sequence of repetitive events.
         For example *"event1 -> event1"*
 
         Returns

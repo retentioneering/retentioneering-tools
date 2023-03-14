@@ -8,8 +8,8 @@ from ..types import EventstreamType
 class NewUsersHelperMixin:
     def add_new_users(self, new_users_list: Union[List[int], Literal["all"]]) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which creates one of synthetic events in each user's path:
-        ``new_user`` or ``existing_user``. And adds them to the input ``eventstream``.
+        A method of ``Eventstream`` class that creates one
+        of the synthetic events in each user's path: ``new_user`` or ``existing_user`` .
 
         Returns
         -------

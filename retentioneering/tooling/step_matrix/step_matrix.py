@@ -28,9 +28,9 @@ class CenteredParams:
 
 class StepMatrix(EndedEventsMixin):
     """
-    Step matrix is a matrix where its ``(i, j)`` element means the frequency
-    of event ``i`` occurred as ``j``-th step in user trajectories. This class
-    provides methods for a step matrix calculation and visualization.
+    Step matrix is a matrix where its ``(i, j)`` element shows the frequency
+    of event ``i`` occurring as ``j``-th step in user trajectories. This class
+    provides methods for step matrix calculation and visualization.
 
     Parameters
     ----------
@@ -48,38 +48,38 @@ class StepMatrix(EndedEventsMixin):
         Each specified target will have separate color-coding space for clear visualization.
         `Example: ['product_page', 'cart', 'payment']`
 
-        If multiple targets need to be compared and plotted using same color-coding scale,
-        such targets must be combined in sub-list.
-        `Examples: ['product_page', ['cart', 'payment']]`
+        If multiple targets need to be compared and plotted using the same color-coding scale,
+        such targets must be combined in a sub-list.
+        `Example: ['product_page', ['cart', 'payment']]`
     accumulated : {"both", "only"}, optional
         Option to include accumulated values for targets.
 
-        - If ``None`` accumulated tartes  do not show.
-        - If ``both`` show step values and accumulated values.
-        - If ``only`` show targets only as accumulated.
+        - If ``None``, accumulated tartes are not shown.
+        - If ``both``, show step values and accumulated values.
+        - If ``only``, show targets only as accumulated.
     sorting : list of str, optional
         - | If list of event names specified - lines in the heatmap will be shown in
-          | passed order.
+          | the passed order.
         - | If ``None`` - rows will be ordered according to i`th value (first row,
-          | where 1st element is max, second row, where second element is max, etc)
+          | where 1st element is max; second row, where second element is max; etc)
     thresh : float, default=0
         Used to remove rare events. Aggregates all rows where all values are
-        less than specified threshold.
+        less than the specified threshold.
     centered : dict, optional
-        Parameter used to align user paths at specific event at specific step.
+        Parameter used to align user paths at a specific event at a specific step.
         Has to contain three keys:
-        - ``event``: str, name of event to align
-        - ``left_gap``: int, number of events to include before specified event
-        - ``occurrence`` : int which occurrence of event to align (typical 1)
+        - ``event``: str, name of event to align.
+        - ``left_gap``: int, number of events to include before specified event.
+        - ``occurrence`` : int which occurrence of event to align (typical 1).
 
-        If not ``None`` - only users who have selected events with specified
+        If not ``None`` - only users who have selected events with the specified
         ``occurrence`` in their paths will be included.
         ``Fraction`` of such remaining users is specified in the title of centered
         step_matrix.
         `Example: {'event': 'cart', 'left_gap': 8, 'occurrence': 1}`
     groups : tuple[list, list], optional
         Can be specified to plot differential step_matrix. Must contain
-        tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
+        a tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
         of user_id`s. Two separate step_matrices M1 and M2 will be calculated
         for users from g_1 and g_2, respectively. Resulting matrix will be the matrix
         M = M1-M2.
@@ -93,8 +93,7 @@ class StepMatrix(EndedEventsMixin):
 
     Event ``ENDED`` is cumulated so that the values in its row are summed up from
     the first step to the last. ``ENDED`` row is always placed at the last line of step matrix.
-
-    Also, such a cumulative design guarantees that the sum of any step matrix's column is 1
+    This design guarantees that the sum of any step matrix's column is 1
     (0 for a differential step matrix).
 
     See Also
@@ -392,7 +391,7 @@ class StepMatrix(EndedEventsMixin):
     def fit(self) -> None:
         """
         Calculates the step matrix internal values with the defined parameters.
-        Applying ``fit`` method is mandatory for the following usage
+        Applying ``fit`` method is necessary for the following usage
         of any visualization or descriptive ``StepMatrix`` methods.
 
         """
@@ -467,7 +466,7 @@ class StepMatrix(EndedEventsMixin):
 
     def plot(self) -> sns.heatmap:
         """
-        Creates a heatmap plot based on the calculated step matrix values.
+        Create a heatmap plot based on the calculated step matrix values.
         Should be used after :py:func:`fit`.
 
         Returns

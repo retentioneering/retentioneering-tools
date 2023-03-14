@@ -57,6 +57,7 @@ trajectories. That is, ``(i, j)`` matrix element shows the share of the users wi
 
 Hereafter we use :doc:`simple_shop </datasets/simple_shop>` dataset, which has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable. If you want to use your own dataset, upload it following :ref:`this instruction<eventstream_creation>`.
 
+
 .. code-block:: python
 
     from retentioneering import datasets

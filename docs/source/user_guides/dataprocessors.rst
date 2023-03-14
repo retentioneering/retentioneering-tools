@@ -445,6 +445,8 @@ Data processors can be partitioned into three groups:
 - Removing: processors that remove events from an eventstream,
 - Editing: processors that modify existing events in an eventstream (including grouping operations).
 
+.. _dataprocessors_adding_processors:
+
 Adding processors
 ~~~~~~~~~~~~~~~~~
 

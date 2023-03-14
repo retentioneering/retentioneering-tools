@@ -48,7 +48,7 @@ Here's the funnel visualisation on how many users walked through ``catalog → c
         allowfullscreen
     ></iframe>
 
-This funnel illustrates that there are 3611 users who reached ``catalog`` event. 1924 of them also reached ``cart`` event after they had already reached ``catalog`` event (perhaps, there were some other events between ``catalog`` and ``cart``). 653 out of these 1924 users followed ``catalog`` → ``...`` → ``cart`` → ``...`` → ``payment_done`` path. Thus, we guarantee that the users who form a specific stage of a funnel appeared at all the previous stages. This type of the funnel is called *closed funnel*. Some other types are supported as well. See :ref:`here <funnel_types>` here for details. The percentage values show the conversion rates either from the previous or from the first stage.
+This funnel illustrates that there are 3611 users who reached ``catalog`` event. 1924 of them also reached ``cart`` event after they had already reached ``catalog`` event (perhaps, there were some other events between ``catalog`` and ``cart``). 653 out of these 1924 users followed ``catalog`` → ``...`` → ``cart`` → ``...`` → ``payment_done`` path. Thus, we guarantee that the users who form a specific stage of a funnel appeared at all the previous stages. This type of the funnel is called *closed funnel*. Some other types are supported as well. See :ref:`here <funnel_types>` for details. The percentage values show the conversion rates either from the previous or from the first stage.
 
 Funnel stages
 -------------

@@ -5,24 +5,24 @@ Step matrix intro
 =================
 
 Step matrix is a very powerful tool in retentioneering arsenal. It allows to get quickly
-high-level understing of user behaviour. Step matrix has powerful customization options
-to tailor the output depending the goal of the analysis.
+high-level understanding of user behaviour. Step matrix has powerful customization options
+to tailor the output depending on the goal of the analysis.
 
-To better understand how `step_matrix` works let's first consider intuitive example. Let's say we
+To better understand how `step_matrix` works let's first consider an intuitive example. Let's say we
 are analyzing web-store logs and have dataset with event logs from four user sessions with the following
 events in following order:
 
 .. image:: _static/step_matrix/step_matrix_demo.svg
 
-We can visualize this dataset as a heatmap indicating what fraction of users were at wich step in
+We can visualize this dataset as a heatmap indicating what fraction of users were at which step in
 their trajectories:
 
 .. image:: _static/step_matrix/step_matrix_demo_plot.svg
 
-This is the simplest step matrix. It has individual unique events as a rows, columns corresponds
+This is the simplest step matrix. It has individual unique events as rows, columns corresponds
 to the positional number of event in user log and the value in the matrix shows what percentage
 users have given event at a given step. Note, that total value in each column is always 1 (all
-users must be at specific state at each step or have ENDED their trajectory).
+users must be at a specific state at each step or have ENDED their trajectory).
 
 Below we will explore how to plot and customize step matrix.
 
@@ -52,7 +52,7 @@ to set names for the columns:
 
 
 To understand intuitively what is step_matrix let us begin with plotting step_matrix
-for extremely simple dataset containg events for only one user:
+for extremely simple dataset containing events for only one user:
 
 .. code:: ipython3
 
@@ -174,7 +174,7 @@ Let's plot a simple intuitive step_matrix for our single user dataset:
 
 
 We can see, since we have only one user in this example, `step_matrix` contains only 0's and 1's.
-At step 1 user had event `main` (100% of users have event main as first event in the trajecotry),
+At step 1 user had event `main` (100% of users have event main as first event in the trajectory),
 then at step 2 user proceed to `catalog`, etc., etc., etc. By the step 13 user's trajectory
 ended and there are no more events, therefore all subsequent events starting from step 13 are
 special events `ENDED` indicating no other events present.
@@ -282,7 +282,7 @@ Centered step matrix
 ====================
 
 Sometimes we are interested in flow of users through specific event: how do users reach
-specific event and what do they do after? This information can be visualized with step_marix
+specific event and what do they do after? This information can be visualized with step_matrix
 using parameter centered:
 
 .. code:: ipython3
@@ -306,7 +306,7 @@ Importantly, when centered step matrix is used, only users who have selected eve
 their trajectories present (or it's n`th occurrence) will be shown. Therefore, the column
 with step index 0 will always have 1 at selected event and zero at all other events. Fraction
 of users kept for centered step matrix shown in the title. In the example above, 51.3% of users
-have reach event 'cart' at least once.
+have reached the event 'cart' at least once.
 
 We can use all targets functionality with centered step_matrix, for example:
 

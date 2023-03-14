@@ -27,7 +27,7 @@ class PlotParamsType(TypedDict):
 
 AllowedColors = Literal["red", "green", "yellow", "blue", "magenta", "cyan"]
 
-Threshold = MutableMapping[str, float | int]
+Threshold = MutableMapping[str, float | int]  # type: ignore
 NodeParams = MutableMapping[str, Optional[str]]
 Position = MutableMapping[str, Sequence[float]]
 

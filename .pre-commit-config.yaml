@@ -40,4 +40,4 @@ repos:
         types: [ python ]
         exclude: 'tests/'
         # Replace the version below with the latest pyright version
-        additional_dependencies: [ 'pyright@1.1.268' ]
+        additional_dependencies: [ 'pyright@1.1.298' ]

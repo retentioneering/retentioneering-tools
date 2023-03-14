@@ -48,6 +48,7 @@ html_context = {"default_mode": "light"}
 html_theme_options = {
     "logo": {"image_light": "rete_logo.svg", "image_dark": "rete_logo_white.svg"},
     "show_toc_level": 1,
+    # TODO: fix when a new repo name appears
     "github_url": "https://github.com/retentioneering/retentioneering-tools-new-arch",
     # "use_edit_page_button": True
 }

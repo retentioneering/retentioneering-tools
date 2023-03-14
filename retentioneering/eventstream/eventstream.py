@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection
-from typing import Any, Callable, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, List, Literal, MutableMapping, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -991,10 +991,15 @@ class Eventstream(
 
     def transition_graph(
         self,
-        thresholds: dict[str, Threshold] | None = None,
-        norm_type: NormType = None,
-        weights: dict[str, str] | None = None,
-        targets: dict[str, str | None] | None = None,
+        graph_settings: dict | None = None,
+        edge_norm_type: NormType = None,
+        targets: MutableMapping[str, str | None] | None = None,
+        nodes_threshold: Threshold | None = None,
+        edges_threshold: Threshold | None = None,
+        nodes_weight_col: str | None = None,
+        edges_weight_col: str | None = None,
+        custom_weights_list: list[str] | None = None,
+        layout_dump: str | None = None,
         width: int = 960,
         height: int = 900,
     ) -> TransitionGraph:
@@ -1044,14 +1049,24 @@ class Eventstream(
         """
         self.__transition_graph = TransitionGraph(
             eventstream=self,
-            graph_settings={},  # type: ignore
-            norm_type=norm_type,
-            weights=weights,
-            thresholds=thresholds,
+            graph_settings=graph_settings,
+            edge_norm_type=edge_norm_type,
             targets=targets,
+            nodes_threshold=nodes_threshold,
+            edges_threshold=edges_threshold,
+            nodes_weight_col=nodes_weight_col,
+            edges_weight_col=edges_weight_col,
+            custom_weights_list=custom_weights_list,
         )
         self.__transition_graph.plot_graph(
-            thresholds=thresholds, targets=targets, weights=weights, width=width, height=height, norm_type=norm_type
+            nodes_threshold=nodes_threshold,
+            edges_threshold=edges_threshold,
+            targets=targets,
+            weights=weights,
+            width=width,
+            height=height,
+            edge_norm_type=edge_norm_type,
+            layout_dump=layout_dump,
         )
         return self.__transition_graph
 

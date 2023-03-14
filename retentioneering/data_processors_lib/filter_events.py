@@ -30,10 +30,10 @@ class FilterEvents(DataProcessor):
     Parameters
     ----------
     func : Callable[[DataFrame, EventstreamSchema], bool]
-        Custom function which returns boolean mask the same length as input ``eventstream``.
+        Custom function that returns boolean mask the same length as input ``eventstream``.
 
-        - If ``True`` - row will be remained
-        - If ``False`` - row will be deleted
+        - If ``True`` - the row will be left in the eventstream.
+        - If ``False`` - the row will be deleted from the eeventstream.
 
     Returns
     -------

@@ -12,13 +12,13 @@ class DeleteUsersByPathLengthHelperMixin:
         self, events_num: int | None = None, cutoff: Tuple[float, DATETIME_UNITS] | None = None
     ) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which deletes entire user's paths if they are shorter than the specified
+        A method of ``Eventstream`` class that deletes users' paths that are shorter than the specified
         number of events or cut_off.
 
         Returns
         -------
         Eventstream
-             Input ``eventstream`` with deleted short user's paths.
+             Input ``eventstream`` without the deleted short users' paths.
 
         Notes
         -----

@@ -59,6 +59,11 @@ class CreateNodeErrorDesc(TypedDict):
 class PGraph:
     """
     Collection of methods for preprocessing graph construction and calculation.
+
+    Notes
+    -----
+    See :doc:`Preprocessing user guide</user_guides/preprocessing>` for the details.
+
     """
 
     root: SourceNode
@@ -80,20 +85,21 @@ class PGraph:
         Parameters
         ----------
         node : Node
-            Instance of class ``EventsNode`` or ``MergeNode``.
+            An instance of either ``EventsNode`` or ``MergeNode``.
         parents : list of Node
 
-            - If ``node`` is ``EventsNode`` - it should be only 1 parent
-            - If ``node`` is ``MergeNode`` - it should be at least 2 parents
+            - If ``node`` is ``EventsNode`` - only 1 parent must be defined.
+            - If ``node`` is ``MergeNode`` - at least 2 parents have to be defined.
 
         Returns
         -------
         None
 
-        Notes
-        -----
-        Adding node doesn't run calculations.
-        See :py:func:`combine`.
+        See Also
+        --------
+        PGraph.combine : Adding a node doesn't cause graph recalculation.
+        .EventsNode
+        .MergeNode
 
         """
         self.__valiate_already_exists(node)
@@ -112,17 +118,17 @@ class PGraph:
 
     def combine(self, node: Node) -> EventstreamType:
         """
-        Run calculation from the ``SourceNode`` up to specified ``node``.
+        Run calculations from the ``SourceNode`` up to the specified ``node``.
 
         Parameters
         ----------
         node : Node
-            Instance of the class ``SourceNode``, ``EventsNode`` or ``MergeNode``
+            Instance of either ``SourceNode``, ``EventsNode`` or ``MergeNode``
 
         Returns
         -------
         EventstreamType
-            ``Eventstream`` with all changes after data processors apply.
+            ``Eventstream`` with all changes applied by data processors.
         """
         self.__validate_not_found([node])
 
@@ -158,12 +164,12 @@ class PGraph:
 
     def get_parents(self, node: Node) -> List[Node]:
         """
-        Show parents of specified ``node``.
+        Show parents of the specified ``node``.
 
         Parameters
         ----------
         node : Node
-            Instance of the class SourceNode, EventsNode or MergeNode
+            Instance of one of the classes SourceNode, EventsNode or MergeNode.
 
         """
         self.__validate_not_found([node])
@@ -226,7 +232,7 @@ class PGraph:
 
     def export(self, payload: dict[str, Any]) -> dict:
         """
-        Show ``PGraph`` as config.
+        Show ``PGraph`` as a dict.
 
         Parameters
         ----------

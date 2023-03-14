@@ -16,7 +16,7 @@ class TruncatePathHelperMixin:
         shift_after: int = 0,
     ) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which truncates each user's path on the base of
+        A method of ``Eventstream`` class that truncates each user's path based on the
         specified event(s) and selected parameters.
 
         Returns

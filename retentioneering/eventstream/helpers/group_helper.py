@@ -17,8 +17,8 @@ class GroupHelperMixin:
         event_type: str | None = "group_alias",
     ) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which filters and replaces raw events with new synthetic events.
-        Where ``timestamp``, ``user_id`` are the same, but ``event_name`` is new.
+        A method of ``Eventstream`` class that filters and replaces raw events with new synthetic events,
+        having the same ``timestamp`` and ``user_id``, but new ``event_name``.
 
         Returns
         -------

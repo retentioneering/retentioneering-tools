@@ -29,27 +29,28 @@ class TruncatedEventsParams(ParamsModel):
 
 class TruncatedEvents(DataProcessor):
     """
-    Creates new synthetic event(s) for each user on the base of timeout threshold:
-    ``truncated_left`` and ``truncated_right``
+    Create new synthetic event(s) for each user based on the timeout threshold:
+    ``truncated_left`` or ``truncated_right``
 
     Parameters
     ----------
     left_truncated_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
-        Threshold value, and it's unit of measure.
-        Timedelta between last event in each user's path and first event in whole Eventstream is calculating.
-        For users with timedelta less than selected ``left_truncated_cutoff``, new synthetic event - ``truncated_left``
-        will be added.
+        Threshold value with its unit of measure.
+        The timedelta between the last event in each user's path and the first event in the whole eventstream
+        is calculated. For users with the timedelta less than the selected ``left_truncated_cutoff``,
+        the new ``truncated_left`` event is added.
 
     right_truncated_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
-        Threshold value and its unit of measure.
-        Timedelta between first event in each user's path and last event in whole Eventstream is calculating.
-        For users with timedelta less than selected ``right_truncated_cutoff``,
-        new synthetic event - ``truncated_right`` will be added.
+        Threshold value with its unit of measure.
+        The timedelta between the first event in each user's path and the last event in the whole eventstream
+        is calculated. For users with timedelta less than the selected ``right_truncated_cutoff``,
+        the new ``truncated_right`` event is added.
 
     Returns
     -------
     Eventstream
-        ``Eventstream`` with new synthetic events only, for users whose paths satisfy the specified cut-offs.
+        Eventstream containing only the generated synthetic events, for users whose paths
+        satisfy the specified cut-offs.
 
         +-------------------+-------------------+------------------+
         | **event_name**    | **event_type**    |  **timestamp**   |

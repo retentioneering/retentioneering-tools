@@ -921,6 +921,8 @@ For demonstration purposes we add ``session_id`` column by applying
 General statistics
 ~~~~~~~~~~~~~~~~~~
 
+.. _eventstream_describe:
+
 Describe
 ^^^^^^^^
 
@@ -1099,6 +1101,7 @@ days and the latter in the number of events.
 Also it is important to mention that all "step-statistics" rounded to the 2nd decimal place digit.
 And "time-statistics" - to seconds. This is also true for the following method.
 
+.. _eventstream_describe_events:
 
 Describe events
 ^^^^^^^^^^^^^^^
@@ -1495,6 +1498,8 @@ and we want to see the entire distribution. For these purposes the following gro
 Time-based histograms
 ~~~~~~~~~~~~~~~~~~~~~
 
+.. _eventstream_user_lifetime:
+
 User lifetime
 ^^^^^^^^^^^^^
 
@@ -1537,6 +1542,7 @@ The method has multiple parameters:
     :py:meth:`DeleteUsersByPathLength<retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>`
     See :doc:`the user guide on preprocessing</user_guides/dataprocessors>` for the details.
 
+.. _eventstream_timedelta_hist:
 
 Timedelta between two events
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1738,6 +1744,7 @@ And it can be caused by two reasons:
 Sometimes we need to mark those users and analyse them separately.
 See :ref:`TruncatedEvents explanation<truncated_events>` for the details.
 
+.. _eventstream_events_timestamp:
 
 Events intensity
 ^^^^^^^^^^^^^^^^

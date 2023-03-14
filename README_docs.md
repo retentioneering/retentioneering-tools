@@ -34,11 +34,15 @@ def func(param1, param2):
 
     See Also
     --------
-    Надо выработать правила для этого блока
+    Eventstream.to_dataframe : Текст описани. Ссылки только внутри API.
+
+
 
     Notes
     -----
-    Надо выработать правила для этого блока
+    Ссылки на UG. Другая информация, которая не влезла в основную.
+    See :doc:`Eventstream</user_guides/eventstream>` user guide for the details.
+    :ref:`Eventstream<eventstream_custom_fields>`
 
     Raises
     ------

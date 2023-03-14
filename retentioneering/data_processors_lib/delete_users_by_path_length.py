@@ -26,7 +26,8 @@ class DeleteUsersByPathLengthParams(ParamsModel):
 
 class DeleteUsersByPathLength(DataProcessor):
     """
-    Filters entire user's paths if they are shorter than the specified number of events or cut_off.
+    Filters user paths based on the path length, removing the paths that are shorter than the
+    specified number of events or cut_off.
 
     Parameters
     ----------

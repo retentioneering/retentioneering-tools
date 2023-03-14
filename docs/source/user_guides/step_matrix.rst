@@ -55,10 +55,7 @@ We can visualize this dataset as a step-wise heatmap, indicating the distributio
 The matrix rows correspond to the unique events, and the columns correspond to the steps in the user
 trajectories. That is, ``(i, j)`` matrix element shows the share of the users with event ``i`` appeared at step ``j``.
 
-Below we will explore how to plot and customize the step matrix.
-
-Loading data
-~~~~~~~~~~~~~
+Hereafter we use :doc:`simple_shop </datasets/simple_shop>` dataset, which has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable. If you want to use your own dataset, upload it following :ref:`this instruction<eventstream_creation>`.
 
 .. code-block:: python
 
@@ -257,10 +254,7 @@ A combination of ``targets`` and ``centered`` parameters is also possible:
 
 .. image:: /_static/user_guides/step_matrix/output_39_2.png
 
-From the above we see that the maximum in the target row appear at
-The target row highlights that for the most users who reaches ``payment_done`` event, there are 4 events laying between ``cart`` event and ``payment_done`` event (we see that the maximum of
-
-it takes 5 steps to reach ``payment_done`` event starting from ``cart`` event.
+From the step matrix above, we see that the maximum in the target row appear at step 5 (with the value of 0.22). We can interpret this as follows: if a user reaches the ``cart`` event and makes a purchase afterwards, it is likely that it took them 5 steps.
 
 Events sorting
 --------------

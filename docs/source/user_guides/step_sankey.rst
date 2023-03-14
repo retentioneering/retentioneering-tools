@@ -118,7 +118,6 @@ If you want to prevent some events from collapsing, use the ``target`` parameter
 .. code-block:: python
 
     stream\
-        .add_start_end()\
         .step_sankey(
             max_steps=5,
             thresh=0.1,

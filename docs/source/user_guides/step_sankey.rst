@@ -186,7 +186,7 @@ Using a separate instance
 
 By design, :py:meth:`Eventstream.step_sankey()<retentioneering.eventstream.eventstream.Eventstream.step_sankey>` is a shortcut method that uses :py:meth:`StepSankey<retentioneering.tooling.step_sankey.step_sankey.StepSankey>` class under the hood. This method creates an instance of StepSankey class and embeds it into the eventstream object. Eventually, ``Eventstream.step_sankey()`` returns exactly this instance.
 
-Sometimes it is reasonable to work with a separate instance of StepSankey class. An alternative way to get the same visualization that ``Eventstream.step_sankey()`` produces is to call :py:meth:`StepSankey.fit()<retentioneering.tooling.step_sankey.step_sankey.StepSankey.fit>` and :py:meth:`StepSankey.plot()<retentioneering.tooling.step_sankey.step_sankey.StepSankey.plot>` methods explicitly. The former method calculates all the values needed for the visualization, the latter displays these values as a visualization.
+Sometimes it is reasonable to work with a separate instance of StepSankey class. An alternative way to get the same visualization that ``Eventstream.step_sankey()`` produces is to call :py:meth:`StepSankey.fit()<retentioneering.tooling.step_sankey.step_sankey.StepSankey.fit>` and :py:meth:`StepSankey.plot()<retentioneering.tooling.step_sankey.step_sankey.StepSankey.plot>` methods explicitly. The former method calculates all the values needed for the visualization, the latter displays these values as a Sankey diagram.
 
 .. code-block:: python
 

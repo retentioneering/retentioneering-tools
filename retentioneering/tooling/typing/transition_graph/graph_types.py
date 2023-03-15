@@ -27,6 +27,7 @@ class PlotParamsType(TypedDict):
 
 AllowedColors = Literal["red", "green", "yellow", "blue", "magenta", "cyan"]
 
+# @FIXME: idk why import annotation not fixed this cause, and I need to use Union. Vladimir Makhanov
 Threshold = MutableMapping[str, Union[float, int]]  # type: ignore
 NodeParams = MutableMapping[str, Optional[str]]
 Position = MutableMapping[str, Sequence[float]]

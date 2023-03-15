@@ -38,8 +38,8 @@ class GraphSettings(PlotParamsType):
     show_nodes_names: bool
     show_all_edges_for_targets: bool
     show_nodes_without_links: bool
-    nodes_threshold: Threshold
-    links_threshold: Threshold
+    nodes_threshold: Threshold  # type: ignore
+    links_threshold: Threshold  # type: ignore
 
 
 class Weight(TypedDict):

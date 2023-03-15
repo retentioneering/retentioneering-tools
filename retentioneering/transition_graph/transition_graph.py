@@ -91,7 +91,7 @@ class TransitionGraph:
         return self._nodes_threshold
 
     @nodes_thresholds.setter
-    def nodes_thresholds(self, value: Threshold):
+    def nodes_thresholds(self, value: Threshold) -> None:
         if self._check_thresholds_for_norm_type(value):
             self._nodes_threshold = value
 
@@ -100,11 +100,11 @@ class TransitionGraph:
         return self._edges_threshold
 
     @edges_thresholds.setter
-    def edges_thresholds(self, value: Threshold):
+    def edges_thresholds(self, value: Threshold) -> None:
         if self._check_thresholds_for_norm_type(value):
             self._edges_threshold = value
 
-    def _check_thresholds_for_norm_type(self, value) -> bool:
+    def _check_thresholds_for_norm_type(self, value: Threshold) -> bool:
         if self.edge_norm_type == "full":
             if not all(map(lambda x: isinstance(x, int), value.values())):
                 raise ValueError(f"For normalization type {self.edge_norm_type} all thresholds must be int")
@@ -122,10 +122,10 @@ class TransitionGraph:
     def __init__(
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
-        graph_settings: GraphSettings | None = None,
+        graph_settings: GraphSettings | dict[str, Any] | None = None,
         edge_norm_type: NormType = None,
         targets: MutableMapping[str, str | None] | None = None,
-        nodes_threshold: dict[str, float | int] | None = None,
+        nodes_threshold: Threshold | None = None,
         edges_threshold: Threshold | None = None,
         nodes_weight_col: str | None = None,
         edges_weight_col: str | None = None,
@@ -549,7 +549,8 @@ class TransitionGraph:
             "show_all_edges_for_targets": show_all_edges_for_targets,
             "show_nodes_without_links": show_nodes_without_links,
         }
-        merged = {**self.graph_settings, **clear_dict(settings)}
+        # @FIXME: idk why pyright doesn't like this. Vladimir Makhanov
+        merged = {**self.graph_settings, **clear_dict(settings)}  # type: ignore
 
         return clear_dict(merged)
 
@@ -584,8 +585,6 @@ class TransitionGraph:
 
     def plot_graph(
         self,
-        nodes_thresholds: Threshold | None = None,
-        edges_thresholds: Threshold | None = None,
         targets: MutableMapping[str, str | None] | None = None,
         edge_norm_type: NormType | None = None,
         width: int = 960,
@@ -665,10 +664,8 @@ class TransitionGraph:
             show_nodes_without_links=show_nodes_without_links,
         )
 
-        nodes_threshold = nodes_thresholds
-        links_threshold = edges_thresholds
-        norm_nodes_threshold = nodes_threshold if nodes_threshold else self._get_norm_node_threshold(nodes_threshold)
-        norm_links_threshold = links_threshold if links_threshold else self._get_norm_link_threshold(links_threshold)
+        norm_nodes_threshold = self._get_norm_node_threshold(self.nodes_thresholds)
+        norm_links_threshold = self._get_norm_link_threshold(self.edges_thresholds)
 
         self.edgelist.calculate_edgelist(
             norm_type=self.edge_norm_type, custom_cols=self.custom_cols, data=self.eventstream.to_dataframe()

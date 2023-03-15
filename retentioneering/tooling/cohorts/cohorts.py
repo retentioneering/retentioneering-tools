@@ -64,7 +64,8 @@ class Cohorts:
     See Also
     --------
     .Eventstream.cohorts : Call Cohorts tool as an eventstream method.
-
+    .EventTimestampHist : Plot the distribution of events over time.
+    .UserLifetimeHist : Plot the distribution of user lifetimes.
 
     Notes
     -----

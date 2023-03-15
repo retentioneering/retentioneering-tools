@@ -62,7 +62,8 @@ class TruncatedEvents(DataProcessor):
 
     See Also
     --------
-    Hists
+    .TimedeltaHist : Plot the distribution of the time deltas between two events.
+    .UserLifetimeHist : Plot the distribution of user lifetimes.
 
     Raises
     ------

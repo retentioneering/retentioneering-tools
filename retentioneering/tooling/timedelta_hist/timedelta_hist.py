@@ -84,14 +84,16 @@ class TimedeltaHist:
 
     See Also
     --------
-    .UserLifetimeHist : Special case of ``TimedeltaHist`` plot.
-    .EventTimestampHist :
-    .StartEndEvents : Data processor which adds ``path_start`` and ``path_end`` events to each user trajectory.
-    .SplitSessions : Can be useful for finding suitable values of parameters for this data processor.
-    .TruncatedEvents : Can be useful for finding suitable values of parameters for this data processor.
-    .DeleteUsersByPathLength : Can be useful for finding suitable values of parameters for this data processor.
-    .Eventstream.describe
-    .Eventstream.describe_events
+    .UserLifetimeHist : Plot the distribution of user lifetimes.
+    .EventTimestampHist : Plot the distribution of events over time.
+    .Eventstream.describe : Show general eventstream statistics.
+    .Eventstream.describe_events : Show general eventstream events statistics.
+    .StartEndEvents : Create new synthetic events ``path_start`` and ``path_end`` to each user trajectory.
+    .SplitSessions : Create new synthetic events, that divide users’ paths on sessions.
+    .TruncatedEvents : Create new synthetic event(s) for each user based on the timeout threshold.
+    .DeleteUsersByPathLength : Filter user paths based on the path length, removing the paths that are shorter than the
+                                specified number of events or cut_off.
+
 
     Notes
     -----

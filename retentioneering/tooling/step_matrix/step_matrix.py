@@ -101,7 +101,8 @@ class StepMatrix(EndedEventsMixin):
     See Also
     --------
     .Eventstream.step_matrix : Call StepMatrix tool as an eventstream method.
-    .StartEndEvents : ``path_end`` event.
+    .StepSankey : A class for the visualization of user paths in stepwise manner using Sankey diagram.
+    .CollapseLoops : Find loops and create new synthetic events in the paths of all users having such sequences.
     """
 
     __eventstream: EventstreamType

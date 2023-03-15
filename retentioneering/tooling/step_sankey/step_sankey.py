@@ -46,10 +46,11 @@ class StepSankey(EndedEventsMixin):
     ValueError
         If ``max_steps`` parameter is <= 1.
 
-
     See Also
     --------
     .Eventstream.step_sankey : Call StepSankey tool as an eventstream method.
+    .CollapseLoops : Find loops and create new synthetic events in the paths of all users having such sequences.
+    .StepMatrix : This class provides methods for step matrix calculation and visualization.
 
     Notes
     -----

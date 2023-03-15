@@ -13,7 +13,7 @@ from retentioneering.widget.widgets import ReteTimeWidget
 
 class DeleteUsersByPathLengthParams(ParamsModel):
     """
-    Class with parameters for class :py:class:`.DeleteUsersByPathLength`
+    A class with parameters for :py:class:`.DeleteUsersByPathLength` class.
     """
 
     events_num: Optional[int]
@@ -46,6 +46,10 @@ class DeleteUsersByPathLength(DataProcessor):
     ------
     ValueError
         If both of ``events_num`` and ``cutoff`` are empty or both are given.
+
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
     """
 
     params: DeleteUsersByPathLengthParams

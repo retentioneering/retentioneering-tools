@@ -12,7 +12,7 @@ from retentioneering.widget.widgets import ReteFunction
 
 class FilterEventsParams(ParamsModel):
     """
-    Class with parameters for class :py:class:`.FilterEvents`
+    A class with parameters for :py:class:`.FilterEvents` class.
 
     """
 
@@ -40,6 +40,9 @@ class FilterEvents(DataProcessor):
     Eventstream
         ``Eventstream`` with events that should be deleted from input ``eventstream``.
 
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
 
     """
 

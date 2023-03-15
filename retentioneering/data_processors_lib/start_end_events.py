@@ -30,7 +30,9 @@ class StartEndEvents(DataProcessor):
         | path_end       | path_end       | last_event     |
         +----------------+----------------+----------------+
 
-
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
     """
 
     params: StartEndEventsParams

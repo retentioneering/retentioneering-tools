@@ -12,7 +12,7 @@ EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchemaType], Any]
 
 class GroupEventsParams(ParamsModel):
     """
-    Class with parameters for class :py:class:`.GroupEvents`
+    A class with parameters for :py:class:`.GroupEvents` class.
     """
 
     event_name: str
@@ -58,6 +58,9 @@ class GroupEvents(DataProcessor):
         | new_event_name  | group_alias    | raw_event         |  False         |
         +-----------------+----------------+-------------------+----------------+
 
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
     """
 
     params: GroupEventsParams

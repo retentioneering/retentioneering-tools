@@ -15,7 +15,7 @@ from retentioneering.widget.widgets import ReteTimeWidget
 
 class TruncatedEventsParams(ParamsModel):
     """
-    Class with parameters for class :py:class:`.TruncatedEvents`
+    A class with parameters for :py:class:`.TruncatedEvents` class.
     """
 
     left_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
@@ -68,6 +68,10 @@ class TruncatedEvents(DataProcessor):
     ------
     ValueError
         If both of ``left_truncated_cutoff`` and ``right_truncated_cutoff`` are empty.
+
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
     """
 
     params: TruncatedEventsParams

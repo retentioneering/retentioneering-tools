@@ -11,7 +11,7 @@ from retentioneering.params_model import ParamsModel
 
 class CollapseLoopsParams(ParamsModel):
     """
-    Class with parameters for class :py:class:`.CollapseLoops`.
+    A class with parameters for :py:class:`.CollapseLoops` class.
     """
 
     suffix: Optional[Literal["loop", "count"]] = "loop"
@@ -59,6 +59,14 @@ class CollapseLoops(DataProcessor):
         | event_name             | group_alias    | (min/max/mean(group of repetitive events)) |
         +------------------------+----------------+--------------------------------------------+
 
+
+    See Also
+    --------
+    .StepMatrix
+
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
     """
 
     params: CollapseLoopsParams

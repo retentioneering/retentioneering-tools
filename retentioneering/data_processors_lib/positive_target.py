@@ -43,7 +43,7 @@ def _default_func(eventstream: EventstreamType, positive_target_events: list[str
 
 class PositiveTargetParams(ParamsModel):
     """
-    Class with parameters for class :py:class:`.PositiveTarget`.
+    A class with parameters for :py:class:`.PositiveTarget` class.
     """
 
     positive_target_events: List[str]
@@ -77,6 +77,9 @@ class PositiveTarget(DataProcessor):
         | positive_target_RAW_EVENT_NAME | positive_target | min(positive_target_events) |
         +--------------------------------+-----------------+-----------------------------+
 
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
     """
 
     params: PositiveTargetParams

@@ -14,7 +14,7 @@ from retentioneering.widget.widgets import ListOfInt, ReteTimeWidget
 
 class LostUsersParams(ParamsModel):
     """
-    Class with parameters for class :py:class:`.LostUsersEvents`
+    A class with parameters for :py:class:`.LostUsersEvents` class.
     """
 
     lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
@@ -44,7 +44,7 @@ class LostUsersEvents(DataProcessor):
 
     lost_users_list : list of int or list of str, optional
         If the `list of user_ids` is given new synthetic event - ``lost_user`` will be added to each user from the list.
-        For other user's paths will be added new synthetic event - ``absent_user``
+        For other user's paths will be added new synthetic event - ``absent_user``.
 
     Returns
     -------
@@ -64,6 +64,9 @@ class LostUsersEvents(DataProcessor):
     ValueError
         Raised when both ``lost_cutoff`` and ``lost_users_list`` are either empty or given.
 
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
     """
 
     params: LostUsersParams

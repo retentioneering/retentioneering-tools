@@ -31,10 +31,6 @@ def _default_func(eventstream: EventstreamType, negative_target_events: List[str
     -------
     pd.DataFrame
         Filtered DataFrame with negative_target_events and its timestamps.
-
-    Notes
-    -----
-    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
     """
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
@@ -83,6 +79,11 @@ class NegativeTarget(DataProcessor):
         +--------------------------------+-----------------+-----------------------------+
         | negative_target_RAW_EVENT_NAME | negative_target | min(negative_target_events) |
         +--------------------------------+-----------------+-----------------------------+
+
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
+
 
     """
 

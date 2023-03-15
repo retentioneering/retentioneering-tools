@@ -40,12 +40,12 @@ class StatTests:
         Test the null hypothesis that 2 independent samples are drawn from the same
         distribution. Supported tests are:
 
-        - ``mannwhitneyu`` see :mannwhitneyu:`scipy documentation<>`
-        - ``ttest`` see :statsmodel_ttest:`statsmodels documentation<>`
-        - ``ztest`` see :statsmodel_ztest:`statsmodels documentation<>`
-        - ``ks_2samp`` see :scipy_ks:`scipy documentation<>`
-        - ``chi2_contingency`` see :scipy_chi2:`scipy documentation<>`
-        - ``fisher_exact`` see :scipy_fisher:`scipy documentation<>`
+        - ``mannwhitneyu`` see :mannwhitneyu:`scipy documentation<>`.
+        - ``ttest`` see :statsmodel_ttest:`statsmodels documentation<>`.
+        - ``ztest`` see :statsmodel_ztest:`statsmodels documentation<>`.
+        - ``ks_2samp`` see :scipy_ks:`scipy documentation<>`.
+        - ``chi2_contingency`` see :scipy_chi2:`scipy documentation<>`.
+        - ``fisher_exact`` see :scipy_fisher:`scipy documentation<>`.
 
     groups : tuple of list
         Must contain a tuple of two elements (g_1, g_2): g_1 and g_2 are collections

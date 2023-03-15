@@ -15,7 +15,7 @@ from retentioneering.widget.widgets import ReteTimeWidget
 
 class SplitSessionsParams(ParamsModel):
     """
-    Class with parameters for class :py:class:`.SplitSessions`
+    A class with parameters for :py:class:`.SplitSessions` class.
 
     """
 
@@ -90,9 +90,12 @@ class SplitSessions(DataProcessor):
         |     1        | session_end       | session_end      | last_event        |     1_1          |
         +--------------+-------------------+------------------+-------------------+------------------+
 
+
+
     Notes
     -----
-    Hists
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
+
 
     """
 

@@ -11,7 +11,7 @@ from retentioneering.params_model import ParamsModel
 
 class TruncatePathParams(ParamsModel):
     """
-    Class with parameters for class :py:class:`.TruncatePath`
+    A class with parameters for :py:class:`.TruncatePath` class.
     """
 
     drop_before: Optional[str]
@@ -60,6 +60,7 @@ class TruncatePath(DataProcessor):
     If the user path doesn't contain events from ``drop_before`` and ``drop_after`` parameters, then its
     path does not change.
 
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
     """
 
     params: TruncatePathParams

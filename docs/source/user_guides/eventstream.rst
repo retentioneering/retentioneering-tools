@@ -1632,6 +1632,8 @@ generates 4 timedeltas :math:`\Delta_1, \Delta_2, \Delta_3, \Delta_4` as shown i
 The timedeltas between events B and D, D and C, C and E are not taken into account because two events
 from each pair belong to different users.
 
+Here is how the histogram looks for the ``simple_shop`` dataset with ``log_scale=True`` and ``timedelta_unit='m'``:
+
 .. code-block:: python
 
     stream.timedelta_hist(log_scale=True, timedelta_unit='m')
@@ -1643,25 +1645,25 @@ This distribution of the adjacent events fairly common. It looks like a bimodal 
 remember we use log-scale here), but these two bells help us to estimate a timeout for splitting sessions.
 From this charts we can see that it is reasonable to set it to some value between 10 and 100 minutes.
 
-Be careful if there are some ``synthetic events`` in the data. Usually those events are assigned with the same
-timestamp as their corresponding ``raw`` events. Thus the distribution of timedeltas between
+Be careful if there are some synthetic events in the data. Usually those events are assigned with the same
+timestamp as their "parent" raw events. Thus, the distribution of the timedeltas between
 events will be heavily skewed to 0. Parameter ``raw_events_only=True`` can help in such a situation.
-Let us add to our dataset some common synthetic events using
-:py:meth:`StartEndEvents<retentioneering.data_processors_lib.start_end_events.StartEndEvents>` and
-:py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>` data processors.
-To learn more about this please see :doc:`data processors user guide <../user_guides/dataprocessors>`.
-
+Let us add to our dataset some common synthetic events using :ref:`StartEndEvents<add_start_end>` and
+:ref:`SplitSessions<split_sessions>` data processors.
 
 .. code-block:: python
 
-    stream_with_synthetic = datasets.load_simple_shop()\
-                                    .add_start_end()\
-                                    .split_sessions(session_cutoff=(30, 'm'))
+    stream_with_synthetic = datasets\
+        .load_simple_shop()\
+        .add_start_end()\
+        .split_sessions(session_cutoff=(30, 'm'))
 
     stream_with_synthetic.timedelta_hist(log_scale=True, timedelta_unit='m')
-    stream_with_synthetic.timedelta_hist(raw_events_only=True,
-                                         log_scale=True,
-                                         timedelta_unit='m')
+    stream_with_synthetic.timedelta_hist(
+        raw_events_only=True,
+        log_scale=True,
+        timedelta_unit='m'
+    )
 
 .. figure:: /_static/user_guides/eventstream/04_timedelta_raw_events_only_false.png
     :width: 400
@@ -1669,14 +1671,13 @@ To learn more about this please see :doc:`data processors user guide <../user_gu
 .. figure:: /_static/user_guides/eventstream/05_timedelta_raw_events_only_true.png
     :width: 400
 
-You can see that on the second plot there is no high histogram bar and
-and the user behaviour we observe looks natural.
-
+You can see that on the second plot there is no high histogram bar located at :math:`\approx 10^{-3}`,
+so that the second histogram looks more natural.
 
 Another use case for :py:meth:`timedelta_hist()<retentioneering.eventstream.eventstream.Eventstream.timedelta_hist>`
 is visualizing the distribution of timedeltas between two specific events. Assume we want to
-know how much time it takes for a user to go from product1 to cart.
-Then we set `event_pair=('product1', 'cart')` and pass it to ``timedelta_hist``:
+know how much time it takes for a user to go from ``product1`` to ``cart``.
+Then we set ``event_pair=('product1', 'cart')`` and pass it to ``timedelta_hist``:
 
 .. code-block:: python
 
@@ -1685,34 +1686,35 @@ Then we set `event_pair=('product1', 'cart')` and pass it to ``timedelta_hist``:
 .. figure:: /_static/user_guides/eventstream/06_timedelta_pair_of_events.png
     :width: 400
 
-We see that such occurrences are not very numerous. This is because the method still works with only
+From the Y scale, we see that such occurrences are not very numerous. This is because the method still works with only
 adjacent pairs of events (in this case ``product1`` and ``cart`` are assumed to go one right after
-another in a user's path). That is why the histogram is heavily skewed to 0.
+another in a user's path). That is why the histogram is skewed to 0.
 ``only_adjacent_event_pairs`` parameter allows us to work with any cases when a user goes from
 ``product1`` to ``cart`` non-directly but passing through some other events:
 
 .. code-block:: python
 
-    stream.timedelta_hist(event_pair=('product1', 'cart'),
-                          timedelta_unit='m',
-                          only_adjacent_event_pairs=False)
+    stream.timedelta_hist(
+        event_pair=('product1', 'cart'),
+        timedelta_unit='m',
+        only_adjacent_event_pairs=False
+    )
 
 .. figure:: /_static/user_guides/eventstream/07_timedelta_only_adjacent_event_pairs.png
     :width: 400
 
-We see that the number of observations has grown, especially around 0.
-As you can see from both plots - there are quite a lot of users, for whom it takes
-not too long to go from product1 to the cart not directly, but through other events. However there
-are also some users who have a long path between those two points.
-We can interpret this as the users being picky, so it takes them a long time to go from ``product1``
-to ``cart``.
+We see that the number of observations has increased, especially around 0. In other words,
+for the vast majority of the users transition ``product1 → cart`` takes less than 1 day.
+On the other hands, we observe a "long tail" of the users whose journey from ``product1``
+to ``cart`` takes multiple days. We can interpret this as there are two behavioral clusters:
+the users who are open for purchases, and the users who are picky. However, we also notice
+that adding a product to a cart does not necessarily mean that a user intends to make a
+purchase. Sometimes users adds an item to a cart just to check its final price, delivery
+options, etc.
 
 Here we should make a stop and explain how timedeltas between event pairs are calculated.
 Below you can see the picture of one user path and timedeltas that are displayed in a ``timedelta_hist``
-with the parameters:
-
-- event_pair=('A', 'B');
-- only_adjacent_event_pairs=False.
+with the parameters ``event_pair=('A', 'B')`` and ``only_adjacent_event_pairs=False``.
 
 .. figure:: /_static/user_guides/eventstream/08_event_pair_explanation.png
     :width: 400
@@ -1743,7 +1745,7 @@ within a user session. If we have already split the paths into sessions we can u
 
 It is clear now that within a session the users walk from ``product1`` to ``cart`` event in less than 3 minutes.
 
-For frequently occurring events we might be interested in aggregating some values over sessions or users.
+For frequently occurring events we might be interested in aggregating the timedeltas over sessions or users.
 For example, transition ``main -> catalog`` is quite frequent. Some users do these transitions quickly,
 some of them do not. It might be reasonable to aggregate the timedeltas over each user path first
 (we would get one value per one user at this step), and then visualize the distribution of
@@ -1765,24 +1767,19 @@ these aggregated values. This can be done by passing an additional argument
     :width: 400
 
 
-Timedelta between user event and eventstream global event
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Eventstream global events
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Sometimes it can be useful to understand the distribution of the time between:
-
-#. the first occurrence of the event in user path and the whole eventstream start;
-#. the last occurrence of the event in user path and the whole eventstream end.
-
-It can be done with the parameter ``event_pair`` which we have already considered.
-Note that one of the events in the pair should be global: ``eventstream_start`` or ``eventstream_end``.
+``event_pair`` argument can accept a couple of auxiliary events: ``eventstream_start`` and ``eventstream_end``.
+They indicate the first and the last events in an evenstream.
 
 It is especially useful for choosing the ``cutoff`` parameter for
 :py:meth:`TruncatedEvents<retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` data processor.
-Let us see the logic of the timedeltas calculation on the example:
+Before you choose it, you can explore how a path's beginning/end margin from the right/left edge of an eventstream.
+In the diagram below, below :math:`\Delta_1` illustrates such a margin:
 
 .. figure:: /_static/user_guides/eventstream/11_timedelta_event_pair_with_global.png
     :width: 400
-
 
 .. code-block:: python
 
@@ -1797,16 +1794,8 @@ Let us see the logic of the timedeltas calculation on the example:
 .. figure:: /_static/user_guides/eventstream/12_timedelta_eventstream_start_path_end.png
     :width: 400
 
-Looking at this distribution we can see that most of the users start trajectory rather
-far from the start of eventstream, but there are some of them who finish the path right
-after the eventstream starts. It is possible in two cases:
-
-- the user has a very short trajectory right at the beginning of dataset;
-- the user path is truncated and it started before the first event of our eventstream.
-
-Sometimes we need to mark such users and analyse them separately.
-See :ref:`TruncatedEvents explanation<truncated_events>` for the details.
-
+For more details on how this histogram helps to define the ``cutoff`` parameter see
+:ref:`TruncatedEvents section<truncated_events>` in the data processors user guide.
 
 Event intensity
 ^^^^^^^^^^^^^^^

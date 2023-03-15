@@ -12,12 +12,9 @@ class StartEndHelperMixin:
         Returns
         -------
         Eventstream
-            Input ``eventstream`` with added synthetic events.
+            Input ``eventstream`` with added synthetic events. See details :py:class:`.StartEndEvents`.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:class:`.StartEndEvents`
+
         """
         # avoid circular import
         from retentioneering.data_processors_lib import (

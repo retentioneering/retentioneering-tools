@@ -15,15 +15,17 @@ class DeleteUsersByPathLengthHelperMixin:
         A method of ``Eventstream`` class that deletes users' paths that are shorter than the specified
         number of events or cut_off.
 
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.DeleteUsersByPathLength`
+
         Returns
         -------
         Eventstream
              Input ``eventstream`` without the deleted short users' paths.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:class:`.DeleteUsersByPathLength`
+
         """
 
         # avoid circular import

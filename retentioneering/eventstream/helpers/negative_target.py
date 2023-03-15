@@ -11,16 +11,18 @@ class NegativeTargetHelperMixin:
         A method of ``Eventstream`` class that creates new synthetic
         events in paths of all users having the specified events - ``negative_target_RAW_EVENT_NAME``.
 
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.NegativeTarget`
+
 
         Returns
         -------
         Eventstream
             Input ``eventstream`` with new synthetic events.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:class:`.NegativeTarget`
+
 
         """
         # avoid circular import

@@ -22,15 +22,16 @@ class SplitSessionsHelperMixin:
         Session number will take the form: ``{user_id}_{session_number through one user path}``.
         The created events and column are added to the input eventstream.
 
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.SplitSessions`
+
         Returns
         -------
         Eventstream
              Input ``eventstream`` with new synthetic events and ``session_col``.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        Parameters and details :py:class:`.SplitSessions`
         """
 
         # avoid circular import

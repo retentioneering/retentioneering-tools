@@ -12,14 +12,17 @@ class FilterHelperMixin:
         """
         A method of ``Eventstream`` class that filters input ``eventstream`` based on custom conditions.
 
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.FilterEvents`
+
         Returns
         -------
         Eventstream
             The filtered ``eventstream``.
 
-        See Also
-        --------
-        :py:class:`.FilterEvents`
+
         """
         # avoid circular import
         from retentioneering.data_processors_lib import FilterEvents, FilterEventsParams

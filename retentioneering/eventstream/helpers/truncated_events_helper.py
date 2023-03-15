@@ -17,15 +17,18 @@ class TruncatedEventsHelperMixin:
         A method of ``Eventstream`` class that creates new synthetic event(s) for each user based
         on the timeout threshold: ``truncated_left`` and ``truncated_right``.
 
+
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.TruncatedEvents`
+
         Returns
         -------
         Eventstream
             Input ``eventstream`` with new synthetic events.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:class:`.TruncatedEvents`
+
         """
         # avoid circular import
         from retentioneering.data_processors_lib import (

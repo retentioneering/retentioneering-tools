@@ -604,7 +604,10 @@ class Eventstream(
         """
         Show a visualization of the user sequential events represented as a funnel.
 
-        See parameters description :py:class:`.Funnel`.
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.Funnel`
 
         Returns
         -------
@@ -659,7 +662,10 @@ class Eventstream(
         """
         Show a heatmap visualization of the step matrix.
 
-        See parameters description :py:class:`.StepMatrix`.
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.StepMatrix`
 
         Returns
         -------
@@ -700,7 +706,10 @@ class Eventstream(
         """
         Show a Sankey diagram visualizing the user paths in stepwise manner.
 
-        See parameters description :py:class:`.StepSankey`.
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.StepSankey`
 
         Returns
         -------
@@ -739,7 +748,10 @@ class Eventstream(
         """
         Show a heatmap visualization of the user appearance grouped by cohorts.
 
-        See parameters description :py:class:`.Cohorts`
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.Cohorts`
 
         Returns
         -------
@@ -773,7 +785,10 @@ class Eventstream(
         """
         Determine the statistical difference between the metric values in two user groups.
 
-        See parameters description :py:class:`.Stattests`.
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.Stattests`
 
         Returns
         -------
@@ -807,7 +822,10 @@ class Eventstream(
         distribution types, such as distribution of time for adjacent consecutive events, or
         for a pair of pre-defined events, or median transition time from event to event per user/session.
 
-        See parameters description :py:class:`.TimedeltaHist`.
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.TimedeltaHist`
 
         Returns
         -------
@@ -850,7 +868,10 @@ class Eventstream(
         Plot the distribution of user lifetimes. A ``users lifetime`` is the timedelta between the first and the last
         events of the user.
 
-        See parameters description :py:class:`.UserLifetimeHist`.
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.UserLifetimeHist`
 
         Returns
         -------
@@ -1021,6 +1042,8 @@ class Eventstream(
             eventstream=self, session_col=session_col, event_list=event_list, raw_events_only=raw_events_only
         )
         return describer._describe()
+
+        self,
 
     def transition_graph(
         self,

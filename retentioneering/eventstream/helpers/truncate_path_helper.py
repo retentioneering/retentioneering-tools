@@ -19,15 +19,18 @@ class TruncatePathHelperMixin:
         A method of ``Eventstream`` class that truncates each user's path based on the
         specified event(s) and selected parameters.
 
+
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.TruncatePath`
+
         Returns
         -------
         Eventstream
              Input ``eventstream`` with truncated paths.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:class:`.TruncatePath`
+
         """
         # avoid circular import
         from retentioneering.data_processors_lib import TruncatePath, TruncatePathParams

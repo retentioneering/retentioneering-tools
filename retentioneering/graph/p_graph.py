@@ -60,6 +60,11 @@ class PGraph:
     """
     Collection of methods for preprocessing graph construction and calculation.
 
+    Parameters
+    ----------
+    source_stream : EventstreamType
+        Source eventstream.
+
     Notes
     -----
     See :doc:`Preprocessing user guide</user_guides/preprocessing>` for the details.
@@ -86,7 +91,7 @@ class PGraph:
         ----------
         node : Node
             An instance of either ``EventsNode`` or ``MergeNode``.
-        parents : list of Node
+        parents : list of Nodes
 
             - If ``node`` is ``EventsNode`` - only 1 parent must be defined.
             - If ``node`` is ``MergeNode`` - at least 2 parents have to be defined.
@@ -123,7 +128,7 @@ class PGraph:
         Parameters
         ----------
         node : Node
-            Instance of either ``SourceNode``, ``EventsNode`` or ``MergeNode``
+            Instance of either ``SourceNode``, ``EventsNode`` or ``MergeNode``.
 
         Returns
         -------

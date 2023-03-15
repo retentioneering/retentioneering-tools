@@ -58,9 +58,14 @@ class StatTests:
     alpha : float, default 0.05
         Selected level of significance.
 
+
     See Also
     --------
-    :py:meth:`.Eventstream.stattests`
+    .Eventstream.stattests : Call StatTests tool as an eventstream method.
+
+    Notes
+    -----
+    See :doc:`StatTests user guide</user_guides/stattests>` for the details.
 
     """
 

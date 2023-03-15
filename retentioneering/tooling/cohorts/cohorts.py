@@ -61,6 +61,11 @@ class Cohorts:
         Replace values in 'n' diagonals (last period-group cells) with ``np.nan``.
         Average is recalculated.
 
+    See Also
+    --------
+    .Eventstream.cohorts : Call Cohorts tool as an eventstream method.
+
+
     Notes
     -----
     Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
@@ -70,9 +75,8 @@ class Cohorts:
 
     Only cohorts with at least 1 user in some period are shown.
 
-    See Also
-    --------
-    .Eventstream.cohorts
+    See :doc:`Cohorts user guide</user_guides/cohorts>` for the details.
+
     """
 
     __eventstream: EventstreamType

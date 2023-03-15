@@ -606,7 +606,9 @@ class Eventstream(
 
         Parameters
         ----------
-        See parameters description
+        show_plot : bool, default True
+            If ``True``, a funnel visualization is shown.
+        See other parameters' description
             :py:class:`.Funnel`
 
         Returns
@@ -664,7 +666,9 @@ class Eventstream(
 
         Parameters
         ----------
-        See parameters description
+        show_plot : bool, default True
+            If ``True``, a step matrix heatmap is shown.
+        See other parameters' description
             :py:class:`.StepMatrix`
 
         Returns
@@ -708,7 +712,9 @@ class Eventstream(
 
         Parameters
         ----------
-        See parameters description
+        show_plot : bool, default True
+            If ``True``, a sankey diagram is shown.
+        See other parameters' description
             :py:class:`.StepSankey`
 
         Returns
@@ -750,7 +756,9 @@ class Eventstream(
 
         Parameters
         ----------
-        See parameters description
+        show_plot : bool, default True
+            If ``True``, a cohort matrix heatmap is shown.
+        See other parameters' description
             :py:class:`.Cohorts`
 
         Returns
@@ -787,7 +795,7 @@ class Eventstream(
 
         Parameters
         ----------
-        See parameters description
+        See parameters' description
             :py:class:`.Stattests`
 
         Returns
@@ -824,7 +832,9 @@ class Eventstream(
 
         Parameters
         ----------
-        See parameters description
+        show_plot : bool, default True
+            If ``True``, histogram is shown.
+        See other parameters' description
             :py:class:`.TimedeltaHist`
 
         Returns
@@ -870,7 +880,9 @@ class Eventstream(
 
         Parameters
         ----------
-        See parameters description
+        show_plot : bool, default True
+            If ``True``, histogram is shown.
+        See other parameters' description
             :py:class:`.UserLifetimeHist`
 
         Returns
@@ -910,7 +922,9 @@ class Eventstream(
 
         Parameters
         ----------
-        See parameters description
+        show_plot : bool, default True
+            If ``True``, histogram is shown.
+        See other parameters' description
             :py:class:`.EventTimestampHist`
 
 

@@ -79,6 +79,14 @@ class TransitionGraph:
         - show_all_edges_for_targets,
         - show_nodes_without_links.
 
+    See Also
+    --------
+    .Eventstream.transition_graph : Call TransitionGraph tool as an eventstream method.
+
+    Notes
+    -----
+    See :doc:`TransitionGraph user guide</user_guides/transition_graph>` for the details.
+
     """
 
     _weights: MutableMapping[str, str] | None = None

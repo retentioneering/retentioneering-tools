@@ -39,10 +39,14 @@ class Funnel:
         Names of segments. Should be a list from unique values of the ``segment_col``.
         If ``None`` and ``segment_col`` is given - all values from ``segment_col`` will be used.
 
+
     See Also
     --------
-    .Eventstream.funnel
+    .Eventstream.funnel : Call Funnel tool as an eventstream method.
 
+    Notes
+    -----
+    See :doc:`Funnel user guide</user_guides/funnel>` for the details.
 
     """
 

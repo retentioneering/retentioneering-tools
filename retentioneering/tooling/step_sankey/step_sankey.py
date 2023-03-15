@@ -35,11 +35,12 @@ class StepSankey(EndedEventsMixin):
     target : list of str, optional
         Contain events that are prohibited for collapsing with ``thresh`` parameter.
     autosize : bool, default True
-        Plotly autosize parameter. See :plotly_autosize:`plotly documentation<>`
+        Plotly autosize parameter. See :plotly_autosize:`plotly documentation<>`.
     width : int, optional
-        Plot's width (in px). See :plotly_width:`plotly documentation<>`
+        Plot's width (in px). See :plotly_width:`plotly documentation<>`.
     height : int, optional
-        Plot's height (in px). See :plotly_height:`plotly documentation<>`
+        Plot's height (in px). See :plotly_height:`plotly documentation<>`.
+
     Raises
     ------
     ValueError
@@ -48,7 +49,11 @@ class StepSankey(EndedEventsMixin):
 
     See Also
     --------
-    :py:meth:`.Eventstream.step_sankey`
+    .Eventstream.step_sankey : Call StepSankey tool as an eventstream method.
+
+    Notes
+    -----
+    See :doc:`StepSankey user guide</user_guides/step_sankey>` for the details.
 
     """
 

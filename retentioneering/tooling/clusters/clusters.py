@@ -36,7 +36,11 @@ class Clusters:
 
     See Also
     --------
-    .Eventstream.clusters
+    .Eventstream.clusters : Call Clusters tool as an eventstream method.
+
+    Notes
+    -----
+    See :doc:`Clusters user guide</user_guides/clusters>` for the details.
     """
 
     def __init__(self, eventstream: EventstreamType):
@@ -92,6 +96,8 @@ class Clusters:
         -------
         Clusters
             A fitted ``Clusters`` instance.
+
+
         """
 
         self._method, self._n_clusters, self._feature_type, self._ngram_range, self._vector = self.__validate_input(

@@ -11,6 +11,18 @@ from retentioneering.tooling.typing.transition_graph import NormType
 
 
 class TransitionMatrix:
+    """
+
+    See Also
+    --------
+    .Eventstream.transition_matrix : Call TransitionMatrix tool as an eventstream method.
+
+    Notes
+    -----
+    See :doc:`TransitionMatrix user guide</user_guides/transition_matrix>` for the details.
+
+    """
+
     __edgelist: Edgelist
 
     def __init__(self, eventstream: EventstreamType) -> None:

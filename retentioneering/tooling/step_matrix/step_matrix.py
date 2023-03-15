@@ -96,9 +96,12 @@ class StepMatrix(EndedEventsMixin):
     This design guarantees that the sum of any step matrix's column is 1
     (0 for a differential step matrix).
 
+    See :doc:`StepMatrix user guide</user_guides/step_matrix>` for the details.
+
     See Also
     --------
-    :py:meth:`.Eventstream.step_matrix`
+    .Eventstream.step_matrix : Call StepMatrix tool as an eventstream method.
+    .StartEndEvents : ``path_end`` event.
     """
 
     __eventstream: EventstreamType

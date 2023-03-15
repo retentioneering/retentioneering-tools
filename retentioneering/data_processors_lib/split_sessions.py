@@ -90,12 +90,16 @@ class SplitSessions(DataProcessor):
         |     1        | session_end       | session_end      | last_event        |     1_1          |
         +--------------+-------------------+------------------+-------------------+------------------+
 
+    See Also
+    --------
+    .TimedeltaHist : Plot the distribution of the time deltas between two events.
+    .Eventstream.describe : Show general eventstream statistics.
+    .Eventstream.describe_events : Show general eventstream events statistics.
 
 
     Notes
     -----
     See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
-
 
     """
 

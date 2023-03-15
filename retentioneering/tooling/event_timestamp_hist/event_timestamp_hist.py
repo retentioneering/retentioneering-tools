@@ -15,7 +15,8 @@ from retentioneering.tooling.constants import BINS_ESTIMATORS
 
 class EventTimestampHist:
     """
-    Class for visualizing distribution of events over time.
+    Plot the distribution of events over time. Can be useful for detecting
+    time-based anomalies, and visualising general timespan of the eventstream.
 
     Parameters
     ----------
@@ -35,15 +36,12 @@ class EventTimestampHist:
         Width, height in inches.
 
 
-
     See Also
     --------
-    .Cohorts :
-    .TruncatedEvents : Can be useful for finding suitable values of parameters for this data processor.
-    .TimedeltaHist
-    .UserLifetimeHist :
-    .Eventstream.describe
-    .Eventstream.describe_events
+    .TimedeltaHist : Plot the distribution of the time deltas between two events.
+    .UserLifetimeHist : Plot the distribution of user lifetimes.
+    .Eventstream.describe : Show general eventstream statistics.
+    .Eventstream.describe_events : Show general eventstream events statistics.
 
     Notes
     -----

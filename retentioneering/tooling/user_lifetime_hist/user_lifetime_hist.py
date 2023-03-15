@@ -16,7 +16,9 @@ from retentioneering.tooling.constants import BINS_ESTIMATORS
 
 class UserLifetimeHist:
     """
-    Class for visualize users lifetime.
+
+    Plot the distribution of user lifetimes. A ``users lifetime`` is the timedelta between
+    the first and the last events of the user.
 
     Parameters
     ----------
@@ -41,12 +43,12 @@ class UserLifetimeHist:
 
     See Also
     --------
-    .DeleteUsersByPathLength : Can be useful for finding suitable values of parameters for this data processor.
-    .TruncatedEvents : Can be useful for finding suitable values of parameters for this data processor.
-    .EventTimestampHist :
-    .TimedeltaHist
-    .Eventstream.describe
-    .Eventstream.describe_events
+    .EventTimestampHist : Plot the distribution of events over time.
+    .TimedeltaHist : Plot the distribution of the time deltas between two events.
+    .Eventstream.describe : Show general eventstream statistics.
+    .Eventstream.describe_events : Show general eventstream events statistics.
+    .DeleteUsersByPathLength : Filter user paths based on the path length, removing the paths that are shorter than the
+                               specified number of events or cut_off.
 
     Notes
     -----

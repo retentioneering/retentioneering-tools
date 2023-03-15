@@ -971,9 +971,11 @@ class Eventstream(
 
         See Also
         --------
-        .UserLifetimeHist : Special case of ``TimedeltaHist`` plot.
-        .EventTimestampHist :
-        .TimedeltaHist
+        .EventTimestampHist : Plot the distribution of events over time.
+        .TimedeltaHist : Plot the distribution of the time deltas between two events.
+        .UserLifetimeHist : Plot the distribution of user lifetimes.
+        .Eventstream.describe_events : Show general eventstream events statistics.
+
 
         Notes
         -----
@@ -1040,9 +1042,10 @@ class Eventstream(
 
         See Also
         --------
-        .UserLifetimeHist : Special case of ``TimedeltaHist`` plot.
-        .EventTimestampHist :
-        .TimedeltaHist
+        .EventTimestampHist : Plot the distribution of events over time.
+        .TimedeltaHist : Plot the distribution of the time deltas between two events.
+        .UserLifetimeHist : Plot the distribution of user lifetimes.
+        .Eventstream.describe : Show general eventstream statistics.
 
         Notes
         -----

@@ -26,7 +26,7 @@ class DeleteUsersByPathLengthParams(ParamsModel):
 
 class DeleteUsersByPathLength(DataProcessor):
     """
-    Filters user paths based on the path length, removing the paths that are shorter than the
+    Filter user paths based on the path length, removing the paths that are shorter than the
     specified number of events or cut_off.
 
     Parameters
@@ -46,6 +46,11 @@ class DeleteUsersByPathLength(DataProcessor):
     ------
     ValueError
         If both of ``events_num`` and ``cutoff`` are empty or both are given.
+
+    See Also
+    --------
+    .TimedeltaHist : Plot the distribution of the time deltas between two events.
+    .UserLifetimeHist : Plot the distribution of user lifetimes.
 
     Notes
     -----

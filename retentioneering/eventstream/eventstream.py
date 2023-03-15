@@ -991,7 +991,7 @@ class Eventstream(
 
     def transition_graph(
         self,
-        graph_settings: dict | None = None,
+        graph_settings: dict[str, Any] | None = None,
         edge_norm_type: NormType = None,
         targets: MutableMapping[str, str | None] | None = None,
         nodes_threshold: Threshold | None = None,
@@ -1059,10 +1059,7 @@ class Eventstream(
             custom_weights_list=custom_weights_list,
         )
         self.__transition_graph.plot_graph(
-            nodes_threshold=nodes_threshold,
-            edges_threshold=edges_threshold,
             targets=targets,
-            weights=weights,
             width=width,
             height=height,
             edge_norm_type=edge_norm_type,

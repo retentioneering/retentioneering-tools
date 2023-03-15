@@ -1800,8 +1800,8 @@ For more details on how this histogram helps to define the ``cutoff`` parameter 
 Event intensity
 ^^^^^^^^^^^^^^^
 
-Another nice way to review an eventstream is to look how uniformly the events are
-distributed over time. The histogram for this distribution is plotted by
+There is another useful diagram that can be used for eventstream overview.
+Sometimes we want to know how the events are distributed over time. The histogram for this distribution is plotted by
 :py:meth:`event_timestamp_hist()<retentioneering.eventstream.eventstream.Eventstream.event_timestamp_hist>`
 method.
 
@@ -1813,27 +1813,22 @@ method.
     :width: 400
 
 We can notice the heavy skew in the data towards the period between April and May of 2020.
-Let us check whether it is specific to the ``cart``, ``product1``, and ``product2`` events.
-There is an argument ``event_list`` for this.
+One of the possible interpretations of this fact is that the product worked in beta version until April 2020,
+and afterwards a stable were released so that new users started to arrive much more intense.
+``event_timestamp_hist`` has ``event_list`` argument, so we can check this hypothesis
+by choosing ``path_start`` in the event list .
 
 .. code-block:: python
 
-    stream.event_timestamp_hist(event_list=['cart', 'product1', 'product2'])
+    stream\
+        .add_start_end()\
+        .event_timestamp_hist(event_list=['path_start'])
 
 .. figure:: /_static/user_guides/eventstream/14_event_timestamp_hist_event_list.png
     :width: 400
 
-Nothing changed, meaning that the skew is probably related to user path sampling or the general
-popularity of the shop over time.
+From this histogram we see that our hypothesis is true. New users started to arrive much more intense in April 2020.
 
-We could also get rid of the period between April and May, if we think it differs too much
-from the general time frame:
-
-.. code-block:: python
-
-    stream.event_timestamp_hist(upper_cutoff_quantile=0.43)
-
-.. figure:: /_static/user_guides/eventstream/15_event_timestamp_hist_quantile.png
-    :width: 400
-
-This method also has parameters ``raw_events_only``, ``lower_cutoff_quantile``, ``bins`` and ``figsize``.
+Similar to :py:meth:`timedelta_hist()<retentioneering.eventstream.eventstream.Eventstream.timedelta_hist>`,
+``event_timestamp_hist`` also has parameters ``raw_events_only``, ``upper_cutoff_quantile``,
+``lower_cutoff_quantile``, ``bins`` and ``figsize`` that work with the same logic.

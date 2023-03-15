@@ -11,15 +11,17 @@ class NewUsersHelperMixin:
         A method of ``Eventstream`` class that creates one
         of the synthetic events in each user's path: ``new_user`` or ``existing_user`` .
 
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.NewUsersEvents`
+
         Returns
         -------
         Eventstream
              Input ``eventstream`` with new synthetic events.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:class:`.NewUsersEvents`
+
         """
         # avoid circular import
         from retentioneering.data_processors_lib import NewUsersEvents, NewUsersParams

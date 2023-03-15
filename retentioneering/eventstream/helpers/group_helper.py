@@ -20,15 +20,17 @@ class GroupHelperMixin:
         A method of ``Eventstream`` class that filters and replaces raw events with new synthetic events,
         having the same ``timestamp`` and ``user_id``, but new ``event_name``.
 
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.GroupEvents`
+
         Returns
         -------
         Eventstream
              Input ``eventstream`` with replaced events.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:class:`.GroupEvents`
+
 
         """
 

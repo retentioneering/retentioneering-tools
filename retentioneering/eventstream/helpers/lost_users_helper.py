@@ -15,15 +15,17 @@ class LostUsersHelperMixin:
         A method of ``Eventstream`` class that creates one
         of the synthetic events in each user's path: ``lost_user`` or ``absent_user`` .
 
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.LostUsersEvents`
+
         Returns
         -------
         Eventstream
              Input ``eventstream`` with new synthetic events.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:class:`.LostUsersEvents`
+
 
         """
 

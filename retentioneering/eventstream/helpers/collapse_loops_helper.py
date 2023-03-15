@@ -18,15 +18,17 @@ class CollapseLoopsHelperMixin:
         A ``loop`` - is a sequence of repetitive events.
         For example *"event1 -> event1"*
 
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.CollapseLoops`
+
         Returns
         -------
         Eventstream
              Input ``eventstream`` with ``loops`` replaced by new synthetic events.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:class:`.CollapseLoops`
+
         """
 
         # avoid circular import

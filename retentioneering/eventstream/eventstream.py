@@ -32,10 +32,10 @@ from retentioneering.tooling.timedelta_hist import (
     EVENTSTREAM_GLOBAL_EVENTS,
     TimedeltaHist,
 )
+from retentioneering.tooling.transition_graph import TransitionGraph
 from retentioneering.tooling.transition_matrix import TransitionMatrix
 from retentioneering.tooling.typing.transition_graph import NormType, Threshold
 from retentioneering.tooling.user_lifetime_hist import UserLifetimeHist
-from retentioneering.transition_graph import TransitionGraph
 from retentioneering.utils import get_merged_col
 from retentioneering.utils.list import find_index
 

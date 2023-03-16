@@ -79,15 +79,16 @@ class Clusters:
         Parameters
         ----------
         method : {"kmeans", "gmm"}
-            - ``kmeans`` stands for the classic K-means algorithm. See details in :sklearn_kmeans:`sklearn documentation<>`
-            - ``gmm`` stands for Gaussian mixture model. See details in :sklearn_gmm:`sklearn documentation<>`
+            - ``kmeans`` stands for the classic K-means algorithm.
+              See details in :sklearn_kmeans:`sklearn documentation<>`.
+            - ``gmm`` stands for Gaussian mixture model. See details in :sklearn_gmm:`sklearn documentation<>`.
 
         n_clusters : int
             The expected number of clusters to be passed to a clustering algorithm.
         feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}, default None
-            See :py:func:`extract_features`
+            See :py:func:`extract_features`.
         ngram_range : Tuple(int, int), optional
-            See :py:func:`extract_features`
+            See :py:func:`extract_features`.
         vector : pd.DataFrame, optional
             ``pd.DataFrame`` representing a custom vectorization of the user paths. The index corresponds to user_ids,
             the columns are vectorized values of the path.
@@ -127,7 +128,7 @@ class Clusters:
         """
         Plots a bar plot illustrating the distribution of ``top_n`` events in cluster ``cluster_id1``
         compared with the entire dataset or the cluster ``cluster_id2`` if specified.
-        Should be used after .fit() method.
+        Should be used after :py:func:`fit` or :py:func:`set_clusters`.
 
 
         Parameters
@@ -148,6 +149,8 @@ class Clusters:
             List of event names always to include for comparison, regardless
             of the parameter top_n value. Target events will appear in the same
             order as specified.
+
+
 
         Returns
         -------
@@ -224,7 +227,7 @@ class Clusters:
     def plot(self, targets: list[str] | list[list[str]] | None = None) -> go.Figure:
         """
         Plot a bar plot illustrating the cluster sizes and the conversion rates of
-        the ``target`` events within the clusters. Should be used after fit() method.
+        the ``target`` events within the clusters. Should be used after :py:func:`fit` or :py:func:`set_clusters`.
 
         Parameters
         ----------
@@ -305,7 +308,7 @@ class Clusters:
 
     def set_clusters(self, user_clusters: pd.Series) -> Clusters:
         """
-        Sets custom user-cluster mapping.
+        Set custom user-cluster mapping.
 
         Parameters
         ----------
@@ -330,7 +333,7 @@ class Clusters:
     def filter_cluster(self, cluster_id: int | str) -> EventstreamType:
         """
         Truncate the eventstream, leaving the trajectories of the users who belong to the selected cluster.
-        Should be used after fit() method.
+        Should be used after :py:func:`fit` or :py:func:`set_clusters`.
 
         Parameters
         ----------
@@ -376,15 +379,16 @@ class Clusters:
 
             - ``tfidf`` see details in :sklearn_tfidf:`sklearn documentation<>`
             - ``count`` see details in :sklearn_countvec:`sklearn documentation<>`
-            - | ``frequency`` is similar to count, but normalized to the total number of the
-              | events in the user's trajectory.
+            - ``frequency`` is similar to count, but normalized to the total number of the events
+              in the user's trajectory.
             - ``binary`` 1 if a user had the given n-gram at least once and 0 otherwise.
-            - | ``markov`` available for bigrams only. For a given bigram ``(A, B)`` the vectorized values
-              | are the user's transition probabilities from ``A`` to ``B``.
-            - | ``time`` associated with unigrams only. The total number of the seconds spent
-              | from the beginning of a user's path until the given event.
-            - | ``time_fraction`` the same as ``time`` but divided by the total length of the user's trajectory
-              | (in seconds).
+            - ``markov`` available for bigrams only. For a given bigram ``(A, B)`` the vectorized values
+              are the user's transition probabilities from ``A`` to ``B``.
+            - ``time`` associated with unigrams only. The total number of the seconds spent
+              from the beginning of a user's path until the given event.
+            - ``time_fraction`` the same as ``time`` but divided by the total length of the user's trajectory
+              (in seconds).
+
         ngram_range : Tuple(int, int)
             The lower and upper boundary of the range of n-values for different word n-grams to be
             extracted. For example, ngram_range=(1, 1) means only single events, (1, 2) means single events
@@ -438,7 +442,7 @@ class Clusters:
     ) -> go.Figure:
         """
         Show the clusters' projection on a plane, applying dimension reduction techniques.
-        Should be used after ``fit()`` method.
+        Should be used after :py:func:`fit` or :py:func:`set_clusters`.
 
         Parameters
         ----------
@@ -448,8 +452,8 @@ class Clusters:
             Type of color-coding used for projection visualization:
 
             - ``clusters`` colors trajectories with different colors depending on cluster number.
-            - | ``targets`` colors trajectories based on reach to any event provided in 'targets' parameter.
-              | Must provide ``targets`` parameter in this case.
+            - ``targets`` colors trajectories based on reach to any event provided in 'targets' parameter.
+              Must provide ``targets`` parameter in this case.
 
         targets : list or tuple of str, optional
             Vector of event_names as str. If user reaches any of the specified events, the dot corresponding

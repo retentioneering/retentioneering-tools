@@ -400,7 +400,8 @@ class TransitionGraph:
         if self.edges_norm_type in ["full", "node"]:
             # @TODO: make this magical number as constant or variable from config dict. Vladimir Makhanov
             return round(value, 5)
-        return value
+        else:
+            return value
 
     def _prepare_nodes(
         self, nodelist: pd.DataFrame, node_params: NodeParams | None = None, pos: Position | None = None
@@ -464,19 +465,19 @@ class TransitionGraph:
         edgelist["weight_norm"] = edgelist[weight_col] / edgelist[weight_col].abs().max()
         for _, row in edgelist.iterrows():
             default_col_weight: Weight = {
-                "weight_norm": row.weight_norm,
-                "weight": cast(float, row[weight_col]),  # type: ignore
+                "weight_norm": self.__round_value(row.weight_norm),
+                "weight": self.__round_value(cast(float, row[weight_col])),  # type: ignore
             }
             weights = {
                 default_col: default_col_weight,
             }
             for custom_weight_col in custom_cols:
-                weight = cast(float, row[custom_weight_col])
+                weight = self.__round_value(cast(float, row[custom_weight_col]))
                 max_weight = cast(float, edgelist[custom_weight_col].abs().max())
-                weight_norm = weight / max_weight
+                weight_norm = self.__round_value(weight / max_weight)
                 col_weight: Weight = {
                     "weight_norm": weight_norm,
-                    "weight": cast(float, row[custom_weight_col]),
+                    "weight": weight,
                 }
                 weights[custom_weight_col] = col_weight
 

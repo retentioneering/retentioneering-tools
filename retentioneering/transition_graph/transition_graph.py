@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import random
 import string
@@ -39,7 +40,7 @@ class TransitionGraph:
     eventstream: EventstreamType
         Sourcing eventstream.
 
-    edge_norm_type: {"full", "node", None}, default None
+    edges_norm_type: {"full", "node", None}, default None
         Type of normalization that is used to calculate weights for graph nodes and edges. See
         :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
@@ -82,7 +83,7 @@ class TransitionGraph:
     """
 
     _weights: MutableMapping[str, str] | None = None
-    _edge_norm_type: NormType = None
+    _edges_norm_type: NormType = None
     _nodes_threshold: Threshold
     _edges_threshold: Threshold
 
@@ -105,17 +106,17 @@ class TransitionGraph:
             self._edges_threshold = value
 
     def _check_thresholds_for_norm_type(self, value: Threshold) -> bool:
-        if self.edge_norm_type == "full":
+        if self.edges_norm_type == "full":
             if not all(map(lambda x: isinstance(x, int), value.values())):
-                raise ValueError(f"For normalization type {self.edge_norm_type} all thresholds must be int")
+                raise ValueError(f"For normalization type {self.edges_norm_type} all thresholds must be int")
             if not all(map(lambda x: x >= 0, value.values())):
-                raise ValueError(f"For normalization type {self.edge_norm_type} all thresholds must be positive")
+                raise ValueError(f"For normalization type {self.edges_norm_type} all thresholds must be positive")
         else:
             if not all(map(lambda x: type(x) in (float, None), value.values())):
-                raise ValueError(f"For normalization type {self.edge_norm_type} all thresholds must be float or None")
+                raise ValueError(f"For normalization type {self.edges_norm_type} all thresholds must be float or None")
             if not all(map(lambda x: x is None or 0 <= x <= 1, value.values())):
                 raise ValueError(
-                    f"For normalization type {self.edge_norm_type} all thresholds must be between 0 and 1 or None"
+                    f"For normalization type {self.edges_norm_type} all thresholds must be between 0 and 1 or None"
                 )
         return True
 
@@ -123,7 +124,7 @@ class TransitionGraph:
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
         graph_settings: GraphSettings | dict[str, Any] | None = None,
-        edge_norm_type: NormType = None,
+        edges_norm_type: NormType = None,
         targets: MutableMapping[str, str | None] | None = None,
         nodes_threshold: Threshold | None = None,
         edges_threshold: Threshold | None = None,
@@ -136,11 +137,11 @@ class TransitionGraph:
         if graph_settings is None:
             graph_settings = {}  # type: ignore
         if nodes_threshold is None:
-            nodes_threshold = {"user_id": 0, "event_id": 0}
+            nodes_threshold = {"user_id": 0.0, "event_id": 0.0}
         self.nodes_thresholds = nodes_threshold
 
         if edges_threshold is None:
-            edges_threshold = {"user_id": 0, "event_id": 0}
+            edges_threshold = {"user_id": 0.0, "event_id": 0.0}
         self.edges_thresholds = edges_threshold
 
         self.nodelist_default_col = eventstream.schema.event_id
@@ -163,12 +164,10 @@ class TransitionGraph:
         self.user_col = self.eventstream.schema.user_id
         self.id_col = self.eventstream.schema.event_id
         self.custom_cols = [
-            self.eventstream.schema.user_id,
             self.eventstream.schema.event_id,
+            self.eventstream.schema.user_id,
             *self.eventstream.schema.custom_cols,
         ]
-        if "session_id" in self.eventstream.schema.custom_cols:
-            self.custom_cols.append("session_id")
         if isinstance(custom_weights_list, list):
             self.custom_cols.extend(custom_weights_list)
 
@@ -180,7 +179,7 @@ class TransitionGraph:
         self.layout: pd.DataFrame | None = None
         self.graph_settings = graph_settings
 
-        self.edge_norm_type: NormType | None = edge_norm_type
+        self.edges_norm_type: NormType | None = edges_norm_type
 
         self.nodelist: Nodelist = Nodelist(
             nodelist_default_col=self.nodelist_default_col,
@@ -190,10 +189,10 @@ class TransitionGraph:
         )
 
         self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
-        self.rename_cols = {self.eventstream.schema.event_id: self.edges_weight_col}
         self.edgelist: Edgelist = Edgelist(eventstream=self.eventstream)
         self.edgelist.calculate_edgelist(
-            weight_cols=self.custom_cols, norm_type=self.edge_norm_type, rename_cols=self.rename_cols
+            weight_cols=self.custom_cols,
+            norm_type=self.edges_norm_type,
         )
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
@@ -215,16 +214,16 @@ class TransitionGraph:
         self._weights = value
 
     @property
-    def edge_norm_type(self) -> NormType:  # type: ignore
-        return self._edge_norm_type
+    def edges_norm_type(self) -> NormType:  # type: ignore
+        return self._edges_norm_type
 
-    @edge_norm_type.setter
-    def edge_norm_type(self, edge_norm_type: NormType) -> None:  # type: ignore
-        allowed_edge_norm_types: list[str | None] = [None, "full", "node"]
-        if edge_norm_type in allowed_edge_norm_types:
-            self._edge_norm_type = edge_norm_type
+    @edges_norm_type.setter
+    def edges_norm_type(self, edges_norm_type: NormType) -> None:  # type: ignore
+        allowed_edges_norm_types: list[str | None] = [None, "full", "node"]
+        if edges_norm_type in allowed_edges_norm_types:
+            self._edges_norm_type = edges_norm_type
         else:
-            raise ValueError("Norm type should be one of: %s" % allowed_edge_norm_types)
+            raise ValueError("Norm type should be one of: %s" % allowed_edges_norm_types)
 
     def _on_recalc_request(
         self, rename_rules: list[RenameRule]
@@ -257,7 +256,7 @@ class TransitionGraph:
         recalculated_nodelist = self.nodelist.calculate_nodelist(data=renamed_df)
         self.edgelist.eventstream = renamed_eventstream
         recalculated_edgelist = self.edgelist.calculate_edgelist(
-            weight_cols=self.custom_cols, norm_type=self.edge_norm_type, rename_cols=self.rename_cols
+            weight_cols=self.custom_cols, norm_type=self.edges_norm_type
         )
 
         curr_nodelist = self.nodelist.nodelist_df
@@ -399,7 +398,7 @@ class TransitionGraph:
         return list([default_col]) + list(custom_cols)
 
     def __round_value(self, value: float) -> float:
-        if self.edge_norm_type in ["full", "node"]:
+        if self.edges_norm_type in ["full", "node"]:
             # @TODO: make this magical number as constant or variable from config dict. Vladimir Makhanov
             return round(value, 5)
         return value
@@ -503,7 +502,7 @@ class TransitionGraph:
 
     def _make_template_data(
         self, node_params: NodeParams, width: int, height: int
-    ) -> tuple[MutableSequence, MutableSequence]:
+    ) -> tuple[MutableSequence, MutableSequence[PreparedLink]]:
         edgelist = self.edgelist.edgelist_df.copy()
         nodelist = self.nodelist.nodelist_df.copy()
 
@@ -538,6 +537,17 @@ class TransitionGraph:
 
     def _to_json(self, data: Any) -> str:
         return json.dumps(data).encode("latin1").decode("utf-8")
+
+    def _to_json_links(self, data: MutableSequence[PreparedLink]) -> str:
+        # We need to remove links with zero weight
+        cleaned_data = []
+        for link in data:
+            cleaned_link = copy.deepcopy(link)
+            cleaned_link["weights"] = {
+                weight_col: weight for weight_col, weight in link["weights"].items() if weight["weight"] > 0
+            }
+            cleaned_data.append(cleaned_link)
+        return self._to_json(cleaned_data)
 
     def _apply_settings(
         self,
@@ -585,13 +595,13 @@ class TransitionGraph:
     def generateId(size: int = 6, chars: str = string.ascii_uppercase + string.digits) -> str:
         return "el" + "".join(random.choice(chars) for _ in range(size))
 
-    def _edge_norm_type_to_json_value(self, edge_norm_type: NormType) -> str:
-        return "none" if edge_norm_type is None else str(edge_norm_type).lower()
+    def _edges_norm_type_to_json_value(self, edges_norm_type: NormType) -> str:
+        return "none" if edges_norm_type is None else str(edges_norm_type).lower()
 
     def plot_graph(
         self,
         targets: MutableMapping[str, str | None] | None = None,
-        edge_norm_type: NormType | None = None,
+        edges_norm_type: NormType | None = None,
         width: int = 960,
         height: int = 900,
         weight_template: str | None = None,
@@ -607,7 +617,7 @@ class TransitionGraph:
 
         Parameters
         ----------
-        edge_norm_type: {"full", "node", None}, default None
+        edges_norm_type: {"full", "node", None}, default None
             Type of normalization that is used to calculate weights for graph nodes and edges. See
             :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
@@ -659,7 +669,7 @@ class TransitionGraph:
         """
         if targets:
             self.targets = targets
-        self.edge_norm_type = edge_norm_type
+        self.edges_norm_type = edges_norm_type
 
         settings = self._apply_settings(
             show_weights=show_weights,
@@ -669,10 +679,14 @@ class TransitionGraph:
             show_nodes_without_links=show_nodes_without_links,
         )
 
-        norm_nodes_threshold = self._get_norm_node_threshold(self.nodes_thresholds)
-        norm_links_threshold = self._get_norm_link_threshold(self.edges_thresholds)
+        norm_nodes_threshold = (
+            self.nodes_thresholds if self.nodes_thresholds else self._get_norm_node_threshold(self.nodes_thresholds)
+        )
+        norm_links_threshold = (
+            self.edges_thresholds if self.edges_thresholds else self._get_norm_link_threshold(self.edges_thresholds)
+        )
 
-        self.edgelist.calculate_edgelist(weight_cols=self.custom_cols, norm_type=self.edge_norm_type)
+        self.edgelist.calculate_edgelist(weight_cols=self.custom_cols, norm_type=self.edges_norm_type)
         node_params = self._make_node_params(targets)
         cols = self.__get_nodelist_cols()
 
@@ -691,8 +705,8 @@ class TransitionGraph:
             **dict(
                 server_id=self.server.pk,
                 env=self.env,
-                edge_norm_type=self._edge_norm_type_to_json_value(self.edge_norm_type),
-                links=self._to_json(links),
+                norm_type=self._edges_norm_type_to_json_value(self.edges_norm_type),
+                links=self._to_json_links(links),
                 nodes=self._to_json(nodes),
                 node_params=self._to_json(node_params),
                 layout_dump=1 if layout_dump is not None or self.layout is not None else 0,
@@ -724,7 +738,7 @@ class TransitionGraph:
             **dict(
                 server_id=self.server.pk,
                 env=self.env,
-                edge_norm_type=self._edge_norm_type_to_json_value(self.edge_norm_type),
+                norm_type=self._edges_norm_type_to_json_value(self.edges_norm_type),
                 node_params=self._to_json(node_params),
                 links="<%= links %>",
                 nodes="<%= nodes %>",

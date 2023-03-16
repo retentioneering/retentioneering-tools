@@ -998,7 +998,7 @@ class Eventstream(
         edges_threshold: Threshold | None = None,
         nodes_weight_col: str | None = None,
         edges_weight_col: str | None = None,
-        custom_weights_list: list[str] | None = None,
+        custom_weight_cols: list[str] | None = None,
         layout_dump: str | None = None,
         width: int = 960,
         height: int = 900,
@@ -1056,7 +1056,7 @@ class Eventstream(
             edges_threshold=edges_threshold,
             nodes_weight_col=nodes_weight_col,
             edges_weight_col=edges_weight_col,
-            custom_weights_list=custom_weights_list,
+            custom_weight_cols=custom_weight_cols,
         )
         self.__transition_graph.plot_graph(
             targets=targets,

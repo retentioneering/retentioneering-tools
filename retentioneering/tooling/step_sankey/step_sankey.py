@@ -26,7 +26,7 @@ class StepSankey(EndedEventsMixin):
         with respect to ``thresh`` type:
 
         - If ``int`` - the frequency is the number of unique users who had given event at given step.
-        - | If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
+        - If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
 
         The events which are prohibited for collapsing could be enlisted in ``target`` parameter.
     sorting : list of str, optional

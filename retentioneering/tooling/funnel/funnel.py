@@ -27,10 +27,10 @@ class Funnel:
     funnel_type: 'open', 'closed' or 'hybrid', default 'closed'
         - if ``open`` - all users will be counted on each stage;
         - if ``closed`` - each stage will include only users, that were present on all previous stages;
-        - | if ``hybrid`` - combination of 2 previous types. The first stage is required
-          | to go further. And for the second and subsequent stages it is important to have
-          | all previous stages in their path, but the order of these events is not taken
-          | into account.
+        - if ``hybrid`` - combination of 2 previous types. The first stage is required
+          to go further. And for the second and subsequent stages it is important to have
+          all previous stages in their path, but the order of these events is not taken
+          into account.
 
     segments: Collection[Collection[int]], optional
         List of user_ids collections. Funnel for each user_id collection will be plotted.

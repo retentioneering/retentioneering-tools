@@ -21,9 +21,14 @@ def func(param1, param2):
         - point 1
         - point 2
 
-        Multiline bullet list:
+        Multiline bullet list (если нужен перенос строки):
         - | poin 1 текст
           | текст на 2 строке
+
+        Multiline bullet list (если не текст слишком длинный для py-файла):
+        - poin 1 текст
+          текст на 2 строке
+
 
     param2 : type, default <default_value>
 
@@ -150,7 +155,7 @@ make clean
 ```
 import plotly.express as px
 
-fig = funnel.draw_plot()
+fig = funnel.plot()
 fig.write_html("funnel_0.html")
 ```
 

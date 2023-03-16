@@ -1014,29 +1014,29 @@ class Eventstream(
         pd.DataFrame
             **Eventstream statistics**:
 
-            - | The following metrics are calculated for each event present in the eventstream
-              | (or the narrowed eventstream if parameters ``event_list`` or ``raw_events_only`` are used).
-              | Let all_events, all_users, all_sessions be the numbers of all events, users,
-              | and sessions present in the eventstream. Then:
+            - The following metrics are calculated for each event present in the eventstream
+              (or the narrowed eventstream if parameters ``event_list`` or ``raw_events_only`` are used).
+              Let all_events, all_users, all_sessions be the numbers of all events, users,
+              and sessions present in the eventstream. Then:
 
                 - *number_of_occurrences* - the number of occurrences of a particular event in the eventstream;
                 - *unique_users* - the number of unique users who experienced a particular event;
                 - *unique_sessions* - the number of unique sessions with each event;
-                - | *number_of_occurrences_shared* - number_of_occurrences / all_events (raw_events_only,
-                  | if this parameter = ``True``);
+                - *number_of_occurrences_shared* - number_of_occurrences / all_events (raw_events_only,
+                  if this parameter = ``True``);
                 - *unique_users_shared* - unique_users / all_users;
                 - *unique_sessions_shared* - unique_sessions / all_sessions;
 
-            - | **time_to_FO_user_wise** category - timedelta between ``path_start``
-              | and the first occurrence (FO) of a specified event in each user path.
-            - | **steps_to_FO_user_wise** category - the number of steps (events) from
-              | ``path_start`` to the first occurrence (FO) of a specified event in each user path.
-              | If ``raw_events_only=True`` only raw events will be counted.
-            - | **time_to_FO_session_wise** category - timedelta  between ``session_start``
-              | and the first occurrence (FO) of a specified event in each session.
-            - | **steps_to_FO_session_wise** category - the number of steps (events) from
-              | ``session_start`` to the first occurrence (FO) of a specified event in each session.
-              | If ``raw_events_only=True`` only raw events will be counted.
+            - **time_to_FO_user_wise** category - timedelta between ``path_start``
+              and the first occurrence (FO) of a specified event in each user path.
+            - **steps_to_FO_user_wise** category - the number of steps (events) from
+              ``path_start`` to the first occurrence (FO) of a specified event in each user path.
+              If ``raw_events_only=True`` only raw events will be counted.
+            - **time_to_FO_session_wise** category - timedelta  between ``session_start``
+              and the first occurrence (FO) of a specified event in each session.
+            - **steps_to_FO_session_wise** category - the number of steps (events) from
+              ``session_start`` to the first occurrence (FO) of a specified event in each session.
+              If ``raw_events_only=True`` only raw events will be counted.
 
             Agg functions for each ``first_occurrence*`` category are: mean, std, median, min, max.
 

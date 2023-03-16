@@ -58,10 +58,10 @@ class StepMatrix(EndedEventsMixin):
         - If ``both``, show step values and accumulated values.
         - If ``only``, show targets only as accumulated.
     sorting : list of str, optional
-        - | If list of event names specified - lines in the heatmap will be shown in
-          | the passed order.
-        - | If ``None`` - rows will be ordered according to i`th value (first row,
-          | where 1st element is max; second row, where second element is max; etc)
+        - If list of event names specified - lines in the heatmap will be shown in
+          the passed order.
+        - If ``None`` - rows will be ordered according to i`th value (first row,
+          where 1st element is max; second row, where second element is max; etc)
     thresh : float, default=0
         Used to remove rare events. Aggregates all rows where all values are
         less than the specified threshold.

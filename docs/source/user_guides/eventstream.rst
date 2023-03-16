@@ -70,66 +70,68 @@ However, the method is not just a converter. Using it, we can display the intern
 
 .. raw:: html
 
+    <div>
     <table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>
-          <th>event_id</th>
-          <th>event_type</th>
-          <th>event_index</th>
           <th>event</th>
           <th>timestamp</th>
           <th>user_id</th>
+          <th>event_type</th>
+          <th>event_index</th>
+          <th>event_id</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <th>0</th>
-          <td>14a6f776-ff43-43aa-859e-db67402f7c93</td>
-          <td>raw</td>
-          <td>0</td>
           <td>A</td>
           <td>2023-01-01 00:00:00</td>
           <td>user_1</td>
+          <td>raw</td>
+          <td>0</td>
+          <td>52c63aed-b1ff-4fea-806d-8484a8978443</td>
         </tr>
         <tr>
           <th>1</th>
-          <td>c0ba82a9-b7fd-4096-b89d-209c04fc9688</td>
-          <td>raw</td>
-          <td>1</td>
           <td>B</td>
           <td>2023-01-01 00:00:01</td>
           <td>user_1</td>
+          <td>raw</td>
+          <td>1</td>
+          <td>e9537f88-f776-4047-ae16-66f8b64c4076</td>
         </tr>
         <tr>
           <th>2</th>
-          <td>72ead540-e997-4168-8ce5-c4cc181a72cb</td>
-          <td>raw</td>
-          <td>2</td>
           <td>B</td>
           <td>2023-01-01 00:00:02</td>
           <td>user_2</td>
+          <td>raw</td>
+          <td>2</td>
+          <td>bb6f1cd3-a630-4d48-94c2-8a3cf5a3d22f</td>
         </tr>
         <tr>
           <th>3</th>
-          <td>e7ddad2b-04c1-4360-ac23-f51494bfa3f0</td>
-          <td>raw</td>
-          <td>3</td>
           <td>A</td>
           <td>2023-01-01 00:00:03</td>
           <td>user_2</td>
+          <td>raw</td>
+          <td>3</td>
+          <td>3680e70b-166d-475d-8ac1-166ea213f5f4</td>
         </tr>
         <tr>
           <th>4</th>
-          <td>5ac8b0dc-ac94-4c68-b0b3-73933a86b65f</td>
-          <td>raw</td>
-          <td>4</td>
           <td>A</td>
           <td>2023-01-01 00:00:04</td>
           <td>user_2</td>
+          <td>raw</td>
+          <td>4</td>
+          <td>c22d97a7-63a1-4d57-b738-16863107dfb7</td>
         </tr>
       </tbody>
     </table>
+    </div>
     <br>
 
 We will describe the columns of the resulting DataFrame later in `Displaying eventstream`_ section.
@@ -174,45 +176,46 @@ containing the same data but with different column names
 
 .. raw:: html
 
+    <div>
     <table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>
-          <th>event_id</th>
-          <th>event_type</th>
-          <th>event_index</th>
           <th>event</th>
           <th>timestamp</th>
           <th>user_id</th>
+          <th>event_type</th>
+          <th>event_index</th>
+          <th>event_id</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <th>0</th>
-          <td>9cabc05f-0cd3-45be-90ff-dec6568c9244</td>
-          <td>raw</td>
-          <td>0</td>
           <td>A</td>
           <td>2023-01-01 00:00:00</td>
           <td>user_1</td>
+          <td>raw</td>
+          <td>0</td>
+          <td>0fd741dd-8140-4182-8046-cf23906208c6</td>
         </tr>
         <tr>
           <th>1</th>
-          <td>1c29f48f-5b3d-4e22-8092-221ee3ef5fdd</td>
-          <td>raw</td>
-          <td>1</td>
           <td>B</td>
           <td>2023-01-01 00:00:01</td>
           <td>user_1</td>
+          <td>raw</td>
+          <td>1</td>
+          <td>3a4db2d7-a4b8-4845-ab21-0950f6a2bfc0</td>
         </tr>
         <tr>
           <th>2</th>
-          <td>409eb00b-a045-41af-a0ce-460420dd9b19</td>
-          <td>raw</td>
-          <td>2</td>
           <td>B</td>
           <td>2023-01-01 00:00:02</td>
           <td>user_2</td>
+          <td>raw</td>
+          <td>2</td>
+          <td>fd4552d9-db28-47cc-b7a1-4408a895cff9</td>
         </tr>
       </tbody>
     </table>
@@ -265,52 +268,50 @@ following way to handle ``session_id`` support:
 
 .. raw:: html
 
+    <div>
     <table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>
-          <th>event_id</th>
-          <th>event_type</th>
-          <th>event_index</th>
           <th>event</th>
           <th>timestamp</th>
           <th>user_id</th>
-          <th>session_id</th>
+          <th>event_type</th>
+          <th>event_index</th>
+          <th>event_id</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <th>0</th>
-          <td>29c71731-c3bf-40c9-8e7a-2db639f5e9d4</td>
-          <td>raw</td>
-          <td>0</td>
           <td>A</td>
           <td>2023-01-01 00:00:00</td>
           <td>user_1</td>
-          <td>session_1</td>
+          <td>raw</td>
+          <td>0</td>
+          <td>7427d9f5-8666-4821-b0a9-f74a962f6d72</td>
         </tr>
         <tr>
           <th>1</th>
-          <td>e33ac788-0e7d-4d82-aa08-bbb0e6240066</td>
-          <td>raw</td>
-          <td>1</td>
           <td>B</td>
           <td>2023-01-01 00:00:01</td>
           <td>user_1</td>
-          <td>session_1</td>
+          <td>raw</td>
+          <td>1</td>
+          <td>6c9fef69-a176-45d1-bb13-628796e68602</td>
         </tr>
         <tr>
           <th>2</th>
-          <td>7074691a-fc66-4647-8cfb-a392320a49b3</td>
-          <td>raw</td>
-          <td>2</td>
           <td>B</td>
           <td>2023-01-01 00:00:02</td>
           <td>user_2</td>
-          <td>session_2</td>
+          <td>raw</td>
+          <td>2</td>
+          <td>7aee8104-b1cc-4df4-8a8d-f569395ffad9</td>
         </tr>
       </tbody>
     </table>
+    </div>
     <br>
 
 Here we see that the original ``session`` column is stored in ``session_id`` column,
@@ -358,48 +359,50 @@ used :ref:`above<eventstream_stream1>`. Let us set the names of the core triple 
 
 .. raw:: html
 
+    <div>
     <table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>
-          <th>event_id</th>
-          <th>event_type</th>
-          <th>event_index</th>
           <th>action</th>
           <th>datetime</th>
           <th>client_id</th>
+          <th>event_type</th>
+          <th>event_index</th>
+          <th>event_id</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <th>0</th>
-          <td>81f40b85-dbce-48ea-9a60-46d1303d8835</td>
-          <td>raw</td>
-          <td>0</td>
           <td>A</td>
           <td>2023-01-01 00:00:00</td>
           <td>user_1</td>
+          <td>raw</td>
+          <td>0</td>
+          <td>884a38f1-dc62-4567-a10b-5c20a690a173</td>
         </tr>
         <tr>
           <th>1</th>
-          <td>2f515a16-ab77-485f-b885-aef07897cf36</td>
-          <td>raw</td>
-          <td>1</td>
           <td>B</td>
           <td>2023-01-01 00:00:01</td>
           <td>user_1</td>
+          <td>raw</td>
+          <td>1</td>
+          <td>8ed1d3fb-8026-413a-a426-9f8858cd9d73</td>
         </tr>
         <tr>
           <th>2</th>
-          <td>301bc012-70f9-4ab7-b8c5-dd4c983b50d6</td>
-          <td>raw</td>
-          <td>2</td>
           <td>B</td>
           <td>2023-01-01 00:00:02</td>
           <td>user_2</td>
+          <td>raw</td>
+          <td>2</td>
+          <td>965de90a-6a68-42a5-8d8a-8e23534bfd72</td>
         </tr>
       </tbody>
     </table>
+    </div>
     <br>
 
 As we can see, the names of the main columns have changed.
@@ -517,96 +520,93 @@ method using the example of ``stream3`` eventstream.
 
 .. raw:: html
 
+    <div style="overflow:auto;">
     <table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>
-          <th>event_id</th>
-          <th>event_type</th>
-          <th>event_index</th>
           <th>event</th>
           <th>timestamp</th>
           <th>user_id</th>
           <th>session_id</th>
+          <th>event_type</th>
+          <th>event_index</th>
+          <th>event_id</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <th>0</th>
-          <td>af1efd95-e280-4988-bbb1-30569be06665</td>
-          <td>raw</td>
-          <td>0</td>
           <td>A</td>
           <td>2023-01-01 00:00:00</td>
           <td>user_1</td>
           <td>session_1</td>
+          <td>raw</td>
+          <td>0</td>
+          <td>7427d9f5-8666-4821-b0a9-f74a962f6d72</td>
         </tr>
         <tr>
           <th>1</th>
-          <td>06662e65-7bb4-407d-88f0-93a0d7b6dcd2</td>
-          <td>raw</td>
-          <td>1</td>
           <td>B</td>
           <td>2023-01-01 00:00:01</td>
           <td>user_1</td>
           <td>session_1</td>
+          <td>raw</td>
+          <td>1</td>
+          <td>6c9fef69-a176-45d1-bb13-628796e68602</td>
         </tr>
         <tr>
           <th>2</th>
-          <td>131b0799-46e8-4370-ac51-e1a9113ebaaa</td>
-          <td>raw</td>
-          <td>2</td>
           <td>B</td>
           <td>2023-01-01 00:00:02</td>
           <td>user_2</td>
           <td>session_2</td>
+          <td>raw</td>
+          <td>2</td>
+          <td>7aee8104-b1cc-4df4-8a8d-f569395ffad9</td>
         </tr>
         <tr>
           <th>3</th>
-          <td>a85fc194-757d-4573-be53-e7fc53553fcf</td>
-          <td>raw</td>
-          <td>3</td>
           <td>A</td>
           <td>2023-01-01 00:00:03</td>
           <td>user_2</td>
           <td>session_3</td>
+          <td>raw</td>
+          <td>3</td>
+          <td>3b3610b2-8016-4259-bf68-6daf34518e34</td>
         </tr>
         <tr>
           <th>4</th>
-          <td>01d1a919-a5e5-4359-99f7-cbd29d421394</td>
-          <td>raw</td>
-          <td>4</td>
           <td>A</td>
           <td>2023-01-01 00:00:04</td>
           <td>user_2</td>
           <td>session_3</td>
+          <td>raw</td>
+          <td>4</td>
+          <td>945e6514-2f41-457c-ba70-2ac35150b41e</td>
         </tr>
       </tbody>
     </table>
+    </div>
     <br>
 
 Besides the standard triple ``user_id``, ``event``, ``timestamp`` and custom column ``session_id``
 we see the columns ``event_id``, ``event_type``, ``event_index``.
 These are some technical columns, containing the following:
 
-- ``event_id`` - a string identifier of an eventstream row.
+.. _event_type_explanation:
 
 - ``event_type`` - all the events that come from the sourcing DataFrame are of ``raw`` event type.
   However, preprocessing methods can add some synthetic events that have various event types.
   See the details in :ref:`data processors user guide<dataprocessors_adding_processors>`.
-
-.. _event_type_explanation:
-
-- ``event_type`` - all the events came from a sourcing dataframe are of ``raw`` event type.
-  "Raw" means that these event are used as a source for an eventstream, like raw data.
-  However, preprocessing methods can add some so called synthetic events which have different event types.
-  See the details in :doc:`Preprocessing user guide</user_guides/dataprocessors>`.
 
 - ``event_index`` - an integer which is associated with the event order. By default, an eventstream
   is sorted by timestamp. As for the synthetic events which are often placed at the beginning or in the
   end of a user's path, special sorting is applied. See explanation of :ref:`reindex <reindex_explanation>`
   for the details and also :ref:`data processors<synthetic_events_order>` user guide.
   Please note that the event index might contain gaps. It is ok due to its design.
+
+- ``event_id`` - a string identifier of an eventstream row.
 
 ..
     TODO: set a link to eventstream concept as soon as it is ready. Vladimir Kukushkin
@@ -615,10 +615,10 @@ These are some technical columns, containing the following:
 There are additional arguments that may be useful.
 
 -  ``show_deleted``. Eventstream is immutable data container. It means that all the events
-    once uploaded to an eventstream are kept. Even if we remove some events, they are just
-    marked as removed. By default, ``show_deleted=False`` so these events are hidden in the
-    output DataFrame. If ``show_deleted=True``, all the events from the original state
-    of the eventstream and all the in-between preprocessing states are displayed.
+   once uploaded to an eventstream are kept. Even if we remove some events, they are just
+   marked as removed. By default, ``show_deleted=False`` so these events are hidden in the
+   output DataFrame. If ``show_deleted=True``, all the events from the original state
+   of the eventstream and all the in-between preprocessing states are displayed.
 
 ..
     TODO: set a link to eventstream concept as soon as it is ready. Vladimir Kukushkin
@@ -687,93 +687,87 @@ data processor, which adds new event with prefix ``positive_target_``.
 
 .. raw:: html
 
-
+    <div>
+    <div style="overflow:auto;">
     <table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>
-          <th>event_id</th>
-          <th>event_type</th>
-          <th>event_index</th>
           <th>event</th>
           <th>timestamp</th>
           <th>user_id</th>
           <th>session_id</th>
+          <th>event_type</th>
+          <th>event_index</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <th>0</th>
-          <td>577a3eaf-a298-4497-827c-17b7b2a85fc6</td>
-          <td>raw</td>
-          <td>0</td>
           <td>A</td>
           <td>2023-01-01 00:00:00</td>
           <td>user_1</td>
           <td>session_1</td>
+          <td>raw</td>
+          <td>0</td>
         </tr>
         <tr>
           <th>1</th>
-          <td>595a6db9-d7cc-4f3d-9351-32727e906dfe</td>
-          <td>raw</td>
-          <td>1</td>
           <td>B</td>
           <td>2023-01-01 00:00:01</td>
           <td>user_1</td>
           <td>session_1</td>
+          <td>raw</td>
+          <td>1</td>
         </tr>
         <tr>
           <th>2</th>
-          <td>dfbcc633-7102-4fdd-a095-5294dbeaf3b9</td>
-          <td>positive_target</td>
-          <td>2</td>
           <td>positive_target_B</td>
           <td>2023-01-01 00:00:01</td>
           <td>user_1</td>
           <td>session_1</td>
+          <td>positive_target</td>
+          <td>2</td>
         </tr>
         <tr>
           <th>3</th>
-          <td>d8e11a60-0e10-4fef-ab87-084f92749970</td>
-          <td>raw</td>
-          <td>3</td>
           <td>B</td>
           <td>2023-01-01 00:00:02</td>
           <td>user_2</td>
           <td>session_2</td>
+          <td>raw</td>
+          <td>3</td>
         </tr>
         <tr>
           <th>4</th>
-          <td>a6af08f4-a0bb-4d96-a008-37235d794a95</td>
-          <td>positive_target</td>
-          <td>4</td>
           <td>positive_target_B</td>
           <td>2023-01-01 00:00:02</td>
           <td>user_2</td>
           <td>session_2</td>
+          <td>positive_target</td>
+          <td>4</td>
         </tr>
         <tr>
           <th>5</th>
-          <td>005d48a5-e578-40df-a3f6-b3d00d7c9ea3</td>
-          <td>raw</td>
-          <td>5</td>
           <td>A</td>
           <td>2023-01-01 00:00:03</td>
           <td>user_2</td>
           <td>session_3</td>
+          <td>raw</td>
+          <td>5</td>
         </tr>
         <tr>
           <th>6</th>
-          <td>81409c4e-99ee-411d-be2f-f11e96cafdd3</td>
-          <td>raw</td>
-          <td>6</td>
           <td>A</td>
           <td>2023-01-01 00:00:04</td>
           <td>user_2</td>
           <td>session_3</td>
+          <td>raw</td>
+          <td>6</td>
         </tr>
       </tbody>
     </table>
+    </div>
     <br>
 
 We see that ``positive_target_B`` events with type ``positive_target``
@@ -812,92 +806,86 @@ follow their ``raw`` parent event ``B``. Assume we would like to change their or
 
 .. raw:: html
 
+    <div>
     <table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>
-          <th>event_id</th>
-          <th>event_type</th>
-          <th>event_index</th>
           <th>event</th>
           <th>timestamp</th>
           <th>user_id</th>
           <th>session_id</th>
+          <th>event_type</th>
+          <th>event_index</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <th>0</th>
-          <td>577a3eaf-a298-4497-827c-17b7b2a85fc6</td>
-          <td>raw</td>
-          <td>0</td>
           <td>A</td>
           <td>2023-01-01 00:00:00</td>
           <td>user_1</td>
           <td>session_1</td>
+          <td>raw</td>
+          <td>0</td>
         </tr>
         <tr>
           <th>1</th>
-          <td>dfbcc633-7102-4fdd-a095-5294dbeaf3b9</td>
-          <td>positive_target</td>
-          <td>1</td>
           <td>positive_target_B</td>
           <td>2023-01-01 00:00:01</td>
           <td>user_1</td>
           <td>session_1</td>
+          <td>positive_target</td>
+          <td>1</td>
         </tr>
         <tr>
           <th>2</th>
-          <td>595a6db9-d7cc-4f3d-9351-32727e906dfe</td>
-          <td>raw</td>
-          <td>2</td>
           <td>B</td>
           <td>2023-01-01 00:00:01</td>
           <td>user_1</td>
           <td>session_1</td>
+          <td>raw</td>
+          <td>2</td>
         </tr>
         <tr>
           <th>3</th>
-          <td>a6af08f4-a0bb-4d96-a008-37235d794a95</td>
-          <td>positive_target</td>
-          <td>3</td>
           <td>positive_target_B</td>
           <td>2023-01-01 00:00:02</td>
           <td>user_2</td>
           <td>session_2</td>
+          <td>positive_target</td>
+          <td>3</td>
         </tr>
         <tr>
           <th>4</th>
-          <td>d8e11a60-0e10-4fef-ab87-084f92749970</td>
-          <td>raw</td>
-          <td>4</td>
           <td>B</td>
           <td>2023-01-01 00:00:02</td>
           <td>user_2</td>
           <td>session_2</td>
+          <td>raw</td>
+          <td>4</td>
         </tr>
         <tr>
           <th>5</th>
-          <td>005d48a5-e578-40df-a3f6-b3d00d7c9ea3</td>
-          <td>raw</td>
-          <td>5</td>
           <td>A</td>
           <td>2023-01-01 00:00:03</td>
           <td>user_2</td>
           <td>session_3</td>
+          <td>raw</td>
+          <td>5</td>
         </tr>
         <tr>
           <th>6</th>
-          <td>81409c4e-99ee-411d-be2f-f11e96cafdd3</td>
-          <td>raw</td>
-          <td>6</td>
           <td>A</td>
           <td>2023-01-01 00:00:04</td>
           <td>user_2</td>
           <td>session_3</td>
+          <td>raw</td>
+          <td>6</td>
         </tr>
       </tbody>
     </table>
+    </div>
     <br>
 
 As we can see, the order of the events changed, and now ``raw`` events ``B``
@@ -929,73 +917,75 @@ For demonstration purposes, we add ``session_id`` column by applying
 
 .. raw:: html
 
-
+    <div>
+    <div style="overflow:auto;">
     <table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>
-          <th>event_id</th>
-          <th>event_type</th>
-          <th>event_index</th>
           <th>event</th>
           <th>timestamp</th>
           <th>user_id</th>
           <th>session_id</th>
+          <th>event_type</th>
+          <th>event_index</th>
+          <th>event_id</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <th>0</th>
-          <td>5a427f99-e452-477f-8f4b-8e0e71133868</td>
-          <td>session_start</td>
-          <td>0</td>
           <td>session_start</td>
           <td>2019-11-01 17:59:13.273932</td>
           <td>219483890</td>
           <td>219483890_1</td>
+          <td>session_start</td>
+          <td>0</td>
+          <td>92aa043e-02ac-4a4d-9f37-4bfc9dd101dc</td>
         </tr>
         <tr>
           <th>1</th>
-          <td>7490a284-5d0b-4932-84fb-958e2d415514</td>
-          <td>raw</td>
-          <td>1</td>
           <td>catalog</td>
           <td>2019-11-01 17:59:13.273932</td>
           <td>219483890</td>
           <td>219483890_1</td>
+          <td>raw</td>
+          <td>1</td>
+          <td>c1368d21-85fe-4ed0-864b-87b79eca8076</td>
         </tr>
         <tr>
           <th>3</th>
-          <td>5dd54acb-833f-490b-b21a-65e520bf70e5</td>
-          <td>raw</td>
-          <td>3</td>
           <td>product1</td>
           <td>2019-11-01 17:59:28.459271</td>
           <td>219483890</td>
           <td>219483890_1</td>
+          <td>raw</td>
+          <td>3</td>
+          <td>4f437751-b117-4ef2-ba23-e91fe3a022fc</td>
         </tr>
         <tr>
           <th>5</th>
-          <td>86eebbb7-d807-4471-af0a-c3dc9ce860c1</td>
-          <td>raw</td>
-          <td>5</td>
           <td>cart</td>
           <td>2019-11-01 17:59:29.502214</td>
           <td>219483890</td>
           <td>219483890_1</td>
+          <td>raw</td>
+          <td>5</td>
+          <td>740eeca9-db1f-4279-a0aa-ceb07de60638</td>
         </tr>
         <tr>
           <th>7</th>
-          <td>7ebab192-5e4a-4d43-bc0b-9bd450ed5adc</td>
-          <td>raw</td>
-          <td>7</td>
           <td>catalog</td>
           <td>2019-11-01 17:59:32.557029</td>
           <td>219483890</td>
           <td>219483890_1</td>
+          <td>raw</td>
+          <td>7</td>
+          <td>4f0d2ba7-396f-492e-bbf0-887ef14211e6</td>
         </tr>
       </tbody>
     </table>
+    </div>
     <br>
 
 General statistics
@@ -1581,7 +1571,7 @@ in a user's trajectory. The histogram for this variable is plotted by
     stream.user_lifetime_hist()
 
 .. figure:: /_static/user_guides/eventstream/01_user_lifetime_hist_simple.png
-    :width: 400
+    :width: 500
 
 
 The method has multiple parameters:
@@ -1626,7 +1616,7 @@ If no arguments are passed (except formatting arguments), timedeltas between all
 calculated within each user path. For example, this tiny eventstream
 
 .. figure:: /_static/user_guides/eventstream/02_timedelta_trivial_example.png
-    :width: 400
+    :width: 500
 
 generates 4 timedeltas :math:`\Delta_1, \Delta_2, \Delta_3, \Delta_4` as shown in the diagram.
 The timedeltas between events B and D, D and C, C and E are not taken into account because two events
@@ -1639,7 +1629,7 @@ Here is how the histogram looks for the ``simple_shop`` dataset with ``log_scale
     stream.timedelta_hist(log_scale=True, timedelta_unit='m')
 
 .. figure:: /_static/user_guides/eventstream/03_timedelta_log_scale.png
-    :width: 400
+    :width: 500
 
 This distribution of the adjacent events fairly common. It looks like a bimodal (which is not true:
 remember we use log-scale here), but these two bells help us to estimate a timeout for splitting sessions.
@@ -1666,10 +1656,10 @@ Let us add to our dataset some common synthetic events using :ref:`StartEndEvent
     )
 
 .. figure:: /_static/user_guides/eventstream/04_timedelta_raw_events_only_false.png
-    :width: 400
+    :width: 500
 
 .. figure:: /_static/user_guides/eventstream/05_timedelta_raw_events_only_true.png
-    :width: 400
+    :width: 500
 
 You can see that on the second plot there is no high histogram bar located at :math:`\approx 10^{-3}`,
 so that the second histogram looks more natural.
@@ -1684,7 +1674,7 @@ Then we set ``event_pair=('product1', 'cart')`` and pass it to ``timedelta_hist`
     stream.timedelta_hist(event_pair=('product1', 'cart'), timedelta_unit='m')
 
 .. figure:: /_static/user_guides/eventstream/06_timedelta_pair_of_events.png
-    :width: 400
+    :width: 500
 
 From the Y scale, we see that such occurrences are not very numerous. This is because the method still works with only
 adjacent pairs of events (in this case ``product1`` and ``cart`` are assumed to go one right after
@@ -1701,7 +1691,7 @@ another in a user's path). That is why the histogram is skewed to 0.
     )
 
 .. figure:: /_static/user_guides/eventstream/07_timedelta_only_adjacent_event_pairs.png
-    :width: 400
+    :width: 500
 
 We see that the number of observations has increased, especially around 0. In other words,
 for the vast majority of the users transition ``product1 → cart`` takes less than 1 day.
@@ -1713,19 +1703,61 @@ purchase. Sometimes users adds an item to a cart just to check its final price, 
 options, etc.
 
 Here we should make a stop and explain how timedeltas between event pairs are calculated.
-Below you can see the picture of one user path and timedeltas that are displayed in a ``timedelta_hist``
+Below you can see the picture of one user path and timedeltas that will be displayed in a ``timedelta_hist``
 with the parameters ``event_pair=('A', 'B')`` and ``only_adjacent_event_pairs=False``.
 
+Let us consider each time delta calculation:
+
+- :math:`\Delta_1` is calculated between 'A' and 'B' events. 'D' and 'F' are ignored because
+  of ``only_adjacent_event_pairs=False``.
+- The next 'A' event is colored grey and is skipped because there is one more 'A' event closer
+  to the 'B' event. In such cases, we pick the 'A' event, that is closer to the next 'B' and calculate
+  :math:`\Delta_2`.
+
 .. figure:: /_static/user_guides/eventstream/08_event_pair_explanation.png
-    :width: 400
+    :width: 500
 
-Now let us get back to our example and assume we would like to look at such users
-(with long path from ``product1`` to ``cart``).
-There are several ways we can do it with a combination of the parameters below:
+    Single user path
 
-- ``lower_cutoff_quantile``;
-- ``upper_cutoff_quantile``;
-- ``log_scale``.
+Now let us get back to our example. Due to we have a lot of users with short trajectories but also there
+a few users with very long paths our histogram is rather unreadable.
+
+To make entire plot more comprehensible - the ``log_scale`` parameter can be used.
+We have already used that parameter for the ``x axis``, but it is also available fot the ``y axis``.
+For example: ``log_scale=(False, True)``.
+
+Another way to resolve that problem, is to look separately on different parts of our plot.
+For that purpose we can use parameters ``lower_cutoff_quantile`` and ``upper_cutoff_quantile``.
+These parameters specify boundaries for the histogram and will be applied last.
+
+On the example below, firstly, we keep users with ``event_pair=('product1', 'cart')`` and ``only_adjacent_event_pairs=False``,
+and after it truncate 90% of users with the shortest trajectories.
+
+.. code-block:: python
+
+    stream.timedelta_hist(
+            event_pair=('product1', 'cart'),
+            timedelta_unit='m',
+            only_adjacent_event_pairs=False,
+            lower_cutoff_quantile=0.9
+        )
+
+.. figure:: /_static/user_guides/eventstream/timedelta_lower_cutoff_quantile.png
+
+Here it is the same algorithm, but 10% of users with the longest trajectories will be truncated.
+
+.. code-block:: python
+
+    stream.timedelta_hist(
+            event_pair=('product1', 'cart'),
+            timedelta_unit='m',
+            only_adjacent_event_pairs=False,
+            upper_cutoff_quantile=0.1
+        )
+
+.. figure:: /_static/user_guides/eventstream/timedelta_upper_cutoff_quantile.png
+
+If we set both of these parameters and boundaries will be calculated simultaneously and truncated afterwards.
 
 Let us turn to another case. Sometimes we are interested in looking only at events that appear
 within a user session. If we have already split the paths into sessions we can use ``weight_col='session_id'``:
@@ -1741,7 +1773,7 @@ within a user session. If we have already split the paths into sessions we can u
         )
 
 .. figure:: /_static/user_guides/eventstream/09_timedelta_sessions.png
-    :width: 400
+    :width: 500
 
 It is clear now that within a session the users walk from ``product1`` to ``cart`` event in less than 3 minutes.
 
@@ -1764,7 +1796,7 @@ these aggregated values. This can be done by passing an additional argument
         )
 
 .. figure:: /_static/user_guides/eventstream/10_timedelta_aggregation_mean.png
-    :width: 400
+    :width: 500
 
 
 Eventstream global events
@@ -1779,7 +1811,7 @@ Before you choose it, you can explore how a path's beginning/end margin from the
 In the diagram below, below :math:`\Delta_1` illustrates such a margin:
 
 .. figure:: /_static/user_guides/eventstream/11_timedelta_event_pair_with_global.png
-    :width: 400
+    :width: 500
 
 .. code-block:: python
 
@@ -1792,7 +1824,7 @@ In the diagram below, below :math:`\Delta_1` illustrates such a margin:
 
 
 .. figure:: /_static/user_guides/eventstream/12_timedelta_eventstream_start_path_end.png
-    :width: 400
+    :width: 500
 
 For more details on how this histogram helps to define the ``cutoff`` parameter see
 :ref:`TruncatedEvents section<truncated_events>` in the data processors user guide.
@@ -1810,7 +1842,7 @@ method.
     stream.event_timestamp_hist()
 
 .. figure:: /_static/user_guides/eventstream/13_event_timestamp_hist.png
-    :width: 400
+    :width: 500
 
 We can notice the heavy skew in the data towards the period between April and May of 2020.
 One of the possible interpretations of this fact is that the product worked in beta version until April 2020,
@@ -1825,7 +1857,7 @@ by choosing ``path_start`` in the event list .
         .event_timestamp_hist(event_list=['path_start'])
 
 .. figure:: /_static/user_guides/eventstream/14_event_timestamp_hist_event_list.png
-    :width: 400
+    :width: 500
 
 From this histogram we see that our hypothesis is true. New users started to arrive much more intense in April 2020.
 

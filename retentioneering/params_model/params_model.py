@@ -13,6 +13,7 @@ from retentioneering.params_model.registry import register_params_model
 from retentioneering.utils.dict import clear_dict
 from retentioneering.widget import WIDGET_MAPPING
 
+# disable warning for pydantic schema Callable type
 warnings.simplefilter(action="ignore", category=UserWarning)
 
 if TYPE_CHECKING:

@@ -6,7 +6,6 @@ from . import (
     preprocessor,
     tooling,
     widget,
-    transition_graph,
     data_processor,
     data_processors_lib,
 )
@@ -19,7 +18,6 @@ __all__ = (
     "preprocessor",
     "tooling",
     "widget",
-    "transition_graph",
     "data_processor",
     "data_processors_lib",
 )

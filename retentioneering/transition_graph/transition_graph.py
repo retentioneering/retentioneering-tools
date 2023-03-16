@@ -131,8 +131,7 @@ class TransitionGraph:
         self.norm_type: NormType | None = norm_type
 
         self.nodelist: Nodelist = Nodelist(
-            nodelist_default_col=self.nodelist_default_col,
-            custom_cols=self.custom_cols,
+            weight_cols=self.custom_cols,
             time_col=self.event_time_col,
             event_col=self.event_col,
         )

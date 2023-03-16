@@ -106,18 +106,17 @@ class TransitionGraph:
             self._edges_threshold = value
 
     def _check_thresholds_for_norm_type(self, value: Threshold) -> bool:
-        if self.edges_norm_type == "full":
-            if not all(map(lambda x: isinstance(x, int), value.values())):
-                raise ValueError(f"For normalization type {self.edges_norm_type} all thresholds must be int")
-            if not all(map(lambda x: x >= 0, value.values())):
-                raise ValueError(f"For normalization type {self.edges_norm_type} all thresholds must be positive")
+        if self.edges_norm_type is None:
+            if not all(map(lambda x: x is None or x >= 0, value.values())):
+                raise ValueError(
+                    f"For normalization type {self.edges_norm_type} all thresholds must be positive or None"
+                )
         else:
-            if not all(map(lambda x: type(x) in (float, None), value.values())):
-                raise ValueError(f"For normalization type {self.edges_norm_type} all thresholds must be float or None")
             if not all(map(lambda x: x is None or 0 <= x <= 1, value.values())):
                 raise ValueError(
                     f"For normalization type {self.edges_norm_type} all thresholds must be between 0 and 1 or None"
                 )
+
         return True
 
     def __init__(

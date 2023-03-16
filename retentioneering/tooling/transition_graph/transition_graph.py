@@ -29,6 +29,7 @@ from retentioneering.tooling.typing.transition_graph import (
 from retentioneering.utils.dict import clear_dict
 
 RenameRule = Dict[str, Union[List[str], str]]
+SESSION_ID_COL = "session_id"
 
 
 class TransitionGraph:
@@ -162,13 +163,7 @@ class TransitionGraph:
         self.event_time_col = self.eventstream.schema.event_timestamp
         self.user_col = self.eventstream.schema.user_id
         self.id_col = self.eventstream.schema.event_id
-        self.custom_cols = [
-            self.eventstream.schema.event_id,
-            self.eventstream.schema.user_id,
-            *self.eventstream.schema.custom_cols,
-        ]
-        if isinstance(custom_weights_list, list):
-            self.custom_cols.extend(custom_weights_list)
+        self.weight_cols = self._define_weight_cols(custom_weights_list)
 
         self.nodes_weight_col = nodes_weight_col if nodes_weight_col else eventstream.schema.event_id
         self.edges_weight_col = edges_weight_col if edges_weight_col else eventstream.schema.event_id
@@ -181,7 +176,7 @@ class TransitionGraph:
         self.edges_norm_type: NormType | None = edges_norm_type
 
         self.nodelist: Nodelist = Nodelist(
-            weight_cols=self.custom_cols,
+            weight_cols=self.weight_cols,
             time_col=self.event_time_col,
             event_col=self.event_col,
         )
@@ -189,11 +184,27 @@ class TransitionGraph:
         self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
         self.edgelist: Edgelist = Edgelist(eventstream=self.eventstream)
         self.edgelist.calculate_edgelist(
-            weight_cols=self.custom_cols,
+            weight_cols=self.weight_cols,
             norm_type=self.edges_norm_type,
         )
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
+
+    def _define_weight_cols(self, custom_weights_list: list[str] | None) -> list[str]:
+        weight_cols = [
+            self.eventstream.schema.event_id,
+            self.eventstream.schema.user_id,
+        ]
+        if SESSION_ID_COL in self.eventstream.schema.custom_cols:
+            weight_cols.append(SESSION_ID_COL)
+        if isinstance(custom_weights_list, list):
+            for col in custom_weights_list:
+                if col not in weight_cols:
+                    if col not in self.eventstream.schema.custom_cols:
+                        raise ValueError(f"Custom weights column {col} not found in eventstream schema")
+                    else:
+                        weight_cols.append(col)
+        return weight_cols
 
     @property
     def weights(self) -> MutableMapping[str, str] | None:
@@ -254,7 +265,7 @@ class TransitionGraph:
         recalculated_nodelist = self.nodelist.calculate_nodelist(data=renamed_df)
         self.edgelist.eventstream = renamed_eventstream
         recalculated_edgelist = self.edgelist.calculate_edgelist(
-            weight_cols=self.custom_cols, norm_type=self.edges_norm_type
+            weight_cols=self.weight_cols, norm_type=self.edges_norm_type
         )
 
         curr_nodelist = self.nodelist.nodelist_df
@@ -392,7 +403,7 @@ class TransitionGraph:
 
     def __get_nodelist_cols(self) -> list[str]:
         default_col = self.nodelist_default_col
-        custom_cols = self.custom_cols
+        custom_cols = self.weight_cols
         return list([default_col]) + list(custom_cols)
 
     def __round_value(self, value: float) -> float:
@@ -458,7 +469,7 @@ class TransitionGraph:
         source_col = edgelist.columns[0]
         target_col = edgelist.columns[1]
         weight_col = edgelist.columns[2]
-        custom_cols: list[str] = self.custom_cols
+        custom_cols: list[str] = self.weight_cols
         edges: MutableSequence[PreparedLink] = []
 
         edgelist["weight_norm"] = edgelist[weight_col] / edgelist[weight_col].abs().max()
@@ -685,7 +696,7 @@ class TransitionGraph:
             self.edges_thresholds if self.edges_thresholds else self._get_norm_link_threshold(self.edges_thresholds)
         )
 
-        self.edgelist.calculate_edgelist(weight_cols=self.custom_cols, norm_type=self.edges_norm_type)
+        self.edgelist.calculate_edgelist(weight_cols=self.weight_cols, norm_type=self.edges_norm_type)
         node_params = self._make_node_params(targets)
         cols = self.__get_nodelist_cols()
 

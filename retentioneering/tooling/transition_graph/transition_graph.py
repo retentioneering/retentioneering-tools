@@ -130,7 +130,7 @@ class TransitionGraph:
         edges_threshold: Threshold | None = None,
         nodes_weight_col: str | None = None,
         edges_weight_col: str | None = None,
-        custom_weights_list: list[str] | None = None,
+        custom_weight_cols: list[str] | None = None,
     ) -> None:
         from retentioneering.eventstream.eventstream import Eventstream
 
@@ -163,7 +163,7 @@ class TransitionGraph:
         self.event_time_col = self.eventstream.schema.event_timestamp
         self.user_col = self.eventstream.schema.user_id
         self.id_col = self.eventstream.schema.event_id
-        self.weight_cols = self._define_weight_cols(custom_weights_list)
+        self.weight_cols = self._define_weight_cols(custom_weight_cols)
 
         self.nodes_weight_col = nodes_weight_col if nodes_weight_col else eventstream.schema.event_id
         self.edges_weight_col = edges_weight_col if edges_weight_col else eventstream.schema.event_id
@@ -190,15 +190,15 @@ class TransitionGraph:
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
 
-    def _define_weight_cols(self, custom_weights_list: list[str] | None) -> list[str]:
+    def _define_weight_cols(self, custom_weight_cols: list[str] | None) -> list[str]:
         weight_cols = [
             self.eventstream.schema.event_id,
             self.eventstream.schema.user_id,
         ]
         if SESSION_ID_COL in self.eventstream.schema.custom_cols:
             weight_cols.append(SESSION_ID_COL)
-        if isinstance(custom_weights_list, list):
-            for col in custom_weights_list:
+        if isinstance(custom_weight_cols, list):
+            for col in custom_weight_cols:
                 if col not in weight_cols:
                     if col not in self.eventstream.schema.custom_cols:
                         raise ValueError(f"Custom weights column {col} not found in eventstream schema")

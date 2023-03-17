@@ -28,7 +28,7 @@ class TimedeltaHist:
     ----------
     raw_events_only : bool, default True
         If ``True`` - statistics will be shown only for raw events.
-        If ``False`` - for all events presented in your data.
+        If ``False`` - statistics will be shown for all events presented in your data.
     event_pair : tuple of str, optional
         Specify an event pair to plot the time distance between. The first
         item corresponds to chronologically first event, the second item corresponds to the second event. If
@@ -65,7 +65,7 @@ class TimedeltaHist:
         For example, if session id is specified in ``weight_col``, one observation per
         session (for example, session median) will be provided for the histogram.
     timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
-        Specify the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
+        Specify units of time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
     log_scale: bool | tuple of bool | None = None,
 
@@ -73,14 +73,31 @@ class TimedeltaHist:
          - If tuple of bool - apply log scaling to the (``x``,``y``) axes correspondingly.
 
     lower_cutoff_quantile : float, optional
-        Specify the time distance quantile as the lower boundary. The values below the boundary are truncated.
+        Specify time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
-        Specify the time distance quantile as the upper boundary. The values above the boundary are truncated.
+        Specify time distance quantile as the upper boundary. The values above the boundary are truncated.
     bins : int or {"auto", "fd", "doane", "scott", "stone", "rice", "sturges", "sqrt"}, default 20
         Generic bin parameter that can be the name of a reference rule or
-        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`
+        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`.
     figsize : tuple of float, default (6.0, 4.5)
         Width, height in inches.
+
+    See Also
+    --------
+    .UserLifetimeHist : Plot the distribution of user lifetimes.
+    .EventTimestampHist : Plot the distribution of events over time.
+    .Eventstream.describe : Show general eventstream statistics.
+    .Eventstream.describe_events : Show general eventstream events statistics.
+    .StartEndEvents : Create new synthetic events ``path_start`` and ``path_end`` to each user trajectory.
+    .SplitSessions : Create new synthetic events, that divide users’ paths on sessions.
+    .TruncatedEvents : Create new synthetic event(s) for each user based on the timeout threshold.
+    .DeleteUsersByPathLength : Filter user paths based on the path length, removing the paths that are shorter than the
+                                specified number of events or cut_off.
+
+
+    Notes
+    -----
+    See :ref:`Eventstream user guide<eventstream_timedelta_hist>` for the details.
     """
 
     EVENTSTREAM_START = "eventstream_start"
@@ -206,9 +223,9 @@ class TimedeltaHist:
         """
         Calculate values and bins for the histplot.
 
-            1. The first array contains the values for histogram
-            2. The first array contains the bin edges
-
+        Returns
+        -------
+        None
         """
         data = self.data.sort_values([self.weight_col, self.time_col])
 
@@ -242,14 +259,14 @@ class TimedeltaHist:
         -------
         tuple(np.ndarray, np.ndarray)
 
-            1. The first array contains the values for histogram
-            2. The first array contains the bin edges
+            1. The first array contains the values for histogram.
+            2. The first array contains the bin edges.
         """
         return self.values_to_plot, self.bins_to_show
 
     def plot(self) -> matplotlib.axes.Axes:
         """
-        Creates a sns.histplot based on the calculated values.
+        Create a sns.histplot based on the calculated values.
 
         Returns
         -------

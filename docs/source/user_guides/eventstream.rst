@@ -1001,6 +1001,8 @@ For demonstration purposes, we add ``session_id`` column by applying
 General statistics
 ~~~~~~~~~~~~~~~~~~
 
+.. _eventstream_describe:
+
 Describe
 ^^^^^^^^
 
@@ -1179,6 +1181,7 @@ days and the latter in the number of events.
 It is important to mention that all the values in "\*_steps" categories are rounded to the 2nd decimal digit,
 and in "\*_time" categories - to seconds. This is also true for the next method.
 
+.. _eventstream_describe_events:
 
 Describe events
 ^^^^^^^^^^^^^^^
@@ -1568,6 +1571,8 @@ so we want to see their distribution. For these purposes the following group of 
 Time-based histograms
 ~~~~~~~~~~~~~~~~~~~~~
 
+.. _eventstream_user_lifetime:
+
 User lifetime
 ^^^^^^^^^^^^^
 
@@ -1609,6 +1614,7 @@ The method has multiple parameters:
     :py:meth:`DeleteUsersByPathLength<retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>`
     See :doc:`the user guide on preprocessing</user_guides/dataprocessors>` for details.
 
+.. _eventstream_timedelta_hist:
 
 Timedelta between two events
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1796,6 +1802,8 @@ In the diagram below, below :math:`\Delta_1` illustrates such a margin:
 
 For more details on how this histogram helps to define the ``cutoff`` parameter see
 :ref:`TruncatedEvents section<truncated_events>` in the data processors user guide.
+
+.. _eventstream_events_timestamp:
 
 Event intensity
 ^^^^^^^^^^^^^^^

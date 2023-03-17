@@ -119,30 +119,36 @@ class Eventstream(
     raw_data_schema : RawDataSchema, optional
         Should be specified as an instance of class ``RawDataSchema``:
 
-        - If ``raw_data`` column names are different from default :py:class:`.RawDataSchema`.
+        - If ``raw_data`` column names are different from the default :py:class:`.RawDataSchema`.
         - If there is at least one ``custom_col`` in ``raw_data``.
 
     schema : EventstreamSchema, optional
-        Schema of created ``eventstream``.
+        Schema of the created ``eventstream``.
         See default schema :py:class:`.EventstreamSchema`.
     prepare : bool, default True
+        - If ``True``, input data will be transformed in the following way:
 
-        - If ``True`` input data will be transformed in the following way:
-            - Convert column ``event_timestamp`` to pandas datetime format.
-            - | Adds ``event_type`` column and fills with ``raw`` value.
-              | if that column already exists it will remain unchanged.
+            * ``event_timestamp`` column is converted to pandas datetime format.
+            * | ``event_type`` column is added and filled with ``raw`` value.
+              | If the column exists, it remains unchanged.
+
         - If ``False`` - ``raw_data`` will be remained as is.
 
     index_order : list of str, default DEFAULT_INDEX_ORDER
         Sorting order for ``event_type`` column.
     relations : list, optional
     user_sample_size : int of float, optional
-        Number (``int``) or share (``float``) of all users trajectories which will be randomly chosen
-        and remained in final sample.
+        Number (``int``) or share (``float``) of all users' trajectories that will be randomly chosen
+        and left in final sample (all other trajectories will be removed) .
         See :numpy_random_choice:`numpy documentation<>`.
     user_sample_seed : int, optional
-        Random seed value to generate repeated random users sample.
+        A seed value that is used to generate user samples.
         See :numpy_random_seed:`numpy documentation<>`.
+
+    Notes
+    -----
+    See :doc:`Eventstream user guide</user_guides/eventstream>` for the details.
+
 
     """
 
@@ -377,10 +383,10 @@ class Eventstream(
         raw_cols : bool, default False
             If ``True`` - original columns of the input ``raw_data`` will be shown.
         show_deleted : bool, default False
-            If ``True`` - show all rows in ``eventstream``
+            If ``True`` - show all rows in ``eventstream``.
         copy : bool, default False
             If ``True`` - copy data from current ``eventstream``.
-            See details :pandas_copy:`pandas documentation<>`
+            See details in the :pandas_copy:`pandas documentation<>`.
 
         Returns
         -------
@@ -436,7 +442,7 @@ class Eventstream(
 
     def add_custom_col(self, name: str, data: pd.Series[Any] | None) -> None:
         """
-        Add custom column to existing ``eventstream``.
+        Add custom column to an existing ``eventstream``.
 
         Parameters
         ----------
@@ -445,7 +451,7 @@ class Eventstream(
         data : pd.Series
 
             - If ``pd.Series`` - new column with given values will be added.
-            - If ``None`` - new column will be filled with ``np.nan``
+            - If ``None`` - new column will be filled with ``np.nan``.
 
         Returns
         -------
@@ -598,7 +604,12 @@ class Eventstream(
         """
         Show a visualization of the user sequential events represented as a funnel.
 
-        See parameters description :py:class:`.Funnel`
+        Parameters
+        ----------
+        show_plot : bool, default True
+            If ``True``, a funnel visualization is shown.
+        See other parameters' description
+            :py:class:`.Funnel`
 
         Returns
         -------
@@ -623,12 +634,15 @@ class Eventstream(
     @property
     def clusters(self) -> Clusters:
         """
-        Return a blank (not fitted) instance of ``Clusters`` class to be used for cluster analysis.
-        See :py:class:`.Clusters`
 
         Returns
         -------
         Clusters
+            A blank (not fitted) instance of ``Clusters`` class to be used for cluster analysis.
+
+        See Also
+        --------
+        .Clusters
         """
         if self.__clusters is None:
             self.__clusters = Clusters(eventstream=self)
@@ -650,7 +664,12 @@ class Eventstream(
         """
         Show a heatmap visualization of the step matrix.
 
-        See parameters description :py:class:`.StepMatrix`
+        Parameters
+        ----------
+        show_plot : bool, default True
+            If ``True``, a step matrix heatmap is shown.
+        See other parameters' description
+            :py:class:`.StepMatrix`
 
         Returns
         -------
@@ -689,9 +708,14 @@ class Eventstream(
         show_plot: bool = True,
     ) -> StepSankey:
         """
-        Show a Sankey diagram visualizing the user paths in step-wise manner.
+        Show a Sankey diagram visualizing the user paths in stepwise manner.
 
-        See parameters description :py:class:`.StepSankey`
+        Parameters
+        ----------
+        show_plot : bool, default True
+            If ``True``, a sankey diagram is shown.
+        See other parameters' description
+            :py:class:`.StepSankey`
 
         Returns
         -------
@@ -730,7 +754,12 @@ class Eventstream(
         """
         Show a heatmap visualization of the user appearance grouped by cohorts.
 
-        See parameters description :py:class:`.Cohorts`
+        Parameters
+        ----------
+        show_plot : bool, default True
+            If ``True``, a cohort matrix heatmap is shown.
+        See other parameters' description
+            :py:class:`.Cohorts`
 
         Returns
         -------
@@ -764,7 +793,10 @@ class Eventstream(
         """
         Determine the statistical difference between the metric values in two user groups.
 
-        See parameters description :py:class:`.Stattests`
+        Parameters
+        ----------
+        See parameters' description
+            :py:class:`.Stattests`
 
         Returns
         -------
@@ -798,7 +830,12 @@ class Eventstream(
         distribution types, such as distribution of time for adjacent consecutive events, or
         for a pair of pre-defined events, or median transition time from event to event per user/session.
 
-        See parameters description :py:class:`.TimedeltaHist`
+        Parameters
+        ----------
+        show_plot : bool, default True
+            If ``True``, histogram is shown.
+        See other parameters' description
+            :py:class:`.TimedeltaHist`
 
         Returns
         -------
@@ -838,16 +875,22 @@ class Eventstream(
         show_plot: bool = True,
     ) -> UserLifetimeHist:
         """
-        Plot the distribution of user lifetimes. A ``users' lifetime`` is the timedelta between the first and the last
-        events of the user. Can be useful for finding suitable parameters of various data processors, such as
-        :py:class:`.DeleteUsersByPathLength>` or :py:class:`.TruncatedEvents>`.
+        Plot the distribution of user lifetimes. A ``users lifetime`` is the timedelta between the first and the last
+        events of the user.
 
-        See parameters description :py:class:`.UserLifetimeHist`
+        Parameters
+        ----------
+        show_plot : bool, default True
+            If ``True``, histogram is shown.
+        See other parameters' description
+            :py:class:`.UserLifetimeHist`
 
         Returns
         -------
         UserLifetimeHist
             A ``UserLifetimeHist`` class instance with given parameters.
+
+
         """
         self.__user_lifetime_hist = UserLifetimeHist(
             eventstream=self,
@@ -874,10 +917,16 @@ class Eventstream(
         show_plot: bool = True,
     ) -> EventTimestampHist:
         """
-        Plot the distribution of events over time. Can be useful for detecting time-based anomalies, and visualising
+        Plot distribution of events over time. Can be useful for detecting time-based anomalies, and visualising
         general timespan of the eventstream.
 
-        See parameters description :py:class:`.EventTimestampHist`
+        Parameters
+        ----------
+        show_plot : bool, default True
+            If ``True``, histogram is shown.
+        See other parameters' description
+            :py:class:`.EventTimestampHist`
+
 
         Returns
         -------
@@ -901,28 +950,40 @@ class Eventstream(
 
     def describe(self, session_col: str = "session_id", raw_events_only: bool = False) -> pd.DataFrame:
         """
-        Display general eventstream information. If ``session_col`` is presented in eventstream, also
+        Display general eventstream information. If ``session_col`` is present in eventstream, also
         output session statistics.
 
         Parameters
         ----------
         session_col : str, default 'session_id'
-            Specify name of the session column. If the column is presented in the eventstream,
+            Specify name of the session column. If the column is present in the eventstream,
             session statistics will be added to the output.
 
         raw_events_only : bool, default False
-            If ``True`` - statistics will be shown only for raw events.
-            If ``False`` - for all events presented in your data.
+            If ``True`` - statistics will only be shown for raw events.
+            If ``False`` - statistics will be shown for all events presented in your data.
+
+        Returns
+        -------
+        pd.DataFrame
+            A dataframe containing descriptive statistics for the eventstream.
+
+
+        See Also
+        --------
+        .EventTimestampHist : Plot the distribution of events over time.
+        .TimedeltaHist : Plot the distribution of the time deltas between two events.
+        .UserLifetimeHist : Plot the distribution of user lifetimes.
+        .Eventstream.describe_events : Show general eventstream events statistics.
+
 
         Notes
         -----
         - All ``float`` values are rounded to 2.
         - All ``datetime`` values are rounded to seconds.
 
-        Returns
-        -------
-        pd.DataFrame
-            A dataframe containing descriptive statistics on the eventstream.
+        See :ref:`Eventstream user guide<eventstream_describe>` for the details.
+
 
         """
         describer = Describe(eventstream=self, session_col=session_col, raw_events_only=raw_events_only)
@@ -932,56 +993,66 @@ class Eventstream(
         self, session_col: str = "session_id", raw_events_only: bool = False, event_list: list[str] | None = None
     ) -> pd.DataFrame:
         """
-        Display general information on the eventstream events. If ``session_col`` is presented in eventstream, also
+        Display general information on eventstream events. If ``session_col`` is present in eventstream, also
         output session statistics.
 
         Parameters
         ----------
         session_col : str, default 'session_id'
-            Specify name of the session column. If the column is presented in the eventstream,
+            Specify name of the session column. If the column is present in the eventstream,
             output session statistics.
 
         raw_events_only : bool, default False
-            If ``True`` - statistics will be shown only for raw events.
-            If ``False`` - for all events presented in your data.
+            If ``True`` - statistics will only be shown for raw events.
+            If ``False`` - statistics will be shown for all events presented in your data.
 
         event_list : list of str, optional
-            Specify the events to be displayed.
+            Specify events to be displayed.
 
         Returns
         -------
         pd.DataFrame
             **Eventstream statistics**:
 
-            - | The following metrics are calculated for each event represented in the eventstream
-              | (or the narrowed eventstream if parameters ``event_list`` or ``raw_events_only`` are used).
-              | Let all_events, all_users, all_sessions be the number of all events, users,
-              | and sessions represented in the eventstream. Then:
+            - The following metrics are calculated for each event present in the eventstream
+              (or the narrowed eventstream if parameters ``event_list`` or ``raw_events_only`` are used).
+              Let all_events, all_users, all_sessions be the numbers of all events, users,
+              and sessions present in the eventstream. Then:
 
-                - *number_of_occurrences* - the number of occurrences of a particular event in the eventstream
-                - *unique_users* - the number of unique users who experienced a particular event
-                - *unique_sessions* - the number of unique sessions with each event
-                - *number_of_occurrences_shared* - number_of_occurrences / all_events (raw_events_only, if this parameter = ``True``)
-                - *unique_users_shared* - unique_users / all_users
-                - *unique_sessions_shared* - unique_sessions / all_sessions
+                - *number_of_occurrences* - the number of occurrences of a particular event in the eventstream;
+                - *unique_users* - the number of unique users who experienced a particular event;
+                - *unique_sessions* - the number of unique sessions with each event;
+                - *number_of_occurrences_shared* - number_of_occurrences / all_events (raw_events_only,
+                  if this parameter = ``True``);
+                - *unique_users_shared* - unique_users / all_users;
+                - *unique_sessions_shared* - unique_sessions / all_sessions;
 
-            - | **time_to_FO_user_wise** category - timedelta between ``path_start``
-              | and the first occurrence (FO) of a specified event in each user path.
-            - | **steps_to_FO_user_wise** category - the number of steps (events) from
-              | ``path_start`` to the first occurrence (FO) of a specified event in each user path.
-              | If ``raw_events_only=True`` only raw events will be counted.
-            - | **time_to_FO_session_wise** category - timedelta  between ``session_start``
-              | and the first occurrence (FO) of a specified event in each session.
-            - | **steps_to_FO_session_wise** category - the number of steps (events) from
-              | ``session_start`` to the first occurrence (FO) of a specified event in each session.
-              | If ``raw_events_only=True`` only raw events will be counted.
+            - **time_to_FO_user_wise** category - timedelta between ``path_start``
+              and the first occurrence (FO) of a specified event in each user path.
+            - **steps_to_FO_user_wise** category - the number of steps (events) from
+              ``path_start`` to the first occurrence (FO) of a specified event in each user path.
+              If ``raw_events_only=True`` only raw events will be counted.
+            - **time_to_FO_session_wise** category - timedelta  between ``session_start``
+              and the first occurrence (FO) of a specified event in each session.
+            - **steps_to_FO_session_wise** category - the number of steps (events) from
+              ``session_start`` to the first occurrence (FO) of a specified event in each session.
+              If ``raw_events_only=True`` only raw events will be counted.
 
-            Agg functions for each ``first_occurrence*`` category are: mean, std, median, min, max
+            Agg functions for each ``first_occurrence*`` category are: mean, std, median, min, max.
+
+        See Also
+        --------
+        .EventTimestampHist : Plot the distribution of events over time.
+        .TimedeltaHist : Plot the distribution of the time deltas between two events.
+        .UserLifetimeHist : Plot the distribution of user lifetimes.
+        .Eventstream.describe : Show general eventstream statistics.
 
         Notes
         -----
-        - All ``float`` values rounded to 2.
+        - All ``float`` values are rounded to 2.
         - All ``datetime`` values are rounded to seconds.
+
+        See :ref:`Eventstream user guide<eventstream_describe_events>` for the details.
 
         """
         describer = DescribeEvents(

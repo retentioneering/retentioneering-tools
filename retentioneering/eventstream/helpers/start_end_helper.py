@@ -6,18 +6,15 @@ from ..types import EventstreamType
 class StartEndHelperMixin:
     def add_start_end(self) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which creates two synthetic events in each user's path:
-        ``path_start`` and ``path_end``. And adds them to the input ``eventstream``.
+        A method of ``Eventstream`` class that creates
+        two synthetic events in each user's path: ``path_start`` and ``path_end``.
 
         Returns
         -------
         Eventstream
-            Input ``eventstream`` with new synthetic events.
+            Input ``eventstream`` with added synthetic events. See details :py:class:`.StartEndEvents`.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:class:`.StartEndEvents`
+
         """
         # avoid circular import
         from retentioneering.data_processors_lib import (

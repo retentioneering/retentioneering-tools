@@ -43,7 +43,7 @@ def _default_func(eventstream: EventstreamType, positive_target_events: list[str
 
 class PositiveTargetParams(ParamsModel):
     """
-    Class with parameters for class :py:class:`.PositiveTarget`
+    A class with parameters for :py:class:`.PositiveTarget` class.
     """
 
     positive_target_events: List[str]
@@ -54,14 +54,14 @@ class PositiveTargetParams(ParamsModel):
 
 class PositiveTarget(DataProcessor):
     """
-    Creates new synthetic events in each user's path who have specified event(s):
+    Create new synthetic events in paths of all users having the specified events:
     ``positive_target_RAW_EVENT_NAME``
 
     Parameters
     ----------
     positive_target_events : list of str
-        Each event from that list is associated with a conversional user behaviour in the product.
-        If there are several target events in user path - the event with minimum timestamp taken.
+        Define the list of events we consider positive.
+        If there are several target events in a user path, the event with the minimum timestamp is taken.
 
     func : Callable, default _default_func
         Filter rows with target events from the input eventstream.
@@ -77,6 +77,9 @@ class PositiveTarget(DataProcessor):
         | positive_target_RAW_EVENT_NAME | positive_target | min(positive_target_events) |
         +--------------------------------+-----------------+-----------------------------+
 
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
     """
 
     params: PositiveTargetParams

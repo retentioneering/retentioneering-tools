@@ -81,11 +81,12 @@ class TransitionGraph:
 
     See Also
     --------
-    :py:meth:`.Eventstream.transition_graph`
+    .Eventstream.transition_graph : Call TransitionGraph tool as an eventstream method.
 
     Notes
     -----
     See :doc:`transition graph user guide</user_guides/transition_graph>` for the details.
+
     """
 
     _weights: MutableMapping[str, str] | None = None
@@ -592,7 +593,6 @@ class TransitionGraph:
         -----
         To get the definition of ``show_*`` visual parameters see
         :ref:`Settings block <transition_graph_visual_settings>` in the control of transition graph interface.
-
 
         """
         if targets:

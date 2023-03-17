@@ -11,7 +11,7 @@ from retentioneering.params_model import ParamsModel
 
 class TruncatePathParams(ParamsModel):
     """
-    Class with parameters for class :py:class:`.TruncatePath`
+    A class with parameters for :py:class:`.TruncatePath` class.
     """
 
     drop_before: Optional[str]
@@ -24,25 +24,27 @@ class TruncatePathParams(ParamsModel):
 
 class TruncatePath(DataProcessor):
     """
-    Filters events that will be deleted from each user's path
-    on the base of specified event and selected parameters.
+    Remove events that will be deleted from each user's path
+    based on the specified event and selected parameters.
 
     Parameters
     ----------
     drop_before : str, optional
-        Event name before which part of the user's path is dropped. Specified event remains in the data.
+        Event name before which part of the user's path is dropped. The specified event remains in the data.
     drop_after : str, optional
-        Event name after which part of the user's path is dropped. Specified event remains in the data.
+        Event name after which part of the user's path is dropped. The specified event remains in the data.
     occurrence_before : {"first", "last"}, default="first"
-        This parameter is necessary when specified event occurs more than once in one user's path.
-        ``first`` - before first occurrence of the specified event the user's path will be dropped.
-        ``last`` - before last occurrence of the specified event the user's path will be dropped.
+        This parameter is necessary when the specified event occurs more than once in one user's path.
+
+        - when set to ``first``, the part of the user path before the first event occurrence is dropped;
+        - when set to ``last``, the part of the user path before the last event occurrence is dropped;
+
     occurrence_after : {"first", "last"}, default="first"
         The same behavior as in the 'occurrence_before', but for the other part of the user path.
     shift_before : int,  default=0
-        Sets the number of steps by which truncate point is shifted from the selected event.
+        Sets the number of steps by which the truncate point is shifted from the selected event.
         If the value is negative, then the offset occurs to the left along the timeline.
-        If positive, then to the right.
+        If positive, then it occurs to the right.
     shift_after : int,  default=0
         The same behavior as in the ``shift_before``, but for the other part of the user path.
 
@@ -54,10 +56,11 @@ class TruncatePath(DataProcessor):
 
     Notes
     -----
-    ``Step`` - is the group of events in user path with the same timestamp
-    If user path doesn't contain events from ``drop_before`` and ``drop_after`` parameters - than its
+    ``Step`` - is the group of events in the user path with the same timestamp.
+    If the user path doesn't contain events from ``drop_before`` and ``drop_after`` parameters, then its
     path does not change.
 
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
     """
 
     params: TruncatePathParams

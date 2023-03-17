@@ -13,7 +13,7 @@ from retentioneering.tooling.mixins.ended_events import EndedEventsMixin
 
 class StepSankey(EndedEventsMixin):
     """
-    A class for the visualization of user paths in step-wise manner using Sankey diagram.
+    A class for the visualization of user paths in stepwise manner using Sankey diagram.
 
     Parameters
     ----------
@@ -22,33 +22,39 @@ class StepSankey(EndedEventsMixin):
         Maximum number of steps in trajectories to include. Should be > 1.
     thresh : float | int, default 0.05
         Used to remove rare events from the plot. An event is collapsed to ``thresholded_N`` artificial event if
-        its maximum frequency across all the steps is less than or equal to ``thresh``. The frequency is considered
+        its maximum frequency across all the steps is less than or equal to ``thresh``. The frequency is set
         with respect to ``thresh`` type:
 
         - If ``int`` - the frequency is the number of unique users who had given event at given step.
-        - | If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
+        - If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
 
         The events which are prohibited for collapsing could be enlisted in ``target`` parameter.
     sorting : list of str, optional
-        Tunes the order of the events visualized at each step. The events which are not represented in the list
+        Define the order of the events visualized at each step. The events that are not represented in the list
         will follow after the events from the list.
     target : list of str, optional
-        Contains the events which are prohibited for collapsing with ``thresh`` parameter.
+        Contain events that are prohibited for collapsing with ``thresh`` parameter.
     autosize : bool, default True
-        Plotly autosize parameter. See :plotly_autosize:`plotly documentation<>`
+        Plotly autosize parameter. See :plotly_autosize:`plotly documentation<>`.
     width : int, optional
-        Plot's width (in px). See :plotly_width:`plotly documentation<>`
+        Plot's width (in px). See :plotly_width:`plotly documentation<>`.
     height : int, optional
-        Plot's height (in px). See :plotly_height:`plotly documentation<>`
+        Plot's height (in px). See :plotly_height:`plotly documentation<>`.
+
     Raises
     ------
     ValueError
         If ``max_steps`` parameter is <= 1.
 
-
     See Also
     --------
-    :py:meth:`.Eventstream.step_sankey`
+    .Eventstream.step_sankey : Call StepSankey tool as an eventstream method.
+    .CollapseLoops : Find loops and create new synthetic events in the paths of all users having such sequences.
+    .StepMatrix : This class provides methods for step matrix calculation and visualization.
+
+    Notes
+    -----
+    See :doc:`StepSankey user guide</user_guides/step_sankey>` for the details.
 
     """
 
@@ -531,8 +537,8 @@ class StepSankey(EndedEventsMixin):
 
     def fit(self) -> None:
         """
-        Calculates the sankey diagram internal values with the defined parameters.
-        Applying ``fit`` method is mandatory for the following usage
+        Calculate the sankey diagram internal values with the defined parameters.
+        Applying ``fit`` method is necessary for the following usage
         of any visualization or descriptive ``StepSankey`` methods.
 
         """
@@ -545,7 +551,7 @@ class StepSankey(EndedEventsMixin):
 
     def plot(self) -> go.Figure:
         """
-        Creates a Sankey interactive plot base on the calculated values.
+        Create a Sankey interactive plot based on the calculated values.
         Should be used after :py:func:`fit`.
 
         Returns

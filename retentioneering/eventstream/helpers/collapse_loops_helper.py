@@ -12,21 +12,23 @@ class CollapseLoopsHelperMixin:
         timestamp_aggregation_type: Literal["max", "min", "mean"] = "max",
     ) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which finds ``loops`` and creates new synthetic events
-        in each user's path who have such sequences.
+        A method of ``Eventstream`` class that finds ``loops`` and creates new synthetic events
+        in paths of all users having such sequences.
 
-        ``Loop`` - is the sequence of repetitive events in user's path.
+        A ``loop`` - is a sequence of repetitive events.
         For example *"event1 -> event1"*
+
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.CollapseLoops`
 
         Returns
         -------
         Eventstream
              Input ``eventstream`` with ``loops`` replaced by new synthetic events.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:class:`.CollapseLoops`
+
         """
 
         # avoid circular import

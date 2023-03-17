@@ -15,22 +15,23 @@ class SplitSessionsHelperMixin:
         mark_truncated: Optional[bool] = False,
     ) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which creates new synthetic events in each user's path:
+        A method of ``Eventstream`` class that creates new synthetic events in each user's path:
         ``session_start`` (or ``session_start_truncated``) and ``session_end`` (or ``session_end_truncated``).
-        Those events divide user's paths on sessions.
-        Also creates new column which contains session number for each event in input eventstream
-        Session number will take the form: ``{user_id}_{session_number through one user path}``
-        And adds those events and the new column to the input ``eventstream``.
+        The created events divide users' paths on sessions.
+        Also creates a new column that contains session number for each event in the input eventstream
+        Session number will take the form: ``{user_id}_{session_number through one user path}``.
+        The created events and column are added to the input eventstream.
+
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.SplitSessions`
 
         Returns
         -------
         Eventstream
              Input ``eventstream`` with new synthetic events and ``session_col``.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        Parameters and details :py:class:`.SplitSessions`
         """
 
         # avoid circular import

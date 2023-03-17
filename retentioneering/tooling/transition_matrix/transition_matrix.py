@@ -14,20 +14,21 @@ class TransitionMatrix:
     """
 
     A Class for transition matrix calculation.
+
     Parameters
     ----------
-    eventstream: EventstreamType
+    eventstream : EventstreamType
 
     See Also
     --------
 
-    .Eventstream.transition_matrix
+    .Eventstream.transition_matrix : Call TransitionMatrix tool as an eventstream method.
     .TransitionGraph
     .Eventstream.transition_graph
 
     Notes
     -----
-    See :doc:`transition graph user guide</user_guides/transition_graph>` for the details.
+    See :doc:`transition graph user guide</user_guides/transition_matrix>` for the details.
     TODO: add anchor link. dpanina
     """
 

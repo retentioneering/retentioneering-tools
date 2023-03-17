@@ -8,19 +8,20 @@ from ..types import EventstreamType
 class PositiveTargetHelperMixin:
     def positive_target(self, positive_target_events: List[str], func: Optional[Callable] = None) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which creates new synthetic events in each user's path
-        who have specified event(s) - ``positive_target_RAW_EVENT_NAME``.
-        And adds them to the input ``eventstream``.
+        A method of ``Eventstream`` class that creates new synthetic
+        events in paths of all users having the specified events - ``positive_target_RAW_EVENT_NAME``.
+
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.PositiveTarget`
 
         Returns
         -------
         Eventstream
             Input ``eventstream`` with new synthetic events.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:class:`.PositiveTarget`
+
 
         """
         # avoid circular import

@@ -33,7 +33,7 @@ class UserLifetimeHist:
         Specifies the time distance quantile as the upper boundary. The values above the boundary are truncated.
     bins : int or str, default 20
         Generic bin parameter that can be the name of a reference rule or
-        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`
+        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`.
     figsize : tuple of float, default (12.0, 7.0)
         Width, height in inches.
 
@@ -91,8 +91,8 @@ class UserLifetimeHist:
         """
         Calculate values for the histplot.
 
-            1. The first array contains the values for histogram
-            2. The first array contains the bin edges
+            1. The first array contains the values for histogram.
+            2. The first array contains the bin edges.
 
         """
         data = self.__eventstream.to_dataframe().groupby(self.user_col)[self.time_col].agg(["min", "max"])
@@ -123,8 +123,8 @@ class UserLifetimeHist:
         -------
         tuple(np.ndarray, np.ndarray)
 
-            1. The first array contains the values for histogram
-            2. The first array contains the bin edges
+            1. The first array contains the values for histogram.
+            2. The first array contains the bin edges.
 
         """
         return self.values_to_plot, self.bins_to_show

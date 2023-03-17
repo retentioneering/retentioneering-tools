@@ -999,48 +999,17 @@ class Eventstream(
         height: int = 900,
     ) -> TransitionGraph:
         """
-        Create interactive transition graph visualization with callback to sourcing eventstream.
 
         Parameters
         ----------
-        norm_type: {"full", "node", None}, default None
-            Type of normalization that is used to calculate weights for graph nodes and edges. See
-            :ref:`Transition graph user guide <transition_graph_weights>` for the details.
-
-        weights: dict, optional
-            Weighting columns for nodes and edges. See :ref:`Transition graph user guide <transition_graph_weights>`
-            for the details.
-
-            - Possible keys: "nodes", "edges".
-            - Possible values: "event_id", user column (typically "user_id") or custom columns.
-
-            If None, {'nodes': 'event_id', 'edges': 'event_id'} dict is used.
-
-        thresholds: dict, optional
-            Threshold values for hiding nodes and edges from the canvas.
-
-            - Possible keys: "nodes", "edges".
-            - Possible values: dict with weighting columns as dict keys and threshold values as dict values.
-
-            Example: {'nodes': {'event_id': 0.03}, 'edges': {'event_id': 0.03, user_id: 0.05}}
-
-            If None, all the threshold values are set to 0.
-
-        targets: dict, optional
-            Events mapping that defines which nodes and edges should be colored for better visualization.
-
-            - Possible keys: "positive" (green), "negative" (red), "source" (orange).
-            - Possible values: list of events of a given type.
-
-        width: int, default 960
-            Width of the plot in pixels.
-        height: int, default 960
-            Height of the plot in pixels.
+        See parameters' description
+            :py:class:`.TransitionGraph`
 
         Returns
         -------
         TransitionGraph
-            A ``TransitionGraph`` class instance fitted to the given parameters.
+            Rendered IFrame graph.
+
         """
         self.__transition_graph = TransitionGraph(
             eventstream=self,
@@ -1063,23 +1032,19 @@ class Eventstream(
 
     def transition_matrix(self, weight_col: str | None = None, norm_type: NormType = None) -> TransitionMatrix:
         """
-        Get transition weights as a matrix for each unique pair of events. The calculation logic is the same
-        that is used for edge weights calculation of transition graph.
+        Display transition weights as a matrix for each unique pair of events.
+        The calculation logic is the same that is used for edge weights calculation of transition graph.
 
         Parameters
         ----------
+        See parameters' description
+            :py:meth:`.TransitionMatrix.values`
 
-        weight_col : str, default None
-            Weighting column for the transition weights calculation.
-            See :ref:`transition graph user guide <transition_graph_weights>` for the details.
-
-        norm_type : {"full", "node", None}, default None
-            Normalization type. See :ref:`transition graph user guide <transition_graph_weights>` for the details.
 
         Returns
         -------
-        pd.DataFrame
-            ``(i, j)``-th matrix value relates to the weight of i → j transition.
+        TransitionMatrix
+            Display ``(i, j)``-th matrix value relates to the weight of i → j transition.
 
         """
         if self.__transition_matrix is None:

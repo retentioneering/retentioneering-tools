@@ -11,6 +11,26 @@ from retentioneering.tooling.typing.transition_graph import NormType
 
 
 class TransitionMatrix:
+    """
+
+    A Class for transition matrix calculation.
+    Parameters
+    ----------
+    eventstream: EventstreamType
+
+    See Also
+    --------
+
+    .Eventstream.transition_matrix
+    .TransitionGraph
+    .Eventstream.transition_graph
+
+    Notes
+    -----
+    See :doc:`transition graph user guide</user_guides/transition_graph>` for the details.
+    TODO: add anchor link. dpanina
+    """
+
     __edgelist: Edgelist
 
     def __init__(self, eventstream: EventstreamType) -> None:
@@ -26,15 +46,24 @@ class TransitionMatrix:
 
     def values(self, weight_col: str | None = None, norm_type: NormType = None) -> pd.DataFrame:
         """
+
+        Get transition weights as a matrix for each unique pair of events. The calculation logic is the same
+        that is used for edge weights calculation of transition graph.
+
         Parameters
         ----------
-        weight_col : str or None
-        norm_type : {"full", "node", None}
+
+        weight_col : str, default None
+            Weighting column for the transition weights calculation.
+            See :ref:`transition graph user guide <transition_graph_weights>` for the details.
+
+        norm_type : {"full", "node", None}, default None
+            Normalization type. See :ref:`transition graph user guide <transition_graph_weights>` for the details.
 
         Returns
         -------
         pd.DataFrame
-            Transition matrix
+            Transition matrix. ``(i, j)``-th matrix value relates to the weight of i → j transition.
         """
         if weight_col is None:
             weight_col = "event_id"
@@ -45,5 +74,22 @@ class TransitionMatrix:
         return nx.to_pandas_adjacency(G=graph)
 
     def display(self, weight_col: str | None, norm_type: NormType) -> None:
+        """
+        Display pd.DataFrame with transition matrix values.
+
+        Parameters
+        ----------
+        weight_col : str, default None
+            Weighting column for the transition weights calculation.
+            See :ref:`transition graph user guide <transition_graph_weights>` for the details.
+
+        norm_type : {"full", "node", None}, default None
+            Normalization type. See :ref:`transition graph user guide <transition_graph_weights>` for the details.
+
+        Returns
+        -------
+        None
+
+        """
         transition_matrix = self.values(weight_col=weight_col, norm_type=norm_type)
         display(transition_matrix)

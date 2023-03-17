@@ -1719,8 +1719,8 @@ Let us consider each time delta calculation:
 
     Single user path
 
-Now let us get back to our example. Due to we have a lot of users with short trajectories but also there
-a few users with very long paths our histogram is rather unreadable.
+Now let us get back to our example. Due to the fact we have a lot of users with short trajectories and
+a few users with very long paths our histogram is unreadable.
 
 To make entire plot more comprehensible - the ``log_scale`` parameter can be used.
 We have already used that parameter for the ``x axis``, but it is also available fot the ``y axis``.
@@ -1730,8 +1730,9 @@ Another way to resolve that problem, is to look separately on different parts of
 For that purpose we can use parameters ``lower_cutoff_quantile`` and ``upper_cutoff_quantile``.
 These parameters specify boundaries for the histogram and will be applied last.
 
-On the example below, firstly, we keep users with ``event_pair=('product1', 'cart')`` and ``only_adjacent_event_pairs=False``,
-and after it truncate 90% of users with the shortest trajectories.
+In the example below, firstly, we keep users with ``event_pair=('product1', 'cart')``
+and ``only_adjacent_event_pairs=False``, and after it we truncate 90% of users with the shortest
+trajectories and keep 10% of the longest.
 
 .. code-block:: python
 
@@ -1744,7 +1745,7 @@ and after it truncate 90% of users with the shortest trajectories.
 
 .. figure:: /_static/user_guides/eventstream/timedelta_lower_cutoff_quantile.png
 
-Here it is the same algorithm, but 10% of users with the longest trajectories will be truncated.
+Here it is the same algorithm, but 10% of users with the shortest trajectories will be kept.
 
 .. code-block:: python
 
@@ -1753,14 +1754,15 @@ Here it is the same algorithm, but 10% of users with the longest trajectories wi
             timedelta_unit='m',
             only_adjacent_event_pairs=False,
             upper_cutoff_quantile=0.1
+
         )
 
 .. figure:: /_static/user_guides/eventstream/timedelta_upper_cutoff_quantile.png
 
-If we set both of these parameters and boundaries will be calculated simultaneously and truncated afterwards.
+If we set both parameters, boundaries will be calculated simultaneously and truncated afterward.
 
-Let us turn to another case. Sometimes we are interested in looking only at events that appear
-within a user session. If we have already split the paths into sessions we can use ``weight_col='session_id'``:
+Let us turn to another case. Sometimes we are interested in looking only at events
+within a user session. If we have already split the paths into sessions, we can use ``weight_col='session_id'``:
 
 .. code-block:: python
 
@@ -1808,10 +1810,22 @@ They indicate the first and the last events in an evenstream.
 It is especially useful for choosing the ``cutoff`` parameter for
 :py:meth:`TruncatedEvents<retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` data processor.
 Before you choose it, you can explore how a path's beginning/end margin from the right/left edge of an eventstream.
-In the diagram below, below :math:`\Delta_1` illustrates such a margin:
+In the histogram below, :math:`\Delta_1` illustrates such a margin for ``event_pair=('eventstream_start', 'B')``.
+Note that here only one timedelta is calculated - from the 'eventstream_start' to the first occurrence of specified
+event.
 
 .. figure:: /_static/user_guides/eventstream/11_timedelta_event_pair_with_global.png
     :width: 500
+
+
+:math:`\Delta_1` in the following example illustrates a margin for ``event_pair=('B', 'eventstream_end')``.
+And again, only one timedelta per userpath is calculated - from the 'B' event (its last occurrence) to the
+.eventstream_end'.
+
+.. figure:: /_static/user_guides/eventstream/11_timedelta_event_pair_with_global_end.png
+    :width: 500
+
+
 
 .. code-block:: python
 
@@ -1832,7 +1846,7 @@ For more details on how this histogram helps to define the ``cutoff`` parameter 
 Event intensity
 ^^^^^^^^^^^^^^^
 
-There is another useful diagram that can be used for eventstream overview.
+There is another helpful diagram that can be used for eventstream overview.
 Sometimes we want to know how the events are distributed over time. The histogram for this distribution is plotted by
 :py:meth:`event_timestamp_hist()<retentioneering.eventstream.eventstream.Eventstream.event_timestamp_hist>`
 method.

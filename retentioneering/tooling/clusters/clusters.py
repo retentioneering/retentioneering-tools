@@ -444,7 +444,7 @@ class Clusters:
             to this user will be highlighted as converted on the resulting projection plot.
 
         **kwargs : optional
-            Parameters for ``sklearn.manifold.TSNE()`` and ``umap.UMAP()``
+            Parameters for :sklearn_tsne:`sklearn.manifold.TSNE()<>` and :umap:`umap.UMAP()<>`.
 
         Returns
         -------

@@ -13,34 +13,76 @@ retentioneering documentation
 =============================
 **Date:** Feb 8, 2023 **Version:** 3.0.0 :red:`(beta)`
 
+.. grid:: 4
+
+    .. grid-item-card:: Descriptive methods
+        :img-top: _static/tool_icons/describe.png
+        :link: eventstream_descriptive_methods
+        :link-type: ref
+
+    .. grid-item-card:: Transition Graph
+        :img-top: _static/tool_icons/transition_graph.png
+        :link: /user_guides/transition_graph
+        :link-type: doc
+
+    .. grid-item-card:: Step Sankey
+        :img-top: _static/tool_icons/step_sankey.png
+        :link: /user_guides/step_sankey
+        :link-type: doc
+
+    .. grid-item-card:: Step Matrix
+        :img-top: _static/tool_icons/step_matrix.png
+        :link: /user_guides/step_matrix
+        :link-type: doc
+
+.. grid:: 4
+
+    .. grid-item-card:: Clusters
+        :img-top: _static/tool_icons/clusters.png
+        :link: /user_guides/clusters
+        :link-type: doc
+
+    .. grid-item-card:: Cohorts
+        :img-top: _static/tool_icons/cohorts.png
+        :link: /user_guides/cohorts
+        :link-type: doc
+
+    .. grid-item-card:: Funnel
+        :img-top: _static/tool_icons/funnel.png
+        :link: /user_guides/funnel
+        :link-type: doc
+
+Installation
+============
+
+.. code-block:: python
+
+    pip install retentioneering
+
+
 Contents
 ========
 .. toctree::
-    :caption: Getting started:
-    :maxdepth: 2
+    :maxdepth: 1
 
     Getting Started <getting_started.rst>
 
 .. toctree::
-    :caption: User Guide:
     :maxdepth: 1
 
     User Guide <user_guide.rst>
 
 .. toctree::
-    :caption: Tutorials:
     :maxdepth: 1
 
     Tutorials <tutorials.rst>
 
 .. toctree::
-    :caption: Datasets:
     :maxdepth: 1
 
     Datasets <datasets.rst>
 
 .. toctree::
-    :caption: API Reference:
     :maxdepth: 1
 
     API Reference <api_reference.rst>

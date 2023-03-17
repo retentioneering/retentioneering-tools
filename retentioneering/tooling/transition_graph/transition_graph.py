@@ -238,7 +238,9 @@ class TransitionGraph:
         self, rename_rules: list[RenameRule]
     ) -> dict[str, MutableSequence[PreparedNode] | MutableSequence[PreparedLink] | list]:
         try:
-            self._recalculate(rename_rules=rename_rules)
+            # fronend can ask recalculate without grouping or renaming
+            if len(rename_rules) > 0:
+                self._recalculate(rename_rules=rename_rules)
 
             nodes, nodes_set = self._prepare_nodes(
                 nodelist=self.nodelist.nodelist_df,

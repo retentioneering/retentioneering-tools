@@ -1060,8 +1060,6 @@ class Eventstream(
         )
         return describer._describe()
 
-        self,
-
     def transition_graph(
         self,
         graph_settings: dict[str, Any] | None = None,

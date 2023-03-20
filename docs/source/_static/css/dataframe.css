@@ -3,7 +3,6 @@
         border-collapse: collapse;
         border-spacing: 0;
         color: black;
-        font-size: 12px;
         table-layout: fixed;
     }
 
@@ -20,6 +19,7 @@
     white-space: normal;
     max-width: none;
     border: none;
+    font-size: 12px;
 }
 
 .dataframe th {

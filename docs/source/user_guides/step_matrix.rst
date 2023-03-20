@@ -11,7 +11,7 @@ Step matrix is a powerful tool in the Retentioneering arsenal. It allows and get
 
 To better understand how the step matrix works, let us first consider an intuitive example. Assume we have an eventstream as follows:
 
-.. image:: /_static/user_guides/step_matrix/step_matrix_demo.png
+.. figure:: /_static/user_guides/step_matrix/step_matrix_demo.png
 
 
 We can visualize this dataset as a step-wise heatmap, indicating the distribution of the events appeared at a specific step:
@@ -49,7 +49,7 @@ We can visualize this dataset as a step-wise heatmap, indicating the distributio
     Eventstream(simple_example)\
         .step_matrix(max_steps=7);
 
-.. image:: /_static/user_guides/step_matrix/output_6_1.png
+.. figure:: /_static/user_guides/step_matrix/output_6_1.png
 
 
 The matrix rows correspond to the unique events, and the columns correspond to the steps in the user
@@ -72,7 +72,7 @@ The primary way to visualize a step matrix is to call :py:meth:`Eventstream.step
 
     stream.step_matrix(max_steps=12)
 
-.. image:: /_static/user_guides/step_matrix/output_12_2.png
+.. figure:: /_static/user_guides/step_matrix/output_12_2.png
 
 As we can see, the sum of the values in the matrix columns is 1 (i.e. at each step). Looking at the first column we can say that the users start their sessions from events ``catalog`` (72%) and ``main`` (28%). Also, we notice that ``payment_done`` event, which might be considered as an event of interest, appears in the trajectories no earlier than at the 7th step (row ``payment_done`` has zeros until step 7).
 
@@ -96,7 +96,7 @@ Let us look how the events are collapsed if we set ``thresh=0.05``, and compare 
 
     stream.step_matrix(max_steps=16, thresh=0.05)
 
-.. image:: /_static/user_guides/step_matrix/output_16_1.png
+.. figure:: /_static/user_guides/step_matrix/output_16_1.png
 
 
 Now, we see that all 6 rare events are hidden and grouped together in the ``THRESHOLDED_6`` row. We also notice that ``THRESHOLDED_6`` event contains ``delivery_courier``, ``delivery_pickup``, ``payment_cash``, ``payment_card``, ``payment_done``, and ``payment_choice`` events. Let us check why, say, the ``payment_choice`` event has been collapsed. In the previous step matrix we see that at step 5 this event contains 3% of the users, 4% at step 6, and 3% at step 7, etc. Since the maximum value (4%) is less than
@@ -120,7 +120,7 @@ This includes such events as adding an item to the cart, order confirmation, pay
         targets=['payment_done']
     )
 
-.. image:: /_static/user_guides/step_matrix/output_20_2.png
+.. figure:: /_static/user_guides/step_matrix/output_20_2.png
 
 Specified target events are always shown at the bottom of step matrix regardless of the selected threshold. As we have chosen the ``payment_done`` event as a target, the row with ``payment_done`` has been moved at the bottom of the matrix and now has its own color palette.
 
@@ -134,7 +134,7 @@ Multiple targets are also supported:
         targets=['product1', 'cart', 'payment_done']
     )
 
-.. image:: /_static/user_guides/step_matrix/output_22_2.png
+.. figure:: /_static/user_guides/step_matrix/output_22_2.png
 
 Now we have selected three target events: ``product1``, ``cart``, ``payment_done``, so we can see them at the bottom of the diagram. Each of them has its own palette and color scaling.
 
@@ -148,7 +148,7 @@ If we want to compare some target events and plot them using the same color scal
         targets=['product1', ['cart', 'payment_done']]
     )
 
-.. image:: /_static/user_guides/step_matrix/output_25_2.png
+.. figure:: /_static/user_guides/step_matrix/output_25_2.png
 
 With the colors defined in this way, we can compare how many users reached ``cart`` vs ``payment_done`` at particular step in their trajectories.
 
@@ -168,7 +168,7 @@ The step matrix below demonstrates ``accumulated='only'`` option:
         accumulated='only'
     )
 
-.. image:: /_static/user_guides/step_matrix/output_28_1.png
+.. figure:: /_static/user_guides/step_matrix/output_28_1.png
 
 In comparison with the previous step matrix, at the bottom we see three rows ``ACC_product1``, ``ACC_cart``, ``ACC_payment_done`` instead of ``product1``, ``cart``, and ``payment_done``. Now, let us show how ``accumulated='both'`` option works.
 
@@ -181,7 +181,7 @@ In comparison with the previous step matrix, at the bottom we see three rows ``A
         accumulated='both'
     )
 
-.. image:: /_static/user_guides/step_matrix/output_29_2.png
+.. figure:: /_static/user_guides/step_matrix/output_29_2.png
 
 Above, we see two target blocks: one is with accumulated values, another one with the original values.
 
@@ -202,7 +202,7 @@ Sometimes we are interested in the flow of users through a specific event to ans
         }
     )
 
-.. image:: /_static/user_guides/step_matrix/output_32_2.png
+.. figure:: /_static/user_guides/step_matrix/output_32_2.png
 
 The ``centered`` parameter is a dictionary that requires three keys:
 
@@ -216,7 +216,7 @@ Importantly, when the ``centered`` parameter is used, only the users who have ``
 
 Another property of step matrix is that at step 0 column we always have zeros at any row except the row that relates to the centering event: at that row there is always 1.
 
-.. image:: /_static/user_guides/step_matrix/SM_occurence=1.png
+.. figure:: /_static/user_guides/step_matrix/SM_occurence=1.png
 
 To better understand the meaning of the ``occurrence`` parameter, let us calculate another step matrix. This time with ``occurrence=2``:
 
@@ -232,7 +232,7 @@ To better understand the meaning of the ``occurrence`` parameter, let us calcula
         }
     )
 
-.. image:: /_static/user_guides/step_matrix/output_36_2.png
+.. figure:: /_static/user_guides/step_matrix/output_36_2.png
 
 Here we can see that the proportion of the users whose steps are considered in our matrix has noticeably decreased. Now it is 15.2%, because we are evaluating the second occurrence of the ``cart`` event, which
 means we are considering the users who had this event at least twice.
@@ -252,7 +252,7 @@ A combination of ``targets`` and ``centered`` parameters is also possible:
         targets=['payment_done']
     )
 
-.. image:: /_static/user_guides/step_matrix/output_39_2.png
+.. figure:: /_static/user_guides/step_matrix/output_39_2.png
 
 From the step matrix above, we see that the maximum in the target row appear at step 5 (with the value of 0.22). We can interpret this as follows: if a user reaches the ``cart`` event and makes a purchase afterwards, it is likely that it took them 5 steps.
 
@@ -272,7 +272,7 @@ Sometimes, it is needed to obtain a step matrix with events ranked in a specific
 
     stream.step_matrix(max_steps=16, thresh=0.07)
 
-.. image:: /_static/user_guides/step_matrix/output_43_2.png
+.. figure:: /_static/user_guides/step_matrix/output_43_2.png
 
 We pass the following list ofr the events to the ``sorting`` parameter:
 
@@ -295,7 +295,7 @@ We pass the following list ofr the events to the ``sorting`` parameter:
         sorting=custom_order
     )
 
-.. image:: /_static/user_guides/step_matrix/output_47_2.png
+.. figure:: /_static/user_guides/step_matrix/output_47_2.png
 
 .. note::
 
@@ -339,7 +339,7 @@ In the example below we demonstrate how the ``groups`` parameter works. We also 
         groups=(g1, g2)
     )
 
-.. image:: /_static/user_guides/step_matrix/output_51_2.png
+.. figure:: /_static/user_guides/step_matrix/output_51_2.png
 
 According to the step matrix definition, the values that are close to 0 mean that the corresponding values in the original matrices ``M1`` and ``M2`` are roughly equal. Large positive/negative value indicates that the corresponding value in ``M1`` matrix is much greater/less than the corresponding number in ``M2`` matrix. As a result, the step matrix heatmap highlights the cells where the difference is big.
 
@@ -360,7 +360,7 @@ Consider another example of differential step matrix usage. Now we will compare 
     clusters.fit(method='kmeans', n_clusters=8, feature_type='count', ngram_range=(1, 1))
     clusters.plot(targets=['payment_done', 'cart']);
 
-.. image:: /_static/user_guides/step_matrix/output_57_0.png
+.. figure:: /_static/user_guides/step_matrix/output_57_0.png
 
 So we have defined 8 clusters. The diagram above shows :ref:`the distribution of the conversion rate to the target events <clusters_plot>` (``payment_done`` and ``cart``) among the clusters. Suppose we are interested in how clusters #1 and #3 differ.
 
@@ -382,7 +382,7 @@ All we need is to get ``user_id`` collections from the :ref:`cluster_mapping <cl
         groups=(g1,g2)
     )
 
-.. image:: /_static/user_guides/step_matrix/output_59_1.png
+.. figure:: /_static/user_guides/step_matrix/output_59_1.png
 
 The differential step matrix clearly shows the difference between clusters #1 and #3. Users from cluster #1, after adding a product to the cart tend to return to the catalog and continue shopping more often. On the other hand, users from cluster #3 tend to fall into payment flow and eventually make purchase.
 
@@ -403,7 +403,7 @@ Step matrix shares the same mechanism of weighting that is used in :ref:`transit
 
     stream_with_sessions.step_matrix(max_steps=16, weight_col='session_id')
 
-.. image:: /_static/user_guides/step_matrix/output_69_2.png
+.. figure:: /_static/user_guides/step_matrix/output_69_2.png
 
 For example, ``cart`` value at step 3 is 0.05 which means that at step 3 only 5% of the sessions had ``cart`` event.
 
@@ -413,7 +413,7 @@ Let us compare the result with the user-weighted matrix:
 
     stream_with_sessions.step_matrix(max_steps=16, weight_col='user_id'))
 
-.. image:: /_static/user_guides/step_matrix/output_72_2.png
+.. figure:: /_static/user_guides/step_matrix/output_72_2.png
 
 
 Now, we can see the difference between these two types of weighting. The number of unique sessions is greater than the number of unique users, so the proportion of the ``cart`` event at the third step when
@@ -436,7 +436,7 @@ Here is an example how you can manage it:
     step_matrix.fit()
     step_matrix.plot()
 
-.. image:: /_static/user_guides/step_matrix/output_75_0.png
+.. figure:: /_static/user_guides/step_matrix/output_75_0.png
 
 
 Common tooling properties

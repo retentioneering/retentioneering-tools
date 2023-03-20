@@ -1,12 +1,14 @@
 Transition Graph
 ================
 
-Eventstream shortcut methods
-----------------------------
-.. automethod:: retentioneering.eventstream.eventstream.Eventstream.transition_graph
-.. automethod:: retentioneering.eventstream.eventstream.Eventstream.transition_matrix
+Transition Graph class
+----------------------
 
-TransitionGraph class
----------------------
 .. automodule:: retentioneering.transition_graph.transition_graph
     :members:
+
+
+Eventstream
+-----------
+
+.. automethod:: retentioneering.eventstream.eventstream.Eventstream.transition_graph

@@ -47,7 +47,7 @@ class TimedeltaHist:
 
         For example, if ``event_pair=("login", "purchase")`` and ``only_adjacent_event_pairs=False``,
         then the sequence ("login", "main", "trading", "purchase") will contain a valid pair
-        (which is not the case with only_adjacent_event_pairs=True)
+        (which is not the case with only_adjacent_event_pairs=True).
 
     weight_col : str, default 'user_id'
         Specify a unit of observation, inside which time differences will be computed.
@@ -67,7 +67,7 @@ class TimedeltaHist:
     timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
         Specify units of time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
-    log_scale: bool | tuple of bool | None = None,
+    log_scale: bool | tuple of bool | None, optional
 
          - If ``True`` - apply log scaling to the ``x`` axis.
          - If tuple of bool - apply log scaling to the (``x``,``y``) axes correspondingly.

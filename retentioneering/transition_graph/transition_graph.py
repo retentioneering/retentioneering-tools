@@ -37,7 +37,7 @@ class TransitionGraph:
     Parameters
     ----------
     eventstream: EventstreamType
-        Sourcing eventstream.
+        Source eventstream.
 
     norm_type: {"full", "node", None}, default None
         Type of normalization that is used to calculate weights for graph nodes and edges. See
@@ -50,7 +50,7 @@ class TransitionGraph:
         - Possible keys: "nodes", "edges".
         - Possible values: "event_id", user column (typically "user_id") or custom columns.
 
-        If None, {'nodes': 'event_id', 'edges': 'event_id'} dict is used.
+        If ``None``, {'nodes': 'event_id', 'edges': 'event_id'} dict is used.
 
     thresholds: dict, optional
         Threshold values for hiding nodes and edges from the canvas.
@@ -60,7 +60,7 @@ class TransitionGraph:
 
         Example: {'nodes': {'event_id': 0.03}, 'edges': {'event_id': 0.03, user_id: 0.05}}
 
-        If None, all the threshold values are set to 0.
+        If ``None``, all the threshold values are set to 0.
 
     targets: dict, optional
         Events mapping that defines which nodes and edges should be colored for better visualization.
@@ -85,7 +85,7 @@ class TransitionGraph:
 
     Notes
     -----
-    See :doc:`TransitionGraph user guide</user_guides/transition_graph>` for the details.
+    See :doc:`transition graph user guide</user_guides/transition_graph>` for the details.
 
     """
 
@@ -556,7 +556,7 @@ class TransitionGraph:
             - Possible keys: "nodes", "edges".
             - Possible values: "event_id", user column (typically "user_id") or custom columns.
 
-            If None, {'nodes': 'event_id', 'edges': 'event_id'} dict is used.
+            If ``None``, {'nodes': 'event_id', 'edges': 'event_id'} dict is used.
 
         thresholds: dict, optional
             Threshold values for hiding nodes and edges from the canvas.
@@ -566,7 +566,7 @@ class TransitionGraph:
 
             Example: {'nodes': {'event_id': 0.03}, 'edges': {'event_id': 0.03, user_id: 0.05}}
 
-            If None, all the threshold values are set to 0.
+            If ``None``, all the threshold values are set to 0.
 
         targets: dict, optional
             Events mapping that defines which nodes and edges should be colored for better visualization.
@@ -587,7 +587,7 @@ class TransitionGraph:
 
         Returns
         -------
-            Rendered IFrame graph
+            Rendered IFrame graph.
 
         Notes
         -----

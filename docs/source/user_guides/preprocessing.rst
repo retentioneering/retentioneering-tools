@@ -280,7 +280,7 @@ list to ``new_users`` variable and then pass it to
     link = f'https://drive.google.com/uc?id={google_drive_file_id}&export=download'
     new_users = pd.read_csv(link, header=None)[0].tolist()
     node3 = EventsNode(NewUsersEvents(params=NewUsersParams(new_users_list=new_users)))
-    graph.add_node(node=node2, parents=[node1])
+    graph.add_node(node=node3, parents=[node2])
 
 Creation of the next ``node4`` and ``node5`` is similar. We need to create a
 couple of nodes with

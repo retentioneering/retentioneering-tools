@@ -350,6 +350,8 @@ A summary with all the important chosen graph settings is available by clicking 
 
 :red:`TODO: insert an actual screenshot`
 
+.. _transition_graph_transition_matrix:
+
 Transition matrix
 -----------------
 

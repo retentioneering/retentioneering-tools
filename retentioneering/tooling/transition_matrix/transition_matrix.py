@@ -28,8 +28,7 @@ class TransitionMatrix:
 
     Notes
     -----
-    See :doc:`transition graph user guide</user_guides/transition_matrix>` for the details.
-    TODO: add anchor link. dpanina
+    See :ref:`transition graph user guide<transition_graph_transition_matrix>` for the details.
     """
 
     __edgelist: Edgelist

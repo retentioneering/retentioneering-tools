@@ -999,7 +999,6 @@ class Eventstream(
         nodes_weight_col: str | None = None,
         edges_weight_col: str | None = None,
         custom_weight_cols: list[str] | None = None,
-        layout_dump: str | None = None,
         width: int = 960,
         height: int = 900,
     ) -> TransitionGraph:
@@ -1063,7 +1062,6 @@ class Eventstream(
             width=width,
             height=height,
             edges_norm_type=edges_norm_type,
-            layout_dump=layout_dump,
         )
         return self.__transition_graph
 

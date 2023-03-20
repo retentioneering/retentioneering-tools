@@ -238,9 +238,7 @@ class TransitionGraph:
         self, rename_rules: list[RenameRule]
     ) -> dict[str, MutableSequence[PreparedNode] | MutableSequence[PreparedLink] | list]:
         try:
-            # fronend can ask recalculate without grouping or renaming
-            if len(rename_rules) > 0:
-                self._recalculate(rename_rules=rename_rules)
+            self._recalculate(rename_rules=rename_rules)
 
             nodes, nodes_set = self._prepare_nodes(
                 nodelist=self.nodelist.nodelist_df,
@@ -260,12 +258,14 @@ class TransitionGraph:
 
     def _recalculate(self, rename_rules: list[RenameRule]) -> None:
         eventstream = self.eventstream.copy()
-        renamed_eventstream = eventstream.rename(rules=rename_rules)
-        renamed_df = renamed_eventstream.to_dataframe()
+        # frontend can ask recalculate without grouping or renaming
+        if len(rename_rules) > 0:
+            eventstream = eventstream.rename(rules=rename_rules)  # type: ignore
+        renamed_df = eventstream.to_dataframe()
 
         # save norm type
         recalculated_nodelist = self.nodelist.calculate_nodelist(data=renamed_df)
-        self.edgelist.eventstream = renamed_eventstream
+        self.edgelist.eventstream = eventstream
         recalculated_edgelist = self.edgelist.calculate_edgelist(
             weight_cols=self.weight_cols, norm_type=self.edges_norm_type
         )
@@ -622,7 +622,6 @@ class TransitionGraph:
         show_nodes_names: bool | None = None,
         show_all_edges_for_targets: bool | None = None,
         show_nodes_without_links: bool | None = None,
-        layout_dump: str | None = None,
     ) -> None:
         """
         Create interactive transition graph visualization with callback to sourcing eventstream.
@@ -721,7 +720,7 @@ class TransitionGraph:
                 links=self._to_json_links(links),
                 nodes=self._to_json(nodes),
                 node_params=self._to_json(node_params),
-                layout_dump=1 if layout_dump is not None or self.layout is not None else 0,
+                layout_dump=1 if self.layout is not None else 0,
                 links_weights_names=cols,
                 node_cols_names=cols,
                 shown_nodes_col=shown_nodes_col,

@@ -177,9 +177,7 @@ class TransitionGraph:
         self, rename_rules: list[RenameRule]
     ) -> dict[str, MutableSequence[PreparedNode] | MutableSequence[PreparedLink] | list]:
         try:
-            # fronend can ask recalculate without grouping or renaming
-            if len(rename_rules) > 0:
-                self._recalculate(rename_rules=rename_rules)
+            self._recalculate(rename_rules=rename_rules)
 
             nodes, nodes_set = self._prepare_nodes(
                 nodelist=self.nodelist.nodelist_df,
@@ -199,12 +197,14 @@ class TransitionGraph:
 
     def _recalculate(self, rename_rules: list[RenameRule]) -> None:
         eventstream = self.eventstream.copy()
-        renamed_eventstream = eventstream.rename(rules=rename_rules)
-        renamed_df = renamed_eventstream.to_dataframe()
+        # frontend can ask recalculate without grouping or renaming
+        if len(rename_rules) > 0:
+            eventstream = eventstream.rename(rules=rename_rules)  # type: ignore
+        renamed_df = eventstream.to_dataframe()
 
         # save norm type
         recalculated_nodelist = self.nodelist.calculate_nodelist(data=renamed_df)
-        self.edgelist.eventstream = renamed_eventstream
+        self.edgelist.eventstream = eventstream
         recalculated_edgelist = self.edgelist.calculate_edgelist(
             weight_cols=self.custom_cols, norm_type=self.norm_type, rename_cols=self.rename_cols
         )

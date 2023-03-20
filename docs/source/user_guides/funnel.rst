@@ -148,6 +148,8 @@ Hybrid funnels inherit the logic of both open and closed funnels. The first stag
 
 We consider the users from the previous stage. Among these users we select only those who experienced event ``C`` after event ``A`` disregard whether it happened after ``B`` event or not. Hence, we include ``user 2``at the third stage: she has ``C`` appeared after event ``A``, and she also has event ``B`` appeared after event ``A``. We are not interested in the fact that ``C`` happened before ``B``. On the other hand, we do not include ``user 5`` at the third stage despite the fact she has event ``C`` appeared after event ``A``. The reason is that she did not appear at the previous stage.
 
+.. _funnel_segments:
+
 User segments
 -------------
 

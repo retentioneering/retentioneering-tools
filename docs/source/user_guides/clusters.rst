@@ -1,20 +1,12 @@
-.. raw:: html
-
-    <style>
-        .red {color:#24ff83; font-weight:bold;}
-    </style>
-
-.. role:: red
-
-
 Clusters
 ========
+
 The following user guide is also available as `Google Colab notebook <https://colab.research.google.com/drive/1czRNCWcena5KlyPIJR7RRuXNQltl9mKQ?usp=share_link>`_.
 
 Loading data
 ------------
 
-Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simple_shop>` dataset. It has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable.
+Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simple_shop>` dataset. It has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable. If you want to use your own dataset, upload it following :ref:`this instruction<eventstream_creation>`.
 
 .. code-block:: python
 
@@ -25,25 +17,12 @@ Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simp
     stream = datasets.load_simple_shop()\
         .split_sessions(session_cutoff=(30, 'm'))
 
-Above we use an additional call of :doc:`SplitSessions</api/data_processors/split_sessions>` data processor.
-We’ll need this session info in one of the examples in this user guide.
+Above we use an additional call of the :ref:`split_sessions<split_sessions>` data processor helper. We will need this session split in one of the examples in this user guide.
 
 General usage
 -------------
 
-The cases in this section demonstrate the ways you can treat ``Clusters``
-tool. In each case we'll do the same thing:
-
-- create ``Clusters`` instance,
-- fit clusters with ``method='kmeans'``, ``n_clusters=4``, ``feature_type='tfidf'``, ``ngram_range=(1, 1)`` parameters,
-- use a tool for cluster analysis (e.g. :py:meth:`plot()<retentioneering.tooling.clusters.clusters.Clusters.plot>` for simplicity).
-
-Separate instance of Clusters
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-One way of using the ``Clusters`` tool is sort of traditional. You can
-create a separate instance of ``Clusters`` explicitly, and call ``fit``
-and ``plot`` methods then.
+The primary way of using the ``Clusters`` tool is sort of traditional. You can create a separate instance of ``Clusters`` explicitly, and call ``fit()`` method then. As soon as the clusters are fitted, you can apply multiple tools for cluster analysis. A basic tool that shows cluster sizes and some other statistics is :ref:`plot()<clusters_plot>`.
 
 .. code-block:: python
 
@@ -55,88 +34,42 @@ and ``plot`` methods then.
 
 .. figure:: /_static/user_guides/clusters/basic_plot.png
 
-Eventstream.clusters property
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-:doc:`Eventstream.clusters</api/tooling/clusters>` property creates an instance
-of ``Clusters`` class, stores it inside ``Eventstream`` object, and returns a
-link to this instance. So you can either save this link as a separate variable
-and treat it how we showed in the previous example:
-
-.. code-block:: python
-
-    clusters = stream.clusters
-    clusters.fit(method='kmeans', n_clusters=4, feature_type='tfidf', ngram_range=(1, 1))
-    clusters.plot()
-
-or you can use ``stream.clusters`` link as is:
-
-.. code-block:: python
-
-    stream.clusters\
-        .fit(method='kmeans', n_clusters=4, feature_type='tfidf', ngram_range=(1, 1))
-    stream.clusters.plot()
-
-We pay your attention that once created ``Eventstream.clusters`` is kept inside Eventstream
-object forever until eventstream is alive. You can re-fit it as many times as you want, but
-you can not remove it.
-
 Fitting clusters
 ----------------
 
-Fitting clusters is a core and obligatory step for cluster analysis. If the ``Clusters``
-object is not fitted, you can not use any cluster analysis tool.
+Fitting clusters is an obligatory step for cluster analysis. If a ``Clusters`` object is not fitted (i.e. the clusters are not defined), you can not use any cluster analysis tool. To do this, you can either use pre-defined clustering algorithms such as k-means, or pass custom user-cluster mapping.
 
-Retentioneering clustering
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Pre-defined clustering methods
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A primary way to set clusters is to use :py:meth:`Clusters.fit()<retentioneering.tooling.clusters.clusters.Clusters.fit>` method.
-It's implementation is mainly based on sklearn clustering methods. Here's an example of such a fitting.
+:py:meth:`Clusters.fit()<retentioneering.tooling.clusters.clusters.Clusters.fit>` is a method for fitting clusters. Its implementation is mainly based on sklearn clustering methods. Here is an example of such a fitting.
 
 .. code-block:: python
 
     clusters = Clusters(eventstream=stream)
     clusters.fit(method='kmeans', n_clusters=4, feature_type='tfidf', ngram_range=(1, 1))
 
-So far ``method`` supports two options: :sklearn_kmeans:`kmeans<>` and :sklearn_gmm:`gmm<>`.
-``n_clusters`` obviously means the number of clusters since both K-means and GMM
-algorithms need it to be pre-defined.
+So far the ``method`` argument supports two options: :sklearn_kmeans:`kmeans<>` and :sklearn_gmm:`gmm<>`. ``n_clusters`` means the number of clusters since both K-means and GMM algorithms need it to be set.
 
-The following couple of arguments ``feature type`` and ``ngram_range`` stands for the type
-of vectorization. By vectorization we mean the way user trajectories are converted to vectors
-in some feature space. In general, vectorization procedure comprises two steps:
+.. _clusters_feature_type_ngram_range:
 
-- Split user paths into short subsequencies called ``n-grams``.
-- Calculate some statistics taking into account how often each n_gram is represented in a user's trajectory.
+The following couple of arguments ``feature_type`` and ``ngram_range`` stands for the type of vectorization. By vectorization we mean the way user trajectories are converted to vectors in some feature space. In general, the vectorization procedure comprises two steps:
 
-``ngram_range`` argument controls the range of n-gram length to be used in the vectorization.
-For example, ``ngram_range=(1, 3)`` means that we're going to use n-grams of length 1
-(single events, that is, *unigrams*), 2 (*bigrams*), and 3 (*trigrams*).
+- Split user paths into short subsequences of particular length called ``n-grams``.
+- Calculate some statistics taking into account how often each n-gram is represented in a user's trajectory.
 
-``feature type`` argument stands for the type of vectorization.  Besides standard
-``tfidf``, ``count``, ``frequency`` and ``binary`` features, ``markov`` and time-related
-(``time`` and ``time_fraction``) features are available.
-See :py:meth:`Clusters.extract_features()<retentioneering.tooling.clusters.clusters.Clusters.extract_features>`
-for the details.
+``ngram_range`` argument controls the range of n-gram length to be used in the vectorization. For example, ``ngram_range=(1, 3)`` means that we are going to use n-grams of length 1 (single events, that is, *unigrams*), 2 (*bigrams*), and 3 (*trigrams*).
 
-If this vectorization is not enough, you can use your own features passing it as a ``pandas.DataFrame``
-to ``vector`` argument.
+``feature type`` argument stands for the type of vectorization.  Besides standard ``tfidf``, ``count``, ``frequency``, and ``binary`` features, ``markov`` and time-related (``time`` and ``time_fraction``) features are available. See :py:meth:`Clusters.extract_features()<retentioneering.tooling.clusters.clusters.Clusters.extract_features>` for the details.
+
+If this vectorization is not enough, you can use your custom features passing it as a pandas DataFrame to the ``vector`` argument.
 
 Custom clustering
 ~~~~~~~~~~~~~~~~~
 
-We believe that advanced data scientists could tune a great clustering model
-by their own, so all they need from Clusters module is just to upload
-clustering results and then use Clusters analytical tools. In this case you can
-use the results of your own clustering by passing ``pandas.Series`` representing
-the mapping between the users and the clusters to
-:py:meth:`Clusters.set_clusters()<retentioneering.tooling.clusters.clusters.Clusters.set_clusters>`
-method. Once the method is called, the ``Clusters`` object is
-considered as fitted, so you can call an analytical method afterwards.
+You can ignore the pre-defined clustering methods and set custom clusters. To do this, pass user-cluster mapping pandas Series to the :py:meth:`Clusters.set_clusters()<retentioneering.tooling.clusters.clusters.Clusters.set_clusters>` method. Once the method is called, the ``Clusters`` object is considered as fitted, so you can use the cluster analysis methods afterwards.
 
-The next example demonstrates random splitting into 4 clusters. ``user_clusters``
-variable holds the mapping information on how the users correspond to the clusters.
-We pass this variable next as an argument for ``set_clusters`` method.
+The following example demonstrates random splitting into 4 clusters. ``user_clusters`` variable holds the mapping information on how the users correspond to the clusters. We pass this variable next as an argument for ``set_clusters`` method.
 
 .. code-block:: python
 
@@ -171,11 +104,10 @@ We pass this variable next as an argument for ``set_clusters`` method.
 
 .. figure:: /_static/user_guides/clusters/basic_plot_random_clustering.png
 
-From this plot we see that the cluster sizes are close to each other
-which is exactly what we expect from random splitting.
+From this diagram, we see that the cluster sizes are close to each other which is exactly what we expect from random splitting.
 
-Cluster analysis
-----------------
+Cluster analysis methods
+------------------------
 
 Visualization
 ~~~~~~~~~~~~~
@@ -185,39 +117,22 @@ Visualization
 Basic cluster statistics
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-:py:meth:`Clusters.plot()<retentioneering.tooling.clusters.clusters.Clusters.plot>`
-method is used for visualising basic cluster statistics.
-By default it shows the cluster sizes as the percentage of the
-eventstream users belonging to a specific cluster. If ``targets``
-parameter is defined, the conversion rate for each cluster and
-each target event is displayed as well. By conversion rate we mean
-the proportion of the users belonging to a specific cluster
-who had at least one target event.
+The :py:meth:`Clusters.plot()<retentioneering.tooling.clusters.clusters.Clusters.plot>` method is used for visualizing basic cluster statistics. By default it shows the cluster sizes as the percentage of the eventstream users belonging to a specific cluster. If the ``targets`` parameter is defined, the conversion rate for each cluster and each target event is displayed as well. Conversion rate is the proportion of users belonging to a specific cluster who had a target event at least ones.
 
 .. code-block:: python
 
-    clusters.plot(targets=['cart'])
+    clusters.plot(targets=['cart', 'payment_done'])
 
 .. figure:: /_static/user_guides/clusters/plot_target.png
 
-The diagram above shows that cluster 0 contains ~40% of the
-eventstream users, 60% of them have at least one ``cart``
-event in their trajectories, and only ~7% of them paid at least
-once.
+The diagram above shows that cluster 0 contains ~40% of the eventstream users, 60% of them have at least one ``cart`` event in their trajectories, and only ~7% of them successfully paid at least once.
 
 Projections
 ^^^^^^^^^^^
 
-Since the feature spaces are of high dimensions, fitted clusters are
-hard to visualize. For this purpose 2D-projections are used. Due to
-the nature of projection, it provides a simplified or event distorted
-picture, but at least it makes clusters visualization possible.
+Since the feature spaces are of high dimensions, fitted clusters are hard to visualize. For this purpose 2D-projections are used. Due to the nature of projection, it provides a simplified picture, but at least it makes the visualization possible.
 
-Our
-:py:meth:`Clusters.projection()<retentioneering.tooling.clusters.clusters.Clusters.projection>`
-implementation supports two techniques, :sklearn_kmeans:`TSNE<>` and
-:umap:`UMAP<>`, perhaps the most popular among contemporary dimensionality
-reduction algorithms.
+Our :py:meth:`Clusters.projection()<retentioneering.tooling.clusters.clusters.Clusters.projection>` implementation supports two popular and powerful dimensionality reduction techniques: :sklearn_kmeans:`TSNE<>` and :umap:`UMAP<>`.
 
 .. code-block:: python
 
@@ -225,13 +140,9 @@ reduction algorithms.
 
 .. figure:: /_static/user_guides/clusters/projection_tsne.png
 
-Each dot represents a single user. Users with similar behaviour are
-located close to each other.
+In this image, each dot represents a single user. Users with similar behavior are located close to each other.
 
-``plot_type='targets'`` along with ``targets`` argument color the
-projected dots with respect to conversion rates associated with
-the events defined in ``targets``. If at least one target event
-appeared in a user’s trajectory, the user will be colored as converted.
+``plot_type='targets'`` along with ``targets`` argument color the projected dots with respect to conversion rates associated with the events defined in ``targets``. If at least one target event appeared in a user’s trajectory, the user is colored as converted.
 
 .. code-block:: python
 
@@ -241,56 +152,40 @@ appeared in a user’s trajectory, the user will be colored as converted.
 
 Exploring individual clusters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Essentially, any cluster splitting provides nothing but a mapping
-rule which assigns each user to some group. The way we understand
-why one clusters differs from another is always tricky, but either
-we consider the entire eventstream or its subset (a user cluster)
-the exploration techniques may be the same. It means having a cluster
-defined we can narrow the entire eventstream and leave only the
-paths belonging to the users from a particular cluster. This is what
-:py:meth:`Clusters.filter_cluster()<retentioneering.tooling.clusters.clusters.Clusters.filter_cluster>`
-method was designed for. It returns the narrowed eventstream so we can
-apply any :doc:`Retentioneering analytical tool</user_guide>` afterwards.
-In the following example we apply
-:py:meth:`transition_graph()<retentioneering.eventstream.eventstream.Eventstream.transition_graph>`
-method.
+
+Essentially, any cluster splitting provides nothing but a mapping rule which assigns each user to some group. The way we understand why one cluster differs from another is always tricky. However, either we consider the entire eventstream or its subset (a user cluster), the exploration techniques may be the same. It means having a cluster defined, we can leave the users from this cluster and explore their paths. This is what :py:meth:`Clusters.filter_cluster()<retentioneering.tooling.clusters.clusters.Clusters.filter_cluster>` method is designed for. It returns the narrowed eventstream so we can apply any :doc:`Retentioneering path analysis tool</user_guide>` afterwards. In the following example we apply the :py:meth:`transition_graph()<retentioneering.eventstream.eventstream.Eventstream.transition_graph>` method.
 
 .. code-block:: python
 
     clusters\
         .filter_cluster(cluster_id=0)\
+        .add_start_end()\
         .transition_graph(
             targets={
-                'lost': 'bad',
-                'payment_done': 'nice'
+                'positive': 'payment_done',
+                'negative': 'path_end'
             }
         )
 
 .. raw:: html
 
     <iframe
-        width="600"
-        height="600"
+        width="680"
+        height="630"
         src="../_static/user_guides/clusters/cluster_transition_graph.html"
         frameborder="0"
         allowfullscreen
     ></iframe>
+    <br><br>
 
-Cluster comparison
-~~~~~~~~~~~~~~~~~~
+Here we additionally used :ref:`add_start_end<add_start_end>` data processor helper. It adds ``path_end`` event that is used as a negative target event in the transition graph.
 
-It's natural to describe cluster characteristics in terms of event
-frequencies generated by the users from the cluster.
-:py:meth:`Clusters.event_dist()<retentioneering.tooling.clusters.clusters.Clusters.event_dist>`
-allows to do this. It takes ``cluster_id1`` cluster to be described
-and plots ``top_n`` the most frequent events related to this cluster.
-In comparison, it shows the frequencies of the same events but within
-``cluster_id2`` if the latter is defined. Otherwise, the frequencies
-over the entire eventstream are shown.
+Clusters comparison
+~~~~~~~~~~~~~~~~~~~
 
-The next example demonstrates that within cluster 0 event ``catalog`` takes
-~37% of all events generated by the users from this cluster, whereas
-in the original eventstream ``catalog`` event holds ~30% of all events only.
+It is natural to describe cluster characteristics in terms of event frequencies generated by the cluster users. :py:meth:`Clusters.event_dist()<retentioneering.tooling.clusters.clusters.Clusters.event_dist>` allows to do this. It takes the ``cluster_id1`` argument as a cluster to be described and plots ``top_n`` the most frequent events related to this cluster. In comparison, it shows the frequencies of the same events but within the ``cluster_id2`` cluster if the latter is defined. Otherwise, the frequencies over the entire eventstream are shown.
+
+The next example demonstrates that within cluster 0 the ``catalog`` event takes ~37% of all events generated by the users from this cluster, whereas in the original eventstream the ``catalog`` event holds ~30% of all events only.
 
 .. code-block:: python
 
@@ -298,16 +193,9 @@ in the original eventstream ``catalog`` event holds ~30% of all events only.
 
 .. figure:: /_static/user_guides/clusters/event_dist.png
 
-Such definition of event frequency often is not convenient since it's hard
-to interpret. One may consider to use ``weight_col`` argument instead which
-normalize event frequencies with respect to the defined column. The most
-common argument values are ``user_id'`` and ``session_id`` (assuming that
-the session split was created and ``session_id`` column exists).
-Thus, ``weight_col='user_id'`` displays the fractions of the users who had
-at least one particular event. ``weight_col='session_id'`` displays the
-fractions of the sessions which contain at least one particular event.
+The Clusters tool shares :ref:`the idea of using weighting column<transition_graph_weights>`. The most common values for this argument are ``user_id`` and ``session_id`` (assuming that the session split was created and ``session_id`` column exists). If you want to display such cluster statistics as the shares of the unique users or unique sessions, you can use the ``weight_col`` argument. Namely, for each event the proportion of the unique user paths/sessions where a particular event appear is calculated.
 
-Also we use ``top_n`` argument which controls the number of the events
+Also, in the example below we demonstrate the ``top_n`` argument that controls the number of the events
 to be compared.
 
 .. code-block:: python
@@ -316,11 +204,9 @@ to be compared.
 
 .. figure:: /_static/user_guides/clusters/plot_weight_col_user_id.png
 
-Now, we see that 100% of the users in cluster 0 had at least one ``catalog``
-event, whereas only 97% of the users in the entire eventstream had the
-same event.
+Now, we see that 100% of the users in cluster 0 had at least one ``catalog`` event, whereas only 97% of the users in the entire eventstream had the same event.
 
-Similarly, defining ``weight_col='user_id'`` we get the following diagram:
+Similarly, by defining ``weight_col='session_id'`` we get the following diagram:
 
 .. code-block:: python
 
@@ -329,14 +215,9 @@ Similarly, defining ``weight_col='user_id'`` we get the following diagram:
 .. figure:: /_static/user_guides/clusters/plot_weight_col_session_id.png
 
 
-As we see from this diagram, if we look at the sessions generated
-by the users from cluster 0, only ~95% of these sessions contain
-at least one ``catalog`` event. In comparison, the sessions from
-the entire eventstream contain ``catalog`` event only in ~83% of cases.
+As we see from this diagram, if we look at the sessions generated by the users from cluster 0, only ~95% of these sessions contain at least one ``catalog`` event. In comparison, the sessions from the entire eventstream include ``catalog`` event only in ~83% of cases.
 
-You can not only comparing clusters with the whole eventstream, but
-with other clusters too. Simply define ``cluster_id2`` argument for
-that.
+You can not only compare clusters with the whole eventstream, but with other clusters too. Simply define ``cluster_id2`` argument for that.
 
 .. code-block:: python
 
@@ -344,28 +225,20 @@ that.
 
 .. figure:: /_static/user_guides/clusters/plot_cluster1_cluster2.png
 
-We see that ``all`` value in the diagram legend has been replaced
-with ``cluster 1`` value.
+We see that the ``all`` bars from the previous diagram have been replaced with the ``cluster 1`` bars.
 
-.. note ::
+.. note::
 
-    Some retentioneering tools support groups comparison. For cluster
-    comparison you can also try to use differential :doc:`step matrix </api/tooling/step_matrix>`
-    (i.e. with ``groups`` argument defined) or :doc:`funnel </api/tooling/funnel>`
-    with ``segments`` argument.
+    Some retentioneering tools support groups comparison. For cluster comparison you can also try to use :ref:`differential step matrix<step_matrix_differential>` or :ref:`segmental funnel<funnel_segments>`.
 
-.. _clusers_clustering_results:
+.. _clusters_clustering_results:
 
 Getting clustering results
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 
-If you want to explicitly get the results of the clustering (i.e.
-mapping rule ``user_id -> cluster_id``), there are two methods
-to do this.
+If you want to get the clustering results, there are two methods to do this.
 
-:py:meth:`Clusters.user_clusters()<retentioneering.tooling.clusters.clusters.Clusters.user_clusters>`
-returns a ``pandas.Series`` containing user_ids as index and cluster_ids
-as values.
+:py:meth:`Clusters.user_clusters()<retentioneering.tooling.clusters.clusters.Clusters.user_clusters>` returns a pandas.Series containing user_ids as index and cluster_ids as values.
 
 .. code-block:: python
 
@@ -386,9 +259,8 @@ as values.
     962761227    2
     Length: 3751, dtype: int64
 
-
 :py:meth:`Clusters.cluster_mapping()<retentioneering.tooling.clusters.clusters.Clusters.cluster_mapping>`
-returns a dictionary containing ``cluster_id -> list[user_ids]`` mapping.
+returns a dictionary containing ``cluster_id`` → ``list of user_ids`` mapping.
 
 .. code-block:: python
 
@@ -399,43 +271,33 @@ returns a dictionary containing ``cluster_id -> list[user_ids]`` mapping.
 
     [0, 1, 2, 3]
 
+Now, we are explicitly confirmed that there are 4 clusters in the result. To get 10 user ids belonging to, say, cluster #0 we can use the following code:
+
 .. code-block:: python
 
-    list(cluster_mapping.values())[0][:10]
+    cluster_mapping[0][:10]
 
 .. parsed-literal::
 
-    [629881394,
-     729416583,
-     24427596,
-     730545582,
-     836120732,
-     428990197,
-     753512589,
-     968444450,
-     190361938,
-     754402650]
-
+    [2724645,
+     4608042,
+     5918715,
+     6985523,
+     7584012,
+     7901023,
+     8646372,
+     8715027,
+     8788425,
+     10847418]
 
 Extracting features
-~~~~~~~~~~~~~~~~~~~
+-------------------
 
-In some scenarios one might want to get the vectorized features
-which ``Clusters`` can calculate.
-:py:meth:`Clusters.extract_features()<retentioneering.tooling.clusters.clusters.Clusters.extract_features>`
-is the method which is called inside
-:py:meth:`Clusters.fit()<retentioneering.tooling.clusters.clusters.Clusters.fit>`.
-It uses a couple of parameters ``feature_type`` and ``ngram_range``.
-See :py:meth:`Clusters.fit()<retentioneering.tooling.clusters.clusters.Clusters.fit>` for the details.
+In some scenarios, one might want to get the vectorized features that are used under the hood of the ``Clusters`` mechanisms. :py:meth:`Clusters.extract_features()<retentioneering.tooling.clusters.clusters.Clusters.extract_features>` is the method that is called inside :py:meth:`Clusters.fit()<retentioneering.tooling.clusters.clusters.Clusters.fit>`. It uses a couple of parameters ``feature_type`` and ``ngram_range`` that we :ref:`have already discussed<clusters_feature_type_ngram_range>`.
 
-Note that feature names which are based on ngrams are designed according
-to the following pattern ``event_1 ... event_n_FEATURE_TYPE``. For example,
-for a bigram `cart -> delivery_choice` and `feature_type='tfidf'` the
-corresponding feature name will be `cart delivery_choice_tfidf`.
+Note that if you use the features that are based on n-grams, they are named according to the following pattern ``event_1 ... event_n_FEATURE_TYPE``. For example, for a bigram ``cart`` → ``delivery_choice`` and ``feature_type='tfidf'``, the corresponding feature name will be ``cart delivery_choice_tfidf``.
 
-As for time-based features (`time`, `time_fraction`), they are associated
-with a single event, so their names would be `cart_time` or
-`delivery_choice_time_fraction`
+As for the time-based features such as ``time``, ``time_fraction``, they are associated with a single event, so their names will be ``cart_time`` or ``delivery_choice_time_fraction``.
 
 .. code-block:: python
 
@@ -508,12 +370,31 @@ with a single event, so their names would be `cart_time` or
     <p>3751 rows × 68 columns</p>
     </div>
 
-
-If the clusters are already fitted, instead of calculate
-:py:meth:`Clusters.extract_features()<retentioneering.tooling.clusters.clusters.Clusters.extract_features>`
-explicitly, you can use ``clusters.features`` property which
-returns ``pandas.DataFrame`` representing the calculated features.
+If the features have been already calculated, you can get them by calling :py:meth:`Clusters.features<retentioneering.tooling.clusters.clusters.Clusters.features>` property.
 
 .. code-block:: python
 
     clusters.features
+
+Eventstream.clusters property
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There is another way to treat the Clusters tool. This way is aligned with the usage of the most retentioneering tools. Instead of creating an explicit Clusters class instance, you can use :py:meth:`Eventstream.clusters<retentioneering.eventstream.eventstream.Eventstream.clusters>` property. This property holds a Clusters instance that is embedded right into an eventstream.
+
+.. code-block:: python
+
+    clusters = stream.clusters
+    clusters.fit(method='kmeans', n_clusters=4, feature_type='tfidf', ngram_range=(1, 1))
+    clusters.plot()
+
+You can use ``stream.clusters`` directly, not assigning it to a separate variable like this:
+
+.. code-block:: python
+
+    stream.clusters\
+        .fit(method='kmeans', n_clusters=4, feature_type='tfidf', ngram_range=(1, 1))
+    stream.clusters.plot()
+
+.. note::
+
+    Once ``Eventstream.clusters`` instance is created, it is kept inside the Eventstream object forever until the eventstream is alive. You can re-fit it as many times as you want, but you can not remove it.

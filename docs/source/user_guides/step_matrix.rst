@@ -305,6 +305,8 @@ We pass the following list ofr the events to the ``sorting`` parameter:
 
     The custom ordering affects non-target events only. Target events are always located at the bottom, and they are sorted in same order as they are specified in the ``targets`` parameter.
 
+.. _step_matrix_differential:
+
 Differential step matrix
 ------------------------
 
@@ -362,7 +364,7 @@ Consider another example of differential step matrix usage. Now we will compare 
 
 So we have defined 8 clusters. The diagram above shows :ref:`the distribution of the conversion rate to the target events <clusters_plot>` (``payment_done`` and ``cart``) among the clusters. Suppose we are interested in how clusters #1 and #3 differ.
 
-All we need is to get ``user_id`` collections from the :ref:`cluster_mapping <clusers_clustering_results>` attribute and pass it to the ``groups`` parameter of step matrix:
+All we need is to get ``user_id`` collections from the :ref:`cluster_mapping <clusters_clustering_results>` attribute and pass it to the ``groups`` parameter of step matrix:
 
 .. code-block:: python
 

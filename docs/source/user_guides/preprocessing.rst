@@ -526,7 +526,7 @@ simply copy and paste it and see the results.
         "left_truncated_cutoff": (1, 'h'),
         "right_truncated_cutoff": (1, 'h'),
     }
-    node6 = EventsNode(FilterEvents(params=FilterEventsParams(func=remove_truncated_paths)))
+    node6 = EventsNode(TruncatedEvents(params=TruncatedEventsParams(**params)))
 
     # node7, node8, node9
     def remove_truncated_paths(df, schema):

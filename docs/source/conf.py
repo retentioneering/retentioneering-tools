@@ -45,13 +45,21 @@ numpydoc_show_class_members = False
 html_theme = "pydata_sphinx_theme"
 html_favicon = "_static/favicon.ico"
 
-html_context = {"default_mode": "light"}
+html_context = {
+    "default_mode": "light",
+    "github_user": "retentioneering",
+    # TODO: fix when a new repo name appears. Vladimir Kukushkin
+    "github_repo": "retentioneering-tools-new-arch",
+    "github_version": "master",
+    "doc_path": "docs/source",
+}
+
 html_theme_options = {
     "logo": {"image_light": "rete_logo.svg", "image_dark": "rete_logo_white.svg"},
     "show_toc_level": 2,
     # TODO: fix when a new repo name appears. Vladimir Kukushkin
     "github_url": "https://github.com/retentioneering/retentioneering-tools-new-arch",
-    # "use_edit_page_button": True
+    "use_edit_page_button": True,
 }
 
 autodoc_typehints = "none"

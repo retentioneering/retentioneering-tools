@@ -1,17 +1,9 @@
-.. raw:: html
-
-    <style>
-        .red {color: red; font-weight:bold;}
-    </style>
-
-.. role:: red
-
-
 .. title:: Retentioneering Tools
 
 retentioneering documentation
 =============================
-**Date:** Feb 8, 2023 **Version:** 3.0.0 :red:`(beta)`
+
+**Date:** Mar 20, 2023 **Version:** 3.0.0 :red:`(beta)`
 
 .. grid:: 4
 

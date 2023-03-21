@@ -36,8 +36,7 @@ class TransitionMatrix:
     def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.__nodelist = Nodelist(
-            nodelist_default_col=eventstream.schema.event_name,
-            custom_cols=eventstream.schema.custom_cols,
+            weight_cols=[eventstream.schema.event_name, *eventstream.schema.custom_cols],
             time_col=eventstream.schema.event_timestamp,
             event_col=eventstream.schema.event_name,
         )

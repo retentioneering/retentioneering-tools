@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection
-from typing import Any, Callable, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, List, Literal, MutableMapping, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -32,10 +32,10 @@ from retentioneering.tooling.timedelta_hist import (
     EVENTSTREAM_GLOBAL_EVENTS,
     TimedeltaHist,
 )
+from retentioneering.tooling.transition_graph import TransitionGraph
 from retentioneering.tooling.transition_matrix import TransitionMatrix
 from retentioneering.tooling.typing.transition_graph import NormType, Threshold
 from retentioneering.tooling.user_lifetime_hist import UserLifetimeHist
-from retentioneering.transition_graph import TransitionGraph
 from retentioneering.utils import get_merged_col
 from retentioneering.utils.list import find_index
 
@@ -1062,10 +1062,14 @@ class Eventstream(
 
     def transition_graph(
         self,
-        thresholds: dict[str, Threshold] | None = None,
-        norm_type: NormType = None,
-        weights: dict[str, str] | None = None,
-        targets: dict[str, str | None] | None = None,
+        graph_settings: dict[str, Any] | None = None,
+        edges_norm_type: NormType = None,
+        targets: MutableMapping[str, str | None] | None = None,
+        nodes_threshold: Threshold | None = None,
+        edges_threshold: Threshold | None = None,
+        nodes_weight_col: str | None = None,
+        edges_weight_col: str | None = None,
+        custom_weight_cols: list[str] | None = None,
         width: int = 960,
         height: int = 900,
     ) -> TransitionGraph:
@@ -1084,14 +1088,20 @@ class Eventstream(
         """
         self.__transition_graph = TransitionGraph(
             eventstream=self,
-            graph_settings={},  # type: ignore
-            norm_type=norm_type,
-            weights=weights,
-            thresholds=thresholds,
+            graph_settings=graph_settings,
+            edges_norm_type=edges_norm_type,
             targets=targets,
+            nodes_threshold=nodes_threshold,
+            edges_threshold=edges_threshold,
+            nodes_weight_col=nodes_weight_col,
+            edges_weight_col=edges_weight_col,
+            custom_weight_cols=custom_weight_cols,
         )
         self.__transition_graph.plot_graph(
-            thresholds=thresholds, targets=targets, weights=weights, width=width, height=height, norm_type=norm_type
+            targets=targets,
+            width=width,
+            height=height,
+            edges_norm_type=edges_norm_type,
         )
         return self.__transition_graph
 

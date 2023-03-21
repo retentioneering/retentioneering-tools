@@ -39,9 +39,7 @@ class Edgelist:
     def next_event_col(self) -> str:
         return f"next_{self.eventstream.schema.event_name}"
 
-    def calculate_edgelist(
-        self, weight_cols: list[str], norm_type: NormType | None = None, rename_cols: dict[str, str] | None = None
-    ) -> pd.DataFrame:
+    def calculate_edgelist(self, weight_cols: list[str], norm_type: NormType | None = None) -> pd.DataFrame:
         if norm_type not in (None, "full", "node"):
             raise ValueError(f"unknown normalization type: {norm_type}")
 
@@ -57,9 +55,6 @@ class Edgelist:
                 calculated_edgelist = edgelist
             else:
                 calculated_edgelist = self._merge_edgelist(calculated_edgelist, edge_from, edge_to, edgelist)
-
-        if rename_cols is not None:
-            calculated_edgelist = calculated_edgelist.rename(columns=rename_cols)
 
         self.edgelist_df = calculated_edgelist
         return calculated_edgelist
@@ -110,5 +105,5 @@ class Edgelist:
 
             if norm_type is None:
                 edgelist = edgelist.astype(int)
-        edgelist = edgelist.reset_index(allow_duplicates=True)
+        edgelist = edgelist.reset_index()
         return edgelist

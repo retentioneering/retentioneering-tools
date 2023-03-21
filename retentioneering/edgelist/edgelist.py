@@ -105,5 +105,5 @@ class Edgelist:
 
             if norm_type is None:
                 edgelist = edgelist.astype(int)
-        edgelist = edgelist.reset_index(allow_duplicates=True)
+        edgelist = edgelist.reset_index()
         return edgelist

@@ -12,22 +12,15 @@ from tests.nodelist.fixtures.nodelist_corr import (
 
 
 class TestNodelist:
-    def test_nodelist__simple(self, test_df: pd.DataFrame, nl_simple_corr: pd.DataFrame) -> None:
-        nl = Nodelist("event", "timestamp", "nodelist_default_col", None)
-        result = nl.calculate_nodelist(test_df)
-        correct = nl_simple_corr
-
-        assert pd.testing.assert_frame_equal(result, correct) is None
-
     def test_nodelist__user(self, test_df: pd.DataFrame, nl_user_corr: pd.DataFrame) -> None:
-        nl = Nodelist("event", "timestamp", "nodelist_default_col", ["user_id"])
+        nl = Nodelist("event", "timestamp", ["user_id"])
         result = nl.calculate_nodelist(test_df)
         correct = nl_user_corr
 
         assert pd.testing.assert_frame_equal(result, correct) is None
 
     def test_nodelist__sessions(self, test_df: pd.DataFrame, nl_session_corr: pd.DataFrame) -> None:
-        nl = Nodelist("event", "timestamp", "nodelist_default_col", ["session_id"])
+        nl = Nodelist("event", "timestamp", ["session_id"])
         result = nl.calculate_nodelist(test_df)
         correct = nl_session_corr
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Iterable
 from dataclasses import asdict
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, Union
@@ -11,6 +12,9 @@ from retentioneering.exceptions.widget import WidgetParseError
 from retentioneering.params_model.registry import register_params_model
 from retentioneering.utils.dict import clear_dict
 from retentioneering.widget import WIDGET_MAPPING
+
+# disable warning for pydantic schema Callable type
+warnings.simplefilter(action="ignore", category=UserWarning)
 
 if TYPE_CHECKING:
     from pydantic.typing import AbstractSetIntStr, MappingIntStrAny

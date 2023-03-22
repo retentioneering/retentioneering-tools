@@ -14,7 +14,7 @@ from retentioneering.widget.widgets import ListOfInt, ReteTimeWidget
 
 class LostUsersParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`LostUsersEvents`
+    A class with parameters for :py:class:`.LostUsersEvents` class.
     """
 
     lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
@@ -28,7 +28,7 @@ class LostUsersParams(ParamsModel):
 
 class LostUsersEvents(DataProcessor):
     """
-    Creates one of synthetic events in each user's path:
+    Create one of synthetic events in each user's path:
     ``lost_user`` or ``absent_user``.
 
 
@@ -36,15 +36,15 @@ class LostUsersEvents(DataProcessor):
     ----------
     Only one of parameters could be used at the same time
     lost_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
-        Threshold value and it's unit of measure.
-        Calculate timedelta between last event in each user's path and last event in whole Eventstream.
-        For users with timedelta more or equal than selected ``lost_cutoff``, new synthetic event - ``lost_user``
+        Threshold value and its unit of measure.
+        Calculate timedelta between the last event in each user's path and the last event in the whole eventstream.
+        For users with timedelta greater or equal to selected ``lost_cutoff``, a new synthetic event - ``lost_user``
         will be added.
-        For other user's paths will be added new synthetic event - ``absent_user``
+        For other users paths a new synthetic event - ``absent_user`` will be added.
 
     lost_users_list : list of int or list of str, optional
         If the `list of user_ids` is given new synthetic event - ``lost_user`` will be added to each user from the list.
-        For other user's paths will be added new synthetic event - ``absent_user``
+        For other user's paths will be added new synthetic event - ``absent_user``.
 
     Returns
     -------
@@ -62,8 +62,11 @@ class LostUsersEvents(DataProcessor):
     Raises
     ------
     ValueError
-        If both of ``lost_cutoff`` and ``lost_users_list`` are empty or both are given.
+        Raised when both ``lost_cutoff`` and ``lost_users_list`` are either empty or given.
 
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
     """
 
     params: LostUsersParams

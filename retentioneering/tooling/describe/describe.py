@@ -8,7 +8,6 @@ from retentioneering.eventstream.types import EventstreamType
 
 
 class Describe:
-
     OUT_COLS = ["value"]
     INDEX_NAMES = ["category", "metric"]
     TIME_ROUND_UNIT = "s"
@@ -38,7 +37,6 @@ class Describe:
             self.df = self.df[self.df[self.type_col].isin(["raw"])]
 
     def _calc_statistics(self, agg_col: str) -> list[np.timedelta64 | int | float]:
-
         df_agg = self.df.groupby(agg_col).agg({self.time_col: ["min", "max"], self.event_col: ["count"]}).reset_index()
         time_diff_user = df_agg[(self.time_col, "max")] - df_agg[(self.time_col, "min")]
         mean_time_agg_col = time_diff_user.mean().round(Describe.TIME_ROUND_UNIT)  # type: ignore
@@ -80,7 +78,6 @@ class Describe:
         return pd.concat([df_overall, df_time_events])
 
     def _describe(self) -> pd.DataFrame:
-
         max_time = self.df[self.time_col].max()
         min_time = self.df[self.time_col].min()
 

@@ -1,24 +1,14 @@
-.. raw:: html
-
-    <style>
-        .red {color:#24ff83; font-weight:bold;}
-    </style>
-
-.. role:: red
-
-
-DataProcessor user guide
-========================
+Data processors user guide
+==========================
 
 The following user guide is also available as
-`Google Colab <https://colab.research.google.com/drive/1uXTt14stXKjWR_paEzqPl5_rZLFyclrm?usp=share_link>`_
+`Google Colab notebook <https://colab.research.google.com/drive/1uXTt14stXKjWR_paEzqPl5_rZLFyclrm?usp=share_link>`_.
 
 
 Creating an eventstream
 -----------------------
 
-Here we use ``simple_shop`` dataset, which we load as an ``Eventstream`` object. You can learn more about ``Eventstream`` in our :doc:`eventstream guide<eventstream>`.
-To get an overview of the eventstream concept, see :doc:`this guide<../getting_started/eventstream_concept>`.
+Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simple_shop>` dataset. It has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable. If you want to use your own dataset, upload it following :ref:`this instruction<eventstream_creation>`.
 
 .. code-block:: python
 
@@ -27,132 +17,36 @@ To get an overview of the eventstream concept, see :doc:`this guide<../getting_s
 
     stream = datasets.load_simple_shop()
 
-What is a DataProcessor?
-------------------------
+What is a data processor?
+-------------------------
 
-Each ``Data Processor`` represents an algorithm that modifies eventstream data.
-
-Data processors are designed to be nodes of a
-``Preprocessing graph``, which allows us to apply data processors sequentially, in a custom order.
-
-More about preprocessing graph:
-
-- :doc:`preprocessing guide<preprocessing>`
-
+*Data processor* is a class that can modify eventstream data in some special and narrow way. For example, data processors can filter events, add some artificial but useful events, truncate user paths according to custom logic, and much more. Data processors are designed to be nodes of a
+:doc:`Preprocessing graph<preprocessing>`, which allows us creating complex data processing pipelines.
 
 .. figure:: /_static/user_guides/data_processor/dp_0_PGraph.png
 
+    An outline of a preprocessing graph
 
-General usage
--------------
+.. _helpers_and_chain_usage:
 
-.. code-block:: python
+Helpers and chaining usage
+--------------------------
 
-    from retentioneering.graph.p_graph import PGraph, EventsNode
+A *helper* is an ``Eventstream`` method that applies a single data processor to the eventstream data and returns a new modified eventstream.
+Essentially, it is a shortcut for the cases when you want to avoid creating a preprocessing graph.
 
-    from retentioneering.data_processors_lib import CollapseLoops, CollapseLoopsParams
-    from retentioneering.data_processors_lib import DeleteUsersByPathLength, DeleteUsersByPathLengthParams
-    from retentioneering.data_processors_lib import FilterEvents, FilterEventsParams
-    from retentioneering.data_processors_lib import GroupEvents, GroupEventsParams
-    from retentioneering.data_processors_lib import NewUsersEvents, NewUsersParams
-    from retentioneering.data_processors_lib import LostUsersEvents, LostUsersParams
-    from retentioneering.data_processors_lib import SplitSessions, SplitSessionsParams
-    from retentioneering.data_processors_lib import StartEndEvents, StartEndEventsParams
-    from retentioneering.data_processors_lib import TruncatePath, TruncatePathParams
-    from retentioneering.data_processors_lib import TruncatedEvents, TruncatedEventsParams
-    from retentioneering.data_processors_lib import PositiveTarget, PositiveTargetParams
-    from retentioneering.data_processors_lib import NegativeTarget, NegativeTargetParams
-
-In order to use each ``DataProcessor``, we need to import its class and its parameter class.
-
-We will showcase the usage of data processors by:
-
--  creating a preprocessing graph instance (``PGraph``)
--  creating a dataprocessor instance with specified parameters
--  creating a node
--  adding node to ``PGraph``
--  combining ``PGraph``
-
-Let us create a simple graph with one node:
+Since an outcome of a helper method is a new eventstream, it is convenient to use method chaining code style
+as it is present in other python libraries, such as Pandas, PySpark, etc. For example, here is how to apply :py:meth:`StartEndEvents<retentioneering.data_processors_lib.start_end_events.StartEndEvents>` and :py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>` sequentially:
 
 .. code-block:: python
 
-    graph = PGraph(source_stream=stream)
-    dp_start_end = StartEndEvents(StartEndEventsParams())
-    node_0 = EventsNode(dp_start_end)
-    graph.add_node(node=node_0, parents=[graph.root])
-    res = graph.combine(node_0).to_dataframe()
+    res = stream\
+        .add_start_end()\
+        .split_sessions(session_cutoff=(10, 'm'))\
+        .to_dataframe()
     res[res['user_id'] == 219483890]
 
-
 .. raw:: html
-
-    <div><table class="dataframe">
-      <thead>
-        <tr style="text-align: right;">
-          <th></th>
-          <th>event_type</th>
-          <th>event_index</th>
-          <th>event</th>
-          <th>timestamp</th>
-          <th>user_id</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>0</th>
-          <td>path_start</td>
-          <td>0</td>
-          <td>path_start</td>
-          <td>2019-11-01 17:59:13</td>
-          <td>219483890</td>
-        </tr>
-        <tr>
-          <th>1</th>
-          <td>raw</td>
-          <td>1</td>
-          <td>catalog</td>
-          <td>2019-11-01 17:59:13</td>
-          <td>219483890</td>
-        </tr>
-        <tr>
-          <th>...</th>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-        </tr>
-        <tr>
-          <th>10213</th>
-          <td>path_end</td>
-          <td>10213</td>
-          <td>path_end</td>
-          <td>2020-02-14 21:04:52</td>
-          <td>219483890</td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
-
-
-Adding another node - ``SplitSessions``:
-
-.. code-block:: python
-
-    dp_split_sessions = SplitSessions(SplitSessionsParams(session_cutoff=(10, 'm')))
-    node_1 = EventsNode(dp_split_sessions)
-
-    graph.add_node(node=node_1, parents=[node_0])
-
-    res = graph.combine(node_1).to_dataframe()
-    res[res['user_id'] == 219483890]
-
-
-
-
-.. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -250,213 +144,101 @@ Adding another node - ``SplitSessions``:
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
+Hereafter we will use helpers instead of original data processor classes due to simplicity reasons. See some more complex examples of preprocessing :ref:`here <preprocessing_case_study>` and :ref:`here <preprocessing_chain_usage_complex_example>`.
 
+.. _dataprocessors_library:
 
-Helpers and chain usage
+Data processors library
 -----------------------
 
-A ``Helper`` is an ``Eventstream`` method that applies a single data processor to the data. It is a useful shortcut for
-when one wants to avoid creating a preprocessing graph. Each data processor has a corresponding helper method -
-the table below showcases the mapping between them:
+The table below summarizes all the data processors implemented in retentioneering library.
 
-+-------------------------+----------+-----------------------------------------------------+-----------------+
-| Data                    | Type     | What it does                                        | Helper          |
-| processor               |          |                                                     |                 |
-+=========================+==========+=====================================================+=================+
-| StartEndEvents          | Adding   | Adds two synthetic events in each user’s path:      | add_start_end   |
-|                         |          | ``path_start`` and ``path_end``                     |                 |
-|                         |          |                                                     |                 |
-+-------------------------+----------+-----------------------------------------------------+-----------------+
-| SplitSessions           | Adding   | Cuts user path into sessions and adds synthetic     | split_sessions  |
-|                         |          | events ``session_start``, ``session_end``.          |                 |
-|                         |          |                                                     |                 |
-+-------------------------+----------+-----------------------------------------------------+-----------------+
-| NewUsersEvents          | Adding   | Adds synthetic event ``new_user`` in the beginning  | add_new_users   |
-|                         |          | of a user’s path if the user is considered as new.  |                 |
-|                         |          | Otherwise adds ``existing_user``.                   |                 |
-|                         |          |                                                     |                 |
-+-------------------------+----------+-----------------------------------------------------+-----------------+
-| LostUsersEvents         | Adding   | Adds synthetic event ``lost_user`` in the end of    | lost_users      |
-|                         |          | user’s path if the user never comes back to the     |                 |
-|                         |          | product. Otherwise adds ``absent_user`` event.      |                 |
-|                         |          |                                                     |                 |
-+-------------------------+----------+-----------------------------------------------------+-----------------+
-| PositiveTarget          | Adding   | Adds synthetic event ``positive_target`` for all    | positive_target |
-|                         |          | events which are considered as positive.            |                 |
-|                         |          |                                                     |                 |
-+-------------------------+----------+-----------------------------------------------------+-----------------+
-| NegativeTarget          | Adding   | Adds synthetic event ``negative_target`` for all    | negative_target |
-|                         |          | events which are considered as positive.            |                 |
-|                         |          |                                                     |                 |
-+-------------------------+----------+-----------------------------------------------------+-----------------+
-| TruncatedEvents         | Adding   | Adds synthetic events ``truncated_left`` and/or     | truncated_events|
-|                         |          | ``truncated_right`` for those user paths which are  |                 |
-|                         |          | considered as truncated by the edges of the whole   |                 |
-|                         |          | dataset.                                            |                 |
-+-------------------------+----------+-----------------------------------------------------+-----------------+
-| FilterEvents            | Removing | Remove events from an eventstream                   | filter          |
-|                         |          |                                                     |                 |
-+-------------------------+----------+-----------------------------------------------------+-----------------+
-| DeleteUsersByPathLength | Removing | Deletes a too short user paths (in terms of number  | delete_users    |
-|                         |          | of events or time duration).                        |                 |
-|                         |          |                                                     |                 |
-+-------------------------+----------+-----------------------------------------------------+-----------------+
-| TruncatePath            | Removing | Leaves a part of an eventstream between a couple    | truncate_path   |
-|                         |          | of selected events.                                 |                 |
-|                         |          |                                                     |                 |
-+-------------------------+----------+-----------------------------------------------------+-----------------+
-| GroupEvents             | Grouping | Group given events into a single synthetic event.   | group           |
-|                         |          |                                                     |                 |
-+-------------------------+----------+-----------------------------------------------------+-----------------+
-| CollapseLoops           | Grouping | Replaces sequences of repetitive events with new    | collapse_loops  |
-|                         |          | synthetic events. E.g. ``A, A, A -> A``.            |                 |
-|                         |          |                                                     |                 |
-+-------------------------+----------+-----------------------------------------------------+-----------------+
+.. table:: Data processors overview
+    :align: center
+    :widths: 15 60
+    :class: tight-table
 
-
-Method chaining is supported for ``helpers`` as it is present in other
-python libraries, for example in Pandas.
-
-Using helper methods, we can replicate the *General Usage* coding blocks output:
-
-.. code-block:: python
-
-    res = stream.add_start_end().split_sessions(session_cutoff=(10, 'm')).to_dataframe()
-    res[res['user_id'] == 219483890]
-
-
-
-
-.. raw:: html
-
-
-
-    <div><table class="dataframe">
-      <thead>
-        <tr style="text-align: right;">
-          <th></th>
-          <th>event_type</th>
-          <th>event_index</th>
-          <th>event</th>
-          <th>timestamp</th>
-          <th>user_id</th>
-          <th>session_id</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>0</th>
-          <td>path_start</td>
-          <td>0</td>
-          <td>path_start</td>
-          <td>2019-11-01 17:59:13</td>
-          <td>219483890</td>
-          <td>219483890_1</td>
-        </tr>
-        <tr>
-          <th>2</th>
-          <td>session_start</td>
-          <td>2</td>
-          <td>session_start</td>
-          <td>2019-11-01 17:59:13</td>
-          <td>219483890</td>
-          <td>219483890_1</td>
-        </tr>
-        <tr>
-          <th>3</th>
-          <td>raw</td>
-          <td>3</td>
-          <td>catalog</td>
-          <td>2019-11-01 17:59:13</td>
-          <td>219483890</td>
-          <td>219483890_1</td>
-        </tr>
-        <tr>
-          <th>...</th>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-        </tr>
-        <tr>
-          <th>11</th>
-          <td>session_end</td>
-          <td>11</td>
-          <td>session_end</td>
-          <td>2019-11-01 17:59:32</td>
-          <td>219483890</td>
-          <td>219483890_1</td>
-        </tr>
-        <tr>
-          <th>6256</th>
-          <td>session_start</td>
-          <td>6256</td>
-          <td>session_start</td>
-          <td>2019-12-06 16:22:57</td>
-          <td>219483890</td>
-          <td>219483890_2</td>
-        </tr>
-        <tr>
-          <th>...</th>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-        </tr>
-        <tr>
-          <th>23997</th>
-          <td>session_end</td>
-          <td>23997</td>
-          <td>session_end</td>
-          <td>2020-02-14 21:04:52</td>
-          <td>219483890</td>
-          <td>219483890_4</td>
-        </tr>
-        <tr>
-          <th>23998</th>
-          <td>path_end</td>
-          <td>23998</td>
-          <td>path_end</td>
-          <td>2020-02-14 21:04:52</td>
-          <td>219483890</td>
-          <td>219483890_4</td>
-        </tr>
-      </tbody>
-    </table>
-    </div>
-
-
-We will also use ``helpers`` in the section below.
-
-Data Processors library
------------------------
+    +--------------------------------------------+-----------------------------------------------------+
+    | | Data processor                           | What it does                                        |
+    | | Helper                                   |                                                     |
+    +============================================+=====================================================+
+    | | StartEndEvents                           | Adds two synthetic events in each user’s path:      |
+    | | :ref:`add_start_end<add_start_end>`      | ``path_start`` and ``path_end``.                    |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | SplitSessions                            | Cuts user path into sessions and adds synthetic     |
+    | | :ref:`split_sessions<split_sessions>`    | events ``session_start``, ``session_end``.          |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | NewUsersEvents                           | Adds synthetic event ``new_user`` in the beginning  |
+    | | :ref:`add_new_users<add_new_users>`      | of a user’s path if the user is considered as new.  |
+    |                                            | Otherwise adds ``existing_user``.                   |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | LostUsersEvents                          | Adds synthetic event ``lost_user`` in the end of    |
+    | | :ref:`lost_users<lost_users>`            | user’s path if the user never comes back to the     |
+    |                                            | product. Otherwise adds ``absent_user`` event.      |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | PositiveTarget                           | Adds synthetic event ``positive_target`` for all    |
+    | | :ref:`positive_target<positive_target>`  | events which are considered as positive.            |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | NegativeTarget                           | Adds synthetic event ``negative_target`` for all    |
+    | | :ref:`negative_target<negative_target>`  | events which are considered as positive.            |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | TruncatedEvents                          | Adds synthetic events ``truncated_left`` and/or     |
+    | | :ref:`truncated_events<truncated_events>`| ``truncated_right`` for those user paths which are  |
+    |                                            | considered as truncated by the edges of the whole   |
+    |                                            | dataset.                                            |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | FilterEvents                             | Removes events from an eventstream.                 |
+    | | :ref:`filter<filter>`                    |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | DeleteUsersByPathLength                  | Removes a too short user paths (in terms of number  |
+    | | :ref:`delete_users<delete_users>`        | of events or time duration).                        |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | TruncatePath                             | Leaves a part of an eventstream between a couple    |
+    | | :ref:`truncate_path<truncate_path>`      | of selected events.                                 |
+    |                                            |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | GroupEvents                              | Groups given events into a single synthetic event.  |
+    | | :ref:`group<group>`                      |                                                     |
+    +--------------------------------------------+-----------------------------------------------------+
+    | | CollapseLoops                            | Groups sequences of repetitive events with new      |
+    | | :ref:`collapse_loops<collapse_loops>`    | synthetic events. E.g. ``A, A, A → A``.             |
+    +--------------------------------------------+-----------------------------------------------------+
 
 Data processors can be partitioned into three groups:
 
-- Adding: processors that add events to an eventstream,
-- Removing: processors that remove events from an eventstream,
+- Adding: processors that add events to an eventstream;
+- Removing: processors that remove events from an eventstream;
 - Editing: processors that modify existing events in an eventstream (including grouping operations).
+
+In the next sections we organise our narrative according to these partitions.
+
+.. _dataprocessors_adding_processors:
 
 Adding processors
 ~~~~~~~~~~~~~~~~~
 
-The processors of that type add some artificial (*synthetic*) events to an eventstream.
+The processors of that type add some artificial (we also call them *synthetic*) events to an eventstream.
+Let us go through each of them.
+
+.. _add_start_end:
 
 StartEndEvents
 ^^^^^^^^^^^^^^
 
-For each user, ``StartEndEvents`` generates an event
-called ``path_start`` right before the first user event, and an event
+For each user, :py:meth:`StartEndEvents<retentioneering.data_processors_lib.start_end_events.StartEndEvents>`
+generates an event called ``path_start`` right before the first user event, and an event
 ``path_end`` right after the last user event.
 
 .. figure:: /_static/user_guides/data_processor/dp_1_start_end.png
-
 
 Applying ``StartEndEvents`` to mark user trajectory start and finish:
 
@@ -468,7 +250,6 @@ Applying ``StartEndEvents`` to mark user trajectory start and finish:
 
 .. raw:: html
 
-
     <div><table class="dataframe">
       <thead>
         <tr style="text-align: right;">
@@ -515,34 +296,36 @@ Applying ``StartEndEvents`` to mark user trajectory start and finish:
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
-
-As we see from the dataframe above, the generated events ``path_start``
-and ``path_end`` have the same timestamps as the corresponding first and
+As the DataFrame above shows, the generated events ``path_start``
+and ``path_end`` have identical timestamps as the corresponding first and
 last events.
 
-We recommend applying this data processor each time you analyze an
-eventstream - since it sets the borders of an eventstream explicitly. It
-can be useful for plotting and analyzing user lifetime across all users,
-or conveniently displaying user trajectory borders in
-``TransitionGraph``, ``StepMatrix``, and ``StepSankey`` tools.
+.. note::
+
+    We recommend applying this data processor each time you analyze an
+    eventstream - since it explicitly sets the borders of an eventstream. It
+    can help displaying user paths in :doc:`TransitionGraph </user_guides/transition_graph>`, :doc:`StepMatrix </user_guides/step_matrix>`, and :doc:`StepSankey </user_guides/step_sankey>` tools or calculating user lifetime.
+
+.. _split_sessions:
 
 SplitSessions
 ^^^^^^^^^^^^^
 
-Cuts user paths into sessions based on the defined ``session_cutoff``
+:py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>`
+data processor cuts user paths into sessions based on the defined ``session_cutoff``
 timeout parameter. For each session, it creates a couple of synthetic
-events ``session_start`` and ``session_end`` in a manner similar to
+events ``session_start`` and ``session_end``, like
 ``StartEndEvents``. Session identifiers are formed according to the
-template ``<user_id>_<user_session_number>``, and can be found in
+template ``<user_id>_<user_session_number>`` and can be found in
 ``session_id`` column. The ``user_session_number`` is associated with a
 session ordinal number within a user path and always starts with 1.
 
 .. figure:: /_static/user_guides/data_processor/dp_2_split_sessions.png
 
 Applying ``SplitSessions`` to split user paths into sessions with
-session cutoff = 10 minutes:
+session cutoff=10 minutes:
 
 .. code-block:: python
 
@@ -551,7 +334,6 @@ session cutoff = 10 minutes:
 
 
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -631,32 +413,34 @@ session cutoff = 10 minutes:
         </tr>
       </tbody>
     </table>
-    </div>
-
+    <br>
 
 The result for one user is displayed above. We see that the user
 trajectory is partitioned into three sessions. The time distance between
 consecutive events within each session is less than 10 minutes.
 
 Splitting user paths into sessions is an essential step in clickstream
-analysis. Sometimes, it is not clear which session cutoff is the best
-; in such cases, it
-can be a good practice to generate multiple session splits, and compare
-them in some fashion. (timedelta_hist
-:red:`TODO: link to timedelta_hist. dpanina`
-method can be useful here)
+analysis. Sometimes, it needs to be clarified which session cutoff to
+choose. In such cases, generating multiple session splits and comparing them
+in some fashion can be a good practice.
+
+It can be helpful to explore the distribution between all consecutive events
+in each user path. For this purpose you can use one of eventstream descriptive methods
+:py:meth:`TimedeltaHist<retentioneering.tooling.timedelta_hist.timedelta_hist.TimedeltaHist>`
+See more about :ref:`eventstream descriptive methods<eventstream_descriptive_methods>`.
 
 
-
+.. _add_new_users:
 
 NewUsersEvents
 ^^^^^^^^^^^^^^
 
-Given a list of users (considered "new"), the method labels those users in
-an eventstream by adding a synthetic ``new_user`` event to each
-user trajectory start. For all other users, adds an
-``existing_user`` synthetic event. When passed ``'all'`` instead of a
-list, all users will be labeled as new.
+Given a list of users (considered "new"), the
+:py:meth:`NewUsersEvents<retentioneering.data_processors_lib.new_users.NewUsersEvents>`
+data processor labels those users in an eventstream by adding a synthetic ``new_user``
+event to each user trajectory start. For all other users, adds an
+``existing_user`` synthetic event. All users will be labeled as new when
+passed 'all' instead of a list.
 
 .. figure:: /_static/user_guides/data_processor/dp_3_new_users.png
 
@@ -668,10 +452,7 @@ list, all users will be labeled as new.
     res[res['user_id'] == 219483890].head()
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -727,9 +508,7 @@ list, all users will be labeled as new.
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 We can see that user ``219483890`` is marked as a new user.
 
@@ -740,10 +519,7 @@ But user ``501098384`` is marked as an existing user:
     res[res['user_id'] == 501098384].head()
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -799,21 +575,25 @@ But user ``501098384`` is marked as an existing user:
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
+This data processor can be helpful when you have data that chronologically
+precedes the clickstream you are working with. For instance, your clickstream
+might cover 1-month of user data, and also you have the user login data
+for the whole year. In that case, you can use ``NewUsersEvents``
+to split users into two categories:
 
-This data processor can be useful when you have data that chronologically
-precedes the clickstream you are working with. For instance, your
-clickstream might be covering 1-month user data, while also having the
-user login data for the whole year. In that case, you can use ``NewUsersEvents``
-to split users into two categories - new users, and users who have
-appeared this year before.
+- new users,
+- users who have appeared this year before.
+
+.. _lost_users:
 
 LostUsersEvents
 ^^^^^^^^^^^^^^^
 
-Given a list of users (considered "lost"), the method labels those
-users by adding a synthetic ``lost_user`` event to each
+Given a list of users (considered "lost"), the
+:py:meth:`LostUsersEvents<retentioneering.data_processors_lib.lost_users.LostUsersEvents>`
+data processor labels those users by adding a synthetic ``lost_user`` event to each
 user trajectory end. For all other users, adds an
 ``absent_user`` synthetic event. When passed a ``lost_cutoff`` timedelta value,
 the method labels users based on the following strategy: if the
@@ -821,7 +601,9 @@ timedelta between the user last event and the eventstream last event
 exceeds ``lost_cutoff``, label as ``lost_user``; otherwise, label as
 ``absent_user``.
 
-:red:`TODO: Make an image illustrating lost_cutoff parameter. dpanina`
+..
+
+    Make an image illustrating lost_cutoff parameter. dpanina`
 
 .. figure:: /_static/user_guides/data_processor/dp_4_lost_users.png
 
@@ -831,8 +613,6 @@ exceeds ``lost_cutoff``, label as ``lost_user``; otherwise, label as
     lost_users_list = [219483890, 964964743, 965024600]
     res = stream.lost_users(lost_users_list=lost_users_list).to_dataframe()
     res[res['user_id'] == 219483890].tail()
-
-
 
 
 .. raw:: html
@@ -883,8 +663,7 @@ exceeds ``lost_cutoff``, label as ``lost_user``; otherwise, label as
         </tr>
       </tbody>
     </table>
-    </div>
-
+    <br>
 
 As opposed to user ``219483890``, the user ``501098384`` is labeled as an
 ``absent_user``.
@@ -894,11 +673,7 @@ As opposed to user ``219483890``, the user ``501098384`` is labeled as an
     res[res['user_id'] == 501098384].tail()
 
 
-
-
 .. raw:: html
-
-
 
     <div><table class="dataframe">
       <thead>
@@ -946,21 +721,20 @@ As opposed to user ``219483890``, the user ``501098384`` is labeled as an
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
-
-
-The function of this dataprocessor is similar to
-``NewUsersEvents``, except for the fact that it adds labels to the end
+The function of this data processor is similar to
+``NewUsersEvents``, except that it adds labels to the end
 of user trajectory.
 
 We can also run ``LostUsersEvents`` with ``lost_cutoff`` passed, to
-arbitrarily label some users as lost. Assume we consider a user as
-absent if there has been no events for 30 days:
+arbitrarily label some users as lost. Assume we consider a user
+absent if there have been no events for 30 days:
 
 .. code-block:: python
 
     res = stream.lost_users(lost_cutoff=(30, 'D')).to_dataframe()
+
 
 Before we inspect the results of applying the data processor,
 notice that the eventstream ends at ``2020-04-29 12:48:07``.
@@ -970,15 +744,12 @@ notice that the eventstream ends at ``2020-04-29 12:48:07``.
     res['timestamp'].max()
 
 
-
-
 .. parsed-literal::
 
     Timestamp('2020-04-29 12:48:07.595390')
 
 
-
-User ``495985018`` is labeled as lost, since her last event occurred
+User ``495985018`` is labeled as lost since her last event occurred
 on ``2019-11-02``. It’s more than 30 days before the end of the
 eventstream.
 
@@ -987,11 +758,7 @@ eventstream.
     res[res['user_id'] == 495985018]
 
 
-
-
 .. raw:: html
-
-
 
     <div><table class="dataframe">
       <thead>
@@ -1031,12 +798,10 @@ eventstream.
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
-
-
-On the other hand, user ``819489198`` is labeled as ``absent`` because
-her last event occurred on ``2020-04-15``, which is less than 30 days
+On the other hand, user ``819489198`` is labeled ``absent`` because
+her last event occurred on ``2020-04-15``, less than 30 days
 before ``2020-04-29``.
 
 .. code-block:: python
@@ -1044,11 +809,7 @@ before ``2020-04-29``.
     res[res['user_id'] == 819489198]
 
 
-
-
 .. raw:: html
-
-
 
     <div><table class="dataframe">
       <thead>
@@ -1104,24 +865,25 @@ before ``2020-04-29``.
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
-
+.. _positive_target:
 
 PositiveTarget
 ^^^^^^^^^^^^^^
 
-This dataprocessor supports two parameters:
+:py:meth:`PositiveTarget<retentioneering.data_processors_lib.positive_target.PositiveTarget>`
+data processor supports two parameters:
 
--  ``positive_target_events`` - list of "positive" ``events``
-    (for instance, associated with some conversion goal of the user behavior)
+-  ``positive_target_events`` - list of "positive" events
+   (for instance, associated with some conversion goal of the user behavior)
 -  ``func`` - this function accepts parent ``Eventstream`` as an
-   argument and returns ``pandas.DataFrame``, containing only the lines
+   argument and returns ``pandas.DataFrame`` contains only the lines
    of the events we would like to label as positive.
 
 By default, for each user trajectory, an event from the
 specified list (and minimum timestamp) is taken and cloned with
-``positive_target_<EVENTNAME>`` as ``event`` and ``positive_target``
+``positive_target_<EVENTNAME>`` as the ``event`` and ``positive_target``
 type.
 
 
@@ -1130,10 +892,12 @@ type.
 .. code-block:: python
 
     positive_events = ['cart', 'payment_done']
-    res = stream.positive_target(positive_target_events=positive_events).to_dataframe()
+    res = stream.positive_target(
+        positive_target_events=positive_events
+        ).to_dataframe()
 
-Consider user ``219483890`` who has ``cart`` event appeared in her
-trajectory with ``event_index = 2``. A synthetic event
+Consider user ``219483890``, whose ``cart`` event appeared in her
+trajectory with ``event_index=2``. A synthetic event
 ``positive_target_cart`` is added right after it.
 
 .. code-block:: python
@@ -1141,10 +905,7 @@ trajectory with ``event_index = 2``. A synthetic event
     res[res['user_id'] == 219483890]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1232,9 +993,7 @@ trajectory with ``event_index = 2``. A synthetic event
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 In opposite to this user, user ``24427596`` has no positive events, so
 her path remains unchanged:
@@ -1244,10 +1003,7 @@ her path remains unchanged:
     res[res['user_id'] == 24427596]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1295,13 +1051,11 @@ her path remains unchanged:
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 This data processor can make it easier to label events that we would
-like to consider positive. This might come useful for the further analysis,
-with such tools as ``TransitionGraph``, ``StepMatrix``, and
+like to consider as positive. It might be helpful for further analysis
+with tools like ``TransitionGraph``, ``StepMatrix``, and
 ``SankeyStep`` - as it will help to highlight the positive events.
 
 Another way to set positive events is to pass a custom function in ``func``.
@@ -1317,7 +1071,10 @@ first one:
 
         return df[df[event_col].isin(positive_target_events)]
 
-    res = stream.positive_target(positive_target_events=positive_events, func=custom_func).to_dataframe()
+    res = stream.positive_target(
+              positive_target_events=positive_events,
+              func=custom_func
+              ).to_dataframe()
 
 
 .. code-block:: python
@@ -1325,10 +1082,7 @@ first one:
     res[res['user_id'] == 219483890]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1424,21 +1178,22 @@ first one:
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
-
+.. _negative_target:
 
 NegativeTarget
 ^^^^^^^^^^^^^^
 
-The idea of ``NegativeTarget`` data processor is exactly the same as for
-``PositiveTarget``, but applied to negative labels instead of
-positive.
+The idea of
+:py:meth:`NegativeTarget<retentioneering.data_processors_lib.negative_target.NegativeTarget>`
+data processor is the same as ``PositiveTarget``, but
+applied to negative labels instead of positive ones.
 
 -  ``negative_target_events`` - list of "positive" ``events``
     (for instance, associated with some negative result of the user behavior)
 -  ``func`` - this function accepts parent ``Eventstream`` as an
-   argument and returns ``pandas.DataFrame``, containing only the lines
+   argument and returns ``pandas.DataFrame``, which contains only the lines
    of the events we would like to label as negative.
 
 
@@ -1448,9 +1203,11 @@ positive.
 
     negative_events = ['delivery_courier']
 
-    res = stream.negative_target(negative_target_events=negative_events).to_dataframe()
+    res = stream.negative_target(
+              negative_target_events=negative_events
+              ).to_dataframe()
 
-Works similarly to the ``PositiveTarget`` dataprocessor - in this
+Works similarly to the ``PositiveTarget`` data processor - in this
 case, it will add negative event next to the ``delivery_courier`` event:
 
 .. code-block:: python
@@ -1458,10 +1215,7 @@ case, it will add negative event next to the ``delivery_courier`` event:
     res[res['user_id'] == 629881394]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1533,37 +1287,36 @@ case, it will add negative event next to the ``delivery_courier`` event:
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
-
+.. _truncated_events:
 
 TruncatedEvents
 ^^^^^^^^^^^^^^^
 
-``TruncatedEvents`` addresses a common practical problem, when some
-trajectories are truncated due to the dataset’s natural
-boundaries.
+:py:meth:`TruncatedEvents<retentioneering.data_processors_lib.truncated_events.TruncatedEvents>`
+addresses a common practical problem, when some trajectories are
+truncated due to the dataset’s natural boundaries.
 
 .. figure:: /_static/user_guides/data_processor/dp_7_truncate_timeline.png
-
 
 The diagram above illustrates this problem. Consider two user paths –
 blue and orange. In
 reality, the blue path started before the beginning of the eventstream.
-But we cannot observe that - since we observe no events to the left from the
-beginning of the eventstream.
-So, instead of the real start of the user path, we observe a "false"
+But we cannot observe that - since we haven’t access to the events to the
+left from the beginning of the eventstream.
+So, instead of the actual start of the user path, we observe a "false"
 beginning, and the observed trajectory is truncated.
 
 A similar situation occurs with the orange user path. Instead of the
-real trajectory end, we only observe the "false" trajectory end.
+actual trajectory end, we only observe the "false" trajectory end.
 
 One possible way to mark truncated paths is to detect
-trajectories that are “too short” for a typical trajectory, and
+trajectories that are "too short" for a typical trajectory, and
 whose shortness can be attributed to being truncated.
 
 ``TruncatedEvents`` data processor uses passed ``left_truncated_cutoff`` and
-``right_truncated_cutoff`` timedeltas, and labels user trajectories as
+``right_truncated_cutoff`` timedeltas and labels user trajectories as
 ``truncated_left`` or ``truncated_right`` based on the following
 policy:
 
@@ -1583,11 +1336,15 @@ policy:
 
 
 
-Sometimes, it can be a good practice to use different cutoff values, and
-compare them in some fashion to select the best. timedelta_hist
-:red:`TODO: link to timedelta_hist. dpanina` method
-with specified ``event_pair=('path_start', 'cart')`` can be useful for this.
+Sometimes, it can be a good practice to use different cutoff values and
+compare them in some fashion to select the best.
 
+It can be helpful to use
+:py:meth:`TimedeltaHist<retentioneering.tooling.timedelta_hist.timedelta_hist.TimedeltaHist>` method
+with specified ``event_pair=('eventstream_start', 'path_end')`` for choosing ``left_truncated_cutoff``
+value and ``event_pair=('path_start', 'eventstream_end')`` for choosing ``right_truncated_cutoff``.
+
+See more about :ref:`eventstream descriptive methods<eventstream_descriptive_methods>`.
 
 
 .. code-block:: python
@@ -1615,7 +1372,7 @@ Displaying the eventstream start and end timestamps:
 
 The trajectory of the following user ends at ``2019-11-02 01:14:38`` - which is too
 close to the eventstream start(for the given ``left_truncated_cutoff``
-value), so the ``TruncatedEvents`` dataprocessor labels it as truncated
+value), so the ``TruncatedEvents`` data processor labels it as truncated
 from the left:
 
 .. code-block:: python
@@ -1623,10 +1380,7 @@ from the left:
     res[res['user_id'] == 495985018]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1666,9 +1420,7 @@ from the left:
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 The trajectory of the following user starts at ``2020-04-29 12:24:21`` - which is too
 close to the eventstream end(for the given ``right_truncated_cutoff``
@@ -1681,10 +1433,7 @@ right:
     res[res['user_id'] == 831491833]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1748,53 +1497,22 @@ right:
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
-
-
-Synthetic events order
-^^^^^^^^^^^^^^^^^^^^^^
-
-As you may have noticed, each synthetic event has a “parent” that
-defines the timestamp. When you apply
-multiple data processors, a timestamp collisions might occur, so it is not
-clear how the events should be ordered. For colliding events,
-the following sorting order is applied, based on event types(earlier event types
-are added earlier):
-
--  profile
--  path_start
--  new_user
--  existing_user
--  truncated_left
--  session_start
--  session_start_truncated
--  group_alias
--  raw
--  raw_sleep
--  None
--  synthetic
--  synthetic_sleep
--  positive_target
--  negative_target
--  session_end_truncated
--  session_end
--  session_sleep
--  truncated_right
--  absent_user
--  lost_user
--  path_end
 
 Removing processors
 ~~~~~~~~~~~~~~~~~~~
 
+.. _filter:
+
 FilterEvents
 ^^^^^^^^^^^^
 
-``FilterEvents`` keeps events based on the masking function ``func``.
-The function should return a boolean mask for the input dataframe - that
-is, a series of boolean ``True or False`` variables, that is used
-as a filter for the dataframe underlying the eventstream.
+:py:meth:`FilterEvents<retentioneering.data_processors_lib.filter_events.FilterEvents>`
+keeps events based on the masking function ``func``.
+The function should return a boolean mask for the input dataframe(a series
+of boolean True or False variables that filter the DataFrame underlying
+the eventstream).
 
 .. figure:: /_static/user_guides/data_processor/dp_9_filter.png
 
@@ -1811,13 +1529,11 @@ in events of users that appear in some pre-defined list of users.
 
     res = stream.filter(func=save_specific_users).to_dataframe()
 
-The resulting eventstream includes these 3 users only:
+The resulting eventstream includes these three users only:
 
 .. code-block:: python
 
     res['user_id'].unique().astype(int)
-
-
 
 
 .. parsed-literal::
@@ -1825,11 +1541,11 @@ The resulting eventstream includes these 3 users only:
     array([219483890, 964964743, 965024600])
 
 
-
 Note that the masking function accepts not just ``pandas.DataFrame``
 associated with the eventstream, but ``schema`` parameter as well.
 Having this parameter, you can access any eventstream column,
-defined in its :py:meth:`EventstreamSchema<retentioneering.eventstream.schema.EventstreamSchema>`
+defined in its
+:py:meth:`EventstreamSchema<retentioneering.eventstream.schema.EventstreamSchema>`.
 
 This makes such masking functions reusable regardless of eventstream
 column titles.
@@ -1847,14 +1563,11 @@ us:
         [lambda s: s.index.isin(['catalog', 'main'])]
 
 
-
-
 .. parsed-literal::
 
     catalog    14518
     main        5635
     Name: event, dtype: int64
-
 
 
 .. code-block:: python
@@ -1865,7 +1578,7 @@ us:
 
     res = stream.filter(func=exclude_events).to_dataframe()
 
-We can see that ``res`` dataframe does not have “useless” events anymore.
+We can see that ``res`` DataFrame does not have "useless" events anymore.
 
 .. code-block:: python
 
@@ -1874,25 +1587,24 @@ We can see that ``res`` dataframe does not have “useless” events anymore.
         [lambda s: s.index.isin(['catalog', 'main'])]
 
 
-
-
 .. parsed-literal::
 
     Series([], Name: event, dtype: int64)
 
-
+.. _delete_users:
 
 DeleteUsersByPathLength
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-``DeleteUsersByPathLength`` removes the paths
-which we consider “too short”. We might be interested in excluding such paths -
-in case they are too short to be informative for our task.
+:py:meth:`DeleteUsersByPathLength<retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>`
+removes the paths which we consider "too short". We might
+be interested in excluding such paths - in case they are too short to
+be informative for our task.
 
 Path length can be specified in the following ways:
 
-- specifying the number of events comprising a path,
-- specifying the time distance between the beginning and the end of a path.
+- setting the number of events comprising a path,
+- setting the time distance between the beginning and the end of the path.
 
 The former is associated with ``events_num`` parameter, the latter –
 with ``cutoff`` parameter. Thus, ``DeleteUsersByPathLength`` removes all
@@ -1909,7 +1621,7 @@ Diagram for specified ``cutoff``:
 
 
 Let us showcase both variants of the ``DeleteUsersByPathLength``
-dataprocessor:
+data processor:
 
 A minimum number of events specified:
 
@@ -1925,20 +1637,19 @@ Any remaining user has at least 25 events. For example, user
     len(res[res['user_id'] == 629881394])
 
 
-
 .. parsed-literal::
 
     48
 
 
-
-A minimum path length (user lifetime) specified:
+A minimum path length (user lifetime) is specified:
 
 .. code-block:: python
 
     res = stream.delete_users(cutoff=(1, 'M')).to_dataframe()
 
-Any remaining user has been “alive” for at least a full month. For
+
+Any remaining user has been "alive" for at least a month. For
 example, user ``964964743`` started her trajectory on ``2019-11-01`` and
 ended on ``2019-12-09``.
 
@@ -1947,10 +1658,7 @@ ended on ``2019-12-09``.
     res[res['user_id'] == 964964743].iloc[[0, -1]]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -1982,21 +1690,22 @@ ended on ``2019-12-09``.
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
+.. _truncate_path:
 
 TruncatePath
 ^^^^^^^^^^^^
 
-For each user trajectory, ``TruncatePath`` drops all events either before
-or after a certain event. The following parameters specify the
-behavior:
+For each user trajectory, :py:meth:`TruncatePath<retentioneering.data_processors_lib.truncate_path.TruncatePath>`
+drops all events before or after a particular event.
+The following parameters specify the behavior:
 
 -  ``drop_before``: event name before which part of the user’s path is
-   dropped. Specified event remains in the eventstream.
+   dropped. The specified event remains in the eventstream.
 
 -  ``drop_after``: event name after which part of the user’s path is
-   dropped. Specified event remains in the eventstream.
+   dropped. The specified event remains in the eventstream.
 
 -  ``occurrence_before``: if set to ``first`` (by default), all events
    before the first occurrence of the ``drop_before`` event are dropped.
@@ -2009,26 +1718,28 @@ behavior:
 
 -  ``shift_before``: sets the number of steps by which the truncate
    point is shifted from the selected event. If the value is negative,
-   then the offset occurs to the left along the timeline; if positive,
+   the offset occurs to the left along the timeline; if positive,
    then the offset occurs to the right.
 
 -  ``shift_after``: the same behavior as in the shift_before, but for
    right (after the event) path truncation.
 
-If the specified event is not present in a user path, the path remains
-unchanged.
+The path remains unchanged if the specified event is not present in a user path.
 
 .. figure:: /_static/user_guides/data_processor/dp_11_truncate_path.png
 
 
 Suppose we want to see what happens to the user after she jumps to a
-``cart`` event. Suppose also that we need to find out which events
-preceded the ``cart`` event. To do this, we can use ``TruncatePath`` with specified
+``cart`` event and also to find out which events preceded the ``cart`` event.
+To do this, we can use ``TruncatePath`` with specified
 ``drop_before='cart'`` and ``shift_before=-2``:
 
 .. code-block:: python
 
-    res = stream.truncate_path(drop_before='cart', shift_before=-2).to_dataframe()
+    res = stream.truncate_path(
+              drop_before='cart',
+              shift_before=-2
+              ).to_dataframe()
 
 Now some users have their trajectories truncated, because they had at
 least one ``cart`` in their path:
@@ -2038,10 +1749,7 @@ least one ``cart`` in their path:
     res[res['user_id'] == 219483890]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2105,16 +1813,14 @@ least one ``cart`` in their path:
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
-
-
-As we can see, this path now starts with the two events preceding
-``cart`` (``event_index = 0, 1``), and ``cart`` right after them
-``event_index = 2``. Another ``cart`` event occurred here
-(``event_index = 5827``), but since the default
-``occurrence_before='first'`` was triggered, this second ``cart`` was
-ignored by the data processor.
+As we can see, this path now starts with the two events preceding the
+``cart`` (``event_index=0,1``) and the ``cart`` event right after them
+(``event_index=2``). Another ``cart`` event occurred here
+(``event_index=5827``), but since the default
+``occurrence_before='first'`` was triggered, the data processor
+ignored this second cart.
 
 Some users do not have any ``cart`` events - and their
 trajectories have not been changed:
@@ -2124,10 +1830,7 @@ trajectories have not been changed:
     res[res['user_id'] == 24427596]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2175,27 +1878,26 @@ trajectories have not been changed:
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
-
-
-We can also perform truncation from the right, or specify for truncation
-point to be not the first, but the last occurrence of ``cart``. To
-demonstrate both, let us set ``drop_after = "cart"`` and
-``occurrence_after = "last"``:
+We can also perform truncation from the right, or specify for the truncation
+point to be not the first but the last occurrence of the ``cart``. To
+demonstrate both, let us set ``drop_after="cart"`` and
+``occurrence_after="last"``:
 
 .. code-block:: python
 
-    res = stream.truncate_path(drop_after='cart', occurrence_after="last").to_dataframe()
+    res = stream.truncate_path(
+              drop_after='cart',
+              occurrence_after="last"
+              ).to_dataframe()
 
-Now, any trajectory which includes ``cart`` is truncated to end with the
+Now, any trajectory which includes a ``cart`` is truncated to the end with the
 last ``cart``:
 
 .. code-block:: python
 
     res[res['user_id'] == 219483890]
-
-
 
 
 .. raw:: html
@@ -2263,32 +1965,31 @@ last ``cart``:
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 Editing processors
 ~~~~~~~~~~~~~~~~~~
 
+.. _group:
+
 GroupEvents
 ^^^^^^^^^^^
 
-Given a masking function passed as ``func``, ``GroupEvents`` replaces
+Given a masking function passed as a ``func``,
+:py:meth:`GroupEvents<retentioneering.data_processors_lib.group_events.GroupEvents>` replaces
 all the events marked by ``func`` with newly created synthetic events
 of ``event_name`` name and ``event_type`` type (``group_alias`` by
 default). The timestamps of these synthetic events are the same as their
-parents' ones. ``func`` can be any function that returns a series of
+parents'. ``func`` can be any function that returns a series of
 boolean (``True/False``) variables that can be used as a filter for the
-dataframe underlying the eventstream.
+DataFrame underlying the eventstream.
 
-
-:red:`TODO: Replace ‘filter’ with ‘func’ on the diagram. dpanina`
 
 .. figure:: /_static/user_guides/data_processor/dp_12_group.png
 
 
 
-With ``GroupEvents``, we can group events based on event name. Suppose
+With ``GroupEvents``, we can group events based on the event name. Suppose
 we need to assign a common name ``product`` to events ``product1`` and
 ``product2``:
 
@@ -2305,18 +2006,15 @@ we need to assign a common name ``product`` to events ``product1`` and
 
     res = stream.group(**params).to_dataframe()
 
-As we can see, user ``456870964`` now has a couple of ``product`` events
-(``event_index = 160, 164``) with ``event_type = ‘group_alias’``).
+As we can see, user ``456870964`` now has two ``product`` events
+(``event_index=160, 164``) with ``event_type=‘group_alias’``).
 
 .. code-block:: python
 
     res[res['user_id'] == 456870964]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2396,22 +2094,17 @@ As we can see, user ``456870964`` now has a couple of ``product`` events
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 Previously, both events were named
-``product1`` and ``product2`` and had ``raw`` event type:
+``product1`` and ``product2`` and had ``raw`` event types:
 
 .. code-block:: python
 
     stream.to_dataframe().query('user_id == 456870964')
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2491,37 +2184,33 @@ Previously, both events were named
         </tr>
       </tbody>
     </table>
-    </div>
-
-
+    <br>
 
 You can also notice that the newly created ``product`` events have
 ``event_id`` that differs from their parents' event_ids.
 
+.. _collapse_loops:
+
 CollapseLoops
 ^^^^^^^^^^^^^
 
-``CollapseLoops`` replaces all uninterrupted series of repetitive user
-events (loops) with one new ``loop``-like event. The name of the
-new event is defined by the suffix parameter:
+:py:meth:`CollapseLoops<retentioneering.data_processors_lib.collapse_loops.CollapseLoops>`
+replaces all uninterrupted series of repetitive user
+events (loops) with one new ``loop`` - like event.
+The ``suffix`` parameter defines the name of the new event:
 
 -  given ``suffix=None``, names new event with the old event_name, i.e. passes along
    the name of the repeating event;
-
 -  given ``suffix="loop"``, names new event ``event_name_loop``;
-
 -  given ``suffix="count"``, names new event
    ``event_name_loop_{number of event repetitions}``.
 
-The timestamp that the new event has is determined by
-``timestamp_aggregation_type`` value:
+The ``timestamp_aggregation_type`` value determines the new event timestamp:
 
--  given ``timestamp_aggregation_type="max"`` (the default option),
-   passes the timestamp of the last event from the loop;
-
+-  given ``timestamp_aggregation_type="max"`` (the default option), passes the
+   timestamp of the last event from the loop;
 -  given ``timestamp_aggregation_type="min"``, passes the timestamp of
    the first event from the loop;
-
 -  given ``timestamp_aggregation_type="mean"``, passes the average loop
    timestamp.
 
@@ -2533,17 +2222,14 @@ The timestamp that the new event has is determined by
     res = stream.collapse_loops().to_dataframe()
 
 Consider for example user ``2112338``. In the original eventstream she
-had 3 consecutive ``catalog`` events.
+had three consecutive ``catalog`` events.
 
 .. code-block:: python
 
     stream.to_dataframe().query('user_id == 2112338')
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2599,11 +2285,9 @@ had 3 consecutive ``catalog`` events.
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
-
-
-In the resulting dataframe, the repeating "catalog" events have been collapsed to a single
+In the resulting DataFrame, the repeating "catalog" events have been collapsed to a single
 ``catalog_loop`` event. The timestamp of this synthetic event is the
 same as the timestamp of the last looping event:
 ``2019-12-24 12:58:44``.
@@ -2613,10 +2297,7 @@ same as the timestamp of the last looping event:
     res[res['user_id'] == 2112338]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2656,12 +2337,10 @@ same as the timestamp of the last looping event:
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
-
-
-To see the length of the loops we removed, we can set suffix to
-``count``. Also, let us see how ``timestamp_aggregation_type`` works if
+We can set the suffix to see the length of the loops we removed.
+Also, let us see how ``timestamp_aggregation_type`` works if
 we set it to ``mean``.
 
 .. code-block:: python
@@ -2675,10 +2354,7 @@ we set it to ``mean``.
     res[res['user_id'] == 2112338]
 
 
-
-
 .. raw:: html
-
 
     <div><table class="dataframe">
       <thead>
@@ -2718,224 +2394,86 @@ we set it to ``mean``.
         </tr>
       </tbody>
     </table>
-    </div>
+    <br>
 
+Now, the synthetic ``catalog_loop_3`` event has ``12:58:23`` time -
+the average of ``12:58:08``, ``12:58:16`` and ``12:58:44``.
 
+The ``CollapseLoops`` data processor can be useful for compressing the
+data:
 
-Now, the synthetic ``catalog_loop_3`` event has ``12:58:23`` time - which is
-the average of ``12:58:08``, ``12:58:16``, ``12:58:44``.
+- by packing loop information into single events,
+- removing looping events, in case they are not desirable
+  (which can be a common case in clickstream visualization).
 
-The ``CollapseLoops`` dataprocessor can be useful for compressing the
-data - by packing loop information into single events, - or removing
-looping events, in case they are not desirable (which can be a common
-case in clickstream visualization).
+.. _synthetic_events_order:
 
-Custom data processors
+Synthetic events order
 ----------------------
 
-We have covered all data processors that currently exist in our
-library.
-
-You can create a custom dataprocessor, which could implement the data transformations you
-often use. For details, please refer to our custom dataprocessors User Guide.
-
-
-:red:`TODO: Create UG and add link. dpanina`
-
-Advanced usage example
-----------------------
-
-Let us give an example of a processing graph that an analyst could use
-to prepare the data for analysis or visualization. We are using the same
-simple-onlineshop dataset we have seen before.
-
-If we try to visualize the data without using dataprocessors, we can get
-results that are difficult to analyze:
-
-.. code-block:: python
-
-    from retentioneering.transition_graph import TransitionGraph
-
-    tgraph = TransitionGraph(eventstream=stream, graph_settings={})
-    tgraph.plot_graph(thresholds={'nodes': None, 'edges': None}, targets=None)
-
-
-
-.. raw:: html
-
-
-    <iframe
-        width="700"
-        height="600"
-        src="../_static/user_guides/data_processor/transition_graph.html"
-        frameborder="0"
-        align="left"
-        allowfullscreen
-    ></iframe>
-
-
-
-Of course, by using the transition graph interactive
-options, we could focus on specific event transitions. However, even the
-general user workflow can be difficult to see - because of big amount of
-ungrouped events, loops, and states.
-
-We can address this problem by using a combination of dataprocessors we
-have seen previously. One example of a processing graph would look like
-this:
-
--  apply **DeleteUsersByPathLength** to remove users that could have
-   appeared by accident;
-
--  apply **StartEndEvents** to mark the start and finish user states;
-
--  apply **SplitSessions** to mark user sessions;
-
--  apply **GroupEvents** multiple times to group similar events into
-   groups;
-
--  apply **CollapseLoops** with different parameters, for different loop
-   representation on the transition graph plot
-
-.. figure:: /_static/user_guides/data_processor/dp_14_pgraph_advanced.png
-
-
-
-As the result, we should get three similar eventstreams that differ only
-in their way of encoding loops. That is the main inherent advantage of
-using the graph structure for transformations - we only need to execute
-all common dataprocessors once, and then we can quickly alternate
-between different “heads” of the transformation.
-
-Let us compose this graph:
-
-.. code-block:: python
-
-    def group_browsing(df, schema):
-        return df[schema.event_name].isin(['catalog', 'main'])
-
-    def group_products(df, schema):
-        return df[schema.event_name].isin(['product1', 'product2'])
-
-    def group_delivery(df, schema):
-        return df[schema.event_name].isin(['delivery_choice', 'delivery_courier', 'delivery_pickup'])
-
-    def group_payment(df, schema):
-        return df[schema.event_name].isin(['payment_choice', 'payment_done', 'payment_card', 'payment_cash'])
-
-
-    stream_7_nodes = stream.delete_users(events_num=6)\
-                            .add_start_end()\
-                            .split_sessions(session_cutoff=(30, 'm'))\
-                            .group(event_name='browsing', func=group_browsing)\
-                            .group(event_name='delivery', func=group_delivery)\
-                            .group(event_name='payment', func=group_payment)
-
-Looking at the simpliest version, where loops are replaced with the
-event they consist of:
-
-.. code-block:: python
-
-    stream_out = stream_7_nodes.collapse_loops(suffix=None)
-    tgraph = TransitionGraph(eventstream=stream_out, graph_settings={})
-    tgraph.plot_graph(thresholds={'nodes': None, 'edges': None}, targets=None)
-
-
-
-.. raw:: html
-
-    <iframe
-        width="700"
-        height="600"
-        src="../_static/user_guides/data_processor/transition_graph_collapse_loops_none.html"
-        frameborder="0"
-        align="left"
-        allowfullscreen
-    ></iframe>
-
-
-This transition graph is much easier to look at. After applying the
-dataprocessors, we can now see that:
-
--  “lost” is a synthetic event marking an end of user trajectory, and
-   should be removed in the next graph version(to be fair, we could see
-   this in the first plot as well; however, details like this are very
-   easy to miss, and simplifying the resulting plot alleviates the
-   problem)
-
--  users start their sessions either by browsing(most users) or by going
-   to cart(small but noticeable share of users who probably spent over
-   30 minutes on product specifications)
-
--  after finishing a session, about 47.5% of users leave the website for
-   good
-
--  after transitioning from “cart” to “delivery”, about 30% of users do
-   not proceed to “payment”
-
-We can also see the general user flow quite clearly now, which is a huge
-improvement compared to the original plot.
-
-To learn more about loops and where they occur, let us plot two other
-versions of the eventstream:
-
-.. code-block:: python
-
-    stream_out = stream_7_nodes.collapse_loops(suffix='loop')
-    tgraph = TransitionGraph(eventstream=stream_out, graph_settings={})
-    tgraph.plot_graph(thresholds={'nodes': None, 'edges': None}, targets=None)
-
-
-
-.. raw:: html
-
-    <iframe
-        width="700"
-        height="600"
-        src="../_static/user_guides/data_processor/transition_graph_collapse_loops_loop.html"
-        frameborder="0"
-        align="left"
-        allowfullscreen
-    ></iframe>
-
-
-In this plot (which is a bit more convoluted than the previous one), we
-see that loops mostly occur when users are browsing, and are less
-frequent at the ``delivery`` or ``payment stages``. However, there are a
-lot more transitions to ``payment_loop`` or ``delivery_loop`` than there
-are to ``payment`` or ``delivery``!
-
-This could suggest that there is a problem with the delivery/payment
-process, or that we could improve the process by reducing the number of
-transitions (i.e. “clicks”) it takes to make an order a delivery or to
-pay.
-
-Now we can attempt to look at the typical loop length using the third
-created eventstream:
-
-.. code-block:: python
-
-    stream_out = stream_7_nodes.collapse_loops(suffix='count')
-    tgraph = TransitionGraph(eventstream=stream_out, graph_settings={})
-    tgraph.plot_graph(thresholds={'nodes': None, 'edges': None}, targets=None)
-
-
-
-.. raw:: html
-
-     <iframe
-        width="700"
-        height="600"
-        src="../_static/user_guides/data_processor/transition_graph_collapse_loops_count.html"
-        frameborder="0"
-        align="left"
-        allowfullscreen
-    ></iframe>
-
-
-This plot is much more complex than the previous two; to properly
-analyze it, we would need to filter out some loop events based on their
-frequency. Still, we can see that the longest loops occur at the
-browsing stage - and cart, payment, or delivery loops are limited by 2-3
-steps, meaning that the problem we found might not be as critical as it
-first appeared.
+Let us summarize the information about event type and event order in the eventstream.
+As we have already discussed in the eventstream guide: :ref:`event_type column<event_type_explanation>` and
+:ref:`reindex method<reindex_explanation>`.
+
+All events came from a sourcing DataFrame are of ``raw`` event type.
+When we apply adding or editing data processors new synthetic events are created.
+General idea is that each synthetic event has a "parent" or "parents" that
+defines its timestamp.
+
+When you apply multiple data processors, timestamp collisions might occur, so it is
+unclear how the events should be ordered. For colliding events,
+the following sorting order is applied, based on event types (earlier event types
+are added earlier), also you can see which data processor
+for which event_type is responsible:
+
+.. table:: Mapping of event_types and data processors.
+    :widths: 10 40 40
+    :class: tight-table
+
+    +-------+-------------------------+-------------------------------------------+
+    | Order | event_type              | helper                                    |
+    +=======+=========================+===========================================+
+    |  1    | profile                 |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  2    | path_start              | :ref:`add_start_end<add_start_end>`       |
+    +-------+-------------------------+-------------------------------------------+
+    |  3    | new_user                | :ref:`add_new_users<add_new_users>`       |
+    +-------+-------------------------+-------------------------------------------+
+    |  4    | existing_user           | :ref:`add_new_users<add_new_users>`       |
+    +-------+-------------------------+-------------------------------------------+
+    |  5    | truncated_left          | :ref:`truncated_events<truncated_events>` |
+    +-------+-------------------------+-------------------------------------------+
+    |  6    | session_start           | :ref:`split_sessions<split_sessions>`     |
+    +-------+-------------------------+-------------------------------------------+
+    |  7    | session_start_truncated | :ref:`split_sessions<split_sessions>`     |
+    +-------+-------------------------+-------------------------------------------+
+    |  8    | group_alias             | :ref:`group<group>`                       |
+    +-------+-------------------------+-------------------------------------------+
+    |  9    | raw                     |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  10   | raw_sleep               |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  11   | None                    |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  12   | synthetic               |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  13   | synthetic_sleep         |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  14   | positive_target         | :ref:`positive_target<positive_target>`   |
+    +-------+-------------------------+-------------------------------------------+
+    |  15   | negative_target         | :ref:`negative_target<negative_target>`   |
+    +-------+-------------------------+-------------------------------------------+
+    |  16   | session_end_truncated   | :ref:`split_sessions<split_sessions>`     |
+    +-------+-------------------------+-------------------------------------------+
+    |  17   | session_end             | :ref:`split_sessions<split_sessions>`     |
+    +-------+-------------------------+-------------------------------------------+
+    |  18   | session_sleep           |                                           |
+    +-------+-------------------------+-------------------------------------------+
+    |  19   | truncated_right         | :ref:`truncated_events<truncated_events>` |
+    +-------+-------------------------+-------------------------------------------+
+    |  20   | absent_user             | :ref:`lost_users<lost_users>`             |
+    +-------+-------------------------+-------------------------------------------+
+    |  21   | lost_user               | :ref:`lost_users<lost_users>`             |
+    +-------+-------------------------+-------------------------------------------+
+    |  22   | path_end                | :ref:`add_start_end<add_start_end>`       |
+    +-------+-------------------------+-------------------------------------------+

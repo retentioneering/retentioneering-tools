@@ -21,9 +21,14 @@ def func(param1, param2):
         - point 1
         - point 2
 
-        Multiline bullet list:
+        Multiline bullet list (если нужен перенос строки):
         - | poin 1 текст
           | текст на 2 строке
+
+        Multiline bullet list (если не текст слишком длинный для py-файла):
+        - poin 1 текст
+          текст на 2 строке
+
 
     param2 : type, default <default_value>
 
@@ -34,11 +39,15 @@ def func(param1, param2):
 
     See Also
     --------
-    Надо выработать правила для этого блока
+    Eventstream.to_dataframe : Текст описани. Ссылки только внутри API.
+
+
 
     Notes
     -----
-    Надо выработать правила для этого блока
+    Ссылки на UG. Другая информация, которая не влезла в основную.
+    See :doc:`Eventstream</user_guides/eventstream>` user guide for the details.
+    :ref:`Eventstream<eventstream_custom_fields>`
 
     Raises
     ------
@@ -82,11 +91,23 @@ def func(
 """
 ```
 
-### Внутренние ссылки:
+###  Перекрестные ссылки (docstring):
 
+Ссылка на функцию внутри того же модуля
 ```
-    :py:func:`func path`
+    :py:func:`func_name`
 ```
+
+Ссылка на класс
+```
+    :py:class:`.ClassName`
+```
+
+Ссылка на метод класса из другого модуля
+```
+    :py:func:`.ClassName.method_name`
+```
+
 ### Внешние ссылки:
 
 ```
@@ -134,7 +155,7 @@ make clean
 ```
 import plotly.express as px
 
-fig = funnel.draw_plot()
+fig = funnel.plot()
 fig.write_html("funnel_0.html")
 ```
 
@@ -153,3 +174,7 @@ fig.write_html("funnel_0.html")
                 allowfullscreen
             ></iframe>
 ```
+
+
+.. _anchor name:
+:ref:`Eventstream concept<anchor name>`

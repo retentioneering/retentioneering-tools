@@ -121,6 +121,7 @@ As we see on |fig_eventstream_columns|, the underlying dataframe contains 3 orig
 
 - event_index. This column is used for sorting an eventstream. Normally, all the raw events are sorted by timestamp column. However, there are some corner cases for additional synthetic events. :red:`Give a reference to synthetic events review`.
 
+
 Preprocessing
 -------------
 
@@ -140,13 +141,27 @@ Atomic operations
 
 On the basic level, there are 3 possible atomic operations one could apply to an eventstream: insert, delete, edit.
 
-Insert operations are associated with adding so called *synthetic events* meaning that these events are not represented in the original clickstream. These events aim to bring some additional information about a current state of a user at her particular path step. For example, when we split an eventstream into sessions we add ``session_start`` and ``session_end`` synthetic events indicating the explicit beginning and the end of each session.
+Insert operations are associated with adding so called *synthetic events* meaning that these events are not
+represented in the original clickstream. These events aim to bring some additional information about a current
+state of a user at her particular path step. For example, when we split an eventstream into
+sessions we add ``session_start`` and ``session_end`` synthetic events indicating the explicit
+beginning and the end of each session.
 
-Delete operations are used when you need to remove some useless/rubbish/technical events from the eventstream, or remove some paths entirely or partially.
+Delete operations are used when you need to remove some useless/rubbish/technical events from the eventstream,
+or remove some paths entirely or partially.
 
-Edit operations are useful when you need to rename or group some events. In many products user events have their natural taxonomy, so you might want to group them in order to provide different levels of granularity.
+Edit operations are useful when you need to rename or group some events. In many products user events
+have their natural taxonomy, so you might want to group them in order to provide different levels of granularity.
 
-All these operations might be implemented with ``LEFT OUTER JOIN`` operator. Why ``LEFT OUTER JOIN``? i) It guarantees that the keys from the left table are kept safe and ii) adds some new keys from the right table which are not represented in the left table. These properties allow us to manage all the preprocessing calculations keeping the original events intact. And this fundamental property, in turn, makes switching between eventstream states possible. The exact way how we do this is described in the next section.
+.. _join algorithm:
+
+All these operations might be implemented with ``LEFT OUTER JOIN`` operator. Why ``LEFT OUTER JOIN``?
+i) It guarantees that the keys from the left table are kept safe and
+ii) adds some new keys from the right table which are not represented in the left table.
+
+These properties allow us to manage all the preprocessing calculations keeping the original events intact.
+And this fundamental property, in turn, makes switching between eventstream states possible.
+The exact way how we do this is described in the next section.
 
 :red:`TODO: Make nicer images`
 

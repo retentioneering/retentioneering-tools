@@ -46,7 +46,7 @@ def _default_func(eventstream: EventstreamType, negative_target_events: List[str
 
 class NegativeTargetParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`NegativeTarget`
+    A class with parameters for :py:class:`.NegativeTarget` class.
     """
 
     negative_target_events: List[str]
@@ -57,14 +57,14 @@ class NegativeTargetParams(ParamsModel):
 
 class NegativeTarget(DataProcessor):
     """
-    Creates new synthetic events in each user's path who have specified event(s):
-    ``negative_target_RAW_EVENT_NAME``
+    Create new synthetic events in paths of all users having the specified event(s):
+    ``negative_target_RAW_EVENT_NAME``.
 
     Parameters
     ----------
     negative_target_events : list of str
-        Each event from that list is associated with the negative user behaviour in the product.
-        If there are several target events in user path - the event with minimum timestamp is taken.
+        Define the list of events that we consider negative.
+        If there are several target events in the user path, the event with the minimum timestamp is taken.
 
     func : Callable, default _default_func_negative
         Filter rows with target events from the input eventstream.
@@ -72,13 +72,18 @@ class NegativeTarget(DataProcessor):
     Returns
     -------
     Eventstream
-        ``Eventstream`` with new synthetic events only added to users who fit the conditions.
+        ``Eventstream`` with new synthetic events only added to the users who fit the conditions.
 
         +--------------------------------+-----------------+-----------------------------+
         | **event_name**                 | **event_type**  | **timestamp**               |
         +--------------------------------+-----------------+-----------------------------+
         | negative_target_RAW_EVENT_NAME | negative_target | min(negative_target_events) |
         +--------------------------------+-----------------+-----------------------------+
+
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
+
 
     """
 

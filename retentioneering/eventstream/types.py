@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from dataclasses import field
-from typing import Any, List, Optional, Protocol, TypedDict
+from typing import Any, List, Optional, Protocol, TypedDict, runtime_checkable
 
 import pandas as pd
 
@@ -14,6 +14,7 @@ class Relation(TypedDict):
     raw_col: Optional[str]
 
 
+@runtime_checkable
 class EventstreamType(Protocol):
     schema: EventstreamSchemaType
     index_order: IndexOrder

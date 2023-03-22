@@ -1,90 +1,109 @@
 from __future__ import annotations
 
-from typing import Callable, MutableMapping, MutableSequence
-
 import pandas as pd
 
+from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.typing.transition_graph import NormType
-
-NormFunc = Callable[[pd.DataFrame, pd.DataFrame, pd.DataFrame], pd.Series]
 
 
 class Edgelist:
-    edgelist_norm_functions: MutableMapping[str, NormFunc] | None
     edgelist_df: pd.DataFrame
+    eventstream: EventstreamType
+
+    _weight_col: str
 
     def __init__(
         self,
-        event_col: str,
-        time_col: str,
-        default_weight_col: str,
-        index_col: str,
-        nodelist: pd.DataFrame,
-        edgelist_norm_functions: MutableMapping[str, NormFunc] | None = None,
+        eventstream: EventstreamType,
     ) -> None:
-        self.event_col = event_col
-        self.time_col = time_col
-        self.default_weight_col = default_weight_col
-        self.nodelist = nodelist
-        self.index_col = index_col
-        self.edgelist_norm_functions = edgelist_norm_functions
+        self.eventstream = eventstream
 
-    def calculate_edgelist(
-        self, data: pd.DataFrame, norm_type: NormType | None = None, custom_cols: MutableSequence[str] | None = None
-    ) -> pd.DataFrame:
+    @property
+    def weight_col(self) -> str:
+        return self._weight_col
 
-        if norm_type not in [None, "full", "node"]:
+    @weight_col.setter
+    def weight_col(self, value: str) -> None:
+        if not value:
+            raise ValueError("Weight col cannot be empty")
+        self._weight_col = value
+
+    @property
+    def group_col(self) -> str:
+        if self.weight_col in (self.eventstream.schema.event_id, self.eventstream.schema.user_id):
+            return self.eventstream.schema.user_id
+        else:
+            return self.weight_col
+
+    @property
+    def next_event_col(self) -> str:
+        return f"next_{self.eventstream.schema.event_name}"
+
+    def calculate_edgelist(self, weight_cols: list[str], norm_type: NormType | None = None) -> pd.DataFrame:
+        if norm_type not in (None, "full", "node"):
             raise ValueError(f"unknown normalization type: {norm_type}")
 
-        cols = [self.event_col, "next_" + str(self.event_col)]
-        data = self._get_shift(data=data, event_col=self.event_col, time_col=self.time_col, index_col=self.index_col)
+        edge_from, edge_to = self.eventstream.schema.event_name, self.next_event_col
+        df = self.eventstream.to_dataframe()
+        calculated_edgelist: pd.DataFrame = pd.DataFrame()
+        for weight_col in weight_cols:
+            self.weight_col = weight_col
+            edgelist = self._calculate_edgelist_for_selected_weight(
+                df=df, norm_type=norm_type, edge_from=edge_from, edge_to=edge_to
+            )
+            if calculated_edgelist.empty:
+                calculated_edgelist = edgelist
+            else:
+                calculated_edgelist = self._merge_edgelist(calculated_edgelist, edge_from, edge_to, edgelist)
 
-        edgelist = data.groupby(cols)[self.time_col].count().reset_index()
-        edgelist.rename(columns={self.time_col: self.default_weight_col}, inplace=True)
+        self.edgelist_df = calculated_edgelist
+        return calculated_edgelist
 
-        if custom_cols is not None:
-            for weight_col in custom_cols:
-                agg_i = data.groupby(cols)[weight_col].nunique().reset_index()
-                edgelist = edgelist.join(agg_i[weight_col])
+    def _merge_edgelist(
+        self, calculated_edgelist: pd.DataFrame, edge_from: str, edge_to: str, edgelist: pd.DataFrame
+    ) -> pd.DataFrame:
+        calculated_edgelist = pd.merge(
+            calculated_edgelist,
+            edgelist,
+            how="outer",
+            left_on=[edge_from, edge_to],
+            right_on=[edge_from, edge_to],
+            suffixes=["", "_del"],
+        )
+        calculated_edgelist = calculated_edgelist[
+            [c for c in calculated_edgelist.columns if not c.endswith("_del")]  # type: ignore
+        ]
+        return calculated_edgelist
 
-        # apply default norm func
+    def _calculate_edgelist_for_selected_weight(
+        self, df: pd.DataFrame, norm_type: NormType, edge_from: str, edge_to: str
+    ) -> pd.DataFrame:
+        possible_transitions = (
+            df.assign(**{edge_to: lambda _df: _df.groupby(self.eventstream.schema.user_id)[edge_from].shift(-1)})
+            .dropna(subset=[edge_to])
+            .groupby([edge_from, edge_to])
+            .size()
+            .index
+        )
+        bigrams = df.assign(**{edge_to: lambda _df: _df.groupby(self.group_col)[edge_from].shift(-1)}).dropna(
+            subset=[edge_to]
+        )
+        abs_values = bigrams.groupby([edge_from, edge_to])[self.weight_col].nunique()
+        if self.weight_col != self.eventstream.schema.event_id:
+            abs_values = abs_values.reindex(possible_transitions)
+        edgelist = abs_values
+        # denumerator_full = total number of transitions/users/sessions
         if norm_type == "full":
-            edgelist[self.default_weight_col] /= edgelist[self.default_weight_col].sum()
-            if custom_cols is not None:
-                for weight_col in custom_cols:
-                    edgelist[weight_col] /= data[weight_col].nunique()
+            denumerator_full = bigrams[self.weight_col].nunique()
+            edgelist = abs_values / denumerator_full
+        # denumerator_node = total number of transitions/users/sessions that started with edge_from event
+        if norm_type == "node":
+            denumerator_node = bigrams.groupby([edge_from])[self.weight_col].nunique()
+            edgelist = abs_values / denumerator_node
+        if self.weight_col not in [self.eventstream.schema.event_id, self.eventstream.schema.user_id]:
+            edgelist = edgelist.fillna(0)
 
-        elif norm_type == "node":
-            event_transitions_counter = data.groupby(self.event_col)[cols[1]].count().to_dict()
-
-            edgelist[self.default_weight_col] /= edgelist[cols[0]].map(event_transitions_counter)
-
-            if custom_cols is not None:
-                for weight_col in custom_cols:
-                    user_counter = data.groupby(cols[0])[weight_col].nunique().to_dict()
-                    edgelist[weight_col] /= edgelist[cols[0]].map(user_counter)
-
-        # @TODO: подумать над этим (legacy from private by Alexey). Vladimir Makhanov
-        # apply custom norm func for event col
-        if self.edgelist_norm_functions is not None:
-            if self.default_weight_col in self.edgelist_norm_functions:
-                edgelist[self.default_weight_col] = self.edgelist_norm_functions[self.default_weight_col](
-                    data, self.nodelist, edgelist
-                )
-
-            if custom_cols is not None:
-                for weight_col in custom_cols:
-                    if weight_col in self.edgelist_norm_functions:
-                        edgelist[weight_col] = self.edgelist_norm_functions[weight_col](data, self.nodelist, edgelist)
-
-        self.edgelist_df = edgelist
+            if norm_type is None:
+                edgelist = edgelist.astype(int)
+        edgelist = edgelist.reset_index()
         return edgelist
-
-    def _get_shift(self, data: pd.DataFrame, index_col: str, event_col: str, time_col: str) -> pd.DataFrame:
-        data.sort_values([index_col, time_col], inplace=True)
-        shift = data.groupby(index_col).shift(-1)
-
-        data["next_" + event_col] = shift[event_col]
-        data["next_" + str(time_col)] = shift[time_col]
-
-        return data

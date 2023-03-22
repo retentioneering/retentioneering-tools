@@ -23,7 +23,7 @@ class TestEventstreamEventTimestampHist:
         self, test_stream: EventstreamType, correct_basic: np.array, correct_basic_bins: np.array
     ):
         correct_result = correct_basic
-        result = test_stream.event_timestamp_hist(bins=3, show_plot=False).values
+        result = test_stream.event_timestamp_hist(raw_events_only=True, bins=3, show_plot=False).values
 
         assert np.testing.assert_array_equal(result[0], correct_result) is None, "incorrect histogram values"
         assert np.testing.assert_array_equal(result[1], correct_basic_bins) is None, "incorrect histogram bins"
@@ -33,7 +33,9 @@ class TestEventstreamEventTimestampHist:
     ):
         correct_result = correct_lower_quantile
 
-        result = test_stream.event_timestamp_hist(show_plot=False, bins=2, lower_cutoff_quantile=0.5).values
+        result = test_stream.event_timestamp_hist(
+            show_plot=False, raw_events_only=True, bins=2, lower_cutoff_quantile=0.5
+        ).values
 
         assert np.testing.assert_array_equal(result[0], correct_result) is None, "incorrect histogram values"
         assert np.testing.assert_array_equal(result[1], correct_lower_quantile_bins) is None, "incorrect histogram bins"
@@ -43,7 +45,9 @@ class TestEventstreamEventTimestampHist:
     ):
         correct_result = correct_upper_quantile
 
-        result = test_stream.event_timestamp_hist(show_plot=False, bins=2, upper_cutoff_quantile=0.5).values
+        result = test_stream.event_timestamp_hist(
+            show_plot=False, raw_events_only=True, bins=2, upper_cutoff_quantile=0.5
+        ).values
 
         assert np.testing.assert_array_equal(result[0], correct_result) is None, "incorrect histogram values"
         assert np.testing.assert_array_equal(result[1], correct_upper_quantile_bins) is None, "incorrect histogram bins"
@@ -56,7 +60,7 @@ class TestEventstreamEventTimestampHist:
     ):
         correct_result = correct_upper_lower_quantile
         result = test_stream.event_timestamp_hist(
-            show_plot=False, bins=2, upper_cutoff_quantile=0.8, lower_cutoff_quantile=0.2
+            show_plot=False, raw_events_only=True, bins=2, upper_cutoff_quantile=0.8, lower_cutoff_quantile=0.2
         ).values
 
         assert np.testing.assert_array_equal(result[0], correct_result) is None, "incorrect histogram values"
@@ -69,7 +73,7 @@ class TestEventstreamEventTimestampHist:
     ):
         correct_result = correct_raw_events_only
 
-        result = test_stream.event_timestamp_hist(show_plot=False, bins=3, raw_events_only=False).values
+        result = test_stream.event_timestamp_hist(show_plot=False, raw_events_only=False, bins=3).values
         assert np.testing.assert_array_equal(result[0], correct_result) is None, "incorrect histogram values"
         assert (
             np.testing.assert_array_equal(result[1], correct_raw_events_only_bins) is None

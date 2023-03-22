@@ -12,18 +12,20 @@ class LostUsersHelperMixin:
         self, lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]] = None, lost_users_list: Optional[List[int]] = None
     ) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which creates one of synthetic events in each user's path:
-        ``lost_user`` or ``absent_user``. And adds them to the input ``eventstream``.
+        A method of ``Eventstream`` class that creates one
+        of the synthetic events in each user's path: ``lost_user`` or ``absent_user`` .
+
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.LostUsersEvents`
 
         Returns
         -------
         Eventstream
              Input ``eventstream`` with new synthetic events.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:func:`retentioneering.data_processors_lib.lost_users.LostUsersEvents`
+
 
         """
 

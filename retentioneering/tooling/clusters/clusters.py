@@ -28,7 +28,7 @@ PlotProjectionMethod = Literal["tsne", "umap"]
 
 class Clusters:
     """
-    A class that holds the methods for cluster analysis.
+    A class that holds methods for the cluster analysis.
 
     Parameters
     ----------
@@ -36,7 +36,11 @@ class Clusters:
 
     See Also
     --------
-    :py:func:`retentioneering.eventstream.eventstream.Eventstream.clusters`
+    .Eventstream.clusters : Call Clusters tool as an eventstream method.
+
+    Notes
+    -----
+    See :doc:`Clusters user guide</user_guides/clusters>` for the details.
     """
 
     def __init__(self, eventstream: EventstreamType):
@@ -70,28 +74,31 @@ class Clusters:
         vector: pd.DataFrame | None = None,
     ) -> Clusters:
         """
-        Fits clusters to the eventstream data.
+        Prepare features and compute clusters for the input eventstream data.
 
         Parameters
         ----------
         method : {"kmeans", "gmm"}
-            - ``kmeans`` stands for classic K-means algorithm. See details in :sklearn_kmeans:`sklearn documentation<>`
-            - ``gmm`` stands for Gaussian mixture model. See details in :sklearn_gmm:`sklearn documentation<>`
+            - ``kmeans`` stands for the classic K-means algorithm.
+              See details in :sklearn_kmeans:`sklearn documentation<>`.
+            - ``gmm`` stands for Gaussian mixture model. See details in :sklearn_gmm:`sklearn documentation<>`.
 
         n_clusters : int
             The expected number of clusters to be passed to a clustering algorithm.
         feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}, default None
-            See :py:func:`extract_features`
+            See :py:func:`extract_features`.
         ngram_range : Tuple(int, int), optional
-            See :py:func:`extract_features`
+            See :py:func:`extract_features`.
         vector : pd.DataFrame, optional
-            ``pd.DataFrame`` representing custom vectorization of the user paths. The index corresponds to user_ids,
+            ``pd.DataFrame`` representing a custom vectorization of the user paths. The index corresponds to user_ids,
             the columns are vectorized values of the path.
 
         Returns
         -------
         Clusters
             A fitted ``Clusters`` instance.
+
+
         """
 
         self._method, self._n_clusters, self._feature_type, self._ngram_range, self._vector = self.__validate_input(
@@ -120,30 +127,35 @@ class Clusters:
     ) -> go.Figure:
         """
         Plots a bar plot illustrating the distribution of ``top_n`` events in cluster ``cluster_id1``
-        compared vs the entire dataset or vs cluster ``cluster_id2``.
+        compared with the entire dataset or the cluster ``cluster_id2`` if specified.
+        Should be used after :py:func:`fit` or :py:func:`set_clusters`.
+
 
         Parameters
         ----------
         cluster_id1 : int
             ID of the cluster to compare.
         cluster_id2 : int, optional
-            ID of the second cluster to compare with top events from first
-            cluster. If None, then compares with entire dataset.
+            ID of the second cluster to compare with the first
+            cluster. If ``None``, then compares with the entire dataset.
         top_n : int, default 8
             Number of top events.
         weight_col : str, optional
-            If None distribution will be compared based on events occurrences in
+            If ``None``, distribution will be compared based on event occurrences in
             datasets. If ``weight_col`` is specified, percentages of users
             (column name specified by parameter ``weight_col``) who have particular
             events will be plotted.
         targets : list of str, optional
-            List of event names always to include for comparison regardless
+            List of event names always to include for comparison, regardless
             of the parameter top_n value. Target events will appear in the same
             order as specified.
 
+
+
         Returns
         -------
-        Plots the distribution barchart.
+        matplotlib.axes.Axes
+            Plots the distribution barchart.
         """
         if not self.__is_fitted:
             raise RuntimeError("Clusters are not defined. Consider to run 'fit()' or `set_clusters()` methods.")
@@ -214,8 +226,8 @@ class Clusters:
 
     def plot(self, targets: list[str] | list[list[str]] | None = None) -> go.Figure:
         """
-        Plots a bar plot illustrating the clusters sizes and the conversion rates of
-        the ``targets`` events within the clusters.
+        Plot a bar plot illustrating the cluster sizes and the conversion rates of
+        the ``target`` events within the clusters. Should be used after :py:func:`fit` or :py:func:`set_clusters`.
 
         Parameters
         ----------
@@ -236,12 +248,12 @@ class Clusters:
     @property
     def user_clusters(self) -> pd.Series | None:
         """
-        Returns ``user_id -> cluster_id`` mapping representing as ``pd.Series``. The index corresponds to
-        user_ids, the values relate to the corresponding cluster_ids.
 
         Returns
         -------
         pd.Series
+            ``user_id -> cluster_id`` mapping representing as ``pd.Series``. The index corresponds to
+            user_ids, the values relate to the corresponding cluster_ids.
         """
         if not self.__is_fitted:
             raise RuntimeError("Clusters are not defined. Consider to run 'fit()' or `set_clusters()` methods.")
@@ -251,12 +263,12 @@ class Clusters:
     @property
     def cluster_mapping(self) -> dict:
         """
-        Returns ``cluster_id -> list[user_ids]`` mapping.
+        Return calculated before ``cluster_id -> list[user_ids]`` mapping.
 
         Returns
         -------
         dict
-            The keys are cluster_ids, the values are the lists of the user_ids related to the corresponding cluster.
+            The keys are cluster_ids, and the values are the lists of the user_ids related to the corresponding cluster.
         """
         if not self.__is_fitted or self.__cluster_result is None:
             raise RuntimeError("Clusters are not defined. Consider to run 'fit()' or `set_clusters()` methods.")
@@ -269,12 +281,12 @@ class Clusters:
     @property
     def features(self) -> pd.DataFrame | None:
         """
-        Returns the calculated features if the clusters are fitted. The index corresponds to user_ids,
-        the columns are values of the vectorized user's trajectory.
 
         Returns
         -------
         pd.DataFrame
+            The calculated features if the clusters are fitted. The index corresponds to user_ids,
+            the columns are values of the vectorized user's trajectory.
         """
         if self.__features is None:
             raise RuntimeError("The features are not calculated. Consider to run 'extract_features()` method.")
@@ -296,7 +308,7 @@ class Clusters:
 
     def set_clusters(self, user_clusters: pd.Series) -> Clusters:
         """
-        Sets custom user-cluster mapping.
+        Set custom user-cluster mapping.
 
         Parameters
         ----------
@@ -320,7 +332,8 @@ class Clusters:
 
     def filter_cluster(self, cluster_id: int | str) -> EventstreamType:
         """
-        Truncate the eventstream and leave the trajectories of the users who belong to the selected cluster.
+        Truncate the eventstream, leaving the trajectories of the users who belong to the selected cluster.
+        Should be used after :py:func:`fit` or :py:func:`set_clusters`.
 
         Parameters
         ----------
@@ -362,20 +375,22 @@ class Clusters:
         Parameters
         ----------
         feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}
+            Algorithms for converting text sequences to numerical vectors:
 
             - ``tfidf`` see details in :sklearn_tfidf:`sklearn documentation<>`
             - ``count`` see details in :sklearn_countvec:`sklearn documentation<>`
-            - | ``frequency`` the same as count but normalized to the total number of the events
-              | in the user's trajectory.
-            - ``binary`` 1 if a user had given n-gram at least once and 0 otherwise.
-            - | ``markov`` available for bigrams only. For a given bigram ``(A, B)`` the vectorized values
-              | are the user's transition probabilities from ``A`` to ``B``.
-            - | ``time`` Associated with unigrams only. The total number of the seconds spent from the
-              | beginning of a user's path until a given event.
-            - | ``time_fraction`` the same as ``time`` but divided by the total length of the user's trajectory
-              | (in seconds).
+            - ``frequency`` is similar to count, but normalized to the total number of the events
+              in the user's trajectory.
+            - ``binary`` 1 if a user had the given n-gram at least once and 0 otherwise.
+            - ``markov`` available for bigrams only. For a given bigram ``(A, B)`` the vectorized values
+              are the user's transition probabilities from ``A`` to ``B``.
+            - ``time`` associated with unigrams only. The total number of the seconds spent
+              from the beginning of a user's path until the given event.
+            - ``time_fraction`` the same as ``time`` but divided by the total length of the user's trajectory
+              (in seconds).
+
         ngram_range : Tuple(int, int)
-            The lower and upper boundary of the range of n-values for different word n-grams or char n-grams to be
+            The lower and upper boundary of the range of n-values for different word n-grams to be
             extracted. For example, ngram_range=(1, 1) means only single events, (1, 2) means single events
             and bigrams. Ignored for ``markov``, ``time``, ``time_fraction`` feature types.
 
@@ -426,7 +441,8 @@ class Clusters:
         **kwargs: Any,
     ) -> go.Figure:
         """
-        Shows the clusters projection on a plane applying dimension reduction techniques.
+        Show the clusters' projection on a plane, applying dimension reduction techniques.
+        Should be used after :py:func:`fit` or :py:func:`set_clusters`.
 
         Parameters
         ----------
@@ -436,15 +452,15 @@ class Clusters:
             Type of color-coding used for projection visualization:
 
             - ``clusters`` colors trajectories with different colors depending on cluster number.
-            - | ``targets`` colors trajectories based on reach to any event provided in 'targets' parameter.
-              | Must provide ``targets`` parameter in this case.
+            - ``targets`` colors trajectories based on reach to any event provided in 'targets' parameter.
+              Must provide ``targets`` parameter in this case.
 
         targets : list or tuple of str, optional
-            Vector of event_names as str. If user reach any of the specified events, the dot corresponding
+            Vector of event_names as str. If user reaches any of the specified events, the dot corresponding
             to this user will be highlighted as converted on the resulting projection plot.
 
         **kwargs : optional
-            Parameters for ``sklearn.manifold.TSNE()`` and ``umap.UMAP()``
+            Parameters for :sklearn_tsne:`sklearn.manifold.TSNE()<>` and :umap:`umap.UMAP()<>`.
 
         Returns
         -------
@@ -513,13 +529,11 @@ class Clusters:
         ngram_range: NgramRange | None = None,
         vector: pd.DataFrame | None = None,
     ) -> tuple[Method | None, int | None, FeatureType | None, NgramRange | None, pd.DataFrame | None]:
-
         _method = method or self._method
         _n_clusters = n_clusters or self._n_clusters
         _user_clusters = None
 
         if vector is not None:
-
             if not isinstance(vector, pd.DataFrame):  # type: ignore
                 raise ValueError("Vector is not a DataFrame!")
             if np.all(np.all(vector.dtypes == "float") and vector.isna().sum().sum() != 0):
@@ -711,7 +725,6 @@ class Clusters:
 
     # TODO: add save
     def _cluster_bar(self, clusters: ndarray, target: list[list[bool]], target_names: list[str]) -> go.Figure:
-
         cl = pd.DataFrame([clusters, *target], index=["clusters", *target_names]).T
         cl["cluster size"] = 1
         for t_n in target_names:

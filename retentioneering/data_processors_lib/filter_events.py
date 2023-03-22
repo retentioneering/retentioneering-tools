@@ -12,7 +12,7 @@ from retentioneering.widget.widgets import ReteFunction
 
 class FilterEventsParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`FilterEvents`
+    A class with parameters for :py:class:`.FilterEvents` class.
 
     """
 
@@ -30,16 +30,19 @@ class FilterEvents(DataProcessor):
     Parameters
     ----------
     func : Callable[[DataFrame, EventstreamSchema], bool]
-        Custom function which returns boolean mask the same length as input ``eventstream``.
+        Custom function that returns boolean mask the same length as input ``eventstream``.
 
-        - If ``True`` - row will be remained
-        - If ``False`` - row will be deleted
+        - If ``True`` - the row will be left in the eventstream.
+        - If ``False`` - the row will be deleted from the eeventstream.
 
     Returns
     -------
     Eventstream
         ``Eventstream`` with events that should be deleted from input ``eventstream``.
 
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
 
     """
 

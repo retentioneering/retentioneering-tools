@@ -26,6 +26,9 @@ class TimedeltaHist:
 
     Parameters
     ----------
+    raw_events_only : bool, default True
+        If ``True`` - statistics will be shown only for raw events.
+        If ``False`` - statistics will be shown for all events presented in your data.
     event_pair : tuple of str, optional
         Specify an event pair to plot the time distance between. The first
         item corresponds to chronologically first event, the second item corresponds to the second event. If
@@ -44,7 +47,7 @@ class TimedeltaHist:
 
         For example, if ``event_pair=("login", "purchase")`` and ``only_adjacent_event_pairs=False``,
         then the sequence ("login", "main", "trading", "purchase") will contain a valid pair
-        (which is not the case with only_adjacent_event_pairs=True)
+        (which is not the case with only_adjacent_event_pairs=True).
 
     weight_col : str, default 'user_id'
         Specify a unit of observation, inside which time differences will be computed.
@@ -62,22 +65,39 @@ class TimedeltaHist:
         For example, if session id is specified in ``weight_col``, one observation per
         session (for example, session median) will be provided for the histogram.
     timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
-        Specify the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
+        Specify units of time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
-    log_scale: bool | tuple of bool | None = None,
+    log_scale: bool | tuple of bool | None, optional
 
          - If ``True`` - apply log scaling to the ``x`` axis.
          - If tuple of bool - apply log scaling to the (``x``,``y``) axes correspondingly.
 
     lower_cutoff_quantile : float, optional
-        Specify the time distance quantile as the lower boundary. The values below the boundary are truncated.
+        Specify time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
-        Specify the time distance quantile as the upper boundary. The values above the boundary are truncated.
+        Specify time distance quantile as the upper boundary. The values above the boundary are truncated.
     bins : int or {"auto", "fd", "doane", "scott", "stone", "rice", "sturges", "sqrt"}, default 20
         Generic bin parameter that can be the name of a reference rule or
-        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`
+        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`.
     figsize : tuple of float, default (6.0, 4.5)
         Width, height in inches.
+
+    See Also
+    --------
+    .UserLifetimeHist : Plot the distribution of user lifetimes.
+    .EventTimestampHist : Plot the distribution of events over time.
+    .Eventstream.describe : Show general eventstream statistics.
+    .Eventstream.describe_events : Show general eventstream events statistics.
+    .StartEndEvents : Create new synthetic events ``path_start`` and ``path_end`` to each user trajectory.
+    .SplitSessions : Create new synthetic events, that divide users’ paths on sessions.
+    .TruncatedEvents : Create new synthetic event(s) for each user based on the timeout threshold.
+    .DeleteUsersByPathLength : Filter user paths based on the path length, removing the paths that are shorter than the
+                                specified number of events or cut_off.
+
+
+    Notes
+    -----
+    See :ref:`Eventstream user guide<eventstream_timedelta_hist>` for the details.
     """
 
     EVENTSTREAM_START = "eventstream_start"
@@ -86,6 +106,7 @@ class TimedeltaHist:
     def __init__(
         self,
         eventstream: EventstreamType,
+        raw_events_only: bool = False,
         event_pair: Optional[list[str | EVENTSTREAM_GLOBAL_EVENTS]] = None,
         only_adjacent_event_pairs: bool = True,
         weight_col: str = "user_id",
@@ -97,12 +118,16 @@ class TimedeltaHist:
         bins: int | Literal[BINS_ESTIMATORS] = 20,
         figsize: tuple[float, float] = (6.0, 4.5),
     ) -> None:
-
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
+        self.type_col = self.__eventstream.schema.event_type
+        self.raw_events_only = raw_events_only
 
+        self.data: pd.DataFrame = eventstream.to_dataframe(copy=True)
+        if raw_events_only:
+            self.data = self.data[self.data[self.type_col].isin(["raw"])]
         if event_pair is not None:
             if type(event_pair) not in (list, tuple):
                 raise TypeError("event_pair should be a tuple or a list of length 2.")
@@ -160,7 +185,6 @@ class TimedeltaHist:
         with pd.option_context("mode.chained_assignment", None):
             data["time_passed"] = weight_col_group[self.time_col].diff() / np.timedelta64(1, self.timedelta_unit)  # type: ignore
             if self.event_pair:
-
                 data["prev_event"] = weight_col_group[self.event_col].shift()
                 data = data[(data[self.event_col] == self.event_pair[1]) & (data["prev_event"] == self.event_pair[0])]
 
@@ -199,11 +223,11 @@ class TimedeltaHist:
         """
         Calculate values and bins for the histplot.
 
-            1. The first array contains the values for histogram
-            2. The first array contains the bin edges
-
+        Returns
+        -------
+        None
         """
-        data = self.__eventstream.to_dataframe().sort_values([self.weight_col, self.time_col])
+        data = self.data.sort_values([self.weight_col, self.time_col])
 
         if self.event_pair is not None and set([self.EVENTSTREAM_START, self.EVENTSTREAM_END]).intersection(
             self.event_pair
@@ -235,14 +259,14 @@ class TimedeltaHist:
         -------
         tuple(np.ndarray, np.ndarray)
 
-            1. The first array contains the values for histogram
-            2. The first array contains the bin edges
+            1. The first array contains the values for histogram.
+            2. The first array contains the bin edges.
         """
         return self.values_to_plot, self.bins_to_show
 
     def plot(self) -> matplotlib.axes.Axes:
         """
-        Creates a sns.histplot based on the calculated values.
+        Create a sns.histplot based on the calculated values.
 
         Returns
         -------

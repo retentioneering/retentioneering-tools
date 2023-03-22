@@ -16,26 +16,43 @@ from retentioneering.tooling.constants import BINS_ESTIMATORS
 
 class UserLifetimeHist:
     """
-    A class for visualize a ``users' lifetime``.
+
+    Plot the distribution of user lifetimes. A ``users lifetime`` is the timedelta between
+    the first and the last events of the user.
 
     Parameters
     ----------
     timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
-        Specifies the units of the time differences the histogram should use. Use "s" for seconds, "m" for minutes,
+        Specify units of time differences the histogram should use. Use "s" for seconds, "m" for minutes,
         "h" for hours and "D" for days.
     log_scale : bool or tuple of bool, optional
 
         - If ``True`` - apply log scaling to the ``x`` axis.
         - If tuple of bool - apply log scaling to the (``x``,``y``) axes correspondingly.
     lower_cutoff_quantile : float, optional
-        Specifies the time distance quantile as the lower boundary. The values below the boundary are truncated.
+        Specify time distance quantile as the lower boundary. The values below the boundary are truncated.
     upper_cutoff_quantile : float, optional
-        Specifies the time distance quantile as the upper boundary. The values above the boundary are truncated.
+        Specify time distance quantile as the upper boundary. The values above the boundary are truncated.
     bins : int or str, default 20
         Generic bin parameter that can be the name of a reference rule or
-        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`
+        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`.
     figsize : tuple of float, default (12.0, 7.0)
         Width, height in inches.
+
+
+
+    See Also
+    --------
+    .EventTimestampHist : Plot the distribution of events over time.
+    .TimedeltaHist : Plot the distribution of the time deltas between two events.
+    .Eventstream.describe : Show general eventstream statistics.
+    .Eventstream.describe_events : Show general eventstream events statistics.
+    .DeleteUsersByPathLength : Filter user paths based on the path length, removing the paths that are shorter than the
+                               specified number of events or cut_off.
+
+    Notes
+    -----
+    See :ref:`Eventstream user guide<eventstream_user_lifetime>` for the details.
 
     """
 
@@ -91,9 +108,9 @@ class UserLifetimeHist:
         """
         Calculate values for the histplot.
 
-            1. The first array contains the values for histogram
-            2. The first array contains the bin edges
-
+        Returns
+        -------
+        None
         """
         data = self.__eventstream.to_dataframe().groupby(self.user_col)[self.time_col].agg(["min", "max"])
         data["time_passed"] = data["max"] - data["min"]
@@ -105,7 +122,7 @@ class UserLifetimeHist:
             values_to_plot = self._remove_cutoff_values(values_to_plot).to_numpy()
         if self.log_scale[0]:
             log_adjustment = np.timedelta64(100, "ms") / np.timedelta64(1, self.timedelta_unit)
-            values_to_plot = np.where(values_to_plot != 0, values_to_plot, values_to_plot + log_adjustment)
+            values_to_plot = np.where(values_to_plot != 0, values_to_plot, values_to_plot + log_adjustment)  # type: ignore
             bins_to_show = np.power(10, np.histogram_bin_edges(np.log10(values_to_plot), bins=self.bins))
         else:
             bins_to_show = np.histogram_bin_edges(values_to_plot, bins=self.bins)
@@ -122,9 +139,8 @@ class UserLifetimeHist:
         Returns
         -------
         tuple(np.ndarray, np.ndarray)
-
-            1. The first array contains the values for histogram
-            2. The first array contains the bin edges
+            1. The first array contains the values for histogram.
+            2. The first array contains the bin edges.
 
         """
         return self.values_to_plot, self.bins_to_show

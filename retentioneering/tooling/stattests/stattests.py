@@ -31,7 +31,7 @@ def _cohenh(d1: list, d2: list) -> float:
 
 class StatTests:
     """
-    A class for the determining statistical difference between two groups of users.
+    A class for determining statistical difference between two groups of users.
 
     Parameters
     ----------
@@ -40,27 +40,32 @@ class StatTests:
         Test the null hypothesis that 2 independent samples are drawn from the same
         distribution. Supported tests are:
 
-        - ``mannwhitneyu`` see :mannwhitneyu:`scipy documentation<>`
-        - ``ttest`` see :statsmodel_ttest:`statsmodels documentation<>`
-        - ``ztest`` see :statsmodel_ztest:`statsmodels documentation<>`
-        - ``ks_2samp`` see :scipy_ks:`scipy documentation<>`
-        - ``chi2_contingency`` see :scipy_chi2:`scipy documentation<>`
-        - ``fisher_exact`` see :scipy_fisher:`scipy documentation<>`
+        - ``mannwhitneyu`` see :mannwhitneyu:`scipy documentation<>`.
+        - ``ttest`` see :statsmodel_ttest:`statsmodels documentation<>`.
+        - ``ztest`` see :statsmodel_ztest:`statsmodels documentation<>`.
+        - ``ks_2samp`` see :scipy_ks:`scipy documentation<>`.
+        - ``chi2_contingency`` see :scipy_chi2:`scipy documentation<>`.
+        - ``fisher_exact`` see :scipy_fisher:`scipy documentation<>`.
 
     groups : tuple of list
-        Must contain tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
+        Must contain a tuple of two elements (g_1, g_2): g_1 and g_2 are collections
         of user_id`s.
     func : Callable
-        Selected metrics. Must contain a function which takes as an argument dataset for
-        single user trajectory and returns a single numerical value.
+        Selected metrics. Must contain a function that takes a dataset as an argument for
+        a single user trajectory and returns a single numerical value.
     group_names : tuple, default ('group_1', 'group_2')
         Names for selected groups g_1 and g_2.
     alpha : float, default 0.05
         Selected level of significance.
 
+
     See Also
     --------
-    :py:func:`retentioneering.eventstream.eventstream.Eventstream.stattests`
+    .Eventstream.stattests : Call StatTests tool as an eventstream method.
+
+    Notes
+    -----
+    See :doc:`StatTests user guide</user_guides/stattests>` for the details.
 
     """
 
@@ -167,8 +172,8 @@ class StatTests:
 
     def fit(self) -> None:
         """
-        Calculates the cohort internal values with the defined parameters.
-        Applying ``fit`` method is mandatory for the following usage
+        Calculates the stattests internal values with the defined parameters.
+        Applying ``fit`` method is necessary for the following usage
         of any visualization or descriptive ``StatTests`` methods.
 
         """

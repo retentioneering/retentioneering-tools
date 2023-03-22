@@ -13,7 +13,7 @@ from retentioneering.tooling.mixins.ended_events import EndedEventsMixin
 
 class StepSankey(EndedEventsMixin):
     """
-    A class for the visualization of user paths in step-wise manner using Sankey diagram.
+    A class for the visualization of user paths in stepwise manner using Sankey diagram.
 
     Parameters
     ----------
@@ -22,33 +22,39 @@ class StepSankey(EndedEventsMixin):
         Maximum number of steps in trajectories to include. Should be > 1.
     thresh : float | int, default 0.05
         Used to remove rare events from the plot. An event is collapsed to ``thresholded_N`` artificial event if
-        its maximum frequency across all the steps is less than or equal to ``thresh``. The frequency is considered
+        its maximum frequency across all the steps is less than or equal to ``thresh``. The frequency is set
         with respect to ``thresh`` type:
 
         - If ``int`` - the frequency is the number of unique users who had given event at given step.
-        - | If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
+        - If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
 
         The events which are prohibited for collapsing could be enlisted in ``target`` parameter.
     sorting : list of str, optional
-        Tunes the order of the events visualized at each step. The events which are not represented in the list
+        Define the order of the events visualized at each step. The events that are not represented in the list
         will follow after the events from the list.
     target : list of str, optional
-        Contains the events which are prohibited for collapsing with ``thresh`` parameter.
+        Contain events that are prohibited for collapsing with ``thresh`` parameter.
     autosize : bool, default True
-        Plotly autosize parameter. See :plotly_autosize:`plotly documentation<>`
+        Plotly autosize parameter. See :plotly_autosize:`plotly documentation<>`.
     width : int, optional
-        Plot's width (in px). See :plotly_width:`plotly documentation<>`
+        Plot's width (in px). See :plotly_width:`plotly documentation<>`.
     height : int, optional
-        Plot's height (in px). See :plotly_height:`plotly documentation<>`
+        Plot's height (in px). See :plotly_height:`plotly documentation<>`.
+
     Raises
     ------
     ValueError
         If ``max_steps`` parameter is <= 1.
 
-
     See Also
     --------
-    :py:func:`retentioneering.eventstream.eventstream.Eventstream.step_sankey`
+    .Eventstream.step_sankey : Call StepSankey tool as an eventstream method.
+    .CollapseLoops : Find loops and create new synthetic events in the paths of all users having such sequences.
+    .StepMatrix : This class provides methods for step matrix calculation and visualization.
+
+    Notes
+    -----
+    See :doc:`StepSankey user guide</user_guides/step_sankey>` for the details.
 
     """
 
@@ -159,7 +165,6 @@ class StepSankey(EndedEventsMixin):
 
         # NOTE going inside ranked events
         for step in sorted(df["step"].unique()):
-
             # NOTE placing x-axis points as well
             for _ in df[df["step"] == step][self.event_col]:
                 x_positions.append([round(x, 2) for x in np.linspace(0.05, 0.95, x_len)][step - 1])
@@ -174,7 +179,6 @@ class StepSankey(EndedEventsMixin):
 
             # NOTE jumping in to complex part
             else:
-
                 # NOTE total sum for understanding do we need extra step size or not
                 total_sum = df[df["step"] == step]["usr_cnt"].sum()
                 # NOTE step size for middle points
@@ -189,23 +193,18 @@ class StepSankey(EndedEventsMixin):
 
                 # NOTE going deeper inside each event
                 for n, event in enumerate(df[df["step"] == step][self.event_col]):
-
                     # NOTE placing first event at first possible position
                     if n == 0:
-
                         y_positions.append(0.05)
 
                     # NOTE placing last event at last possible position
                     elif n + 1 == y_len:
-
                         y_positions.append(0.95)
 
                     # NOTE placing middle points
                     else:
-
                         # NOTE we found out that 70% of total sum is the best cap for doing this case
                         if iterate_sum / total_sum > 0.2 and event != "ENDED":
-
                             # NOTE placing first point after the biggest one at the next position
                             # but inside [.1; .3] range
                             y_positions.append(
@@ -214,7 +213,6 @@ class StepSankey(EndedEventsMixin):
 
                         # NOTE placing points after the biggest
                         else:
-
                             # NOTE placing little points at the all available space
                             y_positions.append(
                                 round(y_positions[-1] + (0.95 - last_point - y_positions[-1]) / (y_len - n), 2)
@@ -385,7 +383,6 @@ class StepSankey(EndedEventsMixin):
         data_for_plot.update({"links_dict": dict()})
         for index in data_grp_links["index"].unique():
             for next_index in data_grp_links[data_grp_links["index"] == index]["next_index"].unique():
-
                 _unique_users, _avg_time_to_next = (
                     data_grp_links.loc[
                         (data_grp_links["index"] == index) & (data_grp_links["next_index"] == next_index),
@@ -540,8 +537,8 @@ class StepSankey(EndedEventsMixin):
 
     def fit(self) -> None:
         """
-        Calculates the sankey diagram internal values with the defined parameters.
-        Applying ``fit`` method is mandatory for the following usage
+        Calculate the sankey diagram internal values with the defined parameters.
+        Applying ``fit`` method is necessary for the following usage
         of any visualization or descriptive ``StepSankey`` methods.
 
         """
@@ -554,7 +551,7 @@ class StepSankey(EndedEventsMixin):
 
     def plot(self) -> go.Figure:
         """
-        Creates a Sankey interactive plot base on the calculated values.
+        Create a Sankey interactive plot based on the calculated values.
         Should be used after :py:func:`fit`.
 
         Returns

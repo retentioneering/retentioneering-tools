@@ -14,19 +14,21 @@ class TruncatedEventsHelperMixin:
         right_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]],
     ) -> EventstreamType:
         """
-        Method of ``Eventstream Class`` which creates new synthetic event(s) for each user on the
-        base of timeout threshold: ``truncated_left`` and ``truncated_right``.
-        And adds them to the input ``eventstream``.
+        A method of ``Eventstream`` class that creates new synthetic event(s) for each user based
+        on the timeout threshold: ``truncated_left`` and ``truncated_right``.
+
+
+        Parameters
+        ----------
+        See parameters description
+            :py:class:`.TruncatedEvents`
 
         Returns
         -------
         Eventstream
             Input ``eventstream`` with new synthetic events.
 
-        Notes
-        -----
-        See parameters and details of dataprocessor functionality
-        :py:func:`retentioneering.data_processors_lib.truncated_events.TruncatedEvents`
+
         """
         # avoid circular import
         from retentioneering.data_processors_lib import (

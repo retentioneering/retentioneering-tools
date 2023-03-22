@@ -74,7 +74,6 @@ class TestTimedeltaHist:
         corr_adjacent_event_pairs: np.array,
         corr_adjacent_event_pairs_bins: np.array,
     ):
-
         th = TimedeltaHist(test_stream, event_pair=["A", "B"], only_adjacent_event_pairs=False, bins=5)
         th.fit()
         result_values, result_bins = th.values
@@ -90,7 +89,6 @@ class TestTimedeltaHist:
     def test_timedelta_hist__timedelta_unit(
         self, test_stream: EventstreamType, corr_timedelta_unit: np.array, corr_timedelta_unit_bins: np.array
     ):
-
         th = TimedeltaHist(test_stream, event_pair=["A", "B"], timedelta_unit="m", bins=5)
         th.fit()
         result_values, result_bins = th.values
@@ -102,7 +100,6 @@ class TestTimedeltaHist:
     def test_timedelta_hist__lower_quantile(
         self, test_stream: EventstreamType, corr_lower_quantile: np.array, corr_lower_quantile_bins: np.array
     ):
-
         th = TimedeltaHist(test_stream, timedelta_unit="s", lower_cutoff_quantile=0.52, bins=5)
         th.fit()
         result_values, result_bins = th.values
@@ -114,7 +111,6 @@ class TestTimedeltaHist:
     def test_timedelta_hist__upper_quantile(
         self, test_stream: EventstreamType, corr_upper_quantile: np.array, corr_upper_quantile_bins: np.array
     ):
-
         th = TimedeltaHist(test_stream, timedelta_unit="s", upper_cutoff_quantile=0.52, bins=5)
         th.fit()
         result_values, result_bins = th.values
@@ -129,7 +125,6 @@ class TestTimedeltaHist:
         corr_lower_upper_quantile: np.array,
         corr_lower_upper_quantile_bins: np.array,
     ):
-
         th = TimedeltaHist(
             test_stream, timedelta_unit="s", lower_cutoff_quantile=0.52, upper_cutoff_quantile=0.8, bins=5
         )
@@ -147,7 +142,6 @@ class TestTimedeltaHist:
     def test_timedelta_hist__log_scale_x(
         self, source_stream_for_log_scale: EventstreamType, corr_log_scale_x: np.array, corr_log_scale_x_bins: np.array
     ):
-
         th = TimedeltaHist(source_stream_for_log_scale, timedelta_unit="s", log_scale=True, bins=5)
         th.fit()
         result_values, result_bins = th.values
@@ -157,7 +151,6 @@ class TestTimedeltaHist:
         assert np.testing.assert_array_equal(result_bins, corr_log_scale_x_bins) is None, "incorrect histogram bins"
 
     def test_timedelta_hist__agg(self, test_stream: EventstreamType, corr_agg: np.array, corr_agg_bins: np.array):
-
         th = TimedeltaHist(test_stream, timedelta_unit="s", aggregation="mean", bins=5)
         th.fit()
         result_values, result_bins = th.values
@@ -196,7 +189,6 @@ class TestTimedeltaHist:
         corr_path_start_es_end: np.array,
         corr_path_start_es_end_bins: np.array,
     ):
-
         th = TimedeltaHist(
             source_stream_start_end_events,
             event_pair=["eventstream_end", "path_start"],
@@ -221,7 +213,6 @@ class TestTimedeltaHist:
         corr_path_end_es_end: np.array,
         corr_path_end_es_end_bins: np.array,
     ):
-
         th = TimedeltaHist(
             source_stream_start_end_events,
             event_pair=["path_end", "eventstream_end"],
@@ -242,7 +233,6 @@ class TestTimedeltaHist:
         corr_path_start_path_end: np.array,
         corr_path_start_path_end_bins: np.array,
     ):
-
         th = TimedeltaHist(
             source_stream_start_end_events,
             event_pair=["path_start", "path_end"],
@@ -264,7 +254,6 @@ class TestTimedeltaHist:
     def test_timedelta_hist__sessions(
         self, source_stream_sessions: EventstreamType, corr_sessions: np.array, corr_sessions_bins: np.array
     ):
-
         th = TimedeltaHist(
             source_stream_sessions,
             event_pair=["A", "B"],

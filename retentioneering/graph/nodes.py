@@ -13,6 +13,7 @@ class BaseNode:
     processor: Optional[DataProcessor]
     events: Optional[EventstreamType]
     pk: str
+    description: Optional[str]
 
     def __init__(self, **kwargs: Any) -> None:
         self.pk = str(uuid.uuid4())
@@ -25,6 +26,9 @@ class BaseNode:
 
     def export(self) -> dict:
         data: dict[str, Any] = {"name": self.__class__.__name__, "pk": self.pk}
+        if self.description:
+            data["description"] = self.description
+
         if processor := getattr(self, "processor", None):
             data["processor"] = processor.to_dict()
         return data
@@ -32,24 +36,39 @@ class BaseNode:
 
 class SourceNode(BaseNode):
     events: EventstreamType
+    description: Optional[str]
 
-    def __init__(self, source: EventstreamType) -> None:
+    def __init__(self, source: EventstreamType, description: Optional[str] = None) -> None:
         super().__init__()
         self.events = source
+        self.description = description
 
 
 class EventsNode(BaseNode):
     """
-    A class for a regular node of a preprocessing graph
+    Class for regular nodes of a preprocessing graph.
+
+    Notes
+    -----
+    See :doc:`Preprocessing user guide</user_guides/preprocessing>` for the details.
+
+    See Also
+    --------
+    .PGraph.add_node : Add a node to Pgraph.
+    .PGraph.combine : Run calculations of Preprocessing Graph.
+    .MergeNode
+
     """
 
     processor: DataProcessor
     events: Optional[EventstreamType]
+    description: Optional[str]
 
-    def __init__(self, processor: DataProcessor) -> None:
+    def __init__(self, processor: DataProcessor, description: Optional[str] = None) -> None:
         super().__init__()
         self.processor = processor
         self.events = None
+        self.description = description
 
     def calc_events(self, parent: EventstreamType) -> None:
         self.events = self.processor.apply(parent)
@@ -57,14 +76,27 @@ class EventsNode(BaseNode):
 
 class MergeNode(BaseNode):
     """
-    A class for a merging node of a preprocessing graph
+    Class for merging nodes of a preprocessing graph.
+
+    Notes
+    -----
+    See :doc:`Preprocessing user guide</user_guides/preprocessing>` for the details.
+
+    See Also
+    --------
+    .PGraph.add_node : Add a node to Pgraph.
+    .PGraph.combine : Run calculations of Preprocessing Graph.
+    .EventsNode
+
     """
 
     events: Optional[EventstreamType]
+    description: Optional[str]
 
-    def __init__(self) -> None:
+    def __init__(self, description: Optional[str] = None) -> None:
         super().__init__()
         self.events = None
+        self.description = description
 
 
 Node = Union[SourceNode, EventsNode, MergeNode]
@@ -85,6 +117,7 @@ def build_node(
     node_name: str,
     processor_name: str | None = None,
     processor_params: dict[str, Any] | None = None,
+    descriptionn: Optional[str] = None,
 ) -> Node:
     _node = nodes[node_name]
     node_kwargs = {}
@@ -110,4 +143,5 @@ def build_node(
 
     node = _node(**node_kwargs)
     node.pk = pk
+    node.description = descriptionn
     return node

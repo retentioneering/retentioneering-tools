@@ -12,7 +12,7 @@ from retentioneering.widget.widgets import ListOfIntNewUsers
 
 class NewUsersParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`NewUsersEvents`
+    A class with parameters for :py:class:`.NewUsersEvents` class.
     """
 
     new_users_list: Union[List[int], List[str], Literal["all"]]
@@ -21,7 +21,7 @@ class NewUsersParams(ParamsModel):
 
 class NewUsersEvents(DataProcessor):
     """
-    Creates new synthetic event for each user:
+    Create a new synthetic event for each user:
     ``new_user`` or ``existing_user``.
 
     Parameters
@@ -36,7 +36,7 @@ class NewUsersEvents(DataProcessor):
     Returns
     -------
     Eventstream
-        Eventstream with new synthetic events one for each user:
+        Eventstream with new synthetic events, one for each user:
 
         +-----------------+-----------------+------------------------+
         | **event_name**  | **event_type**  | **timestamp**          |
@@ -46,6 +46,9 @@ class NewUsersEvents(DataProcessor):
         | existing_user   | existing_user   | first_event            |
         +-----------------+-----------------+------------------------+
 
+    Notes
+    -----
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
 
     """
 

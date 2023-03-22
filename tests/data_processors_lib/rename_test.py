@@ -40,8 +40,6 @@ class TestRename:
         processor = RenameProcessor(params=params)
         actual = processor.apply(eventstream=source).to_dataframe()  # .reset_index(drop=True)
         complex_expected_results = complex_expected_results  # .reset_index(drop=True)
-        print(actual[complex_expected_results.columns])
-        print(complex_expected_results)
         assert pd.testing.assert_frame_equal(actual[complex_expected_results.columns], complex_expected_results) is None
 
     def test_rename__helper(
@@ -50,7 +48,6 @@ class TestRename:
         simple_rules: list[dict[str, str]],
         simple_expected_results: pd.DataFrame,
     ):
-
         source = Eventstream(simple_dataset_for_rename)
 
         actual = source.rename(rules=simple_rules)

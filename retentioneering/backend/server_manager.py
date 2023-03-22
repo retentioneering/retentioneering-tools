@@ -56,13 +56,15 @@ class ServerManager:
                 }
             )
         except Exception as err:
+            wrapped_exc = ServerErrorWithResponse(message=str(err), type="unexpected_error")
+
             return json.dumps(
                 {
                     "success": False,
                     "server_id": server_id,
                     "request_id": request_id,
                     "method": method,
-                    "result": str(err),
+                    "result": wrapped_exc.dict(),
                 }
             )
 
@@ -101,18 +103,19 @@ class ServerManager:
                     }
                 )
             except Exception as err:
+                wrapped_exc = ServerErrorWithResponse(message=str(err), type="unexpected_error")
+
                 comm.send(
                     {
                         "success": False,
                         "server_id": server_id,
                         "request_id": request_id,
                         "method": method,
-                        "result": str(err),
+                        "result": wrapped_exc.dict(),
                     }
                 )
 
     def _create_main_listener(self) -> None:
-
         env = self.check_env()
 
         if env == "colab":

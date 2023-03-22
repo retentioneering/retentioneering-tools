@@ -15,7 +15,7 @@ from retentioneering.widget.widgets import ReteTimeWidget
 
 class SplitSessionsParams(ParamsModel):
     """
-    Class with parameters for class :py:func:`SplitSessions`
+    A class with parameters for :py:class:`.SplitSessions` class.
 
     """
 
@@ -28,10 +28,10 @@ class SplitSessionsParams(ParamsModel):
 
 class SplitSessions(DataProcessor):
     """
-    Creates new synthetic events, which divide user's paths on sessions:
+    Create new synthetic events, that divide users' paths on sessions:
     ``session_start`` (or ``session_start_truncated``) and ``session_end`` (or ``session_end_truncated``).
-    Also creates new column which contains session number for each event in input eventstream
-    Session number will take the form: ``{user_id}_{session_number through one user path}``
+    Also create a new column that contains session number for each event in input eventstream.
+    Session number will take the form: ``{user_id}_{session_number through one user path}``.
 
     Parameters
     ----------
@@ -39,22 +39,23 @@ class SplitSessions(DataProcessor):
         Threshold value and its unit of measure.
         ``session_start`` and ``session_end`` events are always placed before the first and after the last event
         in each user's path.
-        But user can have more than one session, so that calculates timedelta between every two consecutive events in
+        Because user can have more than one session, it calculates timedelta between every two consecutive events in
         each user's path.
-        If calculated timedelta is more than selected session_cutoff,
-        new synthetic events - ``session_start`` and ``session_end`` will occur in the middle of user path.
+        If the calculated timedelta is more than selected session_cutoff,
+        new synthetic events - ``session_start`` and ``session_end`` are created inside the user path,
+        marking session starting and ending points.
 
     mark_truncated : bool, default False
         If ``True`` - calculates timedelta between:
 
-        - first event in each user's path and first event in whole ``eventstream``.
-        - last event in each user's path and last event in whole ``eventstream``.
+        - first event in each user's path and first event in the whole eventstream.
+        - last event in each user's path and last event in the whole eventstream.
 
         For users with timedelta less than selected ``session_cutoff``,
-        new synthetic event - ``session_start_truncated`` or ``session_end_truncated`` will be added.
+        a new synthetic event - ``session_start_truncated`` or ``session_end_truncated`` will be added.
 
     session_col : str, default "session_id"
-        The name of future ``session_col``
+        The name of the ``session_col``.
 
     Returns
     -------
@@ -73,8 +74,9 @@ class SplitSessions(DataProcessor):
         | session_end_truncated       | session_end_truncated      | last_event      |
         +-----------------------------+----------------------------+-----------------+
 
-        The user will have more than one session if the delta between timestamps of two consecutive events
-        (raw_event_n and raw_event_n+1) is greater than the selected ``session_cutoff``:
+        If the delta between timestamps of two consecutive events
+        (raw_event_n and raw_event_n+1) is greater than the selected ``session_cutoff``
+        the user will have more than one session:
 
         +--------------+-------------------+------------------+-------------------+------------------+
         |  **user_id** | **event_name**    | **event_type**   | **timestamp**     | **session_col**  |
@@ -88,9 +90,16 @@ class SplitSessions(DataProcessor):
         |     1        | session_end       | session_end      | last_event        |     1_1          |
         +--------------+-------------------+------------------+-------------------+------------------+
 
+    See Also
+    --------
+    .TimedeltaHist : Plot the distribution of the time deltas between two events.
+    .Eventstream.describe : Show general eventstream statistics.
+    .Eventstream.describe_events : Show general eventstream events statistics.
+
+
     Notes
     -----
-    Hists
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
 
     """
 

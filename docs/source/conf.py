@@ -31,14 +31,14 @@ release = "3.0.0"
 extensions = [
     "sphinx.ext.autodoc",
     "numpydoc",
-    "sphinx.ext.napoleon",
-    "sphinx.ext.viewcode",
+    "sphinx.ext.viewcode",  # add link to source code
     "sphinx.ext.extlinks",
     "sphinx.ext.autosectionlabel",
+    "sphinx_design",
 ]
 
 # -- Options for HTML output -------------------------------------------------
-
+autodoc_member_order = "groupwise"
 numpydoc_show_inherited_class_members = False
 numpydoc_class_members_toctree = False
 numpydoc_show_class_members = False
@@ -48,7 +48,9 @@ html_favicon = "_static/favicon.ico"
 html_context = {"default_mode": "light"}
 html_theme_options = {
     "logo": {"image_light": "rete_logo.svg", "image_dark": "rete_logo_white.svg"},
-    "show_toc_level": 1,
+    "show_toc_level": 2,
+    # TODO: fix when a new repo name appears. Vladimir Kukushkin
+    "github_url": "https://github.com/retentioneering/retentioneering-tools-new-arch",
     # "use_edit_page_button": True
 }
 
@@ -83,6 +85,19 @@ html_css_files = [
 # This is a solution for deeply nested lists while building the doc as a pdf-file.
 # https://stackoverflow.com/a/28454426
 latex_elements = {"preamble": "\\usepackage{enumitem}\\setlistdepth{99}"}
+
+rst_epilog = """
+.. raw:: html
+
+    <style>
+        .red {color:#24ff83; font-weight:bold;}
+    </style>
+
+.. role:: red
+
+.. |warning| replace:: ⚠️
+
+"""
 
 
 extlinks = {
@@ -125,7 +140,7 @@ extlinks = {
     "sklearn_kmeans": ("https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html%s", None),
     "sklearn_gmm": ("https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html%s", None),
     "sklearn_tsne": ("https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html%s", None),
-    "umap": ("https://umap-learn.readthedocs.io/en/latest/index.html%s", None),
+    "umap": ("https://umap-learn.readthedocs.io/en/latest/api.html%s", None),
     "numpy_bins_link": (
         "https://numpy.org/doc/stable/reference/generated/numpy.histogram_bin_edges.html#numpy.histogram_bin_edges%s",
         None,

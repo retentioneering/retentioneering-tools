@@ -42,3 +42,8 @@ div.highlight {
 .toggle .header.open:after {
     content: " ▼";
 }
+
+/*delete double :*/
+dl.field-list > dt:after {
+    content: "";
+}

@@ -88,7 +88,9 @@ class TestFunnel:
 
         source = Eventstream(source_df)
 
-        funnel = Funnel(eventstream=source, stages=["catalog", ["product1", "product2"], "cart", "payment_done"])
+        funnel = Funnel(
+            eventstream=source, funnel_type="open", stages=["catalog", ["product1", "product2"], "cart", "payment_done"]
+        )
         funnel.fit()
         res_dict = funnel.res_dict
 
@@ -178,6 +180,7 @@ class TestFunnel:
 
         funnel = Funnel(
             eventstream=source,
+            funnel_type="open",
             stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
             stage_names=["catalog", "product", "cart", "payment_done"],
         )
@@ -283,7 +286,7 @@ class TestFunnel:
 
         assert correct_result == res_dict
 
-    def test_funnel__closed_sequence(self):
+    def test_funnel__closed(self):
         source_df = pd.DataFrame(
             [
                 # открытая, закрытая, закрытая+
@@ -366,7 +369,6 @@ class TestFunnel:
             stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
             stage_names=None,
             funnel_type="closed",
-            sequence=True,
         )
 
         funnel.fit()
@@ -378,7 +380,7 @@ class TestFunnel:
 
         assert correct_result == res_dict
 
-    def test_funnel__closed_segments(self):
+    def test_funnel__hybrid_segments(self):
         source_df = pd.DataFrame(
             [
                 # открытая, закрытая, закрытая+
@@ -461,9 +463,8 @@ class TestFunnel:
         funnel = Funnel(
             eventstream=source,
             stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
-            funnel_type="closed",
+            funnel_type="hybrid",
             segments=(conv_users, non_conv_users),
-            sequence=False,
         )
 
         funnel.fit()
@@ -475,7 +476,7 @@ class TestFunnel:
         }
         assert correct_result == res_dict
 
-    def test_funnel__closed_sequence_segment_names(self):
+    def test_funnel__closed_segment_names(self):
         source_df = pd.DataFrame(
             [
                 # открытая, закрытая, закрытая+
@@ -562,7 +563,6 @@ class TestFunnel:
             funnel_type="closed",
             segments=(conv_users, non_conv_users),
             segment_names=["conv_users", "non_conv_users"],
-            sequence=True,
         )
 
         funnel.fit()

@@ -27,7 +27,8 @@ class PlotParamsType(TypedDict):
 
 AllowedColors = Literal["red", "green", "yellow", "blue", "magenta", "cyan"]
 
-Threshold = MutableMapping[str, float]
+# @FIXME: idk why import annotation not fixed this cause, and I need to use Union. Vladimir Makhanov
+Threshold = MutableMapping[str, Union[float, int]]  # type: ignore
 NodeParams = MutableMapping[str, Optional[str]]
 Position = MutableMapping[str, Sequence[float]]
 
@@ -38,8 +39,6 @@ class GraphSettings(PlotParamsType):
     show_nodes_names: bool
     show_all_edges_for_targets: bool
     show_nodes_without_links: bool
-    nodes_threshold: Threshold
-    links_threshold: Threshold
 
 
 class Weight(TypedDict):

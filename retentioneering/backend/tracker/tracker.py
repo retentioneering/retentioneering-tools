@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import functools
 import uuid
-from datetime import datetime
 from typing import Any, Callable
 
 from retentioneering.utils.singleton import Singleton
 
-from .connector import ConnectorProtocol, TrackerMainConnector
+from .connector import ConnectorProtocol
+from .tracking_info import TrackingInfo
 
 
 class Tracker(Singleton):
@@ -30,22 +30,27 @@ class Tracker(Singleton):
         return str(uuid.uuid4())
 
     def track(self, tracking_info: dict[str, Any]) -> Callable:
-        tracking_info["user_id"] = self.user_id
-        tracking_info["timestamp"] = datetime.now().timestamp()
-        tracking_info["tz_info"] = datetime.now().tzinfo()
+        event_name = tracking_info["event_name"]
+        event_custom_name = tracking_info.get("event_custom_name", tracking_info["event_name"])
+        _tracking_info = TrackingInfo(
+            client_session_id=self.user_id,
+            event_name=f"{event_name}_start",
+            event_custom_name=event_custom_name,
+        )
+        self.connector.send_message(data=_tracking_info)
 
         def tracker_decorator(func: Callable) -> Callable:
             @functools.wraps(func)
-            def wrapper(*args, **kwargs):
-                tracking_info["function_name"] = func.__name__
-                self.connector.send_message(data=tracking_info)
+            def wrapper(*args: list[Any], **kwargs: dict[Any, Any]) -> Any:
                 return func(*args, **kwargs)
 
             return wrapper
 
+        _tracking_info = TrackingInfo(
+            client_session_id=self.user_id,
+            event_name=f"{event_name}_end",
+            event_custom_name=event_custom_name,
+        )
+        self.connector.send_message(data=_tracking_info)
+
         return tracker_decorator
-
-
-tracker = Tracker(connector=TrackerMainConnector())
-
-track = tracker.track

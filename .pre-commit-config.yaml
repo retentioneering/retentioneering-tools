@@ -29,6 +29,7 @@ repos:
     hooks:
       - id: mypy
         exclude: "^(examples/|tests/|venv/)"
+        additional_dependencies: ['types-requests']
   - repo: local
     hooks:
       - id: pyright

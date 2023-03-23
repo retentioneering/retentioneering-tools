@@ -390,7 +390,7 @@ class StepMatrix(EndedEventsMixin):
                 axs.vlines(
                     [centered_position - 0.02, centered_position + 0.98], *axs.get_ylim(), colors="Black", linewidth=0.7
                 )
-        return figure
+        return axs
 
     def fit(self) -> None:
         """

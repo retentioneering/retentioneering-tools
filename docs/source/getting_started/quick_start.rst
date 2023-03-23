@@ -1,11 +1,3 @@
-.. raw:: html
-
-    <style>
-        .red {color:#24ff83; font-weight:bold;}
-    </style>
-
-.. role:: red
-
 Quick start with Retentioneering
 ================================
 
@@ -189,15 +181,16 @@ Suppose you wanted to analyze only the first session of each user, rather than t
         </tr>
       </tbody>
     </table>
+    <br>
 
-At the beginning, we take a ``stream`` variable that contains the eventstream instance created in the previous section. The ``split_sessions`` method creates a new column called ``session_id``, in which values ending with the suffix ``_<int>`` indicate the ordinal number of each user’s session. In the end, we need to leave only those records where ``session_id`` ends with ``_1`` (meaning the first session). This is exactly what the filter method does. We also apply the ``to_dataframe()`` method, which you are already familiar with.
+At the beginning, we take a ``stream`` variable that contains the eventstream instance created in the previous section. The :ref:`split_sessions<split_sessions>` method creates a new column called ``session_id``, in which values ending with the suffix ``_<int>`` indicate the ordinal number of each user’s session. In the end, we need to leave only those records where ``session_id`` ends with ``_1`` (meaning the first session). This is exactly what the filter method does. We also apply the ``to_dataframe()`` method, which you are already familiar with.
 
 In real life, analytical eventstream research is likely to be branchy. You might want to wrangle an initial eventstream’s data in many ways, check multiple hypotheses, and look at different parts of the eventstream. All of this is easily and efficiently managed using the preprocessing graph. It enables you to keep all the records and code related to the research in a calculation graph. This tool is especially recommended for those who need to share parts of the analytical code with team members. See the :doc:`Preprocessing user guide <../user_guides/preprocessing>` for more details.
 
 .. _quick_start_rete_tools:
 
-Applying retentioneering tools
-------------------------------
+Applying path analysis tools
+----------------------------
 
 Retentioneering offers many powerful tools for exploring the behavior of your users, including transition graphs, step matrices, step Sankey diagrams, funnels, cluster, and cohort analysis. A brief demo of each is presented below. For more details, see :ref:`the user guides <UG core tools>`.
 
@@ -210,39 +203,26 @@ Transition graph is an interactive tool that shows how many users jump from one 
 
 .. code-block:: python
 
-    stream\
-        .add_start_end()\
-        .transition_graph(
-            edges_norm_type=None,
-            nodes_thresholds={'event_id': 0.06},
-            edges_thresholds={'event_id': 0.06},
-            targets={
-                'positive': 'payment_done',
-                'negative': 'path_end',
-                'source': 'path_start'
-            }
-        )
+    stream.transition_graph()
 
 .. raw:: html
 
     <iframe
-        width="700"
-        height="600"
+        width="680"
+        height="630"
         src="../_static/getting_started/quick_start/transition_graph.html"
         frameborder="0"
         allowfullscreen
     ></iframe>
 
-:red:`TODO: replace this html with another one once transition graph is fixed`
-
-See :doc:`TransitionGraph user guide<../user_guides/transition_graph>` to understand this tool deeper.
+See :doc:`Transition graph user guide<../user_guides/transition_graph>` for a deeper understanding of this tool.
 
 .. _quick_start_step_matrix:
 
 Step matrix
 ~~~~~~~~~~~
 
-Step matrix provides a stepwise look at CJM. It shows the event distribution with respect to a step ordinal number.
+The step matrix provides a stepwise look at CJM. It shows the event distribution with respect to a step ordinal number.
 
 .. code-block:: python
 
@@ -250,26 +230,26 @@ Step matrix provides a stepwise look at CJM. It shows the event distribution wit
         max_steps=16,
         thresh=0.2,
         centered={
-            "event": "cart",
-            "left_gap": 5,
-            "occurrence": 1
+            'event': 'cart',
+            'left_gap': 5,
+            'occurrence': 1
         },
         targets=['payment_done']
-    );
+    )
 
 .. figure:: /_static/getting_started/quick_start/step_matrix.png
     :width: 900
 
-The step matrix above is centered by ``cart`` event. For example, it shows (see ``-1`` column) that the events in the user trajectories one step before ``cart`` event are distributed as follows: 60% of the users have ``catalog`` event right before ``cart``, 24% of the users have ``product2`` event, and 16% of the users are distributed among 5 events which are folded to an artificial ``THRESHOLDED_5`` event.
+The step matrix above is centered by ``cart`` event. For example, it shows (see column ``-1``) that the events in the user trajectories one step before ``cart`` event are distributed as follows: 60% of the users have ``catalog`` event right before ``cart``, 24% of the users have ``product2`` event, and 16% of the users are distributed among 5 events which are folded to an artificial ``THRESHOLDED_5`` event.
 
-See :doc:`StepMatrix user guide<../user_guides/step_matrix>` to understand this tool deeper.
+See :doc:`Step matrix user guide<../user_guides/step_matrix>` user guide for a deeper understanding of this tool.
 
 Step Sankey diagram
 ~~~~~~~~~~~~~~~~~~~
 
-Step Sankey diagram is similar to step matrix. It also shows the event distribution with respect to step number. However, it has some advances:
+The step Sankey diagram is similar to the step matrix. It also shows the event distribution with respect to step number. However, it has some more advanced features:
 
-- it explicitly shows the user flow from one step to another,
+- it explicitly shows the user flow from one step to another; and
 - it is interactive.
 
 .. code-block:: python
@@ -288,9 +268,7 @@ Step Sankey diagram is similar to step matrix. It also shows the event distribut
     ></iframe>
     </div>
 
-See :doc:`StepSankey user guide<../user_guides/step_sankey>` to understand this tool deeper.
-
-:red:`Replace an image with a correct one as soon as https://github.com/retentioneering/retentioneering-tools-new-arch/pull/166 is ready`.
+See :doc:`step Sankey user guide<../user_guides/step_sankey>` for a deeper understanding of this tool.
 
 .. _quick_start_cluster_analysis:
 
@@ -302,31 +280,30 @@ Cluster analysis
     from retentioneering.tooling.clusters import Clusters
 
     clusters = Clusters(stream)
-    clusters.fit(method="kmeans", n_clusters=8, feature_type="tfidf", ngram_range=(1, 2))
-    clusters.plot(targets=["payment_done", "cart"])
+    clusters.fit(method='kmeans', n_clusters=8, feature_type='tfidf', ngram_range=(1, 2))
+    clusters.plot(targets=['payment_done', 'cart'])
 
 .. figure:: /_static/getting_started/quick_start/clusters.png
     :width: 900
 
-Users with similar behavior are grouped in the same cluster. Clusters with low conversion rate can indicate a systematic problem in the product: specific behavior pattern which does not lead to product goals. Obtained user segments can be explored deeper to understand problematic behavior pattern. In the example above for instance, cluster 4 has low conversion rate to ``payment_done`` but high conversion rate to ``cart`` visit.
+Users with similar behavior are grouped in the same cluster. Clusters with low conversion rates can indicate a systematic problem in the product: a specific behavior pattern that does not lead to product goals. The obtained user segments can be explored in more depth to understand the problematic behavior patterns. In the example above for instance, cluster 4 has a low conversion rate to ``payment_done``, but a high conversion rate to ``cart`` visit.
 
-See :doc:`Clusters user guide<../user_guides/clusters>` to understand this tool deeper.
+See :doc:`Clusters user guide<../user_guides/clusters>` for a deeper understanding of this tool.
 
 .. _quick_start_funnels:
 
 Funnel analysis
 ~~~~~~~~~~~~~~~
 
-For much analytical research building a conversion funnel is a basic part. Funnel is a diagram which shows how many users sequentially walk through specific events (funnel stages) in their paths. For each stage event the following values are calculated:
+Building a conversion funnel is a basic part of much analytical research. Funnel is a diagram that shows how many users sequentially walk through specific events (funnel stages) in their paths. For each stage event, the following values are calculated:
 
-- absolute unique number of the users who reached this stage at least once;
-- conversion rate from the first stage (`% of initial`);
-- conversion rate from the previous stage (`% of previous`).
+- absolute unique number of users who reached this stage at least once;
+- conversion rate from the first stage (% of initial); and
+- conversion rate from the previous stage (% of previous).
 
 .. code-block:: python
 
-    stream.funnel(stages = ['catalog', 'cart', 'payment_done']);
-
+    stream.funnel(stages=['catalog', 'cart', 'payment_done'])
 
 .. raw:: html
 
@@ -338,16 +315,16 @@ For much analytical research building a conversion funnel is a basic part. Funne
         allowfullscreen
     ></iframe>
 
-See :doc:`Funnel user guide<../user_guides/funnel>` to understand this tool deeper.
+See :doc:`Funnel user guide<../user_guides/funnel>` for a deeper understanding of this tool.
 
 Cohort analysis
 ~~~~~~~~~~~~~~~
 
-Cohorts is a powerful tool that shows the differences and the trends in user behavior over time. It helps to isolate the impact of different marketing activities or changes in a product for different groups of users.
+Cohorts is a powerful tool that shows trends of user behavior over time. It helps to isolate the impact of different marketing activities, or changes in a product for different groups of users.
 
-Here's an outline of the ``Cohort Matrix`` calculation:
+Here is an outline of the *cohort matrix* calculation:
 
-- Users are split into groups (``CohortGroups``) depending on the time of their first appearance in the eventstream;
+- Users are split into groups (``CohortGroups``) depending on the time of their first appearance in the eventstream; and
 - The retention rate of the active users is calculated in each period (``CohortPeriod``) of the observation.
 
 .. code-block:: python
@@ -356,13 +333,10 @@ Here's an outline of the ``Cohort Matrix`` calculation:
         cohort_start_unit='M',
         cohort_period=(1, 'M'),
         average=False,
-        cut_bottom=0,
-        cut_right=0,
-        cut_diagonal=0
-    );
+    )
 
 .. figure:: /_static/getting_started/quick_start/cohorts.png
     :width: 500
     :height: 500
 
-See :doc:`Cohorts user guide<../user_guides/cohorts>` to understand this tool deeper.
+See :doc:`Cohorts user guide<../user_guides/cohorts>` for a deeper understanding of this tool.

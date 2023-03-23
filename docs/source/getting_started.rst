@@ -13,7 +13,5 @@ Getting started
 
    Quick start <getting_started/quick_start.rst>
 
-.. toctree::
-   :maxdepth: 2
-
+..
    Eventstream concept <getting_started/eventstream_concept.rst>

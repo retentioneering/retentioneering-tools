@@ -4,7 +4,7 @@ Transition Graph
 Transition Graph class
 ----------------------
 
-.. automodule:: retentioneering.transition_graph.transition_graph
+.. automodule:: retentioneering.tooling.transition_graph.transition_graph
     :members:
 
 

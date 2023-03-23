@@ -71,7 +71,7 @@ class TransitionGraph:
         - Possible values: list of events of a given type.
 
     graph_settings: dict, optional
-        Visual boolean settings related to :ref:`Settings block <transition_graph_visual_settings>`
+        Visual boolean settings related to :ref:`Settings block <transition_graph_settings>`
         in the control of transition graph interface.
 
         Possible keys:
@@ -683,7 +683,7 @@ class TransitionGraph:
         Notes
         -----
         To get the definition of ``show_*`` visual parameters see
-        :ref:`Settings block <transition_graph_visual_settings>` in the control of transition graph interface.
+        :ref:`Settings block <transition_graph_settings>` in the control of transition graph interface.
 
         """
         if targets:

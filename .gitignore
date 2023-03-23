@@ -11,3 +11,4 @@ retentioneering/retentioneering_tools.egg-info/
 .spyproject/
 .hypothesis/
 dist/
+examples/

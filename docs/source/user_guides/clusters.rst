@@ -301,19 +301,19 @@ As for the time-based features such as ``time``, ``time_fraction``, they are ass
 
 .. code-block:: python
 
-    clusters.extract_features(ngram_range=(1, 1), feature_type='tfidf')
+    clusters.extract_features(ngram_range=(1, 2), feature_type='tfidf')
 
 .. raw:: html
 
-    <div><table class="dataframe">
+    <table class="dataframe">
       <thead>
         <tr style="text-align: right;">
           <th></th>
           <th>cart_tfidf</th>
           <th>cart cart_tfidf</th>
           <th>...</th>
-          <th>session_start catalog_tfidf</th>
-          <th>session_start main_tfidf</th>
+          <th>product2 catalog_tfidf</th>
+          <th>product2 main_tfidf</th>
         </tr>
         <tr>
           <th>user_id</th>
@@ -327,19 +327,19 @@ As for the time-based features such as ``time``, ``time_fraction``, they are ass
       <tbody>
         <tr>
           <th>122915</th>
-          <td>0.049744</td>
+          <td>0.050615</td>
           <td>0.0</td>
           <td>...</td>
-          <td>0.000000</td>
-          <td>0.09694</td>
+          <td>0.145072</td>
+          <td>0.0</td>
         </tr>
         <tr>
           <th>463458</th>
           <td>0.000000</td>
           <td>0.0</td>
           <td>...</td>
-          <td>0.102726</td>
-          <td>0.00000</td>
+          <td>0.190706</td>
+          <td>0.0</td>
         </tr>
         <tr>
           <th>...</th>
@@ -351,24 +351,23 @@ As for the time-based features such as ``time``, ``time_fraction``, they are ass
         </tr>
         <tr>
           <th>999916163</th>
-          <td>0.431186</td>
+          <td>0.517996</td>
           <td>0.0</td>
           <td>...</td>
-          <td>0.172471</td>
-          <td>0.00000</td>
+          <td>0.000000</td>
+          <td>0.0</td>
         </tr>
         <tr>
           <th>999941967</th>
           <td>0.000000</td>
           <td>0.0</td>
           <td>...</td>
-          <td>0.400147</td>
-          <td>0.00000</td>
+          <td>0.000000</td>
+          <td>0.0</td>
         </tr>
       </tbody>
     </table>
-    <p>3751 rows × 68 columns</p>
-    </div>
+    <br>
 
 If the features have been already calculated, you can get them by calling :py:meth:`Clusters.features<retentioneering.tooling.clusters.clusters.Clusters.features>` property.
 

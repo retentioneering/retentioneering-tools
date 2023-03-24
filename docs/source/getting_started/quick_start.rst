@@ -1,15 +1,9 @@
-.. raw:: html
-
-    <style>
-        .red {color:#24ff83; font-weight:bold;}
-    </style>
-
-.. role:: red
-
 Quick start with Retentioneering
 ================================
 
-Retentioneering is a python library for in-depth clickstream analysis. We find *clickstream* term a bit narrow since user actions might be not necessarily clicks, so we use instead term *event* referring any user action and *eventstream* referring a set of actions belonging to multiple users (sometimes we will use *CJM, customer journey map* term as a synonym). Each event is associated with a user who experienced it and timestamp when the event occurred. Hence, at a basic level eventstream is a set of triples like these:
+Retentioneering is a Python library for in-depth analysis of what is commonly called user clickstream. We find the traditional term clickstream to be too constrictive, as user actions may not just be clicks; instead, we use the term *event* to mean any user action, and *eventstream* to refer to a set of actions performed by the user. A set of events belonging to a particular user is called *user path* or *user trajectory*, and sometimes *customer journey map* (CJM) is used as a synonym for eventstream.
+
+Each event is tied to the user who experienced it, and a timestamp. Hence, at a basic level, eventstream comprises a set of triples like these:
 
 .. parsed-literal::
 
@@ -18,22 +12,20 @@ Retentioneering is a python library for in-depth clickstream analysis. We find *
     ('user_1', 'cart_button_click', '2019-01-01 00:00:00'),
     ...
 
-A set of events belonging to a particular user is called *user path* or *user trajectory*.
-
 Any eventstream research consists of three fundamental steps:
 
 - Loading data
 - Preparing the data
-- Applying retentioneering tools
+- Applying Retentioneering tools
 
-In this document we briefly describe how to follow these steps. For more details see the :doc:`User Guides <../user_guide>`.
+This document is a brief overview of how to follow these steps. For more detail, see the :doc:`User Guides <../user_guide>`.
 
 Loading data
 ------------
 
-Here we introduce you our core class :doc:`Eventstream <../user_guides/eventstream>` which not only stores eventstream events, but also allows to treat them in an efficient way.
+This is the introduction to our core class :doc:`Eventstream <../user_guides/eventstream>`, which stores eventstream events and enables you to work with them efficiently.
 
-For demonstration purposes we offer you to use our small :doc:`simple_shop <../datasets/simple_shop>` dataset.
+We have provided a small :doc:`simple_shop <../datasets/simple_shop>` dataset for you to use for demo purposes here, and throughout the documentation.
 
 .. code-block:: python
 
@@ -42,7 +34,7 @@ For demonstration purposes we offer you to use our small :doc:`simple_shop <../d
     # load sample user behavior data:
     stream = datasets.load_simple_shop()
 
-In the shell of eventstream object there is a regular pandas DataFrame which can be revealed by calling :py:meth:`to_dataframe()<retentioneering.eventstream.eventstream.Eventstream.to_dataframe>` method:
+In the shell of eventstream object there is a regular pandas.DataFrame which can be revealed by calling :py:meth:`to_dataframe()<retentioneering.eventstream.eventstream.Eventstream.to_dataframe>` method:
 
 .. code-block:: python
 
@@ -95,9 +87,9 @@ In the shell of eventstream object there is a regular pandas DataFrame which can
     </table>
     </div>
 
-As you can see in this fragment of the dataset, user with id ``219483890`` has 4 events on the website with specific timestamps on ``2019-11-01``. If you're ok with the ``simple_shop`` dataset, you can follow the next section.
+In this fragment of the dataset, user ``219483890`` has 4 events with timestamps on the website on ``2019-11-01``.
 
-Alternatively, you can create an eventstream by uploading your own dataset. In this case, your data must be represented as a csv-table with at least three columns ``user_id``,  ``event``, ``timestamp``. Upload  it as a pandas DataFrame and create eventstream as follows:
+If you are OK with the simple_shop dataset, you can proceed to the next section. Alternatively, you can create an eventstream by uploading your own dataset. It must be represented as a csv-table with at least three columns (``user_id``, ``event``, and ``timestamp``). Upload your table as a pandas.DataFrame and create the eventstream as follows:
 
 .. code-block:: python
 
@@ -108,9 +100,12 @@ Alternatively, you can create an eventstream by uploading your own dataset. In t
     data = pd.read_csv("your_own_data_file.csv")
     stream = Eventstream(data)
 
-If the input table columns have different names, you need either to rename them in the pandas DataFrame or explicitly set data schema (see :ref:`Eventstream user guide <eventstream_custom_fields>` for the details). Setting the data schema is also required if the input table has additional custom columns.
+If the input table columns have different names, either rename them in the DataFrame, or explicitly set data schema (see :ref:`Eventstream user guide <eventstream_custom_fields>` for the instructions). Likewise, if the table has additional custom columns, setting the data schema is also required.
 
-How to get a csv-file with data? For example, if you use Google Analytics, raw data in the form of ``{user, event, timestamp}`` triples can be streamed via Google Analytics 360 or free Google Analytics App+Web into BigQuery. From the BigQuery console you can run SQL query and export data into csv file, alternatively you can use the Python BigQuery connector to get directly into the dataframe. For large datasets, we suggest to sample the users in an SQL query, filtering by the user_id (just add this condition to SQL ``WHERE`` statement to get 10% of your users:
+Getting a CSV file with data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you use Google Analytics, raw data in the form of {user, event, timestamp} triples can be streamed via Google Analytics 360 or free Google Analytics App+Web into BigQuery. From the BigQuery console, you can run an SQL query and export data into a csv file. Alternatively, you can use the Python BigQuery connector to get directly into the DataFrame. For large datasets, we suggest sampling the users in an SQL query, filtering by the user_id (just add this condition to SQL WHERE statement to get 10% of your users:
 
 .. parsed-literal::
 
@@ -121,18 +116,19 @@ How to get a csv-file with data? For example, if you use Google Analytics, raw d
 Preparing the data
 ------------------
 
-Raw data often needs to be prepared before applying analytical techniques. Retentioneering provides a wide range of preprocessing tools which should become a Swiss knife for a product analytics. We call them *data processors*. With a help of data processors, a product analyst can easily add, delete or group events, truncate an eventstream in a flexible manner, split the trajectories into sessions, and many more. See :doc:`Data processors user guide <../user_guides/dataprocessors>` for the comprehensive description.
+Raw data often needs to be prepared before analytical techniques are applied. Retentioneering provides a wide range of preprocessing tools that are comprised of elementary parts called “data processors.” With the help of data processors, a product analyst can easily add, delete, or group events, flexibly truncate an eventstream, split the trajectories into sessions, and much more. See the :doc:`Data processors user guide <../user_guides/dataprocessors>` for a comprehensive description of this Swiss army knife for data processors.
 
-We provide below a short example so you could catch an idea how the data processors work. Suppose you want to analyze only first session of each user instead of the whole eventstream. Here's how you can easily achieve this with few lines of code:
+Below is a brief example of how the data processors work.
+
+Suppose you wanted to analyze only the first session of each user, rather than their whole trajectory. Here is how you can do that with just a few lines of code:
 
 .. code-block:: python
 
     # eventstream preprocessing example
     stream \
-        .split_sessions(session_cutoff=(30, "m")) \
-        .filter(func=lambda df_, schema: df_["session_id"].str.endswith("_1")) \
+        .split_sessions(session_cutoff=(30, 'm')) \
+        .filter(func=lambda df_, schema: df_['session_id'].str.endswith('_1')) \
         .to_dataframe() \
-        [["user_id", "event", "timestamp", "session_id"]] \
         .head()
 
 .. raw:: html
@@ -185,60 +181,48 @@ We provide below a short example so you could catch an idea how the data process
         </tr>
       </tbody>
     </table>
+    <br>
 
-In the beginning we take ``stream`` variable which contains the eventstream instance created in the previous section. ``split_sessions`` method creates a new column ``session_id`` with the values ending with suffix ``_<int>`` indicating the ordinary number of each user's session. Finally, we need to leave only those records where ``session_id`` ends with ``_1``. This is exactly what the next method ``filter`` does. Also, we apply ``to_dataframe()`` method which you already know and select the standard triple columns plus ``session_id``.
+At the beginning, we take a ``stream`` variable that contains the eventstream instance created in the previous section. The :ref:`split_sessions<split_sessions>` method creates a new column called ``session_id``, in which values ending with the suffix ``_<int>`` indicate the ordinal number of each user’s session. In the end, we need to leave only those records where ``session_id`` ends with ``_1`` (meaning the first session). This is exactly what the filter method does. We also apply the ``to_dataframe()`` method, which you are already familiar with.
 
-Unlike this toy example, in practice analytical research on an eventstream might be branchy. You may want to wrangle an initial eventstream data in many ways, check multiple hypothesis, look at different parts of the eventstream. All these scenarios might be efficiently managed using the *preprocessing graph*. It allows you to keep all the records and code related to the research in a calculation graph. We especially recommend to try this tool for those who work in analytical teams and need to share some parts of the analytical code among team members. See :doc:`Preprocessing user guide <../user_guides/preprocessing>` for more details.
+In real life, analytical eventstream research is likely to be branchy. You might want to wrangle an initial eventstream’s data in many ways, check multiple hypotheses, and look at different parts of the eventstream. All of this is easily and efficiently managed using the preprocessing graph. It enables you to keep all the records and code related to the research in a calculation graph. This tool is especially recommended for those who need to share parts of the analytical code with team members. See the :doc:`Preprocessing user guide <../user_guides/preprocessing>` for more details.
 
 .. _quick_start_rete_tools:
 
-Applying retentioneering tools
-------------------------------
+Applying path analysis tools
+----------------------------
 
-Retentioneering has many powerful tools for exploring users' behavior, including transition graphs, step matrices, step Sankey diagrams, funnels, cluster and cohort analysis. Below we show just a short demo for each of them. For more details, please study :ref:`user guides <UG core tools>`.
+Retentioneering offers many powerful tools for exploring the behavior of your users, including transition graphs, step matrices, step Sankey diagrams, funnels, cluster, and cohort analysis. A brief demo of each is presented below. For more details, see :ref:`the user guides <UG core tools>`.
 
 .. _quick_start_transition_graph:
 
 Transition graph
 ~~~~~~~~~~~~~~~~
 
-Transition graph is an interactive tool which illustrates how many users jump from one event to another. In fact, it represents user paths as a Markov random walk model. The graph is interactive, and you can drag the graph nodes, zoom-in/zoom-out the graph layout, or use a menu panel on the left edge of the graph. Also, you can highlight the most valuable nodes and hide noisy nodes and edges.
+Transition graph is an interactive tool that shows how many users jump from one event to another. It represents user paths as a Markov random walk model. The graph is interactive: you can drag the graph nodes, zoom in and out of the graph layout, or use a control panel on the left edge of the graph. The transition graph also allows you to highlight the most valuable nodes, and hide noisy nodes and edges.
 
 .. code-block:: python
 
-    stream.transition_graph(
-        thresholds={
-            'nodes': {'events': 0.06},
-            'edges': {'events': 0.06}
-        },
-        norm_type=None,
-        targets={
-            "lost": "bad",
-            "payment_done": "nice",
-            "main": "source"
-        }
-    );
+    stream.transition_graph()
 
 .. raw:: html
 
     <iframe
-        width="700"
-        height="600"
+        width="680"
+        height="630"
         src="../_static/getting_started/quick_start/transition_graph.html"
         frameborder="0"
         allowfullscreen
     ></iframe>
 
-:red:`TODO: replace this html with another one once transition graph is fixed`
-
-See :doc:`TransitionGraph user guide<../user_guides/transition_graph>` to understand this tool deeper.
+See :doc:`Transition graph user guide<../user_guides/transition_graph>` for a deeper understanding of this tool.
 
 .. _quick_start_step_matrix:
 
 Step matrix
 ~~~~~~~~~~~
 
-Step matrix provides a stepwise look at CJM. It shows the event distribution with respect to a step ordinal number.
+The step matrix provides a stepwise look at CJM. It shows the event distribution with respect to a step ordinal number.
 
 .. code-block:: python
 
@@ -246,26 +230,26 @@ Step matrix provides a stepwise look at CJM. It shows the event distribution wit
         max_steps=16,
         thresh=0.2,
         centered={
-            "event": "cart",
-            "left_gap": 5,
-            "occurrence": 1
+            'event': 'cart',
+            'left_gap': 5,
+            'occurrence': 1
         },
         targets=['payment_done']
-    );
+    )
 
 .. figure:: /_static/getting_started/quick_start/step_matrix.png
     :width: 900
 
-The step matrix above is centered by ``cart`` event. For example, it shows (see ``-1`` column) that the events in the user trajectories one step before ``cart`` event are distributed as follows: 60% of the users have ``catalog`` event right before ``cart``, 24% of the users have ``product2`` event, and 16% of the users are distributed among 5 events which are folded to an artificial ``THRESHOLDED_5`` event.
+The step matrix above is centered by ``cart`` event. For example, it shows (see column ``-1``) that the events in the user trajectories one step before ``cart`` event are distributed as follows: 60% of the users have ``catalog`` event right before ``cart``, 24% of the users have ``product2`` event, and 16% of the users are distributed among 5 events which are folded to an artificial ``THRESHOLDED_5`` event.
 
-See :doc:`StepMatrix user guide<../user_guides/step_matrix>` to understand this tool deeper.
+See :doc:`Step matrix user guide<../user_guides/step_matrix>` user guide for a deeper understanding of this tool.
 
 Step Sankey diagram
 ~~~~~~~~~~~~~~~~~~~
 
-Step Sankey diagram is similar to step matrix. It also shows the event distribution with respect to step number. However, it has some advances:
+The step Sankey diagram is similar to the step matrix. It also shows the event distribution with respect to step number. However, it has some more advanced features:
 
-- it explicitly shows the user flow from one step to another,
+- it explicitly shows the user flow from one step to another; and
 - it is interactive.
 
 .. code-block:: python
@@ -284,9 +268,7 @@ Step Sankey diagram is similar to step matrix. It also shows the event distribut
     ></iframe>
     </div>
 
-See :doc:`StepSankey user guide<../user_guides/step_sankey>` to understand this tool deeper.
-
-:red:`Replace an image with a correct one as soon as https://github.com/retentioneering/retentioneering-tools-new-arch/pull/166 is ready`.
+See :doc:`step Sankey user guide<../user_guides/step_sankey>` for a deeper understanding of this tool.
 
 .. _quick_start_cluster_analysis:
 
@@ -298,31 +280,30 @@ Cluster analysis
     from retentioneering.tooling.clusters import Clusters
 
     clusters = Clusters(stream)
-    clusters.fit(method="kmeans", n_clusters=8, feature_type="tfidf", ngram_range=(1, 2))
-    clusters.plot(targets=["payment_done", "cart"])
+    clusters.fit(method='kmeans', n_clusters=8, feature_type='tfidf', ngram_range=(1, 2))
+    clusters.plot(targets=['payment_done', 'cart'])
 
 .. figure:: /_static/getting_started/quick_start/clusters.png
     :width: 900
 
-Users with similar behavior are grouped in the same cluster. Clusters with low conversion rate can indicate a systematic problem in the product: specific behavior pattern which does not lead to product goals. Obtained user segments can be explored deeper to understand problematic behavior pattern. In the example above for instance, cluster 4 has low conversion rate to ``payment_done`` but high conversion rate to ``cart`` visit.
+Users with similar behavior are grouped in the same cluster. Clusters with low conversion rates can indicate a systematic problem in the product: a specific behavior pattern that does not lead to product goals. The obtained user segments can be explored in more depth to understand the problematic behavior patterns. In the example above for instance, cluster 4 has a low conversion rate to ``payment_done``, but a high conversion rate to ``cart`` visit.
 
-See :doc:`Clusters user guide<../user_guides/clusters>` to understand this tool deeper.
+See :doc:`Clusters user guide<../user_guides/clusters>` for a deeper understanding of this tool.
 
 .. _quick_start_funnels:
 
 Funnel analysis
 ~~~~~~~~~~~~~~~
 
-For much analytical research building a conversion funnel is a basic part. Funnel is a diagram which shows how many users sequentially walk through specific events (funnel stages) in their paths. For each stage event the following values are calculated:
+Building a conversion funnel is a basic part of much analytical research. Funnel is a diagram that shows how many users sequentially walk through specific events (funnel stages) in their paths. For each stage event, the following values are calculated:
 
-- absolute unique number of the users who reached this stage at least once;
-- conversion rate from the first stage (`% of initial`);
-- conversion rate from the previous stage (`% of previous`).
+- absolute unique number of users who reached this stage at least once;
+- conversion rate from the first stage (% of initial); and
+- conversion rate from the previous stage (% of previous).
 
 .. code-block:: python
 
-    stream.funnel(stages = ['catalog', 'cart', 'payment_done']);
-
+    stream.funnel(stages=['catalog', 'cart', 'payment_done'])
 
 .. raw:: html
 
@@ -334,16 +315,16 @@ For much analytical research building a conversion funnel is a basic part. Funne
         allowfullscreen
     ></iframe>
 
-See :doc:`Funnel user guide<../user_guides/funnel>` to understand this tool deeper.
+See :doc:`Funnel user guide<../user_guides/funnel>` for a deeper understanding of this tool.
 
 Cohort analysis
 ~~~~~~~~~~~~~~~
 
-Cohorts is a powerful tool that shows the differences and the trends in user behavior over time. It helps to isolate the impact of different marketing activities or changes in a product for different groups of users.
+Cohorts is a powerful tool that shows trends of user behavior over time. It helps to isolate the impact of different marketing activities, or changes in a product for different groups of users.
 
-Here's an outline of the ``Cohort Matrix`` calculation:
+Here is an outline of the *cohort matrix* calculation:
 
-- Users are split into groups (``CohortGroups``) depending on the time of their first appearance in the eventstream;
+- Users are split into groups (``CohortGroups``) depending on the time of their first appearance in the eventstream; and
 - The retention rate of the active users is calculated in each period (``CohortPeriod``) of the observation.
 
 .. code-block:: python
@@ -352,13 +333,10 @@ Here's an outline of the ``Cohort Matrix`` calculation:
         cohort_start_unit='M',
         cohort_period=(1, 'M'),
         average=False,
-        cut_bottom=0,
-        cut_right=0,
-        cut_diagonal=0
-    );
+    )
 
 .. figure:: /_static/getting_started/quick_start/cohorts.png
     :width: 500
     :height: 500
 
-See :doc:`Cohorts user guide<../user_guides/cohorts>` to understand this tool deeper.
+See :doc:`Cohorts user guide<../user_guides/cohorts>` for a deeper understanding of this tool.

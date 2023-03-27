@@ -57,12 +57,17 @@ Contents
 .. toctree::
     :maxdepth: 1
 
-    Getting Started <getting_started.rst>
+    Getting started <getting_started.rst>
 
 .. toctree::
     :maxdepth: 1
 
-    User Guide <user_guide.rst>
+    User guide <user_guide.rst>
+
+.. toctree::
+    :maxdepth: 1
+
+    API reference <api_reference.rst>
 
 .. toctree::
     :maxdepth: 1
@@ -70,20 +75,11 @@ Contents
     Tutorials <tutorials.rst>
 
 .. toctree::
-    :maxdepth: 1
+   :maxdepth: 1
 
     Datasets <datasets.rst>
 
 .. toctree::
     :maxdepth: 1
 
-    API Reference <api_reference.rst>
-
-
-
-
-
-
-
-
-`back to github. <https://github.com/retentioneering/retentioneering-tools>`__
+    Release notes <release_notes.rst>

@@ -192,7 +192,7 @@ In real life, analytical eventstream research is likely to be branchy. You might
 Applying path analysis tools
 ----------------------------
 
-Retentioneering offers many powerful tools for exploring the behavior of your users, including transition graphs, step matrices, step Sankey diagrams, funnels, cluster, and cohort analysis. A brief demo of each is presented below. For more details, see :ref:`the user guides <UG core tools>`.
+Retentioneering offers many powerful tools for exploring the behavior of your users, including transition graphs, step matrices, step Sankey diagrams, funnels, cluster, and cohort analysis. A brief demo of each is presented below. For more details, see :ref:`the user guides <UG_path_analysis_tools>`.
 
 .. _quick_start_transition_graph:
 

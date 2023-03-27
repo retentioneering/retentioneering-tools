@@ -1,7 +1,7 @@
-Core Tools
-==========
+Path analysis tools
+===================
 .. toctree::
-   :caption: Core Tools
+   :caption: Path analysis tools
    :maxdepth: 2
 
     Funnel <tooling/funnel.rst>

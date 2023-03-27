@@ -15,10 +15,10 @@ Preprocessing
 
    Preprocessing <api/preprocessing_api.rst>
 
-Core Tools
-----------
+Path analysis tools
+-------------------
 
 .. toctree::
    :maxdepth: 2
 
-   Core Tools <api/tooling_api.rst>
+   Path analysis tools <api/tooling_api.rst>

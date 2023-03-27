@@ -190,8 +190,7 @@ To make this, we can pass collections of the user ids to ``groups`` parameter. L
         allowfullscreen
     ></iframe>
 
-Now we see how the two groups differ at particular stages. Namely, we notice that the January cohort has better conversion rates at each stage: 57.5% VS 52 % for ``catalog`` → ``product`` transition, 70.8% VS 66.4% for ``product`` → ``cart`` transition, and 33.7% VS 25.9% for ``cart`` → ``payment_done`` transition. As a result, the overall conversion rate for ``catalog`` → ``payment_done`` for the January cohort is better (13.7% VS 8.9%). However, the observed difference might be obtained by chance. To estimate this explicitly, we need to test statistical hypothesis.
-
+Now we see how the two groups differ at particular stages. Namely, we notice that the January cohort has better conversion rates at each stage: 58% VS 52 % for ``catalog`` → ``product`` transition, 66% VS 63% for ``product`` → ``cart`` transition, and 33% VS 25% for ``cart`` → ``payment_done`` transition. As a result, the overall conversion rate for ``catalog`` → ``payment_done`` for the January cohort is better (12% VS 8%). However, the observed difference might be obtained by chance. To estimate this explicitly, we need to test statistical hypothesis.
 Using a separate instance
 -------------------------
 

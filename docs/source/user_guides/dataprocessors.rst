@@ -221,6 +221,8 @@ Data processors can be partitioned into three groups:
 
 In the next sections we organise our narrative according to these partitions.
 
+.. _dataprocessors_adding_processors:
+
 Adding processors
 ~~~~~~~~~~~~~~~~~
 

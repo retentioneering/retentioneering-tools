@@ -1,11 +1,3 @@
-.. raw:: html
-
-    <style>
-        .red {color:#24ff83; font-weight:bold;}
-    </style>
-
-.. role:: red
-
 What is Retentioneering?
 ========================
 

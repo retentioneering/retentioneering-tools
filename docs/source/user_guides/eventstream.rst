@@ -19,7 +19,7 @@ around three following purposes:
   See :doc:`Preprocessing user guide <../user_guides/preprocessing>` for more details.
 
 - **Applying analytical tools**. Eventstream integrates with retentioneering tools and
-  allows you to seamlessly apply them. See a :ref:`user guide on retentioneering core tools<UG core tools>`.
+  allows you to seamlessly apply them. See a :ref:`user guide on the path analysis tools<UG_path_analysis_tools>`.
 
 
 .. _eventstream_creation:

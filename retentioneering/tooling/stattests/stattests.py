@@ -254,7 +254,7 @@ class StatTests:
                 )
             )
             print(
-                "'{0}' is greater than '{1}' with P-value: {2:.5f}".format(
+                "'{0}' is greater than '{1}' with p-value: {2:.5f}".format(
                     values["greatest_group_name"], values["least_group_name"], values["p_val"]
                 )
             )
@@ -262,7 +262,7 @@ class StatTests:
         elif self.test in ["chi2_contingency", "fisher_exact"]:
             print(self.output_template_categorical.format(values["group_one_name"], values["group_one_size"]))
             print(self.output_template_categorical.format(values["group_two_name"], values["group_two_size"]))
-            print("Group difference test with P-value: {:.5f}".format(values["p_val"]))
+            print("Group difference test with p-value: {:.5f}".format(values["p_val"]))
         else:
             raise ValueError("Wrong test passed")
 

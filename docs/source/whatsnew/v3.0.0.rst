@@ -1,0 +1,6 @@
+What's new in 3.0.0 (April 2023)
+================================
+
+Here is the full list of changes in retentioneering 3.0.0.
+
+:red:`TODO`

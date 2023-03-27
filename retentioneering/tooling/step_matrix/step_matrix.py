@@ -390,7 +390,7 @@ class StepMatrix(EndedEventsMixin):
                 axs.vlines(
                     [centered_position - 0.02, centered_position + 0.98], *axs.get_ylim(), colors="Black", linewidth=0.7
                 )
-        return figure
+        return axs
 
     def fit(self) -> None:
         """
@@ -468,18 +468,18 @@ class StepMatrix(EndedEventsMixin):
         self.fraction_title = fraction_title
         self.targets_list = targets_plot
 
-    def plot(self) -> sns.heatmap:
+    def plot(self) -> matplotlib.axes.Axes:
         """
         Create a heatmap plot based on the calculated step matrix values.
         Should be used after :py:func:`fit`.
 
         Returns
         -------
-        sns.heatmap
+        matplotlib.axes.Axes
 
         """
-        figure = self._render_plot(self.result_data, self.result_targets, self.targets_list, self.fraction_title)
-        return figure
+        axes = self._render_plot(self.result_data, self.result_targets, self.targets_list, self.fraction_title)
+        return axes
 
     @property
     def values(self) -> tuple[pd.DataFrame, pd.DataFrame | None]:

@@ -19,7 +19,7 @@ around three following purposes:
   See :doc:`Preprocessing user guide <../user_guides/preprocessing>` for more details.
 
 - **Applying analytical tools**. Eventstream integrates with retentioneering tools and
-  allows you to seamlessly apply them. See a :ref:`user guide on retentioneering core tools<UG core tools>`.
+  allows you to seamlessly apply them. See a :ref:`user guide on the path analysis tools<UG_path_analysis_tools>`.
 
 
 .. _eventstream_creation:
@@ -497,13 +497,13 @@ Below is a sampling example for :doc:`simple_shop </datasets/simple_shop>` datas
 
 
 .. parsed-literal::
-    Original number of the events: 35381
-    Sampled number of the events: 3615
+    Original number of the events: 32283
+    Sampled number of the events: 3298
     Original unique users number:  3751
     Sampled unique users number:  375
 
 We see that the number of the users has been reduced from 3751 to 375 (10% exactly). The number
-of the events has been reduced from 35381 to 3615 (10.2%), but we didn't expect to see exact 10% here.
+of the events has been reduced from 32283 to 3298 (10.2%), but we didn't expect to see exact 10% here.
 
 .. _to_dataframe explanation:
 

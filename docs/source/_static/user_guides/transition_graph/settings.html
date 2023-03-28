@@ -1,0 +1,91 @@
+
+
+
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin="" rel="preconnect" href="https://fonts.gstatic.com">
+    <link crossorigin="" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&amp;display=swap" rel="stylesheet">
+    <title>Retentioneering Transition Graph Application</title>
+
+
+
+<noscript>You need to enable JavaScript to run this app.</noscript>
+<iframe id="elNEZEDL" src="about:blank" width="650" height="600" onload="window.reteLoadedIframes = window.reteLoadedIframes || []; window.reteLoadedIframes.push('elNEZEDL')">
+</iframe>
+
+<script>
+  (function() {
+    console.info('Initialize graph IFRAME')
+
+    const iframe = document.getElementById('elNEZEDL')
+    const iframeLoaded = window.reteLoadedIframes && window.reteLoadedIframes.includes('elNEZEDL')
+
+    const init = () => {
+      console.info('Graph IFRAME loaded')
+
+      const iframeDocument = document.getElementById('elNEZEDL').contentDocument
+
+      iframeDocument.body.innerHTML = '<div id="root"></div>'
+
+      const graphScript = iframeDocument.createElement('script')
+
+      graphScript.src = `https://static.server.retentioneering.com/viztools/transition-graph/v3/transition-graph.umd.js?id=el9585YB`
+
+      graphScript.addEventListener('load', () => {
+        console.info('JavaScript library loaded')
+
+        const initGraph = iframeDocument.createElement('script')
+
+        initGraph.innerHTML = `
+    initialize({
+    serverId: '9893fb63-d0e1-411f-ab29-45d44beb796c',
+    env: 'classic',
+    selectedNormalizationTypeId: 'node',
+    configNodes: [{"index":0,"name":"catalog","changed_name":"catalog","x":359,"y":288,"active":true,"alias":false,"degree":{"event_id":{"degree":34,"source":14518},"user_id":{"degree":34,"source":3611}},"type":"suit_node","parent":null},{"index":1,"name":"cart","changed_name":"cart","x":223,"y":353,"active":true,"alias":false,"degree":{"event_id":{"degree":9.87271,"source":2842},"user_id":{"degree":19.98449,"source":1924}},"type":"suit_node","parent":null},{"index":2,"name":"payment_card","changed_name":"payment_card","x":311,"y":166,"active":true,"alias":false,"degree":{"event_id":{"degree":5.16752,"source":565},"user_id":{"degree":8.32844,"source":521}},"type":"suit_node","parent":null},{"index":3,"name":"delivery_choice","changed_name":"delivery_choice","x":396,"y":404,"active":true,"alias":false,"degree":{"event_id":{"degree":7.48395,"source":1686},"user_id":{"degree":15.26558,"source":1356}},"type":"suit_node","parent":null},{"index":4,"name":"payment_done","changed_name":"payment_done","x":123,"y":260,"active":true,"alias":false,"degree":{"event_id":{"degree":5.45888,"source":706},"user_id":{"degree":9.42509,"source":653}},"type":"suit_node","parent":null},{"index":5,"name":"delivery_pickup","changed_name":"delivery_pickup","x":467,"y":190,"active":true,"alias":false,"degree":{"event_id":{"degree":5.0456,"source":506},"user_id":{"degree":7.89643,"source":469}},"type":"suit_node","parent":null},{"index":6,"name":"product1","changed_name":"product1","x":244,"y":480,"active":true,"alias":false,"degree":{"event_id":{"degree":7.1306,"source":1515},"user_id":{"degree":13.32152,"source":1122}},"type":"suit_node","parent":null},{"index":7,"name":"delivery_courier","changed_name":"delivery_courier","x":193,"y":99,"active":true,"alias":false,"degree":{"event_id":{"degree":5.72338,"source":834},"user_id":{"degree":10.21435,"source":748}},"type":"suit_node","parent":null},{"index":8,"name":"payment_cash","changed_name":"payment_cash","x":531,"y":366,"active":true,"alias":false,"degree":{"event_id":{"degree":4.40708,"source":197},"user_id":{"degree":5.57851,"source":190}},"type":"suit_node","parent":null},{"index":9,"name":"product2","changed_name":"product2","x":59,"y":380,"active":true,"alias":false,"degree":{"event_id":{"degree":8.48822,"source":2172},"user_id":{"degree":15.88037,"source":1430}},"type":"suit_node","parent":null},{"index":10,"name":"main","changed_name":"main","x":416,"y":60,"active":true,"alias":false,"degree":{"event_id":{"degree":15.64417,"source":5635},"user_id":{"degree":23.81446,"source":2385}},"type":"suit_node","parent":null},{"index":11,"name":"payment_choice","changed_name":"payment_choice","x":385,"y":540,"active":true,"alias":false,"degree":{"event_id":{"degree":6.28751,"source":1107},"user_id":{"degree":11.95901,"source":958}},"type":"suit_node","parent":null}],
+    configLinks: [{"sourceIndex":1,"targetIndex":1,"type":"suit","weights":{"event_id":{"weight":0.0004,"weight_norm":0.0004},"user_id":{"weight":0.00059,"weight_norm":0.00059}}},{"sourceIndex":1,"targetIndex":0,"type":"suit","weights":{"event_id":{"weight":0.22923,"weight_norm":0.22923},"user_id":{"weight":0.28385,"weight_norm":0.28385}}},{"sourceIndex":1,"targetIndex":3,"type":"suit","weights":{"event_id":{"weight":0.67684,"weight_norm":0.67684},"user_id":{"weight":0.80523,"weight_norm":0.80523}}},{"sourceIndex":1,"targetIndex":10,"type":"suit","weights":{"event_id":{"weight":0.09354,"weight_norm":0.09354},"user_id":{"weight":0.12114,"weight_norm":0.12114}}},{"sourceIndex":0,"targetIndex":1,"type":"suit","weights":{"event_id":{"weight":0.13354,"weight_norm":0.13354},"user_id":{"weight":0.41846,"weight_norm":0.41846}}},{"sourceIndex":0,"targetIndex":0,"type":"suit","weights":{"event_id":{"weight":0.37951,"weight_norm":0.37951},"user_id":{"weight":0.63338,"weight_norm":0.63338}}},{"sourceIndex":0,"targetIndex":10,"type":"suit","weights":{"event_id":{"weight":0.19886,"weight_norm":0.19886},"user_id":{"weight":0.46776,"weight_norm":0.46776}}},{"sourceIndex":0,"targetIndex":6,"type":"suit","weights":{"event_id":{"weight":0.11838,"weight_norm":0.11838},"user_id":{"weight":0.35461,"weight_norm":0.35461}}},{"sourceIndex":0,"targetIndex":9,"type":"suit","weights":{"event_id":{"weight":0.16971,"weight_norm":0.16971},"user_id":{"weight":0.45196,"weight_norm":0.45196}}},{"sourceIndex":3,"targetIndex":0,"type":"suit","weights":{"event_id":{"weight":0.11202,"weight_norm":0.11202},"user_id":{"weight":0.13501,"weight_norm":0.13501}}},{"sourceIndex":3,"targetIndex":7,"type":"suit","weights":{"event_id":{"weight":0.52486,"weight_norm":0.52486},"user_id":{"weight":0.58713,"weight_norm":0.58713}}},{"sourceIndex":3,"targetIndex":5,"type":"suit","weights":{"event_id":{"weight":0.31844,"weight_norm":0.31844},"user_id":{"weight":0.36813,"weight_norm":0.36813}}},{"sourceIndex":3,"targetIndex":10,"type":"suit","weights":{"event_id":{"weight":0.04468,"weight_norm":0.04468},"user_id":{"weight":0.05338,"weight_norm":0.05338}}},{"sourceIndex":7,"targetIndex":10,"type":"suit","weights":{"event_id":{"weight":0.04326,"weight_norm":0.04326},"user_id":{"weight":0.04809,"weight_norm":0.04809}}},{"sourceIndex":7,"targetIndex":11,"type":"suit","weights":{"event_id":{"weight":0.95674,"weight_norm":0.95674},"user_id":{"weight":0.96605,"weight_norm":0.96605}}},{"sourceIndex":5,"targetIndex":10,"type":"suit","weights":{"event_id":{"weight":0.13625,"weight_norm":0.13625},"user_id":{"weight":0.1455,"weight_norm":0.1455}}},{"sourceIndex":5,"targetIndex":11,"type":"suit","weights":{"event_id":{"weight":0.86375,"weight_norm":0.86375},"user_id":{"weight":0.87831,"weight_norm":0.87831}}},{"sourceIndex":10,"targetIndex":0,"type":"suit","weights":{"event_id":{"weight":0.79593,"weight_norm":0.79593},"user_id":{"weight":0.94601,"weight_norm":0.94601}}},{"sourceIndex":10,"targetIndex":10,"type":"suit","weights":{"event_id":{"weight":0.20407,"weight_norm":0.20407},"user_id":{"weight":0.2831,"weight_norm":0.2831}}},{"sourceIndex":2,"targetIndex":10,"type":"suit","weights":{"event_id":{"weight":0.03795,"weight_norm":0.03795},"user_id":{"weight":0.04098,"weight_norm":0.04098}}},{"sourceIndex":2,"targetIndex":4,"type":"suit","weights":{"event_id":{"weight":0.96205,"weight_norm":0.96205},"user_id":{"weight":0.97336,"weight_norm":0.97336}}},{"sourceIndex":8,"targetIndex":10,"type":"suit","weights":{"event_id":{"weight":0.31126,"weight_norm":0.31126},"user_id":{"weight":0.3125,"weight_norm":0.3125}}},{"sourceIndex":8,"targetIndex":4,"type":"suit","weights":{"event_id":{"weight":0.68874,"weight_norm":0.68874},"user_id":{"weight":0.70833,"weight_norm":0.70833}}},{"sourceIndex":11,"targetIndex":0,"type":"suit","weights":{"event_id":{"weight":0.11254,"weight_norm":0.11254},"user_id":{"weight":0.12343,"weight_norm":0.12343}}},{"sourceIndex":11,"targetIndex":10,"type":"suit","weights":{"event_id":{"weight":0.04146,"weight_norm":0.04146},"user_id":{"weight":0.04686,"weight_norm":0.04686}}},{"sourceIndex":11,"targetIndex":2,"type":"suit","weights":{"event_id":{"weight":0.55775,"weight_norm":0.55775},"user_id":{"weight":0.59543,"weight_norm":0.59543}}},{"sourceIndex":11,"targetIndex":8,"type":"suit","weights":{"event_id":{"weight":0.19447,"weight_norm":0.19447},"user_id":{"weight":0.21714,"weight_norm":0.21714}}},{"sourceIndex":11,"targetIndex":4,"type":"suit","weights":{"event_id":{"weight":0.09378,"weight_norm":0.09378},"user_id":{"weight":0.10743,"weight_norm":0.10743}}},{"sourceIndex":4,"targetIndex":10,"type":"suit","weights":{"event_id":{"weight":1,"weight_norm":1},"user_id":{"weight":1,"weight_norm":1}}},{"sourceIndex":6,"targetIndex":1,"type":"suit","weights":{"event_id":{"weight":0.35171,"weight_norm":0.35171},"user_id":{"weight":0.4336,"weight_norm":0.4336}}},{"sourceIndex":6,"targetIndex":0,"type":"suit","weights":{"event_id":{"weight":0.55887,"weight_norm":0.55887},"user_id":{"weight":0.62374,"weight_norm":0.62374}}},{"sourceIndex":6,"targetIndex":10,"type":"suit","weights":{"event_id":{"weight":0.08942,"weight_norm":0.08942},"user_id":{"weight":0.11469,"weight_norm":0.11469}}},{"sourceIndex":9,"targetIndex":1,"type":"suit","weights":{"event_id":{"weight":0.32211,"weight_norm":0.32211},"user_id":{"weight":0.43304,"weight_norm":0.43304}}},{"sourceIndex":9,"targetIndex":0,"type":"suit","weights":{"event_id":{"weight":0.63348,"weight_norm":0.63348},"user_id":{"weight":0.69494,"weight_norm":0.69494}}},{"sourceIndex":9,"targetIndex":10,"type":"suit","weights":{"event_id":{"weight":0.04441,"weight_norm":0.04441},"user_id":{"weight":0.06548,"weight_norm":0.06548}}}],
+    nodesColsNames: ['event_id', 'event_id', 'user_id'],
+    linksWeightsNames: ['event_id', 'event_id', 'user_id'],
+    nodesThreshold: {"event_id":197,"user_id":190},
+    linksThreshold: {"event_id":0.0004,"user_id":0.00059},
+    shownNodesCol: 'event_id',
+    shownLinksWeight: 'event_id',
+    selectedNodesColForThresholds: 'event_id',
+    selectedLinksWeightForThresholds: 'event_id',
+    showWeights: true,
+    showPercents: true,
+    showNodesNames: true,
+    showAllEdgesForTargets: false,
+    showNodesWithoutLinks: false,
+    useLayoutDump: Boolean(1),
+    weightTemplate: undefined
+})
+`
+        iframeDocument.body.appendChild(initGraph)
+      })
+
+      iframeDocument.head.appendChild(graphScript)
+      iframeDocument.body.dataset.templateId = 'elNEZEDL_template'
+
+      console.info('Graph IFRAME initialized')
+    }
+
+    console.log(`Graph IFRAME loaded: ` + iframeLoaded)
+
+    if (iframeLoaded) {
+      init()
+      return
+    }
+
+    iframe.onload = () => {
+      init()
+      window.reteLoadedIframes.push('elNEZEDL')
+    }
+  })()
+</script>
+
+<template id="elNEZEDL_template">
+
+</template>

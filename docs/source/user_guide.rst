@@ -18,10 +18,10 @@ Preprocessing
     Data processors <user_guides/dataprocessors.rst>
     Preprocessing graph <user_guides/preprocessing.rst>
 
-.. _UG core tools:
+.. _UG_path_analysis_tools:
 
-Core tools
-----------
+Path analysis tools
+-------------------
 .. toctree::
    :maxdepth: 2
 

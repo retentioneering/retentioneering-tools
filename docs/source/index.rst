@@ -1,17 +1,9 @@
-.. raw:: html
-
-    <style>
-        .red {color: red; font-weight:bold;}
-    </style>
-
-.. role:: red
-
-
 .. title:: Retentioneering Tools
 
 retentioneering documentation
 =============================
-**Date:** Feb 8, 2023 **Version:** 3.0.0 :red:`(beta)`
+
+**Date:** Mar 20, 2023 **Version:** 3.0.0 :red:`(beta)`
 
 .. grid:: 4
 
@@ -20,7 +12,7 @@ retentioneering documentation
         :link: eventstream_descriptive_methods
         :link-type: ref
 
-    .. grid-item-card:: Transition Graph
+    .. grid-item-card:: Transition graph
         :img-top: _static/tool_icons/transition_graph.png
         :link: /user_guides/transition_graph
         :link-type: doc
@@ -30,7 +22,7 @@ retentioneering documentation
         :link: /user_guides/step_sankey
         :link-type: doc
 
-    .. grid-item-card:: Step Matrix
+    .. grid-item-card:: Step matrix
         :img-top: _static/tool_icons/step_matrix.png
         :link: /user_guides/step_matrix
         :link-type: doc
@@ -65,12 +57,17 @@ Contents
 .. toctree::
     :maxdepth: 1
 
-    Getting Started <getting_started.rst>
+    Getting started <getting_started.rst>
 
 .. toctree::
     :maxdepth: 1
 
-    User Guide <user_guide.rst>
+    User guide <user_guide.rst>
+
+.. toctree::
+    :maxdepth: 1
+
+    API reference <api_reference.rst>
 
 .. toctree::
     :maxdepth: 1
@@ -78,20 +75,11 @@ Contents
     Tutorials <tutorials.rst>
 
 .. toctree::
-    :maxdepth: 1
+   :maxdepth: 1
 
     Datasets <datasets.rst>
 
 .. toctree::
     :maxdepth: 1
 
-    API Reference <api_reference.rst>
-
-
-
-
-
-
-
-
-`back to github. <https://github.com/retentioneering/retentioneering-tools>`__
+    Release notes <release_notes.rst>

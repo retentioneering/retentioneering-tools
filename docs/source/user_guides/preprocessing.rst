@@ -526,7 +526,7 @@ simply copy and paste it and see the results.
         "left_truncated_cutoff": (1, 'h'),
         "right_truncated_cutoff": (1, 'h'),
     }
-    node6 = EventsNode(FilterEvents(params=FilterEventsParams(func=remove_truncated_paths)))
+    node6 = EventsNode(TruncatedEvents(params=TruncatedEventsParams(**params)))
 
     # node7, node8, node9
     def remove_truncated_paths(df, schema):
@@ -552,8 +552,7 @@ simply copy and paste it and see the results.
     graph.add_node(node=node9, parents=[node8])
 
     # getting the calculation results
-    graph.combine(node=node9)
-    processed_stream = graph.combine_result
+    processed_stream = graph.combine(node=node9)
     processed_stream.to_dataframe().head()
 
 .. _preprocessing_chain_usage_complex_example:

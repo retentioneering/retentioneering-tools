@@ -31,8 +31,8 @@ The primary way to build a transition graph is to call :py:meth:`Eventstream.tra
 
     <div style="overflow:auto;">
     <iframe
-        width="650"
-        height="650"
+        width="670"
+        height="630"
         src="../_static/user_guides/transition_graph/basic_example.html"
         frameborder="0"
         allowfullscreen
@@ -57,7 +57,6 @@ Edge weights calculation
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 The edge weight values are controlled by ``edges_norm_type`` and ``edges_weight_col`` parameters of :py:meth:`Eventstream.transition_graph()<retentioneering.eventstream.eventstream.Eventstream.transition_graph>` method.
-:red:`TODO: align it with the final version of the argument name in the code`
 
 As we mentioned earlier, the most straightforward way to assign an edge weight is to calculate the number of the transitions associating with the edge in the entire eventstream. In this case we use ``edges_norm_type=None`` and ``edges_weight_col='event_id'``, meaning that no normalization is needed and ``event_id`` column is used as a weighting column (we will explain the concept of weighting columns below).
 
@@ -67,12 +66,12 @@ Now, let us move to weighting column definition. In many cases it is reasonable 
 
 Having ``edges_weight_col`` defined allows you to calculate the weighs as the unique values represented in ``edges_weight_col`` column. This also relates to ``full`` and ``node`` normalization types. For example, ``edges_norm_type='full'`` and ``edges_weight_col='user_id'`` configuration means that we divide the number of the unique users who had a specific transition by the number of the unique users in the entire eventstream.
 
+.. _transition_graph_calculation_example:
+
 A simplified example
 ^^^^^^^^^^^^^^^^^^^^
 
 In order to check whether you understand these definitions correctly, let us consider a simplified example and look into the matter of the edge weights calculation. Suppose we have the following eventstream:
-
-.. _transition_graph_calculation_example:
 
 .. raw:: html
 
@@ -126,7 +125,6 @@ Besides edge weights, a transition graph also have node weights that control the
 
     Obviously, node weights do not support ``norm_type='node'`` since it involves edges by design. However, ``node_norm_type=None`` and ``norm_type='full'`` options might be calculated. They leverage the same calculation logic as we used for the edge weights calculation.
 
-
     We explain this logic using the same :ref:`example eventstream <transition_graph_calculation_example>`.
 
     So for ``norm_type=None`` option the node weights are simply the counters of the events over the entire eventstream (in case of ``weight_col='event_id'``) or the number of unique users or sessions (in case of ``weight_col='user_id'`` or ``weight_col='session_id'``) that had a specific event. For ``norm_type='full'`` we divide the non-normalized weights by either the overall number of events (17), or the number of unique users (3), or the number of unique sessions (6). See the calculations for each of the described cases in |node_weights_col_none|, |node_weights_col_user_id|, and |node_weights_col_session_id| below:
@@ -159,16 +157,44 @@ Besides edge weights, a transition graph also have node weights that control the
 Setting the weight options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Finally we demonstrate how to set weighting options for a graph. As it has been discussed, ``edges_norm_type`` argument accepts ``None``, ``full`` or ``node`` values. As for weighting columns, it is set separately for nodes and for values via ``weights`` dictionary. Its ``nodes`` key stands for nodes weighting column, and ``edges`` key stands for edges weighting column.
+Finally, we demonstrate how to set the weighting options for a graph. As it has been discussed, ``edges_norm_type`` argument accepts ``None``, ``full`` or ``node`` values. A weighting column is set by ``edges_weight_col`` argument. Below is a table that summarizes the definitions of edge weights when these two arguments are used jointly.
+
+.. table:: The definitions of edge weights for different combinations of normalization type and weighting columns. ``A → B`` is considered as an edge example.
+    :widths: 21 20 25 35
+    :class: tight-table
+
+    +--------------------------------------+-------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+    | edge_norm_type → \ edge_weight_col ↓ | None                                                                          | full                                                                                                                        | node                                                                                                                                                                              |
+    +======================================+===============================================================================+=============================================================================================================================+===================================================================================================================================================================================+
+    | None or event_id                     | The total number of the ``A → B`` **transitions**.                            | The total number of the ``A → B`` transitions divided by the number of all the **transitions**.                             | The total number of the ``A → B`` transitions divided by the **total number of** ``A → *`` **transitions**.                                                                       |
+    +--------------------------------------+-------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+    | user_id                              | The total number of the **unique users** who had the ``A → B`` transition.    | The total number of the **unique users** who had the ``A → B`` transition divided by the number of all the **users**.       | The total number of the **unique users** who had the ``A → B`` transition divided by the number of the **unique users who had any** ``A → *`` **transition**.                     |
+    +--------------------------------------+-------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+    | session_id                           | The total number of the **unique sessions** who had the ``A → B`` transition. | The total number of the **unique sessions** who had the ``A → B`` transition divided by the number of all the **sessions**. | The total number of the **unique sessions** where the ``A → B`` transition occurred divided by the number of the **unique sessions where any** ``A → *`` **transition occurred**. |
+    +--------------------------------------+-------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Here is an example of the using these arguments:
 
 .. code-block:: python
 
     stream.transition_graph(
         edges_norm_type='node',
-        edges_weight_col='event_id'
+        edges_weight_col='user_id'
     )
 
-:red:`TODO: provide actual code and graph, and rewrite the paragraph`.
+.. raw:: html
+
+    <div style="overflow:auto;">
+    <iframe
+        width="670"
+        height="630"
+        src="../_static/user_guides/transition_graph/weights.html"
+        frameborder="0"
+        allowfullscreen
+    ></iframe>
+    </div>
+
+From this graph we see, for example, that being at ``product1`` event, 62.3% of the users transit to ``catalog`` event, 43.3% - to ``cart`` event, and 11.4% - to ``main`` event. As you can notice, when you use some normalization, the values are not necessarily sum up to 1. This happens because a user can be at ``product1`` state multiple times, so they can jump to multiple of these three events.
 
 .. _transition_graph_thresholds:
 
@@ -179,23 +205,37 @@ The weights that we have discussed above are associated with importance of the e
 
 Note that the thresholds may use their own weighting columns both for nodes and for edges independently of those weighting columns defined in ``edges_weight_col`` arguments. So the weights displayed on a graph might be different from the weights that the thresholds use in making their decision for hiding the nodes/edges. Moreover, multiple weighting columns might be used. In this case, the decision whether an item (a node or an edge) should be hidden is made applying logical OR: an item is hidden if it does not meet any threshold condition.
 
-Also note that, by default, if all the edges connected to a node are hidden, the node becomes hidden as well. You can turn this option off :ref:`here <transition_graph_visual_settings>`.
+Also note that, by default, if all the edges connected to a node are hidden, the node becomes hidden as well. You can turn this option off :ref:`here <transition_graph_settings>`.
 
 The thresholds are set with a couple of ``nodes_threshold``, ``edges_threshold`` parameters. Each parameter is a dictionary. The keys are weighting column names, the values are the threshold values.
 
 .. code-block:: python
 
     stream.transition_graph(
-        edges_threshold={'event_id': 100, 'user_id': 10},
+        edges_norm_type='node',
+        edges_weight_col='user_id',
+        edges_threshold={'user_id': 0.12},
         nodes_threshold={'event_id': 500}
     )
 
-:red:`TODO: provide a code example with the correct threshold parameter names`.
+.. raw:: html
+
+    <div style="overflow:auto;">
+    <iframe
+        width="670"
+        height="630"
+        src="../_static/user_guides/transition_graph/thresholds.html"
+        frameborder="0"
+        allowfullscreen
+    ></iframe>
+    </div>
+
+This example is an extension of the previous one. We use the same normalization configuration as before. Since we have added an edges threshold of ``0.12`` for ``user_id`` weighting column, the edge ``product1`` → ``main`` that we observed in the previous example is hidden now (its weight is 11.4%). As for the nodes threshold, note that event ``payment_cash`` is hidden now (as we can see from the Nodes block in the Control panel, its weight is 197).
 
 Targets
 ~~~~~~~
 
-As we have already mentioned, the graph nodes are often of different importance. Sometimes we need not just to hide unimportant nodes, but to highlight important nodes instead. Transition graph identifies three types of the nodes: positive, negative, and sourcing. Three colors correspond to these node types: green, ren and orange correspondingly. You can color the nodes with these colors by defining their types in ``targets`` parameter:
+As we have already mentioned, the graph nodes are often of different importance. Sometimes we need not just to hide unimportant nodes, but to highlight important nodes instead. Transition graph identifies three types of the nodes: positive, negative, and sourcing. Three colors relate to these node types: green, ren and orange correspondingly. You can color the nodes with these colors by defining their types in the ``targets`` parameter:
 
 .. code-block:: python
 
@@ -204,19 +244,65 @@ As we have already mentioned, the graph nodes are often of different importance.
         .transition_graph(
             targets={
                 'positive': ['payment_done', 'cart'],
-                'negative': 'path_end'
+                'negative': 'path_end',
                 'source': 'path_start'
             }
         )
 
-:red:`TODO: Add html, replace the code with the actual.`
+.. raw:: html
+
+    <div style="overflow:auto;">
+    <iframe
+        width="670"
+        height="630"
+        src="../_static/user_guides/transition_graph/targets.html"
+        frameborder="0"
+        allowfullscreen
+    ></iframe>
+    </div>
 
 In the example above we additionally use :py:meth:`Eventstream.add_start_end() <retentioneering.eventstream.helpers.start_end_helper.StartEndHelperMixin.add_start_end>` data processor helper to add ``path_start`` and ``path_end`` events.
 
-Display settings
-~~~~~~~~~~~~~~~~
+.. _transition_graph_settings:
 
-:red:`Check if they are available for the Eventstream.transition_graph() method`
+Graph settings
+~~~~~~~~~~~~~~
+
+You can set up the following boolean flags:
+
+- ``show_weights``. Hide/display the edge weight labels.
+- ``show_percents``. Display edge weights as percents. Available only if an edge normalization type is chosen.
+- ``show_nodes_names``. Hide/display the node names.
+- ``show_all_edges_for_targets``. By default, the threshold filters hide the edges disregarding the node types. In case you have defined target nodes, you usually want to carefully analyze them. Hence, all the edges connected to these nodes are important. This displaying option allows to ignore the threshold filters and always display any edge connected to a target node.
+- ``show_nodes_without_links``. Setting a threshold filter might remove all the edges connected to a node. Such isolated nodes might be considered as useless. This displaying option hides them in the canvas as well.
+- ``show_edge_info_on_hover``. By default, a tooltip with an edge info pops up when you mouse over the edge. It might be disturbing for large graphs, so this option suppresses the tooltips.
+
+These flags are packed to a dictionary and passed to the ``graph_settings`` argument as follows:
+
+.. code-block:: python
+
+    graph_settings = {
+        'show_weights': True,
+        'show_percents': True,
+        'show_nodes_names': True,
+        'show_all_edges_for_targets': False,
+        'show_nodes_without_links': False,
+        'show_edge_info_on_hover': True
+    }
+
+    stream.transition_graph(edges_norm_type='node', graph_settings=graph_settings)
+
+.. raw:: html
+
+    <div style="overflow:auto;">
+    <iframe
+        width="670"
+        height="630"
+        src="../_static/user_guides/transition_graph/settings.html"
+        frameborder="0"
+        allowfullscreen
+    ></iframe>
+    </div>
 
 .. _transition_graph_control_panel:
 
@@ -246,48 +332,47 @@ The control panel consists of 5 blocks: Weights, Nodes, Thresholds, Export, and 
     | Click the minus sign to collapse the blocks. | Click the plus sign to expand the blocks. |
     +----------------------------------------------+-------------------------------------------+
 
-.. note::
+.. warning::
 
     All the settings that are tweaked in the Control panel are available only in scope of the current transition graph displayed in the current Jupyter cell. As soon as you run :py:meth:`Eventstream.transition_graph()<retentioneering.eventstream.eventstream.Eventstream.transition_graph>` again, all the settings will be reset to the defaults unless you call the method with particular parameters.
 
 Weights block
 ~~~~~~~~~~~~~
 
-The Weights block contains selectors that separately choose weighting columns for nodes and edges. Unfortunately, so far you can not choose normalization type in this interface. The only way to set the normalization type is using ``edge_norm_type`` argument in :py:meth:`Eventstream.transition_graph()<retentioneering.eventstream.eventstream.Eventstream.transition_graph>` method as it has been shown :ref:`here <transition_graph_setting_the_weights>`.
+The Weights block contains selectors that choose weighting columns separately for nodes and edges. Unfortunately, so far you can not choose normalization type in this interface. The only way to set the normalization type is using ``edge_norm_type`` argument in :py:meth:`Eventstream.transition_graph()<retentioneering.eventstream.eventstream.Eventstream.transition_graph>` method as it has been shown :ref:`here <transition_graph_setting_the_weights>`. ``event_id`` weighting column refers to ``edge_norm_type=None``.
 
-:red:`Check actual name for norm_type`
+For the nodes only ``event_id`` and ``user_id`` weighting columns are available. The same columns are available for the edges, but additionally the columns that are passed as the ``edges_weight_col`` and ``custom_weight_cols`` arguments of the :py:meth:`Eventstream.transition_graph()<retentioneering.eventstream.eventstream.Eventstream.transition_graph>` are also available.
 
-:red:`Provide a screenshot`
+.. figure:: /_static/user_guides/transition_graph/control_panel_04_weights.png
+    :width: 250
+
+    Weighting columns dropdown menu in the Weights block.
 
 Nodes block
 ~~~~~~~~~~~
 
-The Nodes block enumerates all the unique events represented in the transition graph and allows to perform such operations as grouping, deleting, and renaming events.
+The Nodes block enumerates all the unique events represented in the transition graph and allows to perform such operations as grouping and renaming events.
+
+.. figure:: /_static/user_guides/transition_graph/control_panel_05_nodes.png
+    :width: 250
+
+    The Nodes block.
+
 
 Node item actions
 ^^^^^^^^^^^^^^^^^
 
-Each node list item contains the following 5 elements:
+Each node list item contains the following 4 elements:
 
 .. figure:: /_static/user_guides/transition_graph/control_panel_06_nodes_item.png
-    :width: 300
+    :width: 250
 
     The elements of the node list.
 
 1. Focus icon. If you click it, the graph changes its position in the canvas so the selected node is placed in the center.
 2. Event name. Double click it if you want to rename the node.
 3. The number of the event occurrences in the eventstream.
-4. This switcher removes the event from the eventstream. Recalculation is required.
-5. This switcher hides the node and all the edges connected to the node from the canvas. In contrast with the removing switcher, the node is literally hidden, so no recalculation is required.
-
-.. note::
-
-    By recalculation we mean that some additional calculations are required in the backend in order to display the graph state according to the selected options. To recalculate the values, click yellow |warning| icon and request the recalculation. Sometimes it is reasonable to do multiple modifications in the control panel, and then call the recalculation at once.
-
-.. note::
-
-    All the grouping, deleting, and renaming actions do not affect the initial eventstream due to eventstream immutability property. See for the details. :red:`Set a precise link to a section of the eventstream concept document`.
-
+4. This switcher hides the node and all the edges connected to the node from the canvas.
 
 Grouping events
 ^^^^^^^^^^^^^^^
@@ -299,6 +384,10 @@ The Control panel interface supports easy and intuitive event grouping. Suppose 
 2. Add group method. Click "+ Add group" button, ``untitled_group`` appears. Drag & drop all the nodes to be grouped to this group.
 
 Grouping node has a folder icon that triggers aggregation action. Once you click it, the grouped nodes are merged and the changes are displayed in the transition graph. Recalculation is required to update the node and edge weights.
+
+.. note::
+
+    By recalculation we mean that some additional calculations are required in the backend in order to display the graph state according to the selected options. To recalculate the values, click yellow |warning| icon and request the recalculation. Sometimes it is reasonable to do multiple modifications in the control panel, and then call the recalculation at once.
 
 .. |grouping_1| image:: /_static/user_guides/transition_graph/control_panel_07_nodes_grouping.png
 
@@ -314,12 +403,33 @@ Grouping node has a folder icon that triggers aggregation action. Once you click
 
 To rename a grouping node, double click its name and enter a new one. To ungroup the grouped nodes drag & drop the nodes out of the grouping node (or drop it right on the grouping node). As soon as the last event is out, the grouping node disappears.
 
+.. note::
+
+    All the grouping and renaming actions do not affect the initial eventstream due to eventstream immutability property.
+
+..
+    TODO: Set a precise link to a section of the eventstream concept document. Vladimir Kukushkin
+
+
 Thresholds block
 ~~~~~~~~~~~~~~~~
 
-The Thresholds block contains two sliders: one is associated with the nodes, another one with the edges. You can set up a threshold value either by moving a slider or by entering a value explicitly. Also, you can set up a weighting column for each slider independently of the weighting column defined in the Weights block (we have already mentioned this feature :ref:`here <transition_graph_thresholds>`). A single slider is shared between multiple weighting columns. As soon as you select a weighting column in the dropdown menu, the threshold slider connects to it. If you change another weighting column, the slider saves the previously entered threshold value and associate it with the previous weighting column.
+The Thresholds block contains two sliders: one is associated with the nodes, another one - with the edges. You can set up a threshold value either by moving a slider or by entering a value explicitly. Also, you can set up a weighting column for each slider independently of the weighting column defined in the Weights block (we have already mentioned this feature :ref:`here <transition_graph_thresholds>`). A single slider is shared between multiple weighting columns. As soon as you select a weighting column in the dropdown menu, the threshold slider attaches to it. If you change another weighting column, the slider saves the previously entered threshold value and associate it with the previous weighting column.
 
-:red:`TODO: insert actual code & html`.
+.. figure:: /_static/user_guides/transition_graph/control_panel_09_thresholds.png
+    :width: 250
+
+    The Thresholds block.
+
+Normalization type block
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Along with the Weights block, the Normalization type block carries the information on the nodes and edges weights. However, so far this block does not allow to change the normalization type.
+
+.. figure:: /_static/user_guides/transition_graph/control_panel_10_normalization_type.png
+    :width: 250
+
+    The Normalization type block.
 
 Export block
 ~~~~~~~~~~~~
@@ -328,62 +438,136 @@ Transition graph export supports two formats: HTML and JSON. HTML format is usef
 
 JSON format might useful when you need to get the nodes coordinates.
 
-:red:`TODO: mention layout_dump parameter as coon as it is ready`
+..
+    TODO: mention layout_dump parameter as coon as it is ready. Vladimir Kukushkin.
 
-.. _transition_graph_visual_settings:
+.. figure:: /_static/user_guides/transition_graph/control_panel_11_export.png
+    :width: 250
+
+    The Export block.
+
 
 Settings block
 ~~~~~~~~~~~~~~
 
-The following displaying options are available:
+The Control panel also contains a block with checkbox interface for the :ref:`already mentioned settings<transition_graph_settings>`.
 
-- Show weights. Hide/display the edge weight labels.
-- Show node names. Hide/display the node names.
-- Show all edges for targets. By default, the threshold filters hide the edges disregarding the node types. In case you have defined target nodes, you usually want to carefully analyze them. Hence, all the edges connected to these nodes are important. This displaying option allows to ignore the threshold filters and always display any edge connected to a target node.
-- Show nodes without links. Setting a threshold filter might remove all the edges connected to a node. Such isolated nodes might be considered as useless. This displaying option hides them in the canvas as well.
-- Show edge info on hover. By default, a tooltip with an edge info pops up when you mouse over the edge. It might be disturbing for large graphs, so this option suppresses the tooltips.
+.. figure:: /_static/user_guides/transition_graph/control_panel_12_settings.png
+    :width: 250
+
+    The Settings block.
 
 Graph properties
-~~~~~~~~~~~~~~~~
+----------------
 
 A summary with all the important chosen graph settings is available by clicking ⓘ icon in the bottom right corner.
 
-:red:`TODO: insert an actual screenshot`
+.. figure:: /_static/user_guides/transition_graph/graph_properties.png
+    :width: 350
+
+    Graph properties.
 
 .. _transition_graph_transition_matrix:
 
 Transition matrix
 -----------------
 
-:py:meth:`Transition matrix<retentioneering.eventstream.eventstream.Eventstream.transition_matrix>` is a sub-part of transition graph. It contains edge weights only so that the weight of, say, ``A → B`` transition is located at ``A`` row and ``B`` column of the transition matrix. The calculation logic is exactly the same as we have described :ref:`here for transition graphs <transition_graph_edge_weights>`, and the arguments are similar to :ref:`weights-related arguments <transition_graph_setting_the_weights>` of transition graph. Use ``norm_type`` instead of ``edges_norm_type`` ``weight_col`` instead of ``edges_weight_col``.
+:py:meth:`Transition matrix<retentioneering.eventstream.eventstream.Eventstream.transition_matrix>` is a sub-part of transition graph. It contains edge weights only so that the weight of, say, ``A → B`` transition is located at ``A`` row and ``B`` column of the transition matrix. The calculation logic is exactly the same as we have described :ref:`here for transition graphs <transition_graph_edge_weights>`, and the arguments are similar to :ref:`weights-related arguments <transition_graph_setting_the_weights>` of transition graph. Use ``norm_type`` instead of ``edges_norm_type`` and ``weight_col`` instead of ``edges_weight_col``.
 
 .. code-block:: python
 
     stream.transition_matrix(norm_type='node', weight_col='user_id')
 
-:red:`TODO: replace with the actual parameters.`
+.. raw:: html
+
+    <table class="dataframe">
+      <thead>
+        <tr style="text-align: right;">
+          <th></th>
+          <th>cart</th>
+          <th>catalog</th>
+          <th>...</th>
+          <th>payment_done</th>
+          <th>payment_cash</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>cart</th>
+          <td>0.000594</td>
+          <td>0.283848</td>
+          <td>...</td>
+          <td>0.000000</td>
+          <td>0.0</td>
+        </tr>
+        <tr>
+          <th>catalog</th>
+          <td>0.418458</td>
+          <td>0.633375</td>
+          <td>...</td>
+          <td>0.000000</td>
+          <td>0.0</td>
+        </tr>
+        <tr>
+          <th>...</th>
+          <td>...</td>
+          <td>...</td>
+          <td>...</td>
+          <td>...</td>
+          <td>...</td>
+        </tr>
+        <tr>
+          <th>payment_done</th>
+          <td>0.000000</td>
+          <td>0.000000</td>
+          <td>...</td>
+          <td>0.000000</td>
+          <td>0.0</td>
+        </tr>
+        <tr>
+          <th>payment_cash</th>
+          <td>0.000000</td>
+          <td>0.000000</td>
+          <td>...</td>
+          <td>0.708333</td>
+          <td>0.0</td>
+        </tr>
+      </tbody>
+    </table>
+
+For example, from this matrix we can see that the weight of the edge ``cart → catalog`` is ~0.28 with respect to given weights configuration: ``norm_type='node'`` and ``weight_col='user_id'``.
 
 Using a separate instance
 -------------------------
 
-By design, :py:meth:`Eventstream.transition_graph()<retentioneering.eventstream.eventstream.Eventstream.transition_graph>` is a shortcut method that uses :py:meth:`TransitionGraph<retentioneering.transition_graph.transition_graph.TransitionGraph>` class under the hood. This method creates an instance of TransitionGraph class and embeds it into the eventstream object. Eventually, ``Eventstream.transition_graph()`` returns exactly this instance.
+By design, :py:meth:`Eventstream.transition_graph()<retentioneering.eventstream.eventstream.Eventstream.transition_graph>` is a shortcut method that uses :py:meth:`TransitionGraph<retentioneering.tooling.transition_graph.transition_graph.TransitionGraph>` class under the hood. This method creates an instance of TransitionGraph class and embeds it into the eventstream object. Eventually, ``Eventstream.transition_graph()`` returns exactly this instance.
 
-Sometimes it is reasonable to work with a separate instance of TransitionGraph class. An alternative way to get the same visualization that ``Eventstream.transition_graph()`` produces is to call :py:meth:`TransitionGraph.plot_graph()<retentioneering.transition_graph.transition_graph.TransitionGraph.plot_graph>` method explicitly.
+Sometimes it is reasonable to work with a separate instance of TransitionGraph class. An alternative way to get the same visualization that ``Eventstream.transition_graph()`` produces is to call :py:meth:`TransitionGraph.plot_graph()<retentioneering.tooling.transition_graph.transition_graph.TransitionGraph.plot_graph>` method explicitly.
 
 Here is an example how you can manage it:
 
 .. code-block:: python
 
-    from retentioneering.transition_graph import TransitionGraph
+    from retentioneering.tooling.transition_graph import TransitionGraph
 
     tg = TransitionGraph(
         stream,
         edges_norm_type='node',
-        edges_weight_col='event_id',
-        edges_threshold={'event_id': 100, 'user_id': 10},
+        edges_weight_col='user_id',
+        edges_threshold={'user_id': 0.12},
         nodes_threshold={'event_id': 500},
         targets={'positive': ['payment_done', 'cart']}
     )
     tg.plot_graph()
 
-:red:`TODO: Provide an actual example and html`
+.. raw:: html
+
+    <div style="overflow:auto;">
+    <iframe
+        width="670"
+        height="630"
+        src="../_static/user_guides/transition_graph/separated_instance.html"
+        frameborder="0"
+        allowfullscreen
+    ></iframe>
+    </div>

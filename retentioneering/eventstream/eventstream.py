@@ -693,8 +693,7 @@ class Eventstream(
 
         self.__step_matrix.fit()
         if show_plot:
-            figure = self.__step_matrix.plot()
-            figure.show()
+            self.__step_matrix.plot()
         return self.__step_matrix
 
     def step_sankey(
@@ -749,7 +748,7 @@ class Eventstream(
         cut_bottom: int = 0,
         cut_right: int = 0,
         cut_diagonal: int = 0,
-        figsize: Tuple[float, float] = (10, 10),
+        figsize: Tuple[float, float] = (5, 5),
         show_plot: bool = True,
     ) -> Cohorts:
         """

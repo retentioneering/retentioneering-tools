@@ -66,12 +66,12 @@ Now, let us move to weighting column definition. In many cases it is reasonable 
 
 Having ``edges_weight_col`` defined allows you to calculate the weighs as the unique values represented in ``edges_weight_col`` column. This also relates to ``full`` and ``node`` normalization types. For example, ``edges_norm_type='full'`` and ``edges_weight_col='user_id'`` configuration means that we divide the number of the unique users who had a specific transition by the number of the unique users in the entire eventstream.
 
+.. _transition_graph_calculation_example:
+
 A simplified example
 ^^^^^^^^^^^^^^^^^^^^
 
 In order to check whether you understand these definitions correctly, let us consider a simplified example and look into the matter of the edge weights calculation. Suppose we have the following eventstream:
-
-.. _transition_graph_calculation_example:
 
 .. raw:: html
 
@@ -125,7 +125,6 @@ Besides edge weights, a transition graph also have node weights that control the
 
     Obviously, node weights do not support ``norm_type='node'`` since it involves edges by design. However, ``node_norm_type=None`` and ``norm_type='full'`` options might be calculated. They leverage the same calculation logic as we used for the edge weights calculation.
 
-
     We explain this logic using the same :ref:`example eventstream <transition_graph_calculation_example>`.
 
     So for ``norm_type=None`` option the node weights are simply the counters of the events over the entire eventstream (in case of ``weight_col='event_id'``) or the number of unique users or sessions (in case of ``weight_col='user_id'`` or ``weight_col='session_id'``) that had a specific event. For ``norm_type='full'`` we divide the non-normalized weights by either the overall number of events (17), or the number of unique users (3), or the number of unique sessions (6). See the calculations for each of the described cases in |node_weights_col_none|, |node_weights_col_user_id|, and |node_weights_col_session_id| below:
@@ -158,7 +157,23 @@ Besides edge weights, a transition graph also have node weights that control the
 Setting the weight options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Finally we demonstrate how to set weighting options for a graph. As it has been discussed, ``edges_norm_type`` argument accepts ``None``, ``full`` or ``node`` values. A weighting column is set by ``edges_weight_col`` argument.
+Finally, we demonstrate how to set the weighting options for a graph. As it has been discussed, ``edges_norm_type`` argument accepts ``None``, ``full`` or ``node`` values. A weighting column is set by ``edges_weight_col`` argument. Below is a table that summarizes the definitions of edge weights when these two arguments are used jointly.
+
+.. table:: The definitions of edge weights for different combinations of normalization type and weighting columns. ``A → B`` is considered as an edge example.
+    :widths: 21 20 25 35
+    :class: tight-table
+
+    +--------------------------------------+-------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+    | edge_norm_type → \ edge_weight_col ↓ | None                                                                          | full                                                                                                                        | node                                                                                                                                                                              |
+    +======================================+===============================================================================+=============================================================================================================================+===================================================================================================================================================================================+
+    | None or event_id                     | The total number of the ``A → B`` **transitions**.                            | The total number of the ``A → B`` transitions divided by the number of all the **transitions**.                             | The total number of the ``A → B`` transitions divided by the **total number of** ``A → *`` **transitions**.                                                                       |
+    +--------------------------------------+-------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+    | user_id                              | The total number of the **unique users** who had the ``A → B`` transition.    | The total number of the **unique users** who had the ``A → B`` transition divided by the number of all the **users**.       | The total number of the **unique users** who had the ``A → B`` transition divided by the number of the **unique users who had any** ``A → *`` **transition**.                     |
+    +--------------------------------------+-------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+    | session_id                           | The total number of the **unique sessions** who had the ``A → B`` transition. | The total number of the **unique sessions** who had the ``A → B`` transition divided by the number of all the **sessions**. | The total number of the **unique sessions** where the ``A → B`` transition occurred divided by the number of the **unique sessions where any** ``A → *`` **transition occurred**. |
+    +--------------------------------------+-------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Here is an example of the using these arguments:
 
 .. code-block:: python
 
@@ -222,7 +237,7 @@ This example is an extension of the previous one. We use the same normalization 
 Targets
 ~~~~~~~
 
-As we have already mentioned, the graph nodes are often of different importance. Sometimes we need not just to hide unimportant nodes, but to highlight important nodes instead. Transition graph identifies three types of the nodes: positive, negative, and sourcing. Three colors relate to these node types: green, ren and orange correspondingly. You can color the nodes with these colors by defining their types in the``targets`` parameter:
+As we have already mentioned, the graph nodes are often of different importance. Sometimes we need not just to hide unimportant nodes, but to highlight important nodes instead. Transition graph identifies three types of the nodes: positive, negative, and sourcing. Three colors relate to these node types: green, ren and orange correspondingly. You can color the nodes with these colors by defining their types in the ``targets`` parameter:
 
 .. code-block:: python
 

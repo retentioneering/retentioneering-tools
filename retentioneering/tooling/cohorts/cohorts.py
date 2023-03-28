@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Literal, Tuple
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -217,7 +218,7 @@ class Cohorts:
 
         self._cohort_matrix_result = user_retention
 
-    def heatmap(self, figsize: Tuple[float, float] = (10, 10)) -> sns.heatmap:
+    def heatmap(self, figsize: Tuple[float, float] = (5, 5)) -> matplotlib.axes.Axes:
         """
         Builds a heatmap based on the calculated cohort matrix values.
         Should be used after :py:func:`fit`.
@@ -229,20 +230,20 @@ class Cohorts:
 
         Returns
         -------
-        sns.heatmap
+        matplotlib.axes.Axes
         """
 
         df = self._cohort_matrix_result
 
-        figure = plt.figure(figsize=figsize)
-        sns.heatmap(df, annot=True, fmt=".1%", linewidths=1, linecolor="gray")
-        return figure
+        figure, ax = plt.subplots(figsize=figsize)
+        sns.heatmap(df, annot=True, fmt=".1%", linewidths=1, linecolor="gray", ax=ax)
+        return ax
 
     def lineplot(
         self,
         show_plot: Literal["cohorts", "average", "all"] = "cohorts",
-        figsize: Tuple[float, float] = (10, 10),
-    ) -> sns.lineplot:
+        figsize: Tuple[float, float] = (5, 5),
+    ) -> matplotlib.axes.Axes:
         """
         Create a chart representing each cohort dynamics over time.
         Should be used after :py:func:`fit`.
@@ -258,7 +259,7 @@ class Cohorts:
 
         Returns
         -------
-        sns.lineplot
+        matplotlib.axes.Axes
 
         """
         if show_plot not in ["cohorts", "average", "all"]:
@@ -269,21 +270,21 @@ class Cohorts:
         if show_plot in ["all", "average"] and "Average" not in df_matrix.index:  # type: ignore
             df_matrix.loc["Average"] = df_matrix.mean()  # type: ignore
         df_average = df_matrix[df_matrix.index == "Average"]  # type: ignore
-        figure = plt.figure(figsize=figsize)
+        figure, ax = plt.subplots(figsize=figsize)
         if show_plot == "all":
-            sns.lineplot(df_wo_average.T, lw=1.5)
-            sns.lineplot(df_average.T, lw=2.5, palette=["red"], marker="X", markersize=8, alpha=0.6)
+            sns.lineplot(df_wo_average.T, lw=1.5, ax=ax)
+            sns.lineplot(df_average.T, lw=2.5, palette=["red"], marker="X", markersize=8, alpha=0.6, ax=ax)
 
         if show_plot == "average":
-            sns.lineplot(df_average.T, lw=2.5, palette=["red"], marker="X", markersize=8, alpha=0.6)
+            sns.lineplot(df_average.T, lw=2.5, palette=["red"], marker="X", markersize=8, alpha=0.6, ax=ax)
 
         if show_plot == "cohorts":
-            sns.lineplot(df_wo_average.T, lw=1.5)
+            sns.lineplot(df_wo_average.T, lw=1.5, ax=ax)
 
-        plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
-        plt.xlabel("Period from the start of observation")
-        plt.ylabel("Share of active users")
-        return figure
+        ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
+        ax.set_xlabel("Period from the start of observation")
+        ax.set_ylabel("Share of active users")
+        return ax
 
     @property
     def values(self) -> pd.DataFrame:

@@ -9,15 +9,16 @@ class TrackingInfo:
     client_session_id: str
     event_custom_name: str
     event_name: str
-    # marketing_session_type_3_id: str # @FIXME: what is this?
+    params: dict[str, str]
+    # marketing_session_type_3_id: str # @FIXME: what is this? Vladimir Makhanov.
 
     event_date_local: str = ""
-    # event_date_moscow: str    # @TODO: implement
+    # event_date_moscow: str    # @TODO: implement. Vladimir Makhanov
     user_id: str = ""
     event_day_week: int = 0
     event_timestamp: int = 0
     event_timestamp_ms: int = 0
-    source: str = "rete_tools"
+    source: str = "rete_transition_graph"
     version: str = "3.0.0b2"
 
     def __post_init__(self) -> None:

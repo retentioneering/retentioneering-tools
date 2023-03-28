@@ -11,6 +11,7 @@ import pandas as pd
 from IPython.core.display import HTML, display
 
 from retentioneering.backend import ServerManager
+from retentioneering.backend.tracker import track
 from retentioneering.edgelist import Edgelist
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.nodelist import Nodelist
@@ -128,6 +129,9 @@ class TransitionGraph:
 
         return True
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_init"}
+    )
     def __init__(
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
@@ -618,6 +622,9 @@ class TransitionGraph:
     def _edges_norm_type_to_json_value(self, edges_norm_type: NormType) -> str:
         return "none" if edges_norm_type is None else str(edges_norm_type).lower()
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_plot_graph"}
+    )
     def plot_graph(
         self,
         targets: MutableMapping[str, str | None] | None = None,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from abc import ABCMeta, abstractmethod
 from dataclasses import asdict
 
@@ -24,8 +25,10 @@ class TrackerMainConnector(ConnectorProtocol):
         self.source = "rete_tools"
         self.session = requests.Session()
 
-    def _post(self, data: dict) -> dict:
-        return self.session.post(self.url, data=data).json()
+    def _post(self, data: dict) -> requests.Response:
+        req = requests.Request("POST", self.url, data=json.dumps(data))
+        prepped = req.prepare()
+        return self.session.send(prepped)
 
     def send_message(self, data: TrackingInfo) -> None:
         self._post(asdict(data))

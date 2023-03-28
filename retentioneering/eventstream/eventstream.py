@@ -8,6 +8,7 @@ from typing import Any, Callable, List, Literal, MutableMapping, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from retentioneering.backend.tracker import track
 from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
 from retentioneering.eventstream.types import (
@@ -1060,6 +1061,9 @@ class Eventstream(
         )
         return describer._describe()
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_helper"}
+    )
     def transition_graph(
         self,
         graph_settings: dict[str, Any] | None = None,
@@ -1097,13 +1101,13 @@ class Eventstream(
             edges_weight_col=edges_weight_col,
             custom_weight_cols=custom_weight_cols,
         )
-        self.__transition_graph.plot_graph(
+        self.__transition_graph.plot_graph(  # type: ignore
             targets=targets,
             width=width,
             height=height,
             edges_norm_type=edges_norm_type,
         )
-        return self.__transition_graph
+        return self.__transition_graph  # type: ignore
 
     def processing_graph(self) -> PGraph:
         if self.__p_graph is None:
@@ -1111,6 +1115,9 @@ class Eventstream(
         self.__p_graph.display()
         return self.__p_graph
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "transition_matrix", "event_custom_name": "transition_matrix_helper"}
+    )
     def transition_matrix(self, weight_col: str | None = None, norm_type: NormType = None) -> TransitionMatrix:
         """
         Display transition weights as a matrix for each unique pair of events.

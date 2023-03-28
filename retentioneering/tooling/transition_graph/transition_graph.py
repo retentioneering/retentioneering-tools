@@ -42,27 +42,14 @@ class TransitionGraph:
         Source eventstream.
 
     edges_norm_type: {"full", "node", None}, default None
-        Type of normalization that is used to calculate weights for graph nodes and edges. See
-        :ref:`Transition graph user guide <transition_graph_weights>` for the details.
+        Type of normalization that is used to calculate weights for graph edges.
+        Based on ``edges_weight_col`` parameter the weight values are calculated.
 
-    weights: dict, optional
-        Weighting columns for nodes and edges. See :ref:`Transition graph user guide <transition_graph_weights>`
-        for the details.
+        - If ``None``, normalization is not used, the absolute values are taken.
+        - If ``full``, normalization across the whole eventstream.
+        - If ``node``, normalization across each node (or outgoing transitions from each node).
 
-        - Possible keys: "nodes", "edges".
-        - Possible values: "event_id", user column (typically "user_id") or custom columns.
-
-        If ``None``, {'nodes': 'event_id', 'edges': 'event_id'} dict is used.
-
-    thresholds: dict, optional
-        Threshold values for hiding nodes and edges from the canvas.
-
-        - Possible keys: "nodes", "edges".
-        - Possible values: dict with weighting columns as dict keys and threshold values as dict values.
-
-        Example: {'nodes': {'event_id': 0.03}, 'edges': {'event_id': 0.03, user_id: 0.05}}
-
-        If ``None``, all the threshold values are set to 0.
+        See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
     targets: dict, optional
         Events mapping that defines which nodes and edges should be colored for better visualization.
@@ -70,25 +57,79 @@ class TransitionGraph:
         - Possible keys: "positive" (green), "negative" (red), "source" (orange).
         - Possible values: list of events of a given type.
 
+        See :ref:`Transition graph user guide<transition_graph_targets>` for the details.
+
+    nodes_threshold: dict, optional
+        Threshold mapping that defines the minimal weights for nodes displayed on the canvas.
+
+        - Keys should be of type str and contain the weight column names (the values from the
+          :py:class:`.EventstreamSchema`).
+        - Values of the dict are the thresholds for the nodes that will be displayed.
+          They should be of type int or float.
+
+        Support multiple weighting columns. In that case, logical OR will be applied.
+        Nodes with value less than at least one of thresholds will be hidden.
+        Example: {'event_id': 100, user_id: 50}.
+
+        See :ref:`Transition graph user guide<transition_graph_thresholds>` for the details.
+
+    edges_threshold: dict, optional
+        Threshold mapping that defines the minimal weights for edges displayed on the canvas.
+
+        - Keys should be of type str and contain the weight column names (the values from the
+          :py:class:`.EventstreamSchema`).
+        - Values of the dict are the thresholds for the edges that will be displayed.
+
+        Support multiple weighting columns. In that case, logical OR will be applied.
+        Edges with value less than at least one of thresholds will be hidden.
+        Example: {'event_id': 100, user_id: 50}.
+
+        See :ref:`Transition graph user guide<transition_graph_thresholds>` for the details.
+
+    nodes_weight_col: str, optional
+        A column name from the :py:class:`.EventstreamSchema` which values will control the final
+        node weight values and displayed nodes' diameter as well.
+        If ``None``, the number of events are counted.
+        See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
+
+    edges_weight_col: str, optional
+        A column name from the :py:class:`.EventstreamSchema` which values will control the final node weight values
+        and displayed nodes' diameter as well.
+        If ``None``, the number of transitions are counted.
+        See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
+
+    custom_weight_cols: list of str, optional
+
+
     graph_settings: dict, optional
         Visual boolean settings related to :ref:`Settings block <transition_graph_settings>`
         in the control of transition graph interface.
 
         Possible keys:
+
         - show_weights,
         - show_percents,
         - show_nodes_names,
         - show_all_edges_for_targets,
         - show_nodes_without_links.
 
+        To get the definition of those visual parameters see :ref:`Settings block <transition_graph_settings>`
+        in the control of transition graph interface.
+
     See Also
     --------
     .Eventstream.transition_graph : Call TransitionGraph tool as an eventstream method.
+    .TransitionMatrix : Matrix representation of transition graph.
+    .EventstreamSchema : Schema of eventstream columns, that could be used as weights.
 
     Notes
     -----
-    See :doc:`transition graph user guide</user_guides/transition_graph>` for the details.
+    1. If all the edges connected to a node are hidden, the node becomes hidden as well.
+       In order to avoid it - use ``show_nodes_without_links`` parameter in code or in the interface.
+    2. The thresholds may use their own weighting columns both for nodes and for edges independently
+       of weighting columns defined in ``edges_weight_col`` and ``nodes_weight_col`` arguments.
 
+    See :doc:`transition graph user guide</user_guides/transition_graph>` for the details.
     """
 
     _weights: MutableMapping[str, str] | None = None
@@ -131,7 +172,6 @@ class TransitionGraph:
     def __init__(
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
-        graph_settings: GraphSettings | dict[str, Any] | None = None,
         edges_norm_type: NormType = None,
         targets: MutableMapping[str, str | None] | None = None,
         nodes_threshold: Threshold | None = None,
@@ -139,6 +179,7 @@ class TransitionGraph:
         nodes_weight_col: str | None = None,
         edges_weight_col: str | None = None,
         custom_weight_cols: list[str] | None = None,
+        graph_settings: GraphSettings | dict[str, Any] | None = None,
     ) -> None:
         from retentioneering.eventstream.eventstream import Eventstream
 
@@ -622,14 +663,14 @@ class TransitionGraph:
         self,
         targets: MutableMapping[str, str | None] | None = None,
         edges_norm_type: NormType | None = None,
-        width: int = 960,
-        height: int = 900,
         weight_template: str | None = None,
         show_weights: bool | None = None,
         show_percents: bool | None = None,
         show_nodes_names: bool | None = None,
         show_all_edges_for_targets: bool | None = None,
         show_nodes_without_links: bool | None = None,
+        width: int = 960,
+        height: int = 900,
     ) -> None:
         """
         Create interactive transition graph visualization with callback to sourcing eventstream.
@@ -637,44 +678,20 @@ class TransitionGraph:
         Parameters
         ----------
         edges_norm_type: {"full", "node", None}, default None
-            Type of normalization that is used to calculate weights for graph nodes and edges. See
-            :ref:`Transition graph user guide <transition_graph_weights>` for the details.
-
-        weights: dict, optional
-            Weighting columns for nodes and edges. See :ref:`Transition graph user guide <transition_graph_weights>`
-            for the details.
-
-            - Possible keys: "nodes", "edges".
-            - Possible values: "event_id", user column (typically "user_id") or custom columns.
-
-            If ``None``, {'nodes': 'event_id', 'edges': 'event_id'} dict is used.
-
-        thresholds: dict, optional
-            Threshold values for hiding nodes and edges from the canvas.
-
-            - Possible keys: "nodes", "edges".
-            - Possible values: dict with weighting columns as dict keys and threshold values as dict values.
-
-            Example: {'nodes': {'event_id': 0.03}, 'edges': {'event_id': 0.03, user_id: 0.05}}
-
-            If ``None``, all the threshold values are set to 0.
-
+            See .:py:class:`.TransitionGraph`.
         targets: dict, optional
-            Events mapping that defines which nodes and edges should be colored for better visualization.
-
-            - Possible keys: "positive" (green), "negative" (red), "source" (orange).
-            - Possible values: list of events of a given type.
-
-        width : int, default 960
-            Width of plot in pixels.
-        height : int, default 960
-            Height of plot in pixels.
-        weight_template : str, optional
+            See .:py:class:`.TransitionGraph`.
+        weight_template: str, optional
+            TODO: find out if we need this parameter.
         show_weights : bool, optional
         show_percents : bool, optional
         show_nodes_names : bool, optional
         show_all_edges_for_targets : bool, optional
         show_nodes_without_links : bool, optional
+        width : int, default 960
+            Width of plot in pixels.
+        height : int, default 960
+            Height of plot in pixels.
 
         Returns
         -------

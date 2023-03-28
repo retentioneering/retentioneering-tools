@@ -12,7 +12,6 @@ from retentioneering.tooling.typing.transition_graph import NormType
 
 class TransitionMatrix:
     """
-
     A Class for transition matrix calculation.
 
     Parameters
@@ -21,10 +20,9 @@ class TransitionMatrix:
 
     See Also
     --------
-
     .Eventstream.transition_matrix : Call TransitionMatrix tool as an eventstream method.
-    .TransitionGraph
-    .Eventstream.transition_graph
+    .TransitionGraph :
+    .Eventstream.transition_graph :
 
     Notes
     -----

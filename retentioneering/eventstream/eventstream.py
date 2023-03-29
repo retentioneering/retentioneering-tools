@@ -1088,19 +1088,17 @@ class Eventstream(
         self.__transition_graph = TransitionGraph(
             eventstream=self,
             graph_settings=graph_settings,
-            edges_norm_type=edges_norm_type,
-            targets=targets,
-            nodes_threshold=nodes_threshold,
-            edges_threshold=edges_threshold,
-            nodes_weight_col=nodes_weight_col,
-            edges_weight_col=edges_weight_col,
-            custom_weight_cols=custom_weight_cols,
         )
         self.__transition_graph.plot_graph(
             targets=targets,
+            edges_norm_type=edges_norm_type,
+            edges_weight_col=edges_weight_col,
+            nodes_threshold=nodes_threshold,
+            edges_threshold=edges_threshold,
+            nodes_weight_col=nodes_weight_col,
+            custom_weight_cols=custom_weight_cols,
             width=width,
             height=height,
-            edges_norm_type=edges_norm_type,
         )
         return self.__transition_graph
 

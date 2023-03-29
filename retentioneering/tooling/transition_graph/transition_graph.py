@@ -132,30 +132,12 @@ class TransitionGraph:
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
         graph_settings: GraphSettings | dict[str, Any] | None = None,
-        edges_norm_type: NormType = None,
-        targets: MutableMapping[str, str | None] | None = None,
-        nodes_threshold: Threshold | None = None,
-        edges_threshold: Threshold | None = None,
-        nodes_weight_col: str | None = None,
-        edges_weight_col: str | None = None,
-        custom_weight_cols: list[str] | None = None,
     ) -> None:
         from retentioneering.eventstream.eventstream import Eventstream
 
         if graph_settings is None:
             graph_settings = {}  # type: ignore
-        if nodes_threshold is None:
-            nodes_threshold = {"user_id": 0.0, "event_id": 0.0}
-        self.nodes_thresholds = nodes_threshold
 
-        if edges_threshold is None:
-            edges_threshold = {"user_id": 0.0, "event_id": 0.0}
-        self.edges_thresholds = edges_threshold
-
-        self.nodelist_default_col = eventstream.schema.event_id
-        self.edgelist_default_col = eventstream.schema.event_id
-
-        self.targets = targets if targets else {"positive": None, "negative": None, "source": None}
         sm = ServerManager()
         self.env = sm.check_env()
         self.server = sm.create_server()
@@ -170,31 +152,11 @@ class TransitionGraph:
         self.event_col = self.eventstream.schema.event_name
         self.event_time_col = self.eventstream.schema.event_timestamp
         self.user_col = self.eventstream.schema.user_id
-        self.id_col = self.eventstream.schema.event_id
-        self.weight_cols = self._define_weight_cols(custom_weight_cols)
-
-        self.nodes_weight_col = nodes_weight_col if nodes_weight_col else eventstream.schema.event_id
-        self.edges_weight_col = edges_weight_col if edges_weight_col else eventstream.schema.event_id
 
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
         self.layout: pd.DataFrame | None = None
         self.graph_settings = graph_settings
-
-        self.edges_norm_type: NormType | None = edges_norm_type
-
-        self.nodelist: Nodelist = Nodelist(
-            weight_cols=self.weight_cols,
-            time_col=self.event_time_col,
-            event_col=self.event_col,
-        )
-
-        self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
-        self.edgelist: Edgelist = Edgelist(eventstream=self.eventstream)
-        self.edgelist.calculate_edgelist(
-            weight_cols=self.weight_cols,
-            norm_type=self.edges_norm_type,
-        )
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
 
@@ -620,11 +582,15 @@ class TransitionGraph:
 
     def plot_graph(
         self,
-        targets: MutableMapping[str, str | None] | None = None,
         edges_norm_type: NormType | None = None,
+        edges_weight_col: str | None = None,
+        edges_threshold: Threshold | None = None,
+        nodes_weight_col: str | None = None,
+        nodes_threshold: Threshold | None = None,
+        targets: MutableMapping[str, str | None] | None = None,
+        custom_weight_cols: list[str] | None = None,
         width: int = 960,
         height: int = 900,
-        weight_template: str | None = None,
         show_weights: bool | None = None,
         show_percents: bool | None = None,
         show_nodes_names: bool | None = None,
@@ -669,7 +635,6 @@ class TransitionGraph:
             Width of plot in pixels.
         height : int, default 960
             Height of plot in pixels.
-        weight_template : str, optional
         show_weights : bool, optional
         show_percents : bool, optional
         show_nodes_names : bool, optional
@@ -686,16 +651,14 @@ class TransitionGraph:
         :ref:`Settings block <transition_graph_settings>` in the control of transition graph interface.
 
         """
-        if targets:
-            self.targets = targets
-        self.edges_norm_type = edges_norm_type
-
-        settings = self._apply_settings(
-            show_weights=show_weights,
-            show_percents=show_percents,
-            show_nodes_names=show_nodes_names,
-            show_all_edges_for_targets=show_all_edges_for_targets,
-            show_nodes_without_links=show_nodes_without_links,
+        self.__prepare_graph_for_plot(
+            edges_weight_col=edges_weight_col,
+            edges_threshold=edges_threshold,
+            edges_norm_type=edges_norm_type,
+            nodes_weight_col=nodes_weight_col,
+            nodes_threshold=nodes_threshold,
+            targets=targets,
+            custom_weight_cols=custom_weight_cols,
         )
 
         norm_nodes_threshold = (
@@ -705,9 +668,16 @@ class TransitionGraph:
             self.edges_thresholds if self.edges_thresholds else self._get_norm_link_threshold(self.edges_thresholds)
         )
 
-        self.edgelist.calculate_edgelist(weight_cols=self.weight_cols, norm_type=self.edges_norm_type)
         node_params = self._make_node_params(targets)
         cols = self.__get_nodelist_cols()
+
+        settings = self._apply_settings(
+            show_weights=show_weights,
+            show_percents=show_percents,
+            show_nodes_names=show_nodes_names,
+            show_all_edges_for_targets=show_all_edges_for_targets,
+            show_nodes_without_links=show_nodes_without_links,
+        )
 
         nodes, links = self._make_template_data(
             node_params=node_params,
@@ -742,7 +712,7 @@ class TransitionGraph:
                 show_nodes_without_links=self._get_option("show_nodes_without_links", settings),
                 nodes_threshold=self._to_js_val(norm_nodes_threshold),
                 links_threshold=self._to_js_val(norm_links_threshold),
-                weight_template=weight_template if weight_template is not None else "undefined",
+                weight_template="undefined",
             )
         )
 
@@ -807,6 +777,46 @@ class TransitionGraph:
             )
         )
         display(HTML(html))
+
+    def __prepare_graph_for_plot(
+        self,
+        edges_weight_col: str | None = None,
+        edges_threshold: Threshold | None = None,
+        nodes_weight_col: str | None = None,
+        nodes_threshold: Threshold | None = None,
+        edges_norm_type: NormType | None = None,
+        targets: MutableMapping[str, str | None] | None = None,
+        custom_weight_cols: list[str] | None = None,
+    ) -> None:
+        if targets:
+            self.targets = targets
+        self.edges_norm_type = edges_norm_type
+        if nodes_threshold is None:
+            nodes_threshold = {"user_id": 0.0, "event_id": 0.0}
+        self.nodes_thresholds = nodes_threshold
+        if edges_threshold is None:
+            edges_threshold = {"user_id": 0.0, "event_id": 0.0}
+        self.edges_thresholds = edges_threshold
+        self.nodelist_default_col = self.eventstream.schema.event_id
+        self.edgelist_default_col = self.eventstream.schema.event_id
+        self.targets = targets if targets else {"positive": None, "negative": None, "source": None}
+        self.weight_cols = self._define_weight_cols(custom_weight_cols)
+        self.nodes_weight_col = nodes_weight_col if nodes_weight_col else self.eventstream.schema.event_id
+        self.edges_weight_col = edges_weight_col if edges_weight_col else self.eventstream.schema.event_id
+
+        self.edges_weight_col = self.eventstream.schema.event_id
+        self.edges_norm_type: NormType | None = edges_norm_type
+        self.nodelist: Nodelist = Nodelist(
+            weight_cols=self.weight_cols,
+            time_col=self.event_time_col,
+            event_col=self.event_col,
+        )
+        self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
+        self.edgelist: Edgelist = Edgelist(eventstream=self.eventstream)
+        self.edgelist.calculate_edgelist(
+            weight_cols=self.weight_cols,
+            norm_type=self.edges_norm_type,
+        )
 
     def _get_option(self, name: str, settings: dict[str, Any]) -> str:
         if name in settings:

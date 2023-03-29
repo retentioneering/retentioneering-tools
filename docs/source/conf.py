@@ -19,9 +19,12 @@ copyright = f'2018-{actual_year}, "Data Driven Lab" LLC'
 author = '"Data Driven Lab" LLC'
 
 # The short X.Y version
-version = ""
+version = "3.1b"
+# TODO: replace "3.0.0"  with method __version__. dpanina
+
 # The full version, including alpha/beta/rc tags
-release = "3.0.0"
+release = version
+
 
 # -- General configuration ---------------------------------------------------
 
@@ -61,6 +64,13 @@ html_theme_options = {
     "github_url": "https://github.com/retentioneering/retentioneering-tools-new-arch",
     "use_edit_page_button": True,
     "header_links_before_dropdown": 6,
+    # "check_switcher": False,
+    "navbar_end": ["version-switcher", "theme-switcher", "navbar-icon-links"],
+    "switcher": {
+        "json_url": "https://doc.retentioneering.com/versions.json",
+        # "json_url": "_static/versions.json",
+        "version_match": version,
+    },
 }
 
 autodoc_typehints = "none"

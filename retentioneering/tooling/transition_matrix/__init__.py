@@ -1,1 +1,1 @@
-from .transition_matrix import TransitionMatrix
+from ._transition_matrix import TransitionMatrix

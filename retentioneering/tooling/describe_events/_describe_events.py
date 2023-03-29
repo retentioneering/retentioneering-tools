@@ -5,7 +5,7 @@ import pandas as pd
 from retentioneering.eventstream.types import EventstreamType
 
 
-class DescribeEvents:
+class _DescribeEvents:
     TIME_ROUND_UNIT = "s"
     STATS_ORDER = ["mean", "std", "median", "min", "max"]
     UNIQUE_SESS = ("basic_statistics", "unique_sessions")
@@ -54,14 +54,14 @@ class DescribeEvents:
         df_agg_event.columns = [self.event_col, self.user_col, first_time, first_event]  # type: ignore
         df_agg_event[first_time] = df_agg_event[first_time].dt.total_seconds()
         df_agg_event = df_agg_event.groupby([self.event_col])[[first_time, first_event]].agg(
-            DescribeEvents.STATS_ORDER  # type: ignore
+            _DescribeEvents.STATS_ORDER  # type: ignore
         )
         df_agg_event[(first_event, "mean")] = df_agg_event[(first_event, "mean")].round(2)
         df_agg_event[(first_event, "std")] = df_agg_event[(first_event, "std")].round(2)
 
-        for stat in DescribeEvents.STATS_ORDER:
+        for stat in _DescribeEvents.STATS_ORDER:
             mult_ind = (first_time, stat)
-            df_agg_event[mult_ind] = pd.to_timedelta(df_agg_event[mult_ind], unit="s").round(DescribeEvents.TIME_ROUND_UNIT)  # type: ignore
+            df_agg_event[mult_ind] = pd.to_timedelta(df_agg_event[mult_ind], unit="s").round(_DescribeEvents.TIME_ROUND_UNIT)  # type: ignore
 
         return df_agg_event
 
@@ -78,14 +78,14 @@ class DescribeEvents:
         basic_info.columns = pd.MultiIndex.from_product([["basic_statistics"], basic_info.columns])
 
         if self.has_session_col:
-            basic_info[DescribeEvents.UNIQUE_SESS] = self.df.groupby("event")[self.session_col].agg("nunique")
-            basic_info[DescribeEvents.SHARE_SESS] = (
-                basic_info[DescribeEvents.UNIQUE_SESS] / self.total_sessions_base
+            basic_info[_DescribeEvents.UNIQUE_SESS] = self.df.groupby("event")[self.session_col].agg("nunique")
+            basic_info[_DescribeEvents.SHARE_SESS] = (
+                basic_info[_DescribeEvents.UNIQUE_SESS] / self.total_sessions_base
             ).round(2)
 
         return basic_info
 
-    def _describe(self) -> pd.DataFrame:
+    def _values(self) -> pd.DataFrame:
         df = self._agg_min_time(df=self.df, agg_col=self.user_col, prefix="user")
 
         if self.has_session_col:
@@ -103,5 +103,5 @@ class DescribeEvents:
 
         res = basic_info.merge(df_agg_event, left_index=True, right_index=True)
         if self.has_session_col:
-            res.insert(2, DescribeEvents.UNIQUE_SESS, res.pop(DescribeEvents.UNIQUE_SESS))  # type: ignore
+            res.insert(2, _DescribeEvents.UNIQUE_SESS, res.pop(_DescribeEvents.UNIQUE_SESS))  # type: ignore
         return res

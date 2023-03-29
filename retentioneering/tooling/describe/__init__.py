@@ -1,1 +1,1 @@
-from .describe import Describe
+from ._describe import _Describe

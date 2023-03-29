@@ -7,9 +7,9 @@ from numpy import timedelta64
 from retentioneering.eventstream.types import EventstreamType
 
 
-class Describe:
-    OUT_COLS = ["value"]
-    INDEX_NAMES = ["category", "metric"]
+class _Describe:
+    OUT_COLS = ("value",)
+    INDEX_NAMES = ("category", "metric")
     TIME_ROUND_UNIT = "s"
 
     def __init__(
@@ -39,11 +39,11 @@ class Describe:
     def _calc_statistics(self, agg_col: str) -> list[np.timedelta64 | int | float]:
         df_agg = self.df.groupby(agg_col).agg({self.time_col: ["min", "max"], self.event_col: ["count"]}).reset_index()
         time_diff_user = df_agg[(self.time_col, "max")] - df_agg[(self.time_col, "min")]
-        mean_time_agg_col = time_diff_user.mean().round(Describe.TIME_ROUND_UNIT)  # type: ignore
-        median_time_agg_col = time_diff_user.median().round(Describe.TIME_ROUND_UNIT)  # type: ignore
-        std_time_agg_col = time_diff_user.std().round(Describe.TIME_ROUND_UNIT)  # type: ignore
-        min_length_time_agg_col = time_diff_user.min().round(Describe.TIME_ROUND_UNIT)  # type: ignore
-        max_length_time_agg_col = time_diff_user.max().round(Describe.TIME_ROUND_UNIT)  # type: ignore
+        mean_time_agg_col = time_diff_user.mean().round(_Describe.TIME_ROUND_UNIT)  # type: ignore
+        median_time_agg_col = time_diff_user.median().round(_Describe.TIME_ROUND_UNIT)  # type: ignore
+        std_time_agg_col = time_diff_user.std().round(_Describe.TIME_ROUND_UNIT)  # type: ignore
+        min_length_time_agg_col = time_diff_user.min().round(_Describe.TIME_ROUND_UNIT)  # type: ignore
+        max_length_time_agg_col = time_diff_user.max().round(_Describe.TIME_ROUND_UNIT)  # type: ignore
 
         event_count_agg_col = df_agg[(self.event_col, "count")]
         mean_event_agg_col = round(event_count_agg_col.mean(), 2)  # type: ignore
@@ -70,23 +70,23 @@ class Describe:
         self, values_overall: list[timedelta64 | int | float], values_time_events: list[timedelta64 | int | float]
     ) -> pd.DataFrame:
         overall_index = pd.MultiIndex.from_product(self.overall_stats, names=self.INDEX_NAMES)
-        time_events_index = pd.MultiIndex.from_product(self.time_events_stats, names=Describe.INDEX_NAMES)
+        time_events_index = pd.MultiIndex.from_product(self.time_events_stats, names=_Describe.INDEX_NAMES)
 
-        df_overall = pd.DataFrame(data=values_overall, index=overall_index, columns=Describe.OUT_COLS)
-        df_time_events = pd.DataFrame(data=values_time_events, index=time_events_index, columns=Describe.OUT_COLS)
+        df_overall = pd.DataFrame(data=values_overall, index=overall_index, columns=_Describe.OUT_COLS)
+        df_time_events = pd.DataFrame(data=values_time_events, index=time_events_index, columns=_Describe.OUT_COLS)
 
         return pd.concat([df_overall, df_time_events])
 
-    def _describe(self) -> pd.DataFrame:
+    def _values(self) -> pd.DataFrame:
         max_time = self.df[self.time_col].max()
         min_time = self.df[self.time_col].min()
 
         values_overall = [
             self.df[self.user_col].nunique(),
             self.df[self.event_col].nunique(),
-            min_time.round(Describe.TIME_ROUND_UNIT),
-            max_time.round(Describe.TIME_ROUND_UNIT),
-            (max_time - min_time).round(Describe.TIME_ROUND_UNIT),
+            min_time.round(_Describe.TIME_ROUND_UNIT),
+            max_time.round(_Describe.TIME_ROUND_UNIT),
+            (max_time - min_time).round(_Describe.TIME_ROUND_UNIT),
         ]
 
         values_time_events = self._calc_statistics(self.user_col)

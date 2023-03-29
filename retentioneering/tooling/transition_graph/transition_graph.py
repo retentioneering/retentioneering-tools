@@ -87,19 +87,32 @@ class TransitionGraph:
         See :ref:`Transition graph user guide<transition_graph_thresholds>` for the details.
 
     nodes_weight_col: str, optional
-        A column name from the :py:class:`.EventstreamSchema` which values will control the final
-        node weight values and displayed nodes' diameter as well.
-        If ``None``, the number of events are counted.
+        A column name from the :py:class:`.EventstreamSchema` which values control the final
+        nodes' weights and displayed diameter as well.
+
+        For each node is calculated:
+        - If ``None`` or ``event_id`` - the number of events.
+        - If ``user_id`` - the number of unique users.
+        - If ``session_id`` - the number of unique sessions.
+        - If ``custom_col`` - the number of unique values in selected column.
+
         See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
     edges_weight_col: str, optional
-        A column name from the :py:class:`.EventstreamSchema` which values will control the final node weight values
-        and displayed nodes' diameter as well.
-        If ``None``, the number of transitions are counted.
+        A column name from the :py:class:`.EventstreamSchema` which values will control the final
+        edges' weights and displayed width as well.
+
+        For each edge is calculated:
+        - If ``None`` or ``event_id`` - the number of transitions.
+        - If ``user_id`` - the number of unique users.
+        - If ``session_id`` - the number of unique sessions.
+        - If ``custom_col`` - the number of unique values in selected column.
+
         See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
     custom_weight_cols: list of str, optional
-
+        Custom columns from the :py:class:`.EventstreamSchema` that will be needed in ``edges_weight_col``
+        and ``nodes_weight_col`` parameters. If ``session_col=session_id`` it is added by default to this list.
 
     graph_settings: dict, optional
         Visual boolean settings related to :ref:`Settings block <transition_graph_settings>`
@@ -119,7 +132,7 @@ class TransitionGraph:
     See Also
     --------
     .Eventstream.transition_graph : Call TransitionGraph tool as an eventstream method.
-    .TransitionMatrix : Matrix representation of transition graph.
+    .Eventstream.transition_matrix : Matrix representation of transition graph.
     .EventstreamSchema : Schema of eventstream columns, that could be used as weights.
 
     Notes
@@ -681,8 +694,6 @@ class TransitionGraph:
             See .:py:class:`.TransitionGraph`.
         targets: dict, optional
             See .:py:class:`.TransitionGraph`.
-        weight_template: str, optional
-            TODO: find out if we need this parameter.
         show_weights : bool, optional
         show_percents : bool, optional
         show_nodes_names : bool, optional

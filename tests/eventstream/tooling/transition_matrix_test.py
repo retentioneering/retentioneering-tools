@@ -30,9 +30,6 @@ class TestEventstreamTransitionMatrix:
     def test_eventstream_transition_matrix__norm_full(
         self, test_stream: EventstreamType, full_corr: pd.DataFrame
     ) -> None:
-        # tm = _TransitionMatrix(eventstream=test_stream)
-        # result = tm._values(norm_type="full")
-
         result = test_stream.transition_matrix(norm_type="full")
         correct = full_corr
 
@@ -41,9 +38,6 @@ class TestEventstreamTransitionMatrix:
     def test_eventstream_transition_matrix__norm_node(
         self, test_stream: EventstreamType, node_corr: pd.DataFrame
     ) -> None:
-        # tm = _TransitionMatrix(eventstream=test_stream)
-        # result = tm._values(norm_type="node")
-
         result = test_stream.transition_matrix(norm_type="node")
         correct = node_corr
 
@@ -52,9 +46,6 @@ class TestEventstreamTransitionMatrix:
     def test_eventstream_transition_matrix__session_simple(
         self, test_stream: EventstreamType, session_simple_corr: pd.DataFrame
     ) -> None:
-        # tm = _TransitionMatrix(eventstream=test_stream)
-        # result = tm._values(weight_col="session_id")
-
         result = test_stream.transition_matrix(weight_col="session_id")
         correct = session_simple_corr
 
@@ -63,9 +54,6 @@ class TestEventstreamTransitionMatrix:
     def test_eventstream_transition_matrix__session_full(
         self, test_stream: EventstreamType, session_full_corr: pd.DataFrame
     ) -> None:
-        # tm = _TransitionMatrix(eventstream=test_stream)
-        # result = tm._values(weight_col="session_id", norm_type="full")
-
         result = test_stream.transition_matrix(weight_col="session_id", norm_type="full")
         correct = session_full_corr
 
@@ -74,9 +62,6 @@ class TestEventstreamTransitionMatrix:
     def test_eventstream_transition_matrix__session_node(
         self, test_stream: EventstreamType, session_node_corr: pd.DataFrame
     ) -> None:
-        # tm = _TransitionMatrix(eventstream=test_stream)
-        # result = tm._values(weight_col="session_id", norm_type="node")
-
         result = test_stream.transition_matrix(weight_col="session_id", norm_type="node")
         correct = session_node_corr
 
@@ -85,9 +70,6 @@ class TestEventstreamTransitionMatrix:
     def test_eventstream_transition_matrix__user_simple(
         self, test_stream: EventstreamType, user_simple_corr: pd.DataFrame
     ) -> None:
-        # tm = _TransitionMatrix(eventstream=test_stream)
-        # result = tm._values(weight_col="user_id", norm_type=None)
-
         result = test_stream.transition_matrix(weight_col="user_id", norm_type=None)
         correct = user_simple_corr
 
@@ -96,9 +78,6 @@ class TestEventstreamTransitionMatrix:
     def test_eventstream_transition_matrix__users_full(
         self, test_stream: EventstreamType, user_full_corr: pd.DataFrame
     ) -> None:
-        # tm = _TransitionMatrix(eventstream=test_stream)
-        # result = tm._values(weight_col="user_id", norm_type="full")
-
         result = test_stream.transition_matrix(weight_col="user_id", norm_type="full")
         correct = user_full_corr
 
@@ -107,9 +86,6 @@ class TestEventstreamTransitionMatrix:
     def test_eventstream_transition_matrix__users_node(
         self, test_stream: EventstreamType, user_node_corr: pd.DataFrame
     ) -> None:
-        # tm = _TransitionMatrix(eventstream=test_stream)
-        # result = tm._values(weight_col="user_id", norm_type="node")
-
         result = test_stream.transition_matrix(weight_col="user_id", norm_type="node")
         correct = user_node_corr
 

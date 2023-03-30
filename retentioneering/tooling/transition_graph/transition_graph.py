@@ -111,8 +111,9 @@ class TransitionGraph:
         See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
     custom_weight_cols: list of str, optional
-        Custom columns from the :py:class:`.EventstreamSchema` that will be needed in ``edges_weight_col``
-        and ``nodes_weight_col`` parameters. If ``session_col=session_id`` it is added by default to this list.
+        Custom columns from the :py:class:`.EventstreamSchema` that can be selected in ``edges_weight_col``
+        and ``nodes_weight_col`` parameters. If ``session_col=session_id`` exists,
+        it is added by default to this list.
 
     graph_settings: dict, optional
         Visual boolean settings related to :ref:`Settings block <transition_graph_settings>`

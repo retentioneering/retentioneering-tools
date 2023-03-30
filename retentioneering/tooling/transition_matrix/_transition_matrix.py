@@ -9,7 +9,7 @@ from retentioneering.nodelist import Nodelist
 from retentioneering.tooling.typing.transition_graph import NormType
 
 
-class TransitionMatrix:
+class _TransitionMatrix:
     __edgelist: Edgelist
 
     def __init__(self, eventstream: EventstreamType) -> None:

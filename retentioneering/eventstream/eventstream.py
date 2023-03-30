@@ -30,16 +30,12 @@ from retentioneering.tooling import (
     StepSankey,
     TimedeltaHist,
     TransitionGraph,
-    TransitionMatrix,
     UserLifetimeHist,
-    _Describe,
-    _DescribeEvents,
 )
 from retentioneering.tooling.constants import BINS_ESTIMATORS
-
-# from retentioneering.tooling.describe import _Describe
-# from retentioneering.tooling.describe_events import _DescribeEvents
-# from retentioneering.tooling.transition_matrix import _TransitionMatrix
+from retentioneering.tooling.describe import _Describe
+from retentioneering.tooling.describe_events import _DescribeEvents
+from retentioneering.tooling.transition_matrix import _TransitionMatrix
 from retentioneering.tooling.typing.transition_graph import NormType, Threshold
 from retentioneering.utils import get_merged_col
 from retentioneering.utils.list import find_index
@@ -170,7 +166,6 @@ class Eventstream(
     __stattests: StatTests | None = None
     __transition_graph: TransitionGraph | None = None
     __p_graph: PGraph | None = None
-    # __transition_matrix: _TransitionMatrix | None = None
     __timedelta_hist: TimedeltaHist | None = None
     __user_lifetime_hist: UserLifetimeHist | None = None
     __event_timestamp_hist: EventTimestampHist | None = None
@@ -1136,10 +1131,5 @@ class Eventstream(
             Transition matrix. ``(i, j)``-th matrix value relates to the weight of i → j transition.
         """
 
-        # if self.__transition_matrix is None:
-        #     self.__transition_matrix = _TransitionMatrix(
-        #         eventstream=self,
-        #     )
-        matrix = TransitionMatrix(eventstream=self)
-        # return self.__transition_matrix._values(weight_col=weight_col, norm_type=norm_type)
+        matrix = _TransitionMatrix(eventstream=self)
         return matrix._values(weight_col=weight_col, norm_type=norm_type)

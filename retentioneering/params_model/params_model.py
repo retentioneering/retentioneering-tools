@@ -90,6 +90,8 @@ class ParamsModel(BaseModel):
                     "title": field_name.title(),
                     "type": "callable",
                 }
+            params_schema["properties"][field_name]["default"] = field.default
+
         properties: dict[str, dict] = params_schema.get("properties", {})
         required: list[str] = params_schema.get("required", [])
         optionals = {name: name not in required for name in properties.keys()}
@@ -98,7 +100,7 @@ class ParamsModel(BaseModel):
         custom_widgets = cls._widgets
         for name, params in properties.items():
             custom_widget: dict[str, Any] | None = None
-            default = params.get("default")
+            default = params.get("default", None)
             if name in custom_widgets:  # type: ignore
                 custom_widget = cls._parse_custom_widget(name=name, optional=optionals[name])
 
@@ -119,7 +121,12 @@ class ParamsModel(BaseModel):
 
             if custom_widget:
                 custom_widget_data = {
-                    "default": widget.get("default", None),
+                    "default": cls._get_serialized_default_value(
+                        field_name=name,
+                        widget_type=custom_widget.get("widget", None),
+                        field_default=default,
+                        widget_default=custom_widget.get("default", None),
+                    ),
                     "optional": widget.get("optional", False),
                     "name": widget["name"] if "name" not in custom_widget else None,
                 }
@@ -129,10 +136,40 @@ class ParamsModel(BaseModel):
                 custom_widget.update(clear_dict(custom_widget_data))
                 widgets[name] = custom_widget
             elif widget:
+                widget["default"] = cls._get_serialized_default_value(
+                    field_name=name,
+                    widget_type=widget.get("widget", None),
+                    field_default=default,
+                    widget_default=widget.get("default", None),
+                )
                 widgets[name] = widget
             else:
                 raise ValueError("Not created widget")
         return widgets  # type: ignore
+
+    @classmethod
+    def _get_serialized_default_value(
+        cls, field_name: str, widget_type: Optional[str] = None, field_default: Any = None, widget_default: Any = None
+    ) -> Any:
+        widget = WIDGET_MAPPING.get(widget_type, None) if widget_type else None
+        default = widget_default if field_default is None else field_default
+
+        if default is None:
+            return default
+
+        if field_name in cls._widgets:
+            custom_widget = cls._widgets[field_name]  # type: ignore
+            if isinstance(custom_widget, dict):
+                serialize = custom_widget.get("_serialize", None)
+                if serialize is not None:
+                    return serialize(default)
+            elif hasattr(custom_widget, "_serialize"):
+                return custom_widget._serialize(default)
+
+        if widget and hasattr(widget, "_serialize"):
+            return widget._serialize(default)  # type: ignore
+
+        return default
 
     @classmethod
     def _parse_schema_definition(
@@ -202,7 +239,7 @@ class ParamsModel(BaseModel):
             items = params.get("items", [{}])[-1]
         except KeyError:
             items = params.get("items", [{}])
-        widget_params = dict(optional=optional, name=name, widget=widget_type)
+        widget_params = dict(optional=optional, name=name, widget=widget_type, default=default)
 
         if "enum" in items and widget_type != "enum":
             widget_type = "enum"

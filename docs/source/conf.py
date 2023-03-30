@@ -19,12 +19,12 @@ copyright = f'2018-{actual_year}, "Data Driven Lab" LLC'
 author = '"Data Driven Lab" LLC'
 
 # The short X.Y version
-version = "3.0.0 (dev)"
+version = "3.0 (dev)"
 # @TODO: replace "3.0" with script using method __version__. dpanina
 
 # The full version, including alpha/beta/rc tags
-release = version
-
+release = "3.0.0b2"
+# @TODO: replace "3.0.0b2" with method __version__. dpanina
 
 # -- General configuration ---------------------------------------------------
 

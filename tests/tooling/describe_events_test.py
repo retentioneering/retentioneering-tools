@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from retentioneering.tooling.describe_events import _DescribeEvents
+from retentioneering.tooling._describe_events import _DescribeEvents
 from tests.tooling.fixtures.describe_events import test_stream
 from tests.tooling.fixtures.describe_events_corr import basic_corr, session_corr
 

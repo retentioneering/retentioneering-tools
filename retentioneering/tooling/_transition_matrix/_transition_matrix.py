@@ -10,8 +10,6 @@ from retentioneering.tooling.typing.transition_graph import NormType
 
 
 class _TransitionMatrix:
-    __edgelist: Edgelist
-
     def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.__nodelist = Nodelist(
@@ -31,3 +29,8 @@ class _TransitionMatrix:
         graph.add_weighted_edges_from(edgelist.values)
 
         return nx.to_pandas_adjacency(G=graph)
+
+
+# IDK why, but without __all__ we get error from pyright about unused class.
+# But there is no error in _Describe! Vladimir Makhanov.
+__all__ = ("_TransitionMatrix",)

@@ -32,10 +32,10 @@ from retentioneering.tooling import (
     TransitionGraph,
     UserLifetimeHist,
 )
+from retentioneering.tooling._describe import _Describe
+from retentioneering.tooling._describe_events import _DescribeEvents
+from retentioneering.tooling._transition_matrix import _TransitionMatrix
 from retentioneering.tooling.constants import BINS_ESTIMATORS
-from retentioneering.tooling.describe import _Describe
-from retentioneering.tooling.describe_events import _DescribeEvents
-from retentioneering.tooling.transition_matrix import _TransitionMatrix
 from retentioneering.tooling.typing.transition_graph import NormType, Threshold
 from retentioneering.utils import get_merged_col
 from retentioneering.utils.list import find_index

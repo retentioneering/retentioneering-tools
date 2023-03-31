@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from retentioneering.eventstream.types import EventstreamType
-from retentioneering.tooling.transition_matrix import _TransitionMatrix
+from retentioneering.tooling._transition_matrix import _TransitionMatrix
 from tests.tooling.fixtures.transition_matrix_corr import (
     full_corr,
     node_corr,

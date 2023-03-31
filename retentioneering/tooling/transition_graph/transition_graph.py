@@ -580,7 +580,7 @@ class TransitionGraph:
     def _edges_norm_type_to_json_value(self, edges_norm_type: NormType) -> str:
         return "none" if edges_norm_type is None else str(edges_norm_type).lower()
 
-    def plot_graph(
+    def plot(
         self,
         edges_norm_type: NormType | None = None,
         edges_weight_col: str | None = None,

@@ -1089,7 +1089,7 @@ class Eventstream(
             eventstream=self,
             graph_settings=graph_settings,
         )
-        self.__transition_graph.plot_graph(
+        self.__transition_graph.plot(
             targets=targets,
             edges_norm_type=edges_norm_type,
             edges_weight_col=edges_weight_col,

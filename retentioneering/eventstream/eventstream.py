@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import uuid
+import warnings
 from collections.abc import Collection
 from typing import Any, Callable, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from IPython.core.display_functions import display
 
 from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
@@ -497,8 +497,9 @@ class Eventstream(
         )
         size_after_cleanup = len(events)
         if (removed_rows := income_size - size_after_cleanup) > 0:
-            display(
-                f"Removed {removed_rows} rows because some events " f"have empty event_name or timestamp or user_id"
+            warnings.warn(
+                "Removed %s rows because they have empty %s or %s or %s"
+                % (removed_rows, self.schema.event_name, self.schema.event_timestamp, self.schema.user_id)
             )
         return events
 

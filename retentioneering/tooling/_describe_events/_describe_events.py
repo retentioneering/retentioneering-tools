@@ -54,14 +54,14 @@ class _DescribeEvents:
         df_agg_event.columns = [self.event_col, self.user_col, first_time, first_event]  # type: ignore
         df_agg_event[first_time] = df_agg_event[first_time].dt.total_seconds()
         df_agg_event = df_agg_event.groupby([self.event_col])[[first_time, first_event]].agg(
-            _DescribeEvents.STATS_ORDER  # type: ignore
+            self.STATS_ORDER  # type: ignore
         )
         df_agg_event[(first_event, "mean")] = df_agg_event[(first_event, "mean")].round(2)
         df_agg_event[(first_event, "std")] = df_agg_event[(first_event, "std")].round(2)
 
-        for stat in _DescribeEvents.STATS_ORDER:
+        for stat in self.STATS_ORDER:
             mult_ind = (first_time, stat)
-            df_agg_event[mult_ind] = pd.to_timedelta(df_agg_event[mult_ind], unit="s").round(_DescribeEvents.TIME_ROUND_UNIT)  # type: ignore
+            df_agg_event[mult_ind] = pd.to_timedelta(df_agg_event[mult_ind], unit="s").round(self.TIME_ROUND_UNIT)  # type: ignore
 
         return df_agg_event
 
@@ -78,10 +78,8 @@ class _DescribeEvents:
         basic_info.columns = pd.MultiIndex.from_product([["basic_statistics"], basic_info.columns])
 
         if self.has_session_col:
-            basic_info[_DescribeEvents.UNIQUE_SESS] = self.df.groupby("event")[self.session_col].agg("nunique")
-            basic_info[_DescribeEvents.SHARE_SESS] = (
-                basic_info[_DescribeEvents.UNIQUE_SESS] / self.total_sessions_base
-            ).round(2)
+            basic_info[self.UNIQUE_SESS] = self.df.groupby("event")[self.session_col].agg("nunique")
+            basic_info[self.SHARE_SESS] = (basic_info[self.UNIQUE_SESS] / self.total_sessions_base).round(2)
 
         return basic_info
 
@@ -103,5 +101,10 @@ class _DescribeEvents:
 
         res = basic_info.merge(df_agg_event, left_index=True, right_index=True)
         if self.has_session_col:
-            res.insert(2, _DescribeEvents.UNIQUE_SESS, res.pop(_DescribeEvents.UNIQUE_SESS))  # type: ignore
+            res.insert(2, self.UNIQUE_SESS, res.pop(self.UNIQUE_SESS))  # type: ignore
         return res
+
+
+# IDK why, but without __all__ we get error from pyright about unused class. dpanina.
+# The same thing in _TransitionMatrix and _Describe!
+__all__ = ("_DescribeEvents",)

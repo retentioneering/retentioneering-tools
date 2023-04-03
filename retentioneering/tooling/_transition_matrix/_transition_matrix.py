@@ -31,6 +31,6 @@ class _TransitionMatrix:
         return nx.to_pandas_adjacency(G=graph)
 
 
-# IDK why, but without __all__ we get error from pyright about unused class.
-# But there is no error in _Describe! Vladimir Makhanov.
+# IDK why, but without __all__ we get error from pyright about unused class. Vladimir Makhanov.
+# The same thing in _Describe and _DescribeEvents!
 __all__ = ("_TransitionMatrix",)

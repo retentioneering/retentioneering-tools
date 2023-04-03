@@ -1061,7 +1061,18 @@ class Eventstream(
         return describer._describe()
 
     @track(  # type: ignore
-        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_helper"}
+        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_helper"},
+        allowed_params=[
+            "edges_norm_type",
+            "targets",
+            "nodes_threshold",
+            "edges_threshold",
+            "nodes_weight_col",
+            "edges_weight_col",
+            "custom_weight_cols",
+            "width",
+            "height",
+        ],
     )
     def transition_graph(
         self,
@@ -1115,7 +1126,8 @@ class Eventstream(
         return self.__p_graph
 
     @track(  # type: ignore
-        tracking_info={"event_name": "transition_matrix", "event_custom_name": "transition_matrix_helper"}
+        tracking_info={"event_name": "transition_matrix", "event_custom_name": "transition_matrix_helper"},
+        allowed_params=["weight_col", "norm_type"],
     )
     def transition_matrix(self, weight_col: str | None = None, norm_type: NormType = None) -> TransitionMatrix:
         """

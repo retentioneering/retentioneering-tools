@@ -29,10 +29,8 @@ class TrackerMainConnector(ConnectorProtocol):
         data["source"] = self.source
         data["params"] = str(data["params"])
         req = requests.Request("POST", self.url, data=json.dumps(data))
-        print(data)
         prepped = req.prepare()
         response = self.session.send(prepped)
-        print(response.status_code)
         return response
 
     def send_message(self, data: TrackingInfo) -> None:

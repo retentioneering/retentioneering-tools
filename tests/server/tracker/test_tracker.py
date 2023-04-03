@@ -23,11 +23,11 @@ class TestTracker:
     def test_send_message(self):
         tracker = TrackerWithConstantUUID(SimpleTrackerConnector())
 
-        @tracker.track(tracking_info={"event_name": "test_event_name"})
-        def test(edges_norm_type: str):
+        @tracker.track(tracking_info={"event_name": "test_event_name"}, allowed_params=["edges_norm_type"])
+        def test(edges_norm_type: str, sensetive_data: str):
             return "test"
 
-        return_value = test(edges_norm_type="test_norm_type")
+        return_value = test(edges_norm_type="test_norm_type", sensetive_data="s0mEp@$s")
 
         assert return_value == "test"
         assert len(tracker_log) == 2

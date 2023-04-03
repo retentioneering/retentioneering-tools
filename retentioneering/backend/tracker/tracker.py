@@ -14,16 +14,6 @@ class Tracker(Singleton):
     connector: ConnectorProtocol
     enabled: bool = True
     _user_id: str | None = None
-    __ALLOWED_PARAMS = (
-        "edges_norm_type",
-        "edges_weight_col",
-        "edges_threshold",
-        "nodes_treshold",
-        "targets",
-        "custom_weight_cols",
-        "weight_col",
-        "norm_type",
-    )
 
     def __init__(self, connector: ConnectorProtocol, enabled: bool = True) -> None:
         self.connector = connector
@@ -38,17 +28,17 @@ class Tracker(Singleton):
     def __obtain_user_id(self) -> str:
         return get_hwid()
 
-    def __clean_params(self, params: dict[str, Any]) -> dict[str, Any]:
-        return {key: value for key, value in params.items() if key in self.__ALLOWED_PARAMS}
+    def __clean_params(self, params: dict[str, Any], allowed_params: list[str]) -> dict[str, Any]:
+        return {key: value for key, value in params.items() if key in allowed_params}
 
-    def track(self, tracking_info: dict[str, Any]) -> Callable:
+    def track(self, tracking_info: dict[str, Any], allowed_params: list[str]) -> Callable:
         event_name = tracking_info["event_name"]
         event_custom_name = tracking_info.get("event_custom_name", tracking_info["event_name"])
 
         def tracker_decorator(func: Callable) -> Callable:
             @functools.wraps(func)
             def wrapper(*args: list[Any], **kwargs: dict[Any, Any]) -> Callable:
-                called_function_params = self.__clean_params(kwargs)
+                called_function_params = self.__clean_params(kwargs, allowed_params)
                 _tracking_info_start = TrackingInfo(
                     client_session_id=self.user_id,
                     event_name=f"{event_name}_start",

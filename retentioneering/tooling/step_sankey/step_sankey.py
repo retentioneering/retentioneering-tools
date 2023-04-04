@@ -243,7 +243,7 @@ class StepSankey(EndedEventsMixin):
         return result
 
     def _prepare_data(self, data: pd.DataFrame) -> pd.DataFrame:
-        data = self._add_ended_events(data, self.__eventstream.schema)
+        data = self._add_ended_events(data, self.__eventstream.schema, self.__eventstream.schema.user_id)
         data = self._pad_end_events(data)
         # NOTE set new columns using declared functions
         data[self.time_col] = pd.to_datetime(data[self.time_col])

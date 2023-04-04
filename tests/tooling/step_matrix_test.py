@@ -1,3 +1,5 @@
+import numpy as np
+
 from retentioneering.tooling.step_matrix import StepMatrix
 from tests.tooling.fixtures.step_matrix_corr import (
     accumulated_both_targets_plot_cor,
@@ -193,7 +195,7 @@ class TestStepMatrix:
 
     def test_step_matrix__weight_col(self, test_weight_col, weight_col_cor):
         correct_result = weight_col_cor
-        sm = StepMatrix(eventstream=test_weight_col, max_steps=5, weight_col=["session_id"])
+        sm = StepMatrix(eventstream=test_weight_col, max_steps=5, weight_col="session_id")
         sm.fit()
         result = sm.values[0].round(FLOAT_PRECISION)
         assert result.compare(correct_result).shape == (0, 0)

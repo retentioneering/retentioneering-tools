@@ -106,5 +106,5 @@ class _DescribeEvents:
 
 
 # IDK why, but without __all__ we get error from pyright about unused class. dpanina.
-# The same thing in _TransitionMatrix and _Describe!
+# The same thing is in _TransitionMatrix and _Describe!
 __all__ = ("_DescribeEvents",)

@@ -724,8 +724,8 @@ class Eventstream(
         """
         Show a Sankey diagram visualizing the user paths in stepwise manner.
 
-        ----------
         Parameters
+        ----------
         show_plot : bool, default True
             If ``True``, a sankey diagram is shown.
         See other parameters' description
@@ -1092,7 +1092,7 @@ class Eventstream(
         Parameters
         ----------
         See parameters' description
-            :py:class:`.TransitionGraph`
+            :py:meth:`.TransitionGraph.plot`
 
         Returns
         -------
@@ -1142,6 +1142,10 @@ class Eventstream(
         -------
         pd.DataFrame
             Transition matrix. ``(i, j)``-th matrix value relates to the weight of i → j transition.
+
+        Notes
+        -----
+        See :ref:`transition graph user guide <transition_graph_transition_matrix>` for the details.
         """
 
         matrix = _TransitionMatrix(eventstream=self)

@@ -34,7 +34,7 @@ from .version import __version__
 
 warnings.warn("""
 DeprecationWarning: This version of the package is deprecated. 
-We will be moving to version 3, as a major release, by the end of April.
-It's possible to install version 3 of the library with the following command: `pip install retentioneering --pre`
-Documentation available at: https://doc.retentioneering.com/release3/doc/
+We are going to move to version 3, as a major release by the end of April.
+It's possible to install version 3 of the library with the following command: pip install retentioneering --pre
+Documentation is available at: https://doc.retentioneering.com/release3/doc/
 """"", DeprecationWarning, stacklevel=2)

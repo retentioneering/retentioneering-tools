@@ -267,7 +267,7 @@ class PGraph:
             raise ServerErrorWithResponse(message="node not found!", type="unexpected_error")
         self.combine_result = self.combine(node)
 
-    def _set_graph_handler(self, payload: Payload) -> None:
+    def _set_graph_handler(self, payload: Payload) -> dict:
         current_graph = self._ngraph
         current_root = self.root
 
@@ -277,6 +277,7 @@ class PGraph:
 
         try:
             self._set_graph(payload=payload)
+            return self.export({})
         except ServerErrorWithResponse as err:
             restore_graph()
             raise err

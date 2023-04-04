@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+import warnings
 from collections.abc import Collection
 from typing import Any, Callable, List, Literal, MutableMapping, Optional, Tuple, Union
 
@@ -207,6 +208,7 @@ class Eventstream(
         else:
             self.relations = relations
         self.__events = self.__prepare_events(raw_data) if prepare else raw_data
+        self.__events = self.__required_cleanup(events=self.__events)
         self.index_events()
 
     def copy(self) -> Eventstream:
@@ -492,6 +494,19 @@ class Eventstream(
     def __get_not_deleted_events(self) -> pd.DataFrame | pd.Series[Any]:
         events = self.__events
         return events[events[DELETE_COL_NAME] == False]
+
+    def __required_cleanup(self, events: pd.DataFrame | pd.Series[Any]) -> pd.DataFrame | pd.Series[Any]:
+        income_size = len(events)
+        events.dropna(  # type: ignore
+            subset=[self.schema.event_name, self.schema.event_timestamp, self.schema.user_id], inplace=True
+        )
+        size_after_cleanup = len(events)
+        if (removed_rows := income_size - size_after_cleanup) > 0:
+            warnings.warn(
+                "Removed %s rows because they have empty %s or %s or %s"
+                % (removed_rows, self.schema.event_name, self.schema.event_timestamp, self.schema.user_id)
+            )
+        return events
 
     def __prepare_events(self, raw_data: pd.DataFrame | pd.Series[Any]) -> pd.DataFrame | pd.Series[Any]:
         events = raw_data.copy()
@@ -1088,19 +1103,17 @@ class Eventstream(
         self.__transition_graph = TransitionGraph(
             eventstream=self,
             graph_settings=graph_settings,
-            edges_norm_type=edges_norm_type,
+        )
+        self.__transition_graph.plot(
             targets=targets,
+            edges_norm_type=edges_norm_type,
+            edges_weight_col=edges_weight_col,
             nodes_threshold=nodes_threshold,
             edges_threshold=edges_threshold,
             nodes_weight_col=nodes_weight_col,
-            edges_weight_col=edges_weight_col,
             custom_weight_cols=custom_weight_cols,
-        )
-        self.__transition_graph.plot_graph(
-            targets=targets,
             width=width,
             height=height,
-            edges_norm_type=edges_norm_type,
         )
         return self.__transition_graph
 

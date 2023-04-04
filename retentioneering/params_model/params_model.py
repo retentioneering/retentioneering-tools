@@ -154,20 +154,24 @@ class ParamsModel(BaseModel):
         widget = WIDGET_MAPPING.get(widget_type, None) if widget_type else None
         default = widget_default if field_default is None else field_default
 
+        # если дефолтного значения нет - значит его не нужно сериализовывать
         if default is None:
             return default
+
+        serialize: None | Callable = None
 
         if field_name in cls._widgets:
             custom_widget = cls._widgets[field_name]  # type: ignore
             if isinstance(custom_widget, dict):
                 serialize = custom_widget.get("_serialize", None)
-                if serialize is not None:
-                    return serialize(default)
             elif hasattr(custom_widget, "_serialize"):
-                return custom_widget._serialize(default)
+                serialize = custom_widget._serialize
 
         if widget and hasattr(widget, "_serialize"):
-            return widget._serialize(default)  # type: ignore
+            serialize = widget._serialize  # type: ignore
+
+        if serialize is not None:
+            return serialize(default)
 
         return default
 

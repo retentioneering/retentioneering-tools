@@ -4,6 +4,7 @@ min_python = (3, 7)
 max_python = (3, 10)
 
 import sys
+import warnings
 
 if (sys.version_info[:len(min_python)] < min_python) or (sys.version_info[:len(max_python)] > max_python):
 
@@ -30,3 +31,10 @@ if (sys.version_info[:len(min_python)] < min_python) or (sys.version_info[:len(m
 from retentioneering.core.config import config, init_config
 from retentioneering import datasets
 from .version import __version__
+
+warnings.warn("""
+DeprecationWarning: This version of the package is deprecated. 
+We are going to move to version 3, as a major release by the end of April.
+It's possible to install version 3 of the library with the following command: pip install retentioneering --pre
+Documentation is available at: https://doc.retentioneering.com/release3/doc/
+""""", DeprecationWarning, stacklevel=2)

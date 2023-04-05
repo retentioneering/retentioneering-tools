@@ -19,9 +19,6 @@ from retentioneering.eventstream.types import (
 )
 from retentioneering.graph import PGraph
 from retentioneering.tooling import (
-    AGGREGATION_NAMES,
-    EVENTSTREAM_GLOBAL_EVENTS,
-    TEST_NAMES,
     Clusters,
     Cohorts,
     EventTimestampHist,
@@ -37,6 +34,11 @@ from retentioneering.tooling._describe import _Describe
 from retentioneering.tooling._describe_events import _DescribeEvents
 from retentioneering.tooling._transition_matrix import _TransitionMatrix
 from retentioneering.tooling.constants import BINS_ESTIMATORS
+from retentioneering.tooling.stattests.constants import TEST_NAMES
+from retentioneering.tooling.timedelta_hist.constants import (
+    AGGREGATION_NAMES,
+    EVENTSTREAM_GLOBAL_EVENTS,
+)
 from retentioneering.tooling.typing.transition_graph import NormType, Threshold
 from retentioneering.utils import get_merged_col
 from retentioneering.utils.list import find_index

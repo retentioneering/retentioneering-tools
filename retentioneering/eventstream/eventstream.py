@@ -34,7 +34,7 @@ from retentioneering.tooling._describe import _Describe
 from retentioneering.tooling._describe_events import _DescribeEvents
 from retentioneering.tooling._transition_matrix import _TransitionMatrix
 from retentioneering.tooling.constants import BINS_ESTIMATORS
-from retentioneering.tooling.stattests.constants import TEST_NAMES
+from retentioneering.tooling.stattests.constants import STATTEST_NAMES
 from retentioneering.tooling.timedelta_hist.constants import (
     AGGREGATION_NAMES,
     EVENTSTREAM_GLOBAL_EVENTS,
@@ -800,7 +800,7 @@ class Eventstream(
 
     def stattests(
         self,
-        test: TEST_NAMES,
+        test: STATTEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
         func: Callable,
         group_names: Tuple[str, str] = ("group_1", "group_2"),

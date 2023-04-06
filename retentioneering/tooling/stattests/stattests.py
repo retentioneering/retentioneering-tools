@@ -13,7 +13,7 @@ from statsmodels.stats.power import TTestIndPower
 from statsmodels.stats.weightstats import ttest_ind, ztest
 
 from retentioneering.eventstream.types import EventstreamType
-from retentioneering.tooling.stattests.constants import TEST_NAMES
+from retentioneering.tooling.stattests.constants import STATTEST_NAMES
 
 
 def _cohend(d1: list, d2: list) -> float:
@@ -72,7 +72,7 @@ class StatTests:
     def __init__(
         self,
         eventstream: EventstreamType,
-        test: TEST_NAMES,
+        test: STATTEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
         func: Callable,
         group_names: Tuple[str, str] = ("group_1", "group_2"),
@@ -152,7 +152,7 @@ class StatTests:
                 freq_table = self._get_freq_table(data_max, data_min)
                 p_val = fisher_exact(freq_table, alternative="greater")[1]
         else:
-            raise ValueError("The argument test is not supported. Supported tests are: {}".format(*TEST_NAMES))  # type: ignore
+            raise ValueError("The argument test is not supported. Supported tests are: {}".format(*STATTEST_NAMES))  # type: ignore
         return p_val, power  # type: ignore
 
     def _get_sorted_test_results(self) -> Tuple[float, float, str, str]:

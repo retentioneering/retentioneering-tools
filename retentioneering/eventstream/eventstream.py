@@ -18,25 +18,28 @@ from retentioneering.eventstream.types import (
     Relation,
 )
 from retentioneering.graph import PGraph
-from retentioneering.tooling.clusters import Clusters
-from retentioneering.tooling.cohorts import Cohorts
+from retentioneering.tooling import (
+    Clusters,
+    Cohorts,
+    EventTimestampHist,
+    Funnel,
+    StatTests,
+    StepMatrix,
+    StepSankey,
+    TimedeltaHist,
+    TransitionGraph,
+    UserLifetimeHist,
+)
+from retentioneering.tooling._describe import _Describe
+from retentioneering.tooling._describe_events import _DescribeEvents
+from retentioneering.tooling._transition_matrix import _TransitionMatrix
 from retentioneering.tooling.constants import BINS_ESTIMATORS
-from retentioneering.tooling.describe import Describe
-from retentioneering.tooling.describe_events import DescribeEvents
-from retentioneering.tooling.event_timestamp_hist import EventTimestampHist
-from retentioneering.tooling.funnel import Funnel
-from retentioneering.tooling.stattests import TEST_NAMES, StatTests
-from retentioneering.tooling.step_matrix import StepMatrix
-from retentioneering.tooling.step_sankey import StepSankey
-from retentioneering.tooling.timedelta_hist import (
+from retentioneering.tooling.stattests.constants import STATTEST_NAMES
+from retentioneering.tooling.timedelta_hist.constants import (
     AGGREGATION_NAMES,
     EVENTSTREAM_GLOBAL_EVENTS,
-    TimedeltaHist,
 )
-from retentioneering.tooling.transition_graph import TransitionGraph
-from retentioneering.tooling.transition_matrix import TransitionMatrix
 from retentioneering.tooling.typing.transition_graph import NormType, Threshold
-from retentioneering.tooling.user_lifetime_hist import UserLifetimeHist
 from retentioneering.utils import get_merged_col
 from retentioneering.utils.list import find_index
 
@@ -91,7 +94,7 @@ RAW_COL_PREFIX = "raw_"
 DELETE_COL_NAME = "_deleted"
 
 
-# TODO проработать резервирование колонок
+# @TODO: проработать резервирование колонок
 
 
 class Eventstream(
@@ -166,7 +169,6 @@ class Eventstream(
     __stattests: StatTests | None = None
     __transition_graph: TransitionGraph | None = None
     __p_graph: PGraph | None = None
-    __transition_matrix: TransitionMatrix | None = None
     __timedelta_hist: TimedeltaHist | None = None
     __user_lifetime_hist: UserLifetimeHist | None = None
     __event_timestamp_hist: EventTimestampHist | None = None
@@ -798,7 +800,7 @@ class Eventstream(
 
     def stattests(
         self,
-        test: TEST_NAMES,
+        test: STATTEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
         func: Callable,
         group_names: Tuple[str, str] = ("group_1", "group_2"),
@@ -1000,8 +1002,8 @@ class Eventstream(
 
 
         """
-        describer = Describe(eventstream=self, session_col=session_col, raw_events_only=raw_events_only)
-        return describer._describe()
+        describer = _Describe(eventstream=self, session_col=session_col, raw_events_only=raw_events_only)
+        return describer._values()
 
     def describe_events(
         self, session_col: str = "session_id", raw_events_only: bool = False, event_list: list[str] | None = None
@@ -1069,10 +1071,10 @@ class Eventstream(
         See :ref:`Eventstream user guide<eventstream_describe_events>` for the details.
 
         """
-        describer = DescribeEvents(
+        describer = _DescribeEvents(
             eventstream=self, session_col=session_col, event_list=event_list, raw_events_only=raw_events_only
         )
-        return describer._describe()
+        return describer._values()
 
     def transition_graph(
         self,
@@ -1092,7 +1094,7 @@ class Eventstream(
         Parameters
         ----------
         See parameters' description
-            :py:class:`.TransitionGraph`
+            :py:meth:`.TransitionGraph.plot`
 
         Returns
         -------
@@ -1123,26 +1125,30 @@ class Eventstream(
         self.__p_graph.display()
         return self.__p_graph
 
-    def transition_matrix(self, weight_col: str | None = None, norm_type: NormType = None) -> TransitionMatrix:
+    def transition_matrix(self, weight_col: str | None = None, norm_type: NormType = None) -> pd.DataFrame:
         """
-        Display transition weights as a matrix for each unique pair of events.
-        The calculation logic is the same that is used for edge weights calculation of transition graph.
+        Get transition weights as a matrix for each unique pair of events. The calculation logic is the same
+        that is used for edge weights calculation of transition graph.
 
         Parameters
         ----------
-        See parameters' description
-            :py:meth:`.TransitionMatrix.values`
 
+        weight_col : str, default None
+            Weighting column for the transition weights calculation.
+            See :ref:`transition graph user guide <transition_graph_weights>` for the details.
+
+        norm_type : {"full", "node", None}, default None
+            Normalization type. See :ref:`transition graph user guide <transition_graph_weights>` for the details.
 
         Returns
         -------
-        TransitionMatrix
-            Display ``(i, j)``-th matrix value relates to the weight of i → j transition.
+        pd.DataFrame
+            Transition matrix. ``(i, j)``-th matrix value relates to the weight of i → j transition.
 
+        Notes
+        -----
+        See :ref:`transition graph user guide <transition_graph_transition_matrix>` for the details.
         """
-        if self.__transition_matrix is None:
-            self.__transition_matrix = TransitionMatrix(
-                eventstream=self,
-            )
-        self.__transition_matrix.display(weight_col=weight_col, norm_type=norm_type)
-        return self.__transition_matrix
+
+        matrix = _TransitionMatrix(eventstream=self)
+        return matrix._values(weight_col=weight_col, norm_type=norm_type)

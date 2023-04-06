@@ -232,6 +232,8 @@ The thresholds are set with a couple of ``nodes_threshold``, ``edges_threshold``
 
 This example is an extension of the previous one. We use the same normalization configuration as before. Since we have added an edges threshold of ``0.12`` for ``user_id`` weighting column, the edge ``product1`` → ``main`` that we observed in the previous example is hidden now (its weight is 11.4%). As for the nodes threshold, note that event ``payment_cash`` is hidden now (as we can see from the Nodes block in the Control panel, its weight is 197).
 
+.. _transition_graph_targets:
+
 Targets
 ~~~~~~~
 

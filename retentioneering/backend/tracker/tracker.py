@@ -28,10 +28,12 @@ class Tracker(Singleton):
     def __obtain_user_id(self) -> str:
         return get_hwid()
 
-    def __clean_params(self, params: dict[str, Any], allowed_params: list[str]) -> dict[str, Any]:
+    def __clean_params(self, params: dict[str, Any], allowed_params: list[str] | None = None) -> dict[str, Any]:
+        if allowed_params is None:
+            allowed_params = []
         return {key: value for key, value in params.items() if key in allowed_params}
 
-    def track(self, tracking_info: dict[str, Any], allowed_params: list[str]) -> Callable:
+    def track(self, tracking_info: dict[str, Any], allowed_params: list[str] | None = None) -> Callable:
         event_name = tracking_info["event_name"]
         event_custom_name = tracking_info.get("event_custom_name", tracking_info["event_name"])
 

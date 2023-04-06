@@ -34,7 +34,7 @@ class TestStandardWidgets:
         params = TestDefaultStringWidgets(a=value)
         widget = params.get_widgets()
 
-        assert {"a": {"name": "a", "optional": False, "widget": "string"}} == widget
+        assert {"a": {"name": "a", "optional": False, "widget": "string", "default": None}} == widget
         assert value == params.a
 
     def test_integer_widget(self) -> None:
@@ -60,7 +60,7 @@ class TestStandardWidgets:
         params = TestDefaultIntegerWidgets(a=value)
         widget = params.get_widgets()
 
-        assert {"a": {"name": "a", "optional": False, "widget": "integer"}} == widget
+        assert {"a": {"name": "a", "optional": False, "widget": "integer", "default": None}} == widget
         assert value == params.a
 
     def test_enum_widget(self) -> None:
@@ -88,7 +88,7 @@ class TestStandardWidgets:
         params = TestDefaultEnumWidgets(a=enum_value)
         widget = params.get_widgets()
 
-        assert {"a": {"name": "a", "optional": False, "widget": "enum"}} == widget
+        assert {"a": {"name": "a", "optional": False, "widget": "enum", "default": None}} == widget
         assert enum_value == params.a
 
     def test_new_user_list_widget(self) -> None:

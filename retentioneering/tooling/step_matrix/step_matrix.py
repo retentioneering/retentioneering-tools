@@ -305,9 +305,9 @@ class StepMatrix(EndedEventsMixin):
         x = step_matrix.copy()
         order = []
         for i in x.columns:
-            new_r = x[i].idxmax()
+            new_r = x[i].idxmax()  # type: ignore
             order.append(new_r)
-            x = x.drop(new_r)
+            x = x.drop(new_r)  # type: ignore
             if x.shape[0] == 0:
                 break
         order.extend(list(set(step_matrix.index) - set(order)))

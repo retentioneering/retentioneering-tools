@@ -19,9 +19,12 @@ copyright = f'2018-{actual_year}, "Data Driven Lab" LLC'
 author = '"Data Driven Lab" LLC'
 
 # The short X.Y version
-version = ""
+version = "3.0 (dev)"
+# @TODO: replace "3.0" with script using method __version__. dpanina
+
 # The full version, including alpha/beta/rc tags
-release = "3.0.0"
+release = "3.0.0b2"
+# @TODO: replace "3.0.0b2" with method __version__. dpanina
 
 # -- General configuration ---------------------------------------------------
 
@@ -48,7 +51,7 @@ html_favicon = "_static/favicon.ico"
 html_context = {
     "default_mode": "light",
     "github_user": "retentioneering",
-    # TODO: fix when a new repo name appears. Vladimir Kukushkin
+    # @TODO: fix when a new repo name appears. Vladimir Kukushkin
     "github_repo": "retentioneering-tools-new-arch",
     "github_version": "docs_fixes",
     "doc_path": "docs/source",
@@ -57,10 +60,16 @@ html_context = {
 html_theme_options = {
     "logo": {"image_light": "rete_logo.svg", "image_dark": "rete_logo_white.svg"},
     "show_toc_level": 2,
-    # TODO: fix when a new repo name appears. Vladimir Kukushkin
+    # @TODO: fix when a new repo name appears. Vladimir Kukushkin
     "github_url": "https://github.com/retentioneering/retentioneering-tools-new-arch",
     "use_edit_page_button": True,
     "header_links_before_dropdown": 6,
+    # "check_switcher": False,
+    "navbar_end": ["version-switcher", "theme-switcher", "navbar-icon-links"],
+    "switcher": {
+        "json_url": "https://doc.retentioneering.com/versions.json",
+        "version_match": version,
+    },
 }
 
 autodoc_typehints = "none"

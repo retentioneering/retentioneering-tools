@@ -13,7 +13,7 @@ repos:
       - id: pycln
         args: [ --config=pyproject.toml ]
   - repo: https://github.com/psf/black
-    rev: 23.1.0
+    rev: 23.3.0
     hooks:
       - id: black
         language_version: python3
@@ -40,4 +40,4 @@ repos:
         types: [ python ]
         exclude: 'tests/'
         # Replace the version below with the latest pyright version
-        additional_dependencies: [ 'pyright@1.1.268' ]
+        additional_dependencies: [ 'pyright@1.1.286' ]

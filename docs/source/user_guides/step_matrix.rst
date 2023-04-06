@@ -55,7 +55,8 @@ We can visualize this dataset as a step-wise heatmap, indicating the distributio
 The matrix rows correspond to the unique events, and the columns correspond to the steps in the user
 trajectories. That is, ``(i, j)`` matrix element shows the share of the users with event ``i`` appeared at step ``j``.
 
-Below we will explore how to plot and customize the step matrix. Hereafter we use :doc:`simple_shop </datasets/simple_shop>` dataset, which has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable. If you want to use your own dataset, upload it following :ref:`this instruction<eventstream_creation>`.
+Hereafter we use :doc:`simple_shop </datasets/simple_shop>` dataset, which has already been converted to :doc:`Eventstream<eventstream>` and assigned to ``stream`` variable. If you want to use your own dataset, upload it following :ref:`this instruction<eventstream_creation>`.
+
 
 .. code-block:: python
 

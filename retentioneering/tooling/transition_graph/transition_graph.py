@@ -12,6 +12,7 @@ from IPython.core.display import HTML, display
 
 from retentioneering.backend import ServerManager
 from retentioneering.backend.tracker import track
+from retentioneering.backend.tracker.hwid import get_hwid
 from retentioneering.edgelist import Edgelist
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.nodelist import Nodelist
@@ -764,6 +765,7 @@ class TransitionGraph:
                 nodes_threshold=self._to_js_val(norm_nodes_threshold),
                 links_threshold=self._to_js_val(norm_links_threshold),
                 weight_template="undefined",
+                tracking_hardware_id=get_hwid(),
             )
         )
 
@@ -797,6 +799,7 @@ class TransitionGraph:
                 nodes_threshold="<%= nodes_threshold %>",
                 links_threshold="<%= links_threshold %>",
                 weight_template="undefined",
+                tracking_hardware_id=get_hwid(),
             )
         )
 

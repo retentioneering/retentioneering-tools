@@ -55,6 +55,3 @@ def get_hwid() -> str:
     os_name = platform.system()
     hwid = __platforms_HWID[os_name]()
     return hwid
-
-
-__all__ = ("get_hwid",)

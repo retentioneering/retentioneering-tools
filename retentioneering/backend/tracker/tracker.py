@@ -6,7 +6,7 @@ from typing import Any, Callable
 from retentioneering.utils.singleton import Singleton
 
 from .connector import ConnectorProtocol
-from .hwid import get_hwid  # type: ignore
+from .hwid import get_hwid
 from .tracking_info import TrackingInfo
 
 

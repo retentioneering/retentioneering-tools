@@ -1,8 +1,8 @@
 Path analysis tools
 ===================
+
 .. toctree::
-   :caption: Path analysis tools
-   :maxdepth: 2
+   :maxdepth: 1
 
     Funnel <tooling/funnel.rst>
     Cohorts <tooling/cohorts.rst>

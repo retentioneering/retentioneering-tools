@@ -126,7 +126,7 @@ There is another important option which is worth to be mentioned. In the bottom 
 
     The node menu for the StartEndEvents data processor.
 
-Let us create the second node: ``GroupEvents``. Click at ``node1``'s triple dots (we note that "Delete node" option is available now as well), choose "Add data processor node" and choose ``GroupEvents``. If we click the newly created node, its menu looks like as follows:
+Let us create the second node: ``GroupEvents``. Click at ``node1``'s triple dots (we note that "Delete node" option is available now as well), choose "Add data processor node" and choose ``GroupEvents``. If you click on this node, the node menu appears, where you can enter the following parameter values:
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_node_menu_2.png
     :height: 600

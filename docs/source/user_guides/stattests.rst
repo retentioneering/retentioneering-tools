@@ -92,7 +92,7 @@ Changing the ``alpha`` parameter will influence estimated power of the test. For
     stream.stattests(
         groups=user_groups,
         func=cart_share,
-        group_names=group_names,
+        group_names=['random_group_1', 'random_group_2'],
         test='ttest',
         alpha=0.01
     )

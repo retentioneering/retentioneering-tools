@@ -56,7 +56,7 @@ class EventsNode(BaseNode):
     --------
     .PGraph.add_node : Add a node to Pgraph.
     .PGraph.combine : Run calculations of Preprocessing Graph.
-    .MergeNode
+    .MergeNode : Merging nodes of a preprocessing graph.
 
     """
 
@@ -86,7 +86,7 @@ class MergeNode(BaseNode):
     --------
     .PGraph.add_node : Add a node to Pgraph.
     .PGraph.combine : Run calculations of Preprocessing Graph.
-    .EventsNode
+    .EventsNode : Regular nodes of a preprocessing graph.
 
     """
 

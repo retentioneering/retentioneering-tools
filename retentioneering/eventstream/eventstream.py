@@ -1120,6 +1120,9 @@ class Eventstream(
         return self.__transition_graph
 
     def processing_graph(self) -> PGraph:
+        """
+        Display the preprocessing GUI tool.
+        """
         if self.__p_graph is None:
             self.__p_graph = PGraph(source_stream=self)
         self.__p_graph.display()

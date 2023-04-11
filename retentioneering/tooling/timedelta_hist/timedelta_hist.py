@@ -125,26 +125,23 @@ class TimedeltaHist:
         self.type_col = self.__eventstream.schema.event_type
         self.raw_events_only = raw_events_only
 
-        self.data: pd.DataFrame = eventstream.to_dataframe(copy=True)
-        if raw_events_only:
-            self.data = self.data[self.data[self.type_col].isin(["raw"])]
         if event_pair is not None:
             if type(event_pair) not in (list, tuple):
                 raise TypeError("event_pair should be a tuple or a list of length 2.")
             if len(event_pair) != 2:
                 raise ValueError("event_pair should be a tuple or a list of length 2.")
 
-            if set(event_pair) == {TimedeltaHist.EVENTSTREAM_START, TimedeltaHist.EVENTSTREAM_END}:
+            if set(event_pair) == {self.EVENTSTREAM_START, self.EVENTSTREAM_END}:
                 raise ValueError(
-                    f"event_pair = ['{TimedeltaHist.EVENTSTREAM_START}', '{TimedeltaHist.EVENTSTREAM_END}'] "
+                    f"event_pair = ['{self.EVENTSTREAM_START}', '{self.EVENTSTREAM_END}'] "
                     f"is invalid. Only one event of these two events can be a member of the event_pair."
                 )
-            if set(event_pair) in [{TimedeltaHist.EVENTSTREAM_START}, {TimedeltaHist.EVENTSTREAM_END}]:
+            if set(event_pair) in [{self.EVENTSTREAM_START}, {self.EVENTSTREAM_END}]:
                 raise ValueError(
-                    f"event_pair = ['{TimedeltaHist.EVENTSTREAM_START}', '{TimedeltaHist.EVENTSTREAM_END}'] and "
-                    f"event_pair = ['{TimedeltaHist.EVENTSTREAM_START}', '{TimedeltaHist.EVENTSTREAM_END}'] "
-                    f"are invalid. Events '{TimedeltaHist.EVENTSTREAM_START}' "
-                    f"and '{TimedeltaHist.EVENTSTREAM_END}' couldn't be doubled."
+                    f"event_pair = ['{self.EVENTSTREAM_START}', '{self.EVENTSTREAM_END}'] and "
+                    f"event_pair = ['{self.EVENTSTREAM_START}', '{self.EVENTSTREAM_END}'] "
+                    f"are invalid. Events '{self.EVENTSTREAM_START}' "
+                    f"and '{self.EVENTSTREAM_END}' couldn't be doubled."
                 )
 
         self.event_pair = event_pair
@@ -227,7 +224,12 @@ class TimedeltaHist:
         -------
         None
         """
-        data = self.data.sort_values([self.weight_col, self.time_col])
+
+        data = self.__eventstream.to_dataframe(copy=True)
+
+        if self.raw_events_only:
+            data = data[data[self.type_col].isin(["raw"])]
+        data = data.sort_values([self.weight_col, self.time_col])
 
         if self.event_pair is not None and set([self.EVENTSTREAM_START, self.EVENTSTREAM_END]).intersection(
             self.event_pair

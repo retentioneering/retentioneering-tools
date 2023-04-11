@@ -401,7 +401,7 @@ class StepMatrix(EndedEventsMixin):
         """
         weight_col = self.weight_col or self.user_col
         data = self.__eventstream.to_dataframe()
-        data = self._add_ended_events(data, self.__eventstream.schema)
+        data = self._add_ended_events(data=data, schema=self.__eventstream.schema, weight_col=self.weight_col)
         data["event_rank"] = data.groupby(weight_col).cumcount() + 1
 
         # BY HERE WE NEED TO OBTAIN FINAL DIFF piv and piv_targets before sorting, thresholding and plotting:

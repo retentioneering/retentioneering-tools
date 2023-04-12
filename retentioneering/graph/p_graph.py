@@ -102,9 +102,9 @@ class PGraph:
 
         See Also
         --------
-        PGraph.combine : Adding a node doesn't cause graph recalculation.
-        .EventsNode
-        .MergeNode
+        PGraph.combine : Start PGraph recalculation.
+        .EventsNode : Regular nodes of a preprocessing graph.
+        .MergeNode : Merge nodes of a preprocessing graph.
 
         """
         self.__valiate_already_exists(node)
@@ -175,6 +175,10 @@ class PGraph:
         ----------
         node : Node
             Instance of one of the classes SourceNode, EventsNode or MergeNode.
+
+        Returns
+        -------
+        list of Nodes
 
         """
         self.__validate_not_found([node])

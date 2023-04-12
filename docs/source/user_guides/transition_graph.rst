@@ -544,7 +544,7 @@ Using a separate instance
 
 By design, :py:meth:`Eventstream.transition_graph()<retentioneering.eventstream.eventstream.Eventstream.transition_graph>` is a shortcut method that uses :py:meth:`TransitionGraph<retentioneering.tooling.transition_graph.transition_graph.TransitionGraph>` class under the hood. This method creates an instance of TransitionGraph class and embeds it into the eventstream object. Eventually, ``Eventstream.transition_graph()`` returns exactly this instance.
 
-Sometimes it is reasonable to work with a separate instance of TransitionGraph class. An alternative way to get the same visualization that ``Eventstream.transition_graph()`` produces is to call :py:meth:`TransitionGraph.plot_graph()<retentioneering.tooling.transition_graph.transition_graph.TransitionGraph.plot_graph>` method explicitly.
+Sometimes it is reasonable to work with a separate instance of TransitionGraph class. An alternative way to get the same visualization that ``Eventstream.transition_graph()`` produces is to call :py:meth:`TransitionGraph.plot()<retentioneering.tooling.transition_graph.transition_graph.TransitionGraph.plot>` method explicitly.
 
 Here is an example how you can manage it:
 
@@ -560,7 +560,7 @@ Here is an example how you can manage it:
         nodes_threshold={'event_id': 500},
         targets={'positive': ['payment_done', 'cart']}
     )
-    tg.plot_graph()
+    tg.plot()
 
 .. raw:: html
 

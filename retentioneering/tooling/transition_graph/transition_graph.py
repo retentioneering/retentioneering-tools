@@ -16,7 +16,6 @@ from retentioneering.eventstream.types import EventstreamType
 from retentioneering.nodelist import Nodelist
 from retentioneering.templates.transition_graph import TransitionGraphRenderer
 from retentioneering.tooling.typing.transition_graph import (
-    GraphSettings,
     LayoutNode,
     NodeParams,
     NormType,
@@ -41,17 +40,6 @@ class TransitionGraph:
     eventstream: EventstreamType
         Source eventstream.
 
-    graph_settings: dict, optional
-        Visual boolean settings related to :ref:`Settings block <transition_graph_settings>`
-        in the control of transition graph interface.
-
-        Possible keys:
-
-        - show_weights,
-        - show_percents,
-        - show_nodes_names,
-        - show_all_edges_for_targets,
-        - show_nodes_without_links.
 
     See Also
     --------
@@ -107,12 +95,8 @@ class TransitionGraph:
     def __init__(
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
-        graph_settings: GraphSettings | dict[str, Any] | None = None,
     ) -> None:
         from retentioneering.eventstream.eventstream import Eventstream
-
-        if graph_settings is None:
-            graph_settings = {}  # type: ignore
 
         sm = ServerManager()
         self.env = sm.check_env()
@@ -120,7 +104,6 @@ class TransitionGraph:
 
         self.server.register_action("save-nodelist", lambda n: self._on_nodelist_updated(n))
         self.server.register_action("save-layout", lambda n: self._on_layout_request(n))
-        self.server.register_action("save-graph-settings", lambda n: self._on_graph_settings_request(n))
         self.server.register_action("recalculate", lambda n: self._on_recalc_request(n))
 
         self.eventstream: Eventstream = eventstream  # type: ignore
@@ -132,7 +115,6 @@ class TransitionGraph:
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
         self.layout: pd.DataFrame | None = None
-        self.graph_settings = graph_settings
 
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
 
@@ -243,9 +225,6 @@ class TransitionGraph:
             for col in cols:
                 row[col] = recalculated_node[col]
         return row.copy()
-
-    def _on_graph_settings_request(self, settings: GraphSettings) -> None:
-        self.graph_settings = settings
 
     def _on_layout_request(self, layout_nodes: MutableSequence[LayoutNode]) -> None:
         self.graph_updates = layout_nodes
@@ -523,7 +502,7 @@ class TransitionGraph:
             "show_nodes_without_links": show_nodes_without_links,
         }
         # @FIXME: idk why pyright doesn't like this. Vladimir Makhanov
-        merged = {**self.graph_settings, **clear_dict(settings)}  # type: ignore
+        merged = {**clear_dict(settings)}  # type: ignore
 
         return clear_dict(merged)
 
@@ -558,20 +537,20 @@ class TransitionGraph:
 
     def plot(
         self,
-        edges_norm_type: NormType | None = None,
-        edges_weight_col: str | None = None,
-        edges_threshold: Threshold | None = None,
-        nodes_weight_col: str | None = None,
-        nodes_threshold: Threshold | None = None,
         targets: MutableMapping[str, str | None] | None = None,
+        edges_norm_type: NormType | None = None,
+        nodes_threshold: Threshold | None = None,
+        edges_threshold: Threshold | None = None,
+        nodes_weight_col: str = "event_id",
+        edges_weight_col: str = "event_id",
         custom_weight_cols: list[str] | None = None,
         width: int = 960,
         height: int = 900,
-        show_weights: bool | None = None,
-        show_percents: bool | None = None,
-        show_nodes_names: bool | None = None,
-        show_all_edges_for_targets: bool | None = None,
-        show_nodes_without_links: bool | None = None,
+        show_weights: bool = True,
+        show_percents: bool = False,
+        show_nodes_names: bool = True,
+        show_all_edges_for_targets: bool = True,
+        show_nodes_without_links: bool = False,
     ) -> None:
         """
         Create interactive transition graph visualization with callback to sourcing eventstream.
@@ -588,13 +567,13 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
-        edges_weight_col: str, optional
+        edges_weight_col: str, default 'event_id'
             A column name from the :py:class:`.EventstreamSchema` which values will control the final
             edges' weights and displayed width as well.
 
             For each edge is calculated:
 
-            - If ``None`` or ``event_id`` - the number of transitions.
+            - If ``event_id`` - the number of transitions.
             - If ``user_id`` - the number of unique users.
             - If ``session_id`` - the number of unique sessions.
             - If ``custom_col`` - the number of unique values in selected column.
@@ -614,13 +593,13 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide<transition_graph_thresholds>` for the details.
 
-        nodes_weight_col: str, optional
+        nodes_weight_col: str, default 'event_id'
             A column name from the :py:class:`.EventstreamSchema` which values control the final
             nodes' weights and displayed diameter as well.
 
             For each node is calculated:
 
-            - If ``None`` or ``event_id`` - the number of events.
+            - If ``event_id`` - the number of events.
             - If ``user_id`` - the number of unique users.
             - If ``session_id`` - the number of unique sessions.
             - If ``custom_col`` - the number of unique values in selected column.
@@ -657,17 +636,17 @@ class TransitionGraph:
             Width of plot in pixels.
         height: int, default 960
             Height of plot in pixels.
-        show_weights: bool, optional
+        show_weights: bool, default True
             Hide/display the edge weight labels. By default, weights are shown.
-        show_percents: bool, optional
+        show_percents: bool, default False
             Display edge weights as percents. Available only if an edge normalization type is chosen.
             By default, weights are displayed in fractions.
-        show_nodes_names: bool, optional
+        show_nodes_names: bool, default True
             Hide/display the node names. By default, names are shown.
-        show_all_edges_for_targets: bool, optional
+        show_all_edges_for_targets: bool, default True
             This displaying option allows to ignore the threshold filters and always display
             any edge connected to a target node. By default, all such edges are shown.
-        show_nodes_without_links: bool, optional
+        show_nodes_without_links: bool, default False
             Setting a threshold filter might remove all the edges connected to a node.
             Such isolated nodes might be considered as useless. This displaying option
             hides them in the canvas as well.
@@ -686,6 +665,9 @@ class TransitionGraph:
 
         See :doc:`TransitionGraph user guide </user_guides/transition_graph>` for the details.
         """
+        if not edges_norm_type and show_percents:
+            raise ValueError("If show_percents=True, edges_norm_type should be 'full' or 'node'!")
+
         self.__prepare_graph_for_plot(
             edges_weight_col=edges_weight_col,
             edges_threshold=edges_threshold,

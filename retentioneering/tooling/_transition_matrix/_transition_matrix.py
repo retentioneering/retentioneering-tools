@@ -20,9 +20,7 @@ class _TransitionMatrix:
         self.__nodelist.calculate_nodelist(self.__eventstream.to_dataframe())
         self.__edgelist = Edgelist(eventstream=eventstream)
 
-    def _values(self, weight_col: str | None = None, norm_type: NormType = None) -> pd.DataFrame:
-        if weight_col is None:
-            weight_col = "event_id"
+    def _values(self, weight_col: str = "event_id", norm_type: NormType = None) -> pd.DataFrame:
         self.__edgelist.calculate_edgelist(norm_type=norm_type, weight_cols=[weight_col])
         edgelist: pd.DataFrame = self.__edgelist.edgelist_df
         graph = nx.DiGraph()

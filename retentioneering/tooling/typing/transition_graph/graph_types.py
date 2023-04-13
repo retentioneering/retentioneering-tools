@@ -21,24 +21,12 @@ class PreparedNode(TypedDict):
     parent: str
 
 
-class PlotParamsType(TypedDict):
-    pass
-
-
 AllowedColors = Literal["red", "green", "yellow", "blue", "magenta", "cyan"]
 
 # @FIXME: idk why import annotation not fixed this cause, and I need to use Union. Vladimir Makhanov
 Threshold = MutableMapping[str, Union[float, int]]  # type: ignore
 NodeParams = MutableMapping[str, Optional[str]]
 Position = MutableMapping[str, Sequence[float]]
-
-
-class GraphSettings(PlotParamsType):
-    show_weights: bool
-    show_percents: bool
-    show_nodes_names: bool
-    show_all_edges_for_targets: bool
-    show_nodes_without_links: bool
 
 
 class Weight(TypedDict):

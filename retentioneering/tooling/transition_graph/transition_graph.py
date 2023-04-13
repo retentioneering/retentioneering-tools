@@ -578,7 +578,7 @@ class TransitionGraph:
 
             For each edge is calculated:
 
-            - If None or ``event_id`` - the number of transitions.
+            - If ``None`` or ``event_id`` - the number of transitions.
             - If ``user_id`` - the number of unique users.
             - If ``session_id`` - the number of unique sessions.
             - If ``custom_col`` - the number of unique values in selected column.
@@ -604,7 +604,7 @@ class TransitionGraph:
 
             For each node is calculated:
 
-            - If None or ``event_id`` - the number of events.
+            - If ``None`` or ``event_id`` - the number of events.
             - If ``user_id`` - the number of unique users.
             - If ``session_id`` - the number of unique sessions.
             - If ``custom_col`` - the number of unique values in selected column.

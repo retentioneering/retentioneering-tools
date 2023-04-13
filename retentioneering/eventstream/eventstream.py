@@ -9,6 +9,7 @@ from typing import Any, Callable, List, Literal, MutableMapping, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from retentioneering.backend.tracker import track
 from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
 from retentioneering.eventstream.types import (
@@ -167,7 +168,7 @@ class Eventstream(
     __step_matrix: StepMatrix | None = None
     __sankey: StepSankey | None = None
     __stattests: StatTests | None = None
-    __transition_graph: TransitionGraph | None = None
+    __transition_graph: TransitionGraph
     __p_graph: PGraph | None = None
     __timedelta_hist: TimedeltaHist | None = None
     __user_lifetime_hist: UserLifetimeHist | None = None
@@ -1076,6 +1077,20 @@ class Eventstream(
         )
         return describer._values()
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_helper"},
+        allowed_params=[
+            "edges_norm_type",
+            "targets",
+            "nodes_threshold",
+            "edges_threshold",
+            "nodes_weight_col",
+            "edges_weight_col",
+            "custom_weight_cols",
+            "width",
+            "height",
+        ],
+    )
     def transition_graph(
         self,
         graph_settings: dict[str, Any] | None = None,
@@ -1128,6 +1143,10 @@ class Eventstream(
         self.__p_graph.display()
         return self.__p_graph
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "transition_matrix", "event_custom_name": "transition_matrix_helper"},
+        allowed_params=["weight_col", "norm_type"],
+    )
     def transition_matrix(self, weight_col: str | None = None, norm_type: NormType = None) -> pd.DataFrame:
         """
         Get transition weights as a matrix for each unique pair of events. The calculation logic is the same

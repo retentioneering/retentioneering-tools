@@ -29,7 +29,7 @@ class TestEventstreamStepMatrix:
     def test_step_matrix_eventstream__refit(self, test_stream):
         params_1 = {"max_steps": 5}
 
-        params_2 = {"max_steps": 5, "thresh": 0.3}
+        params_2 = {"max_steps": 5, "threshold": 0.3}
 
         correct_res_1 = pd.DataFrame(
             [

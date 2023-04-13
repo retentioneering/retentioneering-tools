@@ -20,10 +20,10 @@ class StepSankey(EndedEventsMixin):
     eventstream : EventstreamType
     max_steps : int, default 10
         Maximum number of steps in trajectories to include. Should be > 1.
-    thresh : float | int, default 0.05
+    threshold : float | int, default 0.05
         Used to remove rare events from the plot. An event is collapsed to ``thresholded_N`` artificial event if
-        its maximum frequency across all the steps is less than or equal to ``thresh``. The frequency is set
-        with respect to ``thresh`` type:
+        its maximum frequency across all the steps is less than or equal to ``threshold``. The frequency is set
+        with respect to ``threshold`` type:
 
         - If ``int`` - the frequency is the number of unique users who had given event at given step.
         - If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
@@ -32,8 +32,8 @@ class StepSankey(EndedEventsMixin):
     sorting : list of str, optional
         Define the order of the events visualized at each step. The events that are not represented in the list
         will follow after the events from the list.
-    target : list of str, optional
-        Contain events that are prohibited for collapsing with ``thresh`` parameter.
+    targets : str or list of str, optional
+        Contain events that are prohibited for collapsing with ``threshold`` parameter.
     autosize : bool, default True
         Plotly autosize parameter. See :plotly_autosize:`plotly documentation<>`.
     width : int, optional
@@ -62,9 +62,9 @@ class StepSankey(EndedEventsMixin):
         self,
         eventstream: EventstreamType,
         max_steps: int = 10,
-        thresh: Union[int, float] = 0.05,
+        threshold: Union[int, float] = 0.05,
         sorting: list | None = None,
-        target: Union[list[str], str] | None = None,
+        targets: Union[list[str], str] | None = None,
         autosize: bool = True,
         width: int | None = None,
         height: int | None = None,
@@ -76,9 +76,9 @@ class StepSankey(EndedEventsMixin):
         self.event_index_col = self.__eventstream.schema.event_index
 
         self.max_steps = max_steps
-        self.thresh = thresh
+        self.threshold = threshold
         self.sorting = sorting
-        self.target = target
+        self.targets = targets
         self.autosize = autosize
         self.width = width
         self.height = height
@@ -258,27 +258,29 @@ class StepSankey(EndedEventsMixin):
         data["total_users"] = data.loc[data["step"] == 1, self.user_col].nunique()
         data["perc"] = data["event_users"] / data["total_users"]
 
-        if self.thresh is not None:
-            if isinstance(self.thresh, float):
+        if self.threshold is not None:
+            if isinstance(self.threshold, float):
                 column_to_compare = "perc"
             else:
-                # assume that self.thresh must be of int type here
+                # assume that self.threshold must be of int type here
                 column_to_compare = "event_users"
 
             events_to_keep = ["ENDED"]
-            if self.target is not None:
-                events_to_keep += self.target
+            if self.targets is not None:
+                events_to_keep += self.targets
 
-            thresh_events = (
+            threshold_events = (
                 data.loc[data["step"] <= self.max_steps, :]
                 .groupby(by=self.event_col, as_index=False)[column_to_compare]
                 .max()
                 .loc[
-                    lambda df_: (df_[column_to_compare] <= self.thresh) & (~df_[self.event_col].isin(events_to_keep))
+                    lambda df_: (df_[column_to_compare] <= self.threshold) & (~df_[self.event_col].isin(events_to_keep))
                 ]  # type: ignore
                 .loc[:, self.event_col]
             )
-            data.loc[data[self.event_col].isin(thresh_events), self.event_col] = f"thresholded_{len(thresh_events)}"
+            data.loc[
+                data[self.event_col].isin(threshold_events), self.event_col
+            ] = f"thresholded_{len(threshold_events)}"
 
             # NOTE rearrange the data taking into account recently added thresholded events
             data["step"] = data.groupby(self.user_col)[self.event_index_col].rank(method="first").astype(int)
@@ -589,9 +591,9 @@ class StepSankey(EndedEventsMixin):
         """
         return {
             "max_steps": self.max_steps,
-            "thresh": self.thresh,
+            "threshold": self.threshold,
             "sorting": self.sorting,
-            "target": self.target,
+            "targets": self.targets,
             "autosize": self.autosize,
             "width": self.width,
             "height": self.height,

@@ -62,7 +62,7 @@ class StepMatrix(EndedEventsMixin):
           the passed order.
         - If ``None`` - rows will be ordered according to i`th value (first row,
           where 1st element is max; second row, where second element is max; etc)
-    thresh : float, default=0
+    threshold : float, default=0
         Used to remove rare events. Aggregates all rows where all values are
         less than the specified threshold.
     centered : dict, optional
@@ -116,7 +116,7 @@ class StepMatrix(EndedEventsMixin):
         targets: Optional[list[str] | str] = None,
         accumulated: Optional[Union[Literal["both", "only"], None]] = None,
         sorting: Optional[list[str]] = None,
-        thresh: float = 0,
+        threshold: float = 0,
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
     ) -> None:
@@ -132,7 +132,7 @@ class StepMatrix(EndedEventsMixin):
         self.targets = targets
         self.accumulated = accumulated
         self.sorting = sorting
-        self.thresh = thresh
+        self.threshold = threshold
         self.centered: CenteredParams | None = CenteredParams(**centered) if centered else None
         self.groups = groups
 
@@ -429,21 +429,21 @@ class StepMatrix(EndedEventsMixin):
         else:
             piv, piv_targets, fraction_title, targets_plot = self._step_matrix_values(data=data)
 
-        thresh_index = "THRESHOLDED_"
-        if self.thresh != 0:
+        threshold_index = "THRESHOLDED_"
+        if self.threshold != 0:
             # find if there are any rows to threshold:
-            thresholded = piv.loc[(piv.abs() < self.thresh).all(axis=1) & (piv.index != "ENDED")].copy()
+            thresholded = piv.loc[(piv.abs() < self.threshold).all(axis=1) & (piv.index != "ENDED")].copy()
             if len(thresholded) > 0:
-                piv = piv.loc[(piv.abs() >= self.thresh).any(axis=1) | (piv.index == "ENDED")].copy()
-                thresh_index = f"THRESHOLDED_{len(thresholded)}"
-                piv.loc[thresh_index] = thresholded.sum()
+                piv = piv.loc[(piv.abs() >= self.threshold).any(axis=1) | (piv.index == "ENDED")].copy()
+                threshold_index = f"THRESHOLDED_{len(thresholded)}"
+                piv.loc[threshold_index] = thresholded.sum()
 
         if self.sorting is None:
             piv = self._sort_matrix(piv)
 
             keep_in_the_end = []
             keep_in_the_end.append("ENDED") if ("ENDED" in piv.index) else None
-            keep_in_the_end.append(thresh_index) if (thresh_index in piv.index) else None
+            keep_in_the_end.append(threshold_index) if (threshold_index in piv.index) else None
 
             events_order = [*(i for i in piv.index if i not in keep_in_the_end), *keep_in_the_end]
             piv = piv.loc[events_order]
@@ -509,7 +509,7 @@ class StepMatrix(EndedEventsMixin):
             "targets": self.targets,
             "accumulated": self.accumulated,
             "sorting": self.sorting,
-            "thresh": self.thresh,
+            "threshold": self.threshold,
             "centered": self.centered,
             "groups": self.groups,
         }

@@ -16,6 +16,7 @@ from retentioneering.eventstream.types import EventstreamType
 from retentioneering.nodelist import Nodelist
 from retentioneering.templates.transition_graph import TransitionGraphRenderer
 from retentioneering.tooling.typing.transition_graph import (
+    GraphSettings,
     LayoutNode,
     NodeParams,
     NormType,
@@ -104,6 +105,7 @@ class TransitionGraph:
 
         self.server.register_action("save-nodelist", lambda n: self._on_nodelist_updated(n))
         self.server.register_action("save-layout", lambda n: self._on_layout_request(n))
+        self.server.register_action("save-graph-settings", lambda n: self._on_graph_settings_request(n))
         self.server.register_action("recalculate", lambda n: self._on_recalc_request(n))
 
         self.eventstream: Eventstream = eventstream  # type: ignore
@@ -115,7 +117,7 @@ class TransitionGraph:
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
         self.layout: pd.DataFrame | None = None
-
+        self.graph_settings: GraphSettings | dict[str, Any] | None = None
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
 
     def _define_weight_cols(self, custom_weight_cols: list[str] | None) -> list[str]:
@@ -225,6 +227,9 @@ class TransitionGraph:
             for col in cols:
                 row[col] = recalculated_node[col]
         return row.copy()
+
+    def _on_graph_settings_request(self, settings: GraphSettings) -> None:
+        self.graph_settings = settings
 
     def _on_layout_request(self, layout_nodes: MutableSequence[LayoutNode]) -> None:
         self.graph_updates = layout_nodes
@@ -502,7 +507,7 @@ class TransitionGraph:
             "show_nodes_without_links": show_nodes_without_links,
         }
         # @FIXME: idk why pyright doesn't like this. Vladimir Makhanov
-        merged = {**clear_dict(settings)}  # type: ignore
+        merged = {**self.graph_settings, **clear_dict(settings)}  # type: ignore
 
         return clear_dict(merged)
 
@@ -541,8 +546,8 @@ class TransitionGraph:
         edges_norm_type: NormType | None = None,
         nodes_threshold: Threshold | None = None,
         edges_threshold: Threshold | None = None,
-        nodes_weight_col: str = "event_id",
-        edges_weight_col: str = "event_id",
+        nodes_weight_col: str | None = None,
+        edges_weight_col: str | None = None,
         custom_weight_cols: list[str] | None = None,
         width: int = 960,
         height: int = 900,
@@ -567,13 +572,13 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
-        edges_weight_col: str, default 'event_id'
+        edges_weight_col: str, optional
             A column name from the :py:class:`.EventstreamSchema` which values will control the final
             edges' weights and displayed width as well.
 
             For each edge is calculated:
 
-            - If ``event_id`` - the number of transitions.
+            - If None or ``event_id`` - the number of transitions.
             - If ``user_id`` - the number of unique users.
             - If ``session_id`` - the number of unique sessions.
             - If ``custom_col`` - the number of unique values in selected column.
@@ -593,13 +598,13 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide<transition_graph_thresholds>` for the details.
 
-        nodes_weight_col: str, default 'event_id'
+        nodes_weight_col: str, optional
             A column name from the :py:class:`.EventstreamSchema` which values control the final
             nodes' weights and displayed diameter as well.
 
             For each node is calculated:
 
-            - If ``event_id`` - the number of events.
+            - If None or ``event_id`` - the number of events.
             - If ``user_id`` - the number of unique users.
             - If ``session_id`` - the number of unique sessions.
             - If ``custom_col`` - the number of unique values in selected column.
@@ -650,7 +655,6 @@ class TransitionGraph:
             Setting a threshold filter might remove all the edges connected to a node.
             Such isolated nodes might be considered as useless. This displaying option
             hides them in the canvas as well.
-        @TODO: show_edge_info_on_hover add explanation. dpanina.
 
         Returns
         -------

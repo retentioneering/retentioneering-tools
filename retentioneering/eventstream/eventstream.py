@@ -1082,8 +1082,8 @@ class Eventstream(
         targets: MutableMapping[str, str | None] | None = None,
         nodes_threshold: Threshold | None = None,
         edges_threshold: Threshold | None = None,
-        nodes_weight_col: str = "event_id",
-        edges_weight_col: str = "event_id",
+        nodes_weight_col: str | None = None,
+        edges_weight_col: str | None = None,
         custom_weight_cols: list[str] | None = None,
         width: int = 960,
         height: int = 900,
@@ -1134,7 +1134,7 @@ class Eventstream(
         self.__p_graph.display()
         return self.__p_graph
 
-    def transition_matrix(self, weight_col: str = "event_id", norm_type: NormType = None) -> pd.DataFrame:
+    def transition_matrix(self, weight_col: str | None = None, norm_type: NormType = None) -> pd.DataFrame:
         """
         Get transition weights as a matrix for each unique pair of events. The calculation logic is the same
         that is used for edge weights calculation of transition graph.
@@ -1142,7 +1142,7 @@ class Eventstream(
         Parameters
         ----------
 
-        weight_col : str, default 'event_id'
+        weight_col : str, optional
             Weighting column for the transition weights calculation.
             See :ref:`transition graph user guide <transition_graph_weights>` for the details.
 

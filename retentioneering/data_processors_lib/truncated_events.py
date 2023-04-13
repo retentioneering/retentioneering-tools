@@ -18,12 +18,12 @@ class TruncatedEventsParams(ParamsModel):
     A class with parameters for :py:class:`.TruncatedEvents` class.
     """
 
-    left_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
-    right_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
+    left_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
+    right_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
 
     _widgets = {
-        "left_truncated_cutoff": ReteTimeWidget(),
-        "right_truncated_cutoff": ReteTimeWidget(),
+        "left_cutoff": ReteTimeWidget(),
+        "right_cutoff": ReteTimeWidget(),
     }
 
 
@@ -34,16 +34,16 @@ class TruncatedEvents(DataProcessor):
 
     Parameters
     ----------
-    left_truncated_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
+    left_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
         Threshold value with its unit of measure.
         The timedelta between the last event in each user's path and the first event in the whole eventstream
-        is calculated. For users with the timedelta less than the selected ``left_truncated_cutoff``,
+        is calculated. For users with the timedelta less than the selected ``left_cutoff``,
         the new ``truncated_left`` event is added.
 
-    right_truncated_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
+    right_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
         Threshold value with its unit of measure.
         The timedelta between the first event in each user's path and the last event in the whole eventstream
-        is calculated. For users with timedelta less than the selected ``right_truncated_cutoff``,
+        is calculated. For users with timedelta less than the selected ``right_cutoff``,
         the new ``truncated_right`` event is added.
 
     Returns
@@ -68,7 +68,7 @@ class TruncatedEvents(DataProcessor):
     Raises
     ------
     ValueError
-        If both of ``left_truncated_cutoff`` and ``right_truncated_cutoff`` are empty.
+        If both of ``left_cutoff`` and ``right_cutoff`` are empty.
 
     Notes
     -----
@@ -89,28 +89,28 @@ class TruncatedEvents(DataProcessor):
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 
-        left_truncated_cutoff, left_truncated_unit = None, None
-        right_truncated_cutoff, right_truncated_unit = None, None
+        left_cutoff, left_truncated_unit = None, None
+        right_cutoff, right_truncated_unit = None, None
 
-        if self.params.left_truncated_cutoff:
-            left_truncated_cutoff, left_truncated_unit = self.params.left_truncated_cutoff
+        if self.params.left_cutoff:
+            left_cutoff, left_truncated_unit = self.params.left_cutoff
 
-        if self.params.right_truncated_cutoff:
-            right_truncated_cutoff, right_truncated_unit = self.params.right_truncated_cutoff
+        if self.params.right_cutoff:
+            right_cutoff, right_truncated_unit = self.params.right_cutoff
         truncated_events = pd.DataFrame()
 
-        if not left_truncated_cutoff and not right_truncated_cutoff:
-            raise ValueError("Either left_truncated_cutoff or right_truncated_cutoff must be specified!")
+        if not left_cutoff and not right_cutoff:
+            raise ValueError("Either left_cutoff or right_cutoff must be specified!")
 
         userpath = (
             events.groupby(user_col)[time_col].agg([np.min, np.max]).rename(columns={"amin": "start", "amax": "end"})
         )
 
-        if left_truncated_cutoff:
+        if left_cutoff:
             timedelta = (userpath["end"] - events[time_col].min()) / np.timedelta64(
                 1, left_truncated_unit  # type: ignore
             )
-            truncated_users_index = userpath[timedelta < left_truncated_cutoff].index
+            truncated_users_index = userpath[timedelta < left_cutoff].index
             left_truncated_events = events.groupby(user_col).first().reindex(truncated_users_index).reset_index()
 
             left_truncated_events[event_col] = "truncated_left"
@@ -118,11 +118,11 @@ class TruncatedEvents(DataProcessor):
             left_truncated_events["ref"] = None
             truncated_events = pd.concat([truncated_events, left_truncated_events])
 
-        if right_truncated_cutoff:
+        if right_cutoff:
             timedelta = (events[time_col].max() - userpath["start"]) / np.timedelta64(
                 1, right_truncated_unit  # type: ignore
             )
-            truncated_users_index = userpath[timedelta < right_truncated_cutoff].index
+            truncated_users_index = userpath[timedelta < right_cutoff].index
             right_truncated_events = events.groupby(user_col).last().reindex(truncated_users_index).reset_index()
 
             right_truncated_events[event_col] = "truncated_right"

@@ -177,7 +177,7 @@ Data processors
 
 ``DataProcessor`` is an abstract class for building nodes of a preprocessing graph, and any its child class is called a *data processor*. Unlike atomic operations which are abstract and doesn't specify particular logic, data processors define how exactly eventstream should be modified. Each data processor has a supplementary class (a child of abstract ``ParamsModel`` class) which contains its parameters as attribute references.
 
-For example, ``SplitSessions`` data processor adds explicit synthetic events to an eventstream indicating session boundaries. A pair of ``session_end`` and ``session_start`` events is added as soon as the distance between two sequential events in a user's trajectory is greater than a specified threshold -- ``session_cutoff``. This parameter is embedded into ``SplitSessionsParams`` as the attribute reference.
+For example, ``SplitSessions`` data processor adds explicit synthetic events to an eventstream indicating session boundaries. A pair of ``session_end`` and ``session_start`` events is added as soon as the distance between two sequential events in a user's trajectory is greater than a specified threshold -- ``timeout``. This parameter is embedded into ``SplitSessionsParams`` as the attribute reference.
 
 Similar to atomic operations, data processors could be categorized into three parts according to whether they add, remove or group events. Here we provide a brief overview. The comprehensive documentation on data processors is located :red:`TODO: here`.
 
@@ -321,7 +321,7 @@ Linking graph nodes according to preprocessing logic, we obtain a ``preprocessin
 
     # creating single nodes
     node1 = EventsNode(StartEndEvents(params=StartEndEventsParams()))
-    node2 = EventsNode(SplitSessions(params=SplitSessionsParams(session_cutoff=(1, 'h'))))
+    node2 = EventsNode(SplitSessions(params=SplitSessionsParams(timeout=(1, 'h'))))
 
     # creating a preprocessing graph and linking the nodes
     pgraph = PGraph(source_stream=stream)
@@ -354,7 +354,7 @@ In many real-world scenarios preprocessing graph has simple linear structure (e.
 
     processed_stream = stream \
         .add_start_end() \
-        .split_sessions(session_cutoff=(1, 'h'))
+        .split_sessions(timeout=(1, 'h'))
 
 
 GUI

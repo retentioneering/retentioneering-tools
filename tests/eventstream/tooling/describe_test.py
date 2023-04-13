@@ -18,11 +18,11 @@ class TestEventstreamDescribe:
         assert pd.testing.assert_frame_equal(result, expected_df) is None
 
     def test_describe_eventstream__session(self, test_stream: EventstreamType, session_corr: pd.DataFrame):
-        result = test_stream.split_sessions(session_cutoff=(10, "m")).describe()
+        result = test_stream.split_sessions(timeout=(10, "m")).describe()
         expected_df = session_corr
         assert pd.testing.assert_frame_equal(result, expected_df) is None
 
     def test_describe_eventstream__raw_events_only(self, test_stream: EventstreamType, session_raw_corr: pd.DataFrame):
-        result = test_stream.split_sessions(session_cutoff=(10, "m")).describe(raw_events_only=True)
+        result = test_stream.split_sessions(timeout=(10, "m")).describe(raw_events_only=True)
         expected_df = session_raw_corr
         assert pd.testing.assert_frame_equal(result, expected_df) is None

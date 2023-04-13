@@ -48,7 +48,7 @@ class TestDeleteUsersByPathLength(ApplyTestBase):
     def test_delete_users_by_path_length_apply__by_event_4(self):
         actual = self._apply(
             DeleteUsersByPathLengthParams(
-                events_num=4,
+                min_steps=4,
             )
         )
         expected = pd.DataFrame(
@@ -66,10 +66,10 @@ class TestDeleteUsersByPathLength(ApplyTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-    def test_delete_users_by_path_length_apply__by_cutoff(self):
+    def test_delete_users_by_path_length_apply__by_min_time(self):
         actual = self._apply(
             DeleteUsersByPathLengthParams(
-                cutoff=(1.5, "m"),
+                min_time=(1.5, "m"),
             )
         )
         expected = pd.DataFrame(
@@ -121,7 +121,7 @@ class TestDeleteUsersByPathLengthGraph(GraphTestBase):
     def test_delete_users_by_path_length_graph__by_event_4(self):
         actual = self._apply(
             DeleteUsersByPathLengthParams(
-                events_num=4,
+                min_steps=4,
             )
         )
         expected = pd.DataFrame(
@@ -143,10 +143,10 @@ class TestDeleteUsersByPathLengthGraph(GraphTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-    def test_delete_users_by_path_length_graph__by_cutoff(self):
+    def test_delete_users_by_path_length_graph__by_min_time(self):
         actual = self._apply(
             DeleteUsersByPathLengthParams(
-                cutoff=(1.5, "m"),
+                min_time=(1.5, "m"),
             )
         )
         expected = pd.DataFrame(
@@ -223,12 +223,12 @@ class TestDeleteUsersByPathLengthHelper:
 
         source = Eventstream(source_df)
 
-        result = source.delete_users(events_num=4)
+        result = source.delete_users(min_steps=4)
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_delete_users_by_path_length_graph__by_cutoff(self):
+    def test_delete_users_by_path_length_graph__by_min_time(self):
         source_df = pd.DataFrame(
             [
                 [1, "path_start", "path_start", "2022-01-01 00:01:00"],
@@ -280,7 +280,7 @@ class TestDeleteUsersByPathLengthHelper:
         )
 
         source = Eventstream(source_df)
-        result = source.delete_users(cutoff=(1.5, "m"))
+        result = source.delete_users(min_time=(1.5, "m"))
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)

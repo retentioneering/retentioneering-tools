@@ -34,8 +34,8 @@ class TestTruncatedEvents(ApplyTestBase):
     def test_truncated_events_apply__left_right(self):
         actual = self._apply(
             TruncatedEventsParams(
-                left_truncated_cutoff=(1, "h"),
-                right_truncated_cutoff=(1, "h"),
+                left_cutoff=(1, "h"),
+                right_cutoff=(1, "h"),
             )
         )
         expected = pd.DataFrame(
@@ -52,7 +52,7 @@ class TestTruncatedEvents(ApplyTestBase):
     def test_truncated_events_apply__left(self):
         actual = self._apply(
             TruncatedEventsParams(
-                left_truncated_cutoff=(1, "h"),
+                left_cutoff=(1, "h"),
             )
         )
         expected = pd.DataFrame(
@@ -67,7 +67,7 @@ class TestTruncatedEvents(ApplyTestBase):
     def test_truncated_events_apply__right(self):
         actual = self._apply(
             TruncatedEventsParams(
-                right_truncated_cutoff=(1, "h"),
+                right_cutoff=(1, "h"),
             )
         )
         expected = pd.DataFrame(
@@ -81,7 +81,7 @@ class TestTruncatedEvents(ApplyTestBase):
 
     def test_params_model__incorrect_datetime_unit(self):
         with pytest.raises(ValidationError):
-            p = TruncatedEventsParams(left_truncated_cutoff=(1, "xxx"))
+            p = TruncatedEventsParams(left_cutoff=(1, "xxx"))
 
 
 class TestTruncatedEventsGraph(GraphTestBase):
@@ -108,8 +108,8 @@ class TestTruncatedEventsGraph(GraphTestBase):
     def test_truncated_events_graph__left_right(self):
         actual = self._apply(
             TruncatedEventsParams(
-                left_truncated_cutoff=(1, "h"),
-                right_truncated_cutoff=(1, "h"),
+                left_cutoff=(1, "h"),
+                right_cutoff=(1, "h"),
             )
         )
         expected = pd.DataFrame(
@@ -134,7 +134,7 @@ class TestTruncatedEventsGraph(GraphTestBase):
     def test_truncated_events_graph__left(self):
         actual = self._apply(
             TruncatedEventsParams(
-                left_truncated_cutoff=(1, "h"),
+                left_cutoff=(1, "h"),
             )
         )
         expected = pd.DataFrame(
@@ -157,7 +157,7 @@ class TestTruncatedEventsGraph(GraphTestBase):
     def test_truncated_events_graph__right(self):
         actual = self._apply(
             TruncatedEventsParams(
-                right_truncated_cutoff=(1, "h"),
+                right_cutoff=(1, "h"),
             )
         )
         expected = pd.DataFrame(
@@ -215,7 +215,7 @@ class TestTruncatedEventsHelper:
 
         stream = Eventstream(source_df)
 
-        res = stream.truncated_events(left_truncated_cutoff=(1, "h"), right_truncated_cutoff=(1, "h")).to_dataframe()[
+        res = stream.truncated_events(left_cutoff=(1, "h"), right_cutoff=(1, "h")).to_dataframe()[
             correct_result_columns
         ]
 

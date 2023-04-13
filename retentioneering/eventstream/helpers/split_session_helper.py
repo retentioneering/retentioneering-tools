@@ -10,7 +10,7 @@ from ..types import EventstreamType
 class SplitSessionsHelperMixin:
     def split_sessions(
         self,
-        session_cutoff: Tuple[float, DATETIME_UNITS],
+        timeout: Tuple[float, DATETIME_UNITS],
         session_col: str = "session_id",
         mark_truncated: Optional[bool] = False,
     ) -> EventstreamType:
@@ -43,7 +43,7 @@ class SplitSessionsHelperMixin:
         from retentioneering.graph.p_graph import PGraph
 
         p = PGraph(source_stream=self)  # type: ignore
-        params = dict(session_cutoff=session_cutoff, session_col=session_col, mark_truncated=mark_truncated)
+        params = dict(timeout=timeout, session_col=session_col, mark_truncated=mark_truncated)
         node = EventsNode(processor=SplitSessions(params=SplitSessionsParams(**params)))  # type: ignore
         p.add_node(node=node, parents=[p.root])
         result = p.combine(node)

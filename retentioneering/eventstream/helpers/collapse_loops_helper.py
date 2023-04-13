@@ -8,8 +8,8 @@ from ..types import EventstreamType
 class CollapseLoopsHelperMixin:
     def collapse_loops(
         self,
-        suffix: Union[Literal["loop", "count"], None] = "loop",
-        timestamp_aggregation_type: Literal["max", "min", "mean"] = "max",
+        suffix: Union[Literal["loop", "count"], None] = None,
+        time_agg: Literal["max", "min", "mean"] = "max",
     ) -> EventstreamType:
         """
         A method of ``Eventstream`` class that finds ``loops`` and creates new synthetic events
@@ -42,11 +42,7 @@ class CollapseLoopsHelperMixin:
         p = PGraph(source_stream=self)  # type: ignore
 
         node = EventsNode(
-            processor=CollapseLoops(
-                params=CollapseLoopsParams(
-                    suffix=suffix, timestamp_aggregation_type=timestamp_aggregation_type  # type: ignore
-                )
-            )
+            processor=CollapseLoops(params=CollapseLoopsParams(suffix=suffix, time_agg=time_agg))  # type: ignore
         )
         p.add_node(node=node, parents=[p.root])
         result = p.combine(node)

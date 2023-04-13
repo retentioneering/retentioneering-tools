@@ -42,7 +42,7 @@ as it is present in other python libraries, such as Pandas, PySpark, etc. For ex
 
     res = stream\
         .add_start_end()\
-        .split_sessions(session_cutoff=(10, 'm'))\
+        .split_sessions(timeout=(10, 'm'))\
         .to_dataframe()
     res[res['user_id'] == 219483890]
 
@@ -314,7 +314,7 @@ SplitSessions
 ^^^^^^^^^^^^^
 
 :py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>`
-data processor cuts user paths into sessions based on the defined ``session_cutoff``
+data processor cuts user paths into sessions based on the defined ``timeout``
 timeout parameter. For each session, it creates a couple of synthetic
 events ``session_start`` and ``session_end``, like
 ``StartEndEvents``. Session identifiers are formed according to the
@@ -329,7 +329,7 @@ session cutoff=10 minutes:
 
 .. code-block:: python
 
-    res = stream.split_sessions(session_cutoff=(10, 'm')).to_dataframe()
+    res = stream.split_sessions(timeout=(10, 'm')).to_dataframe()
     res[res['user_id'] == 219483890]
 
 
@@ -595,15 +595,15 @@ Given a list of users (considered "lost"), the
 :py:meth:`LostUsersEvents<retentioneering.data_processors_lib.lost_users.LostUsersEvents>`
 data processor labels those users by adding a synthetic ``lost_user`` event to each
 user trajectory end. For all other users, adds an
-``absent_user`` synthetic event. When passed a ``lost_cutoff`` timedelta value,
+``absent_user`` synthetic event. When passed a ``timeout`` timedelta value,
 the method labels users based on the following strategy: if the
 timedelta between the user last event and the eventstream last event
-exceeds ``lost_cutoff``, label as ``lost_user``; otherwise, label as
+exceeds ``timeout``, label as ``lost_user``; otherwise, label as
 ``absent_user``.
 
 ..
 
-    Make an image illustrating lost_cutoff parameter. dpanina`
+    Make an image illustrating timeout parameter. dpanina`
 
 .. figure:: /_static/user_guides/data_processor/dp_4_lost_users.png
 
@@ -727,13 +727,13 @@ The function of this data processor is similar to
 ``NewUsersEvents``, except that it adds labels to the end
 of user trajectory.
 
-We can also run ``LostUsersEvents`` with ``lost_cutoff`` passed, to
+We can also run ``LostUsersEvents`` with ``timeout`` passed, to
 arbitrarily label some users as lost. Assume we consider a user
 absent if there have been no events for 30 days:
 
 .. code-block:: python
 
-    res = stream.lost_users(lost_cutoff=(30, 'D')).to_dataframe()
+    res = stream.lost_users(timeout=(30, 'D')).to_dataframe()
 
 
 Before we inspect the results of applying the data processor,
@@ -875,7 +875,7 @@ PositiveTarget
 :py:meth:`PositiveTarget<retentioneering.data_processors_lib.positive_target.PositiveTarget>`
 data processor supports two parameters:
 
--  ``positive_target_events`` - list of "positive" events
+-  ``targets`` - list of "positive" events
    (for instance, associated with some conversion goal of the user behavior)
 -  ``func`` - this function accepts parent ``Eventstream`` as an
    argument and returns ``pandas.DataFrame`` contains only the lines
@@ -893,7 +893,7 @@ type.
 
     positive_events = ['cart', 'payment_done']
     res = stream.positive_target(
-        positive_target_events=positive_events
+        targets=positive_events
         ).to_dataframe()
 
 Consider user ``219483890``, whose ``cart`` event appeared in her
@@ -1059,20 +1059,20 @@ with tools like ``TransitionGraph``, ``StepMatrix``, and
 ``SankeyStep`` - as it will help to highlight the positive events.
 
 Another way to set positive events is to pass a custom function in ``func``.
-For example, assume we need to mark each ``positive_target_event`` in a trajectory, not just the
+For example, assume we need to mark each ``target`` in a trajectory, not just the
 first one:
 
 .. code-block:: python
 
-    def custom_func(eventstream, positive_target_events) -> pd.DataFrame:
+    def custom_func(eventstream, targets) -> pd.DataFrame:
 
         event_col = eventstream.schema.event_name
         df = eventstream.to_dataframe()
 
-        return df[df[event_col].isin(positive_target_events)]
+        return df[df[event_col].isin(targets)]
 
     res = stream.positive_target(
-              positive_target_events=positive_events,
+              targets=positive_events,
               func=custom_func
               ).to_dataframe()
 
@@ -1190,7 +1190,7 @@ The idea of
 data processor is the same as ``PositiveTarget``, but
 applied to negative labels instead of positive ones.
 
--  ``negative_target_events`` - list of "positive" ``events``
+-  ``targets`` - list of "positive" ``events``
     (for instance, associated with some negative result of the user behavior)
 -  ``func`` - this function accepts parent ``Eventstream`` as an
    argument and returns ``pandas.DataFrame``, which contains only the lines
@@ -1204,7 +1204,7 @@ applied to negative labels instead of positive ones.
     negative_events = ['delivery_courier']
 
     res = stream.negative_target(
-              negative_target_events=negative_events
+              targets=negative_events
               ).to_dataframe()
 
 Works similarly to the ``PositiveTarget`` data processor - in this
@@ -1315,20 +1315,20 @@ One possible way to mark truncated paths is to detect
 trajectories that are "too short" for a typical trajectory, and
 whose shortness can be attributed to being truncated.
 
-``TruncatedEvents`` data processor uses passed ``left_truncated_cutoff`` and
-``right_truncated_cutoff`` timedeltas and labels user trajectories as
+``TruncatedEvents`` data processor uses passed ``left_cutoff`` and
+``right_cutoff`` timedeltas and labels user trajectories as
 ``truncated_left`` or ``truncated_right`` based on the following
 policy:
 
 -  if the last event of a user trajectory is distanced from the first
    event of the whole eventstream by less than
-   ``left_truncated_cutoff``, consider the user trajectory truncated
+   ``left_cutoff``, consider the user trajectory truncated
    from the left, and create ``truncated_left`` synthetic event at the
    trajectory start;
 
 -  if the first event of a user trajectory is distanced from the last
    event of the whole eventstream by less than
-   ``right_truncated_cutoff``, consider the user trajectory truncated
+   ``right_cutoff``, consider the user trajectory truncated
    from the right, and create ``truncated_right`` synthetic event at the
    trajectory end.
 
@@ -1341,8 +1341,8 @@ compare them in some fashion to select the best.
 
 It can be helpful to use
 :py:meth:`TimedeltaHist<retentioneering.tooling.timedelta_hist.timedelta_hist.TimedeltaHist>` method
-with specified ``event_pair=('eventstream_start', 'path_end')`` for choosing ``left_truncated_cutoff``
-value and ``event_pair=('path_start', 'eventstream_end')`` for choosing ``right_truncated_cutoff``.
+with specified ``event_pair=('eventstream_start', 'path_end')`` for choosing ``left_cutoff``
+value and ``event_pair=('path_start', 'eventstream_end')`` for choosing ``right_cutoff``.
 
 See more about :ref:`eventstream descriptive methods<eventstream_descriptive_methods>`.
 
@@ -1350,8 +1350,8 @@ See more about :ref:`eventstream descriptive methods<eventstream_descriptive_met
 .. code-block:: python
 
     params = {
-        'left_truncated_cutoff': (4, 'D'),
-        'right_truncated_cutoff': (3, 'D')
+        'left_cutoff': (4, 'D'),
+        'right_cutoff': (3, 'D')
     }
 
     res = stream.truncated_events(**params).to_dataframe()
@@ -1371,7 +1371,7 @@ Displaying the eventstream start and end timestamps:
 
 
 The trajectory of the following user ends at ``2019-11-02 01:14:38`` - which is too
-close to the eventstream start(for the given ``left_truncated_cutoff``
+close to the eventstream start(for the given ``left_cutoff``
 value), so the ``TruncatedEvents`` data processor labels it as truncated
 from the left:
 
@@ -1423,7 +1423,7 @@ from the left:
     <br>
 
 The trajectory of the following user starts at ``2020-04-29 12:24:21`` - which is too
-close to the eventstream end(for the given ``right_truncated_cutoff``
+close to the eventstream end(for the given ``right_cutoff``
 value), so
 the ``TruncatedEvents`` data processor labels it as truncated from the
 right:
@@ -1606,18 +1606,18 @@ Path length can be specified in the following ways:
 - setting the number of events comprising a path,
 - setting the time distance between the beginning and the end of the path.
 
-The former is associated with ``events_num`` parameter, the latter –
-with ``cutoff`` parameter. Thus, ``DeleteUsersByPathLength`` removes all
-the paths of length less than ``events_num`` or ``cutoff``.
+The former is associated with ``min_steps`` parameter, the latter –
+with ``min_time`` parameter. Thus, ``DeleteUsersByPathLength`` removes all
+the paths of length less than ``min_steps`` or ``min_time``.
 
-Diagram for specified ``events_num``:
+Diagram for specified ``min_steps``:
 
 .. figure:: /_static/user_guides/data_processor/dp_10_delete_events.png
 
 
-Diagram for specified ``cutoff``:
+Diagram for specified ``min_time``:
 
-.. figure:: /_static/user_guides/data_processor/dp_10_delete_cutoff.png
+.. figure:: /_static/user_guides/data_processor/dp_10_delete_min_time.png
 
 
 Let us showcase both variants of the ``DeleteUsersByPathLength``
@@ -1627,7 +1627,7 @@ A minimum number of events specified:
 
 .. code-block:: python
 
-    res = stream.delete_users(events_num=25).to_dataframe()
+    res = stream.delete_users(min_steps=25).to_dataframe()
 
 Any remaining user has at least 25 events. For example, user
 ``629881394`` has 48 events.
@@ -1646,7 +1646,7 @@ A minimum path length (user lifetime) is specified:
 
 .. code-block:: python
 
-    res = stream.delete_users(cutoff=(1, 'M')).to_dataframe()
+    res = stream.delete_users(min_time=(1, 'M')).to_dataframe()
 
 
 Any remaining user has been "alive" for at least a month. For
@@ -2205,13 +2205,13 @@ The ``suffix`` parameter defines the name of the new event:
 -  given ``suffix="count"``, names new event
    ``event_name_loop_{number of event repetitions}``.
 
-The ``timestamp_aggregation_type`` value determines the new event timestamp:
+The ``time_agg`` value determines the new event timestamp:
 
--  given ``timestamp_aggregation_type="max"`` (the default option), passes the
+-  given ``time_agg="max"`` (the default option), passes the
    timestamp of the last event from the loop;
--  given ``timestamp_aggregation_type="min"``, passes the timestamp of
+-  given ``time_agg="min"``, passes the timestamp of
    the first event from the loop;
--  given ``timestamp_aggregation_type="mean"``, passes the average loop
+-  given ``time_agg="mean"``, passes the average loop
    timestamp.
 
 .. figure:: /_static/user_guides/data_processor/dp_13_collapse_loops.png
@@ -2219,7 +2219,7 @@ The ``timestamp_aggregation_type`` value determines the new event timestamp:
 
 .. code-block:: python
 
-    res = stream.collapse_loops().to_dataframe()
+    res = stream.collapse_loops(suffix='loop').to_dataframe()
 
 Consider for example user ``2112338``. In the original eventstream she
 had three consecutive ``catalog`` events.
@@ -2340,14 +2340,14 @@ same as the timestamp of the last looping event:
     <br>
 
 We can set the suffix to see the length of the loops we removed.
-Also, let us see how ``timestamp_aggregation_type`` works if
+Also, let us see how ``time_agg`` works if
 we set it to ``mean``.
 
 .. code-block:: python
 
     params = {
         'suffix': 'count',
-        'timestamp_aggregation_type': 'mean'
+        'time_agg': 'mean'
     }
 
     res = stream.collapse_loops(**params).to_dataframe()

@@ -10,7 +10,7 @@ from retentioneering.params_model import ParamsModel
 from retentioneering.widget.widgets import ListOfString, ReteFunction
 
 
-def _default_func(eventstream: EventstreamType, positive_target_events: list[str]) -> pd.DataFrame:
+def _default_func(eventstream: EventstreamType, targets: list[str]) -> pd.DataFrame:
     """
     Filters rows with target events from the input eventstream.
 
@@ -19,7 +19,7 @@ def _default_func(eventstream: EventstreamType, positive_target_events: list[str
     eventstream : Eventstream
         Source eventstream or output from previous nodes.
 
-    positive_target_events : list of str
+    targets : list of str
         Condition for eventstream filtering.
         Each event from that list is associated with a conversion goal of the user behaviour in the product.
         If there are several target events in user path - the event with minimum timestamp is taken.
@@ -27,16 +27,14 @@ def _default_func(eventstream: EventstreamType, positive_target_events: list[str
     Returns
     -------
     pd.DataFrame
-        Filtered DataFrame with positive_target_events and its timestamps.
+        Filtered DataFrame with positive_events and its timestamps.
     """
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
     df = eventstream.to_dataframe()
 
-    positive_events_index = (
-        df[df[event_col].isin(positive_target_events)].groupby(user_col)[time_col].idxmin()  # type: ignore
-    )
+    positive_events_index = df[df[event_col].isin(targets)].groupby(user_col)[time_col].idxmin()  # type: ignore
 
     return df.loc[positive_events_index]  # type: ignore
 
@@ -46,10 +44,10 @@ class PositiveTargetParams(ParamsModel):
     A class with parameters for :py:class:`.PositiveTarget` class.
     """
 
-    positive_target_events: List[str]
+    targets: List[str]
     func: Callable = _default_func
 
-    _widgets = {"func": ReteFunction(), "positive_target_events": ListOfString()}
+    _widgets = {"func": ReteFunction(), "targets": ListOfString()}
 
 
 class PositiveTarget(DataProcessor):
@@ -59,7 +57,7 @@ class PositiveTarget(DataProcessor):
 
     Parameters
     ----------
-    positive_target_events : list of str
+    targets : list of str
         Define the list of events we consider positive.
         If there are several target events in a user path, the event with the minimum timestamp is taken.
 
@@ -74,7 +72,7 @@ class PositiveTarget(DataProcessor):
         +--------------------------------+-----------------+-----------------------------+
         | **event_name**                 | **event_type**  | **timestamp**               |
         +--------------------------------+-----------------+-----------------------------+
-        | positive_target_RAW_EVENT_NAME | positive_target | min(positive_target_events) |
+        | positive_target_RAW_EVENT_NAME | positive_target | min(targets)                |
         +--------------------------------+-----------------+-----------------------------+
 
     Notes
@@ -94,9 +92,9 @@ class PositiveTarget(DataProcessor):
         event_col = eventstream.schema.event_name
 
         func: Callable[[EventstreamType, list[str]], pd.DataFrame] = self.params.func
-        positive_target_events = self.params.positive_target_events
+        targets = self.params.targets
 
-        positive_targets = func(eventstream, positive_target_events)
+        positive_targets = func(eventstream, targets)
         positive_targets[type_col] = "positive_target"
         positive_targets[event_col] = "positive_target_" + positive_targets[event_col]
         positive_targets["ref"] = None

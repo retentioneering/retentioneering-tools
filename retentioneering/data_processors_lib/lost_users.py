@@ -17,11 +17,11 @@ class LostUsersParams(ParamsModel):
     A class with parameters for :py:class:`.LostUsersEvents` class.
     """
 
-    lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]]
+    timeout: Optional[Tuple[float, DATETIME_UNITS]]
     lost_users_list: Optional[Union[List[int], List[str]]]
 
     _widgets = {
-        "lost_cutoff": ReteTimeWidget(),
+        "timeout": ReteTimeWidget(),
         "lost_users_list": ListOfInt(),
     }
 
@@ -35,10 +35,10 @@ class LostUsersEvents(DataProcessor):
     Parameters
     ----------
     Only one of parameters could be used at the same time
-    lost_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
+    timeout : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
         Threshold value and its unit of measure.
         Calculate timedelta between the last event in each user's path and the last event in the whole eventstream.
-        For users with timedelta greater or equal to selected ``lost_cutoff``, a new synthetic event - ``lost_user``
+        For users with timedelta greater or equal to selected ``timeout``, a new synthetic event - ``lost_user``
         will be added.
         For other users paths a new synthetic event - ``absent_user`` will be added.
 
@@ -62,7 +62,7 @@ class LostUsersEvents(DataProcessor):
     Raises
     ------
     ValueError
-        Raised when both ``lost_cutoff`` and ``lost_users_list`` are either empty or given.
+        Raised when both ``timeout`` and ``lost_users_list`` are either empty or given.
 
     Notes
     -----
@@ -82,28 +82,28 @@ class LostUsersEvents(DataProcessor):
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
 
-        lost_cutoff, lost_cutoff_unit = None, None
+        timeout, timeout_unit = None, None
         lost_users_list = self.params.lost_users_list
         data_lost = pd.DataFrame()
 
-        if self.params.lost_cutoff:
-            lost_cutoff, lost_cutoff_unit = self.params.lost_cutoff
+        if self.params.timeout:
+            timeout, timeout_unit = self.params.timeout
 
-        if lost_cutoff and lost_users_list:
-            raise ValueError("lost_cutoff and lost_users_list parameters cannot be used simultaneously!")
+        if timeout and lost_users_list:
+            raise ValueError("timeout and lost_users_list parameters cannot be used simultaneously!")
 
-        if not lost_cutoff and not lost_users_list:
-            raise ValueError("Either lost_cutoff or lost_users_list must be specified!")
+        if not timeout and not lost_users_list:
+            raise ValueError("Either timeout or lost_users_list must be specified!")
 
         df = eventstream.to_dataframe(copy=True)
 
-        if lost_cutoff and lost_cutoff_unit:
+        if timeout and timeout_unit:
             data_lost = df.groupby(user_col, as_index=False).last()
             data_lost["diff_end_to_end"] = data_lost[time_col].max() - data_lost[time_col]
 
-            data_lost["diff_end_to_end"] /= np.timedelta64(1, lost_cutoff_unit)  # type: ignore
+            data_lost["diff_end_to_end"] /= np.timedelta64(1, timeout_unit)  # type: ignore
 
-            data_lost[type_col] = np.where(data_lost["diff_end_to_end"] < lost_cutoff, "absent_user", "lost_user")
+            data_lost[type_col] = np.where(data_lost["diff_end_to_end"] < timeout, "absent_user", "lost_user")
             data_lost[event_col] = data_lost[type_col]
             data_lost["ref"] = None
             del data_lost["diff_end_to_end"]

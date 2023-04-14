@@ -380,7 +380,7 @@ Treating clustering tool as a separate instance:
 
     clusters = Clusters(stream)
     clusters.fit(method='kmeans', feature_type='tfidf', ngram_range=(1, 1), n_clusters=4)
-    clusters.event_dist(cluster_id1=0, cluster_id2=1)
+    clusters.diff(cluster_id1=0, cluster_id2=1)
 
 Treating clustering tool as chaining methods:
 
@@ -389,7 +389,7 @@ Treating clustering tool as chaining methods:
     stream\
         .clusters\
         .fit(method='kmeans', feature_type='tfidf', ngram_range=(1, 1), n_clusters=4)\
-        .event_dist(cluster_id1=0, cluster_id2=1)
+        .diff(cluster_id1=0, cluster_id2=1)
 
 The table below contains a brief overview of Retentioneering tools. The comprehensive description on all the tools work can be found in these sections: :doc:`User Guide </user_guide>` and :doc:`API Reference </api/tooling_api>`.
 

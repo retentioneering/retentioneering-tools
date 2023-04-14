@@ -466,7 +466,7 @@ class TestPGraphExportImport:
                             "func": "def _default_func(eventstream: EventstreamType, "
                             "targets: List[str]) -> pd.DataFrame:\n"
                             '    """\n'
-                            "    Filters rows with target events from the input eventstream.\n"
+                            "    Filter rows with target events from the input eventstream.\n"
                             "\n"
                             "    Parameters\n"
                             "    ----------\n"
@@ -489,9 +489,10 @@ class TestPGraphExportImport:
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n"
                             "\n"
-                            "    negative_events_index = (\n"
-                            "        df[df[event_col].isin(targets)]."
-                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
+                            "    negative_events_index = "
+                            "df[df[event_col].isin(targets)]."
+                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n"
+                            "\n"
                             "    return df.loc[negative_events_index]  # type: ignore\n",
                         },
                     },
@@ -593,7 +594,7 @@ class TestPGraphExportImport:
                             "eventstream: EventstreamType, targets: list[str]) "
                             "-> pd.DataFrame:\n"
                             '    """\n'
-                            "    Filters rows with target events from the input eventstream.\n"
+                            "    Filter rows with target events from the input eventstream.\n"
                             "\n"
                             "    Parameters\n"
                             "    ----------\n"
@@ -616,9 +617,10 @@ class TestPGraphExportImport:
                             "    time_col = eventstream.schema.event_timestamp\n"
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n\n    "
-                            "positive_events_index = (\n        "
+                            "positive_events_index = "
                             "df[df[event_col].isin(targets)]."
-                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
+                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n"
+                            "\n"
                             "    return df.loc[positive_events_index]  # type: ignore\n",
                         },
                     },
@@ -667,7 +669,7 @@ class TestPGraphExportImport:
                             "eventstream: EventstreamType, targets: list[str]) "
                             "-> pd.DataFrame:\n"
                             '    """\n'
-                            "    Filters rows with target events from the input eventstream.\n"
+                            "    Filter rows with target events from the input eventstream.\n"
                             "\n"
                             "    Parameters\n"
                             "    ----------\n"
@@ -690,9 +692,10 @@ class TestPGraphExportImport:
                             "    time_col = eventstream.schema.event_timestamp\n"
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n\n    "
-                            "positive_events_index = (\n        "
+                            "positive_events_index = "
                             "df[df[event_col].isin(targets)]."
-                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
+                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n"
+                            "\n"
                             "    return df.loc[positive_events_index]  # type: ignore\n",
                         },
                     },

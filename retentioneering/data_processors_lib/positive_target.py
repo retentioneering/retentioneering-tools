@@ -12,7 +12,7 @@ from retentioneering.widget.widgets import ListOfString, ReteFunction
 
 def _default_func(eventstream: EventstreamType, targets: list[str]) -> pd.DataFrame:
     """
-    Filters rows with target events from the input eventstream.
+    Filter rows with target events from the input eventstream.
 
     Parameters
     ----------

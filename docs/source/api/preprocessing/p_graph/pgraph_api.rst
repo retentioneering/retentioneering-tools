@@ -8,4 +8,4 @@ Class
 
 Eventstream
 -----------
-.. automethod:: retentioneering.eventstream.eventstream.Eventstream.processing_graph
+.. automethod:: retentioneering.eventstream.eventstream.Eventstream.preprocessing_graph

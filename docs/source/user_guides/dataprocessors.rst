@@ -1059,7 +1059,7 @@ with tools like ``TransitionGraph``, ``StepMatrix``, and
 ``SankeyStep`` - as it will help to highlight the positive events.
 
 Another way to set positive events is to pass a custom function in ``func``.
-For example, assume we need to mark each ``target`` in a trajectory, not just the
+For example, assume we need to label each target in a trajectory, not just the
 first one:
 
 .. code-block:: python

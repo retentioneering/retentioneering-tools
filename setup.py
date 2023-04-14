@@ -30,7 +30,7 @@ setup(
         'networkx>=2.6.2',
         'decorator>=4.3',
         'seaborn>=0.11.0',
-        'matplotlib>=3.2.2',
+        'matplotlib>=3.2.2,<3.6',
         'scikit-learn>=0.23.2',
         'statsmodels>=0.12.0',
         'scipy',

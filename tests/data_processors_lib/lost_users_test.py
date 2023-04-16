@@ -4,14 +4,14 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from retentioneering.data_processors_lib import LostUsersEvents, LostUsersParams
+from retentioneering.data_processors_lib import LabelLostUsers, LabelLostUsersParams
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
-class TestLostUsers(ApplyTestBase):
-    _Processor = LostUsersEvents
+class TestLabelLostUsers(ApplyTestBase):
+    _Processor = LabelLostUsers
     _source_df = pd.DataFrame(
         [
             [1, "event1", "2022-01-01 00:01:00"],
@@ -32,8 +32,8 @@ class TestLostUsers(ApplyTestBase):
         event_timestamp="timestamp",
     )
 
-    def test_lost_users_apply__lost_users_list(self):
-        actual = self._apply(LostUsersParams(lost_users_list=[2]))
+    def test_label_lost_users_apply__lost_users_list(self):
+        actual = self._apply(LabelLostUsersParams(lost_users_list=[2]))
         expected = pd.DataFrame(
             [
                 [1, "absent_user", "absent_user", "2022-01-01 00:05:00"],
@@ -43,8 +43,8 @@ class TestLostUsers(ApplyTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-    def test_lost_users_apply__lost_cutoff(self):
-        actual = self._apply(LostUsersParams(lost_cutoff=(4, "h")))
+    def test_label_lost_users_apply__lost_cutoff(self):
+        actual = self._apply(LabelLostUsersParams(lost_cutoff=(4, "h")))
         expected = pd.DataFrame(
             [
                 [1, "lost_user", "lost_user", "2022-01-01 00:05:00"],
@@ -56,11 +56,11 @@ class TestLostUsers(ApplyTestBase):
 
     def test_params_model__incorrect_datetime_unit(self):
         with pytest.raises(ValidationError):
-            p = LostUsersParams(lost_cutoff=(1, "xxx"))
+            p = LabelLostUsersParams(lost_cutoff=(1, "xxx"))
 
 
-class TestLostUsersGraph(GraphTestBase):
-    _Processor = LostUsersEvents
+class TestLabelLostUsersGraph(GraphTestBase):
+    _Processor = LabelLostUsers
     _source_df = pd.DataFrame(
         [
             [1, "event1", "2022-01-01 00:01:00"],
@@ -81,8 +81,8 @@ class TestLostUsersGraph(GraphTestBase):
         event_timestamp="timestamp",
     )
 
-    def test_lost_users_graph__lost_users_list(self):
-        actual = self._apply(LostUsersParams(lost_users_list=[2]))
+    def test_label_lost_users_graph__lost_users_list(self):
+        actual = self._apply(LabelLostUsersParams(lost_users_list=[2]))
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -101,8 +101,8 @@ class TestLostUsersGraph(GraphTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-    def test_lost_users_graph__lost_cutoff(self):
-        actual = self._apply(LostUsersParams(lost_cutoff=(4, "h")))
+    def test_label_lost_users_graph__lost_cutoff(self):
+        actual = self._apply(LabelLostUsersParams(lost_cutoff=(4, "h")))
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -123,8 +123,8 @@ class TestLostUsersGraph(GraphTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestLostUsersHelper:
-    def test_lost_users_graph__lost_users_list(self):
+class TestLabelLostUsersHelper:
+    def test_label_lost_users_graph__lost_users_list(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -159,12 +159,12 @@ class TestLostUsersHelper:
             columns=correct_result_columns,
         )
 
-        result = source.lost_users(lost_users_list=[2])
+        result = source.label_lost_users(lost_users_list=[2])
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_lost_users_graph__lost_cutoff(self):
+    def test_label_lost_users_graph__lost_cutoff(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -198,7 +198,7 @@ class TestLostUsersHelper:
             ],
             columns=correct_result_columns,
         )
-        result = source.lost_users(lost_cutoff=(4, "h"))
+        result = source.label_lost_users(lost_cutoff=(4, "h"))
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)

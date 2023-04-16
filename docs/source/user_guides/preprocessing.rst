@@ -48,7 +48,7 @@ A draft of a solution
 
 :doc:`Data processors <../user_guides/dataprocessors>` are bricks for our preprocessing. So we have to represent our solution as a combination of the data processors.
 
-As for requirements 1, 2, and 4 of the case study, they are straightforward. Each of them relates to a single data processor application. In contrast, requirement 3 is a bit tricky. First, we need to apply the :py:meth:`NewUsersEvents <retentioneering.data_processors_lib.new_users.NewUsersEvents>` data processor, marking the trajectories with the ``new_user`` and ``existing_user`` markers. Next, we apply the :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>` data processor twice: once to get the new users from the previous step, and then to get the existing users. Note that the preprocessing flow splits at this point. Next, for the branch related to the existing users we need to sequentially apply the :py:meth:`TruncatedEvents <retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` data processor for marking the paths as truncated or not, and then another :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>` data processor to leave intact trajectories only. Finally, we need to merge the data from the two separated branches and apply the :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>` data processor in the end. An outline of the described solution is represented on the image below.
+As for requirements 1, 2, and 4 of the case study, they are straightforward. Each of them relates to a single data processor application. In contrast, requirement 3 is a bit tricky. First, we need to apply the :py:meth:`LabelNewUsers <retentioneering.data_processors_lib.label_new_users.NewUsersEvents>` data processor, marking the trajectories with the ``new_user`` and ``existing_user`` markers. Next, we apply the :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>` data processor twice: once to get the new users from the previous step, and then to get the existing users. Note that the preprocessing flow splits at this point. Next, for the branch related to the existing users we need to sequentially apply the :py:meth:`LabelCroppedPaths <retentioneering.data_processors_lib.label_cropped_paths.LabelCroppedPaths>` data processor for marking the paths as truncated or not, and then another :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>` data processor to leave intact trajectories only. Finally, we need to merge the data from the two separated branches and apply the :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>` data processor in the end. An outline of the described solution is represented on the image below.
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_outline.png
     :height: 600
@@ -65,27 +65,27 @@ Next, we specify the information about the graph nodes and the underlying data p
     :widths: 10 20 40 20
     :class: tight-table
 
-    +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
-    | Node  | Data processor                                                                                    | Parameters                                                                                                                                                    | Parents      |
-    +=======+===================================================================================================+===============================================================================================================================================================+==============+
-    | node1 | :py:meth:`StartEndEvents <retentioneering.data_processors_lib.start_end_events.StartEndEvents>`   | –                                                                                                                                                             | Source       |
-    +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
-    | node2 | :py:meth:`GroupEvents <retentioneering.data_processors_lib.group_events.GroupEvents>`             | ``event_name='product'``, ``func=group_products``                                                                                                             | node1        |
-    +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
-    | node3 | :py:meth:`NewUsersEvents <retentioneering.data_processors_lib.new_users.NewUsersEvents>`          | pass `this csv-file <https://docs.google.com/spreadsheets/d/1iggpIT5CZcLILLZ94wCZPQv90tERwi1IB5Y1969C8zc/edit?usp=sharing>`_  to ``new_users_list`` parameter | node2        |
-    +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
-    | node4 | :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>`          | ``func=get_new_users``                                                                                                                                        | node3        |
-    +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
-    | node5 | :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>`          | ``func=get_existing_users``                                                                                                                                   | node3        |
-    +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
-    | node6 | :py:meth:`TruncatedEvents <retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` | ``left_truncated_cutoff=(1, 'h')``, ``right_truncated_cutoff=(1, 'h')``                                                                                       | node5        |
-    +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
-    | node7 | :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>`          | ``func=remove_truncated_paths``                                                                                                                               | node6        |
-    +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
-    | node8 | :py:meth:`MergeNode <retentioneering.graph.nodes.MergeNode>`                                      | –                                                                                                                                                             | node4, node7 |
-    +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
-    | node9 | :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>`       | ``session_cutoff=(30, 'm')``                                                                                                                                  | node8        |
-    +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
+    +-------+-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
+    | Node  | Data processor                                                                                              | Parameters                                                                                                                                                    | Parents      |
+    +=======+=============================================================================================================+===============================================================================================================================================================+==============+
+    | node1 | :py:meth:`AddStartEndEvents <retentioneering.data_processors_lib.add_start_end_events.AddStartEndEvents>`   | –                                                                                                                                                             | Source       |
+    +-------+-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
+    | node2 | :py:meth:`GroupEvents <retentioneering.data_processors_lib.group_events.GroupEvents>`                       | ``event_name='product'``, ``func=group_products``                                                                                                             | node1        |
+    +-------+-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
+    | node3 | :py:meth:`LabelNewUsers <retentioneering.data_processors_lib.label_new_users.NewUsersEvents>`               | pass `this csv-file <https://docs.google.com/spreadsheets/d/1iggpIT5CZcLILLZ94wCZPQv90tERwi1IB5Y1969C8zc/edit?usp=sharing>`_  to ``new_users_list`` parameter | node2        |
+    +-------+-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
+    | node4 | :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>`                    | ``func=get_new_users``                                                                                                                                        | node3        |
+    +-------+-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
+    | node5 | :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>`                    | ``func=get_existing_users``                                                                                                                                   | node3        |
+    +-------+-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
+    | node6 | :py:meth:`LabelCroppedPaths <retentioneering.data_processors_lib.label_cropped_paths.LabelCroppedPaths>`    | ``left_truncated_cutoff=(1, 'h')``, ``right_truncated_cutoff=(1, 'h')``                                                                                       | node5        |
+    +-------+-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
+    | node7 | :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>`                    | ``func=remove_truncated_paths``                                                                                                                               | node6        |
+    +-------+-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
+    | node8 | :py:meth:`MergeNode <retentioneering.graph.nodes.MergeNode>`                                                | –                                                                                                                                                             | node4, node7 |
+    +-------+-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
+    | node9 | :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>`                 | ``session_cutoff=(30, 'm')``                                                                                                                                  | node8        |
+    +-------+-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
 
 The functions which are passed to ``func`` parameter in the FilterEvents and GroupEvents data processors will be defined below.
 
@@ -110,21 +110,21 @@ Preprocessing GUI tool allows to create preprocessing graphs using graphical int
 
     An empty preprocessing graph.
 
-As we see, an empty graph contains a single source node that is associated with the sourcing eventstream. Let us create the first node in the graph according to the plan. Click on the triple dots inside the node, select "Add data processor node" option and choose the ``StartEndEvents`` data processor as it is shown below:
+As we see, an empty graph contains a single source node that is associated with the sourcing eventstream. Let us create the first node in the graph according to the plan. Click on the triple dots inside the node, select "Add data processor node" option and choose the ``AddStartEndEvents`` data processor as it is shown below:
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_add_node.png
     :height: 350
 
     Choosing a data processor that wraps the node.
 
-``StartEndEvents`` node appears. It is connected to the sourcing node. If we click on the node, on the right we will see the node menu. Since :py:meth:`StartEndEvents <retentioneering.data_processors_lib.start_end_events.StartEndEvents>` data processor has no parameters, the only option available in the menu is a subtitle. Let us label the node with ``node1`` according to the plan.
+``AddStartEndEvents`` node appears. It is connected to the sourcing node. If we click on the node, on the right we will see the node menu. Since :py:meth:`StartEndEvents <retentioneering.data_processors_lib.add_start_end_events.StartEndEvents>` data processor has no parameters, the only option available in the menu is a subtitle. Let us label the node with ``node1`` according to the plan.
 
 There is another important option which is worth to be mentioned. In the bottom you can see "Save Graph". If you click it, the current state of the preprocessing graph is saved into the sourcing eventstream. So if you run ``stream.preprocessing_graph()`` again, the graph state will be restored.
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_node_menu_1.png
     :height: 600
 
-    The node menu for the StartEndEvents data processor.
+    The node menu for the AddStartEndEvents data processor.
 
 Let us create the second node: ``GroupEvents``. Click at ``node1``'s triple dots (we note that "Delete node" option is available now as well), choose "Add data processor node" and choose ``GroupEvents``. If you click on this node, the node menu appears, where you can enter the following parameter values:
 
@@ -140,9 +140,9 @@ As we see, the menu contains all the parameters of the :py:meth:`GroupEvents <re
     def group_products(df, schema):
         return df[schema.event_name].isin(['product1', 'product2'])
 
-Next, we create :py:meth:`NewUsersEvents <retentioneering.data_processors_lib.new_users.NewUsersEvents>` as ``node3``. Then we download `the file <https://docs.google.com/spreadsheets/d/1iggpIT5CZcLILLZ94wCZPQv90tERwi1IB5Y1969C8zc/edit?usp=sharing>`_ containing new users ids and upload it to the ``new_users_list`` argument. Manual input is also supported, but since the number of the new users is high, it is more reasonable to upload them from the file.
+Next, we create :py:meth:`LabelNewUsers <retentioneering.data_processors_lib.label_new_users.LabelNewUsers>` as ``node3``. Then we download `the file <https://docs.google.com/spreadsheets/d/1iggpIT5CZcLILLZ94wCZPQv90tERwi1IB5Y1969C8zc/edit?usp=sharing>`_ containing new users ids and upload it to the ``new_users_list`` argument. Manual input is also supported, but since the number of the new users is high, it is more reasonable to upload them from the file.
 
-.. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_new_users_events.png
+.. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_label_new_users_events.png
     :height: 600
 
     How to upload the list of new users.
@@ -168,12 +168,12 @@ Now, we are going to implement splitting logic for ``node4`` and ``node5``. You 
 
     Splitting the logic after ``node3``.
 
-At the next step we create :py:meth:`TruncatedEvents <retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` as ``node6`` with ``left_truncated_cutoff=(1, 'h')`` parameter. Then we connect another :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>` node (``node7``) with the ``remove_truncated_paths`` function defined below:
+At the next step we create :py:meth:`LabelCroppedPaths <retentioneering.data_processors_lib.label_cropped_paths.LabelCroppedPaths>` as ``node6`` with ``left_cropped_cutoff=(1, 'h')`` parameter. Then we connect another :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>` node (``node7``) with the ``remove_truncated_paths`` function defined below:
 
 .. code-block:: python
 
     def remove_truncated_paths(df, schema):
-        truncated_users = df[df[schema.event_name].isin(['truncated_left', 'truncated_right'])]\
+        truncated_users = df[df[schema.event_name].isin(['cropped_left', 'cropped_right'])]\
             [schema.user_id]\
             .unique()
         return ~df[schema.user_id].isin(truncated_users)
@@ -324,13 +324,13 @@ Since all three classes' constructors involved in the node creation process have
 
     node2 = EventsNode(GroupEvents(params=GroupEventsParams(**group_events_params)))
 
-If you were surprised why we did not start with ``node1`` according to the plan, here is a clue. The reason is that the :py:meth:`StartEndEvents <retentioneering.data_processors_lib.start_end_events.StartEndEvents>` data processor does not have any arguments. However, even in this case we have to create an instance of ``StartEndEventsParams`` and pass it to the data processor constructor. Look how you can do it:
+If you were surprised why we did not start with ``node1`` according to the plan, here is a clue. The reason is that the :py:meth:`AddStartEndEvents <retentioneering.data_processors_lib.add_start_end_events.AddStartEndEvents>` data processor does not have any arguments. However, even in this case we have to create an instance of ``StartEndEventsParams`` and pass it to the data processor constructor. Look how you can do it:
 
 .. code-block:: python
 
-    from retentioneering.data_processors_lib import StartEndEvents, StartEndEventsParams
+    from retentioneering.data_processors_lib import AddStartEndEvents, AddStartEndEventsParams
 
-    node1 = EventsNode(StartEndEvents(params=StartEndEventsParams()))
+    node1 = EventsNode(AddStartEndEvents(params=AddStartEndEventsParams()))
 
 Linking nodes
 ~~~~~~~~~~~~~
@@ -351,19 +351,19 @@ Building the whole graph
 
 Let us create the other graph nodes and link them step-by-step according to the :ref:`plan <preprocessing_solution_plan>`.
 
-To create ``node3`` we need either to `download <https://docs.google.com/spreadsheets/d/1iggpIT5CZcLILLZ94wCZPQv90tERwi1IB5Y1969C8zc/edit?usp=sharing>`_ the list of the new users beforehand. This list contains user_ids of the users who are considered as new (i.e. they have not visited the system any time before the dataset start). We assign the downloaded list to ``new_users`` variable and then pass it to :py:meth:`NewUsersParams <retentioneering.data_processors_lib.new_users.NewUsersParams>`.
+To create ``node3`` we need either to `download <https://docs.google.com/spreadsheets/d/1iggpIT5CZcLILLZ94wCZPQv90tERwi1IB5Y1969C8zc/edit?usp=sharing>`_ the list of the new users beforehand. This list contains user_ids of the users who are considered as new (i.e. they have not visited the system any time before the dataset start). We assign the downloaded list to ``new_users`` variable and then pass it to :py:meth:`LabelNewUsersParams <retentioneering.data_processors_lib.new_users.NewUsersParams>`.
 
 .. code-block:: python
 
-    from retentioneering.data_processors_lib import NewUsersEvents, NewUsersParams
+    from retentioneering.data_processors_lib import LabelNewUsers, LabelNewUsersParams
 
     google_spreadsheet_id = '1iggpIT5CZcLILLZ94wCZPQv90tERwi1IB5Y1969C8zc'
     link = f'https://docs.google.com/spreadsheets/u/1/d/{google_spreadsheet_id}/export?format=csv&id={google_spreadsheet_id}'
     new_users = pd.read_csv(link, header=None)[0].tolist()
-    node3 = EventsNode(NewUsersEvents(params=NewUsersParams(new_users_list=new_users)))
+    node3 = EventsNode(LabelNewUsers(params=LabelNewUsersParams(new_users_list=new_users)))
     pgraph.add_node(node=node3, parents=[node2])
 
-Creation of the next ``node4`` and ``node5`` is similar. We need to create a couple of nodes with :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>` data processors and pass them filtering functions ``get_new_users()`` and ``get_existing_users()``. These two functions recognize synthetic events ``new_user`` and ``existing_user`` added by NewUsersEvent data processor at the previous step and leave the paths of new users and existing users only correspondingly.
+Creation of the next ``node4`` and ``node5`` is similar. We need to create a couple of nodes with :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>` data processors and pass them filtering functions ``get_new_users()`` and ``get_existing_users()``. These two functions recognize synthetic events ``new_user`` and ``existing_user`` added by LabelNewUsers data processor at the previous step and leave the paths of new users and existing users only correspondingly.
 
 .. code-block:: python
 
@@ -387,17 +387,17 @@ Creation of the next ``node4`` and ``node5`` is similar. We need to create a cou
     pgraph.add_node(node=node4, parents=[node3])
     pgraph.add_node(node=node5, parents=[node3])
 
-There is nothing new in the creation of the ``node6``. We just pass a couple of ``left_truncated_cutoff`` and ``right_truncated_cutoff`` parameters to :py:meth:`TruncatedEventsParams <retentioneering.data_processors_lib.truncated_events.TruncatedEventsParams>` and set up a :py:meth:`TruncatedEvents <retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` node.
+There is nothing new in the creation of the ``node6``. We just pass a couple of ``left_cropped_cutoff`` and ``right_truncated_cutoff`` parameters to :py:meth:`LabelCroppedPathsParams <retentioneering.data_processors_lib.label_cropped_paths.LabelCroppedPathsParams>` and set up a :py:meth:`LabelCroppedPaths <retentioneering.data_processors_lib.label_cropped_paths.LabelCroppedPaths>` node.
 
 .. code-block:: python
 
-    from retentioneering.data_processors_lib import TruncatedEvents, TruncatedEventsParams
+    from retentioneering.data_processors_lib import LabelCroppedPaths, LabelCroppedPathsParams
 
     params = {
         "left_truncated_cutoff": (1, 'h'),
         "right_truncated_cutoff": (1, 'h'),
     }
-    node6 = EventsNode(TruncatedEvents(params=TruncatedEventsParams(**params)))
+    node6 = EventsNode(LabelCroppedPaths(params=LabelCroppedPathsParams(**params)))
     pgraph.add_node(node=node6, parents=[node5])
 
 For ``node7`` we apply similar filtering technique as we used for filtering new/existing users above. The remove_truncated_paths() function implements this filter.
@@ -406,7 +406,7 @@ For ``node7`` we apply similar filtering technique as we used for filtering new/
 .. code-block:: python
 
     def remove_truncated_paths(df, schema):
-        truncated_users = df[df[schema.event_name].isin(['truncated_left', 'truncated_right'])]\
+        truncated_users = df[df[schema.event_name].isin(['cropped_left', 'cropped_right'])]\
             [schema.user_id]\
             .unique()
         return ~df[schema.user_id].isin(truncated_users)
@@ -528,18 +528,18 @@ Here we just provide the same code combined in a single chunk so you could simpl
 
     import pandas as pd
     from retentioneering import datasets
-    from retentioneering.data_processors_lib import StartEndEvents, StartEndEventsParams
+    from retentioneering.data_processors_lib import AddStartEndEvents, AddStartEndEventsParams
     from retentioneering.data_processors_lib import GroupEvents, GroupEventsParams
-    from retentioneering.data_processors_lib import NewUsersEvents, NewUsersParams
+    from retentioneering.data_processors_lib import LabelNewUsers, LabelNewUsersParams
     from retentioneering.data_processors_lib import FilterEvents, FilterEventsParams
-    from retentioneering.data_processors_lib import TruncatedEvents, TruncatedEventsParams
+    from retentioneering.data_processors_lib import LabelCroppedPaths, LabelCroppedPathsParams
     from retentioneering.data_processors_lib import SplitSessions, SplitSessionsParams
     from retentioneering.graph.p_graph import PGraph, EventsNode, MergeNode
 
     stream = datasets.load_simple_shop()
 
     # node1
-    node1 = EventsNode(StartEndEvents(params=StartEndEventsParams()))
+    node1 = EventsNode(AddStartEndEvents(params=AddStartEndEventsParams()))
 
     # node2
     def group_products(df, schema):
@@ -555,7 +555,7 @@ Here we just provide the same code combined in a single chunk so you could simpl
     google_spreadsheet_id = '1iggpIT5CZcLILLZ94wCZPQv90tERwi1IB5Y1969C8zc'
     link = f'https://docs.google.com/spreadsheets/u/1/d/{google_spreadsheet_id}/export?format=csv&id={google_spreadsheet_id}'
     new_users = pd.read_csv(link, header=None)[0].tolist()
-    node3 = EventsNode(NewUsersEvents(params=NewUsersParams(new_users_list=new_users)))
+    node3 = EventsNode(LabelNewUsers(params=LabelNewUsersParams(new_users_list=new_users)))
 
     # node4, node5
     def get_new_users(df, schema):
@@ -578,11 +578,11 @@ Here we just provide the same code combined in a single chunk so you could simpl
         "left_truncated_cutoff": (1, 'h'),
         "right_truncated_cutoff": (1, 'h'),
     }
-    node6 = EventsNode(TruncatedEvents(params=TruncatedEventsParams(**params)))
+    node6 = EventsNode(LabelCroppedPaths(params=LabelCroppedPathsParams(**params)))
 
     # node7, node8, node9
     def remove_truncated_paths(df, schema):
-        truncated_users = df[df[schema.event_name].isin(['truncated_left', 'truncated_right'])]\
+        truncated_users = df[df[schema.event_name].isin(['cropped_left', 'cropped_right'])]\
             [schema.user_id]\
             .unique()
         return ~df[schema.user_id].isin(truncated_users)
@@ -637,8 +637,8 @@ By using the transition graph interactive options, we could focus on specific ev
 
 We can address this problem by using a combination of data processors we have seen previously. One example of a processing graph would look like this:
 
--  apply :py:meth:`DeleteUsersByPathLength <retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>` to remove users that could have appeared by accident;
--  apply :py:meth:`StartEndEvents <retentioneering.data_processors_lib.start_end_events.StartEndEvents>` to mark the start and finish user states;
+-  apply :py:meth:`DropPaths <retentioneering.data_processors_lib.drop_paths.DropPaths>` to remove users that could have appeared by accident;
+-  apply :py:meth:`AddStartEndEvents <retentioneering.data_processors_lib.add_start_end_events.AddStartEndEvents>` to mark the start and finish user states;
 -  apply :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>` to mark user sessions;
 -  apply :py:meth:`GroupEvents <retentioneering.data_processors_lib.group_events.GroupEvents>` multiple times to group similar events into groups;
 -  apply :py:meth:`CollapseLoops <retentioneering.data_processors_lib.collapse_loops.CollapseLoops>` with different parameters for different loop representations on the transition graph plot.
@@ -664,12 +664,12 @@ Let us compose this graph:
         return df[schema.event_name].isin(['payment_choice', 'payment_done', 'payment_card', 'payment_cash'])
 
     stream_7_nodes = stream\
-        .delete_users(events_num=6)\
-        .add_start_end()\
+        .drop_paths(events_num=6)\
+        .add_start_end_events()\
         .split_sessions(session_cutoff=(30, 'm'))\
-        .group(event_name='browsing', func=group_browsing)\
-        .group(event_name='delivery', func=group_delivery)\
-        .group(event_name='payment', func=group_payment)
+        .group_events(event_name='browsing', func=group_browsing)\
+        .group_events(event_name='delivery', func=group_delivery)\
+        .group_events(event_name='payment', func=group_payment)
 
 Looking at the simplest version, where loops are replaced with the event they consist of:
 

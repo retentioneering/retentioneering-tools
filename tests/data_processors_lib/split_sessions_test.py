@@ -65,14 +65,14 @@ class TestSplitSessions(ApplyTestBase):
         expected = pd.DataFrame(
             [
                 [1, "session_start", "session_start", "2021-10-26 12:00:00"],
-                [1, "session_start_truncated", "session_start_truncated", "2021-10-26 12:00:00"],
+                [1, "session_start_cropped", "session_start_cropped", "2021-10-26 12:00:00"],
                 [1, "pageview", "raw", "2021-10-26 12:00:00"],
                 [1, "session_end", "session_end", "2021-10-26 12:00:00"],
                 [1, "session_start", "session_start", "2021-10-26 12:02:00"],
                 [1, "cart_btn_click", "raw", "2021-10-26 12:02:00"],
                 [1, "pageview", "raw", "2021-10-26 12:03:00"],
                 [1, "plus_icon_click", "raw", "2021-10-26 12:04:00"],
-                [1, "session_end_truncated", "session_end_truncated", "2021-10-26 12:04:00"],
+                [1, "session_end_cropped", "session_end_cropped", "2021-10-26 12:04:00"],
                 [1, "session_end", "session_end", "2021-10-26 12:04:00"],
             ],
             columns=["user_id", "event", "event_type", "timestamp"],
@@ -150,7 +150,7 @@ class TestSplitSessionsGraph(GraphTestBase):
         expected = pd.DataFrame(
             [
                 [111, "session_start", "session_start", "2022-01-01 00:00:00", "111_1"],
-                [111, "session_start_truncated", "session_start_truncated", "2022-01-01 00:00:00", "111_1"],
+                [111, "session_start_cropped", "session_start_cropped", "2022-01-01 00:00:00", "111_1"],
                 [111, "event1", "raw", "2022-01-01 00:00:00", "111_1"],
                 [111, "event2", "raw", "2022-01-01 00:01:00", "111_1"],
                 [111, "session_end", "session_end", "2022-01-01 00:01:00", "111_1"],
@@ -170,7 +170,7 @@ class TestSplitSessionsGraph(GraphTestBase):
                 [333, "session_start", "session_start", "2022-01-01 01:32:00", "333_2"],
                 [333, "event3", "raw", "2022-01-01 01:32:00", "333_2"],
                 [333, "event4", "raw", "2022-01-01 01:33:00", "333_2"],
-                [333, "session_end_truncated", "session_end_truncated", "2022-01-01 01:33:00", "333_2"],
+                [333, "session_end_cropped", "session_end_cropped", "2022-01-01 01:33:00", "333_2"],
                 [333, "session_end", "session_end", "2022-01-01 01:33:00", "333_2"],
             ],
             columns=["user_id", "event", "event_type", "timestamp", "session_id"],
@@ -258,7 +258,7 @@ class TestSplitSessionsHelper:
         correct_result = pd.DataFrame(
             [
                 [111, "session_start", "session_start", "2022-01-01 00:00:00", "111_1"],
-                [111, "session_start_truncated", "session_start_truncated", "2022-01-01 00:00:00", "111_1"],
+                [111, "session_start_cropped", "session_start_cropped", "2022-01-01 00:00:00", "111_1"],
                 [111, "event1", "raw", "2022-01-01 00:00:00", "111_1"],
                 [111, "event2", "raw", "2022-01-01 00:01:00", "111_1"],
                 [111, "session_end", "session_end", "2022-01-01 00:01:00", "111_1"],
@@ -278,7 +278,7 @@ class TestSplitSessionsHelper:
                 [333, "session_start", "session_start", "2022-01-01 01:32:00", "333_2"],
                 [333, "event3", "raw", "2022-01-01 01:32:00", "333_2"],
                 [333, "event4", "raw", "2022-01-01 01:33:00", "333_2"],
-                [333, "session_end_truncated", "session_end_truncated", "2022-01-01 01:33:00", "333_2"],
+                [333, "session_end_cropped", "session_end_cropped", "2022-01-01 01:33:00", "333_2"],
                 [333, "session_end", "session_end", "2022-01-01 01:33:00", "333_2"],
             ],
             columns=correct_result_columns,

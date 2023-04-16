@@ -5,10 +5,10 @@ import pytest
 
 from retentioneering import datasets
 from retentioneering.data_processors_lib import (
+    AddStartEndEvents,
+    AddStartEndEventsParams,
     FilterEvents,
     FilterEventsParams,
-    StartEndEvents,
-    StartEndEventsParams,
 )
 from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
 from retentioneering.graph.p_graph import EventsNode, PGraph
@@ -26,7 +26,7 @@ def read_test_data(filename):
 
 @pytest.fixture
 def stream_simple_shop():
-    stream = datasets.load_simple_shop().add_start_end()
+    stream = datasets.load_simple_shop().add_start_end_events()
     return stream
 
 

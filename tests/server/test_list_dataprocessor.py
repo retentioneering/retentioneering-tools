@@ -79,7 +79,7 @@ class TestListDataprocessors:
                 ],
             },
             {
-                "name": "DeleteUsersByPathLength",
+                "name": "DropPaths",
                 "params": [
                     {"name": "events_num", "optional": True, "widget": "integer", "default": None},
                     {
@@ -137,7 +137,7 @@ class TestListDataprocessors:
                 ],
             },
             {
-                "name": "LostUsersEvents",
+                "name": "LabelLostUsers",
                 "params": [
                     {
                         "name": "lost_cutoff",
@@ -176,7 +176,7 @@ class TestListDataprocessors:
                 ],
             },
             {
-                "name": "NegativeTarget",
+                "name": "AddNegativeEvents",
                 "params": [
                     {
                         "name": "negative_target_events",
@@ -193,7 +193,7 @@ class TestListDataprocessors:
                 ],
             },
             {
-                "name": "NewUsersEvents",
+                "name": "LabelNewUsers",
                 "params": [
                     {
                         "name": "new_users_list",
@@ -207,7 +207,7 @@ class TestListDataprocessors:
                 ],
             },
             {
-                "name": "PositiveTarget",
+                "name": "AddPositiveEvents",
                 "params": [
                     {
                         "name": "positive_target_events",
@@ -258,9 +258,9 @@ class TestListDataprocessors:
                     {"name": "session_col", "optional": True, "widget": "string", "default": "session_id"},
                 ],
             },
-            {"name": "StartEndEvents", "params": []},
+            {"name": "AddStartEndEvents", "params": []},
             {
-                "name": "TruncatePath",
+                "name": "TruncatePaths",
                 "params": [
                     {"name": "drop_before", "optional": True, "widget": "string", "default": None},
                     {"name": "drop_after", "optional": True, "widget": "string", "default": None},
@@ -283,7 +283,7 @@ class TestListDataprocessors:
                 ],
             },
             {
-                "name": "TruncatedEvents",
+                "name": "LabelCroppedPaths",
                 "params": [
                     {
                         "name": "left_truncated_cutoff",

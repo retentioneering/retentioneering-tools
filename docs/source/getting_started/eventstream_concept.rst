@@ -185,33 +185,33 @@ Similar to atomic operations, data processors could be categorized into three pa
     :widths: 15 10 60 15
     :class: tight-table
 
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
-    | Data processor           | Type      | What it does                                                                                                                                                   | Helper           |
-    +==========================+===========+================================================================================================================================================================+==================+
-    | StartEndEvents           | Adding    | Adds two synthetic events in each user's path: ``path_start`` and ``path_end``                                                                                 | start_end_event  |
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
-    | SplitSessions            | Adding    | Cuts user path into sessions and adds synthetic events ``session_start``, ``session_end``.                                                                     | split_sessions   |
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
-    | NewUsersEvents           | Adding    | Adds synthetic event ``new_user`` in the beginning of a user's path if the user is considered as new. Otherwise adds ``existing_user``.                        | add_new_users    |
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
-    | LostUsersEvents          | Adding    | Adds synthetic event ``lost_user`` in the end of user's path if the user never comes back to the product. Otherwise adds ``absent_user`` event.                | lost_users       |
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
-    | PositiveTarget           | Adding    | Adds synthetic event ``positive_target`` for all events which are considered as positive.                                                                      | positive_target  |
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
-    | NegativeTarget           | Adding    | Adds synthetic event ``negative_target`` for all events which are considered as negative.                                                                      | negative_target  |
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
-    | TruncatedEvents          | Adding    | Adds synthetic events ``truncated_left`` and/or ``truncated_right`` for those user paths which are considered as truncated by the edges of the whole dataset.  | truncated_events |
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
-    | FilterEvents             | Removing  | Remove events from an eventstream                                                                                                                              | filter           |
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
-    | DeleteUsersByPathLength  | Removing  | Deletes a too short user paths (in terms of number of events or time duration).                                                                                | delete_users     |
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
-    | TruncatePath             | Removing  | Leaves a part of an eventstream between a couple of selected events.                                                                                           | truncate_path    |
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
-    | GroupEvents              | Grouping  | Group given events into a single synthetic event.                                                                                                              | group            |
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
-    | CollapseLoops            | Grouping  | Replaces sequences of repetitive events with new synthetic events. E.g. ``A, A, A -> A``.                                                                      | collapse_loops   |
-    +--------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+    | Data processor        | Type      | What it does                                                                                                                                                   | Helper               |
+    +=======================+===========+================================================================================================================================================================+======================+
+    | AddStartEndEvents     | Adding    | Adds two synthetic events in each user's path: ``path_start`` and ``path_end``                                                                                 | add_start_end_events |
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+    | SplitSessions         | Adding    | Cuts user path into sessions and adds synthetic events ``session_start``, ``session_end``.                                                                     | split_sessions       |
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+    | LabelNewUsers         | Adding    | Adds synthetic event ``new_user`` in the beginning of a user's path if the user is considered as new. Otherwise adds ``existing_user``.                        | label_new_users      |
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+    | LabelLostUsers        | Adding    | Adds synthetic event ``lost_user`` in the end of user's path if the user never comes back to the product. Otherwise adds ``absent_user`` event.                | label_lost_users     |
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+    | AddPositiveEvents     | Adding    | Adds synthetic event ``positive_target`` for all events which are considered as positive.                                                                      | add_positive_events  |
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+    | AddNegativeEvents     | Adding    | Adds synthetic event ``negative_target`` for all events which are considered as negative.                                                                      | add_negative_events  |
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+    | LabelCroppedPaths     | Adding    | Adds synthetic events ``cropped_left`` and/or ``cropped_right`` for those user paths which are considered as truncated by the edges of the whole dataset.      | label_cropped_paths  |
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+    | FilterEvents          | Removing  | Remove events from an eventstream                                                                                                                              | filter_events        |
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+    | DropPaths             | Removing  | Deletes a too short user paths (in terms of number of events or time duration).                                                                                | drop_paths           |
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+    | TruncatePaths         | Removing  | Leaves a part of an eventstream between a couple of selected events.                                                                                           | truncate_paths       |
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+    | GroupEvents           | Grouping  | Group given events into a single synthetic event.                                                                                                              | group_events         |
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
+    | CollapseLoops         | Grouping  | Replaces sequences of repetitive events with new synthetic events. E.g. ``A, A, A -> A``.                                                                      | collapse_loops       |
+    +-----------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+
 
 Custom data processors
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -311,16 +311,16 @@ The nodes of preprocessing graph belong to ``EventNode`` class and could be of t
 
 Unlike these regular nodes, merging nodes accept multiple eventstreams as input, concatenate them, and drop possible duplicates.
 
-Linking graph nodes according to preprocessing logic, we obtain a ``preprocessing graph``. Preprocessing graphs are instances of ``PGraph`` class. To add a node to the graph use  ``add_node`` method. The links are set via ``parents`` parameter of the method. Here’s an tiny example how to create a simple preprocessing graph consisting of two nodes ``StartEndEvents`` and ``SplitSessions``.
+Linking graph nodes according to preprocessing logic, we obtain a ``preprocessing graph``. Preprocessing graphs are instances of ``PGraph`` class. To add a node to the graph use  ``add_node`` method. The links are set via ``parents`` parameter of the method. Here’s an tiny example how to create a simple preprocessing graph consisting of two nodes ``AddStartEndEvents`` and ``SplitSessions``.
 
 .. code-block:: python
 
     from retentioneering.graph.p_graph import PGraph, EventsNode
     from retentioneering.data_processors_lib import SplitSessions, SplitSessionsParams
-    from retentioneering.data_processors_lib import StartEndEvents, StartEndParams
+    from retentioneering.data_processors_lib import AddStartEndEvents, AddStartEndEventsParams
 
     # creating single nodes
-    node1 = EventsNode(StartEndEvents(params=StartEndEventsParams()))
+    node1 = EventsNode(AddStartEndEvents(params=AddStartEndEventsParams()))
     node2 = EventsNode(SplitSessions(params=SplitSessionsParams(session_cutoff=(1, 'h'))))
 
     # creating a preprocessing graph and linking the nodes
@@ -353,7 +353,7 @@ In many real-world scenarios preprocessing graph has simple linear structure (e.
 .. code-block:: python
 
     processed_stream = stream \
-        .add_start_end() \
+        .add_start_end_events() \
         .split_sessions(session_cutoff=(1, 'h'))
 
 

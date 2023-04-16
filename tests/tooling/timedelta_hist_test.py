@@ -5,9 +5,9 @@ import numpy as np
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.timedelta_hist import TimedeltaHist
 from tests.tooling.fixtures.timedelta_hist import (
+    source_stream_add_start_end_events,
     source_stream_for_log_scale,
     source_stream_sessions,
-    source_stream_start_end_events,
     test_stream,
 )
 from tests.tooling.fixtures.timedelta_hist_corr import (
@@ -161,12 +161,12 @@ class TestTimedeltaHist:
 
     def test_timedelta_hist__es_start_path_end(
         self,
-        source_stream_start_end_events: EventstreamType,
+        source_stream_add_start_end_events: EventstreamType,
         corr_es_start_path_end: np.array,
         corr_es_start_path_end_bins: np.array,
     ):
         th = TimedeltaHist(
-            source_stream_start_end_events,
+            source_stream_add_start_end_events,
             event_pair=["eventstream_start", "path_end"],
             timedelta_unit="s",
             only_adjacent_event_pairs=False,
@@ -185,12 +185,12 @@ class TestTimedeltaHist:
 
     def test_timedelta_hist__path_start_es_end(
         self,
-        source_stream_start_end_events: EventstreamType,
+        source_stream_add_start_end_events: EventstreamType,
         corr_path_start_es_end: np.array,
         corr_path_start_es_end_bins: np.array,
     ):
         th = TimedeltaHist(
-            source_stream_start_end_events,
+            source_stream_add_start_end_events,
             event_pair=["eventstream_end", "path_start"],
             timedelta_unit="s",
             only_adjacent_event_pairs=False,
@@ -209,12 +209,12 @@ class TestTimedeltaHist:
 
     def test_timedelta_hist__path_end_es_end(
         self,
-        source_stream_start_end_events: EventstreamType,
+        source_stream_add_start_end_events: EventstreamType,
         corr_path_end_es_end: np.array,
         corr_path_end_es_end_bins: np.array,
     ):
         th = TimedeltaHist(
-            source_stream_start_end_events,
+            source_stream_add_start_end_events,
             event_pair=["path_end", "eventstream_end"],
             timedelta_unit="s",
             only_adjacent_event_pairs=False,
@@ -229,12 +229,12 @@ class TestTimedeltaHist:
 
     def test_timedelta_hist__path_start_path_end(
         self,
-        source_stream_start_end_events: EventstreamType,
+        source_stream_add_start_end_events: EventstreamType,
         corr_path_start_path_end: np.array,
         corr_path_start_path_end_bins: np.array,
     ):
         th = TimedeltaHist(
-            source_stream_start_end_events,
+            source_stream_add_start_end_events,
             event_pair=["path_start", "path_end"],
             timedelta_unit="s",
             only_adjacent_event_pairs=True,

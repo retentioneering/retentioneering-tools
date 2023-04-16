@@ -242,7 +242,7 @@ As we have already mentioned, the graph nodes are often of different importance.
 .. code-block:: python
 
     stream\
-        .add_start_end()\
+        .add_start_end_events()\
         .transition_graph(
             targets={
                 'positive': ['payment_done', 'cart'],
@@ -263,7 +263,7 @@ As we have already mentioned, the graph nodes are often of different importance.
     ></iframe>
     </div>
 
-In the example above we additionally use :py:meth:`Eventstream.add_start_end() <retentioneering.eventstream.helpers.start_end_helper.StartEndHelperMixin.add_start_end>` data processor helper to add ``path_start`` and ``path_end`` events.
+In the example above we additionally use :py:meth:`Eventstream.add_start_end_events() <retentioneering.eventstream.helpers.add_start_end_events_helper.AddStartEndEventsHelperMixin.add_start_end_events>` data processor helper to add ``path_start`` and ``path_end`` events.
 
 .. _transition_graph_settings:
 

@@ -334,8 +334,8 @@ Using the :py:meth:`EventstreamSchema<retentioneering.eventstream.schema.Eventst
 
 2. Get access to the eventstream columns which is used for such preprocessing tools as:
 
-- :py:meth:`PositiveTarget <retentioneering.data_processors_lib.positive_target>`,
-- :py:meth:`NegativeTarget <retentioneering.data_processors_lib.negative_target>`,
+- :py:meth:`AddPositiveEvents <retentioneering.data_processors_lib.add_positive_events>`,
+- :py:meth:`AddNegativeEvents <retentioneering.data_processors_lib.add_negative_events>`,
 - :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events>`,
 - :py:meth:`GroupEvents <retentioneering.data_processors_lib.group_events>`.
 
@@ -644,9 +644,9 @@ event types, that are arranged in the following default order:
         "path_start",
         "new_user",
         "existing_user",
-        "truncated_left",
+        "cropped_left",
         "session_start",
-        "session_start_truncated",
+        "session_start_cropped",
         "group_alias",
         "raw",
         "raw_sleep",
@@ -655,10 +655,10 @@ event types, that are arranged in the following default order:
         "synthetic_sleep",
         "positive_target",
         "negative_target",
-        "session_end_truncated",
+        "session_end_cropped",
         "session_end",
         "session_sleep",
-        "truncated_right",
+        "cropped_right",
         "absent_user",
         "lost_user",
         "path_end"
@@ -677,12 +677,12 @@ In case you already have an eventstream instance, you can assign a custom sortin
 to ``Eventstream.index_order`` attribute. Afterwards, you should use
 :py:meth:`index_events()<retentioneering.eventstream.eventstream.Eventstream.index_events>` method to
 apply this new sorting. For demonstration purposes we use here a
-:py:meth:`PositiveTarget<retentioneering.data_processors_lib.positive_target.PositiveTarget>`
+:py:meth:`AddPositiveEvents<retentioneering.data_processors_lib.add_positive_events.AddPositiveEvents>`
 data processor, which adds new event with prefix ``positive_target_``.
 
 .. code-block:: python
 
-    add_events_stream = stream3.positive_target(positive_target_events=['B'])
+    add_events_stream = stream3.add_positive_events(positive_target_events=['B'])
     add_events_stream.to_dataframe()
 
 .. raw:: html
@@ -780,9 +780,9 @@ follow their ``raw`` parent event ``B``. Assume we would like to change their or
         'path_start',
         'new_user',
         'existing_user',
-        'truncated_left',
+        'cropped_left',
         'session_start',
-        'session_start_truncated',
+        'session_start_cropped',
         'group_alias',
         'positive_target',
         'raw',
@@ -791,10 +791,10 @@ follow their ``raw`` parent event ``B``. Assume we would like to change their or
         'synthetic',
         'synthetic_sleep',
         'negative_target',
-        'session_end_truncated',
+        'session_end_cropped',
         'session_end',
         'session_sleep',
-        'truncated_right',
+        'cropped_right',
         'absent_user',
         'lost_user',
         'path_end'
@@ -1601,7 +1601,7 @@ The method has multiple parameters:
 .. note::
 
     The method is especially useful for selecting parameters to
-    :py:meth:`DeleteUsersByPathLength<retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>`
+    :py:meth:`DropPaths<retentioneering.data_processors_lib.drop_path.DropPaths>`
     See :doc:`the user guide on preprocessing</user_guides/dataprocessors>` for details.
 
 .. _eventstream_timedelta_hist:
@@ -1644,14 +1644,14 @@ From this charts we can see that it is reasonable to set it to some value betwee
 Be careful if there are some synthetic events in the data. Usually those events are assigned with the same
 timestamp as their "parent" raw events. Thus, the distribution of the timedeltas between
 events will be heavily skewed to 0. Parameter ``raw_events_only=True`` can help in such a situation.
-Let us add to our dataset some common synthetic events using :ref:`StartEndEvents<add_start_end>` and
+Let us add to our dataset some common synthetic events using :ref:`AddStartEndEvents<add_start_end_events>` and
 :ref:`SplitSessions<split_sessions>` data processors.
 
 .. code-block:: python
 
     stream_with_synthetic = datasets\
         .load_simple_shop()\
-        .add_start_end()\
+        .add_start_end_events()\
         .split_sessions(session_cutoff=(30, 'm'))
 
     stream_with_synthetic.timedelta_hist(log_scale=True, timedelta_unit='m')
@@ -1814,7 +1814,7 @@ Eventstream global events
 They indicate the first and the last events in an evenstream.
 
 It is especially useful for choosing the ``cutoff`` parameter for
-:py:meth:`TruncatedEvents<retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` data processor.
+:py:meth:`LabelCroppedPaths<retentioneering.data_processors_lib.label_cropped_paths.LabelCroppedPaths>` data processor.
 Before you choose it, you can explore how a path's beginning/end margin from the right/left edge of an eventstream.
 In the histogram below, :math:`\Delta_1` illustrates such a margin for ``event_pair=('eventstream_start', 'B')``.
 Note that here only one timedelta is calculated - from the 'eventstream_start' to the first occurrence of specified
@@ -1847,7 +1847,7 @@ And again, only one timedelta per userpath is calculated - from the 'B' event (i
     :width: 500
 
 For more details on how this histogram helps to define the ``cutoff`` parameter see
-:ref:`TruncatedEvents section<truncated_events>` in the data processors user guide.
+:ref:`LabelCroppedPaths section<label_cropped_paths>` in the data processors user guide.
 
 .. _eventstream_events_timestamp:
 
@@ -1875,7 +1875,7 @@ by choosing ``path_start`` in the event list .
 .. code-block:: python
 
     stream\
-        .add_start_end()\
+        .add_start_end_events()\
         .event_timestamp_hist(event_list=['path_start'])
 
 .. figure:: /_static/user_guides/eventstream/14_event_timestamp_hist_event_list.png

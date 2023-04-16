@@ -62,7 +62,7 @@ data: list[dict] = [
         ],
     },
     {
-        "name": "LostUsersEvents",
+        "name": "LabelLostUsers",
         "params": [
             {
                 "name": "lost_cutoff",
@@ -86,7 +86,7 @@ data: list[dict] = [
         ],
     },
     {
-        "name": "NegativeTarget",
+        "name": "AddNegativeEvents",
         "params": [
             {
                 "name": "negative_target_events",
@@ -101,7 +101,7 @@ data: list[dict] = [
         ],
     },
     {
-        "name": "NewUsersEvents",
+        "name": "LabelNewUsers",
         "params": [
             {
                 "name": "new_users_list",
@@ -111,7 +111,7 @@ data: list[dict] = [
         ],
     },
     {
-        "name": "PositiveTarget",
+        "name": "AddPositiveEvents",
         "params": [
             {
                 "name": "positive_target_events",
@@ -155,11 +155,11 @@ data: list[dict] = [
         ],
     },
     {
-        "name": "StartEndEvents",
+        "name": "AddStartEndEvents",
         "params": [],
     },
     {
-        "name": "TruncatedEvents",
+        "name": "LabelCroppedPaths",
         "params": [
             {
                 "name": "left_truncated_cutoff",

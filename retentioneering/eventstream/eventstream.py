@@ -674,7 +674,7 @@ class Eventstream(
         targets: Optional[list[str] | str] = None,
         accumulated: Optional[Union[Literal["both", "only"], None]] = None,
         sorting: Optional[list[str]] = None,
-        thresh: float = 0,
+        threshold: float = 0,
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
         show_plot: bool = True,
@@ -703,7 +703,7 @@ class Eventstream(
             targets=targets,
             accumulated=accumulated,
             sorting=sorting,
-            thresh=thresh,
+            threshold=threshold,
             centered=centered,
             groups=groups,
         )
@@ -716,9 +716,9 @@ class Eventstream(
     def step_sankey(
         self,
         max_steps: int = 10,
-        thresh: Union[int, float] = 0.05,
+        threshold: Union[int, float] = 0.05,
         sorting: list | None = None,
-        target: Union[list[str], str] | None = None,
+        targets: Union[list[str], str] | None = None,
         autosize: bool = True,
         width: int | None = None,
         height: int | None = None,
@@ -743,9 +743,9 @@ class Eventstream(
         self.__sankey = StepSankey(
             eventstream=self,
             max_steps=max_steps,
-            thresh=thresh,
+            threshold=threshold,
             sorting=sorting,
-            target=target,
+            targets=targets,
             autosize=autosize,
             width=width,
             height=height,
@@ -765,7 +765,8 @@ class Eventstream(
         cut_bottom: int = 0,
         cut_right: int = 0,
         cut_diagonal: int = 0,
-        figsize: Tuple[float, float] = (5, 5),
+        width: float = 5.0,
+        height: float = 5.0,
         show_plot: bool = True,
     ) -> Cohorts:
         """
@@ -796,7 +797,7 @@ class Eventstream(
 
         self.__cohorts.fit()
         if show_plot:
-            self.__cohorts.heatmap(figsize)
+            self.__cohorts.heatmap(width=width, height=height)
         return self.__cohorts
 
     def stattests(
@@ -831,15 +832,16 @@ class Eventstream(
         self,
         raw_events_only: bool = False,
         event_pair: Optional[list[str | Literal[EVENTSTREAM_GLOBAL_EVENTS]]] = None,
-        only_adjacent_event_pairs: bool = True,
-        weight_col: str = "user_id",
-        aggregation: Optional[AGGREGATION_NAMES] = None,
+        adjacent_events_only: bool = True,
+        weight_col: str | None = None,
+        time_agg: Optional[AGGREGATION_NAMES] = None,
         timedelta_unit: DATETIME_UNITS = "s",
         log_scale: bool | tuple[bool, bool] | None = None,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
+        width: float = 6.0,
+        height: float = 4.5,
         show_plot: bool = True,
     ) -> TimedeltaHist:
         """
@@ -864,15 +866,16 @@ class Eventstream(
             eventstream=self,
             raw_events_only=raw_events_only,
             event_pair=event_pair,
-            only_adjacent_event_pairs=only_adjacent_event_pairs,
-            aggregation=aggregation,
+            adjacent_events_only=adjacent_events_only,
+            time_agg=time_agg,
             weight_col=weight_col,
             timedelta_unit=timedelta_unit,
             log_scale=log_scale,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
-            figsize=figsize,
+            width=width,
+            height=height,
         )
 
         self.__timedelta_hist.fit()
@@ -888,7 +891,8 @@ class Eventstream(
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
+        width: float = 6.0,
+        height: float = 4.5,
         show_plot: bool = True,
     ) -> UserLifetimeHist:
         """
@@ -916,7 +920,8 @@ class Eventstream(
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
-            figsize=figsize,
+            width=width,
+            height=height,
         )
         self.__user_lifetime_hist.fit()
         if show_plot:
@@ -930,7 +935,8 @@ class Eventstream(
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
+        width: float = 6.0,
+        height: float = 4.5,
         show_plot: bool = True,
     ) -> EventTimestampHist:
         """
@@ -957,7 +963,8 @@ class Eventstream(
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
-            figsize=figsize,
+            width=width,
+            height=height,
         )
 
         self.__event_timestamp_hist.fit()

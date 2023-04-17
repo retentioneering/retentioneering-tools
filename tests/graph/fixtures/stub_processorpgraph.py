@@ -15,7 +15,7 @@ def stub_processorpgraph():
     class StubPProcessorParams(ParamsModel):
         a: Union[Literal["a"], Literal["b"]]
 
-    class StubProcessorPGraph(DataProcessor):
+    class StubProcessorPreprocessingGraph(DataProcessor):
         params: StubPProcessorParams
 
         def __init__(self, params: StubPProcessorParams):
@@ -24,7 +24,7 @@ def stub_processorpgraph():
         def apply(self, eventstream: Eventstream) -> Eventstream:
             return eventstream.copy()
 
-    yield {"params": StubPProcessorParams, "processor": StubProcessorPGraph}
+    yield {"params": StubPProcessorParams, "processor": StubProcessorPreprocessingGraph}
 
-    unregister_dataprocessor(StubProcessorPGraph)
+    unregister_dataprocessor(StubProcessorPreprocessingGraph)
     unregister_params_model(StubPProcessorParams)

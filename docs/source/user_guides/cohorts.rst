@@ -231,7 +231,7 @@ We can also build lineplots based on our data. By default, each line is one ``Co
 
 .. code-block:: python
 
-    cohorts.lineplot(figsize=(5,5), show_plot='cohorts')
+    cohorts.lineplot(width=5, height=5), show_plot='cohorts')
 
 .. figure:: /_static/user_guides/cohorts/cohorts_5_lineplot_default.png
 
@@ -239,7 +239,7 @@ In addition, we can plot the average values for cohorts:
 
 .. code-block:: python
 
-    cohorts.lineplot(figsize=(7,5), show_plot='average')
+    cohorts.lineplot(width=7, height=5, show_plot='average')
 
 .. figure:: /_static/user_guides/cohorts/cohorts_6_lineplot_average.png
 
@@ -247,7 +247,7 @@ Specifying the ``show_plot='all'`` we get a plot that shows lineplot for each co
 
 .. code-block:: python
 
-    cohorts.lineplot(figsize=(7,5), show_plot='all');
+    cohorts.lineplot(width=7, height=5, show_plot='all');
 
 .. figure:: /_static/user_guides/cohorts/cohorts_7_lineplot_all.png
 

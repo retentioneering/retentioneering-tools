@@ -18,7 +18,7 @@ from retentioneering.eventstream.types import (
     RawDataSchemaType,
     Relation,
 )
-from retentioneering.graph import PGraph
+from retentioneering.preprocessing_graph import PreprocessingGraph
 from retentioneering.tooling import (
     Clusters,
     Cohorts,
@@ -160,6 +160,8 @@ class Eventstream(
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]
+    preprocessiong_graph: PreprocessingGraph | None = None
+
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
     __clusters: Clusters | None = None
@@ -169,7 +171,6 @@ class Eventstream(
     __sankey: StepSankey | None = None
     __stattests: StatTests | None = None
     __transition_graph: TransitionGraph
-    __p_graph: PGraph | None = None
     __timedelta_hist: TimedeltaHist | None = None
     __user_lifetime_hist: UserLifetimeHist | None = None
     __event_timestamp_hist: EventTimestampHist | None = None
@@ -190,6 +191,7 @@ class Eventstream(
     ) -> None:
         self.__clusters = None
         self.__funnel = None
+
         self.schema = schema if schema else EventstreamSchema()
 
         if not raw_data_schema:
@@ -213,6 +215,7 @@ class Eventstream(
         self.__events = self.__prepare_events(raw_data) if prepare else raw_data
         self.__events = self.__required_cleanup(events=self.__events)
         self.index_events()
+        self.preprocessiong_graph = None
 
     def copy(self) -> Eventstream:
         """
@@ -674,7 +677,7 @@ class Eventstream(
         targets: Optional[list[str] | str] = None,
         accumulated: Optional[Union[Literal["both", "only"], None]] = None,
         sorting: Optional[list[str]] = None,
-        thresh: float = 0,
+        threshold: float = 0,
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
         show_plot: bool = True,
@@ -703,7 +706,7 @@ class Eventstream(
             targets=targets,
             accumulated=accumulated,
             sorting=sorting,
-            thresh=thresh,
+            threshold=threshold,
             centered=centered,
             groups=groups,
         )
@@ -716,9 +719,9 @@ class Eventstream(
     def step_sankey(
         self,
         max_steps: int = 10,
-        thresh: Union[int, float] = 0.05,
+        threshold: Union[int, float] = 0.05,
         sorting: list | None = None,
-        target: Union[list[str], str] | None = None,
+        targets: Union[list[str], str] | None = None,
         autosize: bool = True,
         width: int | None = None,
         height: int | None = None,
@@ -743,9 +746,9 @@ class Eventstream(
         self.__sankey = StepSankey(
             eventstream=self,
             max_steps=max_steps,
-            thresh=thresh,
+            threshold=threshold,
             sorting=sorting,
-            target=target,
+            targets=targets,
             autosize=autosize,
             width=width,
             height=height,
@@ -765,7 +768,8 @@ class Eventstream(
         cut_bottom: int = 0,
         cut_right: int = 0,
         cut_diagonal: int = 0,
-        figsize: Tuple[float, float] = (5, 5),
+        width: float = 5.0,
+        height: float = 5.0,
         show_plot: bool = True,
     ) -> Cohorts:
         """
@@ -796,7 +800,7 @@ class Eventstream(
 
         self.__cohorts.fit()
         if show_plot:
-            self.__cohorts.heatmap(figsize)
+            self.__cohorts.heatmap(width=width, height=height)
         return self.__cohorts
 
     def stattests(
@@ -831,15 +835,16 @@ class Eventstream(
         self,
         raw_events_only: bool = False,
         event_pair: Optional[list[str | Literal[EVENTSTREAM_GLOBAL_EVENTS]]] = None,
-        only_adjacent_event_pairs: bool = True,
-        weight_col: str = "user_id",
-        aggregation: Optional[AGGREGATION_NAMES] = None,
+        adjacent_events_only: bool = True,
+        weight_col: str | None = None,
+        time_agg: Optional[AGGREGATION_NAMES] = None,
         timedelta_unit: DATETIME_UNITS = "s",
         log_scale: bool | tuple[bool, bool] | None = None,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
+        width: float = 6.0,
+        height: float = 4.5,
         show_plot: bool = True,
     ) -> TimedeltaHist:
         """
@@ -864,15 +869,16 @@ class Eventstream(
             eventstream=self,
             raw_events_only=raw_events_only,
             event_pair=event_pair,
-            only_adjacent_event_pairs=only_adjacent_event_pairs,
-            aggregation=aggregation,
+            adjacent_events_only=adjacent_events_only,
+            time_agg=time_agg,
             weight_col=weight_col,
             timedelta_unit=timedelta_unit,
             log_scale=log_scale,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
-            figsize=figsize,
+            width=width,
+            height=height,
         )
 
         self.__timedelta_hist.fit()
@@ -888,7 +894,8 @@ class Eventstream(
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
+        width: float = 6.0,
+        height: float = 4.5,
         show_plot: bool = True,
     ) -> UserLifetimeHist:
         """
@@ -916,7 +923,8 @@ class Eventstream(
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
-            figsize=figsize,
+            width=width,
+            height=height,
         )
         self.__user_lifetime_hist.fit()
         if show_plot:
@@ -930,7 +938,8 @@ class Eventstream(
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
+        width: float = 6.0,
+        height: float = 4.5,
         show_plot: bool = True,
     ) -> EventTimestampHist:
         """
@@ -957,7 +966,8 @@ class Eventstream(
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
-            figsize=figsize,
+            width=width,
+            height=height,
         )
 
         self.__event_timestamp_hist.fit()
@@ -1093,7 +1103,6 @@ class Eventstream(
     )
     def transition_graph(
         self,
-        graph_settings: dict[str, Any] | None = None,
         edges_norm_type: NormType = None,
         nodes_norm_type: NormType = None,
         targets: MutableMapping[str, str | None] | None = None,
@@ -1104,6 +1113,11 @@ class Eventstream(
         custom_weight_cols: list[str] | None = None,
         width: int = 960,
         height: int = 900,
+        show_weights: bool = True,
+        show_percents: bool = False,
+        show_nodes_names: bool = True,
+        show_all_edges_for_targets: bool = True,
+        show_nodes_without_links: bool = False,
     ) -> TransitionGraph:
         """
 
@@ -1118,10 +1132,7 @@ class Eventstream(
             Rendered IFrame graph.
 
         """
-        self.__transition_graph = TransitionGraph(
-            eventstream=self,
-            graph_settings=graph_settings,
-        )
+        self.__transition_graph = TransitionGraph(eventstream=self)
         self.__transition_graph.plot(
             targets=targets,
             edges_norm_type=edges_norm_type,
@@ -1133,17 +1144,22 @@ class Eventstream(
             custom_weight_cols=custom_weight_cols,
             width=width,
             height=height,
+            show_weights=show_weights,
+            show_percents=show_percents,
+            show_nodes_names=show_nodes_names,
+            show_all_edges_for_targets=show_all_edges_for_targets,
+            show_nodes_without_links=show_nodes_without_links,
         )
         return self.__transition_graph
 
-    def processing_graph(self) -> PGraph:
+    def preprocessing_graph(self) -> PreprocessingGraph:
         """
         Display the preprocessing GUI tool.
         """
-        if self.__p_graph is None:
-            self.__p_graph = PGraph(source_stream=self)
-        self.__p_graph.display()
-        return self.__p_graph
+        if self.preprocessiong_graph is None:
+            self.preprocessiong_graph = PreprocessingGraph(source_stream=self)
+        self.preprocessiong_graph.display()
+        return self.preprocessiong_graph
 
     @track(  # type: ignore
         tracking_info={"event_name": "transition_matrix", "event_custom_name": "transition_matrix_helper"},
@@ -1157,7 +1173,7 @@ class Eventstream(
         Parameters
         ----------
 
-        weight_col : str, default None
+        weight_col : str, optional
             Weighting column for the transition weights calculation.
             See :ref:`transition graph user guide <transition_graph_weights>` for the details.
 

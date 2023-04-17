@@ -2,8 +2,11 @@ import pandas as pd
 
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-from retentioneering.graph.p_graph import EventsNode, PGraph
 from retentioneering.params_model import ParamsModel
+from retentioneering.preprocessing_graph.preprocessing_graph import (
+    EventsNode,
+    PreprocessingGraph,
+)
 from tests.data_processor.fixtures.add_col_processor import add_col_processor
 
 
@@ -29,7 +32,7 @@ class TestGraphAddColumn:
             ),
             raw_data=source_df,
         )
-        graph = PGraph(source)
+        graph = PreprocessingGraph(source)
         add_col_node = EventsNode(
             HelperAddColProcessor(params=AddColParamsModel(event_name="pageview", column_name="bucket"))  # type: ignore
         )
@@ -70,7 +73,7 @@ class TestGraphAddColumn:
             ),
             raw_data=source_df,
         )
-        graph = PGraph(source)
+        graph = PreprocessingGraph(source)
         add_col_node = EventsNode(
             NoHelperAddColProcessor(params=AddColParamsModel(event_name="pageview", column_name="bucket"))  # type: ignore
         )

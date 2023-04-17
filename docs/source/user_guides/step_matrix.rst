@@ -89,21 +89,21 @@ As you may have noticed, the step matrix above has ``ENDED`` event which is loca
 Collapsing rare events
 ----------------------
 
-In a typical scenario, it can be useful to hide rare events in a step matrix, not removing them from the step matrix calculation. If we remove them, the matrix values will be distorted. This behaviour is controlled by the ``thresh`` argument. An event is considered as rare if its maximum frequency over all the steps is less than ``thresh``. All such rare events are not removed from the matrix, but instead collapsed to ``thresholded_N`` artificial event, where ``N`` stands for the number of the collapsed events. The ``thresholded_N`` event appears in step matrix only, and is not added to the sourcing eventstream.
+In a typical scenario, it can be useful to hide rare events in a step matrix, not removing them from the step matrix calculation. If we remove them, the matrix values will be distorted. This behaviour is controlled by the ``threshold`` argument. An event is considered as rare if its maximum frequency over all the steps is less than ``threshold``. All such rare events are not removed from the matrix, but instead collapsed to ``thresholded_N`` artificial event, where ``N`` stands for the number of the collapsed events. The ``thresholded_N`` event appears in step matrix only, and is not added to the sourcing eventstream.
 
-Let us look how the events are collapsed if we set ``thresh=0.05``, and compare the result with the previous step matrix (which had the default ``thresh=0`` parameter).
+Let us look how the events are collapsed if we set ``threshold=0.05``, and compare the result with the previous step matrix (which had the default ``threshold=0`` parameter).
 
 .. code-block:: python
 
-    stream.step_matrix(max_steps=16, thresh=0.05)
+    stream.step_matrix(max_steps=16, threshold=0.05)
 
 .. figure:: /_static/user_guides/step_matrix/output_16_1.png
 
 
 Now, we see that all 6 rare events are hidden and grouped together in the ``THRESHOLDED_6`` row. We also notice that ``THRESHOLDED_6`` event contains ``delivery_courier``, ``delivery_pickup``, ``payment_cash``, ``payment_card``, ``payment_done``, and ``payment_choice`` events. Let us check why, say, the ``payment_choice`` event has been collapsed. In the previous step matrix we see that at step 5 this event contains 3% of the users, 4% at step 6, and 3% at step 7, etc. Since the maximum value (4%) is less than
-``thresh=0.05``, the event is collapsed.
+``threshold=0.05``, the event is collapsed.
 
-Note that the number ``_6`` in ``THRESHOLDED_6`` event name contains no information on specific steps. For example, from the matrix with ``thresh=0`` we see that at step 4 only one event among these 6 is represented (``delivery_courier``), so it is the only event that is collapsed at this step. On the other hand, at step 5 ``delivery_pickup`` and ``payment_choice`` appear, so they are collapsed to the ``THRESHOLDED_6`` event. Finally, at step 7, all these 6 events are collapsed.
+Note that the number ``_6`` in ``THRESHOLDED_6`` event name contains no information on specific steps. For example, from the matrix with ``threshold=0`` we see that at step 4 only one event among these 6 is represented (``delivery_courier``), so it is the only event that is collapsed at this step. On the other hand, at step 5 ``delivery_pickup`` and ``payment_choice`` appear, so they are collapsed to the ``THRESHOLDED_6`` event. Finally, at step 7, all these 6 events are collapsed.
 
 You can use the ``target`` parameter if you want to prevent some events from the collapsing.
 
@@ -117,7 +117,7 @@ This includes such events as adding an item to the cart, order confirmation, pay
 
     stream.step_matrix(
         max_steps=16,
-        thresh=0.05,
+        threshold=0.05,
         targets=['payment_done']
     )
 
@@ -131,7 +131,7 @@ Multiple targets are also supported:
 
     stream.step_matrix(
         max_steps=16,
-        thresh=0.05,
+        threshold=0.05,
         targets=['product1', 'cart', 'payment_done']
     )
 
@@ -145,7 +145,7 @@ If we want to compare some target events and plot them using the same color scal
 
     stream.step_matrix(
         max_steps=16,
-        thresh=0.05,
+        threshold=0.05,
         targets=['product1', ['cart', 'payment_done']]
     )
 
@@ -164,7 +164,7 @@ The step matrix below demonstrates ``accumulated='only'`` option:
 
     stream.step_matrix(
         max_steps=16,
-        thresh=0.05,
+        threshold=0.05,
         targets=['product1', ['cart', 'payment_done']],
         accumulated='only'
     )
@@ -177,7 +177,7 @@ In comparison with the previous step matrix, at the bottom we see three rows ``A
 
     stream.step_matrix(
         max_steps=16,
-        thresh=0.05,
+        threshold=0.05,
         targets=['product1', ['cart', 'payment_done']],
         accumulated='both'
     )
@@ -195,7 +195,7 @@ Sometimes we are interested in the flow of users through a specific event to ans
 
     stream.step_matrix(
         max_steps=16,
-        thresh=0.2,
+        threshold=0.2,
         centered={
             'event': 'cart',
             'left_gap': 5,
@@ -225,7 +225,7 @@ To better understand the meaning of the ``occurrence`` parameter, let us calcula
 
     stream.step_matrix(
         max_steps=16,
-        thresh=0.2,
+        threshold=0.2,
         centered={
             'event': 'cart',
             'left_gap': 5,
@@ -244,7 +244,7 @@ A combination of ``targets`` and ``centered`` parameters is also possible:
 
     stream.step_matrix(
         max_steps=16,
-        thresh=0.2,
+        threshold=0.2,
         centered={
             'event': 'cart',
             'left_gap': 5,
@@ -271,7 +271,7 @@ Sometimes, it is needed to obtain a step matrix with events ranked in a specific
 
 .. code-block:: python
 
-    stream.step_matrix(max_steps=16, thresh=0.07)
+    stream.step_matrix(max_steps=16, threshold=0.07)
 
 .. figure:: /_static/user_guides/step_matrix/output_43_2.png
 
@@ -292,7 +292,7 @@ We pass the following list ofr the events to the ``sorting`` parameter:
 
     stream.step_matrix(
         max_steps=16,
-        thresh=0.07,
+        threshold=0.07,
         sorting=custom_order
     )
 
@@ -331,7 +331,7 @@ In the example below we demonstrate how the ``groups`` parameter works. We also 
 
     stream.step_matrix(
         max_steps=16,
-        thresh=0.05,
+        threshold=0.05,
         centered={
             'event': 'cart',
             'left_gap': 5,
@@ -374,7 +374,7 @@ All we need is to get ``user_id`` collections from the :ref:`cluster_mapping <cl
 
     stream.step_matrix(
         max_steps=16,
-        thresh = 0.05,
+        threshold=0.05,
         centered={
             'event': 'cart',
             'left_gap': 5,
@@ -673,6 +673,6 @@ params
      'targets': ['product1', ['cart', 'payment_done']],
      'accumulated': None,
      'sorting': None,
-     'thresh': 0,
+     'threshold': 0,
      'centered': None,
      'groups': None}

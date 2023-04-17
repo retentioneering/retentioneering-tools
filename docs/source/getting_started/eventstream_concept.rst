@@ -276,10 +276,10 @@ Finally, we need to build a graph with a single node encompassing ``RoundTimesta
 
 .. code-block:: python
 
-    from retentioneering.graph.p_graph import PGraph, EventsNode
+    from retentioneering.preprocessing_graph.preprocessing_graph import PreprocessingGraph, EventsNode
 
     node = EventsNode(RoundTimestamp(params=RoundTimestampParams()))
-    graph = PGraph(stream)
+    graph = PreprocessingGraph(stream)
     graph.add_node(node, parents=[graph.root])
 
     graph.combine(node=node).to_dataframe()
@@ -311,11 +311,11 @@ The nodes of preprocessing graph belong to ``EventNode`` class and could be of t
 
 Unlike these regular nodes, merging nodes accept multiple eventstreams as input, concatenate them, and drop possible duplicates.
 
-Linking graph nodes according to preprocessing logic, we obtain a ``preprocessing graph``. Preprocessing graphs are instances of ``PGraph`` class. To add a node to the graph use  ``add_node`` method. The links are set via ``parents`` parameter of the method. Here’s an tiny example how to create a simple preprocessing graph consisting of two nodes ``StartEndEvents`` and ``SplitSessions``.
+Linking graph nodes according to preprocessing logic, we obtain a ``preprocessing graph``. Preprocessing graphs are instances of ``PreprocessingGraph`` class. To add a node to the graph use  ``add_node`` method. The links are set via ``parents`` parameter of the method. Here’s an tiny example how to create a simple preprocessing graph consisting of two nodes ``StartEndEvents`` and ``SplitSessions``.
 
 .. code-block:: python
 
-    from retentioneering.graph.p_graph import PGraph, EventsNode
+    from retentioneering.preprocessing_graph.preprocessing_graph import PreprocessingGraph, EventsNode
     from retentioneering.data_processors_lib import SplitSessions, SplitSessionsParams
     from retentioneering.data_processors_lib import StartEndEvents, StartEndParams
 
@@ -324,7 +324,7 @@ Linking graph nodes according to preprocessing logic, we obtain a ``preprocessin
     node2 = EventsNode(SplitSessions(params=SplitSessionsParams(session_cutoff=(1, 'h'))))
 
     # creating a preprocessing graph and linking the nodes
-    pgraph = PGraph(source_stream=stream)
+    pgraph = PreprocessingGraph(source_stream=stream)
     pgraph.add_node(node=node1, parents=[pgraph.root])
     pgraph.add_node(node=node2, parents=[node1])
 

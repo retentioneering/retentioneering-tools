@@ -18,7 +18,7 @@ from retentioneering.eventstream.types import (
     RawDataSchemaType,
     Relation,
 )
-from retentioneering.graph import PGraph
+from retentioneering.preprocessing_graph import PreprocessingGraph
 from retentioneering.tooling import (
     Clusters,
     Cohorts,
@@ -160,6 +160,8 @@ class Eventstream(
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]
+    preprocessiong_graph: PreprocessingGraph | None = None
+
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
     __clusters: Clusters | None = None
@@ -169,7 +171,6 @@ class Eventstream(
     __sankey: StepSankey | None = None
     __stattests: StatTests | None = None
     __transition_graph: TransitionGraph
-    __p_graph: PGraph | None = None
     __timedelta_hist: TimedeltaHist | None = None
     __user_lifetime_hist: UserLifetimeHist | None = None
     __event_timestamp_hist: EventTimestampHist | None = None
@@ -190,6 +191,7 @@ class Eventstream(
     ) -> None:
         self.__clusters = None
         self.__funnel = None
+
         self.schema = schema if schema else EventstreamSchema()
 
         if not raw_data_schema:
@@ -213,6 +215,7 @@ class Eventstream(
         self.__events = self.__prepare_events(raw_data) if prepare else raw_data
         self.__events = self.__required_cleanup(events=self.__events)
         self.index_events()
+        self.preprocessiong_graph = None
 
     def copy(self) -> Eventstream:
         """
@@ -1141,14 +1144,14 @@ class Eventstream(
         )
         return self.__transition_graph
 
-    def processing_graph(self) -> PGraph:
+    def preprocessing_graph(self) -> PreprocessingGraph:
         """
         Display the preprocessing GUI tool.
         """
-        if self.__p_graph is None:
-            self.__p_graph = PGraph(source_stream=self)
-        self.__p_graph.display()
-        return self.__p_graph
+        if self.preprocessiong_graph is None:
+            self.preprocessiong_graph = PreprocessingGraph(source_stream=self)
+        self.preprocessiong_graph.display()
+        return self.preprocessiong_graph
 
     @track(  # type: ignore
         tracking_info={"event_name": "transition_matrix", "event_custom_name": "transition_matrix_helper"},

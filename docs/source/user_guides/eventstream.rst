@@ -1596,7 +1596,7 @@ The method has multiple parameters:
   number of bins. See details in
   `numpy documentation <https://numpy.org/doc/stable/reference/generated/numpy.histogram_bin_edges.html>`_;
 
-- ``figsize`` sets figure width and height in inches.
+- ``width`` and ``height`` set figure width and height in inches.
 
 .. note::
 
@@ -1615,7 +1615,7 @@ This can be generalized.
 method shows a histogram for the distribution of timedeltas between a couple of specified events.
 
 The method supports similar formatting arguments (``timedelta_unit``, ``log_scale``,
-``lower_cutoff_quantile``, ``upper_cutoff_quantile``, ``bins``, ``figsize``) as we have already mentioned
+``lower_cutoff_quantile``, ``upper_cutoff_quantile``, ``bins``, ``width``, ``height``) as we have already mentioned
 in :ref:`user_lifetime_hist<common_hist_params>` method.
 
 If no arguments are passed (except formatting arguments), timedeltas between all adjacent events are
@@ -1685,7 +1685,7 @@ Then we set ``event_pair=('product1', 'cart')`` and pass it to ``timedelta_hist`
 From the Y scale, we see that such occurrences are not very numerous. This is because the method still works with only
 adjacent pairs of events (in this case ``product1`` and ``cart`` are assumed to go one right after
 another in a user's path). That is why the histogram is skewed to 0.
-``only_adjacent_event_pairs`` parameter allows us to work with any cases when a user goes from
+``adjacent_events_only`` parameter allows us to work with any cases when a user goes from
 ``product1`` to ``cart`` non-directly but passing through some other events:
 
 .. code-block:: python
@@ -1693,10 +1693,10 @@ another in a user's path). That is why the histogram is skewed to 0.
     stream.timedelta_hist(
         event_pair=('product1', 'cart'),
         timedelta_unit='m',
-        only_adjacent_event_pairs=False
+        adjacent_events_only=False
     )
 
-.. figure:: /_static/user_guides/eventstream/07_timedelta_only_adjacent_event_pairs.png
+.. figure:: /_static/user_guides/eventstream/07_timedelta_adjacent_events_only.png
     :width: 500
 
 We see that the number of observations has increased, especially around 0. In other words,
@@ -1710,12 +1710,12 @@ options, etc.
 
 Here we should make a stop and explain how timedeltas between event pairs are calculated.
 Below you can see the picture of one user path and timedeltas that will be displayed in a ``timedelta_hist``
-with the parameters ``event_pair=('A', 'B')`` and ``only_adjacent_event_pairs=False``.
+with the parameters ``event_pair=('A', 'B')`` and ``adjacent_events_only=False``.
 
 Let us consider each time delta calculation:
 
 - :math:`\Delta_1` is calculated between 'A' and 'B' events. 'D' and 'F' are ignored because
-  of ``only_adjacent_event_pairs=False``.
+  of ``adjacent_events_only=False``.
 - The next 'A' event is colored grey and is skipped because there is one more 'A' event closer
   to the 'B' event. In such cases, we pick the 'A' event, that is closer to the next 'B' and calculate
   :math:`\Delta_2`.
@@ -1737,7 +1737,7 @@ For that purpose we can use parameters ``lower_cutoff_quantile`` and ``upper_cut
 These parameters specify boundaries for the histogram and will be applied last.
 
 In the example below, firstly, we keep users with ``event_pair=('product1', 'cart')``
-and ``only_adjacent_event_pairs=False``, and after it we truncate 90% of users with the shortest
+and ``adjacent_events_only=False``, and after it we truncate 90% of users with the shortest
 trajectories and keep 10% of the longest.
 
 .. code-block:: python
@@ -1745,7 +1745,7 @@ trajectories and keep 10% of the longest.
     stream.timedelta_hist(
             event_pair=('product1', 'cart'),
             timedelta_unit='m',
-            only_adjacent_event_pairs=False,
+            adjacent_events_only=False,
             lower_cutoff_quantile=0.9
         )
 
@@ -1758,9 +1758,8 @@ Here it is the same algorithm, but 10% of users with the shortest trajectories w
     stream.timedelta_hist(
             event_pair=('product1', 'cart'),
             timedelta_unit='m',
-            only_adjacent_event_pairs=False,
+            adjacent_events_only=False,
             upper_cutoff_quantile=0.1
-
         )
 
 .. figure:: /_static/user_guides/eventstream/timedelta_upper_cutoff_quantile.png
@@ -1776,7 +1775,7 @@ within a user session. If we have already split the paths into sessions, we can 
         .timedelta_hist(
             event_pair=('product1', 'cart'),
             timedelta_unit='m',
-            only_adjacent_event_pairs=False,
+            adjacent_events_only=False,
             weight_col='session_id'
         )
 
@@ -1790,7 +1789,7 @@ For example, transition ``main -> catalog`` is quite frequent. Some users do the
 some of them do not. It might be reasonable to aggregate the timedeltas over each user path first
 (we would get one value per one user at this step), and then visualize the distribution of
 these aggregated values. This can be done by passing an additional argument
-``aggregation='mean'`` or ``aggregation='median'``.
+``time_agg='mean'`` or ``time_agg='median'``.
 
 .. code-block:: python
 
@@ -1798,12 +1797,12 @@ these aggregated values. This can be done by passing an additional argument
         .timedelta_hist(
             event_pair=('main', 'catalog'),
             timedelta_unit='m',
-            only_adjacent_event_pairs=False,
+            adjacent_events_only=False,
             weight_col='user_id',
-            aggregation='mean'
+            time_agg='mean'
         )
 
-.. figure:: /_static/user_guides/eventstream/10_timedelta_aggregation_mean.png
+.. figure:: /_static/user_guides/eventstream/10_timedelta_time_agg_mean.png
     :width: 500
 
 
@@ -1839,7 +1838,7 @@ And again, only one timedelta per userpath is calculated - from the 'B' event (i
         .timedelta_hist(
             event_pair=('eventstream_start', 'path_end'),
             timedelta_unit='h',
-            only_adjacent_event_pairs=False
+            adjacent_events_only=False
         )
 
 
@@ -1885,4 +1884,4 @@ From this histogram we see that our hypothesis is true. New users started to arr
 
 Similar to :py:meth:`timedelta_hist()<retentioneering.eventstream.eventstream.Eventstream.timedelta_hist>`,
 ``event_timestamp_hist`` also has parameters ``raw_events_only``, ``upper_cutoff_quantile``,
-``lower_cutoff_quantile``, ``bins`` and ``figsize`` that work with the same logic.
+``lower_cutoff_quantile``, ``bins``, ``width`` and ``height`` that work with the same logic.

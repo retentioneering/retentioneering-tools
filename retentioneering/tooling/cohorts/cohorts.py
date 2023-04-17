@@ -218,15 +218,18 @@ class Cohorts:
 
         self._cohort_matrix_result = user_retention
 
-    def heatmap(self, figsize: Tuple[float, float] = (5, 5)) -> matplotlib.axes.Axes:
+    def heatmap(self, width: float = 5.0, height: float = 5.0) -> matplotlib.axes.Axes:
         """
         Builds a heatmap based on the calculated cohort matrix values.
         Should be used after :py:func:`fit`.
 
         Parameters
         ----------
-        figsize: Tuple[float, float], default (10, 10)
-            Is a tuple of the width and height of the figure in inches.
+        width : float, default 5.0
+            Width of the figure in inches.
+        height : float, default 5.0
+            Height of the figure in inches.
+
 
         Returns
         -------
@@ -234,15 +237,13 @@ class Cohorts:
         """
 
         df = self._cohort_matrix_result
-
+        figsize = (width, height)
         figure, ax = plt.subplots(figsize=figsize)
         sns.heatmap(df, annot=True, fmt=".1%", linewidths=1, linecolor="gray", ax=ax)
         return ax
 
     def lineplot(
-        self,
-        show_plot: Literal["cohorts", "average", "all"] = "cohorts",
-        figsize: Tuple[float, float] = (5, 5),
+        self, show_plot: Literal["cohorts", "average", "all"] = "cohorts", width: float = 7.0, height: float = 5.0
     ) -> matplotlib.axes.Axes:
         """
         Create a chart representing each cohort dynamics over time.
@@ -254,8 +255,10 @@ class Cohorts:
             - if ``cohorts`` - shows a lineplot for each cohort,
             - if ``average`` - shows a lineplot only for the average values over all the cohorts,
             - if ``all`` - shows a lineplot for each cohort and also for their average values.
-        figsize: Tuple[float, float], default (10, 10)
-            Is a tuple of the width and height of the figure in inches.
+        width : float, default 7.0
+            Width of the figure in inches.
+        height : float, default 5.0
+            Height of the figure in inches.
 
         Returns
         -------
@@ -264,7 +267,7 @@ class Cohorts:
         """
         if show_plot not in ["cohorts", "average", "all"]:
             raise ValueError("show_plot parameter should be 'cohorts', 'average' or 'all'!")
-
+        figsize = (width, height)
         df_matrix = self._cohort_matrix_result
         df_wo_average = df_matrix[df_matrix.index != "Average"]  # type: ignore
         if show_plot in ["all", "average"] and "Average" not in df_matrix.index:  # type: ignore

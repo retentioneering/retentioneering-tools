@@ -140,7 +140,7 @@ def set_clusters_corr():
 
 
 @pytest.fixture
-def vector_corr():
+def X_corr():
     d = {1: 0, 2: 1, 3: 1, 4: 1}
     index = pd.Index([1, 2, 3, 4], name="user_id")
     corr = pd.Series(data=d, index=index)

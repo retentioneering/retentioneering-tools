@@ -70,7 +70,7 @@ class TestEventstreamTimedeltaHist:
         corr_adjacent_event_pairs_bins: np.array,
     ):
         result_values, result_bins = test_stream.timedelta_hist(
-            event_pair=["A", "B"], show_plot=False, only_adjacent_event_pairs=False, bins=5
+            event_pair=["A", "B"], show_plot=False, adjacent_events_only=False, bins=5
         ).values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -147,7 +147,7 @@ class TestEventstreamTimedeltaHist:
         self, test_stream: EventstreamType, corr_agg: np.array, corr_agg_bins: np.array
     ):
         result_values, result_bins = test_stream.timedelta_hist(
-            show_plot=False, timedelta_unit="s", aggregation="mean", bins=5
+            show_plot=False, timedelta_unit="s", time_agg="mean", bins=5
         ).values
 
         result_bins = result_bins.round(FLOAT_PRECISION_BINS)
@@ -164,7 +164,7 @@ class TestEventstreamTimedeltaHist:
             event_pair=("eventstream_start", "path_end"),
             show_plot=False,
             timedelta_unit="s",
-            only_adjacent_event_pairs=False,
+            adjacent_events_only=False,
             bins=5,
         ).values
 
@@ -186,7 +186,7 @@ class TestEventstreamTimedeltaHist:
             event_pair=("eventstream_end", "path_start"),
             show_plot=False,
             timedelta_unit="s",
-            only_adjacent_event_pairs=False,
+            adjacent_events_only=False,
             bins=5,
         ).values
 
@@ -208,7 +208,7 @@ class TestEventstreamTimedeltaHist:
             event_pair=("path_end", "eventstream_end"),
             show_plot=False,
             timedelta_unit="s",
-            only_adjacent_event_pairs=False,
+            adjacent_events_only=False,
             bins=5,
         ).values
 
@@ -226,7 +226,7 @@ class TestEventstreamTimedeltaHist:
             event_pair=("path_start", "path_end"),
             show_plot=False,
             timedelta_unit="s",
-            only_adjacent_event_pairs=True,
+            adjacent_events_only=True,
             bins=5,
         ).values
 
@@ -246,7 +246,7 @@ class TestEventstreamTimedeltaHist:
             show_plot=False,
             timedelta_unit="s",
             weight_col="session_id",
-            only_adjacent_event_pairs=False,
+            adjacent_events_only=False,
             bins=5,
         ).values
 

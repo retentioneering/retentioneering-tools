@@ -42,17 +42,6 @@ class TransitionGraph:
     eventstream: EventstreamType
         Source eventstream.
 
-    graph_settings: dict, optional
-        Visual boolean settings related to :ref:`Settings block <transition_graph_settings>`
-        in the control of transition graph interface.
-
-        Possible keys:
-
-        - show_weights,
-        - show_percents,
-        - show_nodes_names,
-        - show_all_edges_for_targets,
-        - show_nodes_without_links.
 
     See Also
     --------
@@ -111,12 +100,8 @@ class TransitionGraph:
     def __init__(
         self,
         eventstream: EventstreamType,  # graph: dict,  # preprocessed graph
-        graph_settings: GraphSettings | dict[str, Any] | None = None,
     ) -> None:
         from retentioneering.eventstream.eventstream import Eventstream
-
-        if graph_settings is None:
-            graph_settings = {}  # type: ignore
 
         sm = ServerManager()
         self.env = sm.check_env()
@@ -136,8 +121,7 @@ class TransitionGraph:
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
         self.layout: pd.DataFrame | None = None
-        self.graph_settings = graph_settings
-
+        self.graph_settings: GraphSettings | dict[str, Any] = {}
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
 
     def _define_weight_cols(self, custom_weight_cols: list[str] | None) -> list[str]:
@@ -574,20 +558,20 @@ class TransitionGraph:
     )
     def plot(
         self,
+        targets: MutableMapping[str, str | None] | None = None,
         edges_norm_type: NormType | None = None,
-        edges_weight_col: str | None = None,
+        nodes_threshold: Threshold | None = None,
         edges_threshold: Threshold | None = None,
         nodes_weight_col: str | None = None,
-        nodes_threshold: Threshold | None = None,
-        targets: MutableMapping[str, str | None] | None = None,
+        edges_weight_col: str | None = None,
         custom_weight_cols: list[str] | None = None,
         width: int = 960,
         height: int = 900,
-        show_weights: bool | None = None,
-        show_percents: bool | None = None,
-        show_nodes_names: bool | None = None,
-        show_all_edges_for_targets: bool | None = None,
-        show_nodes_without_links: bool | None = None,
+        show_weights: bool = True,
+        show_percents: bool = False,
+        show_nodes_names: bool = True,
+        show_all_edges_for_targets: bool = True,
+        show_nodes_without_links: bool = False,
     ) -> None:
         """
         Create interactive transition graph visualization with callback to sourcing eventstream.
@@ -673,21 +657,21 @@ class TransitionGraph:
             Width of plot in pixels.
         height: int, default 960
             Height of plot in pixels.
-        show_weights: bool, optional
+        show_weights: bool, default True
             Hide/display the edge weight labels. By default, weights are shown.
-        show_percents: bool, optional
+        show_percents: bool, default False
             Display edge weights as percents. Available only if an edge normalization type is chosen.
             By default, weights are displayed in fractions.
-        show_nodes_names: bool, optional
+        show_nodes_names: bool, default True
             Hide/display the node names. By default, names are shown.
-        show_all_edges_for_targets: bool, optional
+        show_all_edges_for_targets: bool, default True
             This displaying option allows to ignore the threshold filters and always display
             any edge connected to a target node. By default, all such edges are shown.
-        show_nodes_without_links: bool, optional
+        show_nodes_without_links: bool, default False
             Setting a threshold filter might remove all the edges connected to a node.
             Such isolated nodes might be considered as useless. This displaying option
             hides them in the canvas as well.
-        @TODO: show_edge_info_on_hover add explanation. dpanina.
+        @TODO: add show_edge_info_on_hover Ticket: https://retentioneering.atlassian.net/browse/PLAT-776. dpanina.
 
         Returns
         -------
@@ -702,6 +686,9 @@ class TransitionGraph:
 
         See :doc:`TransitionGraph user guide </user_guides/transition_graph>` for the details.
         """
+        if not edges_norm_type and show_percents:
+            raise ValueError("If show_percents=True, edges_norm_type should be 'full' or 'node'!")
+
         self.__prepare_graph_for_plot(
             edges_weight_col=edges_weight_col,
             edges_threshold=edges_threshold,

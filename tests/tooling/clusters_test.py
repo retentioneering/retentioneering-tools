@@ -7,12 +7,9 @@ from pandas.testing import assert_frame_equal
 
 from retentioneering.eventstream import Eventstream, EventstreamSchema
 from retentioneering.tooling.clusters import Clusters
-from tests.tooling.fixtures.clusters import (
-    custom_vector,
-    stream_simple_shop,
-    test_stream,
-)
+from tests.tooling.fixtures.clusters import custom_X, stream_simple_shop, test_stream
 from tests.tooling.fixtures.clusters_corr import (
+    X_corr,
     cluster_mapping_corr,
     count_corr,
     gmm_corr,
@@ -22,7 +19,6 @@ from tests.tooling.fixtures.clusters_corr import (
     set_clusters_corr,
     time_corr,
     time_fraction_corr,
-    vector_corr,
 )
 
 
@@ -35,14 +31,14 @@ class TestClusters:
             pytest.fail("Runtime error in Clusters.fit. " + str(e))
 
         try:
-            c.event_dist(cluster_id1=0)
+            c.diff(cluster_id1=0)
         except Exception as e:
-            pytest.fail("Runtime error in Clusters.event_dist. " + str(e))
+            pytest.fail("Runtime error in Clusters.diff. " + str(e))
 
         try:
-            c.event_dist(cluster_id1=0, cluster_id2=1)
+            c.diff(cluster_id1=0, cluster_id2=1)
         except Exception as e:
-            pytest.fail("Runtime error in Clusters.event_dist. " + str(e))
+            pytest.fail("Runtime error in Clusters.diff. " + str(e))
 
         try:
             c.plot()
@@ -131,9 +127,9 @@ class TestClusters:
         result = c.cluster_mapping
         assert result == correct_result
 
-    def test_clusters__vector(self, test_stream, custom_vector, vector_corr):
-        correct_result = vector_corr
+    def test_clusters__X(self, test_stream, custom_X, X_corr):
+        correct_result = X_corr
         c = Clusters(eventstream=test_stream)
-        c.fit(method="kmeans", n_clusters=2, vector=custom_vector)
+        c.fit(method="kmeans", n_clusters=2, X=custom_X)
         result = c.user_clusters
         assert pd.testing.assert_series_equal(result, correct_result, check_dtype=False) is None

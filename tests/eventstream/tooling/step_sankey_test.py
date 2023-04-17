@@ -19,7 +19,7 @@ def correct_res_test(test_prefix):
 
 class TestEventstreamSankey:
     def test_sankey_eventstream__simple(self, test_stream):
-        params = {"max_steps": 6, "thresh": 0.25}
+        params = {"max_steps": 6, "threshold": 0.25}
         res_nodes, res_edges = test_stream.step_sankey(**params, show_plot=False).values
         res_nodes = res_nodes.drop("color", axis=1)
 
@@ -35,9 +35,9 @@ class TestEventstreamSankey:
         ), "Edges calculation"
 
     def test_sankey_eventstream__refit(self, test_stream):
-        params_1 = {"max_steps": 6, "thresh": 0.25}
+        params_1 = {"max_steps": 6, "threshold": 0.25}
 
-        params_2 = {"max_steps": 6, "thresh": 0.25, "target": ["event4"]}
+        params_2 = {"max_steps": 6, "threshold": 0.25, "targets": ["event4"]}
         res_nodes_1, res_edges_1 = test_stream.step_sankey(**params_1, show_plot=False).values
         res_nodes_1 = res_nodes_1.drop("color", axis=1)
         res_nodes_2, res_edges_2 = test_stream.step_sankey(**params_2, show_plot=False).values

@@ -1,5 +1,5 @@
-Filter Events
-========================
+FilterEvents
+============
 
 Data processor
 --------------

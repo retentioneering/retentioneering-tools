@@ -1,5 +1,5 @@
-Add New Users
-========================
+LabelNewUsers
+=============
 
 Data processor
 --------------

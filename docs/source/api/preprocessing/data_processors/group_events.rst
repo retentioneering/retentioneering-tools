@@ -1,5 +1,5 @@
-Group Events
-========================
+GroupEvents
+===========
 
 Data processor
 --------------

@@ -1,5 +1,5 @@
-Delete Users
-========================
+DropPaths
+=========
 
 Data processor
 --------------

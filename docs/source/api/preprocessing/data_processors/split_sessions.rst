@@ -1,5 +1,5 @@
-Split Sessions
-========================
+SplitSessions
+=============
 
 Data processor
 --------------

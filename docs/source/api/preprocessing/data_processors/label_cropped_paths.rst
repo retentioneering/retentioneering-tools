@@ -1,5 +1,5 @@
-Truncated Events
-========================
+LabelCroppedPaths
+=================
 
 Data processor
 --------------

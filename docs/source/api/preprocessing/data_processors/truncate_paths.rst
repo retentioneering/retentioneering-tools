@@ -1,5 +1,5 @@
-Truncate Path
-========================
+TruncatePaths
+=============
 
 Data processor
 --------------

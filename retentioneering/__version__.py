@@ -1,3 +1,1 @@
-import importlib.metadata
-
-__version__ = importlib.metadata.version("retentioneering")
+__version__ = "3.0.0b4"

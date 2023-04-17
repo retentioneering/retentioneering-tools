@@ -35,8 +35,8 @@ class TestPreprocessingGraph:
         )
         self.__raw_data_schema = RawDataSchema(event_name="name", event_timestamp="event_timestamp", user_id="user_id")
 
-    def mock_events_node(self, StubProcessorPGraph: DataProcessor, StubPProcessorParams: ParamsModel):
-        return EventsNode(processor=StubProcessorPGraph(params=StubPProcessorParams(a="a")))  # type: ignore
+    def mock_events_node(self, StubProcessorPreprocessingGraph: DataProcessor, StubPProcessorParams: ParamsModel):
+        return EventsNode(processor=StubProcessorPreprocessingGraph(params=StubPProcessorParams(a="a")))  # type: ignore
 
     def create_graph(self):
         source = Eventstream(
@@ -47,13 +47,13 @@ class TestPreprocessingGraph:
 
     def test_export_stub(self, stub_processorpgraph) -> None:
         StubPProcessorParams: ParamsModel = stub_processorpgraph["params"]
-        StubProcessorPGraph: DataProcessor = stub_processorpgraph["processor"]
+        StubProcessorPreprocessingGraph: DataProcessor = stub_processorpgraph["processor"]
 
         params = StubPProcessorParams(a="a")  # type: ignore
-        processor = StubProcessorPGraph(params=params)
+        processor = StubProcessorPreprocessingGraph(params=params)
 
         assert {
-            "name": "StubProcessorPGraph",
+            "name": "StubProcessorPreprocessingGraph",
             "params": [{"name": "A", "params": ["a", "b"], "default": None, "widget": "enum", "optional": False}],
         } == processor.get_view()
 
@@ -71,14 +71,14 @@ class TestPreprocessingGraph:
     def test_get_parents(self, stub_processorpgraph):
         self.setUp()
         StubPProcessorParams: ParamsModel = stub_processorpgraph["params"]
-        StubProcessorPGraph: DataProcessor = stub_processorpgraph["processor"]
+        StubProcessorPreprocessingGraph: DataProcessor = stub_processorpgraph["processor"]
 
         graph = self.create_graph()
 
         added_nodes: List[Node] = []
 
         for _ in range(5):
-            new_node = self.mock_events_node(StubProcessorPGraph, StubPProcessorParams)
+            new_node = self.mock_events_node(StubProcessorPreprocessingGraph, StubPProcessorParams)
             added_nodes.append(new_node)
 
             graph.add_node(node=new_node, parents=[graph.root])

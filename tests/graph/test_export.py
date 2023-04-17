@@ -28,7 +28,7 @@ from retentioneering.graph.nodes import EventsNode
 from retentioneering.graph.preprocessing_graph import PreprocessingGraph
 
 
-class TestPGraphExportImport:
+class TestPreprocessingGraphExportImport:
     def create_graph(self) -> PreprocessingGraph:
         source_df = pd.DataFrame(
             [

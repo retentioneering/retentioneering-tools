@@ -1,1 +1,1 @@
-from .preprocessing_graph.show import PGraphRenderer
+from .preprocessing_graph.show import PreprocessingGraphRenderer

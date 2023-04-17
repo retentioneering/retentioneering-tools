@@ -19,7 +19,7 @@ from retentioneering.graph.nodes import (
     SourceNode,
     build_node,
 )
-from retentioneering.templates import PGraphRenderer
+from retentioneering.templates import PreprocessingGraphRenderer
 
 
 class NodeData(TypedDict):
@@ -230,7 +230,7 @@ class PreprocessingGraph:
             self.__server.register_action("get-graph", self.export)
             self.__server.register_action("combine", self._combine_handler)
 
-        render = PGraphRenderer()
+        render = PreprocessingGraphRenderer()
         return display(
             HTML(
                 render.show(

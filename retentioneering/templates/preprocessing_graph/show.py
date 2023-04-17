@@ -3,7 +3,7 @@ import uuid
 from jinja2 import Environment, FileSystemLoader, PackageLoader, Template
 
 
-class PGraphRenderer:
+class PreprocessingGraphRenderer:
     __template: Template
     __environment: Environment
 

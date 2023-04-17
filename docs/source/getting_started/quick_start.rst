@@ -228,7 +228,7 @@ The step matrix provides a stepwise look at CJM. It shows the event distribution
 
     stream.step_matrix(
         max_steps=16,
-        thresh=0.2,
+        threshold=0.2,
         centered={
             'event': 'cart',
             'left_gap': 5,
@@ -254,7 +254,7 @@ The step Sankey diagram is similar to the step matrix. It also shows the event d
 
 .. code-block:: python
 
-    stream.step_sankey(max_steps=6, thresh=0.05)
+    stream.step_sankey(max_steps=6, threshold=0.05)
 
 .. raw:: html
 

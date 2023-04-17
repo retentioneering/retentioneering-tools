@@ -15,13 +15,18 @@ from retentioneering.data_processors_lib.group_events import (
 )
 from retentioneering.eventstream.eventstream import Eventstream, EventstreamSchema
 from retentioneering.eventstream.schema import RawDataSchema
-from retentioneering.graph.nodes import EventsNode, MergeNode, Node, SourceNode
-from retentioneering.graph.p_graph import PGraph
 from retentioneering.params_model import ParamsModel
+from retentioneering.preprocessing_graph.nodes import (
+    EventsNode,
+    MergeNode,
+    Node,
+    SourceNode,
+)
+from retentioneering.preprocessing_graph.preprocessing_graph import PreprocessingGraph
 from tests.graph.fixtures.stub_processorpgraph import stub_processorpgraph
 
 
-class TestPGraph:
+class TestPreprocessingGraph:
     __raw_data: pd.DataFrame
     __raw_data_schema: RawDataSchema
 
@@ -35,25 +40,25 @@ class TestPGraph:
         )
         self.__raw_data_schema = RawDataSchema(event_name="name", event_timestamp="event_timestamp", user_id="user_id")
 
-    def mock_events_node(self, StubProcessorPGraph: DataProcessor, StubPProcessorParams: ParamsModel):
-        return EventsNode(processor=StubProcessorPGraph(params=StubPProcessorParams(a="a")))  # type: ignore
+    def mock_events_node(self, StubProcessorPreprocessingGraph: DataProcessor, StubPProcessorParams: ParamsModel):
+        return EventsNode(processor=StubProcessorPreprocessingGraph(params=StubPProcessorParams(a="a")))  # type: ignore
 
     def create_graph(self):
         source = Eventstream(
             raw_data_schema=self.__raw_data_schema, raw_data=self.__raw_data, schema=EventstreamSchema()
         )
 
-        return PGraph(source_stream=source)
+        return PreprocessingGraph(source_stream=source)
 
     def test_export_stub(self, stub_processorpgraph) -> None:
         StubPProcessorParams: ParamsModel = stub_processorpgraph["params"]
-        StubProcessorPGraph: DataProcessor = stub_processorpgraph["processor"]
+        StubProcessorPreprocessingGraph: DataProcessor = stub_processorpgraph["processor"]
 
         params = StubPProcessorParams(a="a")  # type: ignore
-        processor = StubProcessorPGraph(params=params)
+        processor = StubProcessorPreprocessingGraph(params=params)
 
         assert {
-            "name": "StubProcessorPGraph",
+            "name": "StubProcessorPreprocessingGraph",
             "params": [{"name": "A", "params": ["a", "b"], "default": None, "widget": "enum", "optional": False}],
         } == processor.get_view()
 
@@ -63,7 +68,7 @@ class TestPGraph:
             raw_data_schema=self.__raw_data_schema, raw_data=self.__raw_data, schema=EventstreamSchema()
         )
 
-        graph = PGraph(source_stream=source)
+        graph = PreprocessingGraph(source_stream=source)
 
         assert isinstance(graph.root, SourceNode)
         assert graph.root.events == source
@@ -71,14 +76,14 @@ class TestPGraph:
     def test_get_parents(self, stub_processorpgraph):
         self.setUp()
         StubPProcessorParams: ParamsModel = stub_processorpgraph["params"]
-        StubProcessorPGraph: DataProcessor = stub_processorpgraph["processor"]
+        StubProcessorPreprocessingGraph: DataProcessor = stub_processorpgraph["processor"]
 
         graph = self.create_graph()
 
         added_nodes: List[Node] = []
 
         for _ in range(5):
-            new_node = self.mock_events_node(StubProcessorPGraph, StubPProcessorParams)
+            new_node = self.mock_events_node(StubProcessorPreprocessingGraph, StubPProcessorParams)
             added_nodes.append(new_node)
 
             graph.add_node(node=new_node, parents=[graph.root])
@@ -128,7 +133,7 @@ class TestPGraph:
 
         cart_events = EventsNode(GroupEvents(GroupEventsParams(event_name="add_to_cart", func=cart_func)))  # type: ignore
 
-        graph = PGraph(source)
+        graph = PreprocessingGraph(source)
         graph.add_node(node=cart_events, parents=[graph.root])
         result = graph.combine(cart_events)
         result_df = result.to_dataframe()
@@ -179,7 +184,7 @@ class TestPGraph:
         )
         merge = MergeNode()
 
-        graph = PGraph(source)
+        graph = PreprocessingGraph(source)
         graph.add_node(node=cart_events, parents=[graph.root])
         graph.add_node(node=logout_events, parents=[graph.root])
         graph.add_node(node=allowed_events, parents=[graph.root])
@@ -229,7 +234,7 @@ class TestPGraph:
             ),
             raw_data=source_df,
         )
-        graph = PGraph(source)
+        graph = PreprocessingGraph(source)
         root_node = [x for x in graph._ngraph][0]
         root_node.pk = "0dc3b706-e6cc-401e-96f7-6a45d3947d5c"
         cart_events = EventsNode(
@@ -297,6 +302,6 @@ class TestPGraph:
             raw_data_schema=self.__raw_data_schema, raw_data=self.__raw_data, schema=EventstreamSchema()
         )
 
-        graph = PGraph(source_stream=source)
+        graph = PreprocessingGraph(source_stream=source)
         display = graph.display()
         assert None is display

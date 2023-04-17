@@ -61,7 +61,7 @@ class Clusters:
         self._user_clusters: pd.Series | None = None
         self._feature_type: FeatureType | None = None
         self._ngram_range: NgramRange | None = None
-        self._vector: pd.DataFrame | None = None
+        self._X: pd.DataFrame | None = None
 
     # public API
 
@@ -71,7 +71,7 @@ class Clusters:
         n_clusters: int,
         feature_type: FeatureType | None = None,
         ngram_range: NgramRange | None = None,
-        vector: pd.DataFrame | None = None,
+        X: pd.DataFrame | None = None,
     ) -> Clusters:
         """
         Prepare features and compute clusters for the input eventstream data.
@@ -85,11 +85,11 @@ class Clusters:
 
         n_clusters : int
             The expected number of clusters to be passed to a clustering algorithm.
-        feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}, default None
+        feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}, optional
             See :py:func:`extract_features`.
         ngram_range : Tuple(int, int), optional
             See :py:func:`extract_features`.
-        vector : pd.DataFrame, optional
+        X : pd.DataFrame, optional
             ``pd.DataFrame`` representing a custom vectorization of the user paths. The index corresponds to user_ids,
             the columns are vectorized values of the path.
 
@@ -101,8 +101,8 @@ class Clusters:
 
         """
 
-        self._method, self._n_clusters, self._feature_type, self._ngram_range, self._vector = self.__validate_input(
-            method, n_clusters, feature_type, ngram_range, vector
+        self._method, self._n_clusters, self._feature_type, self._ngram_range, self._X = self.__validate_input(
+            method, n_clusters, feature_type, ngram_range, X
         )
 
         self.__features, self.__cluster_result = self._prepare_clusters()
@@ -117,37 +117,37 @@ class Clusters:
 
         return self
 
-    def event_dist(
+    def diff(
         self,
-        cluster_id1: int,
-        cluster_id2: int | None = None,
-        top_n: int = 8,
+        cluster_id1: int | str,
+        cluster_id2: int | str | None = None,
+        top_n_events: int = 8,
         weight_col: str | None = None,
         targets: list[str] | None = None,
     ) -> go.Figure:
         """
-        Plots a bar plot illustrating the distribution of ``top_n`` events in cluster ``cluster_id1``
+        Plots a bar plot illustrating the distribution of ``top_n_events`` in cluster ``cluster_id1``
         compared with the entire dataset or the cluster ``cluster_id2`` if specified.
         Should be used after :py:func:`fit` or :py:func:`set_clusters`.
 
 
         Parameters
         ----------
-        cluster_id1 : int
+        cluster_id1 : int or str
             ID of the cluster to compare.
-        cluster_id2 : int, optional
+        cluster_id2 : int or str, optional
             ID of the second cluster to compare with the first
             cluster. If ``None``, then compares with the entire dataset.
-        top_n : int, default 8
+        top_n_events : int, default 8
             Number of top events.
         weight_col : str, optional
             If ``None``, distribution will be compared based on event occurrences in
             datasets. If ``weight_col`` is specified, percentages of users
             (column name specified by parameter ``weight_col``) who have particular
             events will be plotted.
-        targets : list of str, optional
+        targets : str or list of str, optional
             List of event names always to include for comparison, regardless
-            of the parameter top_n value. Target events will appear in the same
+            of the parameter top_n_events value. Target events will appear in the same
             order as specified.
 
 
@@ -165,6 +165,9 @@ class Clusters:
         if targets is None:
             targets = []
 
+        if isinstance(targets, str):
+            targets = [targets]
+
         if weight_col is not None:
             cluster1 = cluster1.drop_duplicates(subset=[self.event_col, weight_col])
             top_cluster = cluster1[self.event_col].value_counts() / cluster1[weight_col].nunique()
@@ -176,8 +179,8 @@ class Clusters:
         for event in set(targets) - set(top_cluster.index):  # type: ignore
             top_cluster.loc[event] = 0
 
-        # create events order: top_n non-target events + targets:
-        events_to_keep = top_cluster[lambda x: ~x.index.isin(targets)].iloc[:top_n].index.tolist()  # type: ignore
+        # create events order: top_n_events (non-target) + targets:
+        events_to_keep = top_cluster[lambda x: ~x.index.isin(targets)].iloc[:top_n_events].index.tolist()  # type: ignore
         target_separator_position = len(events_to_keep)
         events_to_keep += list(targets)
         top_cluster = top_cluster.loc[events_to_keep].reset_index()  # type: ignore
@@ -199,7 +202,7 @@ class Clusters:
         for event in set(top_cluster["index"]) - set(top_all.index):
             top_all.loc[event] = 0
 
-        # keep only top_n events from cluster1
+        # keep only top_n_events from cluster1
         top_all = top_all.loc[top_cluster["index"]].reset_index()  # type: ignore
 
         top_all.columns = [self.event_col, "freq"]  # type: ignore
@@ -209,7 +212,7 @@ class Clusters:
         top_cluster["hue"] = f"cluster {cluster_id1}"
 
         total_size = self.__eventstream.to_dataframe()[self.user_col].nunique()
-        figure = self._plot_event_dist(
+        figure = self._plot_diff(
             top_all.append(top_cluster, ignore_index=True, sort=False),
             cl1=cluster_id1,
             sizes=[
@@ -231,7 +234,7 @@ class Clusters:
 
         Parameters
         ----------
-        targets : list of str (optional, default None)
+        targets : list of str, optional
             Represents the list of the target events
 
         """
@@ -437,7 +440,7 @@ class Clusters:
         self,
         method: PlotProjectionMethod = "tsne",
         targets: list[str] | None = None,
-        plot_type: Literal["targets", "clusters"] = "clusters",
+        color_type: Literal["targets", "clusters"] = "clusters",
         **kwargs: Any,
     ) -> go.Figure:
         """
@@ -448,14 +451,14 @@ class Clusters:
         ----------
         method : {'umap', 'tsne'}, default 'tsne'
             Type of manifold transformation.
-        plot_type : {'targets', 'clusters'}, default 'clusters'
+        color_type : {'targets', 'clusters'}, default 'clusters'
             Type of color-coding used for projection visualization:
 
             - ``clusters`` colors trajectories with different colors depending on cluster number.
             - ``targets`` colors trajectories based on reach to any event provided in 'targets' parameter.
               Must provide ``targets`` parameter in this case.
 
-        targets : list or tuple of str, optional
+        targets : str or list of str, optional
             Vector of event_names as str. If user reaches any of the specified events, the dot corresponding
             to this user will be highlighted as converted on the resulting projection plot.
 
@@ -474,17 +477,20 @@ class Clusters:
         if targets is None:
             targets = []
 
-        if plot_type == "clusters":
+        if isinstance(targets, str):
+            targets = [targets]
+
+        if color_type == "clusters":
             if self.__cluster_result is not None:
                 targets_mapping = self.__cluster_result.values
                 legend_title = "cluster number:"
             else:
                 raise RuntimeError("Clusters are not defined. Consider to run 'fit()' or `set_clusters()` methods.")
 
-        elif plot_type == "targets":
+        elif color_type == "targets":
             if (not targets) and (len(targets) < 1):
                 raise ValueError(
-                    "When plot_type='targets' is set, 'targets' must be defined as list of target event names"
+                    "When color_type='targets' is set, 'targets' must be defined as list of target event names"
                 )
             else:
                 targets = [list(pd.core.common.flatten(targets))]  # type: ignore
@@ -499,7 +505,7 @@ class Clusters:
                     .values
                 )
         else:
-            raise ValueError("Unexpected plot type: %s. Allowed values: clusters, targets" % plot_type)
+            raise ValueError("Unexpected plot type: %s. Allowed values: clusters, targets" % color_type)
 
         features = self.__features
 
@@ -527,16 +533,16 @@ class Clusters:
         n_clusters: int,
         feature_type: FeatureType | None = None,
         ngram_range: NgramRange | None = None,
-        vector: pd.DataFrame | None = None,
+        X: pd.DataFrame | None = None,
     ) -> tuple[Method | None, int | None, FeatureType | None, NgramRange | None, pd.DataFrame | None]:
         _method = method or self._method
         _n_clusters = n_clusters or self._n_clusters
         _user_clusters = None
 
-        if vector is not None:
-            if not isinstance(vector, pd.DataFrame):  # type: ignore
+        if X is not None:
+            if not isinstance(X, pd.DataFrame):  # type: ignore
                 raise ValueError("Vector is not a DataFrame!")
-            if np.all(np.all(vector.dtypes == "float") and vector.isna().sum().sum() != 0):
+            if np.all(np.all(X.dtypes == "float") and X.isna().sum().sum() != 0):
                 raise ValueError(
                     "Vector is wrong formatted! NaN should be replaced with 0 and all dtypes must be float!"
                 )
@@ -545,13 +551,13 @@ class Clusters:
             if ngram_range:
                 raise ValueError("Both 'vector' and 'ngram_range' are defined. 'ngram_range' will be ignored.")
 
-            _vector = vector
+            _X = X
             _feature_type = None
             _ngram_range = None
         else:
             _feature_type = feature_type or self._feature_type
             _ngram_range = ngram_range or self._ngram_range
-            _vector = vector or self._vector
+            _X = X or self._X
 
             if _feature_type is None:
                 raise ValueError("'feature_type' must be defined for fitting.")
@@ -559,14 +565,14 @@ class Clusters:
             if _ngram_range is None:
                 raise ValueError("'ngram_range' must be defined for fitting.")
 
-        return _method, _n_clusters, _feature_type, _ngram_range, _vector
+        return _method, _n_clusters, _feature_type, _ngram_range, _X
 
     def _prepare_clusters(self) -> tuple[pd.DataFrame, pd.Series]:
         features = pd.DataFrame()
         user_clusters = pd.Series(dtype=np.int64)
 
-        if self._vector is not None:
-            features = self._vector.copy()
+        if self._X is not None:
+            features = self._X.copy()
         else:
             if self._feature_type is not None and self._ngram_range is not None:
                 features = self.extract_features(self._feature_type, self._ngram_range)
@@ -797,15 +803,15 @@ class Clusters:
             target_names = [" "]
         return target_names, targets_bool
 
-    def _plot_event_dist(
+    def _plot_diff(
         self,
         bars: pd.DataFrame,
-        cl1: int,
+        cl1: int | str,
         sizes: list[float],
         weight_col: str | None,
         target_pos: int,
         targets: list[str],
-        cl2: int | None,
+        cl2: int | str | None,
     ) -> go.Figure:
         event_col = self.__eventstream.schema.event_name
 

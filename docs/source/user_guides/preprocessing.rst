@@ -82,7 +82,7 @@ Next, we specify the information about the graph nodes and the underlying data p
     +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
     | node7 | :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>`          | ``func=remove_truncated_paths``                                                                                                                               | node6        |
     +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
-    | node8 | :py:meth:`MergeNode <retentioneering.graph.nodes.MergeNode>`                                      | –                                                                                                                                                             | node4, node7 |
+    | node8 | :py:meth:`MergeNode <retentioneering.preprocessing_graph.nodes.MergeNode>`                        | –                                                                                                                                                             | node4, node7 |
     +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
     | node9 | :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>`       | ``timeout=(30, 'm')``                                                                                                                                         | node8        |
     +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
@@ -183,7 +183,7 @@ At the next step we create :py:meth:`TruncatedEvents <retentioneering.data_proce
 
     ``node6`` and ``node7`` creation.
 
-Now, we need to merge two branches into one node. Special :py:meth:`MergeNode <retentioneering.graph.nodes.MergeNode>` is designed for this purpose. To merge multiple branches select the ending points of these branches (at least 2) using Ctrl+click or Cmd+click, "Merge Nodes" button appears in the top of the canvas. After clicking this button, the merging node appears.
+Now, we need to merge two branches into one node. Special :py:meth:`MergeNode <retentioneering.preprocessing_graph.nodes.MergeNode>` is designed for this purpose. To merge multiple branches select the ending points of these branches (at least 2) using Ctrl+click or Cmd+click, "Merge Nodes" button appears in the top of the canvas. After clicking this button, the merging node appears.
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_merge_node_creation.png
     :height: 600
@@ -197,7 +197,7 @@ Finally, we create the last node :py:meth:`SplitSessions <retentioneering.data_p
 
     SplitSessions node.
 
-The graph is ready. It is time to show how to launch the calculation related to this graph. Click on the node you associate with a calculation endpoint. In our case this is ``node9``. As it is shown in the previous screenshot, in the top right corner you will see "Save & Combine" (or just "Combine" if the graph has already been saved). As soon as the result is combined, you can extract the resulting eventstream by accessing :py:meth:`PGraph.combine_result<retentioneering.graph.p_graph.PGraph>`. This attribute keeps the last combining result.
+The graph is ready. It is time to show how to launch the calculation related to this graph. Click on the node you associate with a calculation endpoint. In our case this is ``node9``. As it is shown in the previous screenshot, in the top right corner you will see "Save & Combine" (or just "Combine" if the graph has already been saved). As soon as the result is combined, you can extract the resulting eventstream by accessing :py:meth:`PreprocessingGraph.combine_result<retentioneering.preprocessing_graph.preprocessing_graph.PreprocessingGraph>`. This attribute keeps the last combining result.
 
 .. code-block:: python
 
@@ -284,20 +284,20 @@ We are starting from creating an empty graph.
 
 .. code-block:: python
 
-    from retentioneering.graph.p_graph import PGraph
+    from retentioneering.preprocessing_graph.preprocessing_graph import PreprocessingGraph
 
-    pgraph = PGraph(stream)
+    pgraph = PreprocessingGraph(stream)
 
-As you see, :py:meth:`PGraph<retentioneering.graph.p_graph.PGraph>` constructor requires an instance of Eventstream. The graph's root is associated with the initial state of the eventstream which will be changed according to the graph logic.
+As you see, :py:meth:`PreprocessingGraph<retentioneering.preprocessing_graph.preprocessing_graph.PreprocessingGraph>` constructor requires an instance of Eventstream. The graph's root is associated with the initial state of the eventstream which will be changed according to the graph logic.
 
 Creating a single node
 ~~~~~~~~~~~~~~~~~~~~~~
 
-:py:meth:`EventsNode <retentioneering.graph.nodes.EventsNode>` is a basic class for preprocessing graph node representation. As we mentioned earlier, each node is associated with a particular :doc:`data processor <../api/preprocessing_api>` (merging node is an exception). As an example, let us create a :py:meth:`GroupEvents <retentioneering.data_processors_lib.group_events.GroupEvents>` node (``node2``).
+:py:meth:`EventsNode <retentioneering.preprocessing_graph.nodes.EventsNode>` is a basic class for preprocessing graph node representation. As we mentioned earlier, each node is associated with a particular :doc:`data processor <../api/preprocessing_api>` (merging node is an exception). As an example, let us create a :py:meth:`GroupEvents <retentioneering.data_processors_lib.group_events.GroupEvents>` node (``node2``).
 
 .. code-block:: python
 
-    from retentioneering.graph.p_graph import EventsNode
+    from retentioneering.preprocessing_graph.preprocessing_graph import EventsNode
     from retentioneering.data_processors_lib import GroupEvents, GroupEventsParams
 
     def group_products(df, schema):
@@ -335,7 +335,7 @@ If you were surprised why we did not start with ``node1`` according to the plan,
 Linking nodes
 ~~~~~~~~~~~~~
 
-In order to link a node to its parents, call :py:meth:`PGraph.add_node() <retentioneering.graph.p_graph.PGraph.add_node>`. The method accepts a node object and its parents list. A regular node must have a single parent, whereas a merging node must have at least two parents. We will demonstrate how merging nodes work in the next subsection. As of now, here is how to connect a pair of nodes of our graph:
+In order to link a node to its parents, call :py:meth:`PreprocessingGraph.add_node() <retentioneering.preprocessing_graph.preprocessing_graph.PreprocessingGraph.add_node>`. The method accepts a node object and its parents list. A regular node must have a single parent, whereas a merging node must have at least two parents. We will demonstrate how merging nodes work in the next subsection. As of now, here is how to connect a pair of nodes of our graph:
 
 .. code-block:: python
 
@@ -414,11 +414,11 @@ For ``node7`` we apply similar filtering technique as we used for filtering new/
     node7 = EventsNode(FilterEvents(params=FilterEventsParams(func=remove_truncated_paths)))
     pgraph.add_node(node=node7, parents=[node6])
 
-Next, ``node8``. As we discussed earlier, :py:meth:`MergeNode <retentioneering.graph.nodes.MergeNode>` has two special features. Unlike ``EventsNode``, ``MergeNode`` is not associated with any data processor since it has a separate role -- concatenate the outputs of its parents. Another distinction from ``EventsNode`` is that the number of parents might be arbitrary (greater than 1). The following two lines of the code demonstrate both these features:
+Next, ``node8``. As we discussed earlier, :py:meth:`MergeNode <retentioneering.preprocessing_graph.nodes.MergeNode>` has two special features. Unlike ``EventsNode``, ``MergeNode`` is not associated with any data processor since it has a separate role -- concatenate the outputs of its parents. Another distinction from ``EventsNode`` is that the number of parents might be arbitrary (greater than 1). The following two lines of the code demonstrate both these features:
 
 .. code-block:: python
 
-    from retentioneering.graph.p_graph import MergeNode
+    from retentioneering.preprocessing_graph.preprocessing_graph import MergeNode
 
     node8 = MergeNode()
     pgraph.add_node(node=node8, parents=[node4, node7])
@@ -438,7 +438,7 @@ Finally, for ``node9`` we wrap :py:meth:`SplitSessions <retentioneering.data_pro
 Running the calculation
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-So we have built the graph, now it's time to run the entire calculation which the graph frames. In order to run the calculation from the graph root to a specific node, call :py:meth:`PGraph.combine() <retentioneering.graph.p_graph.PGraph.combine>` method with a single parameter ``node`` which accepts the corresponding node object. The result is represented as the :py:meth:`Eventstream <retentioneering.eventstream.eventstream.Eventstream>` class.
+So we have built the graph, now it's time to run the entire calculation which the graph frames. In order to run the calculation from the graph root to a specific node, call :py:meth:`PreprocessingGraph.combine() <retentioneering.preprocessing_graph.preprocessing_graph.PreprocessingGraph.combine>` method with a single parameter ``node`` which accepts the corresponding node object. The result is represented as the :py:meth:`Eventstream <retentioneering.eventstream.eventstream.Eventstream>` class.
 
 .. code-block:: python
 
@@ -534,7 +534,7 @@ Here we just provide the same code combined in a single chunk so you could simpl
     from retentioneering.data_processors_lib import FilterEvents, FilterEventsParams
     from retentioneering.data_processors_lib import TruncatedEvents, TruncatedEventsParams
     from retentioneering.data_processors_lib import SplitSessions, SplitSessionsParams
-    from retentioneering.graph.p_graph import PGraph, EventsNode, MergeNode
+    from retentioneering.preprocessing_graph.preprocessing_graph import PreprocessingGraph, EventsNode, MergeNode
 
     stream = datasets.load_simple_shop()
 
@@ -592,7 +592,7 @@ Here we just provide the same code combined in a single chunk so you could simpl
     node9 = EventsNode(SplitSessions(params=SplitSessionsParams(timeout=(30, 'm'))))
 
     # linking the nodes to get the graph
-    pgraph = PGraph(stream)
+    pgraph = PreprocessingGraph(stream)
     pgraph.add_node(node=node1, parents=[pgraph.root])
     pgraph.add_node(node=node2, parents=[node1])
     pgraph.add_node(node=node3, parents=[node2])

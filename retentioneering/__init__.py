@@ -1,7 +1,7 @@
 from . import (
     datasets,
     eventstream,
-    graph,
+    preprocessing_graph,
     params_model,
     preprocessor,
     tooling,
@@ -13,7 +13,7 @@ from . import (
 __all__ = (
     "datasets",
     "eventstream",
-    "graph",
+    "preprocessing_graph",
     "params_model",
     "preprocessor",
     "tooling",

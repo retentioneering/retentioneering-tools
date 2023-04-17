@@ -1103,7 +1103,6 @@ class Eventstream(
     )
     def transition_graph(
         self,
-        graph_settings: dict[str, Any] | None = None,
         edges_norm_type: NormType = None,
         targets: MutableMapping[str, str | None] | None = None,
         nodes_threshold: Threshold | None = None,
@@ -1113,6 +1112,11 @@ class Eventstream(
         custom_weight_cols: list[str] | None = None,
         width: int = 960,
         height: int = 900,
+        show_weights: bool = True,
+        show_percents: bool = False,
+        show_nodes_names: bool = True,
+        show_all_edges_for_targets: bool = True,
+        show_nodes_without_links: bool = False,
     ) -> TransitionGraph:
         """
 
@@ -1127,10 +1131,7 @@ class Eventstream(
             Rendered IFrame graph.
 
         """
-        self.__transition_graph = TransitionGraph(
-            eventstream=self,
-            graph_settings=graph_settings,
-        )
+        self.__transition_graph = TransitionGraph(eventstream=self)
         self.__transition_graph.plot(
             targets=targets,
             edges_norm_type=edges_norm_type,
@@ -1141,6 +1142,11 @@ class Eventstream(
             custom_weight_cols=custom_weight_cols,
             width=width,
             height=height,
+            show_weights=show_weights,
+            show_percents=show_percents,
+            show_nodes_names=show_nodes_names,
+            show_all_edges_for_targets=show_all_edges_for_targets,
+            show_nodes_without_links=show_nodes_without_links,
         )
         return self.__transition_graph
 
@@ -1165,7 +1171,7 @@ class Eventstream(
         Parameters
         ----------
 
-        weight_col : str, default None
+        weight_col : str, optional
             Weighting column for the transition weights calculation.
             See :ref:`transition graph user guide <transition_graph_weights>` for the details.
 

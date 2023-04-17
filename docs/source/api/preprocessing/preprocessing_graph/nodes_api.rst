@@ -1,5 +1,5 @@
-PreprocessingGraph Nodes
-========================
+Preprocessing Graph Nodes
+=========================
 
 EventsNode
 ----------

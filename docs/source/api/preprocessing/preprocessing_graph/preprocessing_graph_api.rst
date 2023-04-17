@@ -1,5 +1,5 @@
-PreprocessingGraph
-==================
+Preprocessing Graph
+===================
 
 Class
 ------

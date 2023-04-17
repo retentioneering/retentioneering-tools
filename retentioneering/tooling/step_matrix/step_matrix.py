@@ -106,6 +106,7 @@ class StepMatrix(EndedEventsMixin):
     """
 
     __eventstream: EventstreamType
+    ENDED_EVENT = "ENDED"
 
     def __init__(
         self,
@@ -216,8 +217,8 @@ class StepMatrix(EndedEventsMixin):
         piv.columns.name = None
         piv.index.name = None
         # MAKE TERMINATED STATE ACCUMULATED:
-        if "ENDED" in piv.index:
-            piv.loc["ENDED"] = piv.loc["ENDED"].cumsum().fillna(0)
+        if self.ENDED_EVENT in piv.index:
+            piv.loc[self.ENDED_EVENT] = piv.loc[self.ENDED_EVENT].cumsum().fillna(0)
         return piv
 
     def _process_targets(self, data: pd.DataFrame) -> tuple[pd.DataFrame | None, list[list[str]] | None]:
@@ -251,24 +252,26 @@ class StepMatrix(EndedEventsMixin):
         piv_targets = piv_targets.loc[targets_flatten].copy()
         piv_targets.columns.name = None
         piv_targets.index.name = None
+        ACC_INDEX = "ACC_"
+
         if self.accumulated == "only":
-            piv_targets.index = map(lambda x: "ACC_" + x, piv_targets.index)  # type: ignore
+            piv_targets.index = map(lambda x: ACC_INDEX + x, piv_targets.index)  # type: ignore
             for i in piv_targets.index:
                 piv_targets.loc[i] = piv_targets.loc[i].cumsum().fillna(0)
 
             # change names is targets list:
             for target in targets:
                 for j, item in enumerate(target):
-                    target[j] = "ACC_" + item
+                    target[j] = ACC_INDEX + item
         if self.accumulated == "both":
             for i in piv_targets.index:
-                piv_targets.loc["ACC_" + i] = piv_targets.loc[i].cumsum().fillna(0)  # type: ignore
+                piv_targets.loc[ACC_INDEX + i] = piv_targets.loc[i].cumsum().fillna(0)  # type: ignore
 
             # add accumulated targets to the list:
             targets_not_acc = deepcopy(targets)
             for target in targets:
                 for j, item in enumerate(target):
-                    target[j] = "ACC_" + item
+                    target[j] = ACC_INDEX + item
             targets = targets_not_acc + targets
         return piv_targets, targets
 
@@ -430,19 +433,20 @@ class StepMatrix(EndedEventsMixin):
             piv, piv_targets, fraction_title, targets_plot = self._step_matrix_values(data=data)
 
         threshold_index = "THRESHOLDED_"
+
         if self.threshold != 0:
             # find if there are any rows to threshold:
-            thresholded = piv.loc[(piv.abs() < self.threshold).all(axis=1) & (piv.index != "ENDED")].copy()
+            thresholded = piv.loc[(piv.abs() < self.threshold).all(axis=1) & (piv.index != self.ENDED_EVENT)].copy()
             if len(thresholded) > 0:
-                piv = piv.loc[(piv.abs() >= self.threshold).any(axis=1) | (piv.index == "ENDED")].copy()
-                threshold_index = f"THRESHOLDED_{len(thresholded)}"
+                piv = piv.loc[(piv.abs() >= self.threshold).any(axis=1) | (piv.index == self.ENDED_EVENT)].copy()
+                threshold_index = f"{threshold_index}{len(thresholded)}"
                 piv.loc[threshold_index] = thresholded.sum()
 
         if self.sorting is None:
             piv = self._sort_matrix(piv)
 
             keep_in_the_end = []
-            keep_in_the_end.append("ENDED") if ("ENDED" in piv.index) else None
+            keep_in_the_end.append(self.ENDED_EVENT) if (self.ENDED_EVENT in piv.index) else None
             keep_in_the_end.append(threshold_index) if (threshold_index in piv.index) else None
 
             events_order = [*(i for i in piv.index if i not in keep_in_the_end), *keep_in_the_end]

@@ -232,6 +232,8 @@ The thresholds are set with a couple of ``nodes_threshold``, ``edges_threshold``
 
 This example is an extension of the previous one. We use the same normalization configuration as before. Since we have added an edges threshold of ``0.12`` for ``user_id`` weighting column, the edge ``product1`` → ``main`` that we observed in the previous example is hidden now (its weight is 11.4%). As for the nodes threshold, note that event ``payment_cash`` is hidden now (as we can see from the Nodes block in the Control panel, its weight is 197).
 
+.. _transition_graph_targets:
+
 Targets
 ~~~~~~~
 
@@ -270,27 +272,26 @@ Graph settings
 
 You can set up the following boolean flags:
 
-- ``show_weights``. Hide/display the edge weight labels.
-- ``show_percents``. Display edge weights as percents. Available only if an edge normalization type is chosen.
-- ``show_nodes_names``. Hide/display the node names.
-- ``show_all_edges_for_targets``. By default, the threshold filters hide the edges disregarding the node types. In case you have defined target nodes, you usually want to carefully analyze them. Hence, all the edges connected to these nodes are important. This displaying option allows to ignore the threshold filters and always display any edge connected to a target node.
-- ``show_nodes_without_links``. Setting a threshold filter might remove all the edges connected to a node. Such isolated nodes might be considered as useless. This displaying option hides them in the canvas as well.
-- ``show_edge_info_on_hover``. By default, a tooltip with an edge info pops up when you mouse over the edge. It might be disturbing for large graphs, so this option suppresses the tooltips.
+- ``show_weights``. Hide/display the edge weight labels. Default value is True.
+- ``show_percents``. Display edge weights as percents. Available only if an edge normalization type is chosen. Default value is False.
+- ``show_nodes_names``. Hide/display the node names. Default value is True.
+- ``show_all_edges_for_targets``. By default, the threshold filters hide the edges disregarding the node types. In case you have defined target nodes, you usually want to carefully analyze them. Hence, all the edges connected to these nodes are important. This displaying option allows to ignore the threshold filters and always display any edge connected to a target node. Default value is True.
+- ``show_nodes_without_links``. Setting a threshold filter might remove all the edges connected to a node. Such isolated nodes might be considered as useless. This displaying option hides them in the canvas as well. Default value is True.
+- ``show_edge_info_on_hover``. By default, a tooltip with an edge info pops up when you mouse over the edge. It might be disturbing for large graphs, so this option suppresses the tooltips. Default value is False.
 
-These flags are packed to a dictionary and passed to the ``graph_settings`` argument as follows:
+These flags could be specified as separate arguments as follows:
 
 .. code-block:: python
 
-    graph_settings = {
-        'show_weights': True,
-        'show_percents': True,
-        'show_nodes_names': True,
-        'show_all_edges_for_targets': False,
-        'show_nodes_without_links': False,
-        'show_edge_info_on_hover': True
-    }
-
-    stream.transition_graph(edges_norm_type='node', graph_settings=graph_settings)
+    stream.transition_graph(
+        edges_norm_type='node',
+        show_weights=True,
+        show_percents=True,
+        show_nodes_names=True,
+        show_all_edges_for_targets=False,
+        show_nodes_without_links=False,
+        show_edge_info_on_hover=True
+    )
 
 .. raw:: html
 
@@ -542,7 +543,7 @@ Using a separate instance
 
 By design, :py:meth:`Eventstream.transition_graph()<retentioneering.eventstream.eventstream.Eventstream.transition_graph>` is a shortcut method that uses :py:meth:`TransitionGraph<retentioneering.tooling.transition_graph.transition_graph.TransitionGraph>` class under the hood. This method creates an instance of TransitionGraph class and embeds it into the eventstream object. Eventually, ``Eventstream.transition_graph()`` returns exactly this instance.
 
-Sometimes it is reasonable to work with a separate instance of TransitionGraph class. An alternative way to get the same visualization that ``Eventstream.transition_graph()`` produces is to call :py:meth:`TransitionGraph.plot_graph()<retentioneering.tooling.transition_graph.transition_graph.TransitionGraph.plot_graph>` method explicitly.
+Sometimes it is reasonable to work with a separate instance of TransitionGraph class. An alternative way to get the same visualization that ``Eventstream.transition_graph()`` produces is to call :py:meth:`TransitionGraph.plot()<retentioneering.tooling.transition_graph.transition_graph.TransitionGraph.plot>` method explicitly.
 
 Here is an example how you can manage it:
 
@@ -550,15 +551,15 @@ Here is an example how you can manage it:
 
     from retentioneering.tooling.transition_graph import TransitionGraph
 
-    tg = TransitionGraph(
-        stream,
+    tg = TransitionGraph(stream)
+
+    tg.plot(
         edges_norm_type='node',
         edges_weight_col='user_id',
         edges_threshold={'user_id': 0.12},
         nodes_threshold={'event_id': 500},
         targets={'positive': ['payment_done', 'cart']}
     )
-    tg.plot_graph()
 
 .. raw:: html
 

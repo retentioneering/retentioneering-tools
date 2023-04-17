@@ -41,7 +41,7 @@ def test_stream():
 
 
 @pytest.fixture
-def custom_vector():
+def custom_X():
     columns = ["event1", "event2", "event3", "event4"]
     index = pd.Index([1, 2, 3, 4], name="user_id")
     vector = pd.DataFrame(

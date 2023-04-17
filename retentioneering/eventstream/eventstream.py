@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import uuid
+import warnings
 from collections.abc import Collection
 from typing import Any, Callable, List, Literal, MutableMapping, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 
+from retentioneering.backend.tracker import track
 from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
 from retentioneering.eventstream.types import (
@@ -16,26 +18,29 @@ from retentioneering.eventstream.types import (
     RawDataSchemaType,
     Relation,
 )
-from retentioneering.graph import PGraph
-from retentioneering.tooling.clusters import Clusters
-from retentioneering.tooling.cohorts import Cohorts
+from retentioneering.preprocessing_graph import PreprocessingGraph
+from retentioneering.tooling import (
+    Clusters,
+    Cohorts,
+    EventTimestampHist,
+    Funnel,
+    StatTests,
+    StepMatrix,
+    StepSankey,
+    TimedeltaHist,
+    TransitionGraph,
+    UserLifetimeHist,
+)
+from retentioneering.tooling._describe import _Describe
+from retentioneering.tooling._describe_events import _DescribeEvents
+from retentioneering.tooling._transition_matrix import _TransitionMatrix
 from retentioneering.tooling.constants import BINS_ESTIMATORS
-from retentioneering.tooling.describe import Describe
-from retentioneering.tooling.describe_events import DescribeEvents
-from retentioneering.tooling.event_timestamp_hist import EventTimestampHist
-from retentioneering.tooling.funnel import Funnel
-from retentioneering.tooling.stattests import TEST_NAMES, StatTests
-from retentioneering.tooling.step_matrix import StepMatrix
-from retentioneering.tooling.step_sankey import StepSankey
-from retentioneering.tooling.timedelta_hist import (
+from retentioneering.tooling.stattests.constants import STATTEST_NAMES
+from retentioneering.tooling.timedelta_hist.constants import (
     AGGREGATION_NAMES,
     EVENTSTREAM_GLOBAL_EVENTS,
-    TimedeltaHist,
 )
-from retentioneering.tooling.transition_graph import TransitionGraph
-from retentioneering.tooling.transition_matrix import TransitionMatrix
 from retentioneering.tooling.typing.transition_graph import NormType, Threshold
-from retentioneering.tooling.user_lifetime_hist import UserLifetimeHist
 from retentioneering.utils import get_merged_col
 from retentioneering.utils.list import find_index
 
@@ -90,7 +95,7 @@ RAW_COL_PREFIX = "raw_"
 DELETE_COL_NAME = "_deleted"
 
 
-# TODO проработать резервирование колонок
+# @TODO: проработать резервирование колонок
 
 
 class Eventstream(
@@ -155,6 +160,8 @@ class Eventstream(
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]
+    preprocessiong_graph: PreprocessingGraph | None = None
+
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
     __clusters: Clusters | None = None
@@ -163,9 +170,7 @@ class Eventstream(
     __step_matrix: StepMatrix | None = None
     __sankey: StepSankey | None = None
     __stattests: StatTests | None = None
-    __transition_graph: TransitionGraph | None = None
-    __p_graph: PGraph | None = None
-    __transition_matrix: TransitionMatrix | None = None
+    __transition_graph: TransitionGraph
     __timedelta_hist: TimedeltaHist | None = None
     __user_lifetime_hist: UserLifetimeHist | None = None
     __event_timestamp_hist: EventTimestampHist | None = None
@@ -186,6 +191,7 @@ class Eventstream(
     ) -> None:
         self.__clusters = None
         self.__funnel = None
+
         self.schema = schema if schema else EventstreamSchema()
 
         if not raw_data_schema:
@@ -207,7 +213,9 @@ class Eventstream(
         else:
             self.relations = relations
         self.__events = self.__prepare_events(raw_data) if prepare else raw_data
+        self.__events = self.__required_cleanup(events=self.__events)
         self.index_events()
+        self.preprocessiong_graph = None
 
     def copy(self) -> Eventstream:
         """
@@ -493,6 +501,19 @@ class Eventstream(
         events = self.__events
         return events[events[DELETE_COL_NAME] == False]
 
+    def __required_cleanup(self, events: pd.DataFrame | pd.Series[Any]) -> pd.DataFrame | pd.Series[Any]:
+        income_size = len(events)
+        events.dropna(  # type: ignore
+            subset=[self.schema.event_name, self.schema.event_timestamp, self.schema.user_id], inplace=True
+        )
+        size_after_cleanup = len(events)
+        if (removed_rows := income_size - size_after_cleanup) > 0:
+            warnings.warn(
+                "Removed %s rows because they have empty %s or %s or %s"
+                % (removed_rows, self.schema.event_name, self.schema.event_timestamp, self.schema.user_id)
+            )
+        return events
+
     def __prepare_events(self, raw_data: pd.DataFrame | pd.Series[Any]) -> pd.DataFrame | pd.Series[Any]:
         events = raw_data.copy()
         # add "raw_" prefix for raw cols
@@ -656,7 +677,7 @@ class Eventstream(
         targets: Optional[list[str] | str] = None,
         accumulated: Optional[Union[Literal["both", "only"], None]] = None,
         sorting: Optional[list[str]] = None,
-        thresh: float = 0,
+        threshold: float = 0,
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
         show_plot: bool = True,
@@ -685,7 +706,7 @@ class Eventstream(
             targets=targets,
             accumulated=accumulated,
             sorting=sorting,
-            thresh=thresh,
+            threshold=threshold,
             centered=centered,
             groups=groups,
         )
@@ -698,9 +719,9 @@ class Eventstream(
     def step_sankey(
         self,
         max_steps: int = 10,
-        thresh: Union[int, float] = 0.05,
+        threshold: Union[int, float] = 0.05,
         sorting: list | None = None,
-        target: Union[list[str], str] | None = None,
+        targets: Union[list[str], str] | None = None,
         autosize: bool = True,
         width: int | None = None,
         height: int | None = None,
@@ -725,9 +746,9 @@ class Eventstream(
         self.__sankey = StepSankey(
             eventstream=self,
             max_steps=max_steps,
-            thresh=thresh,
+            threshold=threshold,
             sorting=sorting,
-            target=target,
+            targets=targets,
             autosize=autosize,
             width=width,
             height=height,
@@ -747,7 +768,8 @@ class Eventstream(
         cut_bottom: int = 0,
         cut_right: int = 0,
         cut_diagonal: int = 0,
-        figsize: Tuple[float, float] = (5, 5),
+        width: float = 5.0,
+        height: float = 5.0,
         show_plot: bool = True,
     ) -> Cohorts:
         """
@@ -778,12 +800,12 @@ class Eventstream(
 
         self.__cohorts.fit()
         if show_plot:
-            self.__cohorts.heatmap(figsize)
+            self.__cohorts.heatmap(width=width, height=height)
         return self.__cohorts
 
     def stattests(
         self,
-        test: TEST_NAMES,
+        test: STATTEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
         func: Callable,
         group_names: Tuple[str, str] = ("group_1", "group_2"),
@@ -813,15 +835,16 @@ class Eventstream(
         self,
         raw_events_only: bool = False,
         event_pair: Optional[list[str | Literal[EVENTSTREAM_GLOBAL_EVENTS]]] = None,
-        only_adjacent_event_pairs: bool = True,
-        weight_col: str = "user_id",
-        aggregation: Optional[AGGREGATION_NAMES] = None,
+        adjacent_events_only: bool = True,
+        weight_col: str | None = None,
+        time_agg: Optional[AGGREGATION_NAMES] = None,
         timedelta_unit: DATETIME_UNITS = "s",
         log_scale: bool | tuple[bool, bool] | None = None,
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
+        width: float = 6.0,
+        height: float = 4.5,
         show_plot: bool = True,
     ) -> TimedeltaHist:
         """
@@ -846,15 +869,16 @@ class Eventstream(
             eventstream=self,
             raw_events_only=raw_events_only,
             event_pair=event_pair,
-            only_adjacent_event_pairs=only_adjacent_event_pairs,
-            aggregation=aggregation,
+            adjacent_events_only=adjacent_events_only,
+            time_agg=time_agg,
             weight_col=weight_col,
             timedelta_unit=timedelta_unit,
             log_scale=log_scale,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
-            figsize=figsize,
+            width=width,
+            height=height,
         )
 
         self.__timedelta_hist.fit()
@@ -870,7 +894,8 @@ class Eventstream(
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
+        width: float = 6.0,
+        height: float = 4.5,
         show_plot: bool = True,
     ) -> UserLifetimeHist:
         """
@@ -898,7 +923,8 @@ class Eventstream(
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
-            figsize=figsize,
+            width=width,
+            height=height,
         )
         self.__user_lifetime_hist.fit()
         if show_plot:
@@ -912,7 +938,8 @@ class Eventstream(
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
+        width: float = 6.0,
+        height: float = 4.5,
         show_plot: bool = True,
     ) -> EventTimestampHist:
         """
@@ -939,7 +966,8 @@ class Eventstream(
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
-            figsize=figsize,
+            width=width,
+            height=height,
         )
 
         self.__event_timestamp_hist.fit()
@@ -985,8 +1013,8 @@ class Eventstream(
 
 
         """
-        describer = Describe(eventstream=self, session_col=session_col, raw_events_only=raw_events_only)
-        return describer._describe()
+        describer = _Describe(eventstream=self, session_col=session_col, raw_events_only=raw_events_only)
+        return describer._values()
 
     def describe_events(
         self, session_col: str = "session_id", raw_events_only: bool = False, event_list: list[str] | None = None
@@ -1054,14 +1082,27 @@ class Eventstream(
         See :ref:`Eventstream user guide<eventstream_describe_events>` for the details.
 
         """
-        describer = DescribeEvents(
+        describer = _DescribeEvents(
             eventstream=self, session_col=session_col, event_list=event_list, raw_events_only=raw_events_only
         )
-        return describer._describe()
+        return describer._values()
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_helper"},
+        allowed_params=[
+            "edges_norm_type",
+            "targets",
+            "nodes_threshold",
+            "edges_threshold",
+            "nodes_weight_col",
+            "edges_weight_col",
+            "custom_weight_cols",
+            "width",
+            "height",
+        ],
+    )
     def transition_graph(
         self,
-        graph_settings: dict[str, Any] | None = None,
         edges_norm_type: NormType = None,
         targets: MutableMapping[str, str | None] | None = None,
         nodes_threshold: Threshold | None = None,
@@ -1071,13 +1112,18 @@ class Eventstream(
         custom_weight_cols: list[str] | None = None,
         width: int = 960,
         height: int = 900,
+        show_weights: bool = True,
+        show_percents: bool = False,
+        show_nodes_names: bool = True,
+        show_all_edges_for_targets: bool = True,
+        show_nodes_without_links: bool = False,
     ) -> TransitionGraph:
         """
 
         Parameters
         ----------
         See parameters' description
-            :py:class:`.TransitionGraph`
+            :py:meth:`.TransitionGraph.plot`
 
         Returns
         -------
@@ -1085,51 +1131,62 @@ class Eventstream(
             Rendered IFrame graph.
 
         """
-        self.__transition_graph = TransitionGraph(
-            eventstream=self,
-            graph_settings=graph_settings,
-            edges_norm_type=edges_norm_type,
+        self.__transition_graph = TransitionGraph(eventstream=self)
+        self.__transition_graph.plot(
             targets=targets,
+            edges_norm_type=edges_norm_type,
+            edges_weight_col=edges_weight_col,
             nodes_threshold=nodes_threshold,
             edges_threshold=edges_threshold,
             nodes_weight_col=nodes_weight_col,
-            edges_weight_col=edges_weight_col,
             custom_weight_cols=custom_weight_cols,
-        )
-        self.__transition_graph.plot_graph(
-            targets=targets,
             width=width,
             height=height,
-            edges_norm_type=edges_norm_type,
+            show_weights=show_weights,
+            show_percents=show_percents,
+            show_nodes_names=show_nodes_names,
+            show_all_edges_for_targets=show_all_edges_for_targets,
+            show_nodes_without_links=show_nodes_without_links,
         )
         return self.__transition_graph
 
-    def processing_graph(self) -> PGraph:
-        if self.__p_graph is None:
-            self.__p_graph = PGraph(source_stream=self)
-        self.__p_graph.display()
-        return self.__p_graph
-
-    def transition_matrix(self, weight_col: str | None = None, norm_type: NormType = None) -> TransitionMatrix:
+    def preprocessing_graph(self) -> PreprocessingGraph:
         """
-        Display transition weights as a matrix for each unique pair of events.
-        The calculation logic is the same that is used for edge weights calculation of transition graph.
+        Display the preprocessing GUI tool.
+        """
+        if self.preprocessiong_graph is None:
+            self.preprocessiong_graph = PreprocessingGraph(source_stream=self)
+        self.preprocessiong_graph.display()
+        return self.preprocessiong_graph
+
+    @track(  # type: ignore
+        tracking_info={"event_name": "transition_matrix", "event_custom_name": "transition_matrix_helper"},
+        allowed_params=["weight_col", "norm_type"],
+    )
+    def transition_matrix(self, weight_col: str | None = None, norm_type: NormType = None) -> pd.DataFrame:
+        """
+        Get transition weights as a matrix for each unique pair of events. The calculation logic is the same
+        that is used for edge weights calculation of transition graph.
 
         Parameters
         ----------
-        See parameters' description
-            :py:meth:`.TransitionMatrix.values`
 
+        weight_col : str, optional
+            Weighting column for the transition weights calculation.
+            See :ref:`transition graph user guide <transition_graph_weights>` for the details.
+
+        norm_type : {"full", "node", None}, default None
+            Normalization type. See :ref:`transition graph user guide <transition_graph_weights>` for the details.
 
         Returns
         -------
-        TransitionMatrix
-            Display ``(i, j)``-th matrix value relates to the weight of i → j transition.
+        pd.DataFrame
+            Transition matrix. ``(i, j)``-th matrix value relates to the weight of i → j transition.
 
+        Notes
+        -----
+        See :ref:`transition graph user guide <transition_graph_transition_matrix>` for the details.
         """
-        if self.__transition_matrix is None:
-            self.__transition_matrix = TransitionMatrix(
-                eventstream=self,
-            )
-        self.__transition_matrix.display(weight_col=weight_col, norm_type=norm_type)
-        return self.__transition_matrix
+
+        matrix = _TransitionMatrix(eventstream=self)
+        return matrix._values(weight_col=weight_col, norm_type=norm_type)

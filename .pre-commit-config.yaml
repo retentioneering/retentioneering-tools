@@ -24,10 +24,11 @@ repos:
         args: [ "--profile", "black", "--filter-files" ]
         exclude: "^(retentioneering/__init__.py)"
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 'v1.1.1'
+    rev: 'v1.2.0'
     hooks:
       - id: mypy
         exclude: "^(tests/|venv/)"
+        additional_dependencies: ['types-requests']
   - repo: local
     hooks:
       - id: pyright
@@ -39,4 +40,4 @@ repos:
         types: [ python ]
         exclude: 'tests/'
         # Replace the version below with the latest pyright version
-        additional_dependencies: [ 'pyright@1.1.268' ]
+        additional_dependencies: [ 'pyright@1.1.286' ]

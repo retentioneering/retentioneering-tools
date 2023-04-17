@@ -62,7 +62,7 @@ class StepMatrix(EndedEventsMixin):
           the passed order.
         - If ``None`` - rows will be ordered according to i`th value (first row,
           where 1st element is max; second row, where second element is max; etc)
-    thresh : float, default=0
+    threshold : float, default=0
         Used to remove rare events. Aggregates all rows where all values are
         less than the specified threshold.
     centered : dict, optional
@@ -106,6 +106,7 @@ class StepMatrix(EndedEventsMixin):
     """
 
     __eventstream: EventstreamType
+    ENDED_EVENT = "ENDED"
 
     def __init__(
         self,
@@ -116,7 +117,7 @@ class StepMatrix(EndedEventsMixin):
         targets: Optional[list[str] | str] = None,
         accumulated: Optional[Union[Literal["both", "only"], None]] = None,
         sorting: Optional[list[str]] = None,
-        thresh: float = 0,
+        threshold: float = 0,
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
     ) -> None:
@@ -132,7 +133,7 @@ class StepMatrix(EndedEventsMixin):
         self.targets = targets
         self.accumulated = accumulated
         self.sorting = sorting
-        self.thresh = thresh
+        self.threshold = threshold
         self.centered: CenteredParams | None = CenteredParams(**centered) if centered else None
         self.groups = groups
 
@@ -216,8 +217,8 @@ class StepMatrix(EndedEventsMixin):
         piv.columns.name = None
         piv.index.name = None
         # MAKE TERMINATED STATE ACCUMULATED:
-        if "ENDED" in piv.index:
-            piv.loc["ENDED"] = piv.loc["ENDED"].cumsum().fillna(0)
+        if self.ENDED_EVENT in piv.index:
+            piv.loc[self.ENDED_EVENT] = piv.loc[self.ENDED_EVENT].cumsum().fillna(0)
         return piv
 
     def _process_targets(self, data: pd.DataFrame) -> tuple[pd.DataFrame | None, list[list[str]] | None]:
@@ -251,24 +252,26 @@ class StepMatrix(EndedEventsMixin):
         piv_targets = piv_targets.loc[targets_flatten].copy()
         piv_targets.columns.name = None
         piv_targets.index.name = None
+        ACC_INDEX = "ACC_"
+
         if self.accumulated == "only":
-            piv_targets.index = map(lambda x: "ACC_" + x, piv_targets.index)  # type: ignore
+            piv_targets.index = map(lambda x: ACC_INDEX + x, piv_targets.index)  # type: ignore
             for i in piv_targets.index:
                 piv_targets.loc[i] = piv_targets.loc[i].cumsum().fillna(0)
 
             # change names is targets list:
             for target in targets:
                 for j, item in enumerate(target):
-                    target[j] = "ACC_" + item
+                    target[j] = ACC_INDEX + item
         if self.accumulated == "both":
             for i in piv_targets.index:
-                piv_targets.loc["ACC_" + i] = piv_targets.loc[i].cumsum().fillna(0)  # type: ignore
+                piv_targets.loc[ACC_INDEX + i] = piv_targets.loc[i].cumsum().fillna(0)  # type: ignore
 
             # add accumulated targets to the list:
             targets_not_acc = deepcopy(targets)
             for target in targets:
                 for j, item in enumerate(target):
-                    target[j] = "ACC_" + item
+                    target[j] = ACC_INDEX + item
             targets = targets_not_acc + targets
         return piv_targets, targets
 
@@ -305,9 +308,9 @@ class StepMatrix(EndedEventsMixin):
         x = step_matrix.copy()
         order = []
         for i in x.columns:
-            new_r = x[i].idxmax()
+            new_r = x[i].idxmax()  # type: ignore
             order.append(new_r)
-            x = x.drop(new_r)
+            x = x.drop(new_r)  # type: ignore
             if x.shape[0] == 0:
                 break
         order.extend(list(set(step_matrix.index) - set(order)))
@@ -401,7 +404,7 @@ class StepMatrix(EndedEventsMixin):
         """
         weight_col = self.weight_col or self.user_col
         data = self.__eventstream.to_dataframe()
-        data = self._add_ended_events(data, self.__eventstream.schema)
+        data = self._add_ended_events(data=data, schema=self.__eventstream.schema, weight_col=self.weight_col)
         data["event_rank"] = data.groupby(weight_col).cumcount() + 1
 
         # BY HERE WE NEED TO OBTAIN FINAL DIFF piv and piv_targets before sorting, thresholding and plotting:
@@ -429,21 +432,22 @@ class StepMatrix(EndedEventsMixin):
         else:
             piv, piv_targets, fraction_title, targets_plot = self._step_matrix_values(data=data)
 
-        thresh_index = "THRESHOLDED_"
-        if self.thresh != 0:
+        threshold_index = "THRESHOLDED_"
+
+        if self.threshold != 0:
             # find if there are any rows to threshold:
-            thresholded = piv.loc[(piv.abs() < self.thresh).all(axis=1) & (piv.index != "ENDED")].copy()
+            thresholded = piv.loc[(piv.abs() < self.threshold).all(axis=1) & (piv.index != self.ENDED_EVENT)].copy()
             if len(thresholded) > 0:
-                piv = piv.loc[(piv.abs() >= self.thresh).any(axis=1) | (piv.index == "ENDED")].copy()
-                thresh_index = f"THRESHOLDED_{len(thresholded)}"
-                piv.loc[thresh_index] = thresholded.sum()
+                piv = piv.loc[(piv.abs() >= self.threshold).any(axis=1) | (piv.index == self.ENDED_EVENT)].copy()
+                threshold_index = f"{threshold_index}{len(thresholded)}"
+                piv.loc[threshold_index] = thresholded.sum()
 
         if self.sorting is None:
             piv = self._sort_matrix(piv)
 
             keep_in_the_end = []
-            keep_in_the_end.append("ENDED") if ("ENDED" in piv.index) else None
-            keep_in_the_end.append(thresh_index) if (thresh_index in piv.index) else None
+            keep_in_the_end.append(self.ENDED_EVENT) if (self.ENDED_EVENT in piv.index) else None
+            keep_in_the_end.append(threshold_index) if (threshold_index in piv.index) else None
 
             events_order = [*(i for i in piv.index if i not in keep_in_the_end), *keep_in_the_end]
             piv = piv.loc[events_order]
@@ -509,7 +513,7 @@ class StepMatrix(EndedEventsMixin):
             "targets": self.targets,
             "accumulated": self.accumulated,
             "sorting": self.sorting,
-            "thresh": self.thresh,
+            "threshold": self.threshold,
             "centered": self.centered,
             "groups": self.groups,
         }

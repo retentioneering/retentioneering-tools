@@ -32,8 +32,10 @@ class EventTimestampHist:
     bins : int or str, default 20
         Generic bin parameter that can be the name of a reference rule or
         the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`.
-    figsize : tuple of float, default (12.0, 7.0)
-        Width, height in inches.
+    width : float, default 6.0
+        Width in inches.
+    height : float, default 4.5
+        Height in inches.
 
 
     See Also
@@ -56,7 +58,8 @@ class EventTimestampHist:
         lower_cutoff_quantile: Optional[float] = None,
         upper_cutoff_quantile: Optional[float] = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
+        width: float = 6.0,
+        height: float = 4.5,
     ) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
@@ -80,7 +83,7 @@ class EventTimestampHist:
             if lower_cutoff_quantile > upper_cutoff_quantile:
                 warnings.warn("lower_cutoff_quantile exceeds upper_cutoff_quantile; no data passed to the histogram")
         self.bins = bins
-        self.figsize = figsize
+        self.figsize = (width, height)
         self.bins_to_show: np.ndarray = np.array([])
         self.values_to_plot: np.ndarray = np.array([])
 

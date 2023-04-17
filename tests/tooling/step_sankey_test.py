@@ -33,13 +33,13 @@ class TestSankey:
         assert run_test(test_stream, "01_basic")
 
     def test_sankey__threshold_float(self, test_stream):
-        assert run_test(test_stream, "02_threshold_float", max_steps=6, thresh=0.25)
+        assert run_test(test_stream, "02_threshold_float", max_steps=6, threshold=0.25)
 
     def test_sankey__threshold_int(self, test_stream):
-        assert run_test(test_stream, "03_threshold_int", max_steps=6, thresh=1)
+        assert run_test(test_stream, "03_threshold_int", max_steps=6, threshold=1)
 
     def test_sankey__target(self, test_stream):
-        assert run_test(test_stream, "04_target", max_steps=6, thresh=0.25, target=["event4"])
+        assert run_test(test_stream, "04_target", max_steps=6, threshold=0.25, targets=["event4"])
 
     def test_sankey__two_steps(self, test_stream):
         assert run_test(test_stream, "05_two_step", max_steps=2)
@@ -50,7 +50,7 @@ class TestSankey:
         )
 
     def test_sankey__threshold_float_one(self, test_stream):
-        assert run_test(test_stream, "07_thresh_float_one", max_steps=3, thresh=1.0)
+        assert run_test(test_stream, "07_thresh_float_one", max_steps=3, threshold=1.0)
 
     def test_sankey__incorrect_max_steps(self, test_stream):
         with pytest.raises(ValueError):

@@ -74,7 +74,7 @@ class TestTimedeltaHist:
         corr_adjacent_event_pairs: np.array,
         corr_adjacent_event_pairs_bins: np.array,
     ):
-        th = TimedeltaHist(test_stream, event_pair=["A", "B"], only_adjacent_event_pairs=False, bins=5)
+        th = TimedeltaHist(test_stream, event_pair=["A", "B"], adjacent_events_only=False, bins=5)
         th.fit()
         result_values, result_bins = th.values
 
@@ -151,7 +151,7 @@ class TestTimedeltaHist:
         assert np.testing.assert_array_equal(result_bins, corr_log_scale_x_bins) is None, "incorrect histogram bins"
 
     def test_timedelta_hist__agg(self, test_stream: EventstreamType, corr_agg: np.array, corr_agg_bins: np.array):
-        th = TimedeltaHist(test_stream, timedelta_unit="s", aggregation="mean", bins=5)
+        th = TimedeltaHist(test_stream, timedelta_unit="s", time_agg="mean", bins=5)
         th.fit()
         result_values, result_bins = th.values
 
@@ -169,7 +169,7 @@ class TestTimedeltaHist:
             source_stream_start_end_events,
             event_pair=["eventstream_start", "path_end"],
             timedelta_unit="s",
-            only_adjacent_event_pairs=False,
+            adjacent_events_only=False,
             bins=5,
         )
         th.fit()
@@ -193,7 +193,7 @@ class TestTimedeltaHist:
             source_stream_start_end_events,
             event_pair=["eventstream_end", "path_start"],
             timedelta_unit="s",
-            only_adjacent_event_pairs=False,
+            adjacent_events_only=False,
             bins=5,
         )
         th.fit()
@@ -217,7 +217,7 @@ class TestTimedeltaHist:
             source_stream_start_end_events,
             event_pair=["path_end", "eventstream_end"],
             timedelta_unit="s",
-            only_adjacent_event_pairs=False,
+            adjacent_events_only=False,
             bins=5,
         )
         th.fit()
@@ -237,7 +237,7 @@ class TestTimedeltaHist:
             source_stream_start_end_events,
             event_pair=["path_start", "path_end"],
             timedelta_unit="s",
-            only_adjacent_event_pairs=True,
+            adjacent_events_only=True,
             bins=5,
         )
         th.fit()
@@ -259,7 +259,7 @@ class TestTimedeltaHist:
             event_pair=["A", "B"],
             timedelta_unit="s",
             weight_col="session_id",
-            only_adjacent_event_pairs=False,
+            adjacent_events_only=False,
             bins=5,
         )
         th.fit()

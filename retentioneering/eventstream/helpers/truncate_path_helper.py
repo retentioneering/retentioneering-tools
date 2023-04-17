@@ -34,10 +34,12 @@ class TruncatePathHelperMixin:
         """
         # avoid circular import
         from retentioneering.data_processors_lib import TruncatePath, TruncatePathParams
-        from retentioneering.graph.nodes import EventsNode
-        from retentioneering.graph.p_graph import PGraph
+        from retentioneering.preprocessing_graph.nodes import EventsNode
+        from retentioneering.preprocessing_graph.preprocessing_graph import (
+            PreprocessingGraph,
+        )
 
-        p = PGraph(source_stream=self)  # type: ignore
+        p = PreprocessingGraph(source_stream=self)  # type: ignore
         params = {
             "drop_before": drop_before,
             "drop_after": drop_after,

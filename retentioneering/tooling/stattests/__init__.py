@@ -1,2 +1,2 @@
-from .constants import TEST_NAMES
+from .constants import STATTEST_NAMES
 from .stattests import StatTests

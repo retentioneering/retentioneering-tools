@@ -1,12 +1,6 @@
 Transition Matrix
 =================
 
-Transition Matrix class
------------------------
-
-.. automodule:: retentioneering.tooling.transition_matrix.transition_matrix
-    :members:
-
 
 Eventstream
 -----------

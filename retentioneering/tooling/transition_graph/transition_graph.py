@@ -655,6 +655,7 @@ class TransitionGraph:
             Setting a threshold filter might remove all the edges connected to a node.
             Such isolated nodes might be considered as useless. This displaying option
             hides them in the canvas as well.
+        @TODO: add show_edge_info_on_hover Ticket: https://retentioneering.atlassian.net/browse/PLAT-776. dpanina.
 
         Returns
         -------

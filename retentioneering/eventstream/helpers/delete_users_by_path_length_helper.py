@@ -34,9 +34,9 @@ class DeleteUsersByPathLengthHelperMixin:
             DeleteUsersByPathLengthParams,
         )
         from retentioneering.graph.nodes import EventsNode
-        from retentioneering.graph.preprocessing_graph import PGraph
+        from retentioneering.graph.preprocessing_graph import PreprocessingGraph
 
-        p = PGraph(source_stream=self)  # type: ignore
+        p = PreprocessingGraph(source_stream=self)  # type: ignore
 
         node = EventsNode(
             processor=DeleteUsersByPathLength(

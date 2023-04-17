@@ -24,7 +24,7 @@ from retentioneering.data_processors_lib import (
     TruncatePath,
     TruncatePathParams,
 )
-from retentioneering.graph.preprocessing_graph import EventsNode, PGraph
+from retentioneering.graph.preprocessing_graph import EventsNode, PreprocessingGraph
 from tests.data_processors_lib.fixtures.combination import (
     test_stream,
     test_stream_custom_col,
@@ -39,7 +39,7 @@ from tests.data_processors_lib.fixtures.combination_corr import (
 
 
 def apply_data_processor(eventstream, data_processor):
-    graph = PGraph(source_stream=eventstream)
+    graph = PreprocessingGraph(source_stream=eventstream)
     node_0 = EventsNode(data_processor)
     graph.add_node(node=node_0, parents=[graph.root])
     return graph.combine(node=node_0)

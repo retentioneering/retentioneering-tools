@@ -3,7 +3,7 @@ import pandas as pd
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
-from retentioneering.graph.preprocessing_graph import EventsNode, PGraph
+from retentioneering.graph.preprocessing_graph import EventsNode, PreprocessingGraph
 from retentioneering.params_model.params_model import ParamsModel
 
 _default_raw_data_schema = RawDataSchema(
@@ -37,7 +37,7 @@ def apply_processor_with_graph(
         schema=EventstreamSchema(),
     )
     original_df = stream.to_dataframe().reset_index(drop=True)
-    graph = PGraph(source_stream=stream)
+    graph = PreprocessingGraph(source_stream=stream)
     node = EventsNode(data_processor)
     graph.add_node(node=node, parents=[graph.root])
     result = graph.combine(node=node)

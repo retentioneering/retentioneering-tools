@@ -36,9 +36,9 @@ class TruncatedEventsHelperMixin:
             TruncatedEventsParams,
         )
         from retentioneering.graph.nodes import EventsNode
-        from retentioneering.graph.preprocessing_graph import PGraph
+        from retentioneering.graph.preprocessing_graph import PreprocessingGraph
 
-        p = PGraph(source_stream=self)  # type: ignore
+        p = PreprocessingGraph(source_stream=self)  # type: ignore
 
         params = dict(left_truncated_cutoff=left_truncated_cutoff, right_truncated_cutoff=right_truncated_cutoff)
 

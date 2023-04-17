@@ -1,9 +1,9 @@
-Preprocessing Graph
-===================
+PreprocessingGraph
+==================
 
 Class
 ------
-.. autoclass:: retentioneering.graph.preprocessing_graph.PGraph
+.. autoclass:: retentioneering.graph.preprocessing_graph.PreprocessingGraph
     :members:
 
 Eventstream

@@ -56,7 +56,7 @@ class CreateNodeErrorDesc(TypedDict):
     fields_errors: List[FieldErrorDesc]
 
 
-class PGraph:
+class PreprocessingGraph:
     """
     Collection of methods for preprocessing graph construction and calculation.
 
@@ -85,7 +85,7 @@ class PGraph:
 
     def add_node(self, node: Node, parents: List[Node]) -> None:
         """
-        Add node to ``PGraph`` instance.
+        Add node to ``PreprocessingGraph`` instance.
 
         Parameters
         ----------
@@ -102,7 +102,7 @@ class PGraph:
 
         See Also
         --------
-        PGraph.combine : Start PGraph recalculation.
+        PreprocessingGraph.combine : Start PreprocessingGraph recalculation.
         .EventsNode : Regular nodes of a preprocessing graph.
         .MergeNode : Merge nodes of a preprocessing graph.
 
@@ -216,7 +216,7 @@ class PGraph:
 
     def display(self, width: int = 960, height: int = 900) -> DisplayHandle:
         """
-        Show constructed ``PGraph``.
+        Show constructed ``PreprocessingGraph``.
 
         """
         if not self.__server_manager:
@@ -241,7 +241,7 @@ class PGraph:
 
     def export(self, payload: dict[str, Any]) -> dict:
         """
-        Show ``PGraph`` as a dict.
+        Show ``PreprocessingGraph`` as a dict.
 
         Parameters
         ----------

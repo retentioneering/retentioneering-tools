@@ -1,5 +1,5 @@
-PGraph Nodes
-============
+PreprocessingGraph Nodes
+========================
 
 EventsNode
 ----------

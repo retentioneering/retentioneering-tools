@@ -2,7 +2,7 @@ import pandas as pd
 
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream import Eventstream, RawDataSchema
-from retentioneering.graph.preprocessing_graph import EventsNode, PGraph
+from retentioneering.graph.preprocessing_graph import EventsNode, PreprocessingGraph
 from retentioneering.params_model import ParamsModel
 from tests.data_processor.fixtures.delete_processor import delete_processor
 
@@ -29,7 +29,7 @@ class TestGraphDelete:
             ),
             raw_data=source_df,
         )
-        graph = PGraph(source)
+        graph = PreprocessingGraph(source)
         delete_node = EventsNode(DeleteProcessor(params=DeleteParamsModel(name="pageview")))
         graph.add_node(node=delete_node, parents=[graph.root])
         result = graph.combine(delete_node)

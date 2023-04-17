@@ -31,9 +31,9 @@ class NegativeTargetHelperMixin:
             NegativeTargetParams,
         )
         from retentioneering.graph.nodes import EventsNode
-        from retentioneering.graph.preprocessing_graph import PGraph
+        from retentioneering.graph.preprocessing_graph import PreprocessingGraph
 
-        p = PGraph(source_stream=self)  # type: ignore
+        p = PreprocessingGraph(source_stream=self)  # type: ignore
 
         params: dict[str, list[str] | Callable] = {"negative_target_events": negative_target_events}
         if func:

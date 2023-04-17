@@ -25,11 +25,11 @@ from retentioneering.data_processors_lib import (
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import RawDataSchema
 from retentioneering.graph.nodes import EventsNode
-from retentioneering.graph.preprocessing_graph import PGraph
+from retentioneering.graph.preprocessing_graph import PreprocessingGraph
 
 
 class TestPGraphExportImport:
-    def create_graph(self) -> PGraph:
+    def create_graph(self) -> PreprocessingGraph:
         source_df = pd.DataFrame(
             [
                 {"event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
@@ -47,7 +47,7 @@ class TestPGraphExportImport:
             ),
             raw_data=source_df,
         )
-        graph = PGraph(source)
+        graph = PreprocessingGraph(source)
 
         return graph
 

@@ -18,7 +18,7 @@ from retentioneering.eventstream.types import (
     RawDataSchemaType,
     Relation,
 )
-from retentioneering.graph import PGraph
+from retentioneering.graph import PreprocessingGraph
 from retentioneering.tooling import (
     Clusters,
     Cohorts,
@@ -160,7 +160,7 @@ class Eventstream(
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]
-    preprocessiong_graph: PGraph | None = None
+    preprocessiong_graph: PreprocessingGraph | None = None
 
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
@@ -1137,12 +1137,12 @@ class Eventstream(
         )
         return self.__transition_graph
 
-    def preprocessing_graph(self) -> PGraph:
+    def preprocessing_graph(self) -> PreprocessingGraph:
         """
         Display the preprocessing GUI tool.
         """
         if self.preprocessiong_graph is None:
-            self.preprocessiong_graph = PGraph(source_stream=self)
+            self.preprocessiong_graph = PreprocessingGraph(source_stream=self)
         self.preprocessiong_graph.display()
         return self.preprocessiong_graph
 

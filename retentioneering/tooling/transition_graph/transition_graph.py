@@ -117,7 +117,7 @@ class TransitionGraph:
         self.spring_layout_config = {"k": 0.1, "iterations": 300, "nx_threshold": 1e-4}
 
         self.layout: pd.DataFrame | None = None
-        self.graph_settings: GraphSettings | dict[str, Any] | None = None
+        self.graph_settings: GraphSettings | dict[str, Any] = {}
         self.render: TransitionGraphRenderer = TransitionGraphRenderer()
 
     def _define_weight_cols(self, custom_weight_cols: list[str] | None) -> list[str]:

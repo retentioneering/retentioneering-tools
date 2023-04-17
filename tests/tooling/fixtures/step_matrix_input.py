@@ -11,7 +11,10 @@ from retentioneering.data_processors_lib import (
     StartEndEventsParams,
 )
 from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-from retentioneering.graph.preprocessing_graph import EventsNode, PreprocessingGraph
+from retentioneering.preprocessing_graph.preprocessing_graph import (
+    EventsNode,
+    PreprocessingGraph,
+)
 
 FLOAT_PRECISION = 3
 

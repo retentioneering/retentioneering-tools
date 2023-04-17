@@ -12,7 +12,7 @@ from retentioneering.backend.callback import list_dataprocessor, list_dataproces
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.exceptions.server import ServerErrorWithResponse
 from retentioneering.exceptions.widget import WidgetParseError
-from retentioneering.graph.nodes import (
+from retentioneering.preprocessing_graph.nodes import (
     EventsNode,
     MergeNode,
     Node,

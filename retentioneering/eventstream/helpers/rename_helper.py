@@ -7,8 +7,10 @@ class RenameHelperMixin:
     def rename(self, rules: list[dict[str, list[str] | str]]) -> EventstreamType:
         # avoid circular import
         from retentioneering.data_processors_lib import RenameParams, RenameProcessor
-        from retentioneering.graph.nodes import EventsNode
-        from retentioneering.graph.preprocessing_graph import PreprocessingGraph
+        from retentioneering.preprocessing_graph.nodes import EventsNode
+        from retentioneering.preprocessing_graph.preprocessing_graph import (
+            PreprocessingGraph,
+        )
 
         p = PreprocessingGraph(source_stream=self)  # type: ignore
 

@@ -3,10 +3,10 @@ PreprocessingGraph Nodes
 
 EventsNode
 ----------
-.. autoclass:: retentioneering.graph.nodes.EventsNode
+.. autoclass:: retentioneering.preprocessing_graph.nodes.EventsNode
     :members:
 
 MergeNode
 ---------
-.. autoclass:: retentioneering.graph.nodes.MergeNode
+.. autoclass:: retentioneering.preprocessing_graph.nodes.MergeNode
     :members:

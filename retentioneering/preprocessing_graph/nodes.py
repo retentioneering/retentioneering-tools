@@ -46,7 +46,7 @@ class SourceNode(BaseNode):
 
 class EventsNode(BaseNode):
     """
-    Class for regular nodes of a preprocessing graph.
+    Class for regular nodes of a PreprocessingGraph.
 
     Notes
     -----
@@ -54,9 +54,9 @@ class EventsNode(BaseNode):
 
     See Also
     --------
-    .PreprocessingGraph.add_node : Add a node to Pgraph.
-    .PreprocessingGraph.combine : Run calculations of Preprocessing Graph.
-    .MergeNode : Merging nodes of a preprocessing graph.
+    .PreprocessingGraph.add_node : Add a node to PreprocessingGraph.
+    .PreprocessingGraph.combine : Run calculations of PreprocessingGraph.
+    .MergeNode : Merging nodes of a PreprocessingGraph.
 
     """
 
@@ -76,7 +76,7 @@ class EventsNode(BaseNode):
 
 class MergeNode(BaseNode):
     """
-    Class for merging nodes of a preprocessing graph.
+    Class for merging nodes of a PreprocessingGraph.
 
     Notes
     -----
@@ -84,9 +84,9 @@ class MergeNode(BaseNode):
 
     See Also
     --------
-    .PreprocessingGraph.add_node : Add a node to Pgraph.
-    .PreprocessingGraph.combine : Run calculations of Preprocessing Graph.
-    .EventsNode : Regular nodes of a preprocessing graph.
+    .PreprocessingGraph.add_node : Add a node to PreprocessingGraph.
+    .PreprocessingGraph.combine : Run calculations of PreprocessingGraph.
+    .EventsNode : Regular nodes of a PreprocessingGraph.
 
     """
 

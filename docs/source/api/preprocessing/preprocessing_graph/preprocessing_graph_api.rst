@@ -3,7 +3,7 @@ PreprocessingGraph
 
 Class
 ------
-.. autoclass:: retentioneering.graph.preprocessing_graph.PreprocessingGraph
+.. autoclass:: retentioneering.preprocessing_graph.preprocessing_graph.PreprocessingGraph
     :members:
 
 Eventstream

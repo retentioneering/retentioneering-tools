@@ -18,7 +18,7 @@ from retentioneering.eventstream.types import (
     RawDataSchemaType,
     Relation,
 )
-from retentioneering.graph import PreprocessingGraph
+from retentioneering.preprocessing_graph import PreprocessingGraph
 from retentioneering.tooling import (
     Clusters,
     Cohorts,

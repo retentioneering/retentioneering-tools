@@ -9,20 +9,21 @@ class EndedEventsMixin:
         pass
 
     @staticmethod
-    def _add_ended_events(data: pd.DataFrame, schema: EventstreamSchemaType) -> pd.DataFrame:
+    def _add_ended_events(data: pd.DataFrame, schema: EventstreamSchemaType, weight_col: str) -> pd.DataFrame:
         """
         Adds artificial ``ENDED`` event in the end of a path. If a path already
         contains ``path_end`` event, it will be replaced with ``ENDED`` event.
         Otherwise, ``ENDED`` event will be placed into the end of the path.
+        Path is identified by the weight_col parameter which can be user_id, session_id, etc.
         """
         data[schema.event_name] = data[schema.event_name].str.replace("path_end", "ENDED")
-        users_with_ended = data[data[schema.event_name] == "ENDED"][schema.user_id].unique()
+        ids_with_ended = data[data[schema.event_name] == "ENDED"][weight_col].unique()
 
-        paths_with_ended = data[data[schema.user_id].isin(users_with_ended)]
-        paths_without_ended = data[~data[schema.user_id].isin(users_with_ended)]
+        paths_with_ended = data[data[weight_col].isin(ids_with_ended)]
+        paths_without_ended = data[~data[weight_col].isin(ids_with_ended)]
 
         additional_ended_events = (
-            paths_without_ended.groupby(schema.user_id, as_index=False)
+            paths_without_ended.groupby(weight_col, as_index=False)
             .last()
             .assign(
                 **{

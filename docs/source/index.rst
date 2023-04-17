@@ -3,7 +3,7 @@
 retentioneering documentation
 =============================
 
-**Date:** Mar 20, 2023 **Version:** 3.0.0 :red:`(beta)`
+**Date:** Apr 11, 2023 **Version:** 3.0.0 :red:`(beta)`
 
 .. grid:: 4
 

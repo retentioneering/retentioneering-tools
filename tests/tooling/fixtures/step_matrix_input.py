@@ -11,7 +11,10 @@ from retentioneering.data_processors_lib import (
     StartEndEventsParams,
 )
 from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-from retentioneering.graph.p_graph import EventsNode, PGraph
+from retentioneering.preprocessing_graph.preprocessing_graph import (
+    EventsNode,
+    PreprocessingGraph,
+)
 
 FLOAT_PRECISION = 3
 
@@ -54,11 +57,5 @@ def test_weight_col():
         user_id="user_id",
         custom_cols=[{"custom_col": "session_id", "raw_data_col": "session_id"}],
     )
-    source_stream = Eventstream(
-        schema=EventstreamSchema(
-            custom_cols=["session_id"], event_name="event", event_timestamp="timestamp", user_id="user_id"
-        ),
-        raw_data_schema=raw_data_schema,
-        raw_data=df,
-    )
+    source_stream = Eventstream(df, raw_data_schema)
     return source_stream

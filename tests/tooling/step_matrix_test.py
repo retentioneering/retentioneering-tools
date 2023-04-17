@@ -1,3 +1,5 @@
+import numpy as np
+
 from retentioneering.tooling.step_matrix import StepMatrix
 from tests.tooling.fixtures.step_matrix_corr import (
     accumulated_both_targets_plot_cor,
@@ -54,14 +56,14 @@ class TestStepMatrix:
 
     def test_step_matrix__thresh(self, test_stream, thresh_cor):
         correct_result = thresh_cor
-        sm = StepMatrix(eventstream=test_stream, max_steps=6, thresh=0.3)
+        sm = StepMatrix(eventstream=test_stream, max_steps=6, threshold=0.3)
         sm.fit()
         result = sm.values[0].round(FLOAT_PRECISION)
         assert result.compare(correct_result).shape == (0, 0)
 
     def test_step_matrix__thresh_1(self, test_stream, thresh_1_cor):
         correct_result = thresh_1_cor
-        sm = StepMatrix(eventstream=test_stream, max_steps=6, thresh=1.0)
+        sm = StepMatrix(eventstream=test_stream, max_steps=6, threshold=1.0)
         sm.fit()
         result = sm.values[0].round(FLOAT_PRECISION)
         assert result.compare(correct_result).shape == (0, 0)
@@ -75,7 +77,7 @@ class TestStepMatrix:
 
     def test_step_matrix__targets_thresh_plot(self, test_stream, targets_thresh_plot_cor):
         correct_result = targets_thresh_plot_cor
-        sm = StepMatrix(eventstream=test_stream, max_steps=6, targets=["event3", "event5"], thresh=0.5)
+        sm = StepMatrix(eventstream=test_stream, max_steps=6, targets=["event3", "event5"], threshold=0.5)
         sm.fit()
         result = sm.values[1].round(FLOAT_PRECISION)
         assert result.compare(correct_result).shape == (0, 0)
@@ -117,7 +119,7 @@ class TestStepMatrix:
             max_steps=10,
             centered={"event": "event5", "left_gap": 4, "occurrence": 1},
             targets=["event4"],
-            thresh=0.6,
+            threshold=0.6,
         )
         sm.fit()
         result = sm.values[0].round(FLOAT_PRECISION)
@@ -130,7 +132,7 @@ class TestStepMatrix:
             max_steps=10,
             centered={"event": "event5", "left_gap": 4, "occurrence": 1},
             targets=["event4"],
-            thresh=0.6,
+            threshold=0.6,
         )
         sm.fit()
         result = sm.values[1].round(FLOAT_PRECISION)
@@ -142,7 +144,7 @@ class TestStepMatrix:
             eventstream=test_stream,
             max_steps=10,
             centered={"event": "event5", "left_gap": 4, "occurrence": 1},
-            thresh=0.6,
+            threshold=0.6,
         )
         sm.fit()
         result = sm.fraction_title
@@ -193,7 +195,7 @@ class TestStepMatrix:
 
     def test_step_matrix__weight_col(self, test_weight_col, weight_col_cor):
         correct_result = weight_col_cor
-        sm = StepMatrix(eventstream=test_weight_col, max_steps=5, weight_col=["session_id"])
+        sm = StepMatrix(eventstream=test_weight_col, max_steps=5, weight_col="session_id")
         sm.fit()
         result = sm.values[0].round(FLOAT_PRECISION)
         assert result.compare(correct_result).shape == (0, 0)

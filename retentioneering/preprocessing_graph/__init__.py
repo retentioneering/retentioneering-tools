@@ -1,2 +1,2 @@
 from .nodes import EventsNode, MergeNode, SourceNode
-from .p_graph import PGraph
+from .preprocessing_graph import PreprocessingGraph

@@ -3,7 +3,7 @@ import pandas as pd
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
-from retentioneering.graph.p_graph import EventsNode, PGraph
+from retentioneering.graph.preprocessing_graph import EventsNode, PGraph
 from retentioneering.params_model.params_model import ParamsModel
 
 _default_raw_data_schema = RawDataSchema(

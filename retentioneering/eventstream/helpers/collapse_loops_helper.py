@@ -37,7 +37,7 @@ class CollapseLoopsHelperMixin:
             CollapseLoopsParams,
         )
         from retentioneering.graph.nodes import EventsNode
-        from retentioneering.graph.p_graph import PGraph
+        from retentioneering.graph.preprocessing_graph import PGraph
 
         p = PGraph(source_stream=self)  # type: ignore
 

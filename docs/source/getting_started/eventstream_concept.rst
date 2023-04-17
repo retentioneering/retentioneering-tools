@@ -276,7 +276,7 @@ Finally, we need to build a graph with a single node encompassing ``RoundTimesta
 
 .. code-block:: python
 
-    from retentioneering.graph.p_graph import PGraph, EventsNode
+    from retentioneering.graph.preprocessing_graph import PGraph, EventsNode
 
     node = EventsNode(RoundTimestamp(params=RoundTimestampParams()))
     graph = PGraph(stream)
@@ -315,7 +315,7 @@ Linking graph nodes according to preprocessing logic, we obtain a ``preprocessin
 
 .. code-block:: python
 
-    from retentioneering.graph.p_graph import PGraph, EventsNode
+    from retentioneering.graph.preprocessing_graph import PGraph, EventsNode
     from retentioneering.data_processors_lib import SplitSessions, SplitSessionsParams
     from retentioneering.data_processors_lib import StartEndEvents, StartEndParams
 

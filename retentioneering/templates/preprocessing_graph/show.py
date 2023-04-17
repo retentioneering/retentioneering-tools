@@ -9,9 +9,9 @@ class PGraphRenderer:
 
     def __init__(self) -> None:
         self.__environment = Environment(
-            loader=PackageLoader(package_name="retentioneering", package_path="templates/p_graph"),
+            loader=PackageLoader(package_name="retentioneering", package_path="templates/preprocessing_graph"),
         )
-        self.__template = self.__environment.get_template("p_graph.html")
+        self.__template = self.__environment.get_template("preprocessing_graph.html")
 
     def show(self, server_id: str, env: str, width: int, height: int) -> str:
         return self.__template.render(

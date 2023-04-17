@@ -2,7 +2,7 @@ import pandas as pd
 
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-from retentioneering.graph.p_graph import EventsNode, PGraph
+from retentioneering.graph.preprocessing_graph import EventsNode, PGraph
 from retentioneering.params_model import ParamsModel
 from tests.data_processor.fixtures.add_col_processor import add_col_processor
 

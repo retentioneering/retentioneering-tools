@@ -40,7 +40,7 @@ class SplitSessionsHelperMixin:
             SplitSessionsParams,
         )
         from retentioneering.graph.nodes import EventsNode
-        from retentioneering.graph.p_graph import PGraph
+        from retentioneering.graph.preprocessing_graph import PGraph
 
         p = PGraph(source_stream=self)  # type: ignore
         params = dict(session_cutoff=session_cutoff, session_col=session_col, mark_truncated=mark_truncated)

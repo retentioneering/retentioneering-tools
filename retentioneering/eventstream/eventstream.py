@@ -160,7 +160,7 @@ class Eventstream(
     schema: EventstreamSchema
     index_order: IndexOrder
     relations: List[Relation]
-    p_graph: PGraph | None = None
+    preprocessiong_graph: PGraph | None = None
 
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
@@ -215,7 +215,7 @@ class Eventstream(
         self.__events = self.__prepare_events(raw_data) if prepare else raw_data
         self.__events = self.__required_cleanup(events=self.__events)
         self.index_events()
-        self.p_graph = None
+        self.preprocessiong_graph = None
 
     def copy(self) -> Eventstream:
         """
@@ -1141,10 +1141,10 @@ class Eventstream(
         """
         Display the preprocessing GUI tool.
         """
-        if self.p_graph is None:
-            self.p_graph = PGraph(source_stream=self)
-        self.p_graph.display()
-        return self.p_graph
+        if self.preprocessiong_graph is None:
+            self.preprocessiong_graph = PGraph(source_stream=self)
+        self.preprocessiong_graph.display()
+        return self.preprocessiong_graph
 
     @track(  # type: ignore
         tracking_info={"event_name": "transition_matrix", "event_custom_name": "transition_matrix_helper"},

@@ -24,7 +24,7 @@ from retentioneering.data_processors_lib import (
     TruncatePath,
     TruncatePathParams,
 )
-from retentioneering.graph.p_graph import EventsNode, PGraph
+from retentioneering.graph.preprocessing_graph import EventsNode, PGraph
 from tests.data_processors_lib.fixtures.combination import (
     test_stream,
     test_stream_custom_col,

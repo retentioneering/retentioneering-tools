@@ -8,7 +8,7 @@ class RenameHelperMixin:
         # avoid circular import
         from retentioneering.data_processors_lib import RenameParams, RenameProcessor
         from retentioneering.graph.nodes import EventsNode
-        from retentioneering.graph.p_graph import PGraph
+        from retentioneering.graph.preprocessing_graph import PGraph
 
         p = PGraph(source_stream=self)  # type: ignore
 

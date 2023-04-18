@@ -27,16 +27,16 @@ def _default_func(eventstream: EventstreamType, targets: list[str]) -> pd.DataFr
     Returns
     -------
     pd.DataFrame
-        Filtered DataFrame with positive_events and its timestamps.
+        Filtered DataFrame with targets and its timestamps.
     """
     user_col = eventstream.schema.user_id
     time_col = eventstream.schema.event_timestamp
     event_col = eventstream.schema.event_name
     df = eventstream.to_dataframe()
 
-    positive_events_index = df[df[event_col].isin(targets)].groupby(user_col)[time_col].idxmin()  # type: ignore
+    targets_index = df[df[event_col].isin(targets)].groupby(user_col)[time_col].idxmin()  # type: ignore
 
-    return df.loc[positive_events_index]  # type: ignore
+    return df.loc[targets_index]  # type: ignore
 
 
 class PositiveTargetParams(ParamsModel):

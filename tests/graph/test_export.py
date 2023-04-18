@@ -482,18 +482,18 @@ class TestPreprocessingGraphExportImport:
                             "    Returns\n"
                             "    -------\n"
                             "    pd.DataFrame\n"
-                            "        Filtered DataFrame with negative_events and its timestamps.\n"
+                            "        Filtered DataFrame with targets and its timestamps.\n"
                             '    """\n'
                             "    user_col = eventstream.schema.user_id\n"
                             "    time_col = eventstream.schema.event_timestamp\n"
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n"
                             "\n"
-                            "    negative_events_index = "
+                            "    targets_index = "
                             "df[df[event_col].isin(targets)]."
                             "groupby(user_col)[time_col].idxmin()  # type: ignore\n"
                             "\n"
-                            "    return df.loc[negative_events_index]  # type: ignore\n",
+                            "    return df.loc[targets_index]  # type: ignore\n",
                         },
                     },
                 },
@@ -521,11 +521,11 @@ class TestPreprocessingGraphExportImport:
                                 "    event_col = eventstream.schema.event_name\n"
                                 "    df = eventstream.to_dataframe()\n"
                                 "\n"
-                                "    negative_events_index = "
+                                "    targets_index = "
                                 "df[df[event_col].isin(targets)].groupby"
                                 "(user_col)[time_col].idxmin()\n"
                                 "\n"
-                                "    return df.iloc[negative_events_index]",
+                                "    return df.iloc[targets_index]",
                             },
                         },
                     },
@@ -558,11 +558,11 @@ class TestPreprocessingGraphExportImport:
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n"
                             "\n"
-                            "    negative_events_index = "
+                            "    targets_index = "
                             "df[df[event_col].isin(targets)].groupby"
                             "(user_col)[time_col].idxmin()\n"
                             "\n"
-                            "    return df.iloc[negative_events_index]",
+                            "    return df.iloc[targets_index]",
                         },
                     },
                 },
@@ -611,17 +611,17 @@ class TestPreprocessingGraphExportImport:
                             "    Returns\n"
                             "    -------\n"
                             "    pd.DataFrame\n"
-                            "        Filtered DataFrame with positive_events and its timestamps.\n"
+                            "        Filtered DataFrame with targets and its timestamps.\n"
                             '    """\n'
                             "    user_col = eventstream.schema.user_id\n"
                             "    time_col = eventstream.schema.event_timestamp\n"
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n\n    "
-                            "positive_events_index = "
+                            "targets_index = "
                             "df[df[event_col].isin(targets)]."
                             "groupby(user_col)[time_col].idxmin()  # type: ignore\n"
                             "\n"
-                            "    return df.loc[positive_events_index]  # type: ignore\n",
+                            "    return df.loc[targets_index]  # type: ignore\n",
                         },
                     },
                 },
@@ -686,17 +686,17 @@ class TestPreprocessingGraphExportImport:
                             "    Returns\n"
                             "    -------\n"
                             "    pd.DataFrame\n"
-                            "        Filtered DataFrame with positive_events and its timestamps.\n"
+                            "        Filtered DataFrame with targets and its timestamps.\n"
                             '    """\n'
                             "    user_col = eventstream.schema.user_id\n"
                             "    time_col = eventstream.schema.event_timestamp\n"
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n\n    "
-                            "positive_events_index = "
+                            "targets_index = "
                             "df[df[event_col].isin(targets)]."
                             "groupby(user_col)[time_col].idxmin()  # type: ignore\n"
                             "\n"
-                            "    return df.loc[positive_events_index]  # type: ignore\n",
+                            "    return df.loc[targets_index]  # type: ignore\n",
                         },
                     },
                 },

@@ -9,7 +9,7 @@ from ..types import EventstreamType
 
 class DropPathsHelperMixin:
     def drop_paths(
-        self, events_num: int | None = None, cutoff: Tuple[float, DATETIME_UNITS] | None = None
+        self, min_steps: int | None = None, min_time: Tuple[float, DATETIME_UNITS] | None = None
     ) -> EventstreamType:
         """
         A method of ``Eventstream`` class that deletes users' paths that are shorter than the specified
@@ -38,7 +38,7 @@ class DropPathsHelperMixin:
         p = PreprocessingGraph(source_stream=self)  # type: ignore
 
         node = EventsNode(
-            processor=DropPaths(params=DropPathsParams(events_num=events_num, cutoff=cutoff))  # type: ignore
+            processor=DropPaths(params=DropPathsParams(min_steps=min_steps, min_time=min_time))  # type: ignore
         )
         p.add_node(node=node, parents=[p.root])
         result = p.combine(node)

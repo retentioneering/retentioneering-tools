@@ -13,7 +13,7 @@ data: list[dict] = [
                 "optional": False,
             },
             {
-                "name": "timestamp_aggregation_type",
+                "name": "time_agg",
                 "widget": "enum",
                 "default": "max",
                 "optional": False,
@@ -65,7 +65,7 @@ data: list[dict] = [
         "name": "LabelLostUsers",
         "params": [
             {
-                "name": "lost_cutoff",
+                "name": "timeout",
                 "widget": "tuple",
                 "optional": True,
                 "params": [
@@ -89,7 +89,7 @@ data: list[dict] = [
         "name": "AddNegativeEvents",
         "params": [
             {
-                "name": "negative_target_events",
+                "name": "targets",
                 "widget": "list_of_string",
                 "optional": False,
             },
@@ -114,7 +114,7 @@ data: list[dict] = [
         "name": "AddPositiveEvents",
         "params": [
             {
-                "name": "positive_target_events",
+                "name": "targets",
                 "widget": "list_of_string",
                 "optional": False,
             },
@@ -129,7 +129,7 @@ data: list[dict] = [
         "name": "SplitSessions",
         "params": [
             {
-                "name": "session_cutoff",
+                "name": "timeout",
                 "widget": "tuple",
                 "optional": False,
                 "params": [
@@ -162,7 +162,7 @@ data: list[dict] = [
         "name": "LabelCroppedPaths",
         "params": [
             {
-                "name": "left_truncated_cutoff",
+                "name": "left_cutoff",
                 "widget": "tuple",
                 "optional": False,
                 "params": [
@@ -176,7 +176,7 @@ data: list[dict] = [
                 ],
             },
             {
-                "name": "right_truncated_cutoff",
+                "name": "right_cutoff",
                 "widget": "tuple",
                 "optional": False,
                 "params": [

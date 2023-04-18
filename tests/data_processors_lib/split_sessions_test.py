@@ -30,12 +30,12 @@ class TestSplitSessions(ApplyTestBase):
 
     def test_params_model__incorrect_datetime_unit(self):
         with pytest.raises(ValidationError):
-            p = SplitSessionsParams(session_cutoff=(1, "xxx"))
+            p = SplitSessionsParams(timeout=(1, "xxx"))
 
     def test_split_session_apply_1(self):
         actual = self._apply(
             SplitSessionsParams(
-                session_cutoff=(100, "s"),
+                timeout=(100, "s"),
                 session_col="session_id",
             )
         )
@@ -57,7 +57,7 @@ class TestSplitSessions(ApplyTestBase):
     def test_split_session_apply_2_mark_truncated_true(self) -> None:
         actual = self._apply(
             SplitSessionsParams(
-                session_cutoff=(100, "s"),
+                timeout=(100, "s"),
                 session_col="session_id",
                 mark_truncated=True,
             )
@@ -107,7 +107,7 @@ class TestSplitSessionsGraph(GraphTestBase):
     def test_split_sesssion_graph_1(self) -> None:
         actual = self._apply(
             SplitSessionsParams(
-                session_cutoff=(30, "m"),
+                timeout=(30, "m"),
                 session_col="session_id",
             )
         )
@@ -142,7 +142,7 @@ class TestSplitSessionsGraph(GraphTestBase):
     def test_split_sesssion_graph_2_mark_truncated_true(self) -> None:
         actual = self._apply(
             SplitSessionsParams(
-                session_cutoff=(30, "m"),
+                timeout=(30, "m"),
                 session_col="session_id",
                 mark_truncated=True,
             )
@@ -228,7 +228,7 @@ class TestSplitSessionsHelper:
         stream = Eventstream(source_df)
 
         res = (
-            stream.split_sessions(session_cutoff=(30, "m"), session_col="session_id")
+            stream.split_sessions(timeout=(30, "m"), session_col="session_id")
             .to_dataframe()[correct_result_columns]
             .sort_values(["user_id", "timestamp"])
             .reset_index(drop=True)
@@ -287,7 +287,7 @@ class TestSplitSessionsHelper:
         stream = Eventstream(source_df)
 
         res = (
-            stream.split_sessions(session_cutoff=(30, "m"), session_col="session_id", mark_truncated=True)
+            stream.split_sessions(timeout=(30, "m"), session_col="session_id", mark_truncated=True)
             .to_dataframe()[correct_result_columns]
             .sort_values(["user_id", "timestamp"])
             .reset_index(drop=True)
@@ -318,7 +318,7 @@ class TestSplitSessionsHelper:
             stream = Eventstream(source_df)
 
             res = (
-                stream.split_sessions(session_cutoff=(30, "xxx"), session_col="session_id", mark_truncated=True)
+                stream.split_sessions(timeout=(30, "xxx"), session_col="session_id", mark_truncated=True)
                 .to_dataframe()[correct_result_columns]
                 .sort_values(["user_id", "timestamp"])
                 .reset_index(drop=True)

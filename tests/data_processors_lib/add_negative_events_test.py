@@ -56,7 +56,7 @@ class TestAddNegativeEvents(ApplyTestBase):
     def test_add_negative_events_apply__one_event(self, apply__one_event_corr):
         actual = self._apply(
             AddNegativeEventsParams(
-                negative_target_events=["event3"],
+                targets=["event3"],
             )
         )
         expected = apply__one_event_corr
@@ -65,7 +65,7 @@ class TestAddNegativeEvents(ApplyTestBase):
     def test_add_negative_events_apply__two_events(self, apply__two_events_corr):
         actual = self._apply(
             AddNegativeEventsParams(
-                negative_target_events=["event3", "event2"],
+                targets=["event3", "event2"],
             )
         )
         expected = apply__two_events_corr
@@ -83,7 +83,7 @@ class TestAddNegativeEvents(ApplyTestBase):
 
             return df.loc[events_index]
 
-        actual = self._apply(AddNegativeEventsParams(negative_target_events=["event1"], func=custom_func))
+        actual = self._apply(AddNegativeEventsParams(targets=["event1"], func=custom_func))
         expected = apply__custom_func_corr
 
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
@@ -125,7 +125,7 @@ class TestAddNegativeEventsGraph(GraphTestBase):
     def test_add_negative_events_graph__one_event(self, graph__one_event_corr):
         actual = self._apply(
             AddNegativeEventsParams(
-                negative_target_events=["event3"],
+                targets=["event3"],
             )
         )
         expected = graph__one_event_corr
@@ -134,7 +134,7 @@ class TestAddNegativeEventsGraph(GraphTestBase):
     def test_add_negative_events_graph__two_events(self, graph__two_events_corr):
         actual = self._apply(
             AddNegativeEventsParams(
-                negative_target_events=["event3", "event2"],
+                targets=["event3", "event2"],
             )
         )
         expected = graph__two_events_corr
@@ -153,7 +153,7 @@ class TestAddNegativeEventsGraph(GraphTestBase):
             return df.loc[events_index]
 
         expected = graph__custom_func_corr
-        actual = self._apply(AddNegativeEventsParams(negative_target_events=["event1"], func=custom_func))
+        actual = self._apply(AddNegativeEventsParams(targets=["event1"], func=custom_func))
 
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
@@ -162,7 +162,7 @@ class TestAddNegativeEventsHelper:
     def test_add_negative_events_graph__one_event(self, test_stream, graph__one_event_corr):
         source = test_stream
         expected = graph__one_event_corr
-        actual = source.add_negative_events(negative_target_events=["event3"])
+        actual = source.add_negative_events(targets=["event3"])
         actual = actual.to_dataframe()[expected.columns].reset_index(drop=True)
 
         assert pd.testing.assert_frame_equal(actual, expected) is None
@@ -171,7 +171,7 @@ class TestAddNegativeEventsHelper:
         source = test_stream
         expected = graph__two_events_corr
 
-        actual = source.add_negative_events(negative_target_events=["event3", "event2"])
+        actual = source.add_negative_events(targets=["event3", "event2"])
         actual = actual.to_dataframe()[expected.columns].reset_index(drop=True)
 
         assert pd.testing.assert_frame_equal(actual, expected) is None
@@ -191,7 +191,7 @@ class TestAddNegativeEventsHelper:
         source = test_stream
         expected = graph__custom_func_corr
 
-        actual = source.add_negative_events(negative_target_events=["event1"], func=custom_func)
+        actual = source.add_negative_events(targets=["event1"], func=custom_func)
         actual = actual.to_dataframe()[expected.columns].reset_index(drop=True)
 
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None

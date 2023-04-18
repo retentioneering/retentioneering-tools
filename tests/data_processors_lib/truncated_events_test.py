@@ -37,8 +37,8 @@ class TestLabelCroppedPaths(ApplyTestBase):
     def test_label_cropped_paths_apply__left_right(self):
         actual = self._apply(
             LabelCroppedPathsParams(
-                left_truncated_cutoff=(1, "h"),
-                right_truncated_cutoff=(1, "h"),
+                left_cutoff=(1, "h"),
+                right_cutoff=(1, "h"),
             )
         )
         expected = pd.DataFrame(
@@ -55,7 +55,7 @@ class TestLabelCroppedPaths(ApplyTestBase):
     def test_label_cropped_paths_apply__left(self):
         actual = self._apply(
             LabelCroppedPathsParams(
-                left_truncated_cutoff=(1, "h"),
+                left_cutoff=(1, "h"),
             )
         )
         expected = pd.DataFrame(
@@ -70,7 +70,7 @@ class TestLabelCroppedPaths(ApplyTestBase):
     def test_label_cropped_paths_apply__right(self):
         actual = self._apply(
             LabelCroppedPathsParams(
-                right_truncated_cutoff=(1, "h"),
+                right_cutoff=(1, "h"),
             )
         )
         expected = pd.DataFrame(
@@ -84,7 +84,7 @@ class TestLabelCroppedPaths(ApplyTestBase):
 
     def test_params_model__incorrect_datetime_unit(self):
         with pytest.raises(ValidationError):
-            p = LabelCroppedPathsParams(left_truncated_cutoff=(1, "xxx"))
+            p = LabelCroppedPathsParams(left_cutoff=(1, "xxx"))
 
 
 class TestLabelCroppedPathsGraph(GraphTestBase):
@@ -111,8 +111,8 @@ class TestLabelCroppedPathsGraph(GraphTestBase):
     def test_label_cropped_paths_graph__left_right(self):
         actual = self._apply(
             LabelCroppedPathsParams(
-                left_truncated_cutoff=(1, "h"),
-                right_truncated_cutoff=(1, "h"),
+                left_cutoff=(1, "h"),
+                right_cutoff=(1, "h"),
             )
         )
         expected = pd.DataFrame(
@@ -137,7 +137,7 @@ class TestLabelCroppedPathsGraph(GraphTestBase):
     def test_label_cropped_paths_graph__left(self):
         actual = self._apply(
             LabelCroppedPathsParams(
-                left_truncated_cutoff=(1, "h"),
+                left_cutoff=(1, "h"),
             )
         )
         expected = pd.DataFrame(
@@ -160,7 +160,7 @@ class TestLabelCroppedPathsGraph(GraphTestBase):
     def test_label_cropped_paths_graph__right(self):
         actual = self._apply(
             LabelCroppedPathsParams(
-                right_truncated_cutoff=(1, "h"),
+                right_cutoff=(1, "h"),
             )
         )
         expected = pd.DataFrame(
@@ -218,8 +218,8 @@ class TestLabelCroppedPathsHelper:
 
         stream = Eventstream(source_df)
 
-        res = stream.label_cropped_paths(
-            left_truncated_cutoff=(1, "h"), right_truncated_cutoff=(1, "h")
-        ).to_dataframe()[correct_result_columns]
+        res = stream.label_cropped_paths(left_cutoff=(1, "h"), right_cutoff=(1, "h")).to_dataframe()[
+            correct_result_columns
+        ]
 
         assert res.compare(correct_result).shape == (0, 0)

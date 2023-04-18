@@ -56,7 +56,7 @@ class TestDataprocessorsCombination:
         new_users = [1]
         data_processor = LabelNewUsers(params=LabelNewUsersParams(new_users_list=new_users))
         res = apply_data_processor(res, data_processor)
-        data_processor = LabelLostUsers(params=LabelLostUsersParams(lost_cutoff=(5, "m")))
+        data_processor = LabelLostUsers(params=LabelLostUsersParams(timeout=(5, "m")))
         res = apply_data_processor(res, data_processor).to_dataframe()
         correct_result = new_lost_corr
         result_df = res[correct_result.columns].reset_index(drop=True)
@@ -65,7 +65,7 @@ class TestDataprocessorsCombination:
 
     def test_split_sessions__start_end(self, test_stream, split_start_end_corr):
         test_stream = test_stream
-        data_processor = SplitSessions(params=SplitSessionsParams(session_cutoff=(2, "m")))
+        data_processor = SplitSessions(params=SplitSessionsParams(timeout=(2, "m")))
         res = apply_data_processor(test_stream, data_processor)
         res = apply_data_processor(res, AddStartEndEvents(AddStartEndEventsParams())).to_dataframe()
         correct_result = split_start_end_corr
@@ -76,9 +76,9 @@ class TestDataprocessorsCombination:
     def test_add_positive_events__drop_paths(self, test_stream, add_positive_events_drop_paths_corr):
         test_stream = test_stream
         positive_events = ["event3"]
-        data_processor = AddPositiveEvents(params=AddPositiveEventsParams(positive_target_events=positive_events))
+        data_processor = AddPositiveEvents(params=AddPositiveEventsParams(targets=positive_events))
         res = apply_data_processor(test_stream, data_processor)
-        data_processor = DropPaths(params=DropPathsParams(events_num=4))
+        data_processor = DropPaths(params=DropPathsParams(min_steps=4))
         res = apply_data_processor(res, data_processor).to_dataframe()
         correct_result = add_positive_events_drop_paths_corr
         result_df = res[correct_result.columns].reset_index(drop=True)
@@ -94,7 +94,7 @@ class TestDataprocessorsCombination:
         data_processor = FilterEvents(params=FilterEventsParams(func=save_specific_users))
         res = apply_data_processor(test_stream, data_processor)
         negative_events = ["event2"]
-        data_processor = AddNegativeEvents(params=AddNegativeEventsParams(negative_target_events=negative_events))
+        data_processor = AddNegativeEvents(params=AddNegativeEventsParams(targets=negative_events))
         res = apply_data_processor(res, data_processor).to_dataframe()
         correct_result = filter_events_add_negative_events_corr
         result_df = res[correct_result.columns].reset_index(drop=True)
@@ -109,7 +109,7 @@ class TestDataprocessorsCombination:
         params = {"event_name": "last_event", "func": group_events}
         data_processor = GroupEvents(params=GroupEventsParams(**params))
         res = apply_data_processor(test_stream_custom_col, data_processor)
-        data_proccessor = DropPaths(params=DropPathsParams(cutoff=(3, "m")))
+        data_proccessor = DropPaths(params=DropPathsParams(min_time=(3, "m")))
         res = apply_data_processor(res, data_proccessor).to_dataframe()
         correct_result = group_events_drop_paths_corr
         result_df = res[correct_result.columns].reset_index(drop=True)

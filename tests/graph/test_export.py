@@ -114,9 +114,7 @@ class TestPreprocessingGraphExportImport:
         graph = self.create_graph()
 
         node = EventsNode(
-            processor=LabelCroppedPaths(
-                params=LabelCroppedPathsParams(left_truncated_cutoff=(1, "h"), right_truncated_cutoff=(1, "h"))
-            )
+            processor=LabelCroppedPaths(params=LabelCroppedPathsParams(left_cutoff=(1, "h"), right_cutoff=(1, "h")))
         )
         graph.add_node(node=node, parents=[graph.root])
 
@@ -133,7 +131,7 @@ class TestPreprocessingGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "LabelCroppedPaths",
-                        "values": {"left_truncated_cutoff": (1.0, "h"), "right_truncated_cutoff": (1.0, "h")},
+                        "values": {"left_cutoff": (1.0, "h"), "right_cutoff": (1.0, "h")},
                     },
                 },
             ],
@@ -150,7 +148,7 @@ class TestPreprocessingGraphExportImport:
                         "name": "EventsNode",
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
-                            "values": {"left_truncated_cutoff": (1.0, "h"), "right_truncated_cutoff": (1.0, "h")},
+                            "values": {"left_cutoff": (1.0, "h"), "right_cutoff": (1.0, "h")},
                             "name": "LabelCroppedPaths",
                         },
                     },
@@ -174,7 +172,7 @@ class TestPreprocessingGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "LabelCroppedPaths",
-                        "values": {"left_truncated_cutoff": (1.0, "h"), "right_truncated_cutoff": (1.0, "h")},
+                        "values": {"left_cutoff": (1.0, "h"), "right_cutoff": (1.0, "h")},
                     },
                 },
             ],
@@ -249,11 +247,7 @@ class TestPreprocessingGraphExportImport:
     def test_collapse_loops__export(self) -> None:
         graph = self.create_graph()
 
-        node = EventsNode(
-            processor=CollapseLoops(
-                params=CollapseLoopsParams(**{"suffix": "count", "timestamp_aggregation_type": "min"})
-            )
-        )
+        node = EventsNode(processor=CollapseLoops(params=CollapseLoopsParams(**{"suffix": "count", "time_agg": "min"})))
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -269,7 +263,7 @@ class TestPreprocessingGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "CollapseLoops",
-                        "values": {"suffix": "count", "timestamp_aggregation_type": "min"},
+                        "values": {"suffix": "count", "time_agg": "min"},
                     },
                 },
             ],
@@ -287,7 +281,7 @@ class TestPreprocessingGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "CollapseLoops",
-                            "values": {"suffix": "count", "timestamp_aggregation_type": "min"},
+                            "values": {"suffix": "count", "time_agg": "min"},
                         },
                     },
                 ],
@@ -310,7 +304,7 @@ class TestPreprocessingGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "CollapseLoops",
-                        "values": {"suffix": "count", "timestamp_aggregation_type": "min"},
+                        "values": {"suffix": "count", "time_agg": "min"},
                     },
                 },
             ],
@@ -319,7 +313,7 @@ class TestPreprocessingGraphExportImport:
     def test_drop_paths__export(self) -> None:
         graph = self.create_graph()
 
-        node = EventsNode(processor=DropPaths(params=DropPathsParams(cutoff=(1.5, "m"))))
+        node = EventsNode(processor=DropPaths(params=DropPathsParams(min_time=(1.5, "m"))))
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -335,7 +329,7 @@ class TestPreprocessingGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "DropPaths",
-                        "values": {"cutoff": (1.5, "m"), "events_num": None},
+                        "values": {"min_time": (1.5, "m"), "min_steps": None},
                     },
                 },
             ],
@@ -353,7 +347,7 @@ class TestPreprocessingGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "DropPaths",
-                            "values": {"cutoff": (1.5, "m")},
+                            "values": {"min_time": (1.5, "m")},
                         },
                     },
                 ],
@@ -376,7 +370,7 @@ class TestPreprocessingGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "DropPaths",
-                        "values": {"cutoff": (1.5, "m"), "events_num": None},
+                        "values": {"min_time": (1.5, "m"), "min_steps": None},
                     },
                 },
             ],
@@ -385,9 +379,7 @@ class TestPreprocessingGraphExportImport:
     def test_label_lost_users__export(self) -> None:
         graph = self.create_graph()
 
-        node = EventsNode(
-            processor=LabelLostUsers(params=LabelLostUsersParams(lost_users_list=None, lost_cutoff=(4, "h")))
-        )
+        node = EventsNode(processor=LabelLostUsers(params=LabelLostUsersParams(lost_users_list=None, timeout=(4, "h"))))
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -403,7 +395,7 @@ class TestPreprocessingGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "LabelLostUsers",
-                        "values": {"lost_users_list": None, "lost_cutoff": (4.0, "h")},
+                        "values": {"lost_users_list": None, "timeout": (4.0, "h")},
                     },
                 },
             ],
@@ -421,7 +413,7 @@ class TestPreprocessingGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "LabelLostUsers",
-                            "values": {"lost_users_list": None, "lost_cutoff": (4.0, "h")},
+                            "values": {"lost_users_list": None, "timeout": (4.0, "h")},
                         },
                     },
                 ],
@@ -444,7 +436,7 @@ class TestPreprocessingGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "LabelLostUsers",
-                        "values": {"lost_users_list": None, "lost_cutoff": (4.0, "h")},
+                        "values": {"lost_users_list": None, "timeout": (4.0, "h")},
                     },
                 },
             ],
@@ -454,9 +446,7 @@ class TestPreprocessingGraphExportImport:
         graph = self.create_graph()
 
         node = EventsNode(
-            processor=AddNegativeEvents(
-                params=AddNegativeEventsParams(**{"negative_target_events": ["event3", "event2"]})
-            )
+            processor=AddNegativeEvents(params=AddNegativeEventsParams(**{"targets": ["event3", "event2"]}))
         )
         graph.add_node(node=node, parents=[graph.root])
 
@@ -474,18 +464,18 @@ class TestPreprocessingGraphExportImport:
                     "processor": {
                         "name": "AddNegativeEvents",
                         "values": {
-                            "negative_target_events": ["event3", "event2"],
+                            "targets": ["event3", "event2"],
                             "func": "def _default_func(eventstream: EventstreamType, "
-                            "negative_target_events: List[str]) -> pd.DataFrame:\n"
+                            "targets: List[str]) -> pd.DataFrame:\n"
                             '    """\n'
-                            "    Filters rows with target events from the input eventstream.\n"
+                            "    Filter rows with target events from the input eventstream.\n"
                             "\n"
                             "    Parameters\n"
                             "    ----------\n"
                             "    eventstream : Eventstream\n"
                             "        Source eventstream or output from previous nodes.\n"
                             "\n"
-                            "    negative_target_events : list of str\n"
+                            "    targets : list of str\n"
                             "        Each event from that list is associated with the bad result (scenario)\n"
                             "        of user's behaviour (experience) in the product.\n"
                             "        If there are several target events in user path - the event with minimum "
@@ -494,17 +484,18 @@ class TestPreprocessingGraphExportImport:
                             "    Returns\n"
                             "    -------\n"
                             "    pd.DataFrame\n"
-                            "        Filtered DataFrame with negative_target_events and its timestamps.\n"
+                            "        Filtered DataFrame with targets and its timestamps.\n"
                             '    """\n'
                             "    user_col = eventstream.schema.user_id\n"
                             "    time_col = eventstream.schema.event_timestamp\n"
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n"
                             "\n"
-                            "    negative_events_index = (\n"
-                            "        df[df[event_col].isin(negative_target_events)]."
-                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
-                            "    return df.loc[negative_events_index]  # type: ignore\n",
+                            "    targets_index = "
+                            "df[df[event_col].isin(targets)]."
+                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n"
+                            "\n"
+                            "    return df.loc[targets_index]  # type: ignore\n",
                         },
                     },
                 },
@@ -524,19 +515,19 @@ class TestPreprocessingGraphExportImport:
                         "processor": {
                             "name": "AddNegativeEvents",
                             "values": {
-                                "negative_target_events": ["event3", "event2"],
+                                "targets": ["event3", "event2"],
                                 "func": "def _default_func(eventstream, "
-                                "negative_target_events) -> pd.DataFrame:\n"
+                                "targets) -> pd.DataFrame:\n"
                                 "    user_col = eventstream.schema.user_id\n"
                                 "    time_col = eventstream.schema.event_timestamp\n"
                                 "    event_col = eventstream.schema.event_name\n"
                                 "    df = eventstream.to_dataframe()\n"
                                 "\n"
-                                "    negative_events_index = "
-                                "df[df[event_col].isin(negative_target_events)].groupby"
+                                "    targets_index = "
+                                "df[df[event_col].isin(targets)].groupby"
                                 "(user_col)[time_col].idxmin()\n"
                                 "\n"
-                                "    return df.iloc[negative_events_index]",
+                                "    return df.iloc[targets_index]",
                             },
                         },
                     },
@@ -561,19 +552,19 @@ class TestPreprocessingGraphExportImport:
                     "processor": {
                         "name": "AddNegativeEvents",
                         "values": {
-                            "negative_target_events": ["event3", "event2"],
+                            "targets": ["event3", "event2"],
                             "func": "def _default_func(eventstream, "
-                            "negative_target_events) -> pd.DataFrame:\n"
+                            "targets) -> pd.DataFrame:\n"
                             "    user_col = eventstream.schema.user_id\n"
                             "    time_col = eventstream.schema.event_timestamp\n"
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n"
                             "\n"
-                            "    negative_events_index = "
-                            "df[df[event_col].isin(negative_target_events)].groupby"
+                            "    targets_index = "
+                            "df[df[event_col].isin(targets)].groupby"
                             "(user_col)[time_col].idxmin()\n"
                             "\n"
-                            "    return df.iloc[negative_events_index]",
+                            "    return df.iloc[targets_index]",
                         },
                     },
                 },
@@ -584,9 +575,7 @@ class TestPreprocessingGraphExportImport:
         graph = self.create_graph()
 
         node = EventsNode(
-            processor=AddPositiveEvents(
-                params=AddPositiveEventsParams(**{"positive_target_events": ["event3", "event2"]})
-            )
+            processor=AddPositiveEvents(params=AddPositiveEventsParams(**{"targets": ["event3", "event2"]}))
         )
         graph.add_node(node=node, parents=[graph.root])
 
@@ -604,19 +593,19 @@ class TestPreprocessingGraphExportImport:
                     "processor": {
                         "name": "AddPositiveEvents",
                         "values": {
-                            "positive_target_events": ["event3", "event2"],
+                            "targets": ["event3", "event2"],
                             "func": "def _default_func("
-                            "eventstream: EventstreamType, positive_target_events: list[str]) "
+                            "eventstream: EventstreamType, targets: list[str]) "
                             "-> pd.DataFrame:\n"
                             '    """\n'
-                            "    Filters rows with target events from the input eventstream.\n"
+                            "    Filter rows with target events from the input eventstream.\n"
                             "\n"
                             "    Parameters\n"
                             "    ----------\n"
                             "    eventstream : Eventstream\n"
                             "        Source eventstream or output from previous nodes.\n"
                             "\n"
-                            "    positive_target_events : list of str\n"
+                            "    targets : list of str\n"
                             "        Condition for eventstream filtering.\n"
                             "        Each event from that list is associated with a conversion goal "
                             "of the user behaviour in the product.\n"
@@ -626,16 +615,17 @@ class TestPreprocessingGraphExportImport:
                             "    Returns\n"
                             "    -------\n"
                             "    pd.DataFrame\n"
-                            "        Filtered DataFrame with positive_target_events and its timestamps.\n"
+                            "        Filtered DataFrame with targets and its timestamps.\n"
                             '    """\n'
                             "    user_col = eventstream.schema.user_id\n"
                             "    time_col = eventstream.schema.event_timestamp\n"
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n\n    "
-                            "positive_events_index = (\n        "
-                            "df[df[event_col].isin(positive_target_events)]."
-                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
-                            "    return df.loc[positive_events_index]  # type: ignore\n",
+                            "targets_index = "
+                            "df[df[event_col].isin(targets)]."
+                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n"
+                            "\n"
+                            "    return df.loc[targets_index]  # type: ignore\n",
                         },
                     },
                 },
@@ -654,7 +644,7 @@ class TestPreprocessingGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "name": "AddPositiveEvents",
-                            "values": {"positive_target_events": ["event3", "event2"]},
+                            "values": {"targets": ["event3", "event2"]},
                         },
                     },
                 ],
@@ -678,19 +668,19 @@ class TestPreprocessingGraphExportImport:
                     "processor": {
                         "name": "AddPositiveEvents",
                         "values": {
-                            "positive_target_events": ["event3", "event2"],
+                            "targets": ["event3", "event2"],
                             "func": "def _default_func("
-                            "eventstream: EventstreamType, positive_target_events: list[str]) "
+                            "eventstream: EventstreamType, targets: list[str]) "
                             "-> pd.DataFrame:\n"
                             '    """\n'
-                            "    Filters rows with target events from the input eventstream.\n"
+                            "    Filter rows with target events from the input eventstream.\n"
                             "\n"
                             "    Parameters\n"
                             "    ----------\n"
                             "    eventstream : Eventstream\n"
                             "        Source eventstream or output from previous nodes.\n"
                             "\n"
-                            "    positive_target_events : list of str\n"
+                            "    targets : list of str\n"
                             "        Condition for eventstream filtering.\n"
                             "        Each event from that list is associated with a conversion goal "
                             "of the user behaviour in the product.\n"
@@ -700,16 +690,17 @@ class TestPreprocessingGraphExportImport:
                             "    Returns\n"
                             "    -------\n"
                             "    pd.DataFrame\n"
-                            "        Filtered DataFrame with positive_target_events and its timestamps.\n"
+                            "        Filtered DataFrame with targets and its timestamps.\n"
                             '    """\n'
                             "    user_col = eventstream.schema.user_id\n"
                             "    time_col = eventstream.schema.event_timestamp\n"
                             "    event_col = eventstream.schema.event_name\n"
                             "    df = eventstream.to_dataframe()\n\n    "
-                            "positive_events_index = (\n        "
-                            "df[df[event_col].isin(positive_target_events)]."
-                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n"
-                            "    return df.loc[positive_events_index]  # type: ignore\n",
+                            "targets_index = "
+                            "df[df[event_col].isin(targets)]."
+                            "groupby(user_col)[time_col].idxmin()  # type: ignore\n"
+                            "\n"
+                            "    return df.loc[targets_index]  # type: ignore\n",
                         },
                     },
                 },
@@ -721,7 +712,7 @@ class TestPreprocessingGraphExportImport:
 
         node = EventsNode(
             processor=SplitSessions(
-                params=SplitSessionsParams(session_cutoff=(30, "m"), session_col="session_id", mark_truncated=True)
+                params=SplitSessionsParams(timeout=(30, "m"), session_col="session_id", mark_truncated=True)
             )
         )
         graph.add_node(node=node, parents=[graph.root])
@@ -739,7 +730,7 @@ class TestPreprocessingGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "SplitSessions",
-                        "values": {"session_cutoff": (30.0, "m"), "session_col": "session_id", "mark_truncated": True},
+                        "values": {"timeout": (30.0, "m"), "session_col": "session_id", "mark_truncated": True},
                     },
                 },
             ],
@@ -758,7 +749,7 @@ class TestPreprocessingGraphExportImport:
                         "processor": {
                             "name": "SplitSessions",
                             "values": {
-                                "session_cutoff": (30.0, "m"),
+                                "timeout": (30.0, "m"),
                                 "session_col": "session_id",
                                 "mark_truncated": True,
                             },
@@ -784,7 +775,7 @@ class TestPreprocessingGraphExportImport:
                     "name": "EventsNode",
                     "processor": {
                         "name": "SplitSessions",
-                        "values": {"session_cutoff": (30.0, "m"), "session_col": "session_id", "mark_truncated": True},
+                        "values": {"timeout": (30.0, "m"), "session_col": "session_id", "mark_truncated": True},
                     },
                 },
             ],

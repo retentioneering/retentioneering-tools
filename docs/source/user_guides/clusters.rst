@@ -15,7 +15,7 @@ Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simp
     from retentioneering import datasets
 
     stream = datasets.load_simple_shop()\
-        .split_sessions(session_cutoff=(30, 'm'))
+        .split_sessions(timeout=(30, 'm'))
 
 Above we use an additional call of the :ref:`split_sessions<split_sessions>` data processor helper. We will need this session split in one of the examples in this user guide.
 

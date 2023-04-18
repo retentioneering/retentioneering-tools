@@ -16,25 +16,25 @@ class DropPathsParams(ParamsModel):
     A class with parameters for :py:class:`.DropPaths` class.
     """
 
-    events_num: Optional[int]
-    cutoff: Optional[Tuple[float, DATETIME_UNITS]]
+    min_steps: Optional[int]
+    min_time: Optional[Tuple[float, DATETIME_UNITS]]
 
     _widgets = {
-        "cutoff": ReteTimeWidget(),
+        "min_time": ReteTimeWidget(),
     }
 
 
 class DropPaths(DataProcessor):
     """
     Filter user paths based on the path length, removing the paths that are shorter than the
-    specified number of events or cut_off.
+    specified number of events or time.
 
     Parameters
     ----------
-    events_num : int, optional
-        Minimum user path length
+    min_steps : int, optional
+        Minimum user path length measured in the number of events.
 
-    cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
+    min_time : Tuple(float, :numpy_link:`DATETIME_UNITS<>`), optional
         Minimum user path length and its unit of measure.
 
     Returns
@@ -45,7 +45,7 @@ class DropPaths(DataProcessor):
     Raises
     ------
     ValueError
-        If both of ``events_num`` and ``cutoff`` are empty or both are given.
+        If both of ``min_steps`` and ``min_time`` are empty or both are given.
 
     See Also
     --------
@@ -68,31 +68,31 @@ class DropPaths(DataProcessor):
         user_col = eventstream.schema.user_id
         time_col = eventstream.schema.event_timestamp
 
-        cutoff, cutoff_unit = None, None
-        events_num = self.params.events_num
+        min_time, time_unit = None, None
+        min_steps = self.params.min_steps
 
-        if self.params.cutoff:
-            cutoff, cutoff_unit = self.params.cutoff
+        if self.params.min_time:
+            min_time, time_unit = self.params.min_time
 
-        if events_num and cutoff:
-            raise ValueError("Events_num and cutoff parameters cannot be used simultaneously!")
+        if min_steps and min_time:
+            raise ValueError("min_steps and min_time parameters cannot be used simultaneously!")
 
-        if not events_num and not cutoff:
-            raise ValueError("Either events_num or cutoff must be specified!")
+        if not min_steps and not min_time:
+            raise ValueError("Either min_steps or min_time must be specified!")
 
         events = eventstream.to_dataframe(copy=True)
 
-        if cutoff and cutoff_unit:
+        if min_time and time_unit:
             userpath = (
                 events.groupby(user_col)[time_col]
                 .agg([np.min, np.max])
                 .rename(columns={"amin": "start", "amax": "end"})
             )
-            mask_ = (userpath["end"] - userpath["start"]) / np.timedelta64(1, cutoff_unit) < cutoff  # type: ignore
+            mask_ = (userpath["end"] - userpath["start"]) / np.timedelta64(1, time_unit) < min_time  # type: ignore
 
         else:
             userpath = events.groupby([user_col])[[time_col]].nunique().rename(columns={time_col: "length"})
-            mask_ = userpath["length"] < events_num
+            mask_ = userpath["length"] < min_steps
 
         users_to_delete = userpath[mask_].index
         events = events[events[user_col].isin(users_to_delete)]

@@ -16,7 +16,7 @@ class TestDescribe:
         assert pd.testing.assert_frame_equal(result, expected_df) is None
 
     def test_describe__session(self, test_stream: EventstreamType, session_corr: pd.DataFrame):
-        de = _Describe(test_stream.split_sessions(session_cutoff=(10, "m")))
+        de = _Describe(test_stream.split_sessions(timeout=(10, "m")))
         result = de._values()
         expected_df = session_corr
         assert pd.testing.assert_frame_equal(result, expected_df) is None

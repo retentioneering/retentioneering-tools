@@ -6,9 +6,7 @@ from ..types import EventstreamType
 
 
 class AddPositiveEventsHelperMixin:
-    def add_positive_events(
-        self, positive_target_events: List[str], func: Optional[Callable] = None
-    ) -> EventstreamType:
+    def add_positive_events(self, targets: List[str], func: Optional[Callable] = None) -> EventstreamType:
         """
         A method of ``Eventstream`` class that creates new synthetic
         events in paths of all users having the specified events - ``positive_target_RAW_EVENT_NAME``.
@@ -38,7 +36,7 @@ class AddPositiveEventsHelperMixin:
 
         p = PreprocessingGraph(source_stream=self)  # type: ignore
 
-        params: dict[str, list[str] | Callable] = {"positive_target_events": positive_target_events}
+        params: dict[str, list[str] | Callable] = {"targets": targets}
         if func:
             params["func"] = func
 

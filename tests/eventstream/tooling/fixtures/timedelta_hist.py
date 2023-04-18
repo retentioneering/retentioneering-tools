@@ -39,5 +39,5 @@ def source_stream_add_start_end_events() -> EventstreamType:
 @pytest.fixture
 def source_stream_sessions() -> EventstreamType:
     source_df = read_test_data("input.csv")
-    source_stream = Eventstream(source_df).add_start_end_events().split_sessions(session_cutoff=(1, "s"))
+    source_stream = Eventstream(source_df).add_start_end_events().split_sessions(timeout=(1, "s"))
     return source_stream

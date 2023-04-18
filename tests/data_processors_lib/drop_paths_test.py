@@ -45,7 +45,7 @@ class TestDropPaths(ApplyTestBase):
     def test_drop_paths_apply__by_event_4(self):
         actual = self._apply(
             DropPathsParams(
-                events_num=4,
+                min_steps=4,
             )
         )
         expected = pd.DataFrame(
@@ -63,10 +63,10 @@ class TestDropPaths(ApplyTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-    def test_drop_paths_apply__by_cutoff(self):
+    def test_drop_paths_apply__by_min_time(self):
         actual = self._apply(
             DropPathsParams(
-                cutoff=(1.5, "m"),
+                min_time=(1.5, "m"),
             )
         )
         expected = pd.DataFrame(
@@ -118,7 +118,7 @@ class TestDropPathsGraph(GraphTestBase):
     def test_drop_paths_graph__by_event_4(self):
         actual = self._apply(
             DropPathsParams(
-                events_num=4,
+                min_steps=4,
             )
         )
         expected = pd.DataFrame(
@@ -140,10 +140,10 @@ class TestDropPathsGraph(GraphTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-    def test_drop_paths_graph__by_cutoff(self):
+    def test_drop_paths_graph__by_min_time(self):
         actual = self._apply(
             DropPathsParams(
-                cutoff=(1.5, "m"),
+                min_time=(1.5, "m"),
             )
         )
         expected = pd.DataFrame(
@@ -220,12 +220,12 @@ class TestDropPathsHelper:
 
         source = Eventstream(source_df)
 
-        result = source.drop_paths(events_num=4)
+        result = source.drop_paths(min_steps=4)
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_drop_paths_graph__by_cutoff(self):
+    def test_drop_paths_graph__by_min_time(self):
         source_df = pd.DataFrame(
             [
                 [1, "path_start", "path_start", "2022-01-01 00:01:00"],
@@ -277,7 +277,7 @@ class TestDropPathsHelper:
         )
 
         source = Eventstream(source_df)
-        result = source.drop_paths(cutoff=(1.5, "m"))
+        result = source.drop_paths(min_time=(1.5, "m"))
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)

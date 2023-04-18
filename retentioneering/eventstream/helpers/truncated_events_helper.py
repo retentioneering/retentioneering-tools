@@ -10,8 +10,8 @@ from ..types import EventstreamType
 class TruncatedEventsHelperMixin:
     def truncated_events(
         self,
-        left_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]],
-        right_truncated_cutoff: Optional[Tuple[float, DATETIME_UNITS]],
+        left_cutoff: Optional[Tuple[float, DATETIME_UNITS]],
+        right_cutoff: Optional[Tuple[float, DATETIME_UNITS]],
     ) -> EventstreamType:
         """
         A method of ``Eventstream`` class that creates new synthetic event(s) for each user based
@@ -42,7 +42,7 @@ class TruncatedEventsHelperMixin:
 
         p = PreprocessingGraph(source_stream=self)  # type: ignore
 
-        params = dict(left_truncated_cutoff=left_truncated_cutoff, right_truncated_cutoff=right_truncated_cutoff)
+        params = dict(left_cutoff=left_cutoff, right_cutoff=right_cutoff)
 
         node = EventsNode(processor=TruncatedEvents(params=TruncatedEventsParams(**params)))  # type: ignore
         p.add_node(node=node, parents=[p.root])

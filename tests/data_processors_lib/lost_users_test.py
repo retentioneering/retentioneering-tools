@@ -43,8 +43,8 @@ class TestLostUsers(ApplyTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-    def test_lost_users_apply__lost_cutoff(self):
-        actual = self._apply(LostUsersParams(lost_cutoff=(4, "h")))
+    def test_lost_users_apply__timeout(self):
+        actual = self._apply(LostUsersParams(timeout=(4, "h")))
         expected = pd.DataFrame(
             [
                 [1, "lost_user", "lost_user", "2022-01-01 00:05:00"],
@@ -56,7 +56,7 @@ class TestLostUsers(ApplyTestBase):
 
     def test_params_model__incorrect_datetime_unit(self):
         with pytest.raises(ValidationError):
-            p = LostUsersParams(lost_cutoff=(1, "xxx"))
+            p = LostUsersParams(timeout=(1, "xxx"))
 
 
 class TestLostUsersGraph(GraphTestBase):
@@ -101,8 +101,8 @@ class TestLostUsersGraph(GraphTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-    def test_lost_users_graph__lost_cutoff(self):
-        actual = self._apply(LostUsersParams(lost_cutoff=(4, "h")))
+    def test_lost_users_graph__timeout(self):
+        actual = self._apply(LostUsersParams(timeout=(4, "h")))
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -164,7 +164,7 @@ class TestLostUsersHelper:
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_lost_users_graph__lost_cutoff(self):
+    def test_lost_users_graph__timeout(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -198,7 +198,7 @@ class TestLostUsersHelper:
             ],
             columns=correct_result_columns,
         )
-        result = source.lost_users(lost_cutoff=(4, "h"))
+        result = source.lost_users(timeout=(4, "h"))
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)

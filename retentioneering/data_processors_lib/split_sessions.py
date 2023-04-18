@@ -19,11 +19,11 @@ class SplitSessionsParams(ParamsModel):
 
     """
 
-    session_cutoff: Tuple[float, DATETIME_UNITS]
+    timeout: Tuple[float, DATETIME_UNITS]
     mark_truncated: bool = False
     session_col: str = "session_id"
 
-    _widgets = {"session_cutoff": ReteTimeWidget()}
+    _widgets = {"timeout": ReteTimeWidget()}
 
 
 class SplitSessions(DataProcessor):
@@ -35,13 +35,13 @@ class SplitSessions(DataProcessor):
 
     Parameters
     ----------
-    session_cutoff : Tuple(float, :numpy_link:`DATETIME_UNITS<>`)
+    timeout : Tuple(float, :numpy_link:`DATETIME_UNITS<>`)
         Threshold value and its unit of measure.
         ``session_start`` and ``session_end`` events are always placed before the first and after the last event
         in each user's path.
         Because user can have more than one session, it calculates timedelta between every two consecutive events in
         each user's path.
-        If the calculated timedelta is more than selected session_cutoff,
+        If the calculated timedelta is more than selected timeout,
         new synthetic events - ``session_start`` and ``session_end`` are created inside the user path,
         marking session starting and ending points.
 
@@ -51,7 +51,7 @@ class SplitSessions(DataProcessor):
         - first event in each user's path and first event in the whole eventstream.
         - last event in each user's path and last event in the whole eventstream.
 
-        For users with timedelta less than selected ``session_cutoff``,
+        For users with timedelta less than selected ``timeout``,
         a new synthetic event - ``session_start_truncated`` or ``session_end_truncated`` will be added.
 
     session_col : str, default "session_id"
@@ -75,7 +75,7 @@ class SplitSessions(DataProcessor):
         +-----------------------------+----------------------------+-----------------+
 
         If the delta between timestamps of two consecutive events
-        (raw_event_n and raw_event_n+1) is greater than the selected ``session_cutoff``
+        (raw_event_n and raw_event_n+1) is greater than the selected ``timeout``
         the user will have more than one session:
 
         +--------------+-------------------+------------------+-------------------+------------------+
@@ -116,7 +116,7 @@ class SplitSessions(DataProcessor):
         type_col = eventstream.schema.event_type
         event_col = eventstream.schema.event_name
         session_col = self.params.session_col
-        session_cutoff, session_cutoff_unit = self.params.session_cutoff
+        timeout, timeout_unit = self.params.timeout
         mark_truncated = self.params.mark_truncated
 
         df = eventstream.to_dataframe(copy=True)
@@ -124,11 +124,11 @@ class SplitSessions(DataProcessor):
 
         df["prev_timedelta"] = df[time_col] - df.groupby(user_col)[time_col].shift(1)
         df["next_timedelta"] = df.groupby(user_col)[time_col].shift(-1) - df[time_col]
-        df["prev_timedelta"] /= np.timedelta64(1, session_cutoff_unit)  # type: ignore
-        df["next_timedelta"] /= np.timedelta64(1, session_cutoff_unit)  # type: ignore
+        df["prev_timedelta"] /= np.timedelta64(1, timeout_unit)  # type: ignore
+        df["next_timedelta"] /= np.timedelta64(1, timeout_unit)  # type: ignore
 
-        session_starts_mask = (df["prev_timedelta"] > session_cutoff) | (df["prev_timedelta"].isnull())
-        session_ends_mask = (df["next_timedelta"] > session_cutoff) | (df["next_timedelta"].isnull())
+        session_starts_mask = (df["prev_timedelta"] > timeout) | (df["prev_timedelta"].isnull())
+        session_ends_mask = (df["next_timedelta"] > timeout) | (df["next_timedelta"].isnull())
 
         df["is_session_start"] = session_starts_mask
         df[session_col] = df.groupby(user_col)["is_session_start"].transform(np.cumsum)
@@ -150,11 +150,11 @@ class SplitSessions(DataProcessor):
         if mark_truncated:
             dataset_start = df[time_col].min()
             dataset_end = df[time_col].max()
-            start_to_start = (session_starts[time_col] - dataset_start) / np.timedelta64(1, session_cutoff_unit)
-            end_to_end = (dataset_end - session_ends[time_col]) / np.timedelta64(1, session_cutoff_unit)
+            start_to_start = (session_starts[time_col] - dataset_start) / np.timedelta64(1, timeout_unit)
+            end_to_end = (dataset_end - session_ends[time_col]) / np.timedelta64(1, timeout_unit)
 
-            session_starts_truncated = session_starts[start_to_start < session_cutoff].reset_index()
-            session_ends_truncated = session_ends[end_to_end < session_cutoff].reset_index()
+            session_starts_truncated = session_starts[start_to_start < timeout].reset_index()
+            session_ends_truncated = session_ends[end_to_end < timeout].reset_index()
 
             session_starts_truncated[event_col] = "session_start_truncated"
             session_starts_truncated[type_col] = "session_start_truncated"

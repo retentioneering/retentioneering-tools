@@ -78,13 +78,13 @@ Next, we specify the information about the graph nodes and the underlying data p
     +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
     | node5 | :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>`          | ``func=get_existing_users``                                                                                                                                   | node3        |
     +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
-    | node6 | :py:meth:`TruncatedEvents <retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` | ``left_truncated_cutoff=(1, 'h')``, ``right_truncated_cutoff=(1, 'h')``                                                                                       | node5        |
+    | node6 | :py:meth:`TruncatedEvents <retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` | ``left_cutoff=(1, 'h')``, ``right_cutoff=(1, 'h')``                                                                                                           | node5        |
     +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
     | node7 | :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>`          | ``func=remove_truncated_paths``                                                                                                                               | node6        |
     +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
     | node8 | :py:meth:`MergeNode <retentioneering.preprocessing_graph.nodes.MergeNode>`                        | –                                                                                                                                                             | node4, node7 |
     +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
-    | node9 | :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>`       | ``session_cutoff=(30, 'm')``                                                                                                                                  | node8        |
+    | node9 | :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>`       | ``timeout=(30, 'm')``                                                                                                                                         | node8        |
     +-------+---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------+
 
 The functions which are passed to ``func`` parameter in the FilterEvents and GroupEvents data processors will be defined below.
@@ -168,7 +168,7 @@ Now, we are going to implement splitting logic for ``node4`` and ``node5``. You 
 
     Splitting the logic after ``node3``.
 
-At the next step we create :py:meth:`TruncatedEvents <retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` as ``node6`` with ``left_truncated_cutoff=(1, 'h')`` parameter. Then we connect another :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>` node (``node7``) with the ``remove_truncated_paths`` function defined below:
+At the next step we create :py:meth:`TruncatedEvents <retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` as ``node6`` with ``left_cutoff=(1, 'h')`` parameter. Then we connect another :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>` node (``node7``) with the ``remove_truncated_paths`` function defined below:
 
 .. code-block:: python
 
@@ -190,7 +190,7 @@ Now, we need to merge two branches into one node. Special :py:meth:`MergeNode <r
 
     Merge node creation.
 
-Finally, we create the last node :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>` inheriting it from the merging node and setting up ``session_cutoff=(30, 'm')`` parameter.
+Finally, we create the last node :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>` inheriting it from the merging node and setting up ``timeout=(30, 'm')`` parameter.
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_node_9.png
     :height: 600
@@ -387,15 +387,15 @@ Creation of the next ``node4`` and ``node5`` is similar. We need to create a cou
     pgraph.add_node(node=node4, parents=[node3])
     pgraph.add_node(node=node5, parents=[node3])
 
-There is nothing new in the creation of the ``node6``. We just pass a couple of ``left_truncated_cutoff`` and ``right_truncated_cutoff`` parameters to :py:meth:`TruncatedEventsParams <retentioneering.data_processors_lib.truncated_events.TruncatedEventsParams>` and set up a :py:meth:`TruncatedEvents <retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` node.
+There is nothing new in the creation of the ``node6``. We just pass a couple of ``left_cutoff`` and ``right_cutoff`` parameters to :py:meth:`TruncatedEventsParams <retentioneering.data_processors_lib.truncated_events.TruncatedEventsParams>` and set up a :py:meth:`TruncatedEvents <retentioneering.data_processors_lib.truncated_events.TruncatedEvents>` node.
 
 .. code-block:: python
 
     from retentioneering.data_processors_lib import TruncatedEvents, TruncatedEventsParams
 
     params = {
-        "left_truncated_cutoff": (1, 'h'),
-        "right_truncated_cutoff": (1, 'h'),
+        "left_cutoff": (1, 'h'),
+        "right_cutoff": (1, 'h'),
     }
     node6 = EventsNode(TruncatedEvents(params=TruncatedEventsParams(**params)))
     pgraph.add_node(node=node6, parents=[node5])
@@ -424,13 +424,13 @@ Next, ``node8``. As we discussed earlier, :py:meth:`MergeNode <retentioneering.p
     pgraph.add_node(node=node8, parents=[node4, node7])
 
 
-Finally, for ``node9`` we wrap :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>` data processor to a node passing a single parameter ``session_cutoff`` and link it to the merging node:
+Finally, for ``node9`` we wrap :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>` data processor to a node passing a single parameter ``timeout`` and link it to the merging node:
 
 .. code-block:: python
 
     from retentioneering.data_processors_lib import SplitSessions, SplitSessionsParams
 
-    node9 = EventsNode(SplitSessions(params=SplitSessionsParams(session_cutoff=(30, 'm'))))
+    node9 = EventsNode(SplitSessions(params=SplitSessionsParams(timeout=(30, 'm'))))
     pgraph.add_node(node=node9, parents=[node8])
 
 .. _preprocessing_running_the_calculation:
@@ -575,8 +575,8 @@ Here we just provide the same code combined in a single chunk so you could simpl
 
     # node6
     params = {
-        "left_truncated_cutoff": (1, 'h'),
-        "right_truncated_cutoff": (1, 'h'),
+        "left_cutoff": (1, 'h'),
+        "right_cutoff": (1, 'h'),
     }
     node6 = EventsNode(TruncatedEvents(params=TruncatedEventsParams(**params)))
 
@@ -589,7 +589,7 @@ Here we just provide the same code combined in a single chunk so you could simpl
 
     node7 = EventsNode(FilterEvents(params=FilterEventsParams(func=remove_truncated_paths)))
     node8 = MergeNode()
-    node9 = EventsNode(SplitSessions(params=SplitSessionsParams(session_cutoff=(30, 'm'))))
+    node9 = EventsNode(SplitSessions(params=SplitSessionsParams(timeout=(30, 'm'))))
 
     # linking the nodes to get the graph
     pgraph = PreprocessingGraph(stream)
@@ -664,9 +664,9 @@ Let us compose this graph:
         return df[schema.event_name].isin(['payment_choice', 'payment_done', 'payment_card', 'payment_cash'])
 
     stream_7_nodes = stream\
-        .delete_users(events_num=6)\
+        .delete_users(min_steps=6)\
         .add_start_end()\
-        .split_sessions(session_cutoff=(30, 'm'))\
+        .split_sessions(timeout=(30, 'm'))\
         .group(event_name='browsing', func=group_browsing)\
         .group(event_name='delivery', func=group_delivery)\
         .group(event_name='payment', func=group_payment)

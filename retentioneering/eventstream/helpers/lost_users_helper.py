@@ -9,7 +9,7 @@ from ..types import EventstreamType
 
 class LostUsersHelperMixin:
     def lost_users(
-        self, lost_cutoff: Optional[Tuple[float, DATETIME_UNITS]] = None, lost_users_list: Optional[List[int]] = None
+        self, timeout: Optional[Tuple[float, DATETIME_UNITS]] = None, lost_users_list: Optional[List[int]] = None
     ) -> EventstreamType:
         """
         A method of ``Eventstream`` class that creates one
@@ -40,7 +40,7 @@ class LostUsersHelperMixin:
 
         node = EventsNode(
             processor=LostUsersEvents(
-                params=LostUsersParams(lost_cutoff=lost_cutoff, lost_users_list=lost_users_list)  # type: ignore
+                params=LostUsersParams(timeout=timeout, lost_users_list=lost_users_list)  # type: ignore
             )
         )
         p.add_node(node=node, parents=[p.root])

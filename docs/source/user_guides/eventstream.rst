@@ -682,7 +682,7 @@ data processor, which adds new event with prefix ``positive_target_``.
 
 .. code-block:: python
 
-    add_events_stream = stream3.positive_target(positive_target_events=['B'])
+    add_events_stream = stream3.positive_target(targets=['B'])
     add_events_stream.to_dataframe()
 
 .. raw:: html
@@ -911,7 +911,7 @@ For demonstration purposes, we add ``session_id`` column by applying
 
     stream_with_sessions = datasets\
         .load_simple_shop()\
-        .split_sessions(session_cutoff=(30, 'm'))
+        .split_sessions(timeout=(30, 'm'))
 
     stream_with_sessions.to_dataframe().head()
 
@@ -1652,7 +1652,7 @@ Let us add to our dataset some common synthetic events using :ref:`StartEndEvent
     stream_with_synthetic = datasets\
         .load_simple_shop()\
         .add_start_end()\
-        .split_sessions(session_cutoff=(30, 'm'))
+        .split_sessions(timeout=(30, 'm'))
 
     stream_with_synthetic.timedelta_hist(log_scale=True, timedelta_unit='m')
     stream_with_synthetic.timedelta_hist(

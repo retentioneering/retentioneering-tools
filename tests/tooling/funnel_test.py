@@ -88,10 +88,9 @@ class TestFunnel:
 
         source = Eventstream(source_df)
 
-        funnel = Funnel(
-            eventstream=source, funnel_type="open", stages=["catalog", ["product1", "product2"], "cart", "payment_done"]
-        )
-        funnel.fit()
+        funnel = Funnel(eventstream=source)
+
+        funnel.fit(funnel_type="open", stages=["catalog", ["product1", "product2"], "cart", "payment_done"])
         res_dict = funnel.res_dict
 
         correct_result = {
@@ -178,14 +177,14 @@ class TestFunnel:
 
         source = Eventstream(source_df)
 
-        funnel = Funnel(
-            eventstream=source,
+        funnel = Funnel(eventstream=source)
+
+        funnel.fit(
             funnel_type="open",
             stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
             stage_names=["catalog", "product", "cart", "payment_done"],
         )
 
-        funnel.fit()
         res_dict = funnel.res_dict
 
         correct_result = {
@@ -272,12 +271,11 @@ class TestFunnel:
 
         source = Eventstream(source_df)
 
-        funnel = Funnel(
-            eventstream=source,
+        funnel = Funnel(eventstream=source)
+        funnel.fit(
             stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
             funnel_type="closed",
         )
-        funnel.fit()
         res_dict = funnel.res_dict
 
         correct_result = {
@@ -364,14 +362,13 @@ class TestFunnel:
 
         source = Eventstream(source_df)
 
-        funnel = Funnel(
-            eventstream=source,
+        funnel = Funnel(eventstream=source)
+        funnel.fit(
             stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
             stage_names=None,
             funnel_type="closed",
         )
 
-        funnel.fit()
         res_dict = funnel.res_dict
 
         correct_result = {
@@ -460,14 +457,12 @@ class TestFunnel:
         conv_users = [1, 2, 3, 7]
         non_conv_users = [4, 5, 6, 8]
 
-        funnel = Funnel(
-            eventstream=source,
+        funnel = Funnel(eventstream=source)
+        funnel.fit(
             stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
             funnel_type="hybrid",
             segments=(conv_users, non_conv_users),
         )
-
-        funnel.fit()
         res_dict = funnel.res_dict
 
         correct_result = {
@@ -557,15 +552,13 @@ class TestFunnel:
         conv_users = [1, 2, 3, 7]
         non_conv_users = [4, 5, 6, 8]
 
-        funnel = Funnel(
-            eventstream=source,
+        funnel = Funnel(eventstream=source)
+        funnel.fit(
             stages=["catalog", ["product1", "product2"], "cart", "payment_done"],
             funnel_type="closed",
             segments=(conv_users, non_conv_users),
             segment_names=["conv_users", "non_conv_users"],
         )
-
-        funnel.fit()
         res_dict = funnel.res_dict
 
         correct_result = {
@@ -597,4 +590,5 @@ class TestFunnel:
 
             source = Eventstream(source_df)
 
-            p = Funnel(eventstream=source, stages=["catalog", "cart", "payment_done"], funnel_type="check_me")
+            p = Funnel(eventstream=source)
+            p.fit(stages=["catalog", "cart", "payment_done"], funnel_type="check_me")

@@ -9,6 +9,8 @@ from pandas.core.common import flatten
 
 from retentioneering.eventstream.types import EventstreamType
 
+FunnelTypes = Literal["open", "closed", "hybrid"]
+
 
 class Funnel:
     """
@@ -17,28 +19,6 @@ class Funnel:
     Parameters
     ----------
     eventstream : EventstreamType
-    stages: list of str
-        List of events used as stages for the funnel. Absolute and relative
-        number of users who reached specified events at least once will be
-        plotted. Multiple events can be grouped together as an individual state
-        by combining them as a sub list.
-    stage_names: list of str, optional
-        List of stage names, this is necessary for stages that include several events.
-    funnel_type: 'open', 'closed' or 'hybrid', default 'closed'
-        - if ``open`` - all users will be counted on each stage;
-        - if ``closed`` - each stage will include only users, that were present on all previous stages;
-        - if ``hybrid`` - combination of 2 previous types. The first stage is required
-          to go further. And for the second and subsequent stages it is important to have
-          all previous stages in their path, but the order of these events is not taken
-          into account.
-
-    segments: Collection[Collection[int]], optional
-        List of user_ids collections. Funnel for each user_id collection will be plotted.
-        If ``None`` - all users from the dataset will be plotted. A user can only belong to one segment at a time.
-    segment_names: list of str, optional
-        Names of segments. Should be a list from unique values of the ``segment_col``.
-        If ``None`` and ``segment_col`` is given - all values from ``segment_col`` will be used.
-
 
     See Also
     --------
@@ -50,7 +30,6 @@ class Funnel:
 
     """
 
-    __eventstream: EventstreamType
     __default_layout = dict(
         margin={"l": 180, "r": 0, "t": 30, "b": 0, "pad": 0},
         funnelmode="stack",
@@ -59,33 +38,35 @@ class Funnel:
         legend=dict(orientation="v", bgcolor="#E2E2E2", xanchor="left", font=dict(size=12)),
     )
 
-    def __init__(
-        self,
-        eventstream: EventstreamType,
-        stages: list[str],
-        stage_names: list[str] | None = None,
-        funnel_type: Literal["open", "closed", "hybrid"] = "closed",
-        segments: Collection[Collection[int]] | None = None,
-        segment_names: list[str] | None = None,
-    ) -> None:
-        self.__eventstream = eventstream
+    def __init__(self, eventstream: EventstreamType) -> None:
+        self.__eventstream: EventstreamType = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
 
-        self.stages = stages
-        self.funnel_type: Literal["open", "closed", "hybrid"] = funnel_type
-
-        data = self.__eventstream.to_dataframe()
-        data = data[data[self.event_col].isin([i for i in flatten(stages)])]  # type: ignore
-        self.data = data
+        self.stages: list[str] | None = None
+        self.stage_names: list[str] | None = None
+        self.funnel_type: FunnelTypes | None = None
+        self.segments: Collection[Collection[int]] | None = None
+        self.segment_names: list[str] | None = None
         self.res_dict: dict = {}
 
-        if self.stages and stage_names and len(self.stages) != len(stage_names):
+    def __validate_input(
+        self,
+        stages: list[str],
+        stage_names: list[str] | None = None,
+        funnel_type: FunnelTypes = "closed",
+        segments: Collection[Collection[int]] | None = None,
+        segment_names: list[str] | None = None,
+    ) -> tuple[pd.DataFrame, list[str], list[str], FunnelTypes, Collection[Collection[int]], list[str]]:
+        data = self.__eventstream.to_dataframe()
+        data = data[data[self.event_col].isin([i for i in flatten(stages)])]  # type: ignore
+
+        if stages and stage_names and len(stages) != len(stage_names):
             raise ValueError("stages and stage_names must be the same length!")
 
         if segments is None:
-            segments = [self.data[self.user_col].unique().tolist()]
+            segments = [data[self.user_col].unique().tolist()]
             segment_names = ["all users"]
         else:
             sets = [set(segment) for segment in segments]
@@ -99,22 +80,22 @@ class Funnel:
             raise ValueError("segments and segment_names must be the same length!")
 
         # IDK why but pyright thinks this is Funnel!!!
-        self.segments = segments
-        self.segment_names = segment_names
 
         if funnel_type not in ["open", "closed", "hybrid"]:
             raise ValueError("funnel_type should be 'open', 'closed' or 'hybrid'!")
 
-        for idx, stage in enumerate(self.stages):
+        for idx, stage in enumerate(stages):
             if type(stage) is not list:
-                self.stages[idx] = [stage]  # type: ignore
+                stages[idx] = [stage]  # type: ignore
 
         if stage_names is None:
             stage_names = []
-            for t in self.stages:
+            for t in stages:
                 # get name
                 stage_names.append(" | ".join(t).strip(" | "))
-        self.stage_names = stage_names
+        stage_names = stage_names
+
+        return data, stages, stage_names, funnel_type, segments, segment_names
 
     def _plot_stacked_funnel(self, data: list[go.Funnel]) -> go.Figure:
         layout = go.Layout(**self.__default_layout)
@@ -218,34 +199,71 @@ class Funnel:
 
         return vals, df
 
-    def fit(self) -> None:
+    def fit(
+        self,
+        stages: list[str],
+        stage_names: list[str] | None = None,
+        funnel_type: FunnelTypes = "closed",
+        segments: Collection[Collection[int]] | None = None,
+        segment_names: list[str] | None = None,
+    ) -> None:
         """
         Calculate the funnel internal values with the defined parameters.
         Applying ``fit`` method is necessary for the following usage
         of any visualization or descriptive ``Funnel`` methods.
 
+        Parameters
+        ----------
+        stages : list of str
+            List of events used as stages for the funnel. Absolute and relative
+            number of users who reached specified events at least once will be
+            plotted. Multiple events can be grouped together as an individual state
+            by combining them as a sub list.
+        stage_names : list of str, optional
+            List of stage names, this is necessary for stages that include several events.
+        funnel_type : 'open', 'closed' or 'hybrid', default 'closed'
+
+            - if ``open`` - all users will be counted on each stage;
+            - if ``closed`` - each stage will include only users, that were present on all previous stages;
+            - if ``hybrid`` - combination of 2 previous types. The first stage is required
+              to go further. And for the second and subsequent stages it is important to have
+              all previous stages in their path, but the order of these events is not taken
+              into account.
+
+        segments : Collection[Collection[int]], optional
+            List of user_ids collections. Funnel for each user_id collection will be plotted.
+            If ``None`` - all users from the dataset will be plotted. A user can only belong to one segment at a time.
+        segment_names : list of str, optional
+            Names of segments. Should be a list from unique values of the ``segment_col``.
+            If ``None`` and ``segment_col`` is given - all values from ``segment_col`` will be used.
         """
+
+        (
+            data,
+            self.stages,
+            self.stage_names,
+            self.funnel_type,
+            self.segments,
+            self.segment_names,
+        ) = self.__validate_input(stages, stage_names, funnel_type, segments, segment_names)
 
         if self.funnel_type in ["closed", "hybrid"]:
             self.res_dict = self._prepare_data_for_closed_and_hybrid_funnel(
-                data=self.data,
+                data=data,
                 stages=self.stages,
+                stage_names=self.stage_names,
                 segments=self.segments,
                 segment_names=self.segment_names,
-                stage_names=self.stage_names,
             )
 
         elif self.funnel_type == "open":
             self.res_dict = self._prepare_data_for_open_funnel(
-                data=self.data,
+                data=data,
                 stages=self.stages,
                 segments=self.segments,
                 segment_names=self.segment_names,
                 stage_names=self.stage_names,
             )
-
-        del self.data
-        self.data = pd.DataFrame()
 
     def plot(self) -> go.Figure:
         """

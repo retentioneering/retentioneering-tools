@@ -206,11 +206,8 @@ Here is an example how you can manage it:
 
     from retentioneering.tooling.funnel import Funnel
 
-    funnel = Funnel(
-        eventstream=stream,
-        stages=['catalog', 'cart', 'payment_done']
-    )
-    funnel.fit()
+    funnel = Funnel(eventstream=stream)
+    funnel.fit( stages=['catalog', 'cart', 'payment_done'])
     funnel.plot()
 
 .. raw:: html

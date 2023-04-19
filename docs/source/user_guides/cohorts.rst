@@ -356,7 +356,7 @@ There are some NANs in the table. These gaps can mean one of two things:
 params
 ~~~~~~
 
-:py:meth:`Cohorts.params<retentioneering.tooling.cohorts.cohorts.Cohorts.params>` property returns the Cohorts parameters that was used in the last ``Funnel.fit()`` call.
+:py:meth:`Cohorts.params<retentioneering.tooling.cohorts.cohorts.Cohorts.params>` property returns the Cohorts parameters that was used in the last ``Cohorts.fit()`` call.
 
 .. code-block:: python
 

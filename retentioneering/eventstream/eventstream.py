@@ -65,7 +65,6 @@ FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fra
 NgramRange = Tuple[int, int]
 Method = Literal["kmeans", "gmm"]
 
-
 DEFAULT_INDEX_ORDER: IndexOrder = [
     "profile",
     "path_start",
@@ -638,15 +637,14 @@ class Eventstream(
             A ``Funnel`` class instance fitted to the given parameters.
 
         """
-        self.__funnel = Funnel(
-            eventstream=self,
+        self.__funnel = Funnel(eventstream=self)
+        self.__funnel.fit(
             stages=stages,
             stage_names=stage_names,
             funnel_type=funnel_type,
             segments=segments,
             segment_names=segment_names,
         )
-        self.__funnel.fit()
         if show_plot:
             figure = self.__funnel.plot()
             figure.show()

@@ -36,12 +36,12 @@ A *helper* is an ``Eventstream`` method that applies a single data processor to 
 Essentially, it is a shortcut for the cases when you want to avoid creating a preprocessing graph.
 
 Since an outcome of a helper method is a new eventstream, it is convenient to use method chaining code style
-as it is present in other python libraries, such as Pandas, PySpark, etc. For example, here is how to apply :py:meth:`StartEndEvents<retentioneering.data_processors_lib.start_end_events.StartEndEvents>` and :py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>` sequentially:
+as it is present in other python libraries, such as Pandas, PySpark, etc. For example, here is how to apply :py:meth:`AddStartEndEvents<retentioneering.data_processors_lib.add_start_end_events.AddStartEndEvents>` and :py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>` sequentially:
 
 .. code-block:: python
 
     res = stream\
-        .add_start_end()\
+        .add_start_end_events()\
         .split_sessions(timeout=(10, 'm'))\
         .to_dataframe()
     res[res['user_id'] == 219483890]
@@ -160,58 +160,58 @@ The table below summarizes all the data processors implemented in retentioneerin
     :widths: 15 60
     :class: tight-table
 
-    +--------------------------------------------+-----------------------------------------------------+
-    | | Data processor                           | What it does                                        |
-    | | Helper                                   |                                                     |
-    +============================================+=====================================================+
-    | | StartEndEvents                           | Adds two synthetic events in each user’s path:      |
-    | | :ref:`add_start_end<add_start_end>`      | ``path_start`` and ``path_end``.                    |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | SplitSessions                            | Cuts user path into sessions and adds synthetic     |
-    | | :ref:`split_sessions<split_sessions>`    | events ``session_start``, ``session_end``.          |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | NewUsersEvents                           | Adds synthetic event ``new_user`` in the beginning  |
-    | | :ref:`add_new_users<add_new_users>`      | of a user’s path if the user is considered as new.  |
-    |                                            | Otherwise adds ``existing_user``.                   |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | LostUsersEvents                          | Adds synthetic event ``lost_user`` in the end of    |
-    | | :ref:`lost_users<lost_users>`            | user’s path if the user never comes back to the     |
-    |                                            | product. Otherwise adds ``absent_user`` event.      |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | PositiveTarget                           | Adds synthetic event ``positive_target`` for all    |
-    | | :ref:`positive_target<positive_target>`  | events which are considered as positive.            |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | NegativeTarget                           | Adds synthetic event ``negative_target`` for all    |
-    | | :ref:`negative_target<negative_target>`  | events which are considered as positive.            |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | TruncatedEvents                          | Adds synthetic events ``truncated_left`` and/or     |
-    | | :ref:`truncated_events<truncated_events>`| ``truncated_right`` for those user paths which are  |
-    |                                            | considered as truncated by the edges of the whole   |
-    |                                            | dataset.                                            |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | FilterEvents                             | Removes events from an eventstream.                 |
-    | | :ref:`filter<filter>`                    |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | DeleteUsersByPathLength                  | Removes a too short user paths (in terms of number  |
-    | | :ref:`delete_users<delete_users>`        | of events or time duration).                        |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | TruncatePath                             | Leaves a part of an eventstream between a couple    |
-    | | :ref:`truncate_path<truncate_path>`      | of selected events.                                 |
-    |                                            |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | GroupEvents                              | Groups given events into a single synthetic event.  |
-    | | :ref:`group<group>`                      |                                                     |
-    +--------------------------------------------+-----------------------------------------------------+
-    | | CollapseLoops                            | Groups sequences of repetitive events with new      |
-    | | :ref:`collapse_loops<collapse_loops>`    | synthetic events. E.g. ``A, A, A → A``.             |
-    +--------------------------------------------+-----------------------------------------------------+
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | Data processor                                    | What it does                                        |
+    | | Helper                                            |                                                     |
+    +=====================================================+=====================================================+
+    | | AddStartEndEvents                                 | Adds two synthetic events in each user’s path:      |
+    | | :ref:`add_start_end_events<add_start_end_events>` | ``path_start`` and ``path_end``.                    |
+    |                                                     |                                                     |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | SplitSessions                                     | Cuts user path into sessions and adds synthetic     |
+    | | :ref:`split_sessions<split_sessions>`             | events ``session_start``, ``session_end``.          |
+    |                                                     |                                                     |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | LabelNewUsers                                     | Adds synthetic event ``new_user`` in the beginning  |
+    | | :ref:`label_new_users<label_new_users>`           | of a user’s path if the user is considered as new.  |
+    |                                                     | Otherwise adds ``existing_user``.                   |
+    |                                                     |                                                     |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | LabelLostUsers                                    | Adds synthetic event ``lost_user`` in the end of    |
+    | | :ref:`label_lost_users<label_lost_users>`         | user’s path if the user never comes back to the     |
+    |                                                     | product. Otherwise adds ``absent_user`` event.      |
+    |                                                     |                                                     |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | AddPositiveEvents                                 | Adds synthetic event ``positive_target`` for all    |
+    | | :ref:`add_positive_events<add_positive_events>`   | events which are considered as positive.            |
+    |                                                     |                                                     |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | AddNegativeEvents                                 | Adds synthetic event ``negative_target`` for all    |
+    | | :ref:`add_negative_events<add_negative_events>`   | events which are considered as positive.            |
+    |                                                     |                                                     |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | LabelCroppedPaths                                 | Adds synthetic events ``cropped_left`` and/or       |
+    | | :ref:`label_cropped_paths<label_cropped_paths>`   | ``cropped_right`` for those user paths which are    |
+    |                                                     | considered as truncated by the edges of the whole   |
+    |                                                     | dataset.                                            |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | FilterEvents                                      | Removes events from an eventstream.                 |
+    | | :ref:`filter_events<filter_events>`               |                                                     |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | DropPaths                                         | Removes a too short user paths (in terms of number  |
+    | | :ref:`drop_paths<drop_paths>`                     | of events or time duration).                        |
+    |                                                     |                                                     |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | TruncatePaths                                     | Leaves a part of an eventstream between a couple    |
+    | | :ref:`truncate_paths<truncate_paths>`             | of selected events.                                 |
+    |                                                     |                                                     |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | GroupEvents                                       | Groups given events into a single synthetic event.  |
+    | | :ref:`group_events<group_events>`                 |                                                     |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | CollapseLoops                                     | Groups sequences of repetitive events with new      |
+    | | :ref:`collapse_loops<collapse_loops>`             | synthetic events. E.g. ``A, A, A → A``.             |
+    +-----------------------------------------------------+-----------------------------------------------------+
 
 Data processors can be partitioned into three groups:
 
@@ -229,22 +229,22 @@ Adding processors
 The processors of that type add some artificial (we also call them *synthetic*) events to an eventstream.
 Let us go through each of them.
 
-.. _add_start_end:
+.. _add_start_end_events:
 
-StartEndEvents
-^^^^^^^^^^^^^^
+AddStartEndEvents
+^^^^^^^^^^^^^^^^^
 
-For each user, :py:meth:`StartEndEvents<retentioneering.data_processors_lib.start_end_events.StartEndEvents>`
+For each user, :py:meth:`AddStartEndEvents<retentioneering.data_processors_lib.add_start_end_events.AddStartEndEvents>`
 generates an event called ``path_start`` right before the first user event, and an event
 ``path_end`` right after the last user event.
 
-.. figure:: /_static/user_guides/data_processor/dp_1_start_end.png
+.. figure:: /_static/user_guides/data_processor/dp_1_add_start_end_events.png
 
-Applying ``StartEndEvents`` to mark user trajectory start and finish:
+Applying ``AddStartEndEvents`` to mark user trajectory start and finish:
 
 .. code-block:: python
 
-    res = stream.add_start_end().to_dataframe()
+    res = stream.add_start_end_events().to_dataframe()
     res[res['user_id'] == 219483890]
 
 
@@ -317,7 +317,7 @@ SplitSessions
 data processor cuts user paths into sessions based on the defined ``timeout``
 timeout parameter. For each session, it creates a couple of synthetic
 events ``session_start`` and ``session_end``, like
-``StartEndEvents``. Session identifiers are formed according to the
+``AddStartEndEvents``. Session identifiers are formed according to the
 template ``<user_id>_<user_session_number>`` and can be found in
 ``session_id`` column. The ``user_session_number`` is associated with a
 session ordinal number within a user path and always starts with 1.
@@ -430,25 +430,25 @@ in each user path. For this purpose you can use one of eventstream descriptive m
 See more about :ref:`eventstream descriptive methods<eventstream_descriptive_methods>`.
 
 
-.. _add_new_users:
+.. _label_new_users:
 
-NewUsersEvents
-^^^^^^^^^^^^^^
+LabelNewUsers
+^^^^^^^^^^^^^
 
 Given a list of users (considered "new"), the
-:py:meth:`NewUsersEvents<retentioneering.data_processors_lib.new_users.NewUsersEvents>`
+:py:meth:`LabelNewUsers<retentioneering.data_processors_lib.label_new_users.LabelNewUsers>`
 data processor labels those users in an eventstream by adding a synthetic ``new_user``
 event to each user trajectory start. For all other users, adds an
 ``existing_user`` synthetic event. All users will be labeled as new when
 passed 'all' instead of a list.
 
-.. figure:: /_static/user_guides/data_processor/dp_3_new_users.png
+.. figure:: /_static/user_guides/data_processor/dp_3_label_new_users.png
 
 
 .. code-block:: python
 
     new_users = [219483890, 964964743, 965024600]
-    res = stream.add_new_users(new_users_list=new_users).to_dataframe()
+    res = stream.label_new_users(new_users_list=new_users).to_dataframe()
     res[res['user_id'] == 219483890].head()
 
 
@@ -580,19 +580,19 @@ But user ``501098384`` is marked as an existing user:
 This data processor can be helpful when you have data that chronologically
 precedes the clickstream you are working with. For instance, your clickstream
 might cover 1-month of user data, and also you have the user login data
-for the whole year. In that case, you can use ``NewUsersEvents``
+for the whole year. In that case, you can use ``LabelNewUsers``
 to split users into two categories:
 
 - new users,
 - users who have appeared this year before.
 
-.. _lost_users:
+.. _label_lost_users:
 
-LostUsersEvents
-^^^^^^^^^^^^^^^
+LabelLostUsers
+^^^^^^^^^^^^^^
 
 Given a list of users (considered "lost"), the
-:py:meth:`LostUsersEvents<retentioneering.data_processors_lib.lost_users.LostUsersEvents>`
+:py:meth:`LabelLostUsers<retentioneering.data_processors_lib.label_lost_users.LabelLostUsers>`
 data processor labels those users by adding a synthetic ``lost_user`` event to each
 user trajectory end. For all other users, adds an
 ``absent_user`` synthetic event. When passed a ``timeout`` timedelta value,
@@ -605,13 +605,13 @@ exceeds ``timeout``, label as ``lost_user``; otherwise, label as
 
     Make an image illustrating timeout parameter. dpanina`
 
-.. figure:: /_static/user_guides/data_processor/dp_4_lost_users.png
+.. figure:: /_static/user_guides/data_processor/dp_4_label_lost_users.png
 
 
 .. code-block:: python
 
     lost_users_list = [219483890, 964964743, 965024600]
-    res = stream.lost_users(lost_users_list=lost_users_list).to_dataframe()
+    res = stream.label_lost_users(lost_users_list=lost_users_list).to_dataframe()
     res[res['user_id'] == 219483890].tail()
 
 
@@ -724,16 +724,16 @@ As opposed to user ``219483890``, the user ``501098384`` is labeled as an
     <br>
 
 The function of this data processor is similar to
-``NewUsersEvents``, except that it adds labels to the end
+``LabelNewUsers``, except that it adds labels to the end
 of user trajectory.
 
-We can also run ``LostUsersEvents`` with ``timeout`` passed, to
+We can also run ``LabelLostUsers`` with ``timeout`` passed, to
 arbitrarily label some users as lost. Assume we consider a user
 absent if there have been no events for 30 days:
 
 .. code-block:: python
 
-    res = stream.lost_users(timeout=(30, 'D')).to_dataframe()
+    res = stream.label_lost_users(timeout=(30, 'D')).to_dataframe()
 
 
 Before we inspect the results of applying the data processor,
@@ -867,12 +867,12 @@ before ``2020-04-29``.
     </table>
     <br>
 
-.. _positive_target:
+.. _add_positive_events:
 
-PositiveTarget
-^^^^^^^^^^^^^^
+AddPositiveEvents
+^^^^^^^^^^^^^^^^^
 
-:py:meth:`PositiveTarget<retentioneering.data_processors_lib.positive_target.PositiveTarget>`
+:py:meth:`AddPositiveEvents<retentioneering.data_processors_lib.add_positive_events.AddPositiveEvents>`
 data processor supports two parameters:
 
 -  ``targets`` - list of "positive" events
@@ -892,7 +892,7 @@ type.
 .. code-block:: python
 
     positive_events = ['cart', 'payment_done']
-    res = stream.positive_target(
+    res = stream.add_positive_events(
         targets=positive_events
         ).to_dataframe()
 
@@ -1071,7 +1071,7 @@ first one:
 
         return df[df[event_col].isin(targets)]
 
-    res = stream.positive_target(
+    res = stream.add_positive_events(
               targets=positive_events,
               func=custom_func
               ).to_dataframe()
@@ -1180,14 +1180,14 @@ first one:
     </table>
     <br>
 
-.. _negative_target:
+.. _add_negative_events:
 
-NegativeTarget
-^^^^^^^^^^^^^^
+AddNegativeEvents
+^^^^^^^^^^^^^^^^^
 
 The idea of
-:py:meth:`NegativeTarget<retentioneering.data_processors_lib.negative_target.NegativeTarget>`
-data processor is the same as ``PositiveTarget``, but
+:py:meth:`AddNegativeEvents<retentioneering.data_processors_lib.add_negative_events.AddNegativeEvents>`
+data processor is the same as ``AddPositiveEvents``, but
 applied to negative labels instead of positive ones.
 
 -  ``targets`` - list of "positive" ``events``
@@ -1203,11 +1203,11 @@ applied to negative labels instead of positive ones.
 
     negative_events = ['delivery_courier']
 
-    res = stream.negative_target(
+    res = stream.add_negative_events(
               targets=negative_events
               ).to_dataframe()
 
-Works similarly to the ``PositiveTarget`` data processor - in this
+Works similarly to the ``AddPositiveEvents`` data processor - in this
 case, it will add negative event next to the ``delivery_courier`` event:
 
 .. code-block:: python
@@ -1289,12 +1289,12 @@ case, it will add negative event next to the ``delivery_courier`` event:
     </table>
     <br>
 
-.. _truncated_events:
+.. _label_cropped_paths:
 
-TruncatedEvents
-^^^^^^^^^^^^^^^
+LabelCroppedPaths
+^^^^^^^^^^^^^^^^^
 
-:py:meth:`TruncatedEvents<retentioneering.data_processors_lib.truncated_events.TruncatedEvents>`
+:py:meth:`LabelCroppedPaths<retentioneering.data_processors_lib.label_cropped_paths.LabelCroppedPaths>`
 addresses a common practical problem, when some trajectories are
 truncated due to the dataset’s natural boundaries.
 
@@ -1315,21 +1315,21 @@ One possible way to mark truncated paths is to detect
 trajectories that are "too short" for a typical trajectory, and
 whose shortness can be attributed to being truncated.
 
-``TruncatedEvents`` data processor uses passed ``left_cutoff`` and
+``LabelCroppedPaths`` data processor uses passed ``left_cutoff`` and
 ``right_cutoff`` timedeltas and labels user trajectories as
-``truncated_left`` or ``truncated_right`` based on the following
+``cropped_left`` or ``cropped_right`` based on the following
 policy:
 
 -  if the last event of a user trajectory is distanced from the first
    event of the whole eventstream by less than
    ``left_cutoff``, consider the user trajectory truncated
-   from the left, and create ``truncated_left`` synthetic event at the
+   from the left, and create ``cropped_left`` synthetic event at the
    trajectory start;
 
 -  if the first event of a user trajectory is distanced from the last
    event of the whole eventstream by less than
    ``right_cutoff``, consider the user trajectory truncated
-   from the right, and create ``truncated_right`` synthetic event at the
+   from the right, and create ``cropped_right`` synthetic event at the
    trajectory end.
 
 .. figure:: /_static/user_guides/data_processor/dp_8_truncate.png
@@ -1354,7 +1354,7 @@ See more about :ref:`eventstream descriptive methods<eventstream_descriptive_met
         'right_cutoff': (3, 'D')
     }
 
-    res = stream.truncated_events(**params).to_dataframe()
+    res = stream.label_cropped_paths(**params).to_dataframe()
 
 Displaying the eventstream start and end timestamps:
 
@@ -1372,7 +1372,7 @@ Displaying the eventstream start and end timestamps:
 
 The trajectory of the following user ends at ``2019-11-02 01:14:38`` - which is too
 close to the eventstream start(for the given ``left_cutoff``
-value), so the ``TruncatedEvents`` data processor labels it as truncated
+value), so the ``LabelCroppedPaths`` data processor labels it as truncated
 from the left:
 
 .. code-block:: python
@@ -1396,9 +1396,9 @@ from the left:
       <tbody>
         <tr>
           <th>47</th>
-          <td>truncated_left</td>
+          <td>cropped_left</td>
           <td>47</td>
-          <td>truncated_left</td>
+          <td>cropped_left</td>
           <td>2019-11-02 01:14:08</td>
           <td>495985018</td>
         </tr>
@@ -1425,7 +1425,7 @@ from the left:
 The trajectory of the following user starts at ``2020-04-29 12:24:21`` - which is too
 close to the eventstream end(for the given ``right_cutoff``
 value), so
-the ``TruncatedEvents`` data processor labels it as truncated from the
+the ``LabelCroppedPaths`` data processor labels it as truncated from the
 right:
 
 .. code-block:: python
@@ -1489,9 +1489,9 @@ right:
         </tr>
         <tr>
           <th>35632</th>
-          <td>truncated_right</td>
+          <td>cropped_right</td>
           <td>35632</td>
-          <td>truncated_right</td>
+          <td>cropped_right</td>
           <td>2020-04-29 12:25:06</td>
           <td>831491833</td>
         </tr>
@@ -1503,7 +1503,7 @@ right:
 Removing processors
 ~~~~~~~~~~~~~~~~~~~
 
-.. _filter:
+.. _filter_events:
 
 FilterEvents
 ^^^^^^^^^^^^
@@ -1514,7 +1514,7 @@ The function should return a boolean mask for the input dataframe(a series
 of boolean True or False variables that filter the DataFrame underlying
 the eventstream).
 
-.. figure:: /_static/user_guides/data_processor/dp_9_filter.png
+.. figure:: /_static/user_guides/data_processor/dp_9_filter_events.png
 
 
 Let us say we are interested only in specific events - for example, only
@@ -1527,7 +1527,7 @@ in events of users that appear in some pre-defined list of users.
         users_to_save = [219483890, 964964743, 965024600]
         return df[schema.user_id].isin(users_to_save)
 
-    res = stream.filter(func=save_specific_users).to_dataframe()
+    res = stream.filter_events(func=save_specific_users).to_dataframe()
 
 The resulting eventstream includes these three users only:
 
@@ -1576,7 +1576,7 @@ us:
         events_to_exclude = ['catalog', 'main']
         return ~df[schema.event_name].isin(events_to_exclude)
 
-    res = stream.filter(func=exclude_events).to_dataframe()
+    res = stream.filter_events(func=exclude_events).to_dataframe()
 
 We can see that ``res`` DataFrame does not have "useless" events anymore.
 
@@ -1591,12 +1591,12 @@ We can see that ``res`` DataFrame does not have "useless" events anymore.
 
     Series([], Name: event, dtype: int64)
 
-.. _delete_users:
+.. _drop_paths:
 
-DeleteUsersByPathLength
-^^^^^^^^^^^^^^^^^^^^^^^
+DropPaths
+^^^^^^^^^
 
-:py:meth:`DeleteUsersByPathLength<retentioneering.data_processors_lib.delete_users_by_path_length.DeleteUsersByPathLength>`
+:py:meth:`DropPaths<retentioneering.data_processors_lib.drop_paths.DropPaths>`
 removes the paths which we consider "too short". We might
 be interested in excluding such paths - in case they are too short to
 be informative for our task.
@@ -1607,7 +1607,7 @@ Path length can be specified in the following ways:
 - setting the time distance between the beginning and the end of the path.
 
 The former is associated with ``min_steps`` parameter, the latter –
-with ``min_time`` parameter. Thus, ``DeleteUsersByPathLength`` removes all
+with ``min_time`` parameter. Thus, ``DropPaths`` removes all
 the paths of length less than ``min_steps`` or ``min_time``.
 
 Diagram for specified ``min_steps``:
@@ -1620,14 +1620,14 @@ Diagram for specified ``min_time``:
 .. figure:: /_static/user_guides/data_processor/dp_10_delete_min_time.png
 
 
-Let us showcase both variants of the ``DeleteUsersByPathLength``
+Let us showcase both variants of the ``DropPaths``
 data processor:
 
 A minimum number of events specified:
 
 .. code-block:: python
 
-    res = stream.delete_users(min_steps=25).to_dataframe()
+    res = stream.drop_paths(min_steps=25).to_dataframe()
 
 Any remaining user has at least 25 events. For example, user
 ``629881394`` has 48 events.
@@ -1646,7 +1646,7 @@ A minimum path length (user lifetime) is specified:
 
 .. code-block:: python
 
-    res = stream.delete_users(min_time=(1, 'M')).to_dataframe()
+    res = stream.drop_paths(min_time=(1, 'M')).to_dataframe()
 
 
 Any remaining user has been "alive" for at least a month. For
@@ -1692,12 +1692,12 @@ ended on ``2019-12-09``.
     </table>
     <br>
 
-.. _truncate_path:
+.. _truncate_paths:
 
-TruncatePath
-^^^^^^^^^^^^
+TruncatePaths
+^^^^^^^^^^^^^
 
-For each user trajectory, :py:meth:`TruncatePath<retentioneering.data_processors_lib.truncate_path.TruncatePath>`
+For each user trajectory, :py:meth:`TruncatePaths<retentioneering.data_processors_lib.truncate_paths.TruncatePaths>`
 drops all events before or after a particular event.
 The following parameters specify the behavior:
 
@@ -1726,17 +1726,17 @@ The following parameters specify the behavior:
 
 The path remains unchanged if the specified event is not present in a user path.
 
-.. figure:: /_static/user_guides/data_processor/dp_11_truncate_path.png
+.. figure:: /_static/user_guides/data_processor/dp_11_truncate_paths.png
 
 
 Suppose we want to see what happens to the user after she jumps to a
 ``cart`` event and also to find out which events preceded the ``cart`` event.
-To do this, we can use ``TruncatePath`` with specified
+To do this, we can use ``TruncatePaths`` with specified
 ``drop_before='cart'`` and ``shift_before=-2``:
 
 .. code-block:: python
 
-    res = stream.truncate_path(
+    res = stream.truncate_paths(
               drop_before='cart',
               shift_before=-2
               ).to_dataframe()
@@ -1887,7 +1887,7 @@ demonstrate both, let us set ``drop_after="cart"`` and
 
 .. code-block:: python
 
-    res = stream.truncate_path(
+    res = stream.truncate_paths(
               drop_after='cart',
               occurrence_after="last"
               ).to_dataframe()
@@ -1970,7 +1970,7 @@ last ``cart``:
 Editing processors
 ~~~~~~~~~~~~~~~~~~
 
-.. _group:
+.. _group_events:
 
 GroupEvents
 ^^^^^^^^^^^
@@ -1985,7 +1985,7 @@ boolean (``True/False``) variables that can be used as a filter for the
 DataFrame underlying the eventstream.
 
 
-.. figure:: /_static/user_guides/data_processor/dp_12_group.png
+.. figure:: /_static/user_guides/data_processor/dp_12_group_events.png
 
 
 
@@ -2004,7 +2004,7 @@ we need to assign a common name ``product`` to events ``product1`` and
         'func': group_events
     }
 
-    res = stream.group(**params).to_dataframe()
+    res = stream.group_events(**params).to_dataframe()
 
 As we can see, user ``456870964`` now has two ``product`` events
 (``event_index=160, 164``) with ``event_type=‘group_alias’``).
@@ -2430,50 +2430,50 @@ for which event_type is responsible:
     :widths: 10 40 40
     :class: tight-table
 
-    +-------+-------------------------+-------------------------------------------+
-    | Order | event_type              | helper                                    |
-    +=======+=========================+===========================================+
-    |  1    | profile                 |                                           |
-    +-------+-------------------------+-------------------------------------------+
-    |  2    | path_start              | :ref:`add_start_end<add_start_end>`       |
-    +-------+-------------------------+-------------------------------------------+
-    |  3    | new_user                | :ref:`add_new_users<add_new_users>`       |
-    +-------+-------------------------+-------------------------------------------+
-    |  4    | existing_user           | :ref:`add_new_users<add_new_users>`       |
-    +-------+-------------------------+-------------------------------------------+
-    |  5    | truncated_left          | :ref:`truncated_events<truncated_events>` |
-    +-------+-------------------------+-------------------------------------------+
-    |  6    | session_start           | :ref:`split_sessions<split_sessions>`     |
-    +-------+-------------------------+-------------------------------------------+
-    |  7    | session_start_truncated | :ref:`split_sessions<split_sessions>`     |
-    +-------+-------------------------+-------------------------------------------+
-    |  8    | group_alias             | :ref:`group<group>`                       |
-    +-------+-------------------------+-------------------------------------------+
-    |  9    | raw                     |                                           |
-    +-------+-------------------------+-------------------------------------------+
-    |  10   | raw_sleep               |                                           |
-    +-------+-------------------------+-------------------------------------------+
-    |  11   | None                    |                                           |
-    +-------+-------------------------+-------------------------------------------+
-    |  12   | synthetic               |                                           |
-    +-------+-------------------------+-------------------------------------------+
-    |  13   | synthetic_sleep         |                                           |
-    +-------+-------------------------+-------------------------------------------+
-    |  14   | positive_target         | :ref:`positive_target<positive_target>`   |
-    +-------+-------------------------+-------------------------------------------+
-    |  15   | negative_target         | :ref:`negative_target<negative_target>`   |
-    +-------+-------------------------+-------------------------------------------+
-    |  16   | session_end_truncated   | :ref:`split_sessions<split_sessions>`     |
-    +-------+-------------------------+-------------------------------------------+
-    |  17   | session_end             | :ref:`split_sessions<split_sessions>`     |
-    +-------+-------------------------+-------------------------------------------+
-    |  18   | session_sleep           |                                           |
-    +-------+-------------------------+-------------------------------------------+
-    |  19   | truncated_right         | :ref:`truncated_events<truncated_events>` |
-    +-------+-------------------------+-------------------------------------------+
-    |  20   | absent_user             | :ref:`lost_users<lost_users>`             |
-    +-------+-------------------------+-------------------------------------------+
-    |  21   | lost_user               | :ref:`lost_users<lost_users>`             |
-    +-------+-------------------------+-------------------------------------------+
-    |  22   | path_end                | :ref:`add_start_end<add_start_end>`       |
-    +-------+-------------------------+-------------------------------------------+
+    +-------+-------------------------+---------------------------------------------------------+
+    | Order | event_type              | helper                                                  |
+    +=======+=========================+=========================================================+
+    |  1    | profile                 |                                                         |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  2    | path_start              | :ref:`add_start_end_events<add_start_end_events>`       |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  3    | new_user                | :ref:`label_new_users<label_new_users>`                 |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  4    | existing_user           | :ref:`label_new_users<label_new_users>`                 |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  5    | cropped_left            | :ref:`label_cropped_paths<label_cropped_paths>`         |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  6    | session_start           | :ref:`split_sessions<split_sessions>`                   |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  7    | session_start_cropped   | :ref:`split_sessions<split_sessions>`                   |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  8    | group_alias             | :ref:`group_events<group_events>`                       |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  9    | raw                     |                                                         |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  10   | raw_sleep               |                                                         |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  11   | None                    |                                                         |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  12   | synthetic               |                                                         |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  13   | synthetic_sleep         |                                                         |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  14   | add_positive_events     | :ref:`add_positive_events<add_positive_events>`         |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  15   | add_negative_events     | :ref:`add_negative_events<add_negative_events>`         |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  16   | session_end_cropped     | :ref:`split_sessions<split_sessions>`                   |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  17   | session_end             | :ref:`split_sessions<split_sessions>`                   |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  18   | session_sleep           |                                                         |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  19   | cropped_right           | :ref:`label_cropped_paths<label_cropped_paths>`         |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  20   | absent_user             | :ref:`label_lost_users<label_lost_users>`               |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  21   | lost_user               | :ref:`label_lost_users<label_lost_users>`               |
+    +-------+-------------------------+---------------------------------------------------------+
+    |  22   | path_end                | :ref:`add_start_end_events<add_start_end_events>`       |
+    +-------+-------------------------+---------------------------------------------------------+

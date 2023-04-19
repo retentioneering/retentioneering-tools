@@ -29,7 +29,7 @@ class SplitSessionsParams(ParamsModel):
 class SplitSessions(DataProcessor):
     """
     Create new synthetic events, that divide users' paths on sessions:
-    ``session_start`` (or ``session_start_truncated``) and ``session_end`` (or ``session_end_truncated``).
+    ``session_start`` (or ``session_start_cropped``) and ``session_end`` (or ``session_end_cropped``).
     Also create a new column that contains session number for each event in input eventstream.
     Session number will take the form: ``{user_id}_{session_number through one user path}``.
 
@@ -52,7 +52,7 @@ class SplitSessions(DataProcessor):
         - last event in each user's path and last event in the whole eventstream.
 
         For users with timedelta less than selected ``timeout``,
-        a new synthetic event - ``session_start_truncated`` or ``session_end_truncated`` will be added.
+        a new synthetic event - ``session_start_cropped`` or ``session_end_cropped`` will be added.
 
     session_col : str, default "session_id"
         The name of the ``session_col``.
@@ -69,9 +69,9 @@ class SplitSessions(DataProcessor):
         +-----------------------------+----------------------------+-----------------+
         | session_end                 | session_end                | last_event      |
         +-----------------------------+----------------------------+-----------------+
-        | session_start_truncated     | session_start_truncated    | first_event     |
+        | session_start_cropped       | session_start_cropped      | first_event     |
         +-----------------------------+----------------------------+-----------------+
-        | session_end_truncated       | session_end_truncated      | last_event      |
+        | session_end_cropped         | session_end_cropped        | last_event      |
         +-----------------------------+----------------------------+-----------------+
 
         If the delta between timestamps of two consecutive events
@@ -156,11 +156,11 @@ class SplitSessions(DataProcessor):
             session_starts_truncated = session_starts[start_to_start < timeout].reset_index()
             session_ends_truncated = session_ends[end_to_end < timeout].reset_index()
 
-            session_starts_truncated[event_col] = "session_start_truncated"
-            session_starts_truncated[type_col] = "session_start_truncated"
+            session_starts_truncated[event_col] = "session_start_cropped"
+            session_starts_truncated[type_col] = "session_start_cropped"
 
-            session_ends_truncated[event_col] = "session_end_truncated"
-            session_ends_truncated[type_col] = "session_end_truncated"
+            session_ends_truncated[event_col] = "session_end_cropped"
+            session_ends_truncated[type_col] = "session_end_cropped"
 
             session_starts = pd.concat([session_starts, session_starts_truncated])
             session_ends = pd.concat([session_ends, session_ends_truncated])

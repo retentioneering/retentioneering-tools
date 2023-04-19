@@ -1,26 +1,26 @@
 import pandas as pd
 
 from retentioneering.data_processors_lib import (
+    AddNegativeEvents,
+    AddNegativeEventsParams,
+    AddPositiveEvents,
+    AddPositiveEventsParams,
+    AddStartEndEvents,
+    AddStartEndEventsParams,
     CollapseLoops,
     CollapseLoopsParams,
-    DeleteUsersByPathLength,
-    DeleteUsersByPathLengthParams,
-    LostUsersEvents,
-    LostUsersParams,
-    NegativeTarget,
-    NegativeTargetParams,
-    NewUsersEvents,
-    NewUsersParams,
-    PositiveTarget,
-    PositiveTargetParams,
+    DropPaths,
+    DropPathsParams,
+    LabelCroppedPaths,
+    LabelCroppedPathsParams,
+    LabelLostUsers,
+    LabelLostUsersParams,
+    LabelNewUsers,
+    LabelNewUsersParams,
     SplitSessions,
     SplitSessionsParams,
-    StartEndEvents,
-    StartEndEventsParams,
-    TruncatedEvents,
-    TruncatedEventsParams,
-    TruncatePath,
-    TruncatePathParams,
+    TruncatePaths,
+    TruncatePathsParams,
 )
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import RawDataSchema
@@ -53,7 +53,7 @@ class TestPreprocessingGraphExportImport:
 
     def test_start_end__export(self) -> None:
         graph = self.create_graph()
-        node = EventsNode(processor=StartEndEvents(params=StartEndEventsParams(**{})))
+        node = EventsNode(processor=AddStartEndEvents(params=AddStartEndEventsParams(**{})))
         node.description = "description"
         graph.add_node(node=node, parents=[graph.root])
 
@@ -69,7 +69,7 @@ class TestPreprocessingGraphExportImport:
                 {"name": "SourceNode"},
                 {
                     "name": "EventsNode",
-                    "processor": {"values": {}, "name": "StartEndEvents"},
+                    "processor": {"values": {}, "name": "AddStartEndEvents"},
                     "description": "description",
                 },
             ],
@@ -86,7 +86,7 @@ class TestPreprocessingGraphExportImport:
                     {
                         "name": "EventsNode",
                         "pk": "81e5ead2-c0ed-43c5-a522-9d2484a1607e",
-                        "processor": {"values": {}, "name": "StartEndEvents"},
+                        "processor": {"values": {}, "name": "AddStartEndEvents"},
                     },
                 ],
                 "links": [
@@ -106,7 +106,7 @@ class TestPreprocessingGraphExportImport:
             "directed": True,
             "nodes": [
                 {"name": "SourceNode"},
-                {"name": "EventsNode", "processor": {"values": {}, "name": "StartEndEvents"}},
+                {"name": "EventsNode", "processor": {"values": {}, "name": "AddStartEndEvents"}},
             ],
         } == export_data
 
@@ -114,7 +114,7 @@ class TestPreprocessingGraphExportImport:
         graph = self.create_graph()
 
         node = EventsNode(
-            processor=TruncatedEvents(params=TruncatedEventsParams(left_cutoff=(1, "h"), right_cutoff=(1, "h")))
+            processor=LabelCroppedPaths(params=LabelCroppedPathsParams(left_cutoff=(1, "h"), right_cutoff=(1, "h")))
         )
         graph.add_node(node=node, parents=[graph.root])
 
@@ -130,7 +130,7 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "TruncatedEvents",
+                        "name": "LabelCroppedPaths",
                         "values": {"left_cutoff": (1.0, "h"), "right_cutoff": (1.0, "h")},
                     },
                 },
@@ -149,7 +149,7 @@ class TestPreprocessingGraphExportImport:
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
                             "values": {"left_cutoff": (1.0, "h"), "right_cutoff": (1.0, "h")},
-                            "name": "TruncatedEvents",
+                            "name": "LabelCroppedPaths",
                         },
                     },
                 ],
@@ -171,17 +171,17 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "TruncatedEvents",
+                        "name": "LabelCroppedPaths",
                         "values": {"left_cutoff": (1.0, "h"), "right_cutoff": (1.0, "h")},
                     },
                 },
             ],
         } == export_data
 
-    def test_new_users__export(self) -> None:
+    def test_label_new_users__export(self) -> None:
         graph = self.create_graph()
 
-        node = EventsNode(processor=NewUsersEvents(params=NewUsersParams(new_users_list=[2])))
+        node = EventsNode(processor=LabelNewUsers(params=LabelNewUsersParams(new_users_list=[2])))
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -196,7 +196,7 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "NewUsersEvents",
+                        "name": "LabelNewUsers",
                         "values": {"new_users_list": [2]},
                     },
                 },
@@ -214,7 +214,7 @@ class TestPreprocessingGraphExportImport:
                         "name": "EventsNode",
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
-                            "name": "NewUsersEvents",
+                            "name": "LabelNewUsers",
                             "values": {"new_users_list": [2]},
                         },
                     },
@@ -237,7 +237,7 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "NewUsersEvents",
+                        "name": "LabelNewUsers",
                         "values": {"new_users_list": [2]},
                     },
                 },
@@ -310,10 +310,10 @@ class TestPreprocessingGraphExportImport:
             ],
         } == export_data
 
-    def test_delete_user__export(self) -> None:
+    def test_drop_paths__export(self) -> None:
         graph = self.create_graph()
 
-        node = EventsNode(processor=DeleteUsersByPathLength(params=DeleteUsersByPathLengthParams(min_time=(1.5, "m"))))
+        node = EventsNode(processor=DropPaths(params=DropPathsParams(min_time=(1.5, "m"))))
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -328,14 +328,14 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "DeleteUsersByPathLength",
+                        "name": "DropPaths",
                         "values": {"min_time": (1.5, "m"), "min_steps": None},
                     },
                 },
             ],
         } == export_data
 
-    def test_delete_user__import(self) -> None:
+    def test_drop_paths__import(self) -> None:
         graph = self.create_graph()
         graph._set_graph(
             payload={
@@ -346,7 +346,7 @@ class TestPreprocessingGraphExportImport:
                         "name": "EventsNode",
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
-                            "name": "DeleteUsersByPathLength",
+                            "name": "DropPaths",
                             "values": {"min_time": (1.5, "m")},
                         },
                     },
@@ -369,17 +369,17 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "DeleteUsersByPathLength",
+                        "name": "DropPaths",
                         "values": {"min_time": (1.5, "m"), "min_steps": None},
                     },
                 },
             ],
         } == export_data
 
-    def test_lost_users__export(self) -> None:
+    def test_label_lost_users__export(self) -> None:
         graph = self.create_graph()
 
-        node = EventsNode(processor=LostUsersEvents(params=LostUsersParams(lost_users_list=None, timeout=(4, "h"))))
+        node = EventsNode(processor=LabelLostUsers(params=LabelLostUsersParams(lost_users_list=None, timeout=(4, "h"))))
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -394,14 +394,14 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "LostUsersEvents",
+                        "name": "LabelLostUsers",
                         "values": {"lost_users_list": None, "timeout": (4.0, "h")},
                     },
                 },
             ],
         } == export_data
 
-    def test_lost_users__import(self) -> None:
+    def test_label_lost_users__import(self) -> None:
         graph = self.create_graph()
         graph._set_graph(
             payload={
@@ -412,7 +412,7 @@ class TestPreprocessingGraphExportImport:
                         "name": "EventsNode",
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
-                            "name": "LostUsersEvents",
+                            "name": "LabelLostUsers",
                             "values": {"lost_users_list": None, "timeout": (4.0, "h")},
                         },
                     },
@@ -435,17 +435,19 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "LostUsersEvents",
+                        "name": "LabelLostUsers",
                         "values": {"lost_users_list": None, "timeout": (4.0, "h")},
                     },
                 },
             ],
         } == export_data
 
-    def test_negative_target__export(self) -> None:
+    def test_add_negative_events__export(self) -> None:
         graph = self.create_graph()
 
-        node = EventsNode(processor=NegativeTarget(params=NegativeTargetParams(**{"targets": ["event3", "event2"]})))
+        node = EventsNode(
+            processor=AddNegativeEvents(params=AddNegativeEventsParams(**{"targets": ["event3", "event2"]}))
+        )
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -460,7 +462,7 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "NegativeTarget",
+                        "name": "AddNegativeEvents",
                         "values": {
                             "targets": ["event3", "event2"],
                             "func": "def _default_func(eventstream: EventstreamType, "
@@ -500,7 +502,7 @@ class TestPreprocessingGraphExportImport:
             ],
         } == export_data
 
-    def test_negative_target__import(self) -> None:
+    def test_add_negative_events__import(self) -> None:
         graph = self.create_graph()
         graph._set_graph(
             payload={
@@ -511,7 +513,7 @@ class TestPreprocessingGraphExportImport:
                         "name": "EventsNode",
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
-                            "name": "NegativeTarget",
+                            "name": "AddNegativeEvents",
                             "values": {
                                 "targets": ["event3", "event2"],
                                 "func": "def _default_func(eventstream, "
@@ -548,7 +550,7 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "NegativeTarget",
+                        "name": "AddNegativeEvents",
                         "values": {
                             "targets": ["event3", "event2"],
                             "func": "def _default_func(eventstream, "
@@ -572,7 +574,9 @@ class TestPreprocessingGraphExportImport:
     def test_positive_events__export(self) -> None:
         graph = self.create_graph()
 
-        node = EventsNode(processor=PositiveTarget(params=PositiveTargetParams(**{"targets": ["event3", "event2"]})))
+        node = EventsNode(
+            processor=AddPositiveEvents(params=AddPositiveEventsParams(**{"targets": ["event3", "event2"]}))
+        )
         graph.add_node(node=node, parents=[graph.root])
 
         export_data = graph.export(payload={})
@@ -587,7 +591,7 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "PositiveTarget",
+                        "name": "AddPositiveEvents",
                         "values": {
                             "targets": ["event3", "event2"],
                             "func": "def _default_func("
@@ -639,7 +643,7 @@ class TestPreprocessingGraphExportImport:
                         "name": "EventsNode",
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
-                            "name": "PositiveTarget",
+                            "name": "AddPositiveEvents",
                             "values": {"targets": ["event3", "event2"]},
                         },
                     },
@@ -662,7 +666,7 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "PositiveTarget",
+                        "name": "AddPositiveEvents",
                         "values": {
                             "targets": ["event3", "event2"],
                             "func": "def _default_func("
@@ -781,8 +785,8 @@ class TestPreprocessingGraphExportImport:
         graph = self.create_graph()
 
         node = EventsNode(
-            processor=TruncatePath(
-                params=TruncatePathParams(drop_before="event3", occurrence_before="last", shift_before=2)
+            processor=TruncatePaths(
+                params=TruncatePathsParams(drop_before="event3", occurrence_before="last", shift_before=2)
             )
         )
         graph.add_node(node=node, parents=[graph.root])
@@ -799,7 +803,7 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "TruncatePath",
+                        "name": "TruncatePaths",
                         "values": {
                             "drop_before": "event3",
                             "occurrence_before": "last",
@@ -824,7 +828,7 @@ class TestPreprocessingGraphExportImport:
                         "name": "EventsNode",
                         "pk": "f45f7390-d2b4-4414-bcd2-94532ede375d",
                         "processor": {
-                            "name": "TruncatePath",
+                            "name": "TruncatePaths",
                             "values": {"drop_before": "event3", "occurrence_before": "last", "shift_before": 2},
                         },
                     },
@@ -847,7 +851,7 @@ class TestPreprocessingGraphExportImport:
                 {
                     "name": "EventsNode",
                     "processor": {
-                        "name": "TruncatePath",
+                        "name": "TruncatePaths",
                         "values": {
                             "drop_before": "event3",
                             "occurrence_before": "last",

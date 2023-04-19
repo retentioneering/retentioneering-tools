@@ -87,7 +87,7 @@ class StepMatrix(EndedEventsMixin):
     Notes
     -----
     During step matrix calculation an artificial ``ENDED`` event is created. If a path already
-    contains ``path_end`` event (See :py:class:`.StartEndEvents`), it
+    contains ``path_end`` event (See :py:class:`.AddStartEndEvents`), it
     will be temporarily replaced with ``ENDED`` (within step matrix only). Otherwise, ``ENDED``
     event will be explicitly added to the end of each path.
 

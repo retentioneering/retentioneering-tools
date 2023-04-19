@@ -30,14 +30,14 @@ def source_stream_for_log_scale() -> EventstreamType:
 
 
 @pytest.fixture
-def source_stream_start_end_events() -> EventstreamType:
+def source_stream_add_start_end_events() -> EventstreamType:
     source_df = read_test_data("input.csv")
-    source_stream = Eventstream(source_df).add_start_end()
+    source_stream = Eventstream(source_df).add_start_end_events()
     return source_stream
 
 
 @pytest.fixture
 def source_stream_sessions() -> EventstreamType:
     source_df = read_test_data("input.csv")
-    source_stream = Eventstream(source_df).add_start_end().split_sessions(timeout=(1, "s"))
+    source_stream = Eventstream(source_df).add_start_end_events().split_sessions(timeout=(1, "s"))
     return source_stream

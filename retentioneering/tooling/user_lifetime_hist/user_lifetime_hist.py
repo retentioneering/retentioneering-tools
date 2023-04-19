@@ -49,7 +49,7 @@ class UserLifetimeHist:
     .TimedeltaHist : Plot the distribution of the time deltas between two events.
     .Eventstream.describe : Show general eventstream statistics.
     .Eventstream.describe_events : Show general eventstream events statistics.
-    .DeleteUsersByPathLength : Filter user paths based on the path length, removing the paths that are shorter than the
+    .DropPaths : Filter user paths based on the path length, removing the paths that are shorter than the
                                specified number of events or cut_off.
 
     Notes

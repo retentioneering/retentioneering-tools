@@ -127,7 +127,7 @@ Suppose you wanted to analyze only the first session of each user, rather than t
     # eventstream preprocessing example
     stream \
         .split_sessions(timeout=(30, 'm')) \
-        .filter(func=lambda df_, schema: df_['session_id'].str.endswith('_1')) \
+        .filter_events(func=lambda df_, schema: df_['session_id'].str.endswith('_1')) \
         .to_dataframe() \
         .head()
 

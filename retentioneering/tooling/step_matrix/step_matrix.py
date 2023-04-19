@@ -60,13 +60,13 @@ class StepMatrix(EndedEventsMixin):
         self.time_col = self.__eventstream.schema.event_timestamp
         self.event_index_col = self.__eventstream.schema.event_index
 
-        self.max_steps: int = 20
+        self.max_steps: int
         self.weight_col: str = self.__eventstream.schema.user_id
-        self.precision: int | None = None
+        self.precision: int
         self.targets: list[str] | str | None = None
         self.accumulated: Literal["both", "only"] | None = None
         self.sorting: list | None = None
-        self.threshold: float | None = None
+        self.threshold: float
         self.centered: CenteredParams | None = None
         self.groups: Tuple[list, list] | None = None
 
@@ -396,17 +396,17 @@ class StepMatrix(EndedEventsMixin):
             for users from g_1 and g_2, respectively. Resulting matrix will be the matrix
             M = M1-M2.
 
-            Notes
-            -----
-            During step matrix calculation an artificial ``ENDED`` event is created. If a path already
-            contains ``path_end`` event (See :py:class:`.AddStartEndEvents`), it
-            will be temporarily replaced with ``ENDED`` (within step matrix only). Otherwise, ``ENDED``
-            event will be explicitly added to the end of each path.
+        Notes
+        -----
+        During step matrix calculation an artificial ``ENDED`` event is created. If a path already
+        contains ``path_end`` event (See :py:class:`.AddStartEndEvents`), it
+        will be temporarily replaced with ``ENDED`` (within step matrix only). Otherwise, ``ENDED``
+        event will be explicitly added to the end of each path.
 
-            Event ``ENDED`` is cumulated so that the values in its row are summed up from
-            the first step to the last. ``ENDED`` row is always placed at the last line of step matrix.
-            This design guarantees that the sum of any step matrix's column is 1
-            (0 for a differential step matrix).
+        Event ``ENDED`` is cumulated so that the values in its row are summed up from
+        the first step to the last. ``ENDED`` row is always placed at the last line of step matrix.
+        This design guarantees that the sum of any step matrix's column is 1
+        (0 for a differential step matrix).
 
         """
         self.max_steps = max_steps

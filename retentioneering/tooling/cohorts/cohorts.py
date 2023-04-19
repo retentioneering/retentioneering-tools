@@ -24,43 +24,7 @@ class Cohorts:
     Parameters
     ----------
     eventstream : EventstreamType
-    cohort_start_unit : :numpy_link:`DATETIME_UNITS<>`
-        The way of rounding and formatting of the moment from which the cohort count begins.
-        The minimum timestamp is rounded down to the selected datetime unit.
 
-        For example:
-        assume we have an eventstream with the following minimum timestamp - "2021-12-28 09:08:34.432456".
-        The result of roundings with different ``DATETIME_UNITS`` is shown in the table below:
-
-        +------------------------+-------------------------+
-        | **cohort_start_unit**  | **cohort_start_moment** |
-        +------------------------+-------------------------+
-        | Y                      |  2021-01-01 00:00:00    |
-        +------------------------+-------------------------+
-        | M                      |  2021-12-01 00:00:00    |
-        +------------------------+-------------------------+
-        | W                      |  2021-12-27 00:00:00    |
-        +------------------------+-------------------------+
-        | D                      |  2021-08-28 00:00:00    |
-        +------------------------+-------------------------+
-
-    cohort_period : Tuple(int, :numpy_link:`DATETIME_UNITS<>`)
-        The cohort_period size and its ``DATETIME_UNIT``. This parameter is used in calculating:
-
-        - Start moments for each cohort from the moment specified with the ``cohort_start_unit`` parameter
-        - Cohort periods for each cohort from its start moment.
-    average : bool, default True
-        - If ``True`` - calculating average for each cohort period.
-        - If ``False`` - averaged values aren't calculated.
-    cut_bottom : int, default 0
-        Drop 'n' rows from the bottom of the cohort matrix.
-        Average is recalculated.
-    cut_right : int, default 0
-        Drop 'n' columns from the right side of the cohort matrix.
-        Average is recalculated.
-    cut_diagonal : int, default 0
-        Replace values in 'n' diagonals (last period-group cells) with ``np.nan``.
-        Average is recalculated.
 
     See Also
     --------
@@ -70,57 +34,27 @@ class Cohorts:
 
     Notes
     -----
-    Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
-    Due to "Y" and "M" being non-fixed types, it can be used only with each other
-    or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``.
-    More information - :numpy_timedelta_link:`about numpy timedelta<>`
-
-    Only cohorts with at least 1 user in some period are shown.
-
     See :doc:`Cohorts user guide</user_guides/cohorts>` for the details.
 
     """
 
     __eventstream: EventstreamType
+    cohort_start_unit: DATETIME_UNITS
     cohort_period: int
     cohort_period_unit: DATETIME_UNITS
-    cohort_start_unit: DATETIME_UNITS
 
-    def __init__(
-        self,
-        eventstream: EventstreamType,
-        cohort_start_unit: DATETIME_UNITS,
-        cohort_period: Tuple[int, DATETIME_UNITS],
-        average: bool = True,
-        cut_bottom: int = 0,
-        cut_right: int = 0,
-        cut_diagonal: int = 0,
-    ):
+    average: bool
+    cut_bottom: int
+    cut_right: int
+    cut_diagonal: int
+
+    def __init__(self, eventstream: EventstreamType):
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
-        self.average = average
-        self.cohort_start_unit = cohort_start_unit
-        self.cohort_period, self.cohort_period_unit = cohort_period
-        self.cut_bottom = cut_bottom
-        self.cut_right = cut_right
-        self.cut_diagonal = cut_diagonal
 
-        data = self.__eventstream.to_dataframe()
-        self.data = data
         self._cohort_matrix_result: pd.DataFrame = pd.DataFrame()
-
-        if self.cohort_period <= 0:
-            raise ValueError("cohort_period should be positive integer!")
-
-        # @TODO добавить ссылку на numpy с объяснением. dpanina
-        if self.cohort_period_unit in ["Y", "M"] and self.cohort_start_unit not in ["Y", "M"]:
-            raise ValueError(
-                """Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
-                                 Due to "Y" and "M" are non-fixed types it can be used only with each other
-                                 or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``!"""
-            )
 
     def _add_min_date(
         self,
@@ -181,16 +115,93 @@ class Cohorts:
 
         return df.iloc[: len(df) - cut_bottom, : len(df.columns) - cut_right]
 
-    def fit(self) -> None:
+    def fit(
+        self,
+        cohort_start_unit: DATETIME_UNITS,
+        cohort_period: Tuple[int, DATETIME_UNITS],
+        average: bool = True,
+        cut_bottom: int = 0,
+        cut_right: int = 0,
+        cut_diagonal: int = 0,
+    ) -> None:
         """
         Calculates the cohort internal values with the defined parameters.
         Applying ``fit`` method is necessary for the following usage
         of any visualization or descriptive ``Cohorts`` methods.
 
+        Parameters
+        ----------
+        cohort_start_unit : :numpy_link:`DATETIME_UNITS<>`
+            The way of rounding and formatting of the moment from which the cohort count begins.
+            The minimum timestamp is rounded down to the selected datetime unit.
+
+            For example:
+            assume we have an eventstream with the following minimum timestamp - "2021-12-28 09:08:34.432456".
+            The result of roundings with different ``DATETIME_UNITS`` is shown in the table below:
+
+            +------------------------+-------------------------+
+            | **cohort_start_unit**  | **cohort_start_moment** |
+            +------------------------+-------------------------+
+            | Y                      |  2021-01-01 00:00:00    |
+            +------------------------+-------------------------+
+            | M                      |  2021-12-01 00:00:00    |
+            +------------------------+-------------------------+
+            | W                      |  2021-12-27 00:00:00    |
+            +------------------------+-------------------------+
+            | D                      |  2021-08-28 00:00:00    |
+            +------------------------+-------------------------+
+
+        cohort_period : Tuple(int, :numpy_link:`DATETIME_UNITS<>`)
+            The cohort_period size and its ``DATETIME_UNIT``. This parameter is used in calculating:
+
+            - Start moments for each cohort from the moment specified with the ``cohort_start_unit`` parameter
+            - Cohort periods for each cohort from its start moment.
+        average : bool, default True
+            - If ``True`` - calculating average for each cohort period.
+            - If ``False`` - averaged values aren't calculated.
+        cut_bottom : int, default 0
+            Drop 'n' rows from the bottom of the cohort matrix.
+            Average is recalculated.
+        cut_right : int, default 0
+            Drop 'n' columns from the right side of the cohort matrix.
+            Average is recalculated.
+        cut_diagonal : int, default 0
+            Replace values in 'n' diagonals (last period-group cells) with ``np.nan``.
+            Average is recalculated.
+
+        Notes
+        -----
+        Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
+        Due to "Y" and "M" being non-fixed types, it can be used only with each other
+        or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``.
+        More information - :numpy_timedelta_link:`about numpy timedelta<>`
+
+        Only cohorts with at least 1 user in some period are shown.
+
+        See :doc:`Cohorts user guide</user_guides/cohorts>` for the details.
+
         """
+        data = self.__eventstream.to_dataframe()
+        self.average = average
+        self.cohort_start_unit = cohort_start_unit
+        self.cohort_period, self.cohort_period_unit = cohort_period
+        self.cut_bottom = cut_bottom
+        self.cut_right = cut_right
+        self.cut_diagonal = cut_diagonal
+
+        if self.cohort_period <= 0:
+            raise ValueError("cohort_period should be positive integer!")
+
+        # @TODO добавить ссылку на numpy с объяснением. dpanina
+        if self.cohort_period_unit in ["Y", "M"] and self.cohort_start_unit not in ["Y", "M"]:
+            raise ValueError(
+                """Parameters ``cohort_start_unit`` and ``cohort_period`` should be consistent.
+                                 Due to "Y" and "M" are non-fixed types it can be used only with each other
+                                 or if ``cohort_period_unit`` is more detailed than ``cohort_start_unit``!"""
+            )
 
         df = self._add_min_date(
-            data=self.data,
+            data=data,
             cohort_start_unit=self.cohort_start_unit,
             cohort_period=self.cohort_period,
             cohort_period_unit=self.cohort_period_unit,
@@ -243,7 +254,7 @@ class Cohorts:
         return ax
 
     def lineplot(
-        self, show_plot: Literal["cohorts", "average", "all"] = "cohorts", width: float = 7.0, height: float = 5.0
+        self, plot_type: Literal["cohorts", "average", "all"] = "cohorts", width: float = 7.0, height: float = 5.0
     ) -> matplotlib.axes.Axes:
         """
         Create a chart representing each cohort dynamics over time.
@@ -251,7 +262,7 @@ class Cohorts:
 
         Parameters
         ----------
-        show_plot: 'cohorts', 'average' or 'all'
+        plot_type: 'cohorts', 'average' or 'all'
             - if ``cohorts`` - shows a lineplot for each cohort,
             - if ``average`` - shows a lineplot only for the average values over all the cohorts,
             - if ``all`` - shows a lineplot for each cohort and also for their average values.
@@ -265,23 +276,23 @@ class Cohorts:
         matplotlib.axes.Axes
 
         """
-        if show_plot not in ["cohorts", "average", "all"]:
-            raise ValueError("show_plot parameter should be 'cohorts', 'average' or 'all'!")
+        if plot_type not in ["cohorts", "average", "all"]:
+            raise ValueError("plot_type parameter should be 'cohorts', 'average' or 'all'!")
         figsize = (width, height)
         df_matrix = self._cohort_matrix_result
         df_wo_average = df_matrix[df_matrix.index != "Average"]  # type: ignore
-        if show_plot in ["all", "average"] and "Average" not in df_matrix.index:  # type: ignore
+        if plot_type in ["all", "average"] and "Average" not in df_matrix.index:  # type: ignore
             df_matrix.loc["Average"] = df_matrix.mean()  # type: ignore
         df_average = df_matrix[df_matrix.index == "Average"]  # type: ignore
         figure, ax = plt.subplots(figsize=figsize)
-        if show_plot == "all":
+        if plot_type == "all":
             sns.lineplot(df_wo_average.T, lw=1.5, ax=ax)
             sns.lineplot(df_average.T, lw=2.5, palette=["red"], marker="X", markersize=8, alpha=0.6, ax=ax)
 
-        if show_plot == "average":
+        if plot_type == "average":
             sns.lineplot(df_average.T, lw=2.5, palette=["red"], marker="X", markersize=8, alpha=0.6, ax=ax)
 
-        if show_plot == "cohorts":
+        if plot_type == "cohorts":
             sns.lineplot(df_wo_average.T, lw=1.5, ax=ax)
 
         ax.legend(loc="upper left", bbox_to_anchor=(1, 1))

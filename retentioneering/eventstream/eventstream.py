@@ -776,8 +776,9 @@ class Eventstream(
             A ``Cohorts`` class instance fitted to the given parameters.
         """
 
-        self.__cohorts = Cohorts(
-            eventstream=self,
+        self.__cohorts = Cohorts(eventstream=self)
+
+        self.__cohorts.fit(
             cohort_start_unit=cohort_start_unit,
             cohort_period=cohort_period,
             average=average,
@@ -785,8 +786,6 @@ class Eventstream(
             cut_right=cut_right,
             cut_diagonal=cut_diagonal,
         )
-
-        self.__cohorts.fit()
         if show_plot:
             self.__cohorts.heatmap(width=width, height=height)
         return self.__cohorts

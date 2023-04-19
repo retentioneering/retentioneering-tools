@@ -670,14 +670,14 @@ class Eventstream(
     def step_matrix(
         self,
         max_steps: int = 20,
-        weight_col: Optional[str] = None,
+        weight_col: str | None = None,
         precision: int = 2,
-        targets: Optional[list[str] | str] = None,
-        accumulated: Optional[Union[Literal["both", "only"], None]] = None,
-        sorting: Optional[list[str]] = None,
+        targets: list[str] | str | None = None,
+        accumulated: Literal["both", "only"] | None = None,
+        sorting: list | None = None,
         threshold: float = 0,
-        centered: Optional[dict] = None,
-        groups: Optional[Tuple[list, list]] = None,
+        centered: dict | None = None,
+        groups: Tuple[list, list] | None = None,
         show_plot: bool = True,
     ) -> StepMatrix:
         """
@@ -696,8 +696,9 @@ class Eventstream(
             A ``StepMatrix`` class instance fitted to the given parameters.
 
         """
-        self.__step_matrix = StepMatrix(
-            eventstream=self,
+        self.__step_matrix = StepMatrix(eventstream=self)
+
+        self.__step_matrix.fit(
             max_steps=max_steps,
             weight_col=weight_col,
             precision=precision,
@@ -708,8 +709,6 @@ class Eventstream(
             centered=centered,
             groups=groups,
         )
-
-        self.__step_matrix.fit()
         if show_plot:
             self.__step_matrix.plot()
         return self.__step_matrix

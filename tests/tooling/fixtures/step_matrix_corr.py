@@ -7,7 +7,7 @@ FLOAT_PRECISION = 3
 
 
 @pytest.fixture
-def max_steps_cor():
+def max_steps_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
             [1.0, 0.667, 0.333, 0.167, 0.167],
@@ -23,7 +23,7 @@ def max_steps_cor():
 
 
 @pytest.fixture
-def max_steps_100_cor():
+def max_steps_100_cor() -> pd.DataFrame:
     current_dir = os.path.dirname(os.path.realpath(__file__))
     test_data_dir = os.path.join(current_dir, "../../datasets/tooling/step_matrix")
     filepath = os.path.join(test_data_dir, "03_100_steps.csv")
@@ -33,13 +33,13 @@ def max_steps_100_cor():
 
 
 @pytest.fixture
-def max_steps_one_cor():
+def max_steps_one_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame([[1.0]], index=["event1"], columns=[1])
     return correct_result
 
 
 @pytest.fixture
-def thresh_cor():
+def thresh_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
             [1.0, 0.667, 0.333, 0.167, 0.167, 0.167],

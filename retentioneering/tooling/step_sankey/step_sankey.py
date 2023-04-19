@@ -20,7 +20,6 @@ class StepSankey(EndedEventsMixin):
     eventstream : EventstreamType
 
 
-
     See Also
     --------
     .Eventstream.step_sankey : Call StepSankey tool as an eventstream method.
@@ -41,9 +40,9 @@ class StepSankey(EndedEventsMixin):
         self.event_index_col = self.__eventstream.schema.event_index
 
         self.max_steps: int | None = None
-        self.threshold: Union[int, float] | None = None
+        self.threshold: int | float | None = None
         self.sorting: list | None = None
-        self.targets: Union[list[str], str] | None = None
+        self.targets: list[str] | str | None = None
         self.autosize: bool | None = None
         self.width: int | None = None
         self.height: int | None = None

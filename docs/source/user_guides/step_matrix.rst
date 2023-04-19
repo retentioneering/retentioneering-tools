@@ -433,8 +433,8 @@ Here is an example how you can manage it:
 
     from retentioneering.tooling.step_matrix import StepMatrix
 
-    step_matrix = StepMatrix(stream, max_steps=12, targets=['payment_done'])
-    step_matrix.fit()
+    step_matrix = StepMatrix(stream)
+    step_matrix.fit(max_steps=12, targets=['payment_done'])
     step_matrix.plot()
 
 .. figure:: /_static/user_guides/step_matrix/output_75_0.png

@@ -741,20 +741,11 @@ class Eventstream(
             A ``StepSankey`` class instance fitted to the given parameters.
 
         """
-        self.__sankey = StepSankey(
-            eventstream=self,
-            max_steps=max_steps,
-            threshold=threshold,
-            sorting=sorting,
-            targets=targets,
-            autosize=autosize,
-            width=width,
-            height=height,
-        )
+        self.__sankey = StepSankey(eventstream=self)
 
-        self.__sankey.fit()
+        self.__sankey.fit(max_steps=max_steps, threshold=threshold, sorting=sorting, targets=targets)
         if show_plot:
-            figure = self.__sankey.plot()
+            figure = self.__sankey.plot(autosize=autosize, width=width, height=height)
             figure.show()
         return self.__sankey
 

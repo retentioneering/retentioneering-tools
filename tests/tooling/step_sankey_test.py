@@ -10,8 +10,8 @@ from tests.tooling.fixtures.step_sankey import test_stream
 
 
 def run_test(stream, test_prefix, **kwargs):
-    s = StepSankey(eventstream=stream, **kwargs)
-    s.fit()
+    s = StepSankey(eventstream=stream)
+    s.fit(**kwargs)
     res_nodes, res_edges = s.values
 
     current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -54,4 +54,5 @@ class TestSankey:
 
     def test_sankey__incorrect_max_steps(self, test_stream):
         with pytest.raises(ValueError):
-            s = StepSankey(eventstream=test_stream, max_steps=1)
+            s = StepSankey(eventstream=test_stream)
+            s.fit(max_steps=1)

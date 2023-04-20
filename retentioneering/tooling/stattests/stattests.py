@@ -16,17 +16,17 @@ from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.stattests.constants import STATTEST_NAMES
 
 
-def _cohend(d1: list, d2: list) -> float:
-    n1, n2 = len(d1), len(d2)
-    s1, s2 = np.var(d1, ddof=1), np.var(d2, ddof=1)
+def _cohend(sample1: list, sample2: list) -> float:
+    n1, n2 = len(sample1), len(sample2)
+    s1, s2 = np.var(sample1, ddof=1), np.var(sample2, ddof=1)
     s = float(math.sqrt(((n1 - 1) * s1 + (n2 - 1) * s2) / (n1 + n2 - 2)))
-    u1, u2 = float(np.mean(d1)), float(np.mean(d2))
-    return (u1 - u2) / s
+    mean_sample1, mean_sample2 = float(np.mean(sample1)), float(np.mean(sample2))
+    return (mean_sample1 - mean_sample2) / s
 
 
-def _cohenh(d1: list, d2: list) -> float:
-    u1, u2 = np.mean(d1), np.mean(d2)
-    return 2 * (math.asin(math.sqrt(u1)) - math.asin(math.sqrt(u2)))
+def _cohenh(sample1: list, sample2: list) -> float:
+    mean_sample1, mean_sample2 = np.mean(sample1), np.mean(sample2)
+    return 2 * (math.asin(math.sqrt(mean_sample1)) - math.asin(math.sqrt(mean_sample2)))
 
 
 class StatTests:
@@ -36,28 +36,6 @@ class StatTests:
     Parameters
     ----------
     eventstream : EventstreamType
-    test : {'mannwhitneyu', 'ttest', 'ztest', 'ks_2samp', 'chi2_contingency', 'fisher_exact'}
-        Test the null hypothesis that 2 independent samples are drawn from the same
-        distribution. Supported tests are:
-
-        - ``mannwhitneyu`` see :mannwhitneyu:`scipy documentation<>`.
-        - ``ttest`` see :statsmodel_ttest:`statsmodels documentation<>`.
-        - ``ztest`` see :statsmodel_ztest:`statsmodels documentation<>`.
-        - ``ks_2samp`` see :scipy_ks:`scipy documentation<>`.
-        - ``chi2_contingency`` see :scipy_chi2:`scipy documentation<>`.
-        - ``fisher_exact`` see :scipy_fisher:`scipy documentation<>`.
-
-    groups : tuple of list
-        Must contain a tuple of two elements (g_1, g_2): g_1 and g_2 are collections
-        of user_id`s.
-    func : Callable
-        Selected metrics. Must contain a function that takes a dataset as an argument for
-        a single user trajectory and returns a single numerical value.
-    group_names : tuple, default ('group_1', 'group_2')
-        Names for selected groups g_1 and g_2.
-    alpha : float, default 0.05
-        Selected level of significance.
-
 
     See Also
     --------
@@ -69,29 +47,28 @@ class StatTests:
 
     """
 
-    def __init__(
-        self,
-        eventstream: EventstreamType,
-        test: STATTEST_NAMES,
-        groups: Tuple[list[str | int], list[str | int]],
-        func: Callable,
-        group_names: Tuple[str, str] = ("group_1", "group_2"),
-        alpha: float = 0.05,
-    ) -> None:
+    __eventstream: EventstreamType
+    test: STATTEST_NAMES
+    groups: Tuple[list[str | int], list[str | int]]
+    func: Callable
+    group_names: Tuple[str, str]
+    alpha: float
+    g1_data: list[str | int]
+    g2_data: list[str | int]
+
+    output_template_numerical = "{0} (mean ± SD): {1:.3f} ± {2:.3f}, n = {3}"
+    output_template_categorical = "{0} (size): n = {1}"
+    p_val, power, label_min, label_max = 0.0, 0.0, "", ""
+    is_fitted: bool
+
+    def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
-        self.output_template_numerical = "{0} (mean ± SD): {1:.3f} ± {2:.3f}, n = {3}"
-        self.output_template_categorical = "{0} (size): n = {1}"
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
-        self.groups = groups
-        self.func = func
-        self.test = test
-        self.group_names = group_names
-        self.alpha = alpha
-        self.g1_data: list[str | int] = list()
-        self.g2_data: list[str | int] = list()
-        self.p_val, self.power, self.label_min, self.label_max = 0.0, 0.0, "", ""
+
+        self.g1_data = list()
+        self.g2_data = list()
         self.is_fitted = False
 
     def _get_group_values(self) -> Tuple[list, list]:
@@ -152,7 +129,7 @@ class StatTests:
                 freq_table = self._get_freq_table(data_max, data_min)
                 p_val = fisher_exact(freq_table, alternative="greater")[1]
         else:
-            raise ValueError("The argument test is not supported. Supported tests are: {}".format(*STATTEST_NAMES))  # type: ignore
+            raise ValueError(f"The argument test is not supported. Supported tests are: {STATTEST_NAMES}")
         return p_val, power  # type: ignore
 
     def _get_sorted_test_results(self) -> Tuple[float, float, str, str]:
@@ -170,13 +147,50 @@ class StatTests:
             label_min = self.group_names[0]
         return p_val, power, label_max, label_min
 
-    def fit(self) -> None:
+    def fit(
+        self,
+        test: STATTEST_NAMES,
+        groups: Tuple[list[str | int], list[str | int]],
+        func: Callable,
+        group_names: Tuple[str, str] = ("group_1", "group_2"),
+        alpha: float = 0.05,
+    ) -> None:
         """
         Calculates the stattests internal values with the defined parameters.
         Applying ``fit`` method is necessary for the following usage
         of any visualization or descriptive ``StatTests`` methods.
 
+        Parameters
+        ----------
+        test : {'mannwhitneyu', 'ttest', 'ztest', 'ks_2samp', 'chi2_contingency', 'fisher_exact'}
+            Test the null hypothesis that 2 independent samples are drawn from the same
+            distribution. Supported tests are:
+
+            - ``mannwhitneyu`` see :mannwhitneyu:`scipy documentation<>`.
+            - ``ttest`` see :statsmodel_ttest:`statsmodels documentation<>`.
+            - ``ztest`` see :statsmodel_ztest:`statsmodels documentation<>`.
+            - ``ks_2samp`` see :scipy_ks:`scipy documentation<>`.
+            - ``chi2_contingency`` see :scipy_chi2:`scipy documentation<>`.
+            - ``fisher_exact`` see :scipy_fisher:`scipy documentation<>`.
+
+        groups : tuple of list
+            Must contain a tuple of two elements (g_1, g_2): g_1 and g_2 are collections
+            of user_id`s.
+        func : Callable
+            Selected metrics. Must contain a function that takes a dataset as an argument for
+            a single user trajectory and returns a single numerical value.
+        group_names : tuple, default ('group_1', 'group_2')
+            Names for selected groups g_1 and g_2.
+        alpha : float, default 0.05
+            Selected level of significance.
+
         """
+        self.groups = groups
+        self.func = func
+        self.test = test
+        self.group_names = group_names
+        self.alpha = alpha
+
         self.g1_data, self.g2_data = self._get_group_values()
         self.p_val, self.power, self.label_min, self.label_max = self._get_sorted_test_results()
         self.is_fitted = True

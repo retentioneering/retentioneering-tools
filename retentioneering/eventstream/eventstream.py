@@ -824,10 +824,8 @@ class Eventstream(
         StatTests
             A ``StatTest`` class instance fitted to the given parameters.
         """
-        self.__stattests = StatTests(
-            eventstream=self, groups=groups, func=func, test=test, group_names=group_names, alpha=alpha
-        )
-        self.__stattests.fit()
+        self.__stattests = StatTests(eventstream=self)
+        self.__stattests.fit(groups=groups, func=func, test=test, group_names=group_names, alpha=alpha)
         self.__stattests.display_results()
         return self.__stattests
 

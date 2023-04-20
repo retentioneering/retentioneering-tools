@@ -9,7 +9,7 @@ class TrackingInfo:
     client_session_id: str
     event_custom_name: str
     event_name: str
-    params: dict[str, str]
+    params: dict[str, str] | list[str]
     # marketing_session_type_3_id: str # @FIXME: what is this? Vladimir Makhanov.
 
     event_date_local: str = ""

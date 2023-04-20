@@ -30,11 +30,11 @@ class Tracker(Singleton):
     def __obtain_user_id(self) -> str:
         return get_hwid()
 
-    def __clean_params(self, params: dict[str, Any], allowed_params: list[str] | None = None) -> dict[str, Any]:
+    def clear_params(self, params: dict[str, Any], allowed_params: list[str] | None = None) -> list[str]:
         if allowed_params is None:
             allowed_params = []
-        return {key: value for key, value in params.items() if key in allowed_params}
-        # return [key for key in params.keys() if key in allowed_params]
+        # return {key: value for key, value in params.items() if key in allowed_params}
+        return [key for key in params.keys() if key in allowed_params]
 
     def track(self, tracking_info: dict[str, Any], allowed_params: list[str] | None = None) -> Callable:
         event_name = tracking_info["event_name"]
@@ -46,7 +46,7 @@ class Tracker(Singleton):
                 @functools.wraps(func)
                 def wrapper(*args: list[Any], **kwargs: dict[Any, Any]) -> Callable:
                     simple_lock_context_manager.function_name = func.__qualname__
-                    called_function_params = self.__clean_params(kwargs, allowed_params)
+                    called_function_params = self.clear_params(kwargs, allowed_params)
                     _tracking_info_start = TrackingInfo(
                         client_session_id=self.user_id,
                         event_name=f"{event_name}_start",

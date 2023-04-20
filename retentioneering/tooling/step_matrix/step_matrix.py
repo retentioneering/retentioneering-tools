@@ -49,6 +49,20 @@ class StepMatrix(EndedEventsMixin):
 
     __eventstream: EventstreamType
     ENDED_EVENT = "ENDED"
+    max_steps: int
+    weight_col: str
+    precision: int
+    targets: list[str] | str | None = None
+    accumulated: Literal["both", "only"] | None = None
+    sorting: list | None = None
+    threshold: float
+    centered: CenteredParams | None = None
+    groups: Tuple[list, list] | None = None
+
+    result_data: pd.DataFrame
+    result_targets: pd.DataFrame | None
+    fraction_title: str | None
+    targets_list: list[list[str]] | None
 
     def __init__(
         self,
@@ -60,20 +74,10 @@ class StepMatrix(EndedEventsMixin):
         self.time_col = self.__eventstream.schema.event_timestamp
         self.event_index_col = self.__eventstream.schema.event_index
 
-        self.max_steps: int
-        self.weight_col: str = self.__eventstream.schema.user_id
-        self.precision: int
-        self.targets: list[str] | str | None = None
-        self.accumulated: Literal["both", "only"] | None = None
-        self.sorting: list | None = None
-        self.threshold: float
-        self.centered: CenteredParams | None = None
-        self.groups: Tuple[list, list] | None = None
-
-        self.result_data: pd.DataFrame = pd.DataFrame()
-        self.result_targets: pd.DataFrame | None = None
-        self.fraction_title: str | None = None
-        self.targets_list: list[list[str]] | None = None
+        self.result_data = pd.DataFrame()
+        self.result_targets = None
+        self.fraction_title = None
+        self.targets_list = None
 
     def _pad_to_center(self, df_: pd.DataFrame) -> pd.DataFrame | None:
         if self.centered is None:

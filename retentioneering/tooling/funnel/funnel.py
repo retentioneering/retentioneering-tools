@@ -37,19 +37,20 @@ class Funnel:
         hovermode="closest",
         legend=dict(orientation="v", bgcolor="#E2E2E2", xanchor="left", font=dict(size=12)),
     )
+    __eventstream: EventstreamType
+    stages: list[str]
+    stage_names: list[str] | None
+    funnel_type: FunnelTypes
+    segments: Collection[Collection[int]] | None
+    segment_names: list[str] | None
+    res_dict: dict
 
     def __init__(self, eventstream: EventstreamType) -> None:
-        self.__eventstream: EventstreamType = eventstream
+        self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
-
-        self.stages: list[str] | None = None
-        self.stage_names: list[str] | None = None
-        self.funnel_type: FunnelTypes | None = None
-        self.segments: Collection[Collection[int]] | None = None
-        self.segment_names: list[str] | None = None
-        self.res_dict: dict = {}
+        self.res_dict = {}
 
     def __validate_input(
         self,
@@ -59,7 +60,7 @@ class Funnel:
         segments: Collection[Collection[int]] | None = None,
         segment_names: list[str] | None = None,
     ) -> tuple[pd.DataFrame, list[str], list[str], FunnelTypes, Collection[Collection[int]], list[str]]:
-        data = self.__eventstream.to_dataframe()
+        data = self.__eventstream.to_dataframe(copy=True)
         data = data[data[self.event_col].isin([i for i in flatten(stages)])]  # type: ignore
 
         if stages and stage_names and len(stages) != len(stage_names):

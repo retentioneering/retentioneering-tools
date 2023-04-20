@@ -47,6 +47,7 @@ class Cohorts:
     cut_bottom: int
     cut_right: int
     cut_diagonal: int
+    _cohort_matrix_result: pd.DataFrame
 
     def __init__(self, eventstream: EventstreamType):
         self.__eventstream = eventstream
@@ -54,7 +55,7 @@ class Cohorts:
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
 
-        self._cohort_matrix_result: pd.DataFrame = pd.DataFrame()
+        self._cohort_matrix_result = pd.DataFrame()
 
     def _add_min_date(
         self,

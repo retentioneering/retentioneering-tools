@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
@@ -32,6 +32,19 @@ class StepSankey(EndedEventsMixin):
 
     """
 
+    max_steps: int
+    threshold: int | float
+    sorting: list | None
+    targets: list[str] | str | None
+    autosize: bool
+    width: int | None
+    height: int | None
+
+    data_grp_nodes: pd.DataFrame
+    data: pd.DataFrame
+    data_grp_links: pd.DataFrame
+    data_for_plot: dict
+
     def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
@@ -39,18 +52,10 @@ class StepSankey(EndedEventsMixin):
         self.time_col = self.__eventstream.schema.event_timestamp
         self.event_index_col = self.__eventstream.schema.event_index
 
-        self.max_steps: int | None = None
-        self.threshold: int | float | None = None
-        self.sorting: list | None = None
-        self.targets: list[str] | str | None = None
-        self.autosize: bool | None = None
-        self.width: int | None = None
-        self.height: int | None = None
-
-        self.data_grp_nodes: pd.DataFrame = pd.DataFrame()
-        self.data: pd.DataFrame = pd.DataFrame()
-        self.data_grp_links: pd.DataFrame = pd.DataFrame()
-        self.data_for_plot: dict = {}
+        self.data_grp_nodes = pd.DataFrame()
+        self.data = pd.DataFrame()
+        self.data_grp_links = pd.DataFrame()
+        self.data_for_plot = {}
 
     @staticmethod
     def _make_color(
@@ -317,11 +322,11 @@ class StepSankey(EndedEventsMixin):
         return fig
 
     def _get_links(
-        self, max_steps: int, data: pd.DataFrame, data_for_plot: dict, data_grp_nodes: pd.DataFrame
+        self, data: pd.DataFrame, data_for_plot: dict, data_grp_nodes: pd.DataFrame
     ) -> tuple[dict, pd.DataFrame]:
         # NOTE create links aggregated dataframe
         data_grp_links = (
-            data[data["step"] <= max_steps - 1]
+            data[data["step"] <= self.max_steps - 1]
             .groupby(by=["step", self.event_col, "next_event"])[[self.user_col, "time_to_next"]]
             .agg({self.user_col: ["count"], "time_to_next": ["sum"]})
             .reset_index()
@@ -504,9 +509,9 @@ class StepSankey(EndedEventsMixin):
     def fit(
         self,
         max_steps: int = 10,
-        threshold: Union[int, float] = 0.05,
+        threshold: int | float = 0.05,
         sorting: list | None = None,
-        targets: Union[list[str], str] | None = None,
+        targets: list[str] | str | None = None,
     ) -> None:
         """
         Calculate the sankey diagram internal values with the defined parameters.
@@ -537,7 +542,7 @@ class StepSankey(EndedEventsMixin):
         ValueError
             If ``max_steps`` parameter is <= 1.
         """
-        data = self.__eventstream.to_dataframe().copy()[
+        data = self.__eventstream.to_dataframe(copy=True)[
             [self.user_col, self.event_col, self.time_col, self.event_index_col]
         ]
         if max_steps <= 1:
@@ -550,9 +555,7 @@ class StepSankey(EndedEventsMixin):
 
         self.data = self._prepare_data(data)
         data_for_plot, self.data_grp_nodes = self._get_nodes(self.data)
-        self.data_for_plot, self.data_grp_links = self._get_links(
-            self.max_steps, self.data, data_for_plot, self.data_grp_nodes
-        )
+        self.data_for_plot, self.data_grp_links = self._get_links(self.data, data_for_plot, self.data_grp_nodes)
 
     def plot(self, autosize: bool = True, width: int | None = None, height: int | None = None) -> go.Figure:
         """

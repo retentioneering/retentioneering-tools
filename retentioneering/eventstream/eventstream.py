@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 import warnings
 from collections.abc import Collection
-from typing import Any, Callable, List, Literal, MutableMapping, Optional, Tuple, Union
+from typing import Any, Callable, List, Literal, MutableMapping, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -716,9 +716,9 @@ class Eventstream(
     def step_sankey(
         self,
         max_steps: int = 10,
-        threshold: Union[int, float] = 0.05,
+        threshold: int | float = 0.05,
         sorting: list | None = None,
-        targets: Union[list[str], str] | None = None,
+        targets: list[str] | str | None = None,
         autosize: bool = True,
         width: int | None = None,
         height: int | None = None,

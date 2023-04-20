@@ -834,14 +834,14 @@ class Eventstream(
     def timedelta_hist(
         self,
         raw_events_only: bool = False,
-        event_pair: Optional[list[str | Literal[EVENTSTREAM_GLOBAL_EVENTS]]] = None,
+        event_pair: list[str | Literal[EVENTSTREAM_GLOBAL_EVENTS]] | None = None,
         adjacent_events_only: bool = True,
         weight_col: str | None = None,
-        time_agg: Optional[AGGREGATION_NAMES] = None,
+        time_agg: AGGREGATION_NAMES | None = None,
         timedelta_unit: DATETIME_UNITS = "s",
         log_scale: bool | tuple[bool, bool] | None = None,
-        lower_cutoff_quantile: Optional[float] = None,
-        upper_cutoff_quantile: Optional[float] = None,
+        lower_cutoff_quantile: float | None = None,
+        upper_cutoff_quantile: float | None = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
         width: float = 6.0,
         height: float = 4.5,
@@ -867,6 +867,9 @@ class Eventstream(
         """
         self.__timedelta_hist = TimedeltaHist(
             eventstream=self,
+        )
+
+        self.__timedelta_hist.fit(
             raw_events_only=raw_events_only,
             event_pair=event_pair,
             adjacent_events_only=adjacent_events_only,
@@ -877,13 +880,12 @@ class Eventstream(
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
-            width=width,
-            height=height,
         )
-
-        self.__timedelta_hist.fit()
         if show_plot:
-            self.__timedelta_hist.plot()
+            self.__timedelta_hist.plot(
+                width=width,
+                height=height,
+            )
 
         return self.__timedelta_hist
 
@@ -891,8 +893,8 @@ class Eventstream(
         self,
         timedelta_unit: DATETIME_UNITS = "s",
         log_scale: bool | tuple[bool, bool] | None = None,
-        lower_cutoff_quantile: Optional[float] = None,
-        upper_cutoff_quantile: Optional[float] = None,
+        lower_cutoff_quantile: float | None = None,
+        upper_cutoff_quantile: float | None = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
         width: float = 6.0,
         height: float = 4.5,
@@ -918,25 +920,24 @@ class Eventstream(
         """
         self.__user_lifetime_hist = UserLifetimeHist(
             eventstream=self,
+        )
+        self.__user_lifetime_hist.fit(
             timedelta_unit=timedelta_unit,
             log_scale=log_scale,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
-            width=width,
-            height=height,
         )
-        self.__user_lifetime_hist.fit()
         if show_plot:
-            self.__user_lifetime_hist.plot()
+            self.__user_lifetime_hist.plot(width=width, height=height)
         return self.__user_lifetime_hist
 
     def event_timestamp_hist(
         self,
         event_list: list[str] | None = None,
         raw_events_only: bool = False,
-        lower_cutoff_quantile: Optional[float] = None,
-        upper_cutoff_quantile: Optional[float] = None,
+        lower_cutoff_quantile: float | None = None,
+        upper_cutoff_quantile: float | None = None,
         bins: int | Literal[BINS_ESTIMATORS] = 20,
         width: float = 6.0,
         height: float = 4.5,
@@ -961,18 +962,17 @@ class Eventstream(
         """
         self.__event_timestamp_hist = EventTimestampHist(
             eventstream=self,
+        )
+
+        self.__event_timestamp_hist.fit(
             event_list=event_list,
             raw_events_only=raw_events_only,
             lower_cutoff_quantile=lower_cutoff_quantile,
             upper_cutoff_quantile=upper_cutoff_quantile,
             bins=bins,
-            width=width,
-            height=height,
         )
-
-        self.__event_timestamp_hist.fit()
         if show_plot:
-            self.__event_timestamp_hist.plot()
+            self.__event_timestamp_hist.plot(width=width, height=height)
         return self.__event_timestamp_hist
 
     def describe(self, session_col: str = "session_id", raw_events_only: bool = False) -> pd.DataFrame:

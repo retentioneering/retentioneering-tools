@@ -144,6 +144,7 @@ Pre-defined clustering methods
 .. code-block:: python
 
     clusters = Clusters(eventstream=stream)
+    clusters.extract_features(ngram_range=(1, 2), feature_type='tfidf')
     clusters.fit(method='kmeans', n_clusters=4)
 
 So far the ``method`` argument supports two options: :sklearn_kmeans:`kmeans<>` and :sklearn_gmm:`gmm<>`. ``n_clusters`` means the number of clusters since both K-means and GMM algorithms need it to be set.

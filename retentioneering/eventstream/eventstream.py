@@ -670,7 +670,7 @@ class Eventstream(
         return self.__clusters
 
     @track(  # type: ignore
-        tracking_info={"event_name": "step_matrix_helper"},
+        tracking_info={"event_name": "step_matrix"},
         allowed_params=[
             "max_steps",
             "weight_col",

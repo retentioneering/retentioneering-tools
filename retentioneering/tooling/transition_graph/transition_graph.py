@@ -842,7 +842,6 @@ class TransitionGraph:
         self.nodes_weight_col = nodes_weight_col if nodes_weight_col else self.eventstream.schema.event_id
         self.edges_weight_col = edges_weight_col if edges_weight_col else self.eventstream.schema.event_id
 
-        self.edges_weight_col = self.eventstream.schema.event_id
         self.edges_norm_type: NormType | None = edges_norm_type
         self.nodelist: Nodelist = Nodelist(
             weight_cols=self.weight_cols,

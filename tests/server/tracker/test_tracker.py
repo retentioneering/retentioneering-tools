@@ -43,18 +43,19 @@ class TestTracker:
         tracker = TrackerWithConstantUUIDAndDictParams(SimpleTrackerConnector())
 
         @tracker.track(tracking_info={"event_name": "test_event_name"}, allowed_params=["edges_norm_type"])
-        def test(edges_norm_type: str, sensetive_data: str):
+        def test(edges_norm_type: str, sensitive_data: str):
             return "test"
 
-        return_value = test(edges_norm_type="test_norm_type", sensetive_data="s0mEp@$s")
+        return_value = test(edges_norm_type="test_norm_type", sensitive_data="s0mEp@$s")
 
         assert "test" == return_value
         assert 2 == len(tracker_log)
 
         assert "12345678-1234-1234-1234-1234567890ab" == tracker_log[0]["client_session_id"]
-        assert "test_event_name_end" == tracker_log[1]["event_name"]
-        assert "test_event_name_start" == tracker_log[0]["event_name"]
-        assert "test_event_name" == tracker_log[0]["event_custom_name"]
+        assert "test_event_name" == tracker_log[0]["event_name"]
+        assert "test_event_name" == tracker_log[1]["event_name"]
+        assert "test_event_name_start" == tracker_log[0]["event_custom_name"]
+        assert "test_event_name_end" == tracker_log[1]["event_custom_name"]
         assert tracker_log[0]["event_date_local"] is not None
         assert tracker_log[0]["event_day_week"] is not None
         assert "12345678-1234-1234-1234-1234567890ab|none|none|none" == tracker_log[0]["user_id"]
@@ -65,18 +66,19 @@ class TestTracker:
         tracker = TrackerWithConstantUUID(SimpleTrackerConnector())
 
         @tracker.track(tracking_info={"event_name": "test_event_name"}, allowed_params=["edges_norm_type"])
-        def test(edges_norm_type: str, sensetive_data: str):
+        def test(edges_norm_type: str, sensitive_data: str):
             return "test"
 
-        return_value = test(edges_norm_type="test_norm_type", sensetive_data="s0mEp@$s")
+        return_value = test(edges_norm_type="test_norm_type", sensitive_data="s0mEp@$s")
 
         assert "test" == return_value
         assert 2 == len(tracker_log)
 
         assert "12345678-1234-1234-1234-1234567890ab" == tracker_log[0]["client_session_id"]
-        assert "test_event_name_end" == tracker_log[1]["event_name"]
-        assert "test_event_name_start" == tracker_log[0]["event_name"]
-        assert "test_event_name" == tracker_log[0]["event_custom_name"]
+        assert "test_event_name" == tracker_log[0]["event_name"]
+        assert "test_event_name" == tracker_log[1]["event_name"]
+        assert "test_event_name_start" == tracker_log[0]["event_custom_name"]
+        assert "test_event_name_end" == tracker_log[1]["event_custom_name"]
         assert tracker_log[0]["event_date_local"] is not None
         assert tracker_log[0]["event_day_week"] is not None
         assert "12345678-1234-1234-1234-1234567890ab|none|none|none" == tracker_log[0]["user_id"]
@@ -84,19 +86,23 @@ class TestTracker:
         assert ["edges_norm_type"] == tracker_log[1]["params"]
 
     def test_single_message(self, clear_tracker_log):
-        tracker = TrackerWithConstantUUIDAndDictParams(SimpleTrackerConnector())
+        tracker = TrackerWithConstantUUID(SimpleTrackerConnector())
 
         @tracker.track(tracking_info={"event_name": "inner"})
-        def inner(edges_norm_type: str, sensetive_data: str):
+        def inner(edges_norm_type: str, sensitive_data: str):
             return "test"
 
-        @tracker.track(tracking_info={"event_name": "outer"})
-        def outer(edges_norm_type: str, sensetive_data: str):
-            return inner(edges_norm_type=edges_norm_type, sensetive_data=sensetive_data)
+        @tracker.track(tracking_info={"event_name": "outer"}, allowed_params=["edges_norm_type"])
+        def outer(edges_norm_type: str, sensitive_data: str):
+            return inner(edges_norm_type=edges_norm_type, sensitive_data=sensitive_data)
 
-        return_value = outer(edges_norm_type="test_norm_type", sensetive_data="s0mEp@$s")
+        return_value = outer(edges_norm_type="test_norm_type", sensitive_data="s0mEp@$s")
 
         assert "test" == return_value
         assert 2 == len(tracker_log)
-        assert "outer_start" == tracker_log[0]["event_name"]
-        assert "outer_end" == tracker_log[1]["event_name"]
+        assert "outer" == tracker_log[0]["event_name"]
+        assert "outer" == tracker_log[1]["event_name"]
+        assert "outer_start" == tracker_log[0]["event_custom_name"]
+        assert "outer_end" == tracker_log[1]["event_custom_name"]
+        assert ["edges_norm_type"] == tracker_log[0]["params"]
+        assert ["edges_norm_type"] == tracker_log[1]["params"]

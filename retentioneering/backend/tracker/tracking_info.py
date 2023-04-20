@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -18,8 +19,9 @@ class TrackingInfo:
     event_day_week: int = 0
     event_timestamp: int = 0
     event_timestamp_ms: int = 0
-    source: str = "rete_transition_graph"
-    version: str = "3.0.0b2"
+    source: str = "rete_tools_backend"
+    version: str = "3.0.0b3"
+    os: str = platform.system()
 
     def __post_init__(self) -> None:
         current_time = datetime.now()

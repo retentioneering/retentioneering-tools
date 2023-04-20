@@ -38,7 +38,6 @@ class Tracker(Singleton):
 
     def track(self, tracking_info: dict[str, Any], allowed_params: list[str] | None = None) -> Callable:
         event_name = tracking_info["event_name"]
-        event_custom_name = tracking_info.get("event_custom_name", tracking_info["event_name"])
 
         def tracker_decorator(func: Callable) -> Callable:
             with simple_lock_context_manager as ctx:
@@ -49,15 +48,15 @@ class Tracker(Singleton):
                     called_function_params = self.clear_params(kwargs, allowed_params)
                     _tracking_info_start = TrackingInfo(
                         client_session_id=self.user_id,
-                        event_name=f"{event_name}_start",
-                        event_custom_name=event_custom_name,
+                        event_name=event_name,
+                        event_custom_name=f"{event_name}_start",
                         params=called_function_params,
                     )
                     res = func(*args, **kwargs)
                     _tracking_info_end = TrackingInfo(
                         client_session_id=self.user_id,
-                        event_name=f"{event_name}_end",
-                        event_custom_name=event_custom_name,
+                        event_name=event_name,
+                        event_custom_name=f"{event_name}_end",
                         params=called_function_params,
                     )
                     if ctx.allow_action(function_name=func.__qualname__):

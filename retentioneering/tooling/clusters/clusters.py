@@ -69,9 +69,7 @@ class Clusters:
         self,
         method: Method,
         n_clusters: int,
-        feature_type: FeatureType | None = None,
-        ngram_range: NgramRange | None = None,
-        X: pd.DataFrame | None = None,
+        X: pd.DataFrame,
     ) -> Clusters:
         """
         Prepare features and compute clusters for the input eventstream data.
@@ -85,25 +83,17 @@ class Clusters:
 
         n_clusters : int
             The expected number of clusters to be passed to a clustering algorithm.
-        feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}, optional
-            See :py:func:`extract_features`.
-        ngram_range : Tuple(int, int), optional
-            See :py:func:`extract_features`.
-        X : pd.DataFrame, optional
+        X : pd.DataFrame
             ``pd.DataFrame`` representing a custom vectorization of the user paths. The index corresponds to user_ids,
-            the columns are vectorized values of the path.
+            the columns are vectorized values of the path. See :py:func:`extract_features`.
 
         Returns
         -------
         Clusters
             A fitted ``Clusters`` instance.
-
-
         """
 
-        self._method, self._n_clusters, self._feature_type, self._ngram_range, self._X = self.__validate_input(
-            method, n_clusters, feature_type, ngram_range, X
-        )
+        self._method, self._n_clusters, self._X = self.__validate_input(method, n_clusters, X)
 
         self.__features, self.__cluster_result = self._prepare_clusters()
         self._user_clusters = self.__cluster_result.copy()
@@ -149,8 +139,6 @@ class Clusters:
             List of event names always to include for comparison, regardless
             of the parameter top_n_events value. Target events will appear in the same
             order as specified.
-
-
 
         Returns
         -------
@@ -531,41 +519,17 @@ class Clusters:
         self,
         method: Method,
         n_clusters: int,
-        feature_type: FeatureType | None = None,
-        ngram_range: NgramRange | None = None,
-        X: pd.DataFrame | None = None,
-    ) -> tuple[Method | None, int | None, FeatureType | None, NgramRange | None, pd.DataFrame | None]:
+        X: pd.DataFrame,
+    ) -> tuple[Method | None, int | None, pd.DataFrame]:
         _method = method or self._method
         _n_clusters = n_clusters or self._n_clusters
-        _user_clusters = None
 
-        if X is not None:
-            if not isinstance(X, pd.DataFrame):  # type: ignore
-                raise ValueError("Vector is not a DataFrame!")
-            if np.all(np.all(X.dtypes == "float") and X.isna().sum().sum() != 0):
-                raise ValueError(
-                    "Vector is wrong formatted! NaN should be replaced with 0 and all dtypes must be float!"
-                )
-            if feature_type:
-                raise ValueError("Both 'vector' and 'feature_type' are defined. 'feature_type' will be ignored.")
-            if ngram_range:
-                raise ValueError("Both 'vector' and 'ngram_range' are defined. 'ngram_range' will be ignored.")
+        if not isinstance(X, pd.DataFrame):  # type: ignore
+            raise ValueError("X is not a DataFrame!")
+        if np.all(np.all(X.dtypes == "float") and X.isna().sum().sum() != 0):
+            raise ValueError("X is wrong formatted! NaN should be replaced with 0 and all dtypes must be float!")
 
-            _X = X
-            _feature_type = None
-            _ngram_range = None
-        else:
-            _feature_type = feature_type or self._feature_type
-            _ngram_range = ngram_range or self._ngram_range
-            _X = X or self._X
-
-            if _feature_type is None:
-                raise ValueError("'feature_type' must be defined for fitting.")
-
-            if _ngram_range is None:
-                raise ValueError("'ngram_range' must be defined for fitting.")
-
-        return _method, _n_clusters, _feature_type, _ngram_range, _X
+        return _method, _n_clusters, X
 
     def _prepare_clusters(self) -> tuple[pd.DataFrame, pd.Series]:
         features = pd.DataFrame()

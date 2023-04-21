@@ -9,6 +9,7 @@ import matplotlib
 import pandas as pd
 import seaborn as sns
 
+from retentioneering.backend.tracker import track
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.mixins.ended_events import EndedEventsMixin
 
@@ -108,6 +109,21 @@ class StepMatrix(EndedEventsMixin):
     __eventstream: EventstreamType
     ENDED_EVENT = "ENDED"
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="step_matrix",
+        allowed_params=[
+            "max_steps",
+            "weight_col",
+            "precision",
+            "targets",
+            "accumulated",
+            "sorting",
+            "threshold",
+            "centered",
+            "groups",
+        ],
+    )
     def __init__(
         self,
         eventstream: EventstreamType,
@@ -121,6 +137,8 @@ class StepMatrix(EndedEventsMixin):
         centered: Optional[dict] = None,
         groups: Optional[Tuple[list, list]] = None,
     ) -> None:
+        super().__init__()
+
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
@@ -395,6 +413,10 @@ class StepMatrix(EndedEventsMixin):
                 )
         return axs
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "fit"},
+        scope="step_matrix",
+    )
     def fit(self) -> None:
         """
         Calculates the step matrix internal values with the defined parameters.
@@ -472,6 +494,10 @@ class StepMatrix(EndedEventsMixin):
         self.fraction_title = fraction_title
         self.targets_list = targets_plot
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "plot"},
+        scope="step_matrix",
+    )
     def plot(self) -> matplotlib.axes.Axes:
         """
         Create a heatmap plot based on the calculated step matrix values.

@@ -3,7 +3,7 @@ import pytest
 
 
 @pytest.fixture
-def matrix_MM_corr():
+def matrix_MM_corr() -> pd.DataFrame:
     correct_res = pd.DataFrame(
         [
             [1.0, 1.0, 1.0, -999.0, 0.5],
@@ -18,7 +18,7 @@ def matrix_MM_corr():
 
 
 @pytest.fixture
-def matrix_M2M_corr():
+def matrix_M2M_corr() -> pd.DataFrame:
     correct_res = pd.DataFrame(
         [[1.0, 1.0, 0.33], [1.0, 0.5, -999.0]],
         index=pd.Index(["2021-12", "2022-02"], name="CohortGroup"),
@@ -28,7 +28,7 @@ def matrix_M2M_corr():
 
 
 @pytest.fixture
-def matrix_D30D_corr():
+def matrix_D30D_corr() -> pd.DataFrame:
     correct_res = pd.DataFrame(
         [[1.0, 1.0, -999.0, 0.33], [1.0, 0.67, 0.33, -999.0], [1.0, 1.0, -999.0, -999.0]],
         index=pd.Index(["2021-12-28", "2022-01-27", "2022-02-26"], name="CohortGroup"),
@@ -38,7 +38,7 @@ def matrix_D30D_corr():
 
 
 @pytest.fixture
-def matrix_W4W_corr():
+def matrix_W4W_corr() -> pd.DataFrame:
     correct_res = pd.DataFrame(
         [[1.0, 1.0, -999.0, 0.33], [1.0, 0.6667, 0.33, -999.0], [1.0, 1.0, -999.0, -999.0]],
         index=pd.Index(["2021-12-27", "2022-01-24", "2022-02-21"], name="CohortGroup"),
@@ -48,7 +48,7 @@ def matrix_W4W_corr():
 
 
 @pytest.fixture
-def matrix_D4W_corr():
+def matrix_D4W_corr() -> pd.DataFrame:
     correct_res = pd.DataFrame(
         [[1.0, 1.0, -999.0, 0.3333], [1.0, 0.6667, 0.3333, -999.0], [1.0, 1.0, -999.0, -999.0]],
         index=pd.Index(["2021-12-28", "2022-01-25", "2022-02-22"], name="CohortGroup"),
@@ -58,7 +58,7 @@ def matrix_D4W_corr():
 
 
 @pytest.fixture
-def matrix_W30D_corr():
+def matrix_W30D_corr() -> pd.DataFrame:
     correct_res = pd.DataFrame(
         [[1.0, 1.0, -999.0, 0.3333], [1.0, 0.6667, 0.3333, -999.0], [1.0, 1.0, -999.0, -999.0]],
         index=pd.Index(["2021-12-27", "2022-01-26", "2022-02-25"], name="CohortGroup"),
@@ -68,7 +68,7 @@ def matrix_W30D_corr():
 
 
 @pytest.fixture
-def matrix_D1M_corr():
+def matrix_D1M_corr() -> pd.DataFrame:
     correct_res = pd.DataFrame(
         [[1.0, 1.0, -999.0, 0.33], [1.0, 0.6667, 0.33, -999.0], [1.0, 1.0, -999.0, -999.0]],
         index=pd.Index(["2021-12-27", "2022-01-24", "2022-02-21"], name="CohortGroup"),
@@ -78,7 +78,7 @@ def matrix_D1M_corr():
 
 
 @pytest.fixture
-def matrix_avg_corr():
+def matrix_avg_corr() -> pd.DataFrame:
     correct_res = pd.DataFrame(
         [
             [1.0, 0.83, 0.17, -999.0, 0.33],
@@ -94,7 +94,7 @@ def matrix_avg_corr():
 
 
 @pytest.fixture
-def matrix_cut_corr():
+def matrix_cut_corr() -> pd.DataFrame:
     correct_res = pd.DataFrame(
         [[1.0, 0.83]],
         index=pd.Index(["2021-12-28"], name="CohortGroup"),

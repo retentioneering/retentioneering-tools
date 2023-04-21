@@ -675,7 +675,7 @@ Looking at the simplest version, where loops are replaced with the event they co
 
 .. code-block:: python
 
-    stream_out = stream_7_nodes.collapse_loops(suffix=None)
+    stream_out = stream_7_nodes.collapse_loops()
     stream_out.transition_graph()
 
 .. raw:: html

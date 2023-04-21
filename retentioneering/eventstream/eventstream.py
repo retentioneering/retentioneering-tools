@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 import warnings
 from collections.abc import Collection
-from typing import Any, Callable, List, Literal, MutableMapping, Optional, Tuple, Union
+from typing import Any, Callable, List, Literal, MutableMapping, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -64,7 +64,6 @@ IndexOrder = List[Optional[str]]
 FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "external"]
 NgramRange = Tuple[int, int]
 Method = Literal["kmeans", "gmm"]
-
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
     "profile",
@@ -638,15 +637,14 @@ class Eventstream(
             A ``Funnel`` class instance fitted to the given parameters.
 
         """
-        self.__funnel = Funnel(
-            eventstream=self,
+        self.__funnel = Funnel(eventstream=self)
+        self.__funnel.fit(
             stages=stages,
             stage_names=stage_names,
             funnel_type=funnel_type,
             segments=segments,
             segment_names=segment_names,
         )
-        self.__funnel.fit()
         if show_plot:
             figure = self.__funnel.plot()
             figure.show()
@@ -672,14 +670,14 @@ class Eventstream(
     def step_matrix(
         self,
         max_steps: int = 20,
-        weight_col: Optional[str] = None,
+        weight_col: str | None = None,
         precision: int = 2,
-        targets: Optional[list[str] | str] = None,
-        accumulated: Optional[Union[Literal["both", "only"], None]] = None,
-        sorting: Optional[list[str]] = None,
+        targets: list[str] | str | None = None,
+        accumulated: Literal["both", "only"] | None = None,
+        sorting: list | None = None,
         threshold: float = 0,
-        centered: Optional[dict] = None,
-        groups: Optional[Tuple[list, list]] = None,
+        centered: dict | None = None,
+        groups: Tuple[list, list] | None = None,
         show_plot: bool = True,
     ) -> StepMatrix:
         """
@@ -698,8 +696,9 @@ class Eventstream(
             A ``StepMatrix`` class instance fitted to the given parameters.
 
         """
-        self.__step_matrix = StepMatrix(
-            eventstream=self,
+        self.__step_matrix = StepMatrix(eventstream=self)
+
+        self.__step_matrix.fit(
             max_steps=max_steps,
             weight_col=weight_col,
             precision=precision,
@@ -710,8 +709,6 @@ class Eventstream(
             centered=centered,
             groups=groups,
         )
-
-        self.__step_matrix.fit()
         if show_plot:
             self.__step_matrix.plot()
         return self.__step_matrix
@@ -719,9 +716,9 @@ class Eventstream(
     def step_sankey(
         self,
         max_steps: int = 10,
-        threshold: Union[int, float] = 0.05,
+        threshold: int | float = 0.05,
         sorting: list | None = None,
-        targets: Union[list[str], str] | None = None,
+        targets: list[str] | str | None = None,
         autosize: bool = True,
         width: int | None = None,
         height: int | None = None,
@@ -743,20 +740,11 @@ class Eventstream(
             A ``StepSankey`` class instance fitted to the given parameters.
 
         """
-        self.__sankey = StepSankey(
-            eventstream=self,
-            max_steps=max_steps,
-            threshold=threshold,
-            sorting=sorting,
-            targets=targets,
-            autosize=autosize,
-            width=width,
-            height=height,
-        )
+        self.__sankey = StepSankey(eventstream=self)
 
-        self.__sankey.fit()
+        self.__sankey.fit(max_steps=max_steps, threshold=threshold, sorting=sorting, targets=targets)
         if show_plot:
-            figure = self.__sankey.plot()
+            figure = self.__sankey.plot(autosize=autosize, width=width, height=height)
             figure.show()
         return self.__sankey
 
@@ -788,8 +776,9 @@ class Eventstream(
             A ``Cohorts`` class instance fitted to the given parameters.
         """
 
-        self.__cohorts = Cohorts(
-            eventstream=self,
+        self.__cohorts = Cohorts(eventstream=self)
+
+        self.__cohorts.fit(
             cohort_start_unit=cohort_start_unit,
             cohort_period=cohort_period,
             average=average,
@@ -797,8 +786,6 @@ class Eventstream(
             cut_right=cut_right,
             cut_diagonal=cut_diagonal,
         )
-
-        self.__cohorts.fit()
         if show_plot:
             self.__cohorts.heatmap(width=width, height=height)
         return self.__cohorts

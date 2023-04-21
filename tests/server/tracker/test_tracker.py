@@ -46,6 +46,7 @@ class TestTracker:
             tracking_info={"event_name": "test_event_name"},
             allowed_params=["edges_norm_type"],
             scope="test",
+            event_value="test_value",
         )
         def test(edges_norm_type: str, sensitive_data: str):
             return "test"
@@ -67,6 +68,8 @@ class TestTracker:
         assert {"edges_norm_type": "test_norm_type"} == tracker_log[1]["params"]
         assert "test" == tracker_log[0]["scope"]
         assert "test" == tracker_log[1]["scope"]
+        assert "test_value" == tracker_log[0]["event_value"]
+        assert "test_value" == tracker_log[1]["event_value"]
 
     def test_send_message_params_list(self, clear_tracker_log):
         tracker = TrackerWithConstantUUID(SimpleTrackerConnector())

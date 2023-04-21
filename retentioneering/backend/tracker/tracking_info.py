@@ -21,6 +21,7 @@ class TrackingInfo:
     client_session_id: str
     event_custom_name: str
     event_name: str
+    event_value: str
     params: dict[str, str] | list[str]
     scope: str
     # marketing_session_type_3_id: str # @FIXME: what is this? Vladimir Makhanov.

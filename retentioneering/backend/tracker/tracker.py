@@ -40,6 +40,7 @@ class Tracker(Singleton):
         self,
         tracking_info: dict[str, Any],
         scope: str,
+        event_value: str = "",
         allowed_params: list[str] | None = None,
     ) -> Callable:
         event_name = tracking_info["event_name"]
@@ -57,6 +58,7 @@ class Tracker(Singleton):
                         event_custom_name=f"{event_name}_start",
                         params=called_function_params,
                         scope=scope,
+                        event_value=event_value,
                     )
                     res = func(*args, **kwargs)
                     _tracking_info_end = TrackingInfo(
@@ -65,6 +67,7 @@ class Tracker(Singleton):
                         event_custom_name=f"{event_name}_end",
                         params=called_function_params,
                         scope=scope,
+                        event_value=event_value,
                     )
                     if ctx.allow_action(function_name=func.__qualname__):
                         self.connector.send_message(data=_tracking_info_start)

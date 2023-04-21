@@ -95,7 +95,8 @@ class TransitionGraph:
         return True
 
     @track(  # type: ignore
-        tracking_info={"event_name": "transition_graph_init"},
+        tracking_info={"event_name": "init"},
+        scope="transition_graph",
     )
     def __init__(
         self,
@@ -545,7 +546,8 @@ class TransitionGraph:
         return "none" if edges_norm_type is None else str(edges_norm_type).lower()
 
     @track(  # type: ignore
-        tracking_info={"event_name": "transition_graph_plot"},
+        tracking_info={"event_name": "plot"},
+        scope="transition_graph",
         allowed_params=[
             "edges_norm_type",
             "targets",

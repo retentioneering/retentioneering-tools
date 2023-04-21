@@ -42,7 +42,11 @@ class TestTracker:
     def test_send_message(self, clear_tracker_log):
         tracker = TrackerWithConstantUUIDAndDictParams(SimpleTrackerConnector())
 
-        @tracker.track(tracking_info={"event_name": "test_event_name"}, allowed_params=["edges_norm_type"])
+        @tracker.track(
+            tracking_info={"event_name": "test_event_name"},
+            allowed_params=["edges_norm_type"],
+            scope="test",
+        )
         def test(edges_norm_type: str, sensitive_data: str):
             return "test"
 
@@ -61,11 +65,17 @@ class TestTracker:
         assert "12345678-1234-1234-1234-1234567890ab|none|none|none" == tracker_log[0]["user_id"]
         assert {"edges_norm_type": "test_norm_type"} == tracker_log[0]["params"]
         assert {"edges_norm_type": "test_norm_type"} == tracker_log[1]["params"]
+        assert "test" == tracker_log[0]["scope"]
+        assert "test" == tracker_log[1]["scope"]
 
     def test_send_message_params_list(self, clear_tracker_log):
         tracker = TrackerWithConstantUUID(SimpleTrackerConnector())
 
-        @tracker.track(tracking_info={"event_name": "test_event_name"}, allowed_params=["edges_norm_type"])
+        @tracker.track(
+            tracking_info={"event_name": "test_event_name"},
+            allowed_params=["edges_norm_type"],
+            scope="test",
+        )
         def test(edges_norm_type: str, sensitive_data: str):
             return "test"
 
@@ -88,11 +98,11 @@ class TestTracker:
     def test_single_message(self, clear_tracker_log):
         tracker = TrackerWithConstantUUID(SimpleTrackerConnector())
 
-        @tracker.track(tracking_info={"event_name": "inner"})
+        @tracker.track(tracking_info={"event_name": "inner"}, scope="test")
         def inner(edges_norm_type: str, sensitive_data: str):
             return "test"
 
-        @tracker.track(tracking_info={"event_name": "outer"}, allowed_params=["edges_norm_type"])
+        @tracker.track(tracking_info={"event_name": "outer"}, allowed_params=["edges_norm_type"], scope="test")
         def outer(edges_norm_type: str, sensitive_data: str):
             return inner(edges_norm_type=edges_norm_type, sensitive_data=sensitive_data)
 

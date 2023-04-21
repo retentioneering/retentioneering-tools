@@ -36,7 +36,12 @@ class Tracker(Singleton):
         # return {key: value for key, value in params.items() if key in allowed_params}
         return [key for key in params.keys() if key in allowed_params]
 
-    def track(self, tracking_info: dict[str, Any], allowed_params: list[str] | None = None) -> Callable:
+    def track(
+        self,
+        tracking_info: dict[str, Any],
+        scope: str,
+        allowed_params: list[str] | None = None,
+    ) -> Callable:
         event_name = tracking_info["event_name"]
 
         def tracker_decorator(func: Callable) -> Callable:
@@ -51,6 +56,7 @@ class Tracker(Singleton):
                         event_name=event_name,
                         event_custom_name=f"{event_name}_start",
                         params=called_function_params,
+                        scope=scope,
                     )
                     res = func(*args, **kwargs)
                     _tracking_info_end = TrackingInfo(
@@ -58,6 +64,7 @@ class Tracker(Singleton):
                         event_name=event_name,
                         event_custom_name=f"{event_name}_end",
                         params=called_function_params,
+                        scope=scope,
                     )
                     if ctx.allow_action(function_name=func.__qualname__):
                         self.connector.send_message(data=_tracking_info_start)

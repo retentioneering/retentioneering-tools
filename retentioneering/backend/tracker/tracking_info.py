@@ -3,6 +3,17 @@ from __future__ import annotations
 import platform
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Generator
+
+
+def get_index() -> Generator:
+    idx = 1
+    while True:
+        yield idx
+        idx += 1
+
+
+index = get_index()
 
 
 @dataclass
@@ -11,6 +22,7 @@ class TrackingInfo:
     event_custom_name: str
     event_name: str
     params: dict[str, str] | list[str]
+    scope: str
     # marketing_session_type_3_id: str # @FIXME: what is this? Vladimir Makhanov.
 
     event_date_local: str = ""
@@ -22,6 +34,7 @@ class TrackingInfo:
     source: str = "rete_tools_backend"
     version: str = "3.0.0b3"
     os: str = platform.system()
+    index: int = next(index)
 
     def __post_init__(self) -> None:
         current_time = datetime.now()

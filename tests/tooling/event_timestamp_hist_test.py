@@ -27,8 +27,8 @@ class TestEventTimestampHist:
     ):
         correct_result = correct_basic
 
-        et = EventTimestampHist(test_stream, raw_events_only=True, bins=3)
-        et.fit()
+        et = EventTimestampHist(test_stream)
+        et.fit(raw_events_only=True, bins=3)
         result_values, result_bins = et.values
         assert np.testing.assert_array_equal(result_values, correct_result) is None, "incorrect histogram values"
         assert np.testing.assert_array_equal(result_bins, correct_basic_bins) is None, "incorrect histogram bins"
@@ -38,8 +38,8 @@ class TestEventTimestampHist:
     ):
         correct_result = correct_lower_quantile
 
-        et = EventTimestampHist(test_stream, raw_events_only=True, bins=2, lower_cutoff_quantile=0.5)
-        et.fit()
+        et = EventTimestampHist(test_stream)
+        et.fit(raw_events_only=True, bins=2, lower_cutoff_quantile=0.5)
         result_values, result_bins = et.values
         assert np.testing.assert_array_equal(result_values, correct_result) is None, "incorrect histogram values"
         assert (
@@ -51,8 +51,8 @@ class TestEventTimestampHist:
     ):
         correct_result = correct_upper_quantile
 
-        et = EventTimestampHist(test_stream, raw_events_only=True, bins=2, upper_cutoff_quantile=0.5)
-        et.fit()
+        et = EventTimestampHist(test_stream)
+        et.fit(raw_events_only=True, bins=2, upper_cutoff_quantile=0.5)
         result_values, result_bins = et.values
         assert np.testing.assert_array_equal(result_values, correct_result) is None, "incorrect histogram values"
         assert (
@@ -67,10 +67,8 @@ class TestEventTimestampHist:
     ):
         correct_result = correct_upper_lower_quantile
 
-        et = EventTimestampHist(
-            test_stream, raw_events_only=True, bins=2, upper_cutoff_quantile=0.8, lower_cutoff_quantile=0.2
-        )
-        et.fit()
+        et = EventTimestampHist(test_stream)
+        et.fit(raw_events_only=True, bins=2, upper_cutoff_quantile=0.8, lower_cutoff_quantile=0.2)
         result_values, result_bins = et.values
         assert np.testing.assert_array_equal(result_values, correct_result) is None, "incorrect histogram values"
         assert (
@@ -82,8 +80,8 @@ class TestEventTimestampHist:
     ):
         correct_result = correct_raw_events_only
 
-        et = EventTimestampHist(test_stream, raw_events_only=False, bins=3)
-        et.fit()
+        et = EventTimestampHist(test_stream)
+        et.fit(raw_events_only=False, bins=3)
         result_values, result_bins = et.values
         assert np.testing.assert_array_equal(result_values, correct_result) is None, "incorrect histogram values"
         assert (

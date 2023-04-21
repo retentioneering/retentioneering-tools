@@ -148,7 +148,7 @@ Pre-defined clustering methods
     features = clusters.extract_features(ngram_range=(1, 2), feature_type='tfidf')
     clusters.fit(method='kmeans', n_clusters=4, X=features)
 
-So far the ``method`` argument supports two options: :sklearn_kmeans:`kmeans<>` and :sklearn_gmm:`gmm<>`. ``n_clusters`` means the number of clusters since both K-means and GMM algorithms need it to be set, ``X`` parameter holds features as an input for clusterization algorithms and could be prepared using the :ref:`extract_features()<extracting_features>` method or custom external vectorization.
+So far the ``method`` argument supports two options: :sklearn_kmeans:`kmeans<>` and :sklearn_gmm:`gmm<>`. ``n_clusters`` means the number of clusters since both K-means and GMM algorithms need it to be set. As for the ``X`` parameter, it holds features as an input for clusterization algorithms. In our example, the build-in :ref:`extract_features()<extracting_features>` method is used to get vectorized features, but the result of custom external vectorization can also be passed.
 
 Custom clustering
 ~~~~~~~~~~~~~~~~~

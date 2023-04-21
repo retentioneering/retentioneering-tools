@@ -675,7 +675,7 @@ Looking at the simplest version, where loops are replaced with the event they co
 
 .. code-block:: python
 
-    stream_out = stream_7_nodes.collapse_loops(suffix=None, time_agg='max')
+    stream_out = stream_7_nodes.collapse_loops()
     stream_out.transition_graph()
 
 .. raw:: html
@@ -704,7 +704,7 @@ To learn more about loops and where they occur, let us plot two other versions o
 
 .. code-block:: python
 
-    stream_out = stream_7_nodes.collapse_loops(suffix='loop', time_agg='max')
+    stream_out = stream_7_nodes.collapse_loops(suffix='loop')
     stream_out.transition_graph()
 
 
@@ -727,7 +727,7 @@ Now we can attempt to look at the typical loop length using the third created ev
 
 .. code-block:: python
 
-    stream_out = stream_7_nodes.collapse_loops(suffix='count', time_agg='max')
+    stream_out = stream_7_nodes.collapse_loops(suffix='count')
     stream_out.transition_graph()
 
 .. raw:: html

@@ -35,6 +35,7 @@ The primary way of using the ``Clusters`` tool is sort of traditional. You can c
 
 .. figure:: /_static/user_guides/clusters/basic_plot.png
 
+.. _extracting_features:
 
 Extracting features
 -------------------
@@ -144,10 +145,10 @@ Pre-defined clustering methods
 .. code-block:: python
 
     clusters = Clusters(eventstream=stream)
-    clusters.extract_features(ngram_range=(1, 2), feature_type='tfidf')
-    clusters.fit(method='kmeans', n_clusters=4)
+    features = clusters.extract_features(ngram_range=(1, 2), feature_type='tfidf')
+    clusters.fit(method='kmeans', n_clusters=4, X=features)
 
-So far the ``method`` argument supports two options: :sklearn_kmeans:`kmeans<>` and :sklearn_gmm:`gmm<>`. ``n_clusters`` means the number of clusters since both K-means and GMM algorithms need it to be set.
+So far the ``method`` argument supports two options: :sklearn_kmeans:`kmeans<>` and :sklearn_gmm:`gmm<>`. ``n_clusters`` means the number of clusters since both K-means and GMM algorithms need it to be set, ``X`` parameter holds features as an input for clusterization algorithms and could be prepared using the :ref:`extract_features()<extracting_features>` method or custom external vectorization.
 
 Custom clustering
 ~~~~~~~~~~~~~~~~~

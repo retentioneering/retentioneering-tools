@@ -4,7 +4,6 @@ from dataclasses import asdict
 from typing import Any
 
 import pytest
-from typing_extensions import override
 
 from retentioneering.backend.tracker.connector import ConnectorProtocol
 from retentioneering.backend.tracker.tracker import Tracker
@@ -101,17 +100,23 @@ class TestTracker:
     def test_single_message(self, clear_tracker_log):
         tracker = TrackerWithConstantUUID(SimpleTrackerConnector())
 
-        @tracker.track(tracking_info={"event_name": "inner"}, scope="test")
-        def inner(edges_norm_type: str, sensitive_data: str):
-            return "test"
+        @tracker.track(tracking_info={"event_name": "inner1"}, scope="test")
+        def inner1(edges_norm_type: str, sensitive_data: str):
+            return "test1"
+
+        @tracker.track(tracking_info={"event_name": "inner2"}, scope="test")
+        def inner2(edges_norm_type: str, sensitive_data: str):
+            return "test2"
 
         @tracker.track(tracking_info={"event_name": "outer"}, allowed_params=["edges_norm_type"], scope="test")
         def outer(edges_norm_type: str, sensitive_data: str):
-            return inner(edges_norm_type=edges_norm_type, sensitive_data=sensitive_data)
+            val1 = inner1(edges_norm_type=edges_norm_type, sensitive_data=sensitive_data)
+            val2 = inner2(edges_norm_type=edges_norm_type, sensitive_data=sensitive_data)
+            return val1 + val2
 
         return_value = outer(edges_norm_type="test_norm_type", sensitive_data="s0mEp@$s")
 
-        assert "test" == return_value
+        assert "test1test2" == return_value
         assert 2 == len(tracker_log)
         assert "outer" == tracker_log[0]["event_name"]
         assert "outer" == tracker_log[1]["event_name"]

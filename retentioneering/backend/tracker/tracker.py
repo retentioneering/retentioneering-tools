@@ -46,11 +46,11 @@ class Tracker(Singleton):
         event_name = tracking_info["event_name"]
 
         def tracker_decorator(func: Callable) -> Callable:
-            with simple_lock_context_manager as ctx:
+            @functools.wraps(func)
+            def wrapper(*args: list[Any], **kwargs: dict[Any, Any]) -> Callable:
+                with simple_lock_context_manager as ctx:
+                    ctx.event_name = event_name
 
-                @functools.wraps(func)
-                def wrapper(*args: list[Any], **kwargs: dict[Any, Any]) -> Callable:
-                    simple_lock_context_manager.function_name = func.__qualname__
                     called_function_params = self.clear_params(kwargs, allowed_params)
                     _tracking_info_start = TrackingInfo(
                         client_session_id=self.user_id,
@@ -69,12 +69,11 @@ class Tracker(Singleton):
                         scope=scope,
                         event_value=event_value,
                     )
-                    if ctx.allow_action(function_name=func.__qualname__):
+                    if ctx.allow_action(event_name=event_name):
                         self.connector.send_message(data=_tracking_info_start)
                         self.connector.send_message(data=_tracking_info_end)
-
                     return res
 
-                return wrapper
+            return wrapper
 
         return tracker_decorator

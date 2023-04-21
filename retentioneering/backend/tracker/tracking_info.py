@@ -32,10 +32,10 @@ class TrackingInfo:
     event_day_week: int = 0
     event_timestamp: int = 0
     event_timestamp_ms: int = 0
-    source: str = "rete_tools_backend"
+    source: str = "rete_transition_graph"
     version: str = "3.0.0b3"
     os: str = platform.system()
-    index: int = next(index)
+    index: int = 0
 
     def __post_init__(self) -> None:
         current_time = datetime.now()
@@ -47,3 +47,4 @@ class TrackingInfo:
         self.event_timestamp = int(event_timestamp)
         self.event_timestamp_ms = int(event_timestamp * 1000)
         self.user_id = f"{self.client_session_id}|none|none|none"
+        self.index = next(index)

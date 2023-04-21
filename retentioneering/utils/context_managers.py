@@ -7,34 +7,40 @@ from .singleton import Singleton
 
 
 class SimpleLockContextManager(Singleton):
-    _locked: bool
-    _function_name: str = ""
+    is_locked: bool
+    _event_name: str = ""
+    _last_checked_event_name: str = ""
 
     @property
-    def function_name(self) -> str:
-        return self._function_name
+    def event_name(self) -> str:
+        return self._event_name
 
-    @function_name.setter
-    def function_name(self, function_name: str) -> None:
-        if self._function_name == "":
-            self._function_name = function_name
+    @event_name.setter
+    def event_name(self, event_name: str) -> None:
+        if self._event_name == "" and (
+            self._last_checked_event_name == "" or self._last_checked_event_name == event_name
+        ):
+            self._event_name = event_name
 
     def __init__(self) -> None:
-        self._locked = False
+        self.is_locked = False
 
     def __enter__(self) -> SimpleLockContextManager:
-        self._locked = True
+        self.is_locked = True
         return self
 
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
-    ) -> None:
-        self._locked = False
-        self._function_name = ""
+    ) -> SimpleLockContextManager:
+        if self._last_checked_event_name == self._event_name:
+            self.is_locked = False
+            self._event_name = ""
+        return self
 
-    def allow_action(self, function_name: str) -> bool:
-        if self._locked is False:
-            return self.function_name == function_name
+    def allow_action(self, event_name: str) -> bool:
+        self._last_checked_event_name = event_name
+        if self.is_locked is True:
+            return self.event_name == event_name
         else:
             return True
 

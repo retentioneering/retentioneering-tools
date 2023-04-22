@@ -740,7 +740,6 @@ class TransitionGraph:
         shown_links_weight = self.edges_weight_col
         selected_nodes_col_for_thresholds = shown_nodes_col
         selected_links_weight_for_thresholds = shown_links_weight
-
         init_graph_js = self.render.init(
             **dict(
                 server_id=self.server.pk,
@@ -856,7 +855,6 @@ class TransitionGraph:
         self.nodes_weight_col = nodes_weight_col if nodes_weight_col else self.eventstream.schema.event_id
         self.edges_weight_col = edges_weight_col if edges_weight_col else self.eventstream.schema.event_id
 
-        self.edges_weight_col = self.eventstream.schema.event_id
         self.nodes_norm_type = nodes_norm_type
         self.nodelist: Nodelist = Nodelist(
             weight_cols=self.weight_cols,

@@ -59,10 +59,10 @@ class StepMatrix(EndedEventsMixin):
     centered: CenteredParams | None = None
     groups: Tuple[list, list] | None = None
 
-    result_data: pd.DataFrame
-    result_targets: pd.DataFrame | None
-    fraction_title: str | None
-    targets_list: list[list[str]] | None
+    __result_data: pd.DataFrame
+    __result_targets: pd.DataFrame | None
+    _fraction_title: str | None
+    _targets_list: list[list[str]] | None
 
     def __init__(
         self,
@@ -74,10 +74,10 @@ class StepMatrix(EndedEventsMixin):
         self.time_col = self.__eventstream.schema.event_timestamp
         self.event_index_col = self.__eventstream.schema.event_index
 
-        self.result_data = pd.DataFrame()
-        self.result_targets = None
-        self.fraction_title = None
-        self.targets_list = None
+        self.__result_data = pd.DataFrame()
+        self.__result_targets = None
+        self._fraction_title = None
+        self._targets_list = None
 
     def _pad_to_center(self, df_: pd.DataFrame) -> pd.DataFrame | None:
         if self.centered is None:
@@ -488,10 +488,10 @@ class StepMatrix(EndedEventsMixin):
             if self.targets and piv_targets is not None:
                 piv_targets.columns = [f"{int(i) - window - 1}" for i in piv_targets.columns]  # type: ignore
 
-        self.result_data = piv
-        self.result_targets = piv_targets
-        self.fraction_title = fraction_title
-        self.targets_list = targets_plot
+        self.__result_data = piv
+        self.__result_targets = piv_targets
+        self._fraction_title = fraction_title
+        self._targets_list = targets_plot
 
     def plot(self) -> matplotlib.axes.Axes:
         """
@@ -503,7 +503,7 @@ class StepMatrix(EndedEventsMixin):
         matplotlib.axes.Axes
 
         """
-        axes = self._render_plot(self.result_data, self.result_targets, self.targets_list, self.fraction_title)
+        axes = self._render_plot(self.__result_data, self.__result_targets, self._targets_list, self._fraction_title)
         return axes
 
     @property
@@ -518,7 +518,7 @@ class StepMatrix(EndedEventsMixin):
             1. Stands for the step matrix.
             2. Stands for a separate step matrix related for target events only.
         """
-        return self.result_data, self.result_targets
+        return self.__result_data, self.__result_targets
 
     @property
     def params(self) -> dict:

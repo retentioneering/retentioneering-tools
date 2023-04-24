@@ -16,13 +16,13 @@ from retentioneering.data_processors_lib.group_events import (
 from retentioneering.eventstream.eventstream import Eventstream, EventstreamSchema
 from retentioneering.eventstream.schema import RawDataSchema
 from retentioneering.params_model import ParamsModel
+from retentioneering.preprocessing_graph import PreprocessingGraph
 from retentioneering.preprocessing_graph.nodes import (
     EventsNode,
     MergeNode,
     Node,
     SourceNode,
 )
-from retentioneering.preprocessing_graph.preprocessing_graph import PreprocessingGraph
 from tests.graph.fixtures.stub_processorpgraph import stub_processorpgraph
 
 

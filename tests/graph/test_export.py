@@ -24,8 +24,8 @@ from retentioneering.data_processors_lib import (
 )
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import RawDataSchema
+from retentioneering.preprocessing_graph import PreprocessingGraph
 from retentioneering.preprocessing_graph.nodes import EventsNode
-from retentioneering.preprocessing_graph.preprocessing_graph import PreprocessingGraph
 
 
 class TestPreprocessingGraphExportImport:

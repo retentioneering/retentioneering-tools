@@ -15,7 +15,7 @@ class CollapseLoopsParams(ParamsModel):
     """
 
     suffix: Optional[Literal["loop", "count"]]
-    time_agg: Literal["max", "min", "mean"] = "max"
+    time_agg: Literal["max", "min", "mean"] = "min"
 
 
 class CollapseLoops(DataProcessor):
@@ -38,7 +38,7 @@ class CollapseLoops(DataProcessor):
         - If ``count``, event_name will be event_name_loop_{number of events}.\n
         For example *"event1 - event1 - event1"* --> event1_loop_3.
 
-    time_agg : {"max", "min", "mean"}, default "max"
+    time_agg : {"max", "min", "mean"}, default "min"
         Aggregation method to calculate timestamp values for new groups.
 
     Returns

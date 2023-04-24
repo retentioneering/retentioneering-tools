@@ -2219,7 +2219,7 @@ The ``time_agg`` value determines the new event timestamp:
 
 .. code-block:: python
 
-    res = stream.collapse_loops(suffix='loop').to_dataframe()
+    res = stream.collapse_loops(suffix='loop', time_agg='max').to_dataframe()
 
 Consider for example user ``2112338``. In the original eventstream she
 had three consecutive ``catalog`` events.

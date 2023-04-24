@@ -51,7 +51,6 @@ class Clusters:
         self.event_index_col = eventstream.schema.event_index
 
         self.__segments: Segments | None = None
-        self.__features: pd.DataFrame | None = None
         self.__cluster_result: pd.Series | None = None
         self.__projection: pd.DataFrame | None = None
         self.__is_fitted: bool = False
@@ -95,7 +94,7 @@ class Clusters:
 
         self._method, self._n_clusters, self._X = self.__validate_input(method, n_clusters, X)
 
-        self.__features, self.__cluster_result = self._prepare_clusters()
+        self.__cluster_result = self._prepare_clusters()
         self._user_clusters = self.__cluster_result.copy()
 
         self.__segments = Segments(
@@ -270,21 +269,6 @@ class Clusters:
         return cluster_map.to_dict()
 
     @property
-    def features(self) -> pd.DataFrame | None:
-        """
-
-        Returns
-        -------
-        pd.DataFrame
-            The calculated features if the clusters are fitted. The index corresponds to user_ids,
-            the columns are values of the vectorized user's trajectory.
-        """
-        if self.__features is None:
-            raise RuntimeError("The features are not calculated. Consider to run 'extract_features()` method.")
-
-        return self.__features
-
-    @property
     def params(self) -> dict:
         """
         Returns the parameters used for the last fitting.
@@ -390,6 +374,8 @@ class Clusters:
         pd.DataFrame
             A DataFrame with the vectorized values. Index contains user_ids, columns contain n-grams.
         """
+        self._feature_type = feature_type
+        self._ngram_range = ngram_range
         eventstream = self.__eventstream
         events = eventstream.to_dataframe()
         vec_data = None
@@ -459,7 +445,7 @@ class Clusters:
             Plot in the low-dimensional space for user trajectories indexed by user IDs.
         """
 
-        if self.__features is None or self.__is_fitted is False:
+        if self._X is None or self.__is_fitted is False:
             raise RuntimeError("Clusters and features must be defined. Consider to run 'fit()' method.")
 
         if targets is None:
@@ -495,12 +481,10 @@ class Clusters:
         else:
             raise ValueError("Unexpected plot type: %s. Allowed values: clusters, targets" % color_type)
 
-        features = self.__features
-
         if method == "tsne":
-            projection: pd.DataFrame = self._learn_tsne(features, **kwargs)
+            projection: pd.DataFrame = self._learn_tsne(self._X, **kwargs)
         elif method == "umap":
-            projection = self._learn_umap(features, **kwargs)
+            projection = self._learn_umap(self._X, **kwargs)
         else:
             raise ValueError("Unknown method: %s. Allowed methods: tsne, umap" % method)
 
@@ -531,16 +515,10 @@ class Clusters:
 
         return _method, _n_clusters, X
 
-    def _prepare_clusters(self) -> tuple[pd.DataFrame, pd.Series]:
-        features = pd.DataFrame()
+    def _prepare_clusters(self) -> pd.Series:
         user_clusters = pd.Series(dtype=np.int64)
 
-        if self._X is not None:
-            features = self._X.copy()
-        else:
-            if self._feature_type is not None and self._ngram_range is not None:
-                features = self.extract_features(self._feature_type, self._ngram_range)
-
+        features = self._X.copy()  # type: ignore
         if self._n_clusters is not None:
             if self._method == "kmeans":
                 cluster_result = self._kmeans(features=features, n_clusters=self._n_clusters)
@@ -551,7 +529,7 @@ class Clusters:
 
             user_clusters = pd.Series(cluster_result, index=features.index)
 
-        return features, user_clusters
+        return user_clusters
 
     @staticmethod
     def _plot_projection(projection: ndarray, targets: ndarray, legend_title: str) -> tuple:

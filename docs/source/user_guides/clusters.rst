@@ -125,12 +125,6 @@ As for the time-based features such as ``time``, ``time_fraction``, they are ass
     </table>
     <br>
 
-If the features have been already calculated, you can get them by calling :py:meth:`Clusters.features<retentioneering.tooling.clusters.clusters.Clusters.features>` property.
-
-.. code-block:: python
-
-    clusters.features
-
 
 Fitting clusters
 ----------------

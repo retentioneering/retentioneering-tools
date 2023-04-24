@@ -191,8 +191,8 @@ Sometimes it is reasonable to work with a separate instance of StepSankey class.
 
     from retentioneering.tooling.step_sankey import StepSankey
 
-    step_sankey = StepSankey(stream, max_steps=5, threshold=0.1)
-    step_sankey.fit()
+    step_sankey = StepSankey(stream)
+    step_sankey.fit(max_steps=5, threshold=0.1)
     step_sankey.plot()
 
 .. raw:: html

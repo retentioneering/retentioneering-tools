@@ -33,19 +33,19 @@ class TruncatePaths(DataProcessor):
         Event name before which part of the user's path is dropped. The specified event remains in the data.
     drop_after : str, optional
         Event name after which part of the user's path is dropped. The specified event remains in the data.
-    occurrence_before : {"first", "last"}, default="first"
+    occurrence_before : {"first", "last"}, default "first"
         This parameter is necessary when the specified event occurs more than once in one user's path.
 
         - when set to ``first``, the part of the user path before the first event occurrence is dropped;
         - when set to ``last``, the part of the user path before the last event occurrence is dropped;
 
-    occurrence_after : {"first", "last"}, default="first"
+    occurrence_after : {"first", "last"}, default "first"
         The same behavior as in the 'occurrence_before', but for the other part of the user path.
-    shift_before : int,  default=0
+    shift_before : int,  default 0
         Sets the number of steps by which the truncate point is shifted from the selected event.
         If the value is negative, then the offset occurs to the left along the timeline.
         If positive, then it occurs to the right.
-    shift_after : int,  default=0
+    shift_after : int,  default 0
         The same behavior as in the ``shift_before``, but for the other part of the user path.
 
     Returns

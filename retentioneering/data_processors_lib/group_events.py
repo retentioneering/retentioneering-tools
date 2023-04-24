@@ -38,7 +38,7 @@ class GroupEvents(DataProcessor):
 
         - If ``True`` - events will be grouped.
         - If ``False`` - events will be remained.
-    event_type : str, default="group_alias"
+    event_type : str, default "group_alias"
         Event_type name for the grouped events.
         If custom event_type is created, it should be added to the ``DEFAULT_INDEX_ORDER``.
 

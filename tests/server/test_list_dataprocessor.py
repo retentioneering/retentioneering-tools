@@ -73,7 +73,7 @@ class TestListDataprocessors:
                         "name": "time_agg",
                         "optional": True,
                         "widget": "enum",
-                        "default": "max",
+                        "default": "min",
                         "params": ["max", "min", "mean"],
                     },
                 ],

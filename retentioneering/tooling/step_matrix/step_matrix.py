@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Literal, Optional, Tuple, Union
+from typing import Literal, Tuple
 
 import matplotlib
 import pandas as pd
@@ -35,112 +35,49 @@ class StepMatrix(EndedEventsMixin):
     Parameters
     ----------
     eventstream : EventstreamType
-    max_steps : int, default=20
-        Maximum number of steps in ``user path`` to include.
-    weight_col : str, optional
-        Aggregation column for edge weighting. If ``None``, specified ``user_id``
-        from ``eventstream.schema`` will be used. For example, can be specified as
-        ``session_id`` if ``eventstream`` has such ``custom_col``.
-    precision : int, default=2
-        Number of decimal digits after 0 to show as fractions in the ``heatmap``.
-    targets : list of str or str, optional
-        List of event names to include in the bottom of ``step_matrix`` as individual rows.
-        Each specified target will have separate color-coding space for clear visualization.
-        `Example: ['product_page', 'cart', 'payment']`
-
-        If multiple targets need to be compared and plotted using the same color-coding scale,
-        such targets must be combined in a sub-list.
-        `Example: ['product_page', ['cart', 'payment']]`
-    accumulated : {"both", "only"}, optional
-        Option to include accumulated values for targets.
-
-        - If ``None``, accumulated tartes are not shown.
-        - If ``both``, show step values and accumulated values.
-        - If ``only``, show targets only as accumulated.
-    sorting : list of str, optional
-        - If list of event names specified - lines in the heatmap will be shown in
-          the passed order.
-        - If ``None`` - rows will be ordered according to i`th value (first row,
-          where 1st element is max; second row, where second element is max; etc)
-    threshold : float, default=0
-        Used to remove rare events. Aggregates all rows where all values are
-        less than the specified threshold.
-    centered : dict, optional
-        Parameter used to align user paths at a specific event at a specific step.
-        Has to contain three keys:
-        - ``event``: str, name of event to align.
-        - ``left_gap``: int, number of events to include before specified event.
-        - ``occurrence`` : int which occurrence of event to align (typical 1).
-
-        If not ``None`` - only users who have selected events with the specified
-        ``occurrence`` in their paths will be included.
-        ``Fraction`` of such remaining users is specified in the title of centered
-        step_matrix.
-        `Example: {'event': 'cart', 'left_gap': 8, 'occurrence': 1}`
-    groups : tuple[list, list], optional
-        Can be specified to plot differential step_matrix. Must contain
-        a tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
-        of user_id`s. Two separate step_matrices M1 and M2 will be calculated
-        for users from g_1 and g_2, respectively. Resulting matrix will be the matrix
-        M = M1-M2.
-
-    Notes
-    -----
-    During step matrix calculation an artificial ``ENDED`` event is created. If a path already
-    contains ``path_end`` event (See :py:class:`.AddStartEndEvents`), it
-    will be temporarily replaced with ``ENDED`` (within step matrix only). Otherwise, ``ENDED``
-    event will be explicitly added to the end of each path.
-
-    Event ``ENDED`` is cumulated so that the values in its row are summed up from
-    the first step to the last. ``ENDED`` row is always placed at the last line of step matrix.
-    This design guarantees that the sum of any step matrix's column is 1
-    (0 for a differential step matrix).
-
-    See :doc:`StepMatrix user guide</user_guides/step_matrix>` for the details.
 
     See Also
     --------
     .Eventstream.step_matrix : Call StepMatrix tool as an eventstream method.
     .StepSankey : A class for the visualization of user paths in stepwise manner using Sankey diagram.
     .CollapseLoops : Find loops and create new synthetic events in the paths of all users having such sequences.
+
+    Notes
+    -----
+    See :doc:`StepMatrix user guide</user_guides/step_matrix>` for the details.
     """
 
     __eventstream: EventstreamType
     ENDED_EVENT = "ENDED"
+    max_steps: int
+    weight_col: str
+    precision: int
+    targets: list[str] | str | None = None
+    accumulated: Literal["both", "only"] | None = None
+    sorting: list | None = None
+    threshold: float
+    centered: CenteredParams | None = None
+    groups: Tuple[list, list] | None = None
+
+    result_data: pd.DataFrame
+    result_targets: pd.DataFrame | None
+    fraction_title: str | None
+    targets_list: list[list[str]] | None
 
     def __init__(
         self,
         eventstream: EventstreamType,
-        max_steps: int = 20,
-        weight_col: Optional[str] = None,
-        precision: int = 2,
-        targets: Optional[list[str] | str] = None,
-        accumulated: Optional[Union[Literal["both", "only"], None]] = None,
-        sorting: Optional[list[str]] = None,
-        threshold: float = 0,
-        centered: Optional[dict] = None,
-        groups: Optional[Tuple[list, list]] = None,
     ) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
         self.event_index_col = self.__eventstream.schema.event_index
-        self.data = self.__eventstream.to_dataframe()
-        self.max_steps = max_steps
-        self.weight_col = weight_col or self.__eventstream.schema.user_id
-        self.precision = precision
-        self.targets = targets
-        self.accumulated = accumulated
-        self.sorting = sorting
-        self.threshold = threshold
-        self.centered: CenteredParams | None = CenteredParams(**centered) if centered else None
-        self.groups = groups
 
-        self.result_data: pd.DataFrame = pd.DataFrame()
-        self.result_targets: pd.DataFrame | None = None
-        self.fraction_title: str | None = None
-        self.targets_list: list[list[str]] | None = None
+        self.result_data = pd.DataFrame()
+        self.result_targets = None
+        self.fraction_title = None
+        self.targets_list = None
 
     def _pad_to_center(self, df_: pd.DataFrame) -> pd.DataFrame | None:
         if self.centered is None:
@@ -171,7 +108,7 @@ class StepMatrix(EndedEventsMixin):
         Returns
         -------
         pd.Dataframe
-            With columns from 0 to ``max_steps``
+            With columns from 0 to ``max_steps``.
         """
         df = df.copy()
         if max(df.columns) < self.max_steps:  # type: ignore
@@ -395,15 +332,99 @@ class StepMatrix(EndedEventsMixin):
                 )
         return axs
 
-    def fit(self) -> None:
+    def fit(
+        self,
+        max_steps: int = 20,
+        weight_col: str | None = None,
+        precision: int = 2,
+        targets: list[str] | str | None = None,
+        accumulated: Literal["both", "only"] | None = None,
+        sorting: list | None = None,
+        threshold: float = 0,
+        centered: dict | None = None,
+        groups: Tuple[list, list] | None = None,
+    ) -> None:
         """
         Calculates the step matrix internal values with the defined parameters.
         Applying ``fit`` method is necessary for the following usage
         of any visualization or descriptive ``StepMatrix`` methods.
 
+        Parameters
+        ----------
+        max_steps : int, default 20
+            Maximum number of steps in ``user path`` to include.
+        weight_col : str, optional
+            Aggregation column for edge weighting. If ``None``, specified ``user_id``
+            from ``eventstream.schema`` will be used. For example, can be specified as
+            ``session_id`` if ``eventstream`` has such ``custom_col``.
+        precision : int, default 2
+            Number of decimal digits after 0 to show as fractions in the ``heatmap``.
+        targets : list of str or str, optional
+            List of event names to include in the bottom of ``step_matrix`` as individual rows.
+            Each specified target will have separate color-coding space for clear visualization.
+            `Example: ['product_page', 'cart', 'payment']`
+
+            If multiple targets need to be compared and plotted using the same color-coding scale,
+            such targets must be combined in a sub-list.
+            `Example: ['product_page', ['cart', 'payment']]`
+        accumulated : {"both", "only"}, optional
+            Option to include accumulated values for targets.
+
+            - If ``None``, accumulated tartes are not shown.
+            - If ``both``, show step values and accumulated values.
+            - If ``only``, show targets only as accumulated.
+        sorting : list of str, optional
+            - If list of event names specified - lines in the heatmap will be shown in
+              the passed order.
+            - If ``None`` - rows will be ordered according to i`th value (first row,
+              where 1st element is max; second row, where second element is max; etc)
+        threshold : float, default 0
+            Used to remove rare events. Aggregates all rows where all values are
+            less than the specified threshold.
+        centered : dict, optional
+            Parameter used to align user paths at a specific event at a specific step.
+            Has to contain three keys:
+            - ``event``: str, name of event to align.
+            - ``left_gap``: int, number of events to include before specified event.
+            - ``occurrence`` : int which occurrence of event to align (typical 1).
+
+            If not ``None`` - only users who have selected events with the specified
+            ``occurrence`` in their paths will be included.
+            ``Fraction`` of such remaining users is specified in the title of centered
+            step_matrix.
+            `Example: {'event': 'cart', 'left_gap': 8, 'occurrence': 1}`
+        groups : tuple[list, list], optional
+            Can be specified to plot differential step_matrix. Must contain
+            a tuple of two elements (g_1, g_2): where g_1 and g_2 are collections
+            of user_id`s. Two separate step_matrices M1 and M2 will be calculated
+            for users from g_1 and g_2, respectively. Resulting matrix will be the matrix
+            M = M1-M2.
+
+        Notes
+        -----
+        During step matrix calculation an artificial ``ENDED`` event is created. If a path already
+        contains ``path_end`` event (See :py:class:`.AddStartEndEvents`), it
+        will be temporarily replaced with ``ENDED`` (within step matrix only). Otherwise, ``ENDED``
+        event will be explicitly added to the end of each path.
+
+        Event ``ENDED`` is cumulated so that the values in its row are summed up from
+        the first step to the last. ``ENDED`` row is always placed at the last line of step matrix.
+        This design guarantees that the sum of any step matrix's column is 1
+        (0 for a differential step matrix).
+
         """
+        self.max_steps = max_steps
+        self.precision = precision
+        self.targets = targets
+        self.accumulated = accumulated
+        self.sorting = sorting
+        self.threshold = threshold
+        self.centered = CenteredParams(**centered) if centered else None
+        self.groups = groups
+        self.weight_col = weight_col or self.__eventstream.schema.user_id
         weight_col = self.weight_col or self.user_col
         data = self.__eventstream.to_dataframe()
+
         data = self._add_ended_events(data=data, schema=self.__eventstream.schema, weight_col=self.weight_col)
         data["event_rank"] = data.groupby(weight_col).cumcount() + 1
 

@@ -28,10 +28,8 @@ class LabelNewUsersHelperMixin:
             LabelNewUsers,
             LabelNewUsersParams,
         )
+        from retentioneering.preprocessing_graph import PreprocessingGraph
         from retentioneering.preprocessing_graph.nodes import EventsNode
-        from retentioneering.preprocessing_graph.preprocessing_graph import (
-            PreprocessingGraph,
-        )
 
         p = PreprocessingGraph(source_stream=self)  # type: ignore
 

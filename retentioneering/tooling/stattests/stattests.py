@@ -16,15 +16,54 @@ from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.stattests.constants import STATTEST_NAMES
 
 
-def _cohend(sample1: list, sample2: list) -> float:
-    n1, n2 = len(sample1), len(sample2)
-    s1, s2 = np.var(sample1, ddof=1), np.var(sample2, ddof=1)
-    s = float(math.sqrt(((n1 - 1) * s1 + (n2 - 1) * s2) / (n1 + n2 - 2)))
+def _effect_size_cohend(sample1: list, sample2: list) -> float:
+    """
+    Calculate an effect size value using Cohen’s D measure (difference between two means).
+
+    Parameters
+    ----------
+    sample1 : list
+        First group's statistics.
+
+    sample2 : list
+        Second group's statistics.
+
+    Returns
+    -------
+    float
+        Calculated an effect size value.
+
+    """
+    sample_size1, sample_size2 = len(sample1), len(sample2)
+    standard_deviation1, standard_deviation2 = np.var(sample1, ddof=1), np.var(sample2, ddof=1)
+    pooled_standard_deviation = float(
+        math.sqrt(
+            ((sample_size1 - 1) * standard_deviation1 + (sample_size2 - 1) * standard_deviation2)
+            / (sample_size1 + sample_size2 - 2)
+        )
+    )
     mean_sample1, mean_sample2 = float(np.mean(sample1)), float(np.mean(sample2))
-    return (mean_sample1 - mean_sample2) / s
+    return (mean_sample1 - mean_sample2) / pooled_standard_deviation
 
 
-def _cohenh(sample1: list, sample2: list) -> float:
+def _effect_size_cohenh(sample1: list, sample2: list) -> float:
+    """
+    Calculate an effect size value using Cohen’s D measure (between proportions)
+
+    Parameters
+    ----------
+    sample1 : list
+        First group's statistics.
+
+    sample2 : list
+        Second group's statistics.
+
+    Returns
+    -------
+    float
+        Calculated an effect size value.
+
+    """
     mean_sample1, mean_sample2 = np.mean(sample1), np.mean(sample2)
     return 2 * (math.asin(math.sqrt(mean_sample1)) - math.asin(math.sqrt(mean_sample2)))
 
@@ -56,10 +95,10 @@ class StatTests:
     g1_data: list[str | int]
     g2_data: list[str | int]
 
+    is_fitted: bool
     output_template_numerical = "{0} (mean ± SD): {1:.3f} ± {2:.3f}, n = {3}"
     output_template_categorical = "{0} (size): n = {1}"
     p_val, power, label_min, label_max = 0.0, 0.0, "", ""
-    is_fitted: bool
 
     def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
@@ -98,10 +137,10 @@ class StatTests:
             # calculate effect size
             if max(data_max) <= 1 and min(data_max) >= 0 and max(data_min) <= 1 and min(data_min) >= 0:
                 # if analyze proportions use Cohen's h:
-                effect_size = _cohenh(data_max, data_min)
+                effect_size = _effect_size_cohenh(data_max, data_min)
             else:
                 # for other variables use Cohen's d:
-                effect_size = _cohend(data_max, data_min)
+                effect_size = _effect_size_cohend(data_max, data_min)
 
             # calculate power
             power = TTestIndPower().power(

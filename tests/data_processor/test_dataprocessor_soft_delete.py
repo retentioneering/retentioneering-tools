@@ -3,10 +3,7 @@ import pandas as pd
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream import Eventstream, RawDataSchema
 from retentioneering.params_model import ParamsModel
-from retentioneering.preprocessing_graph.preprocessing_graph import (
-    EventsNode,
-    PreprocessingGraph,
-)
+from retentioneering.preprocessing_graph import EventsNode, PreprocessingGraph
 from tests.data_processor.fixtures.delete_processor import delete_processor
 
 

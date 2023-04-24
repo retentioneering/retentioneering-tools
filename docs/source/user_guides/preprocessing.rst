@@ -284,7 +284,7 @@ We are starting from creating an empty graph.
 
 .. code-block:: python
 
-    from retentioneering.preprocessing_graph.preprocessing_graph import PreprocessingGraph
+    from retentioneering.preprocessing_graph import PreprocessingGraph
 
     pgraph = PreprocessingGraph(stream)
 
@@ -297,7 +297,7 @@ Creating a single node
 
 .. code-block:: python
 
-    from retentioneering.preprocessing_graph.preprocessing_graph import EventsNode
+    from retentioneering.preprocessing_graph import EventsNode
     from retentioneering.data_processors_lib import GroupEvents, GroupEventsParams
 
     def group_products(df, schema):
@@ -418,7 +418,7 @@ Next, ``node8``. As we discussed earlier, :py:meth:`MergeNode <retentioneering.p
 
 .. code-block:: python
 
-    from retentioneering.preprocessing_graph.preprocessing_graph import MergeNode
+    from retentioneering.preprocessing_graph import MergeNode
 
     node8 = MergeNode()
     pgraph.add_node(node=node8, parents=[node4, node7])
@@ -534,7 +534,7 @@ Here we just provide the same code combined in a single chunk so you could simpl
     from retentioneering.data_processors_lib import FilterEvents, FilterEventsParams
     from retentioneering.data_processors_lib import LabelCroppedPaths, LabelCroppedPathsParams
     from retentioneering.data_processors_lib import SplitSessions, SplitSessionsParams
-    from retentioneering.preprocessing_graph.preprocessing_graph import PreprocessingGraph, EventsNode, MergeNode
+    from retentioneering.preprocessing_graph import PreprocessingGraph, EventsNode, MergeNode
 
     stream = datasets.load_simple_shop()
 

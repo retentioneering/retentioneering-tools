@@ -77,7 +77,7 @@ class TestStepMatrix:
         correct_result = targets_grouping_cor
         sm = StepMatrix(eventstream=test_stream)
         sm.fit(max_steps=6, targets=[["event3", "event5"]])
-        result = sm.targets_list
+        result = sm._targets_list
         assert correct_result == result
 
     def test_step_matrix__accumulated_only_targets_plot(
@@ -143,7 +143,7 @@ class TestStepMatrix:
         correct_result = centered_name_cor
         sm = StepMatrix(eventstream=test_stream)
         sm.fit(max_steps=10, centered={"event": "event5", "left_gap": 4, "occurrence": 1}, threshold=0.6)
-        result = sm.fraction_title
+        result = sm._fraction_title
         assert correct_result == result
 
     def test_step_matrix__events_sorting(self, test_stream: EventstreamType, events_sorting_cor: pd.DataFrame) -> None:
@@ -175,7 +175,7 @@ class TestStepMatrix:
             centered={"event": "event3", "left_gap": 5, "occurrence": 1},
             groups=(g1, g2),
         )
-        result = sm.fraction_title
+        result = sm._fraction_title
         assert correct_result == result
 
     def test_step_matrix__path_end(self, test_stream_end_path: EventstreamType, path_end_cor: pd.DataFrame) -> None:

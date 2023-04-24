@@ -43,14 +43,14 @@ class Funnel:
     funnel_type: FunnelTypes
     segments: Collection[Collection[int]] | None
     segment_names: list[str] | None
-    res_dict: dict
+    __res_dict: dict[str, dict]
 
     def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
-        self.res_dict = {}
+        self.__res_dict = {}
 
     def __validate_input(
         self,
@@ -135,11 +135,11 @@ class Funnel:
         data = data[(~data["min_date"].isna()) & (data["min_date"] <= data[self.time_col])]
         data.drop(columns="min_date", inplace=True)
 
-        res_dict = {}
+        __res_dict = {}
         for segment, name in zip(segments, segment_names):
             vals, _df = self._crop_df(data, stages, segment)
-            res_dict[name] = {"stages": stage_names, "values": vals}
-        return res_dict
+            __res_dict[name] = {"stages": stage_names, "values": vals}
+        return __res_dict
 
     def _prepare_data_for_open_funnel(
         self,
@@ -149,13 +149,13 @@ class Funnel:
         segments: Collection[Collection[int]],
         segment_names: list[str],
     ) -> dict[str, dict]:
-        res_dict = {}
+        __res_dict = {}
         for segment, name in zip(segments, segment_names):
             # isolate users from group
             group_data = data[data[self.user_col].isin(segment)]
             vals = [group_data[group_data[self.event_col].isin(stage)][self.user_col].nunique() for stage in stages]
-            res_dict[name] = {"stages": stage_names, "values": vals}
-        return res_dict
+            __res_dict[name] = {"stages": stage_names, "values": vals}
+        return __res_dict
 
     def _crop_df(self, df: pd.DataFrame, stages: list[str], segment: Collection[int]) -> tuple[list[int], pd.DataFrame]:
         first_stage = stages[0]
@@ -249,7 +249,7 @@ class Funnel:
         ) = self.__validate_input(stages, stage_names, funnel_type, segments, segment_names)
 
         if self.funnel_type in ["closed", "hybrid"]:
-            self.res_dict = self._prepare_data_for_closed_and_hybrid_funnel(
+            self.__res_dict = self._prepare_data_for_closed_and_hybrid_funnel(
                 data=data,
                 stages=self.stages,
                 stage_names=self.stage_names,
@@ -258,7 +258,7 @@ class Funnel:
             )
 
         elif self.funnel_type == "open":
-            self.res_dict = self._prepare_data_for_open_funnel(
+            self.__res_dict = self._prepare_data_for_open_funnel(
                 data=data,
                 stages=self.stages,
                 segments=self.segments,
@@ -276,7 +276,7 @@ class Funnel:
         go.Figure
 
         """
-        result_dict = self.res_dict
+        result_dict = self.__res_dict
         data = self._calculate_plot_data(plot_params=result_dict)
         figure = self._plot_stacked_funnel(data=data)
         return figure
@@ -299,7 +299,7 @@ class Funnel:
 
         """
 
-        result_dict = self.res_dict
+        result_dict = self.__res_dict
         result_list = []
         for key in result_dict:
             result_ = pd.DataFrame(result_dict[key])

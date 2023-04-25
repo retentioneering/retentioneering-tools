@@ -15,7 +15,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 
-from retentioneering.eventstream.types import EventstreamSchemaType, EventstreamType
+from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.clusters.segments import Segments
 
 FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "markov"]
@@ -58,8 +58,6 @@ class Clusters:
         self._method: Method | None = None
         self._n_clusters: int | None = None
         self._user_clusters: pd.Series | None = None
-        self._feature_type: FeatureType | None = None
-        self._ngram_range: NgramRange | None = None
         self._X: pd.DataFrame | None = None
 
     # public API
@@ -274,12 +272,7 @@ class Clusters:
         Returns the parameters used for the last fitting.
 
         """
-        return {
-            "method": self._method,
-            "n_clusters": self._n_clusters,
-            "ngram_range": self._ngram_range,
-            "feature_type": self._feature_type,
-        }
+        return {"method": self._method, "n_clusters": self._n_clusters, "X": self._X}
 
     def set_clusters(self, user_clusters: pd.Series) -> Clusters:
         """
@@ -299,9 +292,7 @@ class Clusters:
         self._user_clusters = user_clusters
         self.__cluster_result = user_clusters.copy()
         self._n_clusters = user_clusters.nunique()
-        self._feature_type = None
         self._method = None
-        self._ngram_range = None
         self.__is_fitted = True
         return self
 
@@ -374,8 +365,7 @@ class Clusters:
         pd.DataFrame
             A DataFrame with the vectorized values. Index contains user_ids, columns contain n-grams.
         """
-        self._feature_type = feature_type
-        self._ngram_range = ngram_range
+
         eventstream = self.__eventstream
         events = eventstream.to_dataframe()
         vec_data = None

@@ -1,6 +1,9 @@
 from .connector import TrackerMainConnector
 from .tracker import Tracker
 
-tracker = Tracker(connector=TrackerMainConnector())
+# @TODO: read data from config file. Vladimir Makhanov
+ENABLED = False
+
+tracker = Tracker(connector=TrackerMainConnector(), enabled=ENABLED)
 
 track = tracker.track

@@ -7,7 +7,7 @@ FLOAT_PRECISION = 3
 
 
 @pytest.fixture
-def max_steps_cor():
+def max_steps_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
             [1.0, 0.667, 0.333, 0.167, 0.167],
@@ -23,7 +23,7 @@ def max_steps_cor():
 
 
 @pytest.fixture
-def max_steps_100_cor():
+def max_steps_100_cor() -> pd.DataFrame:
     current_dir = os.path.dirname(os.path.realpath(__file__))
     test_data_dir = os.path.join(current_dir, "../../datasets/tooling/step_matrix")
     filepath = os.path.join(test_data_dir, "03_100_steps.csv")
@@ -33,13 +33,13 @@ def max_steps_100_cor():
 
 
 @pytest.fixture
-def max_steps_one_cor():
+def max_steps_one_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame([[1.0]], index=["event1"], columns=[1])
     return correct_result
 
 
 @pytest.fixture
-def thresh_cor():
+def thresh_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
             [1.0, 0.667, 0.333, 0.167, 0.167, 0.167],
@@ -54,7 +54,7 @@ def thresh_cor():
 
 
 @pytest.fixture
-def thresh_1_cor():
+def thresh_1_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
             [1.0, 0.667, 0.333, 0.167, 0.167, 0.167],
@@ -68,7 +68,7 @@ def thresh_1_cor():
 
 
 @pytest.fixture
-def targets_plot_cor():
+def targets_plot_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [[0.0, 0.0, 0.0, 0.167, 0.167, 0.167]],
         index=["event3"],
@@ -78,7 +78,7 @@ def targets_plot_cor():
 
 
 @pytest.fixture
-def targets_thresh_plot_cor():
+def targets_thresh_plot_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [[0.0, 0.0, 0.0, 0.167, 0.167, 0.167], [0.0, 0.0, 0.0, 0.167, 0.0, 0.0]],
         index=["event3", "event5"],
@@ -88,13 +88,13 @@ def targets_thresh_plot_cor():
 
 
 @pytest.fixture
-def targets_grouping_cor():
+def targets_grouping_cor() -> list:
     correct_result = [["event3", "event5"]]
     return correct_result
 
 
 @pytest.fixture
-def accumulated_only_targets_plot_cor():
+def accumulated_only_targets_plot_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [[0.0, 0.0, 0.0, 0.167, 0.167, 0.167, 0.167, 0.333, 0.333, 0.5]],
         index=["ACC_event5"],
@@ -104,7 +104,7 @@ def accumulated_only_targets_plot_cor():
 
 
 @pytest.fixture
-def accumulated_both_targets_plot_cor():
+def accumulated_both_targets_plot_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
             [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.333, 0.0, 0.167, 0.0],
@@ -119,7 +119,7 @@ def accumulated_both_targets_plot_cor():
 
 
 @pytest.fixture
-def centered_cor():
+def centered_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
             [0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -136,7 +136,7 @@ def centered_cor():
 
 
 @pytest.fixture
-def centered_target_thresh_cor():
+def centered_target_thresh_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
             [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.5, 0.0, 0.0, 0.0],
@@ -150,7 +150,7 @@ def centered_target_thresh_cor():
 
 
 @pytest.fixture
-def centered_target_thresh_plot_cor():
+def centered_target_thresh_plot_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
             [0.0, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0],
@@ -162,13 +162,13 @@ def centered_target_thresh_plot_cor():
 
 
 @pytest.fixture
-def centered_name_cor():
+def centered_name_cor() -> str:
     correct_result = "(33.3% of total records)"
     return correct_result
 
 
 @pytest.fixture
-def events_sorting_cor():
+def events_sorting_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
             [0.0, 0.0, 0.0, 0.167, 0.0, 0.0],  # event5
@@ -184,7 +184,7 @@ def events_sorting_cor():
 
 
 @pytest.fixture
-def differential_cor():
+def differential_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
             [0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -201,13 +201,13 @@ def differential_cor():
 
 
 @pytest.fixture
-def differential_name_cor():
+def differential_name_cor() -> str:
     correct_result = "(33.3% of total records)"
     return correct_result
 
 
 @pytest.fixture
-def path_end_cor():
+def path_end_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
             [1.0, 0.5, 0.333, 0.167, 0.167],
@@ -224,16 +224,16 @@ def path_end_cor():
 
 
 @pytest.fixture
-def weight_col_cor():
+def weight_col_cor() -> pd.DataFrame:
     correct_result = pd.DataFrame(
         [
-            [0.667, 0.0, 0.0, 1.0, 0.333],
-            [0.333, 0.333, 0.0, 0.0, 0.667],
-            [0, 0.0, 0.667, 0.0, 0.0],
-            [0, 0.333, 0.0, 0.0, 0.0],
-            [0, 0.333, 0.333, 0.0, 0.0],
+            [0.667, 0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.5, 0.0, 0.0, 0.0],
+            [0, 0.167, 0.0, 0.167, 0.0],
+            [0.333, 0.333, 0.333, 0.0, 0.167],
+            [0, 0.0, 0.667, 0.833, 0.833],
         ],
-        index=(["event1", "event2", "event5", "event3", "event4"]),
+        index=(["A", "B", "D", "C", "ENDED"]),
         columns=[1, 2, 3, 4, 5],
     )
     return correct_result

@@ -34,7 +34,7 @@ class TestCollapseLoops(ApplyTestBase):
         actual = self._apply(
             CollapseLoopsParams(
                 suffix="count",
-                timestamp_aggregation_type="min",
+                time_agg="min",
             )
         )
         expected = pd.DataFrame(
@@ -56,7 +56,7 @@ class TestCollapseLoops(ApplyTestBase):
         actual = self._apply(
             CollapseLoopsParams(
                 suffix="count",
-                timestamp_aggregation_type="max",
+                time_agg="max",
             )
         )
         expected = pd.DataFrame(
@@ -78,7 +78,7 @@ class TestCollapseLoops(ApplyTestBase):
         actual = self._apply(
             CollapseLoopsParams(
                 suffix="loop",
-                timestamp_aggregation_type="mean",
+                time_agg="mean",
             )
         )
         expected = pd.DataFrame(
@@ -123,7 +123,7 @@ class TestCollapseLoopsGraph(GraphTestBase):
         actual = self._apply(
             CollapseLoopsParams(
                 suffix="count",
-                timestamp_aggregation_type="min",
+                time_agg="min",
             )
         )
         expected = pd.DataFrame(
@@ -142,7 +142,7 @@ class TestCollapseLoopsGraph(GraphTestBase):
         actual = self._apply(
             CollapseLoopsParams(
                 suffix="count",
-                timestamp_aggregation_type="max",
+                time_agg="max",
             )
         )
         expected = pd.DataFrame(
@@ -161,7 +161,7 @@ class TestCollapseLoopsGraph(GraphTestBase):
         actual = self._apply(
             CollapseLoopsParams(
                 suffix="loop",
-                timestamp_aggregation_type="mean",
+                time_agg="mean",
             )
         )
         expected = pd.DataFrame(
@@ -180,7 +180,7 @@ class TestCollapseLoopsGraph(GraphTestBase):
         actual = self._apply(
             CollapseLoopsParams(
                 suffix=None,
-                timestamp_aggregation_type="mean",
+                time_agg="mean",
             )
         )
         expected = pd.DataFrame(
@@ -215,7 +215,7 @@ class TestCollapseLoopsHelper:
 
         source = Eventstream(source_df)
 
-        params = {"suffix": "count", "timestamp_aggregation_type": "min"}
+        params = {"suffix": "count", "time_agg": "min"}
 
         correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 
@@ -251,7 +251,7 @@ class TestCollapseLoopsHelper:
 
         source = Eventstream(source_df)
 
-        params = {"suffix": "count", "timestamp_aggregation_type": "max"}
+        params = {"suffix": "count", "time_agg": "max"}
 
         correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 
@@ -287,7 +287,7 @@ class TestCollapseLoopsHelper:
 
         source = Eventstream(source_df)
 
-        params = {"suffix": "loop", "timestamp_aggregation_type": "mean"}
+        params = {"suffix": "loop", "time_agg": "mean"}
 
         correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 
@@ -323,7 +323,7 @@ class TestCollapseLoopsHelper:
 
         source = Eventstream(source_df)
 
-        params = {"suffix": None, "timestamp_aggregation_type": "mean"}
+        params = {"suffix": None, "time_agg": "mean"}
 
         correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
 

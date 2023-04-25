@@ -13,9 +13,6 @@ from retentioneering.params_model.registry import register_params_model
 from retentioneering.utils.dict import clear_dict
 from retentioneering.widget import WIDGET_MAPPING
 
-# disable warning for pydantic schema Callable type
-warnings.simplefilter(action="ignore", category=UserWarning)
-
 if TYPE_CHECKING:
     from pydantic.typing import AbstractSetIntStr, MappingIntStrAny
 
@@ -73,7 +70,11 @@ class ParamsModel(BaseModel):
 
     @classmethod
     def _parse_schemas(cls) -> dict[str, str | dict | list]:
-        params_schema: dict[str, Any] = cls.schema()
+        with warnings.catch_warnings():
+            # disable warning for pydantic schema Callable type
+            warnings.simplefilter(action="ignore", category=UserWarning)
+            params_schema: dict[str, Any] = cls.schema()
+
         params_schema["required"] = params_schema.get("required", [])
 
         for field_name, field in cls.__fields__.items():

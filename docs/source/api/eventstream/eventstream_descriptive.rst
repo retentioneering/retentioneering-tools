@@ -1,7 +1,6 @@
 Eventstream descriptive methods
 ===============================
 .. toctree::
-   :caption: Descriptive methods
    :maxdepth: 2
 
     Describe <eventstream_descriptive/describe.rst>

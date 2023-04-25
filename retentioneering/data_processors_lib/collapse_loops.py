@@ -14,8 +14,8 @@ class CollapseLoopsParams(ParamsModel):
     A class with parameters for :py:class:`.CollapseLoops` class.
     """
 
-    suffix: Optional[Literal["loop", "count"]] = "loop"
-    timestamp_aggregation_type: Literal["max", "min", "mean"] = "max"
+    suffix: Optional[Literal["loop", "count"]]
+    time_agg: Literal["max", "min", "mean"] = "min"
 
 
 class CollapseLoops(DataProcessor):
@@ -27,7 +27,10 @@ class CollapseLoops(DataProcessor):
 
     Parameters
     ----------
-    suffix : {"loop", "count", None}, default "loop"
+    suffix : {"loop", "count"}, optional
+
+        - If ``None``, event_name will be event_name without any changes.\n
+        For example *"event1 - event1 - event1"* --> event1.
 
         - If ``loop``, event_name will be event_name_loop.\n
         For example *"event1 - event1 - event1"* --> event1_loop.
@@ -35,10 +38,7 @@ class CollapseLoops(DataProcessor):
         - If ``count``, event_name will be event_name_loop_{number of events}.\n
         For example *"event1 - event1 - event1"* --> event1_loop_3.
 
-        - If ``None``, event_name will be event_name without any changes.\n
-        For example *"event1 - event1 - event1"* --> event1.
-
-    timestamp_aggregation_type : {"max", "min", "mean"}, default "max"
+    time_agg : {"max", "min", "mean"}, default "min"
         Aggregation method to calculate timestamp values for new groups.
 
     Returns
@@ -83,7 +83,7 @@ class CollapseLoops(DataProcessor):
         event_col = eventstream.schema.event_name
 
         suffix = self.params.suffix
-        timestamp_aggregation_type = self.params.timestamp_aggregation_type
+        time_agg = self.params.time_agg
         df = eventstream.to_dataframe(copy=True)
         df["ref"] = df[eventstream.schema.event_id]
 
@@ -97,7 +97,7 @@ class CollapseLoops(DataProcessor):
         loops = (
             df[df["collapsed"] == 1]
             .groupby([user_col, "cumgroup", event_col])
-            .agg({time_col: timestamp_aggregation_type, "count": "max"})
+            .agg({time_col: time_agg, "count": "max"})
             .reset_index()
         )
 

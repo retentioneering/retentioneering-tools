@@ -15,24 +15,116 @@ Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simp
     from retentioneering import datasets
 
     stream = datasets.load_simple_shop()\
-        .split_sessions(session_cutoff=(30, 'm'))
+        .split_sessions(timeout=(30, 'm'))
 
 Above we use an additional call of the :ref:`split_sessions<split_sessions>` data processor helper. We will need this session split in one of the examples in this user guide.
 
 General usage
 -------------
 
-The primary way of using the ``Clusters`` tool is sort of traditional. You can create a separate instance of ``Clusters`` explicitly, and call ``fit()`` method then. As soon as the clusters are fitted, you can apply multiple tools for cluster analysis. A basic tool that shows cluster sizes and some other statistics is :ref:`plot()<clusters_plot>`.
+The primary way of using the ``Clusters`` tool is sort of traditional. You can create a separate instance of ``Clusters`` explicitly, and call ``extract_features()`` and ``fit()`` methods then. As soon as the clusters are fitted, you can apply multiple tools for cluster analysis. A basic tool that shows cluster sizes and some other statistics is :ref:`plot()<clusters_plot>`.
 
 .. code-block:: python
 
     from retentioneering.tooling.clusters import Clusters
 
     clusters = Clusters(eventstream=stream)
-    clusters.fit(method='kmeans', n_clusters=4, feature_type='tfidf', ngram_range=(1, 1))
+    features = clusters.extract_features(feature_type='tfidf', ngram_range=(1, 1))
+    clusters.fit(method='kmeans', n_clusters=4, X=features)
     clusters.plot()
 
 .. figure:: /_static/user_guides/clusters/basic_plot.png
+
+.. _extracting_features:
+
+Extracting features
+-------------------
+
+Before fitting ``Clusters`` you need to get features from your data. :py:meth:`Clusters.extract_features()<retentioneering.tooling.clusters.clusters.Clusters.extract_features>` is the method that can help with that task. It uses a couple of parameters ``feature_type`` and ``ngram_range``, that stands for the type of vectorization. By vectorization we mean the way user trajectories are converted to vectors in some feature space. In general, the vectorization procedure comprises two steps:
+
+- Split user paths into short subsequences of particular length called ``n-grams``.
+- Calculate some statistics taking into account how often each n-gram is represented in a user's trajectory.
+
+``ngram_range`` argument controls the range of n-gram length to be used in the vectorization. For example, ``ngram_range=(1, 3)`` means that we are going to use n-grams of length 1 (single events, that is, *unigrams*), 2 (*bigrams*), and 3 (*trigrams*).
+
+``feature type`` argument stands for the type of vectorization.  Besides standard ``tfidf``, ``count``, ``frequency``, and ``binary`` features, ``markov`` and time-related (``time`` and ``time_fraction``) features are available. See :py:meth:`Clusters.extract_features()<retentioneering.tooling.clusters.clusters.Clusters.extract_features>` for the details.
+
+If this vectorization is not enough, you can use your custom features passing it as a pandas DataFrame to the ``X`` argument.
+
+Note that if you use the features that are based on n-grams, they are named according to the following pattern ``event_1 ... event_n_FEATURE_TYPE``. For example, for a bigram ``cart`` → ``delivery_choice`` and ``feature_type='tfidf'``, the corresponding feature name will be ``cart delivery_choice_tfidf``.
+
+As for the time-based features such as ``time``, ``time_fraction``, they are associated with a single event, so their names will be ``cart_time`` or ``delivery_choice_time_fraction``.
+
+.. code-block:: python
+
+    clusters.extract_features(ngram_range=(1, 2), feature_type='tfidf')
+
+.. raw:: html
+
+    <table class="dataframe">
+      <thead>
+        <tr style="text-align: right;">
+          <th></th>
+          <th>cart_tfidf</th>
+          <th>cart cart_tfidf</th>
+          <th>...</th>
+          <th>product2 catalog_tfidf</th>
+          <th>product2 main_tfidf</th>
+        </tr>
+        <tr>
+          <th>user_id</th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>122915</th>
+          <td>0.050615</td>
+          <td>0.0</td>
+          <td>...</td>
+          <td>0.145072</td>
+          <td>0.0</td>
+        </tr>
+        <tr>
+          <th>463458</th>
+          <td>0.000000</td>
+          <td>0.0</td>
+          <td>...</td>
+          <td>0.190706</td>
+          <td>0.0</td>
+        </tr>
+        <tr>
+          <th>...</th>
+          <td>...</td>
+          <td>...</td>
+          <td>...</td>
+          <td>...</td>
+          <td>...</td>
+        </tr>
+        <tr>
+          <th>999916163</th>
+          <td>0.517996</td>
+          <td>0.0</td>
+          <td>...</td>
+          <td>0.000000</td>
+          <td>0.0</td>
+        </tr>
+        <tr>
+          <th>999941967</th>
+          <td>0.000000</td>
+          <td>0.0</td>
+          <td>...</td>
+          <td>0.000000</td>
+          <td>0.0</td>
+        </tr>
+      </tbody>
+    </table>
+    <br>
+
 
 Fitting clusters
 ----------------
@@ -47,22 +139,10 @@ Pre-defined clustering methods
 .. code-block:: python
 
     clusters = Clusters(eventstream=stream)
-    clusters.fit(method='kmeans', n_clusters=4, feature_type='tfidf', ngram_range=(1, 1))
+    features = clusters.extract_features(ngram_range=(1, 2), feature_type='tfidf')
+    clusters.fit(method='kmeans', n_clusters=4, X=features)
 
-So far the ``method`` argument supports two options: :sklearn_kmeans:`kmeans<>` and :sklearn_gmm:`gmm<>`. ``n_clusters`` means the number of clusters since both K-means and GMM algorithms need it to be set.
-
-.. _clusters_feature_type_ngram_range:
-
-The following couple of arguments ``feature_type`` and ``ngram_range`` stands for the type of vectorization. By vectorization we mean the way user trajectories are converted to vectors in some feature space. In general, the vectorization procedure comprises two steps:
-
-- Split user paths into short subsequences of particular length called ``n-grams``.
-- Calculate some statistics taking into account how often each n-gram is represented in a user's trajectory.
-
-``ngram_range`` argument controls the range of n-gram length to be used in the vectorization. For example, ``ngram_range=(1, 3)`` means that we are going to use n-grams of length 1 (single events, that is, *unigrams*), 2 (*bigrams*), and 3 (*trigrams*).
-
-``feature type`` argument stands for the type of vectorization.  Besides standard ``tfidf``, ``count``, ``frequency``, and ``binary`` features, ``markov`` and time-related (``time`` and ``time_fraction``) features are available. See :py:meth:`Clusters.extract_features()<retentioneering.tooling.clusters.clusters.Clusters.extract_features>` for the details.
-
-If this vectorization is not enough, you can use your custom features passing it as a pandas DataFrame to the ``vector`` argument.
+So far the ``method`` argument supports two options: :sklearn_kmeans:`kmeans<>` and :sklearn_gmm:`gmm<>`. ``n_clusters`` means the number of clusters since both K-means and GMM algorithms need it to be set. As for the ``X`` parameter, it holds features as an input for clusterization algorithms. In our example, the build-in :ref:`extract_features()<extracting_features>` method is used to get vectorized features, but the result of custom external vectorization can also be passed.
 
 Custom clustering
 ~~~~~~~~~~~~~~~~~
@@ -142,11 +222,11 @@ Our :py:meth:`Clusters.projection()<retentioneering.tooling.clusters.clusters.Cl
 
 In this image, each dot represents a single user. Users with similar behavior are located close to each other.
 
-``plot_type='targets'`` along with ``targets`` argument color the projected dots with respect to conversion rates associated with the events defined in ``targets``. If at least one target event appeared in a user’s trajectory, the user is colored as converted.
+``color_type='targets'`` along with ``targets`` argument color the projected dots with respect to conversion rates associated with the events defined in ``targets``. If at least one target event appeared in a user’s trajectory, the user is colored as converted.
 
 .. code-block:: python
 
-    clusters.projection(method='tsne', plot_type='targets', targets=['cart'])
+    clusters.projection(method='tsne', color_type='targets', targets=['cart'])
 
 .. figure:: /_static/user_guides/clusters/projection_targets.png
 
@@ -159,7 +239,7 @@ Essentially, any cluster splitting provides nothing but a mapping rule which ass
 
     clusters\
         .filter_cluster(cluster_id=0)\
-        .add_start_end()\
+        .add_start_end_events()\
         .transition_graph(
             targets={
                 'positive': 'payment_done',
@@ -178,29 +258,29 @@ Essentially, any cluster splitting provides nothing but a mapping rule which ass
     ></iframe>
     <br><br>
 
-Here we additionally used :ref:`add_start_end<add_start_end>` data processor helper. It adds ``path_end`` event that is used as a negative target event in the transition graph.
+Here we additionally used :ref:`add_start_end_events<add_start_end_events>` data processor helper. It adds ``path_end`` event that is used as a negative target event in the transition graph.
 
 Clusters comparison
 ~~~~~~~~~~~~~~~~~~~
 
-It is natural to describe cluster characteristics in terms of event frequencies generated by the cluster users. :py:meth:`Clusters.event_dist()<retentioneering.tooling.clusters.clusters.Clusters.event_dist>` allows to do this. It takes the ``cluster_id1`` argument as a cluster to be described and plots ``top_n`` the most frequent events related to this cluster. In comparison, it shows the frequencies of the same events but within the ``cluster_id2`` cluster if the latter is defined. Otherwise, the frequencies over the entire eventstream are shown.
+It is natural to describe cluster characteristics in terms of event frequencies generated by the cluster users. :py:meth:`Clusters.diff()<retentioneering.tooling.clusters.clusters.Clusters.diff>` allows to do this. It takes the ``cluster_id1`` argument as a cluster to be described and plots ``top_n_events`` the most frequent events related to this cluster. In comparison, it shows the frequencies of the same events but within the ``cluster_id2`` cluster if the latter is defined. Otherwise, the frequencies over the entire eventstream are shown.
 
 The next example demonstrates that within cluster 0 the ``catalog`` event takes ~37% of all events generated by the users from this cluster, whereas in the original eventstream the ``catalog`` event holds ~30% of all events only.
 
 .. code-block:: python
 
-    clusters.event_dist(cluster_id1=0)
+    clusters.diff(cluster_id1=0)
 
-.. figure:: /_static/user_guides/clusters/event_dist.png
+.. figure:: /_static/user_guides/clusters/diff.png
 
 The Clusters tool shares :ref:`the idea of using weighting column<transition_graph_weights>`. The most common values for this argument are ``user_id`` and ``session_id`` (assuming that the session split was created and ``session_id`` column exists). If you want to display such cluster statistics as the shares of the unique users or unique sessions, you can use the ``weight_col`` argument. Namely, for each event the proportion of the unique user paths/sessions where a particular event appear is calculated.
 
-Also, in the example below we demonstrate the ``top_n`` argument that controls the number of the events
+Also, in the example below we demonstrate the ``top_n_events`` argument that controls the number of the events
 to be compared.
 
 .. code-block:: python
 
-    clusters.event_dist(cluster_id1=0, top_n=5, weight_col='user_id')
+    clusters.diff(cluster_id1=0, top_n_events=5, weight_col='user_id')
 
 .. figure:: /_static/user_guides/clusters/plot_weight_col_user_id.png
 
@@ -210,7 +290,7 @@ Similarly, by defining ``weight_col='session_id'`` we get the following diagram:
 
 .. code-block:: python
 
-    clusters.event_dist(cluster_id1=0, top_n=5, weight_col='session_id')
+    clusters.diff(cluster_id1=0, top_n_events=5, weight_col='session_id')
 
 .. figure:: /_static/user_guides/clusters/plot_weight_col_session_id.png
 
@@ -221,7 +301,7 @@ You can not only compare clusters with the whole eventstream, but with other clu
 
 .. code-block:: python
 
-    clusters.event_dist(cluster_id1=0, cluster_id2=1, top_n=5)
+    clusters.diff(cluster_id1=0, cluster_id2=1, top_n_events=5)
 
 .. figure:: /_static/user_guides/clusters/plot_cluster1_cluster2.png
 
@@ -290,90 +370,6 @@ Now, we are explicitly confirmed that there are 4 clusters in the result. To get
      8788425,
      10847418]
 
-Extracting features
--------------------
-
-In some scenarios, one might want to get the vectorized features that are used under the hood of the ``Clusters`` mechanisms. :py:meth:`Clusters.extract_features()<retentioneering.tooling.clusters.clusters.Clusters.extract_features>` is the method that is called inside :py:meth:`Clusters.fit()<retentioneering.tooling.clusters.clusters.Clusters.fit>`. It uses a couple of parameters ``feature_type`` and ``ngram_range`` that we :ref:`have already discussed<clusters_feature_type_ngram_range>`.
-
-Note that if you use the features that are based on n-grams, they are named according to the following pattern ``event_1 ... event_n_FEATURE_TYPE``. For example, for a bigram ``cart`` → ``delivery_choice`` and ``feature_type='tfidf'``, the corresponding feature name will be ``cart delivery_choice_tfidf``.
-
-As for the time-based features such as ``time``, ``time_fraction``, they are associated with a single event, so their names will be ``cart_time`` or ``delivery_choice_time_fraction``.
-
-.. code-block:: python
-
-    clusters.extract_features(ngram_range=(1, 2), feature_type='tfidf')
-
-.. raw:: html
-
-    <table class="dataframe">
-      <thead>
-        <tr style="text-align: right;">
-          <th></th>
-          <th>cart_tfidf</th>
-          <th>cart cart_tfidf</th>
-          <th>...</th>
-          <th>product2 catalog_tfidf</th>
-          <th>product2 main_tfidf</th>
-        </tr>
-        <tr>
-          <th>user_id</th>
-          <th></th>
-          <th></th>
-          <th></th>
-          <th></th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th>122915</th>
-          <td>0.050615</td>
-          <td>0.0</td>
-          <td>...</td>
-          <td>0.145072</td>
-          <td>0.0</td>
-        </tr>
-        <tr>
-          <th>463458</th>
-          <td>0.000000</td>
-          <td>0.0</td>
-          <td>...</td>
-          <td>0.190706</td>
-          <td>0.0</td>
-        </tr>
-        <tr>
-          <th>...</th>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-          <td>...</td>
-        </tr>
-        <tr>
-          <th>999916163</th>
-          <td>0.517996</td>
-          <td>0.0</td>
-          <td>...</td>
-          <td>0.000000</td>
-          <td>0.0</td>
-        </tr>
-        <tr>
-          <th>999941967</th>
-          <td>0.000000</td>
-          <td>0.0</td>
-          <td>...</td>
-          <td>0.000000</td>
-          <td>0.0</td>
-        </tr>
-      </tbody>
-    </table>
-    <br>
-
-If the features have been already calculated, you can get them by calling :py:meth:`Clusters.features<retentioneering.tooling.clusters.clusters.Clusters.features>` property.
-
-.. code-block:: python
-
-    clusters.features
 
 Eventstream.clusters property
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -383,16 +379,9 @@ There is another way to treat the Clusters tool. This way is aligned with the us
 .. code-block:: python
 
     clusters = stream.clusters
-    clusters.fit(method='kmeans', n_clusters=4, feature_type='tfidf', ngram_range=(1, 1))
+    features = clusters.extract_features(feature_type='tfidf', ngram_range=(1, 1))
+    clusters.fit(method='kmeans', n_clusters=4, X=features)
     clusters.plot()
-
-You can use ``stream.clusters`` directly, not assigning it to a separate variable like this:
-
-.. code-block:: python
-
-    stream.clusters\
-        .fit(method='kmeans', n_clusters=4, feature_type='tfidf', ngram_range=(1, 1))
-    stream.clusters.plot()
 
 .. note::
 

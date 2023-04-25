@@ -5,7 +5,7 @@ from retentioneering import datasets
 
 
 @pytest.fixture
-def markov_corr():
+def markov_corr() -> pd.DataFrame:
     correct_columns = [
         "event1~event1",
         "event1~event2",
@@ -31,7 +31,7 @@ def markov_corr():
 
 
 @pytest.fixture
-def kmeans_corr():
+def kmeans_corr() -> pd.Series:
     d = {1: 0, 2: 1, 3: 0, 4: 0}
     index = pd.Index([1, 2, 3, 4], name="user_id")
     corr = pd.Series(data=d, index=index)
@@ -39,7 +39,7 @@ def kmeans_corr():
 
 
 @pytest.fixture
-def gmm_corr():
+def gmm_corr() -> pd.Series:
     d = {1: 0, 2: 0, 3: 1, 4: 0}
     index = pd.Index([1, 2, 3, 4], name="user_id")
     corr = pd.Series(data=d, index=index)
@@ -47,7 +47,7 @@ def gmm_corr():
 
 
 @pytest.fixture
-def count_corr():
+def count_corr() -> pd.DataFrame:
     correct_columns = ["event1", "event2", "event3", "event4"]
     correct_columns = [c + "_count" for c in correct_columns]
     index = pd.Index([1, 2, 3, 4], name="user_id")
@@ -65,7 +65,7 @@ def count_corr():
 
 
 @pytest.fixture
-def time_corr():
+def time_corr() -> pd.DataFrame:
     correct_columns = ["event1", "event2", "event3", "event4"]
     correct_columns = [c + "_time" for c in correct_columns]
     index = pd.Index([1, 2, 3, 4], name="user_id")
@@ -83,7 +83,7 @@ def time_corr():
 
 
 @pytest.fixture
-def time_fraction_corr():
+def time_fraction_corr() -> pd.DataFrame:
     correct_columns = ["event1", "event2", "event3", "event4"]
     correct_columns = [c + "_time_fraction" for c in correct_columns]
     index = pd.Index([1, 2, 3, 4], name="user_id")
@@ -101,13 +101,13 @@ def time_fraction_corr():
 
 
 @pytest.fixture
-def cluster_mapping_corr():
+def cluster_mapping_corr() -> dict:
     corr = {0: [1, 2, 4], 1: [3]}
     return corr
 
 
 @pytest.fixture
-def ngram_range_corr():
+def ngram_range_corr() -> pd.DataFrame:
     correct_columns = [
         "event1 event1 event1",
         "event1 event1 event3",
@@ -134,13 +134,13 @@ def ngram_range_corr():
 
 
 @pytest.fixture
-def set_clusters_corr():
+def set_clusters_corr() -> dict:
     corr = {0: [2], 1: [0], 2: [3], 3: [1]}
     return corr
 
 
 @pytest.fixture
-def vector_corr():
+def X_corr() -> pd.Series:
     d = {1: 0, 2: 1, 3: 1, 4: 1}
     index = pd.Index([1, 2, 3, 4], name="user_id")
     corr = pd.Series(data=d, index=index)

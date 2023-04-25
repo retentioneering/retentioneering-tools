@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Literal, Optional
+from typing import Literal
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -22,24 +22,7 @@ class UserLifetimeHist:
 
     Parameters
     ----------
-    timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
-        Specify units of time differences the histogram should use. Use "s" for seconds, "m" for minutes,
-        "h" for hours and "D" for days.
-    log_scale : bool or tuple of bool, optional
-
-        - If ``True`` - apply log scaling to the ``x`` axis.
-        - If tuple of bool - apply log scaling to the (``x``,``y``) axes correspondingly.
-    lower_cutoff_quantile : float, optional
-        Specify time distance quantile as the lower boundary. The values below the boundary are truncated.
-    upper_cutoff_quantile : float, optional
-        Specify time distance quantile as the upper boundary. The values above the boundary are truncated.
-    bins : int or str, default 20
-        Generic bin parameter that can be the name of a reference rule or
-        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`.
-    figsize : tuple of float, default (12.0, 7.0)
-        Width, height in inches.
-
-
+    eventstream : EventstreamType
 
     See Also
     --------
@@ -47,7 +30,7 @@ class UserLifetimeHist:
     .TimedeltaHist : Plot the distribution of the time deltas between two events.
     .Eventstream.describe : Show general eventstream statistics.
     .Eventstream.describe_events : Show general eventstream events statistics.
-    .DeleteUsersByPathLength : Filter user paths based on the path length, removing the paths that are shorter than the
+    .DropPaths : Filter user paths based on the path length, removing the paths that are shorter than the
                                specified number of events or cut_off.
 
     Notes
@@ -56,45 +39,23 @@ class UserLifetimeHist:
 
     """
 
-    def __init__(
-        self,
-        eventstream: EventstreamType,
-        timedelta_unit: DATETIME_UNITS = "s",
-        log_scale: bool | tuple[bool, bool] | None = None,
-        lower_cutoff_quantile: Optional[float] = None,
-        upper_cutoff_quantile: Optional[float] = None,
-        bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
-    ) -> None:
+    __eventstream: EventstreamType
+    timedelta_unit: DATETIME_UNITS
+    log_scale: bool | tuple[bool, bool] | None
+    lower_cutoff_quantile: float | None
+    upper_cutoff_quantile: float | None
+    bins: int | Literal[BINS_ESTIMATORS]
+    bins_to_show: np.ndarray
+    values_to_plot: np.ndarray
+
+    def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
-        self.timedelta_unit = timedelta_unit
-        if lower_cutoff_quantile is not None:
-            if not 0 < lower_cutoff_quantile < 1:
-                raise ValueError("lower_cutoff_quantile should be a fraction between 0 and 1.")
-        self.lower_cutoff_quantile = lower_cutoff_quantile
-        if upper_cutoff_quantile is not None:
-            if not 0 < upper_cutoff_quantile < 1:
-                raise ValueError("upper_cutoff_quantile should be a fraction between 0 and 1.")
-        self.upper_cutoff_quantile = upper_cutoff_quantile
-        if lower_cutoff_quantile is not None and upper_cutoff_quantile is not None:
-            if lower_cutoff_quantile > upper_cutoff_quantile:
-                warnings.warn("lower_cutoff_quantile exceeds upper_cutoff_quantile; no data passed to the histogram")
 
-        if log_scale:
-            if isinstance(log_scale, bool):
-                self.log_scale = (log_scale, False)
-            else:
-                self.log_scale = log_scale
-        else:
-            self.log_scale = (False, False)
-
-        self.bins = bins
-        self.figsize = figsize
-        self.bins_to_show: np.ndarray = np.array([])
-        self.values_to_plot: np.ndarray = np.array([])
+        self.bins_to_show = np.array([])
+        self.values_to_plot = np.array([])
 
     def _remove_cutoff_values(self, series: pd.Series) -> pd.Series:
         idx = [True] * len(series)
@@ -104,15 +65,76 @@ class UserLifetimeHist:
             idx &= series >= series.quantile(self.lower_cutoff_quantile)
         return series[idx]
 
-    def fit(self) -> None:
+    def __validate_input(
+        self,
+        log_scale: bool | tuple[bool, bool] | None = None,
+        lower_cutoff_quantile: float | None = None,
+        upper_cutoff_quantile: float | None = None,
+    ) -> tuple[tuple[bool, bool], float | None, float | None]:
+        if lower_cutoff_quantile is not None:
+            if not 0 < lower_cutoff_quantile < 1:
+                raise ValueError("lower_cutoff_quantile should be a fraction between 0 and 1.")
+
+        if upper_cutoff_quantile is not None:
+            if not 0 < upper_cutoff_quantile < 1:
+                raise ValueError("upper_cutoff_quantile should be a fraction between 0 and 1.")
+
+        if lower_cutoff_quantile is not None and upper_cutoff_quantile is not None:
+            if lower_cutoff_quantile > upper_cutoff_quantile:
+                warnings.warn("lower_cutoff_quantile exceeds upper_cutoff_quantile; no data passed to the histogram")
+
+        if log_scale:
+            if isinstance(log_scale, bool):
+                log_scale = (log_scale, False)
+            else:
+                log_scale = log_scale
+        else:
+            log_scale = (False, False)
+
+        return log_scale, upper_cutoff_quantile, lower_cutoff_quantile
+
+    def fit(
+        self,
+        timedelta_unit: DATETIME_UNITS = "s",
+        log_scale: bool | tuple[bool, bool] | None = None,
+        lower_cutoff_quantile: float | None = None,
+        upper_cutoff_quantile: float | None = None,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
+    ) -> None:
         """
         Calculate values for the histplot.
+
+        Parameters
+        ----------
+        timedelta_unit : :numpy_link:`DATETIME_UNITS<>`, default 's'
+            Specify units of time differences the histogram should use. Use "s" for seconds, "m" for minutes,
+            "h" for hours and "D" for days.
+        log_scale : bool or tuple of bool, optional
+
+            - If ``True`` - apply log scaling to the ``x`` axis.
+            - If tuple of bool - apply log scaling to the (``x``,``y``) axes correspondingly.
+        lower_cutoff_quantile : float, optional
+            Specify time distance quantile as the lower boundary. The values below the boundary are truncated.
+        upper_cutoff_quantile : float, optional
+            Specify time distance quantile as the upper boundary. The values above the boundary are truncated.
+        bins : int or str, default 20
+            Generic bin parameter that can be the name of a reference rule or
+            the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`.
 
         Returns
         -------
         None
         """
-        data = self.__eventstream.to_dataframe().groupby(self.user_col)[self.time_col].agg(["min", "max"])
+        self.log_scale, self.upper_cutoff_quantile, self.lower_cutoff_quantile = self.__validate_input(
+            log_scale,
+            lower_cutoff_quantile,
+            upper_cutoff_quantile,
+        )
+
+        self.timedelta_unit = timedelta_unit
+        self.bins = bins
+
+        data = self.__eventstream.to_dataframe(copy=True).groupby(self.user_col)[self.time_col].agg(["min", "max"])
         data["time_passed"] = data["max"] - data["min"]
         values_to_plot = (data["time_passed"] / np.timedelta64(1, self.timedelta_unit)).reset_index(  # type: ignore
             drop=True
@@ -145,9 +167,16 @@ class UserLifetimeHist:
         """
         return self.values_to_plot, self.bins_to_show
 
-    def plot(self) -> matplotlib.axes.Axes:
+    def plot(self, width: float = 6.0, height: float = 4.5) -> matplotlib.axes.Axes:
         """
         Create a sns.histplot based on the calculated values.
+
+        Parameters
+        ----------
+        width : float, default 6.0
+            Width in inches.
+        height : float, default 4.5
+            Height in inches.
 
         Returns
         -------
@@ -155,7 +184,9 @@ class UserLifetimeHist:
             The matplotlib axes containing the plot.
 
         """
-        plt.subplots(figsize=self.figsize)
+
+        figsize = (width, height)
+        plt.subplots(figsize=figsize)
 
         hist = sns.histplot(self.values_to_plot, bins=self.bins, log_scale=self.log_scale)
         hist.set_title("User lifetime histogram")

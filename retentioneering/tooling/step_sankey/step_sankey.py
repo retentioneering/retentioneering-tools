@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
@@ -18,33 +18,7 @@ class StepSankey(EndedEventsMixin):
     Parameters
     ----------
     eventstream : EventstreamType
-    max_steps : int, default 10
-        Maximum number of steps in trajectories to include. Should be > 1.
-    thresh : float | int, default 0.05
-        Used to remove rare events from the plot. An event is collapsed to ``thresholded_N`` artificial event if
-        its maximum frequency across all the steps is less than or equal to ``thresh``. The frequency is set
-        with respect to ``thresh`` type:
 
-        - If ``int`` - the frequency is the number of unique users who had given event at given step.
-        - If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
-
-        The events which are prohibited for collapsing could be enlisted in ``target`` parameter.
-    sorting : list of str, optional
-        Define the order of the events visualized at each step. The events that are not represented in the list
-        will follow after the events from the list.
-    target : list of str, optional
-        Contain events that are prohibited for collapsing with ``thresh`` parameter.
-    autosize : bool, default True
-        Plotly autosize parameter. See :plotly_autosize:`plotly documentation<>`.
-    width : int, optional
-        Plot's width (in px). See :plotly_width:`plotly documentation<>`.
-    height : int, optional
-        Plot's height (in px). See :plotly_height:`plotly documentation<>`.
-
-    Raises
-    ------
-    ValueError
-        If ``max_steps`` parameter is <= 1.
 
     See Also
     --------
@@ -58,37 +32,30 @@ class StepSankey(EndedEventsMixin):
 
     """
 
-    def __init__(
-        self,
-        eventstream: EventstreamType,
-        max_steps: int = 10,
-        thresh: Union[int, float] = 0.05,
-        sorting: list | None = None,
-        target: Union[list[str], str] | None = None,
-        autosize: bool = True,
-        width: int | None = None,
-        height: int | None = None,
-    ) -> None:
+    max_steps: int
+    threshold: int | float
+    sorting: list | None
+    targets: list[str] | str | None
+    autosize: bool
+    width: int | None
+    height: int | None
+
+    data_grp_nodes: pd.DataFrame
+    data: pd.DataFrame
+    data_grp_links: pd.DataFrame
+    data_for_plot: dict
+
+    def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
         self.event_index_col = self.__eventstream.schema.event_index
 
-        self.max_steps = max_steps
-        self.thresh = thresh
-        self.sorting = sorting
-        self.target = target
-        self.autosize = autosize
-        self.width = width
-        self.height = height
-
-        self.data_grp_nodes: pd.DataFrame = pd.DataFrame()
-        self.data: pd.DataFrame = pd.DataFrame()
-        self.data_grp_links: pd.DataFrame = pd.DataFrame()
-        self.data_for_plot: dict = {}
-        if max_steps <= 1:
-            raise ValueError("max_steps parameter must be > 1!")
+        self.data_grp_nodes = pd.DataFrame()
+        self.data = pd.DataFrame()
+        self.data_grp_links = pd.DataFrame()
+        self.data_for_plot = {}
 
     @staticmethod
     def _make_color(
@@ -243,7 +210,9 @@ class StepSankey(EndedEventsMixin):
         return result
 
     def _prepare_data(self, data: pd.DataFrame) -> pd.DataFrame:
-        data = self._add_ended_events(data, self.__eventstream.schema)
+        data = self._add_ended_events(
+            data=data, schema=self.__eventstream.schema, weight_col=self.__eventstream.schema.user_id
+        )
         data = self._pad_end_events(data)
         # NOTE set new columns using declared functions
         data[self.time_col] = pd.to_datetime(data[self.time_col])
@@ -256,27 +225,29 @@ class StepSankey(EndedEventsMixin):
         data["total_users"] = data.loc[data["step"] == 1, self.user_col].nunique()
         data["perc"] = data["event_users"] / data["total_users"]
 
-        if self.thresh is not None:
-            if isinstance(self.thresh, float):
+        if self.threshold is not None:
+            if isinstance(self.threshold, float):
                 column_to_compare = "perc"
             else:
-                # assume that self.thresh must be of int type here
+                # assume that self.threshold must be of int type here
                 column_to_compare = "event_users"
 
             events_to_keep = ["ENDED"]
-            if self.target is not None:
-                events_to_keep += self.target
+            if self.targets is not None:
+                events_to_keep += self.targets
 
-            thresh_events = (
+            threshold_events = (
                 data.loc[data["step"] <= self.max_steps, :]
                 .groupby(by=self.event_col, as_index=False)[column_to_compare]
                 .max()
                 .loc[
-                    lambda df_: (df_[column_to_compare] <= self.thresh) & (~df_[self.event_col].isin(events_to_keep))
+                    lambda df_: (df_[column_to_compare] <= self.threshold) & (~df_[self.event_col].isin(events_to_keep))
                 ]  # type: ignore
                 .loc[:, self.event_col]
             )
-            data.loc[data[self.event_col].isin(thresh_events), self.event_col] = f"thresholded_{len(thresh_events)}"
+            data.loc[
+                data[self.event_col].isin(threshold_events), self.event_col
+            ] = f"thresholded_{len(threshold_events)}"
 
             # NOTE rearrange the data taking into account recently added thresholded events
             data["step"] = data.groupby(self.user_col)[self.event_index_col].rank(method="first").astype(int)
@@ -535,30 +506,80 @@ class StepSankey(EndedEventsMixin):
         data = data.drop("next_timestamp", axis=1)
         return data
 
-    def fit(self) -> None:
+    def fit(
+        self,
+        max_steps: int = 10,
+        threshold: int | float = 0.05,
+        sorting: list | None = None,
+        targets: list[str] | str | None = None,
+    ) -> None:
         """
         Calculate the sankey diagram internal values with the defined parameters.
         Applying ``fit`` method is necessary for the following usage
         of any visualization or descriptive ``StepSankey`` methods.
 
+        Parameters
+        ----------
+        max_steps : int, default 10
+            Maximum number of steps in trajectories to include. Should be > 1.
+        threshold : float | int, default 0.05
+            Used to remove rare events from the plot. An event is collapsed to ``thresholded_N`` artificial event if
+            its maximum frequency across all the steps is less than or equal to ``threshold``. The frequency is set
+            with respect to ``threshold`` type:
+
+            - If ``int`` - the frequency is the number of unique users who had given event at given step.
+            - If ``float`` - percentage of users: the same as for ``int``, but divided by the number of unique users.
+
+            The events which are prohibited for collapsing could be enlisted in ``target`` parameter.
+        sorting : list of str, optional
+            Define the order of the events visualized at each step. The events that are not represented in the list
+            will follow after the events from the list.
+        targets : str or list of str, optional
+            Contain events that are prohibited for collapsing with ``threshold`` parameter.
+
+        Raises
+        ------
+        ValueError
+            If ``max_steps`` parameter is <= 1.
         """
-        data = self.__eventstream.to_dataframe().copy()[
+        data = self.__eventstream.to_dataframe(copy=True)[
             [self.user_col, self.event_col, self.time_col, self.event_index_col]
         ]
+        if max_steps <= 1:
+            raise ValueError("max_steps parameter must be > 1!")
+
+        self.max_steps = max_steps
+        self.threshold = threshold
+        self.sorting = sorting
+        self.targets = targets
+
         self.data = self._prepare_data(data)
         data_for_plot, self.data_grp_nodes = self._get_nodes(self.data)
         self.data_for_plot, self.data_grp_links = self._get_links(self.data, data_for_plot, self.data_grp_nodes)
 
-    def plot(self) -> go.Figure:
+    def plot(self, autosize: bool = True, width: int | None = None, height: int | None = None) -> go.Figure:
         """
         Create a Sankey interactive plot based on the calculated values.
         Should be used after :py:func:`fit`.
+
+        Parameters
+        ----------
+        autosize : bool, default True
+            Plotly autosize parameter. See :plotly_autosize:`plotly documentation<>`.
+        width : int, optional
+            Plot's width (in px). See :plotly_width:`plotly documentation<>`.
+        height : int, optional
+            Plot's height (in px). See :plotly_height:`plotly documentation<>`.
 
         Returns
         -------
         plotly.graph_objects.Figure
 
         """
+
+        self.autosize = autosize
+        self.width = width
+        self.height = height
         figure = self._render_plot(self.data_for_plot, self.data_grp_nodes)
         return figure
 
@@ -587,9 +608,9 @@ class StepSankey(EndedEventsMixin):
         """
         return {
             "max_steps": self.max_steps,
-            "thresh": self.thresh,
+            "threshold": self.threshold,
             "sorting": self.sorting,
-            "target": self.target,
+            "targets": self.targets,
             "autosize": self.autosize,
             "width": self.width,
             "height": self.height,

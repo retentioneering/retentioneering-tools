@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Literal, Optional
+from typing import Literal
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -20,21 +20,7 @@ class EventTimestampHist:
 
     Parameters
     ----------
-    raw_events_only : bool, default False
-        If ``True`` - statistics will only be shown for raw events.
-        If ``False`` - statistics will be shown for all events presented in your data.
-    event_list : list of str, optional
-        Specify events to be displayed.
-    lower_cutoff_quantile : float, optional
-        Specify time distance quantile as the lower boundary. The values below the boundary are truncated.
-    upper_cutoff_quantile : float, optional
-        Specify time distance quantile as the upper boundary. The values above the boundary are truncated.
-    bins : int or str, default 20
-        Generic bin parameter that can be the name of a reference rule or
-        the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`.
-    figsize : tuple of float, default (12.0, 7.0)
-        Width, height in inches.
-
+    eventstream : EventstreamType
 
     See Also
     --------
@@ -48,41 +34,23 @@ class EventTimestampHist:
     See :ref:`Eventstream user guide<eventstream_events_timestamp>` for the details.
     """
 
-    def __init__(
-        self,
-        eventstream: EventstreamType,
-        raw_events_only: bool = False,
-        event_list: list[str] | None = None,
-        lower_cutoff_quantile: Optional[float] = None,
-        upper_cutoff_quantile: Optional[float] = None,
-        bins: int | Literal[BINS_ESTIMATORS] = 20,
-        figsize: tuple[float, float] = (12.0, 7.0),
-    ) -> None:
+    __eventstream: EventstreamType
+    raw_events_only: bool
+    event_list: list[str] | None
+    lower_cutoff_quantile: float | None
+    upper_cutoff_quantile: float | None
+    bins: int | Literal[BINS_ESTIMATORS]
+    bins_to_show: np.ndarray
+    values_to_plot: np.ndarray
+
+    def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
         self.event_col = self.__eventstream.schema.event_name
         self.time_col = self.__eventstream.schema.event_timestamp
 
-        self.event_list = event_list
-        self.raw_events_only = raw_events_only
-
-        if lower_cutoff_quantile is not None:
-            if not 0 < lower_cutoff_quantile < 1:
-                raise ValueError("lower_cutoff_quantile should be a fraction between 0 and 1.")
-        self.lower_cutoff_quantile = lower_cutoff_quantile
-
-        if upper_cutoff_quantile is not None:
-            if not 0 < upper_cutoff_quantile < 1:
-                raise ValueError("upper_cutoff_quantile should be a fraction between 0 and 1.")
-        self.upper_cutoff_quantile = upper_cutoff_quantile
-
-        if lower_cutoff_quantile is not None and upper_cutoff_quantile is not None:
-            if lower_cutoff_quantile > upper_cutoff_quantile:
-                warnings.warn("lower_cutoff_quantile exceeds upper_cutoff_quantile; no data passed to the histogram")
-        self.bins = bins
-        self.figsize = figsize
-        self.bins_to_show: np.ndarray = np.array([])
-        self.values_to_plot: np.ndarray = np.array([])
+        self.bins_to_show = np.array([])
+        self.values_to_plot = np.array([])
 
     def _remove_cutoff_values(self, series: pd.Series) -> pd.Series:
         idx = [True] * len(series)
@@ -92,16 +60,67 @@ class EventTimestampHist:
             idx &= series >= series.quantile(self.lower_cutoff_quantile)
         return series[idx]
 
-    def fit(self) -> None:
+    def __validate_input(
+        self,
+        lower_cutoff_quantile: float | None = None,
+        upper_cutoff_quantile: float | None = None,
+    ) -> tuple[float | None, float | None]:
+        if lower_cutoff_quantile is not None:
+            if not 0 < lower_cutoff_quantile < 1:
+                raise ValueError("lower_cutoff_quantile should be a fraction between 0 and 1.")
+
+        if upper_cutoff_quantile is not None:
+            if not 0 < upper_cutoff_quantile < 1:
+                raise ValueError("upper_cutoff_quantile should be a fraction between 0 and 1.")
+
+        if lower_cutoff_quantile is not None and upper_cutoff_quantile is not None:
+            if lower_cutoff_quantile > upper_cutoff_quantile:
+                warnings.warn("lower_cutoff_quantile exceeds upper_cutoff_quantile; no data passed to the histogram")
+
+        return upper_cutoff_quantile, lower_cutoff_quantile
+
+    def fit(
+        self,
+        raw_events_only: bool = False,
+        event_list: list[str] | None = None,
+        lower_cutoff_quantile: float | None = None,
+        upper_cutoff_quantile: float | None = None,
+        bins: int | Literal[BINS_ESTIMATORS] = 20,
+    ) -> None:
         """
         Calculate values for the histplot.
+
+        Parameters
+        ----------
+        raw_events_only : bool, default False
+            If ``True`` - statistics will only be shown for raw events.
+            If ``False`` - statistics will be shown for all events presented in your data.
+        event_list : list of str, optional
+            Specify events to be displayed.
+        lower_cutoff_quantile : float, optional
+            Specify time distance quantile as the lower boundary. The values below the boundary are truncated.
+        upper_cutoff_quantile : float, optional
+            Specify time distance quantile as the upper boundary. The values above the boundary are truncated.
+        bins : int or str, default 20
+            Generic bin parameter that can be the name of a reference rule or
+            the number of bins. Passed to :numpy_bins_link:`numpy.histogram_bin_edges<>`.
 
         Returns
         -------
         None
 
         """
-        data = self.__eventstream.to_dataframe()
+
+        self.upper_cutoff_quantile, self.lower_cutoff_quantile = self.__validate_input(
+            lower_cutoff_quantile,
+            upper_cutoff_quantile,
+        )
+
+        self.event_list = event_list
+        self.raw_events_only = raw_events_only
+        self.bins = bins
+
+        data = self.__eventstream.to_dataframe(copy=True)
 
         if self.raw_events_only:
             data = data[data["event_type"].isin(["raw"])]
@@ -134,9 +153,16 @@ class EventTimestampHist:
         """
         return self.values_to_plot, self.bins_to_show
 
-    def plot(self) -> matplotlib.axes.Axesne:
+    def plot(self, width: float = 6.0, height: float = 4.5) -> matplotlib.axes.Axesne:
         """
         Create a sns.histplot based on the calculated values.
+
+        Parameters
+        ----------
+        width : float, default 6.0
+            Width in inches.
+        height : float, default 4.5
+            Height in inches.
 
         Returns
         -------
@@ -145,7 +171,8 @@ class EventTimestampHist:
 
         """
 
-        plt.figure(figsize=self.figsize)
+        figsize = (width, height)
+        plt.figure(figsize=figsize)
 
         hist = sns.histplot(self.values_to_plot, bins=self.bins)
         hist.set_title("Event timestamp histogram")

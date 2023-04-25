@@ -10,6 +10,8 @@ from . import (
     data_processors_lib,
 )
 
+from .utils import RETE_CONFIG
+
 __all__ = (
     "datasets",
     "eventstream",
@@ -20,4 +22,5 @@ __all__ = (
     "widget",
     "data_processor",
     "data_processors_lib",
+    "RETE_CONFIG",
 )

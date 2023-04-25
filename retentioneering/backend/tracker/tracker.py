@@ -3,10 +3,10 @@ from __future__ import annotations
 import functools
 from typing import Any, Callable
 
+from retentioneering import RETE_CONFIG
 from retentioneering.utils.singleton import Singleton
 
 from .connector import ConnectorProtocol
-from .hwid import get_hwid  # type: ignore
 from .tracking_info import TrackingInfo
 
 
@@ -26,7 +26,7 @@ class Tracker(Singleton):
         return self._user_id
 
     def __obtain_user_id(self) -> str:
-        return get_hwid()
+        return RETE_CONFIG.tracking.tracking_id
 
     def __clean_params(self, params: dict[str, Any], allowed_params: list[str] | None = None) -> dict[str, Any]:
         if allowed_params is None:

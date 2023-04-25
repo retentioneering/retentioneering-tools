@@ -14,8 +14,8 @@ class TestTransitionGraph:
         tg.plot()
 
         assert tg is not None
-        assert tg.nodes_weight_col == "event_id"
-        assert tg.edges_weight_col == "event_id"
+        assert tg.nodes_weight_col == test_stream.schema.event_id
+        assert tg.edges_weight_col == test_stream.schema.event_id
         assert tg.targets == {"negative": None, "positive": None, "source": None}
         assert tg.edges_norm_type is None
         assert tg.weight_cols == ["event_id", "user_id", "session_id"]
@@ -25,8 +25,8 @@ class TestTransitionGraph:
         tg.plot(edges_norm_type="full")
 
         assert tg is not None
-        assert tg.nodes_weight_col == "event_id"
-        assert tg.edges_weight_col == "event_id"
+        assert tg.nodes_weight_col == test_stream.schema.event_id
+        assert tg.edges_weight_col == test_stream.schema.event_id
         assert tg.targets == {"negative": None, "positive": None, "source": None}
         assert tg.edges_norm_type == "full"
         assert tg.weight_cols == ["event_id", "user_id", "session_id"]
@@ -36,8 +36,8 @@ class TestTransitionGraph:
         tg.plot(targets={"negative": "A", "positive": "B", "source": "C"})
 
         assert tg is not None
-        assert tg.nodes_weight_col == "event_id"
-        assert tg.edges_weight_col == "event_id"
+        assert tg.nodes_weight_col == test_stream.schema.event_id
+        assert tg.edges_weight_col == test_stream.schema.event_id
         assert tg.targets == {"negative": "A", "positive": "B", "source": "C"}
         assert tg.edges_norm_type is None
         assert tg.weight_cols == ["event_id", "user_id", "session_id"]
@@ -47,8 +47,8 @@ class TestTransitionGraph:
         tg.plot(nodes_weight_col="user_id")
 
         assert tg is not None
-        assert tg.nodes_weight_col == "user_id"
-        assert tg.edges_weight_col == "event_id"
+        assert tg.nodes_weight_col == test_stream.schema.user_id
+        assert tg.edges_weight_col == test_stream.schema.event_id
         assert tg.targets == {"negative": None, "positive": None, "source": None}
         assert tg.edges_norm_type is None
         assert tg.weight_cols == ["event_id", "user_id", "session_id"]
@@ -58,8 +58,8 @@ class TestTransitionGraph:
         tg.plot(edges_weight_col="user_id")
 
         assert tg is not None
-        assert tg.nodes_weight_col == "event_id"
-        assert tg.edges_weight_col == "user_id"
+        assert tg.nodes_weight_col == test_stream.schema.event_id
+        assert tg.edges_weight_col == test_stream.schema.user_id
         assert tg.targets == {"negative": None, "positive": None, "source": None}
         assert tg.edges_norm_type is None
         assert tg.weight_cols == ["event_id", "user_id", "session_id"]
@@ -75,8 +75,8 @@ class TestTransitionGraph:
 
         assert tg.edges_thresholds == {"event_id": 3}
         assert tg is not None
-        assert tg.nodes_weight_col == "event_id"
-        assert tg.edges_weight_col == "event_id"
+        assert tg.nodes_weight_col == test_stream.schema.event_id
+        assert tg.edges_weight_col == test_stream.schema.event_id
         assert tg.targets == {"negative": None, "positive": None, "source": None}
         assert tg.edges_norm_type is None
         assert tg.weight_cols == ["event_id", "user_id", "session_id"]
@@ -87,8 +87,8 @@ class TestTransitionGraph:
 
         assert tg.nodes_thresholds == {"user_id": 2}
         assert tg is not None
-        assert tg.nodes_weight_col == "event_id"
-        assert tg.edges_weight_col == "event_id"
+        assert tg.nodes_weight_col == test_stream.schema.event_id
+        assert tg.edges_weight_col == test_stream.schema.event_id
         assert tg.targets == {"negative": None, "positive": None, "source": None}
         assert tg.edges_norm_type is None
         assert tg.weight_cols == ["event_id", "user_id", "session_id"]
@@ -99,7 +99,8 @@ class TestTransitionGraph:
 
         assert tg is not None
         assert tg.nodes_weight_col == "session_id"
-        assert tg.edges_weight_col == "event_id"
+        # @TODO: "session_id" needs its own variable in eventstream.schema
+        assert tg.edges_weight_col == test_stream.schema.event_id
         assert tg.targets == {"negative": None, "positive": None, "source": None}
         assert tg.edges_norm_type is None
         assert tg.weight_cols == ["event_id", "user_id", "session_id"]
@@ -109,8 +110,9 @@ class TestTransitionGraph:
         tg.plot(edges_weight_col="session_id")
 
         assert tg is not None
-        assert tg.nodes_weight_col == "event_id"
+        assert tg.nodes_weight_col == test_stream.schema.event_id
         assert tg.edges_weight_col == "session_id"
+        # @TODO: "session_id" needs its own variable in eventstream.schema
         assert tg.targets == {"negative": None, "positive": None, "source": None}
         assert tg.edges_norm_type is None
         assert tg.weight_cols == ["event_id", "user_id", "session_id"]
@@ -127,8 +129,8 @@ class TestTransitionGraph:
         )
 
         assert tg is not None
-        assert tg.nodes_weight_col == "event_id"
-        assert tg.edges_weight_col == "event_id"
+        assert tg.nodes_weight_col == test_stream.schema.event_id
+        assert tg.edges_weight_col == test_stream.schema.event_id
         assert tg.targets == {"negative": None, "positive": None, "source": None}
         assert tg.edges_norm_type == "full"
         assert tg.weight_cols == ["event_id", "user_id", "session_id"]

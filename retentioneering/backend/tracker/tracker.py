@@ -33,6 +33,24 @@ class Tracker(Singleton):
             allowed_params = []
         return {key: value for key, value in params.items() if key in allowed_params}
 
+    def _track_action(
+        self, called_function_params: dict[str, Any], event_name: str, event_custom_name: str, suffix: str
+    ) -> None:
+        if self.enabled:
+            try:
+                _tracking_info_start = TrackingInfo(
+                    client_session_id=self.user_id,
+                    event_name=f"{event_name}_{suffix}",
+                    event_custom_name=event_custom_name,
+                    params=called_function_params,
+                )
+                self.connector.send_message(data=_tracking_info_start)
+            except Exception:
+                # Maximum suppression. Vladimir Makhanov
+                pass
+        else:
+            pass
+
     def track(self, tracking_info: dict[str, Any], allowed_params: list[str] | None = None) -> Callable:
         event_name = tracking_info["event_name"]
         event_custom_name = tracking_info.get("event_custom_name", tracking_info["event_name"])
@@ -41,22 +59,22 @@ class Tracker(Singleton):
             @functools.wraps(func)
             def wrapper(*args: list[Any], **kwargs: dict[Any, Any]) -> Callable:
                 called_function_params = self.__clean_params(kwargs, allowed_params)
-                _tracking_info_start = TrackingInfo(
-                    client_session_id=self.user_id,
-                    event_name=f"{event_name}_start",
+
+                self._track_action(
+                    called_function_params=called_function_params,
+                    event_name=event_name,
                     event_custom_name=event_custom_name,
-                    params=called_function_params,
+                    suffix="start",
                 )
-                self.connector.send_message(data=_tracking_info_start)
+
                 res = func(*args, **kwargs)
 
-                _tracking_info_end = TrackingInfo(
-                    client_session_id=self.user_id,
-                    event_name=f"{event_name}_end",
+                self._track_action(
+                    called_function_params=called_function_params,
+                    event_name=event_name,
                     event_custom_name=event_custom_name,
-                    params=called_function_params,
+                    suffix="end",
                 )
-                self.connector.send_message(data=_tracking_info_end)
 
                 return res
 

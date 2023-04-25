@@ -14,7 +14,11 @@ UNDEFINED_MAC_PLATFORM_UUID = uuid.UUID("00000000-0000-0000-aaaa-cccccccccccc")
 
 def get_windows_hwid() -> str:
     try:
-        current_machine_id = str(subprocess.check_output("wmic csproduct get uuid"), "utf-8").split("\n")[1].strip()
+        current_machine_id = (
+            str(subprocess.check_output("wmic csproduct get uuid", stderr=subprocess.DEVNULL), "utf-8")
+            .split("\n")[1]
+            .strip()
+        )
         hwid = str(uuid.UUID(current_machine_id))
     except Exception:  # not sure if this is the right exception, but I don't know right one. Vladimir Makhanov.
         hwid = str(UNDEFINED_WINDOWS_PLATFORM_UUID)
@@ -23,7 +27,7 @@ def get_windows_hwid() -> str:
 
 def get_linux_hwid() -> str:
     try:
-        hw = subprocess.check_output(["cat", "/etc/machine-id"])
+        hw = subprocess.check_output(["cat", "/etc/machine-id"], stderr=subprocess.DEVNULL)
         hw = hw.decode().strip()
         hwid = str(uuid.UUID(hw))
     except Exception:  # not sure if this is the right exception, but I don't know right one. Vladimir Makhanov.
@@ -33,7 +37,7 @@ def get_linux_hwid() -> str:
 
 def get_mac_hwid() -> str:
     try:
-        hw = subprocess.check_output(["cat", "/etc/machine-id"])
+        hw = subprocess.check_output(["cat", "/etc/machine-id"], stderr=subprocess.DEVNULL)
         hw = hw.decode().strip()
         hwid = str(uuid.UUID(hw))
     except Exception:  # not sure if this is the right exception, but I don't know right one. Vladimir Makhanov.
@@ -52,8 +56,11 @@ __platforms_HWID["Darwin"] = get_mac_hwid
 
 
 def get_hwid() -> str:
-    os_name = platform.system()
-    hwid = __platforms_HWID[os_name]()
+    try:
+        os_name = platform.system()
+        hwid = __platforms_HWID[os_name]()
+    except Exception as e:
+        hwid = UNDEFINED_PLATFORM_UUID
     return hwid
 
 

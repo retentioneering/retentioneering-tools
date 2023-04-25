@@ -15,7 +15,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 
-from retentioneering.eventstream.types import EventstreamSchemaType, EventstreamType
+from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.clusters.segments import Segments
 
 FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "markov"]
@@ -51,7 +51,6 @@ class Clusters:
         self.event_index_col = eventstream.schema.event_index
 
         self.__segments: Segments | None = None
-        self.__features: pd.DataFrame | None = None
         self.__cluster_result: pd.Series | None = None
         self.__projection: pd.DataFrame | None = None
         self.__is_fitted: bool = False
@@ -59,8 +58,6 @@ class Clusters:
         self._method: Method | None = None
         self._n_clusters: int | None = None
         self._user_clusters: pd.Series | None = None
-        self._feature_type: FeatureType | None = None
-        self._ngram_range: NgramRange | None = None
         self._X: pd.DataFrame | None = None
 
     # public API
@@ -69,9 +66,7 @@ class Clusters:
         self,
         method: Method,
         n_clusters: int,
-        feature_type: FeatureType | None = None,
-        ngram_range: NgramRange | None = None,
-        X: pd.DataFrame | None = None,
+        X: pd.DataFrame,
     ) -> Clusters:
         """
         Prepare features and compute clusters for the input eventstream data.
@@ -85,27 +80,19 @@ class Clusters:
 
         n_clusters : int
             The expected number of clusters to be passed to a clustering algorithm.
-        feature_type : {"tfidf", "count", "frequency", "binary", "markov", "time", "time_fraction"}, optional
-            See :py:func:`extract_features`.
-        ngram_range : Tuple(int, int), optional
-            See :py:func:`extract_features`.
-        X : pd.DataFrame, optional
+        X : pd.DataFrame
             ``pd.DataFrame`` representing a custom vectorization of the user paths. The index corresponds to user_ids,
-            the columns are vectorized values of the path.
+            the columns are vectorized values of the path. See :py:func:`extract_features`.
 
         Returns
         -------
         Clusters
             A fitted ``Clusters`` instance.
-
-
         """
 
-        self._method, self._n_clusters, self._feature_type, self._ngram_range, self._X = self.__validate_input(
-            method, n_clusters, feature_type, ngram_range, X
-        )
+        self._method, self._n_clusters, self._X = self.__validate_input(method, n_clusters, X)
 
-        self.__features, self.__cluster_result = self._prepare_clusters()
+        self.__cluster_result = self._prepare_clusters()
         self._user_clusters = self.__cluster_result.copy()
 
         self.__segments = Segments(
@@ -149,8 +136,6 @@ class Clusters:
             List of event names always to include for comparison, regardless
             of the parameter top_n_events value. Target events will appear in the same
             order as specified.
-
-
 
         Returns
         -------
@@ -282,32 +267,12 @@ class Clusters:
         return cluster_map.to_dict()
 
     @property
-    def features(self) -> pd.DataFrame | None:
-        """
-
-        Returns
-        -------
-        pd.DataFrame
-            The calculated features if the clusters are fitted. The index corresponds to user_ids,
-            the columns are values of the vectorized user's trajectory.
-        """
-        if self.__features is None:
-            raise RuntimeError("The features are not calculated. Consider to run 'extract_features()` method.")
-
-        return self.__features
-
-    @property
     def params(self) -> dict:
         """
         Returns the parameters used for the last fitting.
 
         """
-        return {
-            "method": self._method,
-            "n_clusters": self._n_clusters,
-            "ngram_range": self._ngram_range,
-            "feature_type": self._feature_type,
-        }
+        return {"method": self._method, "n_clusters": self._n_clusters, "X": self._X}
 
     def set_clusters(self, user_clusters: pd.Series) -> Clusters:
         """
@@ -327,9 +292,7 @@ class Clusters:
         self._user_clusters = user_clusters
         self.__cluster_result = user_clusters.copy()
         self._n_clusters = user_clusters.nunique()
-        self._feature_type = None
         self._method = None
-        self._ngram_range = None
         self.__is_fitted = True
         return self
 
@@ -402,6 +365,7 @@ class Clusters:
         pd.DataFrame
             A DataFrame with the vectorized values. Index contains user_ids, columns contain n-grams.
         """
+
         eventstream = self.__eventstream
         events = eventstream.to_dataframe()
         vec_data = None
@@ -471,7 +435,7 @@ class Clusters:
             Plot in the low-dimensional space for user trajectories indexed by user IDs.
         """
 
-        if self.__features is None or self.__is_fitted is False:
+        if self._X is None or self.__is_fitted is False:
             raise RuntimeError("Clusters and features must be defined. Consider to run 'fit()' method.")
 
         if targets is None:
@@ -507,12 +471,10 @@ class Clusters:
         else:
             raise ValueError("Unexpected plot type: %s. Allowed values: clusters, targets" % color_type)
 
-        features = self.__features
-
         if method == "tsne":
-            projection: pd.DataFrame = self._learn_tsne(features, **kwargs)
+            projection: pd.DataFrame = self._learn_tsne(self._X, **kwargs)
         elif method == "umap":
-            projection = self._learn_umap(features, **kwargs)
+            projection = self._learn_umap(self._X, **kwargs)
         else:
             raise ValueError("Unknown method: %s. Allowed methods: tsne, umap" % method)
 
@@ -531,52 +493,22 @@ class Clusters:
         self,
         method: Method,
         n_clusters: int,
-        feature_type: FeatureType | None = None,
-        ngram_range: NgramRange | None = None,
-        X: pd.DataFrame | None = None,
-    ) -> tuple[Method | None, int | None, FeatureType | None, NgramRange | None, pd.DataFrame | None]:
+        X: pd.DataFrame,
+    ) -> tuple[Method | None, int | None, pd.DataFrame]:
         _method = method or self._method
         _n_clusters = n_clusters or self._n_clusters
-        _user_clusters = None
 
-        if X is not None:
-            if not isinstance(X, pd.DataFrame):  # type: ignore
-                raise ValueError("Vector is not a DataFrame!")
-            if np.all(np.all(X.dtypes == "float") and X.isna().sum().sum() != 0):
-                raise ValueError(
-                    "Vector is wrong formatted! NaN should be replaced with 0 and all dtypes must be float!"
-                )
-            if feature_type:
-                raise ValueError("Both 'vector' and 'feature_type' are defined. 'feature_type' will be ignored.")
-            if ngram_range:
-                raise ValueError("Both 'vector' and 'ngram_range' are defined. 'ngram_range' will be ignored.")
+        if not isinstance(X, pd.DataFrame):  # type: ignore
+            raise ValueError("X is not a DataFrame!")
+        if np.all(np.all(X.dtypes == "float") and X.isna().sum().sum() != 0):
+            raise ValueError("X is wrong formatted! NaN should be replaced with 0 and all dtypes must be float!")
 
-            _X = X
-            _feature_type = None
-            _ngram_range = None
-        else:
-            _feature_type = feature_type or self._feature_type
-            _ngram_range = ngram_range or self._ngram_range
-            _X = X or self._X
+        return _method, _n_clusters, X
 
-            if _feature_type is None:
-                raise ValueError("'feature_type' must be defined for fitting.")
-
-            if _ngram_range is None:
-                raise ValueError("'ngram_range' must be defined for fitting.")
-
-        return _method, _n_clusters, _feature_type, _ngram_range, _X
-
-    def _prepare_clusters(self) -> tuple[pd.DataFrame, pd.Series]:
-        features = pd.DataFrame()
+    def _prepare_clusters(self) -> pd.Series:
         user_clusters = pd.Series(dtype=np.int64)
 
-        if self._X is not None:
-            features = self._X.copy()
-        else:
-            if self._feature_type is not None and self._ngram_range is not None:
-                features = self.extract_features(self._feature_type, self._ngram_range)
-
+        features = self._X.copy()  # type: ignore
         if self._n_clusters is not None:
             if self._method == "kmeans":
                 cluster_result = self._kmeans(features=features, n_clusters=self._n_clusters)
@@ -587,7 +519,7 @@ class Clusters:
 
             user_clusters = pd.Series(cluster_result, index=features.index)
 
-        return features, user_clusters
+        return user_clusters
 
     @staticmethod
     def _plot_projection(projection: ndarray, targets: ndarray, legend_title: str) -> tuple:

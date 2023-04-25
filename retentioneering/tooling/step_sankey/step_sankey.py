@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
 
+from retentioneering.backend.tracker import track
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.mixins.ended_events import EndedEventsMixin
 
@@ -45,6 +46,10 @@ class StepSankey(EndedEventsMixin):
     data_grp_links: pd.DataFrame
     data_for_plot: dict
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="step_sankey",
+    )
     def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
@@ -506,6 +511,17 @@ class StepSankey(EndedEventsMixin):
         data = data.drop("next_timestamp", axis=1)
         return data
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "fit"},
+        scope="step_sankey",
+        allowed_params=[
+            "max_steps",
+            "threshold",
+            "sorting",
+            "targets",
+        ],
+
+    )
     def fit(
         self,
         max_steps: int = 10,
@@ -557,6 +573,16 @@ class StepSankey(EndedEventsMixin):
         data_for_plot, self.data_grp_nodes = self._get_nodes(self.data)
         self.data_for_plot, self.data_grp_links = self._get_links(self.data, data_for_plot, self.data_grp_nodes)
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "plot"},
+        scope="step_sankey",
+        allowed_params=[
+            "autosize",
+            "width",
+            "height",
+        ],
+
+    )
     def plot(self, autosize: bool = True, width: int | None = None, height: int | None = None) -> go.Figure:
         """
         Create a Sankey interactive plot based on the calculated values.

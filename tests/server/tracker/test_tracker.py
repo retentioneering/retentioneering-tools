@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from typing import Any
+
+import pytest
 
 from retentioneering.backend.tracker.connector import ConnectorProtocol
 from retentioneering.backend.tracker.tracker import Tracker
 
 tracker_log = []
+
+
+@pytest.fixture
+def clear_tracker_log():
+    tracker_log.clear()
 
 
 class SimpleTrackerConnector(ConnectorProtocol):
@@ -14,30 +22,105 @@ class SimpleTrackerConnector(ConnectorProtocol):
 
 
 class TrackerWithConstantUUID(Tracker):
+    def __init__(self, connector: ConnectorProtocol):
+        super().__init__(connector=connector)
+
     @property
     def user_id(self) -> str:
         return "12345678-1234-1234-1234-1234567890ab"
 
 
-class TestTracker:
-    def test_send_message(self):
-        tracker = TrackerWithConstantUUID(SimpleTrackerConnector())
+class TrackerWithConstantUUIDAndDictParams(TrackerWithConstantUUID):
+    def clear_params(self, params: dict[str, Any], allowed_params: list[str] | None = None) -> dict[str, Any]:
+        if allowed_params is None:
+            allowed_params = []
+        return {key: value for key, value in params.items() if key in allowed_params}
 
-        @tracker.track(tracking_info={"event_name": "test_event_name"}, allowed_params=["edges_norm_type"])
-        def test(edges_norm_type: str, sensetive_data: str):
+
+class TestTracker:
+    def test_send_message(self, clear_tracker_log):
+        tracker = TrackerWithConstantUUIDAndDictParams(SimpleTrackerConnector())
+
+        @tracker.track(
+            tracking_info={"event_name": "test_event_name"},
+            allowed_params=["edges_norm_type"],
+            scope="test",
+            event_value="test_value",
+        )
+        def test(edges_norm_type: str, sensitive_data: str):
             return "test"
 
-        return_value = test(edges_norm_type="test_norm_type", sensetive_data="s0mEp@$s")
+        return_value = test(edges_norm_type="test_norm_type", sensitive_data="s0mEp@$s")
 
-        assert return_value == "test"
-        assert len(tracker_log) == 2
+        assert "test" == return_value
+        assert 2 == len(tracker_log)
 
         assert "12345678-1234-1234-1234-1234567890ab" == tracker_log[0]["client_session_id"]
-        assert "test_event_name_end" == tracker_log[1]["event_name"]
-        assert "test_event_name_start" == tracker_log[0]["event_name"]
-        assert "test_event_name" == tracker_log[0]["event_custom_name"]
+        assert "test_event_name" == tracker_log[0]["event_name"]
+        assert "test_event_name" == tracker_log[1]["event_name"]
+        assert "test_event_name_start" == tracker_log[0]["event_custom_name"]
+        assert "test_event_name_end" == tracker_log[1]["event_custom_name"]
         assert tracker_log[0]["event_date_local"] is not None
         assert tracker_log[0]["event_day_week"] is not None
         assert "12345678-1234-1234-1234-1234567890ab|none|none|none" == tracker_log[0]["user_id"]
         assert {"edges_norm_type": "test_norm_type"} == tracker_log[0]["params"]
         assert {"edges_norm_type": "test_norm_type"} == tracker_log[1]["params"]
+        assert "test" == tracker_log[0]["scope"]
+        assert "test" == tracker_log[1]["scope"]
+        assert "test_value" == tracker_log[0]["event_value"]
+        assert "test_value" == tracker_log[1]["event_value"]
+
+    def test_send_message_params_list(self, clear_tracker_log):
+        tracker = TrackerWithConstantUUID(SimpleTrackerConnector())
+
+        @tracker.track(
+            tracking_info={"event_name": "test_event_name"},
+            allowed_params=["edges_norm_type"],
+            scope="test",
+        )
+        def test(edges_norm_type: str, sensitive_data: str):
+            return "test"
+
+        return_value = test(edges_norm_type="test_norm_type", sensitive_data="s0mEp@$s")
+
+        assert "test" == return_value
+        assert 2 == len(tracker_log)
+
+        assert "12345678-1234-1234-1234-1234567890ab" == tracker_log[0]["client_session_id"]
+        assert "test_event_name" == tracker_log[0]["event_name"]
+        assert "test_event_name" == tracker_log[1]["event_name"]
+        assert "test_event_name_start" == tracker_log[0]["event_custom_name"]
+        assert "test_event_name_end" == tracker_log[1]["event_custom_name"]
+        assert tracker_log[0]["event_date_local"] is not None
+        assert tracker_log[0]["event_day_week"] is not None
+        assert "12345678-1234-1234-1234-1234567890ab|none|none|none" == tracker_log[0]["user_id"]
+        assert ["edges_norm_type"] == tracker_log[0]["params"]
+        assert ["edges_norm_type"] == tracker_log[1]["params"]
+
+    def test_single_message(self, clear_tracker_log):
+        tracker = TrackerWithConstantUUID(SimpleTrackerConnector())
+
+        @tracker.track(tracking_info={"event_name": "inner1"}, scope="test")
+        def inner1(edges_norm_type: str, sensitive_data: str):
+            return "test1"
+
+        @tracker.track(tracking_info={"event_name": "inner2"}, scope="test")
+        def inner2(edges_norm_type: str, sensitive_data: str):
+            return "test2"
+
+        @tracker.track(tracking_info={"event_name": "outer"}, allowed_params=["edges_norm_type"], scope="test")
+        def outer(edges_norm_type: str, sensitive_data: str):
+            val1 = inner1(edges_norm_type=edges_norm_type, sensitive_data=sensitive_data)
+            val2 = inner2(edges_norm_type=edges_norm_type, sensitive_data=sensitive_data)
+            return val1 + val2
+
+        return_value = outer(edges_norm_type="test_norm_type", sensitive_data="s0mEp@$s")
+
+        assert "test1test2" == return_value
+        assert 2 == len(tracker_log)
+        assert "outer" == tracker_log[0]["event_name"]
+        assert "outer" == tracker_log[1]["event_name"]
+        assert "outer_start" == tracker_log[0]["event_custom_name"]
+        assert "outer_end" == tracker_log[1]["event_custom_name"]
+        assert ["edges_norm_type"] == tracker_log[0]["params"]
+        assert ["edges_norm_type"] == tracker_log[1]["params"]

@@ -166,8 +166,8 @@ class Eventstream(
     __clusters: Clusters | None = None
     __funnel: Funnel | None = None
     __cohorts: Cohorts | None = None
-    __step_matrix: StepMatrix | None = None
-    __sankey: StepSankey | None = None
+    __step_matrix: StepMatrix
+    __sankey: StepSankey
     __stattests: StatTests | None = None
     __transition_graph: TransitionGraph
     __timedelta_hist: TimedeltaHist | None = None
@@ -667,6 +667,23 @@ class Eventstream(
             self.__clusters = Clusters(eventstream=self)
         return self.__clusters
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="step_matrix",
+        event_value="plot",
+        allowed_params=[
+            "max_steps",
+            "weight_col",
+            "precision",
+            "targets",
+            "accumulated",
+            "sorting",
+            "threshold",
+            "centered",
+            "groups",
+            "show_plot",
+        ],
+    )
     def step_matrix(
         self,
         max_steps: int = 20,
@@ -713,6 +730,21 @@ class Eventstream(
             self.__step_matrix.plot()
         return self.__step_matrix
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="step_sankey",
+        event_value="plot",
+        allowed_params=[
+            "max_steps",
+            "threshold",
+            "sorting",
+            "targets",
+            "autosize",
+            "width",
+            "height",
+            "show_plot",
+        ],
+    )
     def step_sankey(
         self,
         max_steps: int = 10,
@@ -1073,7 +1105,9 @@ class Eventstream(
         return describer._values()
 
     @track(  # type: ignore
-        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_helper"},
+        tracking_info={"event_name": "helper"},
+        scope="transition_graph",
+        event_value="plot",
         allowed_params=[
             "edges_norm_type",
             "targets",
@@ -1084,6 +1118,11 @@ class Eventstream(
             "custom_weight_cols",
             "width",
             "height",
+            "show_weights",
+            "show_percents",
+            "show_nodes_names",
+            "show_all_edges_for_targets",
+            "show_nodes_without_links",
         ],
     )
     def transition_graph(
@@ -1147,8 +1186,10 @@ class Eventstream(
         return self._preprocessing_graph
 
     @track(  # type: ignore
-        tracking_info={"event_name": "transition_matrix", "event_custom_name": "transition_matrix_helper"},
+        tracking_info={"event_name": "helper"},
         allowed_params=["weight_col", "norm_type"],
+        scope="transition_matrix",
+        event_value="_values",
     )
     def transition_matrix(self, weight_col: str | None = None, norm_type: NormType = None) -> pd.DataFrame:
         """

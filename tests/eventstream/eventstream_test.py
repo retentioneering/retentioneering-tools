@@ -51,7 +51,7 @@ class TestEventstream:
         assert "event" in df.columns
         assert "random_col" in df.columns
         try:
-            stream.add_start_end()
+            stream.add_start_end_events()
         except Exception as e:
             raise pytest.UsageError(e)
 

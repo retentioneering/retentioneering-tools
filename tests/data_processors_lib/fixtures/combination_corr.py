@@ -95,7 +95,7 @@ def split_start_end_corr():
 
 
 @pytest.fixture
-def positive_target_delete_users_corr():
+def add_positive_events_drop_paths_corr():
     correct_result_columns = ["user_id", "event", "event_type", "timestamp", "event_index"]
 
     correct_result = pd.DataFrame(
@@ -127,7 +127,7 @@ def positive_target_delete_users_corr():
 
 
 @pytest.fixture
-def filter_events_negative_target_corr():
+def filter_events_add_negative_events_corr():
     correct_result_columns = ["user_id", "event", "event_type", "timestamp", "event_index"]
     correct_result = pd.DataFrame(
         [
@@ -153,7 +153,7 @@ def filter_events_negative_target_corr():
 
 
 @pytest.fixture
-def group_events_delete_users_corr():
+def group_events_drop_paths_corr():
     correct_result_columns = ["user_id", "event", "event_type", "timestamp", "event_index", "user_type_col"]
 
     correct_result = pd.DataFrame(

@@ -15,7 +15,7 @@ Throughout this guide we use our demonstration :doc:`simple_shop </datasets/simp
     from retentioneering import datasets
 
     stream = datasets.load_simple_shop()\
-        .split_sessions(session_cutoff=(30, 'm'))
+        .split_sessions(timeout=(30, 'm'))
 
 Above we use an additional call of the :ref:`split_sessions<split_sessions>` data processor helper. We will need this session split in one of the examples in this user guide.
 
@@ -159,7 +159,7 @@ Essentially, any cluster splitting provides nothing but a mapping rule which ass
 
     clusters\
         .filter_cluster(cluster_id=0)\
-        .add_start_end()\
+        .add_start_end_events()\
         .transition_graph(
             targets={
                 'positive': 'payment_done',
@@ -178,7 +178,7 @@ Essentially, any cluster splitting provides nothing but a mapping rule which ass
     ></iframe>
     <br><br>
 
-Here we additionally used :ref:`add_start_end<add_start_end>` data processor helper. It adds ``path_end`` event that is used as a negative target event in the transition graph.
+Here we additionally used :ref:`add_start_end_events<add_start_end_events>` data processor helper. It adds ``path_end`` event that is used as a negative target event in the transition graph.
 
 Clusters comparison
 ~~~~~~~~~~~~~~~~~~~

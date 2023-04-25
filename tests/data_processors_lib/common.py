@@ -4,10 +4,7 @@ from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
 from retentioneering.params_model.params_model import ParamsModel
-from retentioneering.preprocessing_graph.preprocessing_graph import (
-    EventsNode,
-    PreprocessingGraph,
-)
+from retentioneering.preprocessing_graph import EventsNode, PreprocessingGraph
 
 _default_raw_data_schema = RawDataSchema(
     user_id="user_id",

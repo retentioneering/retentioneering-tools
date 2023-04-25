@@ -212,14 +212,12 @@ Sometimes it is reasonable to work with a separate instance of Cohorts class. An
 
     from retentioneering.tooling.cohorts import Cohorts
 
-    cohorts = Cohorts(
-        eventstream=stream,
+    cohorts = Cohorts(eventstream=stream)
+    cohorts.fit(
         cohort_start_unit='M',
         cohort_period=(1, 'M'),
         average=False
-    )
-
-    cohorts.fit()
+        )
     cohorts.heatmap()
 
 .. figure:: /_static/user_guides/cohorts/cohorts_15_eventstream.png
@@ -227,11 +225,11 @@ Sometimes it is reasonable to work with a separate instance of Cohorts class. An
 Lineplot
 --------
 
-We can also build lineplots based on our data. By default, each line is one ``CohortGroup``, ``show_plot='cohorts'``.
+We can also build lineplots based on our data. By default, each line is one ``CohortGroup``, ``plot_type='cohorts'``.
 
 .. code-block:: python
 
-    cohorts.lineplot(width=5, height=5), show_plot='cohorts')
+    cohorts.lineplot(width=5, height=5), plot_type='cohorts')
 
 .. figure:: /_static/user_guides/cohorts/cohorts_5_lineplot_default.png
 
@@ -239,15 +237,15 @@ In addition, we can plot the average values for cohorts:
 
 .. code-block:: python
 
-    cohorts.lineplot(width=7, height=5, show_plot='average')
+    cohorts.lineplot(width=7, height=5, plot_type='average')
 
 .. figure:: /_static/user_guides/cohorts/cohorts_6_lineplot_average.png
 
-Specifying the ``show_plot='all'`` we get a plot that shows lineplot for each cohort and their average values:
+Specifying the ``plot_type='all'`` we get a plot that shows lineplot for each cohort and their average values:
 
 .. code-block:: python
 
-    cohorts.lineplot(width=7, height=5, show_plot='all');
+    cohorts.lineplot(width=7, height=5, plot_type='all');
 
 .. figure:: /_static/user_guides/cohorts/cohorts_7_lineplot_all.png
 
@@ -356,7 +354,7 @@ There are some NANs in the table. These gaps can mean one of two things:
 params
 ~~~~~~
 
-:py:meth:`Cohorts.params<retentioneering.tooling.cohorts.cohorts.Cohorts.params>` property returns the Cohorts parameters that was used in the last ``Funnel.fit()`` call.
+:py:meth:`Cohorts.params<retentioneering.tooling.cohorts.cohorts.Cohorts.params>` property returns the Cohorts parameters that was used in the last ``Cohorts.fit()`` call.
 
 .. code-block:: python
 

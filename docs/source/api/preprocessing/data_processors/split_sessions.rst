@@ -1,5 +1,5 @@
-Split Sessions
-========================
+SplitSessions
+=============
 
 Data processor
 --------------
@@ -8,4 +8,4 @@ Data processor
 
 Eventstream
 -----------
-.. automethod:: retentioneering.eventstream.helpers.split_session_helper.SplitSessionsHelperMixin.split_sessions
+.. automethod:: retentioneering.eventstream.helpers.split_sessions_helper.SplitSessionsHelperMixin.split_sessions

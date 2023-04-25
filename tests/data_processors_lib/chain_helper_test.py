@@ -36,7 +36,7 @@ class TestChainHelper:
 
         stream = Eventstream(source_df)
 
-        result = stream.add_start_end().add_new_users(new_users_list="all")
+        result = stream.add_start_end_events().label_new_users(new_users_list="all")
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)

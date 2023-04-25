@@ -132,3 +132,21 @@ class TestTransitionGraph:
         assert tg.targets == {"negative": None, "positive": None, "source": None}
         assert tg.edges_norm_type == "full"
         assert tg.weight_cols == ["event_id", "user_id", "session_id"]
+
+    def test_transition_graph__all_args(self, test_stream: EventstreamType) -> None:
+        tg = TransitionGraph(eventstream=test_stream)
+        tg.plot(
+            targets={"negative": "A", "positive": "B", "source": "C"},
+            edges_norm_type="node",
+            nodes_weight_col="user_id",
+            edges_weight_col="session_id",
+            edges_threshold={"event_id": 0.5},
+            nodes_threshold={"user_id": 0.5},
+            show_percents=True,
+            show_weights=False,
+            show_nodes_names=True,
+            show_all_edges_for_targets=False,
+            show_nodes_without_links=True,
+        )
+
+        assert tg is not None

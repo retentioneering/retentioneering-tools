@@ -9,7 +9,7 @@ class CollapseLoopsHelperMixin:
     def collapse_loops(
         self,
         suffix: Union[Literal["loop", "count"], None] = None,
-        time_agg: Literal["max", "min", "mean"] = "max",
+        time_agg: Literal["max", "min", "mean"] = "min",
     ) -> EventstreamType:
         """
         A method of ``Eventstream`` class that finds ``loops`` and creates new synthetic events

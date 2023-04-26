@@ -285,7 +285,6 @@ We pass the following list ofr the events to the ``sorting`` parameter:
         'product1',
         'product2',
         'cart',
-        'lost',
         'THRESHOLDED_7',
         'ENDED'
     ]

@@ -357,7 +357,8 @@ Consider another example of differential step matrix usage. Now we will compare 
     from retentioneering.tooling.clusters import Clusters
 
     clusters = Clusters(eventstream=stream)
-    clusters.fit(method='kmeans', n_clusters=8, feature_type='count', ngram_range=(1, 1))
+    features = clusters.extract_features(feature_type='count', ngram_range=(1, 1))
+    clusters.fit(method='kmeans', n_clusters=8, X=features)
     clusters.plot(targets=['payment_done', 'cart']);
 
 .. figure:: /_static/user_guides/step_matrix/output_57_0.png

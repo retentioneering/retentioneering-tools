@@ -39,13 +39,11 @@ class TrackingInfo:
     index: int = 0
 
     def __post_init__(self) -> None:
-        print("POST INIT")
-        current_time = datetime.now()
-        event_timestamp = current_time.timestamp()
-        tz_string = current_time.astimezone().tzname()
-        local_printable_date = current_time.strftime("%m/%d/%Y %H:%M:%S")
+        event_timestamp = self.event_time.timestamp()
+        tz_string = self.event_time.astimezone().tzname()
+        local_printable_date = self.event_time.strftime("%m/%d/%Y %H:%M:%S")
         self.event_date_local = f"{local_printable_date} GMT{tz_string}"
-        self.event_day_week = current_time.weekday()
+        self.event_day_week = self.event_time.weekday()
         self.event_timestamp = int(event_timestamp)
         self.event_timestamp_ms = int(event_timestamp * 1000)
         self.user_id = f"{self.client_session_id}|none|none|none"

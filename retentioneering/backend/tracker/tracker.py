@@ -15,7 +15,6 @@ from .tracking_info import TrackingInfo
 class Tracker(Singleton):
     connector: ConnectorProtocol
     enabled: bool = True
-    lock: bool = False
     _user_id: str | None = None
 
     def __init__(self, connector: ConnectorProtocol, enabled: bool = True) -> None:
@@ -78,11 +77,16 @@ class Tracker(Singleton):
             @functools.wraps(func)
             def wrapper(*args: list[Any], **kwargs: dict[Any, Any]) -> Callable:
                 with simple_lock_context_manager as ctx:
+                    ctx.event_name = event_name
+
                     called_function_params = self.clear_params(kwargs, allowed_params)
                     start_time = datetime.now()
-                    res = func(*args, **kwargs)
+                    try:
+                        res = func(*args, **kwargs)
+                    except Exception as e:
+                        raise e
+
                     end_time = datetime.now()
-                    ctx.event_name = event_name
 
                     if ctx.allow_action(event_name=event_name):
                         self._track_action(
@@ -103,7 +107,7 @@ class Tracker(Singleton):
                             event_value=event_value,
                             event_time=end_time,
                         )
-                return res
+                    return res
 
             return wrapper
 

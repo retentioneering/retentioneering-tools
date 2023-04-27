@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+from datetime import datetime
 from typing import Any, Callable
 
 from retentioneering import RETE_CONFIG
@@ -36,7 +37,14 @@ class Tracker(Singleton):
         return [key for key in params.keys() if key in allowed_params]
 
     def _track_action(
-        self, called_function_params: dict[str, Any], event_name: str, event_custom_name: str, suffix: str
+        self,
+        called_function_params: list[str],
+        scope: str,
+        event_name: str,
+        event_custom_name: str,
+        event_value: str,
+        suffix: str,
+        event_time: datetime,
     ) -> None:
         if self.enabled:
             try:
@@ -44,7 +52,10 @@ class Tracker(Singleton):
                     client_session_id=self.user_id,
                     event_name=f"{event_name}_{suffix}",
                     event_custom_name=event_custom_name,
+                    event_value=event_value,
                     params=called_function_params,
+                    event_time=event_time,
+                    scope=scope,
                 )
                 self.connector.send_message(data=_tracking_info_start)
             except Exception:
@@ -69,26 +80,28 @@ class Tracker(Singleton):
                     ctx.event_name = event_name
 
                     called_function_params = self.clear_params(kwargs, allowed_params)
-                    _tracking_info_start = TrackingInfo(
-                        client_session_id=self.user_id,
-                        event_name=event_name,
-                        event_custom_name=f"{event_name}_start",
-                        params=called_function_params,
-                        scope=scope,
-                        event_value=event_value,
-                    )
+                    start_time = datetime.now()
                     res = func(*args, **kwargs)
-                    _tracking_info_end = TrackingInfo(
-                        client_session_id=self.user_id,
-                        event_name=event_name,
-                        event_custom_name=f"{event_name}_end",
-                        params=called_function_params,
-                        scope=scope,
-                        event_value=event_value,
-                    )
+                    end_time = datetime.now()
                     if ctx.allow_action(event_name=event_name):
-                        self.connector.send_message(data=_tracking_info_start)
-                        self.connector.send_message(data=_tracking_info_end)
+                        self._track_action(
+                            called_function_params=called_function_params,
+                            scope=scope,
+                            event_name=event_name,
+                            event_custom_name=tracking_info["event_custom_name"],
+                            suffix="start",
+                            event_time=start_time,
+                            event_value=event_value,
+                        )
+                        self._track_action(
+                            called_function_params=called_function_params,
+                            scope=scope,
+                            event_name=event_name,
+                            event_custom_name=tracking_info["event_custom_name"],
+                            suffix="end",
+                            event_value=event_value,
+                            event_time=end_time,
+                        )
                     return res
 
             return wrapper

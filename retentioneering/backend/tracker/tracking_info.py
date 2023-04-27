@@ -24,6 +24,7 @@ class TrackingInfo:
     event_value: str
     params: dict[str, str] | list[str]
     scope: str
+    event_time: datetime
     # marketing_session_type_3_id: str # @FIXME: what is this? Vladimir Makhanov.
 
     event_date_local: str = ""

@@ -520,7 +520,6 @@ class StepSankey(EndedEventsMixin):
             "sorting",
             "targets",
         ],
-
     )
     def fit(
         self,
@@ -581,7 +580,6 @@ class StepSankey(EndedEventsMixin):
             "width",
             "height",
         ],
-
     )
     def plot(self, autosize: bool = True, width: int | None = None, height: int | None = None) -> go.Figure:
         """

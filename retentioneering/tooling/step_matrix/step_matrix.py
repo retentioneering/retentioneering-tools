@@ -364,7 +364,6 @@ class StepMatrix(EndedEventsMixin):
             "centered",
             "groups",
         ],
-
     )
     def fit(
         self,

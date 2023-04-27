@@ -1,5 +1,6 @@
 import json
 import os
+import uuid
 
 from pydantic import BaseConfig
 from pydantic.dataclasses import dataclass
@@ -18,7 +19,7 @@ class TrackingConfig(BaseConfig):
 
     def __post_init__(self) -> None:
         if self.tracking_id == "":
-            self.tracking_id = get_hwid()
+            self.tracking_id = get_hwid() or str(uuid.uuid4())
 
 
 @dataclass

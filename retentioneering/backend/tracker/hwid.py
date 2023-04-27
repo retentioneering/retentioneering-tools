@@ -21,7 +21,7 @@ def get_windows_hwid() -> str:
         )
         hwid = str(uuid.UUID(current_machine_id))
     except Exception:  # not sure if this is the right exception, but I don't know right one. Vladimir Makhanov.
-        hwid = str(UNDEFINED_WINDOWS_PLATFORM_UUID)
+        hwid = ""
     return hwid
 
 
@@ -31,7 +31,7 @@ def get_linux_hwid() -> str:
         hw = hw.decode().strip()
         hwid = str(uuid.UUID(hw))
     except Exception:  # not sure if this is the right exception, but I don't know right one. Vladimir Makhanov.
-        hwid = str(UNDEFINED_LINUX_PLATFORM_UUID)
+        hwid = ""
     return hwid
 
 
@@ -41,12 +41,12 @@ def get_mac_hwid() -> str:
         hw = hw.decode().strip()
         hwid = str(uuid.UUID(hw))
     except Exception:  # not sure if this is the right exception, but I don't know right one. Vladimir Makhanov.
-        hwid = str(UNDEFINED_MAC_PLATFORM_UUID)
+        hwid = ""
     return hwid
 
 
 def undefined_platform() -> str:
-    return str(UNDEFINED_PLATFORM_UUID)
+    return ""
 
 
 __platforms_HWID = defaultdict(default_factory=undefined_platform)
@@ -60,7 +60,7 @@ def get_hwid() -> str:
         os_name = platform.system()
         hwid = __platforms_HWID[os_name]()
     except Exception as e:
-        hwid = UNDEFINED_PLATFORM_UUID
+        hwid = ""
     return hwid
 
 

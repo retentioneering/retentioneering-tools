@@ -584,7 +584,7 @@ class TransitionGraph:
         edges_weight_col: str | None = None,
         custom_weight_cols: list[str] | None = None,
         width: int = 960,
-        height: int = 900,
+        height: int = 600,
         show_weights: bool = True,
         show_percents: bool = False,
         show_nodes_names: bool = True,
@@ -596,7 +596,7 @@ class TransitionGraph:
 
         Parameters
         ----------
-        edges_norm_type: {"full", "node", None}, default None
+        edges_norm_type : {"full", "node", None}, default None
             Type of normalization that is used to calculate weights for graph edges.
             Based on ``edges_weight_col`` parameter the weight values are calculated.
 
@@ -606,10 +606,10 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
-        nodes_norm_type: {"full", "node", None}, default None
+        nodes_norm_type : {"full", "node", None}, default None
             Currently not implemented. Always None.
 
-        edges_weight_col: str, optional
+        edges_weight_col : str, optional
             A column name from the :py:class:`.EventstreamSchema` which values will control the final
             edges' weights and displayed width as well.
 
@@ -622,7 +622,7 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
-        edges_threshold: dict, optional
+        edges_threshold : dict, optional
             Threshold mapping that defines the minimal weights for edges displayed on the canvas.
 
             - Keys should be of type str and contain the weight column names (the values from the
@@ -635,7 +635,7 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide<transition_graph_thresholds>` for the details.
 
-        nodes_weight_col: str, optional
+        nodes_weight_col : str, optional
             A column name from the :py:class:`.EventstreamSchema` which values control the final
             nodes' weights and displayed diameter as well.
 
@@ -648,7 +648,7 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
-        nodes_threshold: dict, optional
+        nodes_threshold : dict, optional
             Threshold mapping that defines the minimal weights for nodes displayed on the canvas.
 
             - Keys should be of type str and contain the weight column names (the values from the
@@ -662,7 +662,7 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide<transition_graph_thresholds>` for the details.
 
-        targets: dict, optional
+        targets : dict, optional
             Events mapping that defines which nodes and edges should be colored for better visualization.
 
             - Possible keys: "positive" (green), "negative" (red), "source" (orange).
@@ -670,25 +670,25 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide<transition_graph_targets>` for the details.
 
-        custom_weight_cols: list of str, optional
+        custom_weight_cols : list of str, optional
             Custom columns from the :py:class:`.EventstreamSchema` that can be selected in ``edges_weight_col``
             and ``nodes_weight_col`` parameters. If ``session_col=session_id`` exists,
             it is added by default to this list.
-        width: int, default 960
+        width : int, default 960
             Width of plot in pixels.
-        height: int, default 960
+        height : int, default 600
             Height of plot in pixels.
-        show_weights: bool, default True
+        show_weights : bool, default True
             Hide/display the edge weight labels. By default, weights are shown.
-        show_percents: bool, default False
+        show_percents : bool, default False
             Display edge weights as percents. Available only if an edge normalization type is chosen.
             By default, weights are displayed in fractions.
-        show_nodes_names: bool, default True
+        show_nodes_names : bool, default True
             Hide/display the node names. By default, names are shown.
-        show_all_edges_for_targets: bool, default True
+        show_all_edges_for_targets : bool, default True
             This displaying option allows to ignore the threshold filters and always display
             any edge connected to a target node. By default, all such edges are shown.
-        show_nodes_without_links: bool, default False
+        show_nodes_without_links : bool, default False
             Setting a threshold filter might remove all the edges connected to a node.
             Such isolated nodes might be considered as useless. This displaying option
             hides them in the canvas as well.

@@ -214,10 +214,20 @@ class PreprocessingGraph:
             if node not in self._ngraph.nodes:
                 raise ValueError("node not found!")
 
-    def display(self, width: int = 960, height: int = 900) -> DisplayHandle:
+    def display(self, width: int = 960, height: int = 600) -> DisplayHandle:
         """
         Show constructed ``PreprocessingGraph``.
 
+        Parameters
+        ----------
+        width : int, default 960
+            Width of plot in pixels.
+        height : int, default 600
+            Height of plot in pixels.
+
+        Returns
+        -------
+            Rendered preprocessing graph.
         """
         if not self.__server_manager:
             self.__server_manager = ServerManager()

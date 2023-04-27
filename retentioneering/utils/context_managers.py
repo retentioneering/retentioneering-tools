@@ -31,11 +31,13 @@ class SimpleLockContextManager(Singleton):
 
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
-    ) -> SimpleLockContextManager:
+    ) -> None:
         if self._last_checked_event_name == self._event_name:
             self.is_locked = False
             self._event_name = ""
-        return self
+            self._last_checked_event_name = ""
+        if isinstance(exc_type, ValueError) or isinstance(exc_val, ValueError):
+            raise exc_val  # type: ignore
 
     def allow_action(self, event_name: str) -> bool:
         self._last_checked_event_name = event_name

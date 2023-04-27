@@ -33,7 +33,7 @@ class FilterEvents(DataProcessor):
         Custom function that returns boolean mask the same length as input ``eventstream``.
 
         - If ``True`` - the row will be left in the eventstream.
-        - If ``False`` - the row will be deleted from the eeventstream.
+        - If ``False`` - the row will be deleted from the eventstream.
 
     Returns
     -------

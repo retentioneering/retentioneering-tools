@@ -1096,7 +1096,7 @@ class Eventstream(
         edges_weight_col: str | None = None,
         custom_weight_cols: list[str] | None = None,
         width: int = 960,
-        height: int = 900,
+        height: int = 600,
         show_weights: bool = True,
         show_percents: bool = False,
         show_nodes_names: bool = True,
@@ -1136,13 +1136,26 @@ class Eventstream(
         )
         return self.__transition_graph
 
-    def preprocessing_graph(self) -> PreprocessingGraph:
+    def preprocessing_graph(self, width: int = 960, height: int = 600) -> PreprocessingGraph:
         """
         Display the preprocessing GUI tool.
+
+        Parameters
+        ----------
+        width : int, default 960
+            Width of plot in pixels.
+        height : int, default 600
+            Height of plot in pixels.
+
+        Returns
+        -------
+        PreprocessingGraph
+            Rendered preprocessing graph.
         """
         if self._preprocessing_graph is None:
             self._preprocessing_graph = PreprocessingGraph(source_stream=self)
-        self._preprocessing_graph.display()
+        self._preprocessing_graph.display(width=width, height=height)
+
         return self._preprocessing_graph
 
     @track(  # type: ignore

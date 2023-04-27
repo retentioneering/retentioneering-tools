@@ -11,7 +11,7 @@ from retentioneering.eventstream.types import EventstreamType
 from retentioneering.params_model import ParamsModel
 
 
-def custom_formatwarning(msg: str, *args: Any, **kwargs: Any) -> str:
+def _custom_formatwarning(msg: str, *args: Any, **kwargs: Any) -> str:
     # ignore everything except the message
     return str(msg) + "\n"
 
@@ -147,7 +147,7 @@ class CollapseLoops(DataProcessor):
 
         if len(custom_cols) > 0:
             if loops[custom_cols].isna().sum().sum() > 0:
-                warnings.formatwarning = custom_formatwarning  # type: ignore
+                warnings.formatwarning = _custom_formatwarning  # type: ignore
                 warnings.warn(
                     f"There are NaN values in aggregated custom_cols!\n "
                     f"Please see the total amount of NaN values in each column:\n\n"

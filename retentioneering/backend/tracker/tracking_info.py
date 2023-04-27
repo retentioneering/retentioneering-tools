@@ -37,6 +37,7 @@ class TrackingInfo:
     version: str = "3.0.0b3"
     os: str = platform.system()
     index: int = 0
+    browser: str = ""
 
     def __post_init__(self) -> None:
         event_timestamp = self.event_time.timestamp()

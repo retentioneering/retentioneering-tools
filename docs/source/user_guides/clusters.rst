@@ -30,7 +30,7 @@ The primary way of using the ``Clusters`` tool is sort of traditional. You can c
 
     clusters = Clusters(eventstream=stream)
     features = clusters.extract_features(feature_type='tfidf', ngram_range=(1, 1))
-    clusters.fit(method='kmeans', n_clusters=4, X=features)
+    clusters.fit(method='kmeans', n_clusters=4, X=features, random_state=42)
     clusters.plot()
 
 .. figure:: /_static/user_guides/clusters/basic_plot.png
@@ -140,9 +140,9 @@ Pre-defined clustering methods
 
     clusters = Clusters(eventstream=stream)
     features = clusters.extract_features(ngram_range=(1, 2), feature_type='tfidf')
-    clusters.fit(method='kmeans', n_clusters=4, X=features)
+    clusters.fit(method='kmeans', n_clusters=4, X=features, random_state=42)
 
-So far the ``method`` argument supports two options: :sklearn_kmeans:`kmeans<>` and :sklearn_gmm:`gmm<>`. ``n_clusters`` means the number of clusters since both K-means and GMM algorithms need it to be set. As for the ``X`` parameter, it holds features as an input for clusterization algorithms. In our example, the build-in :ref:`extract_features()<extracting_features>` method is used to get vectorized features, but the result of custom external vectorization can also be passed.
+So far the ``method`` argument supports two options: :sklearn_kmeans:`kmeans<>` and :sklearn_gmm:`gmm<>`. ``n_clusters`` means the number of clusters since both K-means and GMM algorithms need it to be set. As for the ``X`` parameter, it holds features as an input for clusterization algorithms. In our example, the build-in :ref:`extract_features()<extracting_features>` method is used to get vectorized features, but the result of custom external vectorization can also be passed. Setting ``random_state=42`` fixes the randomness in the clustering algorithm.
 
 Custom clustering
 ~~~~~~~~~~~~~~~~~
@@ -380,7 +380,7 @@ There is another way to treat the Clusters tool. This way is aligned with the us
 
     clusters = stream.clusters
     features = clusters.extract_features(feature_type='tfidf', ngram_range=(1, 1))
-    clusters.fit(method='kmeans', n_clusters=4, X=features)
+    clusters.fit(method='kmeans', n_clusters=4, X=features, random_state=42)
     clusters.plot()
 
 .. note::

@@ -76,13 +76,13 @@ class Tracker(Singleton):
         def tracker_decorator(func: Callable) -> Callable:
             @functools.wraps(func)
             def wrapper(*args: list[Any], **kwargs: dict[Any, Any]) -> Callable:
+                called_function_params = self.clear_params(kwargs, allowed_params)
+                start_time = datetime.now()
+                res = func(*args, **kwargs)
+                end_time = datetime.now()
                 with simple_lock_context_manager as ctx:
                     ctx.event_name = event_name
 
-                    called_function_params = self.clear_params(kwargs, allowed_params)
-                    start_time = datetime.now()
-                    res = func(*args, **kwargs)
-                    end_time = datetime.now()
                     if ctx.allow_action(event_name=event_name):
                         self._track_action(
                             called_function_params=called_function_params,
@@ -102,7 +102,7 @@ class Tracker(Singleton):
                             event_value=event_value,
                             event_time=end_time,
                         )
-                    return res
+                return res
 
             return wrapper
 

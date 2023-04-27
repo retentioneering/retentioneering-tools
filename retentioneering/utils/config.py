@@ -5,7 +5,7 @@ import uuid
 from pydantic import BaseConfig
 from pydantic.dataclasses import dataclass
 
-from retentioneering.backend.tracker.hwid import get_hwid  # type: ignore
+from retentioneering.utils.hwid import get_hwid  # type: ignore
 
 
 @dataclass

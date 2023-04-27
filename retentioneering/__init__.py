@@ -1,3 +1,5 @@
+from .utils import RETE_CONFIG
+from .__version__ import __version__
 from . import (
     datasets,
     eventstream,
@@ -9,10 +11,6 @@ from . import (
     data_processor,
     data_processors_lib,
 )
-
-from .utils import RETE_CONFIG
-
-from .__version__ import __version__
 
 __all__ = (
     "datasets",

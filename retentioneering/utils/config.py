@@ -63,10 +63,6 @@ class Config(BaseConfig):
             with open("retentioneering_config.json", "w") as f:
                 json.dump(
                     {
-                        "tracking": {
-                            "is_tracking_allowed": True,
-                            "tracking_id": "",
-                        },
                         "transition_graph": {
                             "width": 960,
                             "height": 900,
@@ -86,9 +82,9 @@ class Config(BaseConfig):
         else:
             with open("retentioneering_config.json", "r") as f:
                 config = json.load(f)
-                self.tracking = TrackingConfig(**config["tracking"])
-                self.transition_graph = TransitionGraphConfig(**config["transition_graph"])
-                self.preprocessing_graph = PreprocessiongGraphConfig(**config["preprocessing_graph"])
+                self.tracking = TrackingConfig(**config.get("tracking", {}))
+                self.transition_graph = TransitionGraphConfig(**config.get("transition_graph", {}))
+                self.preprocessing_graph = PreprocessiongGraphConfig(**config.get("preprocessing_graph", {}))
 
 
 RETE_CONFIG = Config()

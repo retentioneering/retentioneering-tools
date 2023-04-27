@@ -39,6 +39,7 @@ class TrackingInfo:
     index: int = 0
 
     def __post_init__(self) -> None:
+        print("POST INIT")
         current_time = datetime.now()
         event_timestamp = current_time.timestamp()
         tz_string = current_time.astimezone().tzname()

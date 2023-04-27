@@ -48,7 +48,7 @@ class Tracker(Singleton):
     ) -> None:
         if self.enabled:
             try:
-                _tracking_info_start = TrackingInfo(
+                tracking_info = TrackingInfo(
                     client_session_id=self.user_id,
                     event_name=f"{event_name}_{suffix}",
                     event_custom_name=event_custom_name,
@@ -57,7 +57,7 @@ class Tracker(Singleton):
                     event_time=event_time,
                     scope=scope,
                 )
-                self.connector.send_message(data=_tracking_info_start)
+                self.connector.send_message(data=tracking_info)
             except Exception:
                 # Maximum suppression. Vladimir Makhanov
                 pass
@@ -72,15 +72,16 @@ class Tracker(Singleton):
         allowed_params: list[str] | None = None,
     ) -> Callable:
         event_name = tracking_info["event_name"]
+        event_custom_name = tracking_info.get("event_custom_name", event_name)
 
         def tracker_decorator(func: Callable) -> Callable:
             @functools.wraps(func)
             def wrapper(*args: list[Any], **kwargs: dict[Any, Any]) -> Callable:
-                called_function_params = self.clear_params(kwargs, allowed_params)
-                start_time = datetime.now()
-                res = func(*args, **kwargs)
-                end_time = datetime.now()
                 with simple_lock_context_manager as ctx:
+                    called_function_params = self.clear_params(kwargs, allowed_params)
+                    start_time = datetime.now()
+                    res = func(*args, **kwargs)
+                    end_time = datetime.now()
                     ctx.event_name = event_name
 
                     if ctx.allow_action(event_name=event_name):
@@ -88,16 +89,16 @@ class Tracker(Singleton):
                             called_function_params=called_function_params,
                             scope=scope,
                             event_name=event_name,
-                            event_custom_name=tracking_info["event_custom_name"],
-                            suffix="start",
-                            event_time=start_time,
+                            event_custom_name=event_custom_name,
                             event_value=event_value,
+                            event_time=start_time,
+                            suffix="start",
                         )
                         self._track_action(
                             called_function_params=called_function_params,
                             scope=scope,
                             event_name=event_name,
-                            event_custom_name=tracking_info["event_custom_name"],
+                            event_custom_name=event_custom_name,
                             suffix="end",
                             event_value=event_value,
                             event_time=end_time,

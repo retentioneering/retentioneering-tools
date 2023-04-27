@@ -356,13 +356,12 @@ class Eventstream(
             result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
 
         result_left_part[DELETE_COL_NAME] = get_merged_col(df=left_events, colname=DELETE_COL_NAME, suffix="_x")
+        result_left_part[DELETE_COL_NAME] = result_left_part[DELETE_COL_NAME].astype(bool)
 
         result_deleted_events[DELETE_COL_NAME] = True
-
         left_delete_col = f"{DELETE_COL_NAME}_x"
         right_delete_col = f"{DELETE_COL_NAME}_y"
         result_right_part[DELETE_COL_NAME] = right_events[left_delete_col] | right_events[right_delete_col]
-
         self.__events = pd.concat([result_left_part, result_right_part, result_deleted_events])
         self.__events[self.schema.user_id] = self.__events[self.schema.user_id].astype(user_id_type)
 

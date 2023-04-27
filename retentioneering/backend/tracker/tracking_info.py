@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Generator
 
+from retentioneering import __version__
+
 
 def get_index() -> Generator:
     idx = 1
@@ -34,7 +36,7 @@ class TrackingInfo:
     event_timestamp: int = 0
     event_timestamp_ms: int = 0
     source: str = "rete_transition_graph"
-    version: str = "3.0.0b3"
+    version: str = str(__version__)
     os: str = platform.system()
     index: int = 0
     browser: str = ""

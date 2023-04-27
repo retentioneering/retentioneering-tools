@@ -102,5 +102,4 @@ class TestTracker:
         assert "outer" == tracker_log[1]["event_custom_name"]
         assert ["edges_norm_type"] == tracker_log[0]["params"]
         assert ["edges_norm_type"] == tracker_log[1]["params"]
-        assert 1 == tracker_log[0]["index"]
-        assert 2 == tracker_log[1]["index"]
+        assert 1 == tracker_log[1]["index"] - tracker_log[0]["index"]

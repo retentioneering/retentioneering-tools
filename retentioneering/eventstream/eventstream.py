@@ -356,7 +356,6 @@ class Eventstream(
             result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
 
         result_left_part[DELETE_COL_NAME] = get_merged_col(df=left_events, colname=DELETE_COL_NAME, suffix="_x")
-        result_left_part[DELETE_COL_NAME] = result_left_part[DELETE_COL_NAME].astype(bool)
 
         result_deleted_events[DELETE_COL_NAME] = True
         left_delete_col = f"{DELETE_COL_NAME}_x"

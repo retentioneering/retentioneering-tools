@@ -53,6 +53,7 @@ class TrackerMainConnector(ConnectorProtocol):
         prepared_data = asdict(data)
         prepared_data["source"] = self.source
         prepared_data["params"] = json.dumps(prepared_data["params"])
+        del prepared_data["event_time"]
         return prepared_data
 
     def send_message(self, data: TrackingInfo) -> None:

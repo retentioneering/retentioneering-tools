@@ -3,17 +3,11 @@ from __future__ import annotations
 import warnings
 from typing import Any, Callable, Literal, Optional
 
-import numpy as np
 import pandas as pd
 
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.params_model import ParamsModel
-
-
-def _custom_formatwarning(msg: str, *args: Any, **kwargs: Any) -> str:
-    # ignore everything except the message
-    return str(msg) + "\n"
 
 
 def _numeric_values_processing(x: pd.Series) -> int | float:
@@ -81,20 +75,24 @@ class CollapseLoops(DataProcessor):
 
     See Also
     --------
-    .StepMatrix
+    .StepMatrix : This class provides methods for step matrix calculation and visualization.
+    .RawDataSchema : Define schema for ``raw_data`` columns names.
 
     Notes
     -----
-    If an eventstream contains custom_cols they will be aggregating in the following way:
+    If an eventstream contains custom columns they will be aggregated in the following way:
 
-    - for numeric columns the mean value for each group will be calculated. ``None`` values are ignored.
-    - for string columns, ``None`` - if aggregated values are not equal in the group.
+    - for numeric columns the mean value will be calculated for each collapsed group. ``None`` values are ignored.
+      Supported numeric types are: ``bool``, ``int``, ``float``.
+    - for string columns, if all the values aggregated in the
+      collapsing group are equal, returns this single value, otherwise - ``None``.
 
-    See :doc:`Data processors user guide</user_guides/dataprocessors>` for the details.
+    See :doc:`Data processors user guide</user_guides/dataprocessors>` and :ref:`Eventstream custom columns'
+    explanation<eventstream_custom_fields>` for the details.
     """
 
     params: CollapseLoopsParams
-    NUMERIC_DTYPES = "bifc"
+    NUMERIC_DTYPES = ["integer", "floating", "boolean"]
 
     def __init__(self, params: CollapseLoopsParams):
         super().__init__(params=params)
@@ -116,16 +114,23 @@ class CollapseLoops(DataProcessor):
         df = eventstream.to_dataframe(copy=True)
         if len(custom_cols) > 0:
             df_custom_cols = df[custom_cols]
-            df_dtypes = np.array(df_custom_cols.dtypes)
-            cols_agg: list = []
+            default_agg: dict[str, Callable] = {}
 
-            for x in df_dtypes:
-                if x.kind in self.NUMERIC_DTYPES:
-                    cols_agg.append(_numeric_values_processing)
+            for num, col in enumerate(df_custom_cols.columns):
+                if pd.api.types.infer_dtype(df_custom_cols[col]) in self.NUMERIC_DTYPES:
+                    default_agg[df_custom_cols.columns[num]] = _numeric_values_processing  # type: ignore
+                elif pd.api.types.infer_dtype(df_custom_cols[col], skipna=False) == "string":
+                    default_agg[df_custom_cols.columns[num]] = _string_values_processing  # type: ignore
                 else:
-                    cols_agg.append(_string_values_processing)
+                    doc_link = "https://pandas.pydata.org/docs/reference/api/pandas.api.types.infer_dtype.html"
+                    message = (
+                        f"Column '{df_custom_cols.columns[num]}' with "
+                        f"'{pd.api.types.infer_dtype(df_custom_cols[col], skipna=False)}'"
+                        f" data type is not supported for collapsing. See {doc_link}"
+                    )
 
-            default_agg: dict = dict(zip(custom_cols, cols_agg))
+                    raise TypeError(message)
+
             full_agg = {**default_agg, **agg}  # type: ignore
         else:
             full_agg = {}
@@ -146,17 +151,23 @@ class CollapseLoops(DataProcessor):
         )
 
         if len(custom_cols) > 0:
-            if loops[custom_cols].isna().sum().sum() > 0:
-                warnings.formatwarning = _custom_formatwarning  # type: ignore
-                warnings.warn(
-                    f"There are NaN values in aggregated custom_cols!\n "
-                    f"Please see the total amount of NaN values in each column:\n\n"
-                    f"{loops[custom_cols].isna().sum()} "
-                    f"\n\n"
-                    f"And an example of events with NaN values in aggregated custom_cols:\n\n"
-                    f"{loops[loops.isnull().any(axis=1)].head(3)} ",
-                    stacklevel=1,
+            if loops[custom_cols].isna().values.sum() > 0:
+                link_url = (
+                    "https://doc.retentioneering.com/release3/doc/api/preprocessing/data_processors/collapse_loops.html"
                 )
+
+                cols_with_na = loops[custom_cols].isna().sum()
+                rows_to_show = loops[loops.isnull().any(axis=1)].head(3)
+
+                warning_message = (
+                    f"There are NaN values in aggregated custom_cols!\n"
+                    f"The total amount of NaN values in each column:\n\n"
+                    f"{cols_with_na}\n\n"
+                    f"As a reference, here are some rows where NaNs occurred:\n\n"
+                    f"{rows_to_show}\n\n"
+                    f"For more information, see collapse_loops documentation {link_url}"
+                )
+                warnings.warn(warning_message)
 
         if suffix == "loop":
             loops[event_col] = loops[event_col].map(str) + "_loop"

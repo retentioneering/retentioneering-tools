@@ -117,7 +117,7 @@ As we see, an empty graph contains a single source node that is associated with 
 
     Choosing a data processor that wraps the node.
 
-``AddStartEndEvents`` node appears. It is connected to the sourcing node. If we click on the node, on the right we will see the node menu. Since :py:meth:`StartEndEvents <retentioneering.data_processors_lib.add_start_end_events.StartEndEvents>` data processor has no parameters, the only option available in the menu is a subtitle. Let us label the node with ``node1`` according to the plan.
+``AddStartEndEvents`` node appears. It is connected to the sourcing node. If we click on the node, on the right we will see the node menu. Since :py:meth:`AddStartEndEvents <retentioneering.data_processors_lib.add_start_end_events.AddStartEndEvents>` data processor has no parameters, the only option available in the menu is a subtitle. Let us label the node with ``node1`` according to the plan.
 
 There is another important option which is worth to be mentioned. In the bottom you can see "Save Graph". If you click it, the current state of the preprocessing graph is saved into the sourcing eventstream. So if you run ``stream.preprocessing_graph()`` again, the graph state will be restored.
 
@@ -168,7 +168,7 @@ Now, we are going to implement splitting logic for ``node4`` and ``node5``. You 
 
     Splitting the logic after ``node3``.
 
-At the next step we create :py:meth:`LabelCroppedPaths <retentioneering.data_processors_lib.label_cropped_paths.LabelCroppedPaths>` as ``node6`` with ``left_cutoff=(1, 'h')`` parameter. Then we connect another :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>` node (``node7``) with the ``remove_truncated_paths`` function defined below:
+At the next step we create :py:meth:`LabelCroppedPaths <retentioneering.data_processors_lib.label_cropped_paths.LabelCroppedPaths>` as ``node6`` with ``left_cutoff=(1, 'h')`` parameter. Then we connect another :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events.FilterEvents>` node (``node7``) with the ``remove_cropped_paths`` function defined below:
 
 .. code-block:: python
 

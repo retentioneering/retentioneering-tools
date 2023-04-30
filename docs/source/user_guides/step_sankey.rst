@@ -89,7 +89,7 @@ In this diagram we see that ``ENDED`` appears at the 2nd step and involves 443 u
 Collapsing rare events
 ----------------------
 
-As in the case of the :ref:`step matrix<transition_matrix_collapsing_events>`, it is reasonable to collapse rare events in the step Sankey diagram since these events make the diagram excessively noisy. This behaviour is controlled by the ``threshold`` argument. An event is considered as rare if its maximum frequency over all the steps represented in the diagram is less than ``thresh``. The threshold might be of whether ``int`` or ``float`` type. The former stands for the limit for the absolute number of the users, the latter stands for the percentage of the users. All these rare events are not removed from the diagram, but collapsed to the ``thresholded_N`` artificial event instead, where ``N`` stands for the number of the collapsed events. The ``thresholded_N`` event appears in the step Sankey diagram only and is not added to the parent eventstream.
+As in the case of the :ref:`step matrix<transition_matrix_collapsing_events>`, it is reasonable to collapse rare events in the step Sankey diagram since these events make the diagram excessively noisy. This behaviour is controlled by the ``threshold`` argument. An event is considered as rare if its maximum frequency over all the steps represented in the diagram is less than ``threshold``. The threshold might be of whether ``int`` or ``float`` type. The former stands for the limit for the absolute number of the users, the latter stands for the percentage of the users. All these rare events are not removed from the diagram, but collapsed to the ``thresholded_N`` artificial event instead, where ``N`` stands for the number of the collapsed events. The ``thresholded_N`` event appears in the step Sankey diagram only and is not added to the parent eventstream.
 
 The default value for ``threshold`` is 0.05. Let us look how the events are collapsed if we set ``threshold=0.1`` and compare the result with the previous diagram (with ``threshold=0`` parameter).
 
@@ -113,7 +113,7 @@ We see that ``thresholded_5`` event has appeared. As you might have noticed, it 
 
 Please also note that the number ``_5`` in the ``thresholded_5`` event name carries no information about a specific step. For example, from the chart with ``threshold=0`` we see that at step 2 only one event among these 5 is represented (``product1``), so it is the only event which is collapsed at this step. On the other hand, at step 3 ``product1`` and ``delivery_choice`` appear, so they are collapsed to ``thresholded_5`` event. Finally, at step 5 all these 5 events are collapsed.
 
-If you want to prevent some events from collapsing, use the ``target`` parameter then. We evolve the previous example, but now we are aiming to drag ``product1`` and ``delivery_choice`` events out from the ``thresholded_5`` event, so we put them into the ``target`` list.
+If you want to prevent some events from collapsing, use the ``targets`` parameter then. We evolve the previous example, but now we are aiming to drag ``product1`` and ``delivery_choice`` events out from the ``thresholded_5`` event, so we put them into the ``targets`` list.
 
 .. code-block:: python
 

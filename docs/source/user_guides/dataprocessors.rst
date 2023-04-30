@@ -324,8 +324,7 @@ session ordinal number within a user path and always starts with 1.
 
 .. figure:: /_static/user_guides/data_processor/dp_2_split_sessions.png
 
-Applying ``SplitSessions`` to split user paths into sessions with
-session cutoff=10 minutes:
+Applying ``SplitSessions`` to split user paths into sessions with timeout=10 minutes:
 
 .. code-block:: python
 

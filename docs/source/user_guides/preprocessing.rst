@@ -122,14 +122,12 @@ As we see, an empty graph contains a single source node that is associated with 
 There is another important option which is worth to be mentioned. In the bottom you can see "Save Graph". If you click it, the current state of the preprocessing graph is saved into the sourcing eventstream. So if you run ``stream.preprocessing_graph()`` again, the graph state will be restored.
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_node_menu_1.png
-    :height: 600
 
     The node menu for the AddStartEndEvents data processor.
 
 Let us create the second node: ``GroupEvents``. Click at ``node1``'s triple dots (we note that "Delete node" option is available now as well), choose "Add data processor node" and choose ``GroupEvents``. If you click on this node, the node menu appears, where you can enter the following parameter values:
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_node_menu_2.png
-    :height: 600
 
     The node menu for the GroupEvents data processor.
 
@@ -143,7 +141,6 @@ As we see, the menu contains all the parameters of the :py:meth:`GroupEvents <re
 Next, we create :py:meth:`LabelNewUsers <retentioneering.data_processors_lib.label_new_users.LabelNewUsers>` as ``node3``. Then we download `the file <https://docs.google.com/spreadsheets/d/1iggpIT5CZcLILLZ94wCZPQv90tERwi1IB5Y1969C8zc/edit?usp=sharing>`_ containing new users ids and upload it to the ``new_users_list`` argument. Manual input is also supported, but since the number of the new users is high, it is more reasonable to upload them from the file.
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_label_new_users_events.png
-    :height: 600
 
     How to upload the list of new users.
 
@@ -164,7 +161,6 @@ Now, we are going to implement splitting logic for ``node4`` and ``node5``. You 
         return df[schema.user_id].isin(existing_users)
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_nodes_4_5.png
-    :height: 600
 
     Splitting the logic after ``node3``.
 
@@ -179,21 +175,18 @@ At the next step we create :py:meth:`LabelCroppedPaths <retentioneering.data_pro
         return ~df[schema.user_id].isin(truncated_users)
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_nodes_6_7.png
-    :height: 600
 
     ``node6`` and ``node7`` creation.
 
 Now, we need to merge two branches into one node. Special :py:meth:`MergeNode <retentioneering.preprocessing_graph.nodes.MergeNode>` is designed for this purpose. To merge multiple branches select the ending points of these branches (at least 2) using Ctrl+click or Cmd+click, "Merge Nodes" button appears in the top of the canvas. After clicking this button, the merging node appears.
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_merge_node_creation.png
-    :height: 600
 
     Merge node creation.
 
 Finally, we create the last node :py:meth:`SplitSessions <retentioneering.data_processors_lib.split_sessions.SplitSessions>` inheriting it from the merging node and setting up ``timeout=(30, 'm')`` parameter.
 
 .. figure:: /_static/user_guides/preprocessing/preprocessing_graph_gui_node_9.png
-    :height: 600
 
     SplitSessions node.
 

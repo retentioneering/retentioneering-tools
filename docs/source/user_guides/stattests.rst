@@ -60,7 +60,7 @@ The interface of the ``func`` function expects its single argument to be a panda
 
 .. parsed-literal::
 
-    0.14285714285714285
+    0.15384615384615385
 
 Let us run the test that is defined by ``test`` argument. There is no need to specify a test hypothesis type - when applicable, the method computes the statistics for both one-sided hypothesis tests. ``Stattests`` outputs the statistic that could be significant, indicating which of the groups metric value could be *greater*:
 
@@ -75,10 +75,10 @@ Let us run the test that is defined by ``test`` argument. There is no need to sp
 
 .. parsed-literal::
 
-    random_group_1 (mean ± SD): 0.067 ± 0.077, n = 1875
-    random_group_2 (mean ± SD): 0.068 ± 0.081, n = 1876
-    'random_group_1' is greater than 'random_group_2' with p-value: 0.34855
-    power of the test: 6.40%
+    random_group_1 (mean ± SD): 0.075 ± 0.095, n = 1875
+    random_group_2 (mean ± SD): 0.078 ± 0.102, n = 1876
+    'random_group_1' is greater than 'random_group_2' with p-value: 0.21369
+    power of the test: 8.85%
 
 The method outputs the test p-value, along with group statistics and an estimate of test power (which is a heuristic designed for t-test). As expected, we see that the p-value is too high to register a statistical difference.
 
@@ -99,10 +99,10 @@ Changing the ``alpha`` parameter will influence estimated power of the test. For
 
 .. parsed-literal::
 
-    random_group_1 (mean ± SD): 0.067 ± 0.077, n = 1875
-    random_group_2 (mean ± SD): 0.068 ± 0.081, n = 1876
-    'random_group_1' is greater than 'random_group_2' with p-value: 0.34855
-    power of the test: 1.38%
+    random_group_1 (mean ± SD): 0.075 ± 0.095, n = 1875
+    random_group_2 (mean ± SD): 0.078 ± 0.102, n = 1876
+    'random_group_1' is greater than 'random_group_2' with p-value: 0.21369
+    power of the test: 2.11%
 
 
 Categorical variables

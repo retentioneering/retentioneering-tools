@@ -11,6 +11,7 @@ import networkx as nx
 import pandas as pd
 from IPython.core.display import HTML, display
 
+from retentioneering import RETE_CONFIG
 from retentioneering.backend import ServerManager
 from retentioneering.backend.tracker import track
 from retentioneering.edgelist import Edgelist
@@ -777,10 +778,7 @@ class TransitionGraph:
 
         graph_body = self.render.body()
 
-        graph_script_src = (
-            "https://static.server.retentioneering.com/viztools/transition-graph/v3/transition-graph.umd.js?id="
-            + self.generateId()
-        )
+        graph_script_src = f"{RETE_CONFIG.transition_graph.url}?id={self.generateId()}"
 
         init_graph_template = self.render.init(
             **dict(

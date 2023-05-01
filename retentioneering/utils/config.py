@@ -86,7 +86,6 @@ class Config(BaseConfig):
         if os.access(f"{home}", os.W_OK):
             return f"{home}/{config_filename}"
         elif os.access(".", os.W_OK):
-            print(config_filename)
             return config_filename
         else:
             return None

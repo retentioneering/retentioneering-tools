@@ -315,7 +315,7 @@ SplitSessions
 
 :py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>`
 data processor cuts user paths into sessions based on the defined ``timeout``
-timeout parameter. For each session, it creates a couple of synthetic
+parameter. For each session, it creates a couple of synthetic
 events ``session_start`` and ``session_end``, like
 ``AddStartEndEvents``. Session identifiers are formed according to the
 template ``<user_id>_<user_session_number>`` and can be found in

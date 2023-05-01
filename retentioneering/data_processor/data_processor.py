@@ -68,3 +68,9 @@ class DataProcessor:
             "name": self.__class__.__name__,
         }
         return data
+
+    def copy(self) -> DataProcessor:
+        return self.__copy__()
+
+    def __copy__(self) -> DataProcessor:
+        return self(params=self.params.copy())

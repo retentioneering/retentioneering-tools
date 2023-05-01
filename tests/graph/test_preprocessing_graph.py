@@ -191,8 +191,8 @@ class TestPreprocessingGraph:
 
         user_2 = EventsNode(FilterEvents(FilterEventsParams(func=lambda df, schema: df[schema.user_id] == "2")))
 
-        cart_events_2 = cart_events_1.clone()
-        logout_events_2 = logout_events_1.clone()
+        cart_events_2 = cart_events_1.copy()
+        logout_events_2 = logout_events_1.copy()
 
         merge = MergeNode()
 

@@ -82,11 +82,14 @@ class EventsNode(BaseNode):
     def calc_events(self, parent: EventstreamType) -> None:
         self.events = self.processor.apply(parent)
 
-    def clone(self) -> EventsNode:
+    def __copy__(self) -> EventsNode:
         return EventsNode(
-            processor=self.processor,
+            processor=self.processor.copy(),
             description=self.description,
         )
+
+    def copy(self) -> EventsNode:
+        return self.__copy__()
 
 
 class MergeNode(BaseNode):

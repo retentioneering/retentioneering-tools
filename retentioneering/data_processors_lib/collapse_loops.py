@@ -93,7 +93,7 @@ class CollapseLoops(DataProcessor):
     """
 
     params: CollapseLoopsParams
-    NUMERIC_DTYPES = ["integer", "floating", "boolean"]
+    NUMERIC_DTYPES = ["integer", "floating", "boolean", "mixed-integer-float"]
 
     def __init__(self, params: CollapseLoopsParams):
         super().__init__(params=params)

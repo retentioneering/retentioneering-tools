@@ -27,7 +27,7 @@ class TestCollapseLoops(ApplyTestBase):
 
     _source_df_custom_cols = pd.DataFrame(
         [
-            [1, "event1", "2022-01-01 00:01:00", "A", 1],
+            [1, "event1", "2022-01-01 00:01:00", None, 1],
             [1, "event1", "2022-01-01 00:02:00", "A", 2],
             [1, "event2", "2022-01-01 00:02:02", "A", None],
             [1, "event1", "2022-01-01 00:03:00", "A", None],
@@ -132,7 +132,7 @@ class TestCollapseLoops(ApplyTestBase):
         expected = pd.DataFrame(
             [
                 [1, "event1", "group_alias", "2022-01-01 00:01:00", "A", 1.5, False],
-                [1, "event1", "raw", "2022-01-01 00:01:00", "A", 1, True],
+                [1, "event1", "raw", "2022-01-01 00:01:00", None, 1, True],
                 [1, "event1", "raw", "2022-01-01 00:02:00", "A", 2, True],
                 [1, "event1", "group_alias", "2022-01-01 00:03:00", "A", 2, False],
                 [1, "event1", "raw", "2022-01-01 00:03:00", "A", None, True],
@@ -168,7 +168,7 @@ class TestCollapseLoopsGraph(GraphTestBase):
 
     _source_df_custom_cols = pd.DataFrame(
         [
-            [1, "event1", "2022-01-01 00:01:00", "A", 1],
+            [1, "event1", "2022-01-01 00:01:00", None, 1],
             [1, "event1", "2022-01-01 00:02:00", "A", 2],
             [1, "event2", "2022-01-01 00:02:02", "A", None],
             [1, "event1", "2022-01-01 00:03:00", "A", None],
@@ -442,7 +442,7 @@ class TestCollapseLoopsHelper:
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00", "A", 1],
-                [1, "event1", "2022-01-01 00:02:00", "A", 2],
+                [1, "event1", "2022-01-01 00:02:00", None, 2],
                 [1, "event2", "2022-01-01 00:02:02", "A", None],
                 [1, "event1", "2022-01-01 00:03:00", "A", None],
                 [1, "event1", "2022-01-01 00:04:00", "A", 2],

@@ -16,7 +16,7 @@ def _numeric_values_processing(x: pd.Series) -> int | float:
 
 def _string_values_processing(x: pd.Series) -> str | None:
     if x.nunique() == 1:
-        return x.max()
+        return x.dropna().max()
     else:
         return None
 
@@ -86,6 +86,7 @@ class CollapseLoops(DataProcessor):
       Supported numeric types are: ``bool``, ``int``, ``float``.
     - for string columns, if all the values to be aggregated in the
       collapsing group are equal, this single value will be returned, otherwise - ``None``.
+      ``None`` values in the input data will be ignored.
 
     See :doc:`Data processors user guide</user_guides/dataprocessors>` and :ref:`Eventstream custom columns'
     explanation<eventstream_custom_fields>` for the details.
@@ -118,13 +119,13 @@ class CollapseLoops(DataProcessor):
             for col in df_custom_cols.columns:
                 if pd.api.types.infer_dtype(df_custom_cols[col]) in self.NUMERIC_DTYPES:
                     default_agg[col] = _numeric_values_processing  # type: ignore
-                elif pd.api.types.infer_dtype(df_custom_cols[col], skipna=False) == "string":
+                elif pd.api.types.infer_dtype(df_custom_cols[col]) == "string":
                     default_agg[col] = _string_values_processing  # type: ignore
                 else:
                     doc_link = "https://pandas.pydata.org/docs/reference/api/pandas.api.types.infer_dtype.html"
                     message = (
                         f"Column '{col}' with "
-                        f"'{pd.api.types.infer_dtype(df_custom_cols[col], skipna=False)}'"
+                        f"'{pd.api.types.infer_dtype(df_custom_cols[col])}'"
                         f" data type is not supported for collapsing. See {doc_link}"
                     )
 
@@ -149,7 +150,36 @@ class CollapseLoops(DataProcessor):
             .reset_index()
         )
 
+        if suffix == "loop":
+            loops[event_col] = loops[event_col].map(str) + "_loop"
+        elif suffix == "count":
+            loops[event_col] = loops[event_col].map(str) + "_loop_" + loops["count"].map(str)
+        loops[type_col] = "group_alias"
+        loops["ref"] = None
+
+        df_to_del = df[df["collapsed"] == 1]
+
         if len(custom_cols) > 0:
+            cols_to_show = [user_col, time_col, type_col, event_col] + custom_cols
+            if df_to_del[custom_cols].isna().values.sum() > 0:
+                link_url = (
+                    "https://doc.retentioneering.com/release3/doc/api/preprocessing/data_processors/collapse_loops.html"
+                )
+
+                cols_with_na = df_to_del[custom_cols].isna().sum()
+                rows_to_show = df_to_del[df_to_del.isnull().any(axis=1)].head(3)
+
+                warning_message = (
+                    f"\n\nThere are some NaN values in the input custom columns!\n"
+                    f"The total amount of NaN values in each column:\n\n"
+                    f"{cols_with_na}\n\n"
+                    f"As a reference, here are some rows where NaNs occurred:\n\n"
+                    f"{rows_to_show[cols_to_show]}\n\n"
+                    f"These NaN values will be ignored in the further calculation, "
+                    f"see collapse_loops documentation {link_url}\n\n"
+                )
+                warnings.warn(warning_message)
+
             if loops[custom_cols].isna().values.sum() > 0:
                 link_url = (
                     "https://doc.retentioneering.com/release3/doc/api/preprocessing/data_processors/collapse_loops.html"
@@ -159,23 +189,14 @@ class CollapseLoops(DataProcessor):
                 rows_to_show = loops[loops.isnull().any(axis=1)].head(3)
 
                 warning_message = (
-                    f"There are NaN values in aggregated custom_cols!\n"
+                    f"\n\nThere are NaN values in the aggregated custom columns!\n"
                     f"The total amount of NaN values in each column:\n\n"
                     f"{cols_with_na}\n\n"
                     f"As a reference, here are some rows where NaNs occurred:\n\n"
-                    f"{rows_to_show}\n\n"
-                    f"For more information, see collapse_loops documentation {link_url}"
+                    f"{rows_to_show[cols_to_show]}\n\n"
+                    f"For more information, see collapse_loops documentation {link_url}\n\n"
                 )
                 warnings.warn(warning_message)
-
-        if suffix == "loop":
-            loops[event_col] = loops[event_col].map(str) + "_loop"
-        elif suffix == "count":
-            loops[event_col] = loops[event_col].map(str) + "_loop_" + loops["count"].map(str)
-        loops[type_col] = "group_alias"
-        loops["ref"] = None
-
-        df_to_del = df[df["collapsed"] == 1]
 
         df_loops = pd.concat([loops, df_to_del])
         eventstream = Eventstream(

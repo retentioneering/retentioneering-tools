@@ -73,4 +73,4 @@ class DataProcessor:
         return self.__copy__()
 
     def __copy__(self) -> DataProcessor:
-        return self(params=self.params.copy())
+        return self.__class__(params=self.params.copy())

@@ -84,8 +84,8 @@ class CollapseLoops(DataProcessor):
 
     - for numeric columns the mean value will be calculated for each collapsed group. ``None`` values are ignored.
       Supported numeric types are: ``bool``, ``int``, ``float``.
-    - for string columns, if all the values aggregated in the
-      collapsing group are equal, returns this single value, otherwise - ``None``.
+    - for string columns, if all the values to be aggregated in the
+      collapsing group are equal, this single value will be returned, otherwise - ``None``.
 
     See :doc:`Data processors user guide</user_guides/dataprocessors>` and :ref:`Eventstream custom columns'
     explanation<eventstream_custom_fields>` for the details.
@@ -108,7 +108,6 @@ class CollapseLoops(DataProcessor):
 
         suffix = self.params.suffix
         time_agg = self.params.time_agg
-        agg: dict[str, Callable] = {}
         full_agg: dict[str, Any] = {}
 
         df = eventstream.to_dataframe(copy=True)
@@ -116,22 +115,22 @@ class CollapseLoops(DataProcessor):
             df_custom_cols = df[custom_cols]
             default_agg: dict[str, Callable] = {}
 
-            for num, col in enumerate(df_custom_cols.columns):
+            for col in df_custom_cols.columns:
                 if pd.api.types.infer_dtype(df_custom_cols[col]) in self.NUMERIC_DTYPES:
-                    default_agg[df_custom_cols.columns[num]] = _numeric_values_processing  # type: ignore
+                    default_agg[col] = _numeric_values_processing  # type: ignore
                 elif pd.api.types.infer_dtype(df_custom_cols[col], skipna=False) == "string":
-                    default_agg[df_custom_cols.columns[num]] = _string_values_processing  # type: ignore
+                    default_agg[col] = _string_values_processing  # type: ignore
                 else:
                     doc_link = "https://pandas.pydata.org/docs/reference/api/pandas.api.types.infer_dtype.html"
                     message = (
-                        f"Column '{df_custom_cols.columns[num]}' with "
+                        f"Column '{col}' with "
                         f"'{pd.api.types.infer_dtype(df_custom_cols[col], skipna=False)}'"
                         f" data type is not supported for collapsing. See {doc_link}"
                     )
 
                     raise TypeError(message)
 
-            full_agg = {**default_agg, **agg}  # type: ignore
+            full_agg = default_agg
         else:
             full_agg = {}
 

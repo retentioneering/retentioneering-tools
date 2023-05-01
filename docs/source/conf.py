@@ -9,7 +9,7 @@ import sys
 from typing import Any
 
 sys.path.insert(0, os.path.abspath("../.."))
-
+from retentioneering import __version__
 
 # -- Project information -----------------------------------------------------
 actual_year = datetime.datetime.now().year
@@ -18,13 +18,15 @@ project = "Retentioneering"
 copyright = f'2018-{actual_year}, "Data Driven Lab" LLC'
 author = '"Data Driven Lab" LLC'
 
-# The short X.Y version
-version = "3.0 (dev)"
-# @TODO: replace "3.0" with script using method __version__. dpanina
-
 # The full version, including alpha/beta/rc tags
-release = "3.0.0b2"
-# @TODO: replace "3.0.0b2" with method __version__. dpanina
+release = __version__
+
+# The short X.Y version
+dev = ["b", "rc", "a"]
+if any([x in release for x in dev]):
+    version = ".".join(release.split(".")[:2]) + " (dev)"
+else:
+    version = __version__
 
 # -- General configuration ---------------------------------------------------
 

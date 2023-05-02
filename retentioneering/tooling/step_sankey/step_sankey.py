@@ -608,6 +608,11 @@ class StepSankey(EndedEventsMixin):
         return figure
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "values"},
+        scope="step_sankey",
+        allowed_params=[],
+    )
     def values(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Returns two pd.DataFrames which the Sankey diagram is based on.
@@ -624,6 +629,11 @@ class StepSankey(EndedEventsMixin):
         return self.data_grp_nodes, self.data_grp_links
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "params"},
+        scope="step_sankey",
+        allowed_params=[],
+    )
     def params(self) -> dict:
         """
         Returns the parameters used for the last fitting.

@@ -160,19 +160,19 @@ class Eventstream(
     index_order: IndexOrder
     relations: List[Relation]
     _preprocessing_graph: PreprocessingGraph | None = None
+    __clusters: Clusters | None = None
 
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
-    __clusters: Clusters | None = None
-    __funnel: Funnel | None = None
-    __cohorts: Cohorts | None = None
+    __funnel: Funnel
+    __cohorts: Cohorts
     __step_matrix: StepMatrix
     __sankey: StepSankey
-    __stattests: StatTests | None = None
+    __stattests: StatTests
     __transition_graph: TransitionGraph
-    __timedelta_hist: TimedeltaHist | None = None
-    __user_lifetime_hist: UserLifetimeHist | None = None
-    __event_timestamp_hist: EventTimestampHist | None = None
+    __timedelta_hist: TimedeltaHist
+    __user_lifetime_hist: UserLifetimeHist
+    __event_timestamp_hist: EventTimestampHist
 
     @track(  # type: ignore
         tracking_info={"event_name": "init"},
@@ -202,9 +202,6 @@ class Eventstream(
         user_sample_size: Optional[int | float] = None,
         user_sample_seed: Optional[int] = None,
     ) -> None:
-        self.__clusters = None
-        self.__funnel = None
-
         self.schema = schema if schema else EventstreamSchema()
 
         if not raw_data_schema:
@@ -698,12 +695,6 @@ class Eventstream(
         return self.__funnel
 
     @property
-    @track(  # type: ignore
-        tracking_info={"event_name": "helper"},
-        scope="clusters",
-        event_value="__clusters",
-        allowed_params=[],
-    )
     def clusters(self) -> Clusters:
         """
 

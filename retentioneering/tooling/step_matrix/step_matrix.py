@@ -529,6 +529,7 @@ class StepMatrix(EndedEventsMixin):
     @track(  # type: ignore
         tracking_info={"event_name": "plot"},
         scope="step_matrix",
+        allowed_params=[],
     )
     def plot(self) -> matplotlib.axes.Axes:
         """
@@ -544,6 +545,11 @@ class StepMatrix(EndedEventsMixin):
         return axes
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "values"},
+        scope="step_matrix",
+        allowed_params=[],
+    )
     def values(self) -> tuple[pd.DataFrame, pd.DataFrame | None]:
         """
         Returns the calculated step matrix as a pd.DataFrame.
@@ -558,6 +564,11 @@ class StepMatrix(EndedEventsMixin):
         return self.__result_data, self.__result_targets
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "params"},
+        scope="step_matrix",
+        allowed_params=[],
+    )
     def params(self) -> dict:
         """
         Returns the parameters used for the last fitting.

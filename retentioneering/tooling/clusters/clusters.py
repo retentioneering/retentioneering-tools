@@ -15,6 +15,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 
+from retentioneering.backend.tracker import track
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.clusters.segments import Segments
 
@@ -43,6 +44,11 @@ class Clusters:
     See :doc:`Clusters user guide</user_guides/clusters>` for the details.
     """
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="clusters",
+        allowed_params=[],
+    )
     def __init__(self, eventstream: EventstreamType):
         self.__eventstream: EventstreamType = eventstream
         self.user_col = eventstream.schema.user_id
@@ -62,6 +68,16 @@ class Clusters:
 
     # public API
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "fit"},
+        scope="clusters",
+        allowed_params=[
+            "method",
+            "n_clusters",
+            "X",
+            "random_state",
+        ],
+    )
     def fit(self, method: Method, n_clusters: int, X: pd.DataFrame, random_state: int | None = None) -> Clusters:
         """
         Prepare features and compute clusters for the input eventstream data.
@@ -102,6 +118,17 @@ class Clusters:
 
         return self
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "diff"},
+        scope="clusters",
+        allowed_params=[
+            "cluster_id1",
+            "cluster_id2",
+            "top_n_events",
+            "weight_col",
+            "targets",
+        ],
+    )
     def diff(
         self,
         cluster_id1: int | str,
@@ -210,6 +237,13 @@ class Clusters:
 
         return figure
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "plot"},
+        scope="clusters",
+        allowed_params=[
+            "targets",
+        ],
+    )
     def plot(self, targets: list[str] | list[list[str]] | None = None) -> go.Figure:
         """
         Plot a bar plot illustrating the cluster sizes and the conversion rates of
@@ -232,6 +266,11 @@ class Clusters:
         )
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "user_clusters"},
+        scope="clusters",
+        allowed_params=[],
+    )
     def user_clusters(self) -> pd.Series | None:
         """
 
@@ -247,6 +286,11 @@ class Clusters:
         return self.__cluster_result
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "cluster_mapping"},
+        scope="clusters",
+        allowed_params=[],
+    )
     def cluster_mapping(self) -> dict:
         """
         Return calculated before ``cluster_id -> list[user_ids]`` mapping.
@@ -265,6 +309,11 @@ class Clusters:
         return cluster_map.to_dict()
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "params"},
+        scope="clusters",
+        allowed_params=[],
+    )
     def params(self) -> dict:
         """
         Returns the parameters used for the last fitting.
@@ -272,6 +321,13 @@ class Clusters:
         """
         return {"method": self._method, "n_clusters": self._n_clusters, "X": self._X}
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "set_clusters"},
+        scope="clusters",
+        allowed_params=[
+            "user_clusters",
+        ],
+    )
     def set_clusters(self, user_clusters: pd.Series) -> Clusters:
         """
         Set custom user-cluster mapping.
@@ -294,6 +350,11 @@ class Clusters:
         self.__is_fitted = True
         return self
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "filter_cluster"},
+        scope="clusters",
+        allowed_params=["cluster_id"],
+    )
     def filter_cluster(self, cluster_id: int | str) -> EventstreamType:
         """
         Truncate the eventstream, leaving the trajectories of the users who belong to the selected cluster.
@@ -332,6 +393,14 @@ class Clusters:
         )
         return es
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "extract_features"},
+        scope="clusters",
+        allowed_params=[
+            "feature_type",
+            "ngram_range",
+        ],
+    )
     def extract_features(self, feature_type: FeatureType, ngram_range: NgramRange | None = None) -> pd.DataFrame:
         """
         Calculate vectorized user paths.
@@ -398,6 +467,15 @@ class Clusters:
 
         return cast(pd.DataFrame, vec_data)
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "projection"},
+        scope="clusters",
+        allowed_params=[
+            "method",
+            "targets",
+            "color_type",
+        ],
+    )
     def projection(
         self,
         method: PlotProjectionMethod = "tsne",

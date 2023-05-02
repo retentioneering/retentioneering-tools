@@ -11,6 +11,7 @@ import networkx as nx
 import pandas as pd
 from IPython.core.display import HTML, display
 
+from retentioneering import RETE_CONFIG
 from retentioneering.backend import ServerManager
 from retentioneering.backend.tracker import track
 from retentioneering.edgelist import Edgelist
@@ -93,7 +94,8 @@ class TransitionGraph:
         return True
 
     @track(  # type: ignore
-        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_init"},
+        tracking_info={"event_name": "init"},
+        scope="transition_graph",
     )
     def __init__(
         self,
@@ -553,7 +555,8 @@ class TransitionGraph:
         return "none" if edges_norm_type is None else str(edges_norm_type).lower()
 
     @track(  # type: ignore
-        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_plot_graph"},
+        tracking_info={"event_name": "plot"},
+        scope="transition_graph",
         allowed_params=[
             "edges_norm_type",
             "targets",
@@ -562,6 +565,13 @@ class TransitionGraph:
             "nodes_weight_col",
             "edges_weight_col",
             "custom_weight_cols",
+            "width",
+            "height",
+            "show_weights",
+            "show_percents",
+            "show_nodes_names",
+            "show_all_edges_for_targets",
+            "show_nodes_without_links",
         ],
     )
     def plot(

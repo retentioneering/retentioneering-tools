@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from pandas.core.common import flatten
 
+from retentioneering.backend.tracker import track
 from retentioneering.eventstream.types import EventstreamType
 
 FunnelTypes = Literal["open", "closed", "hybrid"]
@@ -45,6 +46,11 @@ class Funnel:
     segment_names: list[str] | None
     __res_dict: dict[str, dict]
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="funnel",
+        allowed_params=[],
+    )
     def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
@@ -200,6 +206,17 @@ class Funnel:
 
         return vals, df
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "fit"},
+        scope="funnel",
+        allowed_params=[
+            "stages",
+            "stage_names",
+            "funnel_type",
+            "segments",
+            "segment_names",
+        ],
+    )
     def fit(
         self,
         stages: list[str],
@@ -266,6 +283,11 @@ class Funnel:
                 stage_names=self.stage_names,
             )
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "plot"},
+        scope="funnel",
+        allowed_params=[],
+    )
     def plot(self) -> go.Figure:
         """
         Create a funnel plot based on the calculated funnel values.
@@ -282,6 +304,11 @@ class Funnel:
         return figure
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "values"},
+        scope="funnel",
+        allowed_params=[],
+    )
     def values(self) -> pd.DataFrame:
         """
         Returns a pd.DataFrame representing the calculated funnel values.
@@ -317,6 +344,11 @@ class Funnel:
         return result_df
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "params"},
+        scope="funnel",
+        allowed_params=[],
+    )
     def params(self) -> dict:
         """
         Returns the parameters used for the last fitting.

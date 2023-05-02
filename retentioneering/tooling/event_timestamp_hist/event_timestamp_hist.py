@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from retentioneering.backend.tracker import track
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.constants import BINS_ESTIMATORS
 
@@ -43,6 +44,11 @@ class EventTimestampHist:
     bins_to_show: np.ndarray
     values_to_plot: np.ndarray
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="event_timestamp_hist",
+        allowed_params=[],
+    )
     def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
@@ -79,6 +85,17 @@ class EventTimestampHist:
 
         return upper_cutoff_quantile, lower_cutoff_quantile
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "fit"},
+        scope="event_timestamp_hist",
+        allowed_params=[
+            "raw_events_only",
+            "event_list",
+            "lower_cutoff_quantile",
+            "upper_cutoff_quantile",
+            "bins",
+        ],
+    )
     def fit(
         self,
         raw_events_only: bool = False,
@@ -140,6 +157,11 @@ class EventTimestampHist:
         self.values_to_plot = values_to_plot  # type: ignore
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "values"},
+        scope="event_timestamp_hist",
+        allowed_params=[],
+    )
     def values(self) -> tuple[np.ndarray, np.ndarray]:
         """
 
@@ -153,6 +175,14 @@ class EventTimestampHist:
         """
         return self.values_to_plot, self.bins_to_show
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "plot"},
+        scope="event_timestamp_hist",
+        allowed_params=[
+            "width",
+            "height",
+        ],
+    )
     def plot(self, width: float = 6.0, height: float = 4.5) -> matplotlib.axes.Axesne:
         """
         Create a sns.histplot based on the calculated values.

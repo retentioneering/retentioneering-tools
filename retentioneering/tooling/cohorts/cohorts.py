@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from retentioneering.backend.tracker import track
 from retentioneering.constants import DATETIME_UNITS, DATETIME_UNITS_LIST
 from retentioneering.eventstream.types import EventstreamType
 
@@ -49,6 +50,11 @@ class Cohorts:
     cut_diagonal: int
     _cohort_matrix_result: pd.DataFrame
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="cohorts",
+        allowed_params=[],
+    )
     def __init__(self, eventstream: EventstreamType):
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
@@ -116,6 +122,18 @@ class Cohorts:
 
         return df.iloc[: len(df) - cut_bottom, : len(df.columns) - cut_right]
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "fit"},
+        scope="cohorts",
+        allowed_params=[
+            "cohort_start_unit",
+            "cohort_period",
+            "average",
+            "cut_bottom",
+            "cut_right",
+            "cut_diagonal",
+        ],
+    )
     def fit(
         self,
         cohort_start_unit: DATETIME_UNITS,
@@ -230,6 +248,14 @@ class Cohorts:
 
         self._cohort_matrix_result = user_retention
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "heatmap"},
+        scope="cohorts",
+        allowed_params=[
+            "width",
+            "height",
+        ],
+    )
     def heatmap(self, width: float = 5.0, height: float = 5.0) -> matplotlib.axes.Axes:
         """
         Builds a heatmap based on the calculated cohort matrix values.
@@ -254,6 +280,15 @@ class Cohorts:
         sns.heatmap(df, annot=True, fmt=".1%", linewidths=1, linecolor="gray", ax=ax)
         return ax
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "lineplot"},
+        scope="cohorts",
+        allowed_params=[
+            "plot_type",
+            "width",
+            "height",
+        ],
+    )
     def lineplot(
         self, plot_type: Literal["cohorts", "average", "all"] = "cohorts", width: float = 7.0, height: float = 5.0
     ) -> matplotlib.axes.Axes:
@@ -302,6 +337,11 @@ class Cohorts:
         return ax
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "values"},
+        scope="cohorts",
+        allowed_params=[],
+    )
     def values(self) -> pd.DataFrame:
         """
         Returns a pd.DataFrame representing the calculated cohort matrix values.
@@ -315,6 +355,11 @@ class Cohorts:
         return self._cohort_matrix_result
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "params"},
+        scope="cohorts",
+        allowed_params=[],
+    )
     def params(self) -> dict[str, DATETIME_UNITS | tuple | bool | int | None]:
         """
         Returns the parameters used for the last fitting.

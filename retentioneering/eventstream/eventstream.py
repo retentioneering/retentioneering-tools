@@ -174,6 +174,20 @@ class Eventstream(
     __user_lifetime_hist: UserLifetimeHist | None = None
     __event_timestamp_hist: EventTimestampHist | None = None
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="eventstream",
+        allowed_params=[
+            "raw_data",
+            "raw_data_schema",
+            "schema",
+            "prepare",
+            "index_order",
+            "relations",
+            "user_sample_size",
+            "user_sample_seed",
+        ],
+    )
     def __init__(
         self,
         raw_data: pd.DataFrame | pd.Series[Any],
@@ -216,6 +230,11 @@ class Eventstream(
         self.index_events()
         self._preprocessing_graph = None
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "copy"},
+        scope="eventstream",
+        allowed_params=[],
+    )
     def copy(self) -> Eventstream:
         """
         Make a copy of current ``eventstream``.
@@ -234,6 +253,11 @@ class Eventstream(
             relations=self.relations.copy(),
         )
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "append_eventstream"},
+        scope="eventstream",
+        allowed_params=[],
+    )
     def append_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
         """
         Append ``eventstream`` with the same schema.
@@ -411,6 +435,11 @@ class Eventstream(
         view = pd.DataFrame(events, columns=cols, copy=copy)
         return view
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "index_events"},
+        scope="eventstream",
+        allowed_params=[],
+    )
     def index_events(self) -> None:
         """
         Sort and index eventstream using DEFAULT_INDEX_ORDER.
@@ -447,6 +476,11 @@ class Eventstream(
                 relation_cols.append(col)  # type: ignore
         return relation_cols
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "add_custom_col"},
+        scope="eventstream",
+        allowed_params=["name", "data"],
+    )
     def add_custom_col(self, name: str, data: pd.Series[Any] | None) -> None:
         """
         Add custom column to an existing ``eventstream``.
@@ -612,6 +646,19 @@ class Eventstream(
         raw_data_sampled = raw_data.loc[raw_data[user_col_name].isin(sample_users), :]  # type: ignore
         return raw_data_sampled
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="funnel",
+        event_value="plot",
+        allowed_params=[
+            "stages",
+            "stage_names",
+            "funnel_type",
+            "segments",
+            "segment_names",
+            "show_plot",
+        ],
+    )
     def funnel(
         self,
         stages: list[str],
@@ -651,6 +698,12 @@ class Eventstream(
         return self.__funnel
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="clusters",
+        event_value="__clusters",
+        allowed_params=[],
+    )
     def clusters(self) -> Clusters:
         """
 
@@ -780,6 +833,22 @@ class Eventstream(
             figure.show()
         return self.__sankey
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="cohorts",
+        event_value="heatmap",
+        allowed_params=[
+            "cohort_start_unit",
+            "cohort_period",
+            "average",
+            "cut_bottom",
+            "cut_right",
+            "cut_diagonal",
+            "width",
+            "height",
+            "show_plot",
+        ],
+    )
     def cohorts(
         self,
         cohort_start_unit: DATETIME_UNITS,
@@ -822,6 +891,18 @@ class Eventstream(
             self.__cohorts.heatmap(width=width, height=height)
         return self.__cohorts
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="stattests",
+        event_value="display_results",
+        allowed_params=[
+            "test",
+            "groups",
+            "func",
+            "group_names",
+            "alpha",
+        ],
+    )
     def stattests(
         self,
         test: STATTEST_NAMES,
@@ -848,6 +929,26 @@ class Eventstream(
         self.__stattests.display_results()
         return self.__stattests
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="timedelta_hist",
+        event_value="plot",
+        allowed_params=[
+            "raw_events_only",
+            "event_pair",
+            "adjacent_events_only",
+            "weight_col",
+            "time_agg",
+            "timedelta_unit",
+            "log_scale",
+            "lower_cutoff_quantile",
+            "upper_cutoff_quantile",
+            "bins",
+            "width",
+            "height",
+            "show_plot",
+        ],
+    )
     def timedelta_hist(
         self,
         raw_events_only: bool = False,
@@ -906,6 +1007,21 @@ class Eventstream(
 
         return self.__timedelta_hist
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="user_lifetime_hist",
+        event_value="plot",
+        allowed_params=[
+            "timedelta_unit",
+            "log_scale",
+            "lower_cutoff_quantile",
+            "upper_cutoff_quantile",
+            "bins",
+            "width",
+            "height",
+            "show_plot",
+        ],
+    )
     def user_lifetime_hist(
         self,
         timedelta_unit: DATETIME_UNITS = "s",
@@ -949,6 +1065,21 @@ class Eventstream(
             self.__user_lifetime_hist.plot(width=width, height=height)
         return self.__user_lifetime_hist
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="event_timestamp_hist",
+        event_value="plot",
+        allowed_params=[
+            "event_list",
+            "raw_events_only",
+            "lower_cutoff_quantile",
+            "upper_cutoff_quantile",
+            "bins",
+            "width",
+            "height",
+            "show_plot",
+        ],
+    )
     def event_timestamp_hist(
         self,
         event_list: list[str] | None = None,
@@ -992,6 +1123,15 @@ class Eventstream(
             self.__event_timestamp_hist.plot(width=width, height=height)
         return self.__event_timestamp_hist
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="describe",
+        event_value="_values",
+        allowed_params=[
+            "session_col",
+            "raw_events_only",
+        ],
+    )
     def describe(self, session_col: str = "session_id", raw_events_only: bool = False) -> pd.DataFrame:
         """
         Display general eventstream information. If ``session_col`` is present in eventstream, also
@@ -1033,6 +1173,16 @@ class Eventstream(
         describer = _Describe(eventstream=self, session_col=session_col, raw_events_only=raw_events_only)
         return describer._values()
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="describe_events",
+        event_value="_values",
+        allowed_params=[
+            "session_col",
+            "raw_events_only",
+            "event_list",
+        ],
+    )
     def describe_events(
         self, session_col: str = "session_id", raw_events_only: bool = False, event_list: list[str] | None = None
     ) -> pd.DataFrame:
@@ -1176,6 +1326,15 @@ class Eventstream(
         )
         return self.__transition_graph
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="preprocessing_graph",
+        event_value="display",
+        allowed_params=[
+            "width",
+            "height",
+        ],
+    )
     def preprocessing_graph(self, width: int = 960, height: int = 600) -> PreprocessingGraph:
         """
         Display the preprocessing GUI tool.

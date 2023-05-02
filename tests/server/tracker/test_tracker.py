@@ -21,10 +21,10 @@ class TestTracker:
         assert 2 == len(tracker_log)
 
         assert "12345678-1234-1234-1234-1234567890ab" == tracker_log[0]["client_session_id"]
-        assert "test_event_name_send_start" == tracker_log[0]["event_name"]
-        assert "test_event_name_send_end" == tracker_log[1]["event_name"]
-        assert "test_event_name_custom" == tracker_log[0]["event_custom_name"]
-        assert "test_event_name_custom" == tracker_log[1]["event_custom_name"]
+        assert "test_event_name_send" == tracker_log[0]["event_name"]
+        assert "test_event_name_send" == tracker_log[1]["event_name"]
+        assert "test_event_name_custom_start" == tracker_log[0]["event_custom_name"]
+        assert "test_event_name_custom_end" == tracker_log[1]["event_custom_name"]
         assert tracker_log[0]["event_date_local"] is not None
         assert tracker_log[0]["event_day_week"] is not None
         assert "12345678-1234-1234-1234-1234567890ab|none|none|none" == tracker_log[0]["user_id"]
@@ -51,10 +51,10 @@ class TestTracker:
         assert 2 == len(tracker_log)
 
         assert "12345678-1234-1234-1234-1234567890ab" == tracker_log[0]["client_session_id"]
-        assert "test_event_name_params_list_start" == tracker_log[0]["event_name"]
-        assert "test_event_name_params_list_end" == tracker_log[1]["event_name"]
-        assert "test_event_name_custom" == tracker_log[0]["event_custom_name"]
-        assert "test_event_name_custom" == tracker_log[1]["event_custom_name"]
+        assert "test_event_name_params_list" == tracker_log[0]["event_name"]
+        assert "test_event_name_params_list" == tracker_log[1]["event_name"]
+        assert "test_event_name_custom_start" == tracker_log[0]["event_custom_name"]
+        assert "test_event_name_custom_end" == tracker_log[1]["event_custom_name"]
         assert tracker_log[0]["event_date_local"] is not None
         assert tracker_log[0]["event_day_week"] is not None
         assert "12345678-1234-1234-1234-1234567890ab|none|none|none" == tracker_log[0]["user_id"]
@@ -96,10 +96,10 @@ class TestTracker:
 
         assert "test1test2" == return_value
         assert 2 == len(tracker_log)
-        assert "outer_start" == tracker_log[0]["event_name"]
-        assert "outer_end" == tracker_log[1]["event_name"]
-        assert "outer" == tracker_log[0]["event_custom_name"]
-        assert "outer" == tracker_log[1]["event_custom_name"]
+        assert "outer" == tracker_log[0]["event_name"]
+        assert "outer" == tracker_log[1]["event_name"]
+        assert "outer_start" == tracker_log[0]["event_custom_name"]
+        assert "outer_end" == tracker_log[1]["event_custom_name"]
         assert ["edges_norm_type"] == tracker_log[0]["params"]
         assert ["edges_norm_type"] == tracker_log[1]["params"]
-        assert 1 == tracker_log[1]["index"] - tracker_log[0]["index"]
+        assert 1 == (tracker_log[1]["index"] - tracker_log[0]["index"])

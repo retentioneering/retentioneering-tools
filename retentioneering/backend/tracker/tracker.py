@@ -49,8 +49,8 @@ class Tracker(Singleton):
             try:
                 tracking_info = TrackingInfo(
                     client_session_id=self.user_id,
-                    event_name=f"{event_name}_{suffix}",
-                    event_custom_name=event_custom_name,
+                    event_name=event_name,
+                    event_custom_name=f"{event_custom_name}_{suffix}",
                     event_value=event_value,
                     params=called_function_params,
                     event_time=event_time,

@@ -9,7 +9,7 @@ import sys
 from typing import Any
 
 sys.path.insert(0, os.path.abspath("../.."))
-
+from retentioneering import __version__
 
 # -- Project information -----------------------------------------------------
 actual_year = datetime.datetime.now().year
@@ -18,13 +18,15 @@ project = "Retentioneering"
 copyright = f'2018-{actual_year}, "Data Driven Lab" LLC'
 author = '"Data Driven Lab" LLC'
 
-# The short X.Y version
-version = "3.0 (dev)"
-# @TODO: replace "3.0" with script using method __version__. dpanina
-
 # The full version, including alpha/beta/rc tags
-release = "3.0.0b2"
-# @TODO: replace "3.0.0b2" with method __version__. dpanina
+release = __version__
+
+# The short X.Y version
+dev = ["b", "rc", "a"]
+if any([x in release for x in dev]):
+    version = ".".join(release.split(".")[:2]) + " (dev)"
+else:
+    version = __version__
 
 # -- General configuration ---------------------------------------------------
 
@@ -51,8 +53,7 @@ html_favicon = "_static/favicon.ico"
 html_context = {
     "default_mode": "light",
     "github_user": "retentioneering",
-    # @TODO: fix when a new repo name appears. Vladimir Kukushkin
-    "github_repo": "retentioneering-tools-new-arch",
+    "github_repo": "retentioneering-tools",
     "github_version": "docs_fixes",
     "doc_path": "docs/source",
 }
@@ -60,8 +61,21 @@ html_context = {
 html_theme_options = {
     "logo": {"image_light": "rete_logo.svg", "image_dark": "rete_logo_white.svg"},
     "show_toc_level": 2,
-    # @TODO: fix when a new repo name appears. Vladimir Kukushkin
-    "github_url": "https://github.com/retentioneering/retentioneering-tools-new-arch",
+    "github_url": "https://github.com/retentioneering/retentioneering-tools",
+    "icon_links": [
+        {
+            "name": "Discord",
+            "url": "https://discord.gg/hBnuQABEV2",
+            "icon": "fab fa-discord",
+            "type": "fontawesome",
+        },
+        {
+            "name": "Telegram",
+            "url": "https://t.me/retentioneering_support",
+            "icon": "fab fa-telegram",
+            "type": "fontawesome",
+        },
+    ],
     "use_edit_page_button": True,
     "header_links_before_dropdown": 6,
     # "check_switcher": False,

@@ -40,15 +40,20 @@ class TrackerMainConnector(ConnectorProtocol):
             # @TODO: store exceptions to tracking base or sentry. Vladimir Makhanov
             pass
 
-    def _post_job(self, data: dict) -> requests.Response:
-        data["source"] = self.source
-        with self.session.post(self.url, data=json.dumps(data)) as response:
-            return response
+    def _post_job(self, data: dict) -> requests.Response | None:
+        try:
+            data["source"] = self.source
+            with self.session.post(self.url, data=json.dumps(data)) as response:
+                return response
+        except Exception:
+            # supress any exceptions in tracking. Vladimir Makhanov
+            return None
 
     def _prepare_data(self, data: TrackingInfo) -> dict:
         prepared_data = asdict(data)
         prepared_data["source"] = self.source
-        prepared_data["params"] = str(prepared_data["params"])
+        prepared_data["params"] = json.dumps(prepared_data["params"])
+        del prepared_data["event_time"]
         return prepared_data
 
     def send_message(self, data: TrackingInfo) -> None:

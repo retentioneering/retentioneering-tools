@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from retentioneering.backend.tracker import track
 from retentioneering.constants import DATETIME_UNITS
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.constants import BINS_ESTIMATORS
@@ -48,6 +49,11 @@ class UserLifetimeHist:
     bins_to_show: np.ndarray
     values_to_plot: np.ndarray
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="user_lifetime_hist",
+        allowed_params=[],
+    )
     def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
@@ -93,6 +99,17 @@ class UserLifetimeHist:
 
         return log_scale, upper_cutoff_quantile, lower_cutoff_quantile
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "fit"},
+        scope="user_lifetime_hist",
+        allowed_params=[
+            "timedelta_unit",
+            "log_scale",
+            "lower_cutoff_quantile",
+            "upper_cutoff_quantile",
+            "bins",
+        ],
+    )
     def fit(
         self,
         timedelta_unit: DATETIME_UNITS = "s",
@@ -155,6 +172,11 @@ class UserLifetimeHist:
         self.values_to_plot = values_to_plot  # type: ignore
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "values"},
+        scope="user_lifetime_hist",
+        allowed_params=[],
+    )
     def values(self) -> tuple[np.ndarray, np.ndarray]:
         """
 
@@ -167,6 +189,14 @@ class UserLifetimeHist:
         """
         return self.values_to_plot, self.bins_to_show
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "plot"},
+        scope="user_lifetime_hist",
+        allowed_params=[
+            "width",
+            "height",
+        ],
+    )
     def plot(self, width: float = 6.0, height: float = 4.5) -> matplotlib.axes.Axes:
         """
         Create a sns.histplot based on the calculated values.

@@ -160,20 +160,34 @@ class Eventstream(
     index_order: IndexOrder
     relations: List[Relation]
     _preprocessing_graph: PreprocessingGraph | None = None
+    __clusters: Clusters | None = None
 
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
-    __clusters: Clusters | None = None
-    __funnel: Funnel | None = None
-    __cohorts: Cohorts | None = None
-    __step_matrix: StepMatrix | None = None
-    __sankey: StepSankey | None = None
-    __stattests: StatTests | None = None
+    __funnel: Funnel
+    __cohorts: Cohorts
+    __step_matrix: StepMatrix
+    __sankey: StepSankey
+    __stattests: StatTests
     __transition_graph: TransitionGraph
-    __timedelta_hist: TimedeltaHist | None = None
-    __user_lifetime_hist: UserLifetimeHist | None = None
-    __event_timestamp_hist: EventTimestampHist | None = None
+    __timedelta_hist: TimedeltaHist
+    __user_lifetime_hist: UserLifetimeHist
+    __event_timestamp_hist: EventTimestampHist
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="eventstream",
+        allowed_params=[
+            "raw_data",
+            "raw_data_schema",
+            "schema",
+            "prepare",
+            "index_order",
+            "relations",
+            "user_sample_size",
+            "user_sample_seed",
+        ],
+    )
     def __init__(
         self,
         raw_data: pd.DataFrame | pd.Series[Any],
@@ -188,9 +202,6 @@ class Eventstream(
         user_sample_size: Optional[int | float] = None,
         user_sample_seed: Optional[int] = None,
     ) -> None:
-        self.__clusters = None
-        self.__funnel = None
-
         self.schema = schema if schema else EventstreamSchema()
 
         if not raw_data_schema:
@@ -216,6 +227,11 @@ class Eventstream(
         self.index_events()
         self._preprocessing_graph = None
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "copy"},
+        scope="eventstream",
+        allowed_params=[],
+    )
     def copy(self) -> Eventstream:
         """
         Make a copy of current ``eventstream``.
@@ -234,6 +250,11 @@ class Eventstream(
             relations=self.relations.copy(),
         )
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "append_eventstream"},
+        scope="eventstream",
+        allowed_params=[],
+    )
     def append_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
         """
         Append ``eventstream`` with the same schema.
@@ -257,11 +278,6 @@ class Eventstream(
         curr_events = self.to_dataframe(raw_cols=True, show_deleted=True)
         new_events = eventstream.to_dataframe(raw_cols=True, show_deleted=True)
 
-        curr_deleted_events = curr_events[curr_events[DELETE_COL_NAME] == True]
-        new_deleted_events = new_events[new_events[DELETE_COL_NAME] == True]
-        deleted_events = pd.concat([curr_deleted_events, new_deleted_events])
-        deleted_events = deleted_events.drop_duplicates(subset=[self.schema.event_id])
-
         merged_events = pd.merge(
             curr_events,
             new_events,
@@ -271,8 +287,23 @@ class Eventstream(
             indicator=True,
         )
 
-        left_events = merged_events[(merged_events["_merge"] == "left_only") | (merged_events["_merge"] == "both")]
+        left_delete_col = f"{DELETE_COL_NAME}_x"
+        right_delete_col = f"{DELETE_COL_NAME}_y"
+
+        merged_events[left_delete_col] = merged_events[left_delete_col].astype("bool")
+        merged_events[right_delete_col] = merged_events[right_delete_col].astype("bool")
+
+        left_events = merged_events[(merged_events["_merge"] == "left_only")]
+        both_events = merged_events[(merged_events["_merge"] == "both")]
         right_events = merged_events[(merged_events["_merge"] == "right_only")]
+
+        both_events_deleted = both_events[both_events[left_delete_col] & both_events[right_delete_col]].copy()
+        both_events_deleted_left = both_events[both_events[left_delete_col] & ~both_events[right_delete_col]].copy()
+        both_events_deleted_right = both_events[~both_events[left_delete_col] & both_events[right_delete_col]].copy()
+        both_events_not_deleted = both_events[~both_events[left_delete_col] & ~both_events[right_delete_col]].copy()
+
+        right_events = pd.concat([right_events, both_events_deleted_left, both_events_not_deleted])
+        left_events = pd.concat([left_events, both_events_deleted_right])
 
         left_raw_cols = self._get_raw_cols()
         right_raw_cols = eventstream._get_raw_cols()
@@ -280,22 +311,25 @@ class Eventstream(
 
         result_left_part = pd.DataFrame()
         result_right_part = pd.DataFrame()
+        result_both_part = pd.DataFrame()
 
         for col in cols:
             result_left_part[col] = get_merged_col(df=left_events, colname=col, suffix="_x")
+            result_both_part[col] = get_merged_col(df=both_events_deleted, colname=col, suffix="_x")
             result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
 
         for col in left_raw_cols:
+            result_both_part[col] = get_merged_col(df=both_events_deleted, colname=col, suffix="_x")
             result_left_part[col] = get_merged_col(df=left_events, colname=col, suffix="_x")
 
         for col in right_raw_cols:
             result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
 
         result_left_part[DELETE_COL_NAME] = get_merged_col(df=left_events, colname=DELETE_COL_NAME, suffix="_x")
+        result_both_part[DELETE_COL_NAME] = get_merged_col(df=both_events_deleted, colname=DELETE_COL_NAME, suffix="_x")
         result_right_part[DELETE_COL_NAME] = get_merged_col(df=right_events, colname=DELETE_COL_NAME, suffix="_y")
 
-        self.__events = pd.concat([result_left_part, result_right_part])
-        self._soft_delete(deleted_events)
+        self.__events = pd.concat([result_left_part, result_both_part, result_right_part])
         self.index_events()
 
     def _join_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
@@ -329,11 +363,9 @@ class Eventstream(
 
         left_id_colname = f"{self.schema.event_id}_y"
 
-        both_events = merged_events[(merged_events["_merge"] == "both")]
         left_events = merged_events[(merged_events["_merge"] == "left_only")]
-        right_events = merged_events[
-            (merged_events["_merge"] == "both") | (merged_events[left_id_colname].isin(not_related_events_ids))
-        ]
+        both_events = merged_events[(merged_events["_merge"] == "both")]
+        right_events = merged_events[(merged_events[left_id_colname].isin(not_related_events_ids))]
 
         left_raw_cols = self._get_raw_cols()
         right_raw_cols = eventstream._get_raw_cols()
@@ -341,29 +373,31 @@ class Eventstream(
 
         result_left_part = pd.DataFrame()
         result_right_part = pd.DataFrame()
-        result_deleted_events = pd.DataFrame()
+        result_both_part = pd.DataFrame()
 
         for col in cols:
             result_left_part[col] = get_merged_col(df=left_events, colname=col, suffix="_x")
-            result_deleted_events[col] = get_merged_col(df=both_events, colname=col, suffix="_x")
             result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
+            result_both_part[col] = get_merged_col(df=both_events, colname=col, suffix="_y")
 
         for col in left_raw_cols:
+            result_both_part[col] = get_merged_col(df=both_events, colname=col, suffix="_x")
             result_left_part[col] = get_merged_col(df=left_events, colname=col, suffix="_x")
-            result_deleted_events[col] = get_merged_col(df=both_events, colname=col, suffix="_x")
 
         for col in right_raw_cols:
             result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
 
         result_left_part[DELETE_COL_NAME] = get_merged_col(df=left_events, colname=DELETE_COL_NAME, suffix="_x")
 
-        result_deleted_events[DELETE_COL_NAME] = True
-
-        left_delete_col = f"{DELETE_COL_NAME}_x"
         right_delete_col = f"{DELETE_COL_NAME}_y"
-        result_right_part[DELETE_COL_NAME] = right_events[left_delete_col] | right_events[right_delete_col]
+        result_right_part[DELETE_COL_NAME] = right_events[right_delete_col]
+        result_both_part[DELETE_COL_NAME] = both_events[right_delete_col]
 
-        self.__events = pd.concat([result_left_part, result_right_part, result_deleted_events])
+        result_both_part[self.schema.event_id] = get_merged_col(
+            df=both_events, colname=self.schema.event_id, suffix="_x"
+        )
+
+        self.__events = pd.concat([result_left_part, result_right_part, result_both_part])
         self.__events[self.schema.user_id] = self.__events[self.schema.user_id].astype(user_id_type)
 
         self.schema.custom_cols = self._get_both_custom_cols(eventstream)
@@ -411,6 +445,11 @@ class Eventstream(
         view = pd.DataFrame(events, columns=cols, copy=copy)
         return view
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "index_events"},
+        scope="eventstream",
+        allowed_params=[],
+    )
     def index_events(self) -> None:
         """
         Sort and index eventstream using DEFAULT_INDEX_ORDER.
@@ -447,6 +486,11 @@ class Eventstream(
                 relation_cols.append(col)  # type: ignore
         return relation_cols
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "add_custom_col"},
+        scope="eventstream",
+        allowed_params=["name", "data"],
+    )
     def add_custom_col(self, name: str, data: pd.Series[Any] | None) -> None:
         """
         Add custom column to an existing ``eventstream``.
@@ -612,6 +656,19 @@ class Eventstream(
         raw_data_sampled = raw_data.loc[raw_data[user_col_name].isin(sample_users), :]  # type: ignore
         return raw_data_sampled
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="funnel",
+        event_value="plot",
+        allowed_params=[
+            "stages",
+            "stage_names",
+            "funnel_type",
+            "segments",
+            "segment_names",
+            "show_plot",
+        ],
+    )
     def funnel(
         self,
         stages: list[str],
@@ -667,6 +724,23 @@ class Eventstream(
             self.__clusters = Clusters(eventstream=self)
         return self.__clusters
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="step_matrix",
+        event_value="plot",
+        allowed_params=[
+            "max_steps",
+            "weight_col",
+            "precision",
+            "targets",
+            "accumulated",
+            "sorting",
+            "threshold",
+            "centered",
+            "groups",
+            "show_plot",
+        ],
+    )
     def step_matrix(
         self,
         max_steps: int = 20,
@@ -713,6 +787,21 @@ class Eventstream(
             self.__step_matrix.plot()
         return self.__step_matrix
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="step_sankey",
+        event_value="plot",
+        allowed_params=[
+            "max_steps",
+            "threshold",
+            "sorting",
+            "targets",
+            "autosize",
+            "width",
+            "height",
+            "show_plot",
+        ],
+    )
     def step_sankey(
         self,
         max_steps: int = 10,
@@ -748,6 +837,22 @@ class Eventstream(
             figure.show()
         return self.__sankey
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="cohorts",
+        event_value="heatmap",
+        allowed_params=[
+            "cohort_start_unit",
+            "cohort_period",
+            "average",
+            "cut_bottom",
+            "cut_right",
+            "cut_diagonal",
+            "width",
+            "height",
+            "show_plot",
+        ],
+    )
     def cohorts(
         self,
         cohort_start_unit: DATETIME_UNITS,
@@ -790,6 +895,18 @@ class Eventstream(
             self.__cohorts.heatmap(width=width, height=height)
         return self.__cohorts
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="stattests",
+        event_value="display_results",
+        allowed_params=[
+            "test",
+            "groups",
+            "func",
+            "group_names",
+            "alpha",
+        ],
+    )
     def stattests(
         self,
         test: STATTEST_NAMES,
@@ -816,6 +933,26 @@ class Eventstream(
         self.__stattests.display_results()
         return self.__stattests
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="timedelta_hist",
+        event_value="plot",
+        allowed_params=[
+            "raw_events_only",
+            "event_pair",
+            "adjacent_events_only",
+            "weight_col",
+            "time_agg",
+            "timedelta_unit",
+            "log_scale",
+            "lower_cutoff_quantile",
+            "upper_cutoff_quantile",
+            "bins",
+            "width",
+            "height",
+            "show_plot",
+        ],
+    )
     def timedelta_hist(
         self,
         raw_events_only: bool = False,
@@ -874,6 +1011,21 @@ class Eventstream(
 
         return self.__timedelta_hist
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="user_lifetime_hist",
+        event_value="plot",
+        allowed_params=[
+            "timedelta_unit",
+            "log_scale",
+            "lower_cutoff_quantile",
+            "upper_cutoff_quantile",
+            "bins",
+            "width",
+            "height",
+            "show_plot",
+        ],
+    )
     def user_lifetime_hist(
         self,
         timedelta_unit: DATETIME_UNITS = "s",
@@ -917,6 +1069,21 @@ class Eventstream(
             self.__user_lifetime_hist.plot(width=width, height=height)
         return self.__user_lifetime_hist
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="event_timestamp_hist",
+        event_value="plot",
+        allowed_params=[
+            "event_list",
+            "raw_events_only",
+            "lower_cutoff_quantile",
+            "upper_cutoff_quantile",
+            "bins",
+            "width",
+            "height",
+            "show_plot",
+        ],
+    )
     def event_timestamp_hist(
         self,
         event_list: list[str] | None = None,
@@ -960,6 +1127,15 @@ class Eventstream(
             self.__event_timestamp_hist.plot(width=width, height=height)
         return self.__event_timestamp_hist
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="describe",
+        event_value="_values",
+        allowed_params=[
+            "session_col",
+            "raw_events_only",
+        ],
+    )
     def describe(self, session_col: str = "session_id", raw_events_only: bool = False) -> pd.DataFrame:
         """
         Display general eventstream information. If ``session_col`` is present in eventstream, also
@@ -1001,6 +1177,16 @@ class Eventstream(
         describer = _Describe(eventstream=self, session_col=session_col, raw_events_only=raw_events_only)
         return describer._values()
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="describe_events",
+        event_value="_values",
+        allowed_params=[
+            "session_col",
+            "raw_events_only",
+            "event_list",
+        ],
+    )
     def describe_events(
         self, session_col: str = "session_id", raw_events_only: bool = False, event_list: list[str] | None = None
     ) -> pd.DataFrame:
@@ -1073,7 +1259,9 @@ class Eventstream(
         return describer._values()
 
     @track(  # type: ignore
-        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_helper"},
+        tracking_info={"event_name": "helper"},
+        scope="transition_graph",
+        event_value="plot",
         allowed_params=[
             "edges_norm_type",
             "targets",
@@ -1084,6 +1272,11 @@ class Eventstream(
             "custom_weight_cols",
             "width",
             "height",
+            "show_weights",
+            "show_percents",
+            "show_nodes_names",
+            "show_all_edges_for_targets",
+            "show_nodes_without_links",
         ],
     )
     def transition_graph(
@@ -1137,6 +1330,15 @@ class Eventstream(
         )
         return self.__transition_graph
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="preprocessing_graph",
+        event_value="display",
+        allowed_params=[
+            "width",
+            "height",
+        ],
+    )
     def preprocessing_graph(self, width: int = 960, height: int = 600) -> PreprocessingGraph:
         """
         Display the preprocessing GUI tool.
@@ -1160,8 +1362,10 @@ class Eventstream(
         return self._preprocessing_graph
 
     @track(  # type: ignore
-        tracking_info={"event_name": "transition_matrix", "event_custom_name": "transition_matrix_helper"},
+        tracking_info={"event_name": "helper"},
         allowed_params=["weight_col", "norm_type"],
+        scope="transition_matrix",
+        event_value="_values",
     )
     def transition_matrix(self, weight_col: str | None = None, norm_type: NormType = None) -> pd.DataFrame:
         """

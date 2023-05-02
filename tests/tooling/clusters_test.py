@@ -32,7 +32,7 @@ class TestClusters:
         c = Clusters(eventstream=stream_simple_shop)
         try:
             X_calc = c.extract_features(feature_type="tfidf", ngram_range=(1, 1))
-            c.fit(method="kmeans", n_clusters=4, X=X_calc)
+            c.fit(method="kmeans", n_clusters=4, X=X_calc, random_state=0)
         except Exception as e:
             pytest.fail("Runtime error in Clusters.fit. " + str(e))
 
@@ -105,7 +105,7 @@ class TestClusters:
     ) -> None:
         correct_result = kmeans_corr
         c = Clusters(eventstream=test_stream)
-        c.fit(method="kmeans", n_clusters=2, X=features_tfidf_input)
+        c.fit(method="kmeans", n_clusters=2, X=features_tfidf_input, random_state=0)
         result = c.user_clusters
         assert pd.testing.assert_series_equal(result, correct_result, check_dtype=False) is None
 
@@ -114,7 +114,7 @@ class TestClusters:
     ) -> None:
         correct_result = gmm_corr
         c = Clusters(eventstream=test_stream)
-        c.fit(method="gmm", n_clusters=2, X=features_tfidf_input)
+        c.fit(method="gmm", n_clusters=2, X=features_tfidf_input, random_state=0)
         result = c.user_clusters
         assert pd.testing.assert_series_equal(result, correct_result, check_dtype=True) is None
 
@@ -123,7 +123,7 @@ class TestClusters:
     ) -> None:
         correct_result = cluster_mapping_corr
         c = Clusters(eventstream=test_stream)
-        c.fit(method="gmm", n_clusters=2, X=features_tfidf_input)
+        c.fit(method="gmm", n_clusters=2, X=features_tfidf_input, random_state=0)
         result = c.cluster_mapping
         assert result == correct_result
 
@@ -144,6 +144,6 @@ class TestClusters:
     def test_clusters__X(self, test_stream: EventstreamType, custom_X: pd.DataFrame, X_corr: pd.Series) -> None:
         correct_result = X_corr
         c = Clusters(eventstream=test_stream)
-        c.fit(method="kmeans", n_clusters=2, X=custom_X)
+        c.fit(method="kmeans", n_clusters=2, X=custom_X, random_state=0)
         result = c.user_clusters
         assert pd.testing.assert_series_equal(result, correct_result, check_dtype=False) is None

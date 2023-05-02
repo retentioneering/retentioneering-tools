@@ -28,7 +28,7 @@ class TestEventstreamClusters:
     ) -> None:
         correct_result = cluster_mapping_corr
         c = test_stream.clusters
-        c.fit(method="gmm", n_clusters=2, X=features_tfidf_input)
+        c.fit(method="gmm", n_clusters=2, X=features_tfidf_input, random_state=0)
         result = c.cluster_mapping
         assert result == correct_result
 

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Callable
 
-from pandas import DataFrame
+from pandas import DataFrame, Series
 
 from ..types import EventstreamSchemaType, EventstreamType
 
 
 class FilterEventsHelperMixin:
-    def filter_events(self, func: Callable[[DataFrame, EventstreamSchemaType], Any]) -> EventstreamType:
+    def filter_events(self, func: Callable[[DataFrame, EventstreamSchemaType], Series]) -> EventstreamType:
         """
         A method of ``Eventstream`` class that filters input ``eventstream`` based on custom conditions.
 

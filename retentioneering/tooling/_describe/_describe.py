@@ -72,8 +72,10 @@ class _Describe:
         overall_index = pd.MultiIndex.from_product(self.overall_stats, names=self.INDEX_NAMES)
         time_events_index = pd.MultiIndex.from_product(self.time_events_stats, names=self.INDEX_NAMES)
 
+        # TODO внезапно в старом коде появилась ошибка типов, разобраться
         df_overall = pd.DataFrame(data=values_overall, index=overall_index, columns=self.OUT_COLS)  # type: ignore
         df_time_events = pd.DataFrame(data=values_time_events, index=time_events_index, columns=self.OUT_COLS)  # type: ignore
+
         return pd.concat([df_overall, df_time_events])
 
     def _values(self) -> pd.DataFrame:

@@ -12,6 +12,7 @@ from scipy.stats.contingency import crosstab
 from statsmodels.stats.power import TTestIndPower
 from statsmodels.stats.weightstats import ttest_ind, ztest
 
+from retentioneering.backend.tracker import track
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.stattests.constants import STATTEST_NAMES
 
@@ -100,6 +101,11 @@ class StatTests:
     output_template_categorical = "{0} (size): n = {1}"
     p_val, power, label_min, label_max = 0.0, 0.0, "", ""
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="stattests",
+        allowed_params=[],
+    )
     def __init__(self, eventstream: EventstreamType) -> None:
         self.__eventstream = eventstream
         self.user_col = self.__eventstream.schema.user_id
@@ -186,6 +192,17 @@ class StatTests:
             label_min = self.group_names[0]
         return p_val, power, label_max, label_min
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "fit"},
+        scope="stattests",
+        allowed_params=[
+            "test",
+            "groups",
+            "func",
+            "group_names",
+            "alpha",
+        ],
+    )
     def fit(
         self,
         test: STATTEST_NAMES,
@@ -234,6 +251,11 @@ class StatTests:
         self.p_val, self.power, self.label_min, self.label_max = self._get_sorted_test_results()
         self.is_fitted = True
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "plot"},
+        scope="stattests",
+        allowed_params=[],
+    )
     def plot(self) -> Tuple[go.Figure, str]:
         """
         Plots a barplot comparing the metric values between two groups.
@@ -251,6 +273,11 @@ class StatTests:
         return compare_plot
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "values"},
+        scope="stattests",
+        allowed_params=[],
+    )
     def values(self) -> dict:
         """
         Returns the comprehensive results of the comparison between the two groups.
@@ -291,6 +318,11 @@ class StatTests:
             raise ValueError("Wrong test passed")
         return res_dict
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "display_results"},
+        scope="stattests",
+        allowed_params=[],
+    )
     def display_results(self) -> None:
         if not self.is_fitted:
             raise ValueError("The StatTests instance needs to be fitted before displaying results")
@@ -320,6 +352,11 @@ class StatTests:
             raise ValueError("Wrong test passed")
 
     @property
+    @track(  # type: ignore
+        tracking_info={"event_name": "params"},
+        scope="stattests",
+        allowed_params=[],
+    )
     def params(self) -> dict:
         """
         Returns the parameters used for the last fitting.

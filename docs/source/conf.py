@@ -53,8 +53,7 @@ html_favicon = "_static/favicon.ico"
 html_context = {
     "default_mode": "light",
     "github_user": "retentioneering",
-    # @TODO: fix when a new repo name appears. Vladimir Kukushkin
-    "github_repo": "retentioneering-tools-new-arch",
+    "github_repo": "retentioneering-tools",
     "github_version": "docs_fixes",
     "doc_path": "docs/source",
 }
@@ -62,8 +61,7 @@ html_context = {
 html_theme_options = {
     "logo": {"image_light": "rete_logo.svg", "image_dark": "rete_logo_white.svg"},
     "show_toc_level": 2,
-    # @TODO: fix when a new repo name appears. Vladimir Kukushkin
-    "github_url": "https://github.com/retentioneering/retentioneering-tools-new-arch",
+    "github_url": "https://github.com/retentioneering/retentioneering-tools",
     "icon_links": [
         {
             "name": "Discord",

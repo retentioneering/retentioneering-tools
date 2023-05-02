@@ -257,11 +257,6 @@ class Eventstream(
         curr_events = self.to_dataframe(raw_cols=True, show_deleted=True)
         new_events = eventstream.to_dataframe(raw_cols=True, show_deleted=True)
 
-        curr_deleted_events = curr_events[curr_events[DELETE_COL_NAME] == True]
-        new_deleted_events = new_events[new_events[DELETE_COL_NAME] == True]
-        deleted_events = pd.concat([curr_deleted_events, new_deleted_events])
-        deleted_events = deleted_events.drop_duplicates(subset=[self.schema.event_id])
-
         merged_events = pd.merge(
             curr_events,
             new_events,
@@ -271,8 +266,23 @@ class Eventstream(
             indicator=True,
         )
 
-        left_events = merged_events[(merged_events["_merge"] == "left_only") | (merged_events["_merge"] == "both")]
+        left_delete_col = f"{DELETE_COL_NAME}_x"
+        right_delete_col = f"{DELETE_COL_NAME}_y"
+
+        merged_events[left_delete_col] = merged_events[left_delete_col].astype("bool")
+        merged_events[right_delete_col] = merged_events[right_delete_col].astype("bool")
+
+        left_events = merged_events[(merged_events["_merge"] == "left_only")]
+        both_events = merged_events[(merged_events["_merge"] == "both")]
         right_events = merged_events[(merged_events["_merge"] == "right_only")]
+
+        both_events_deleted = both_events[both_events[left_delete_col] & both_events[right_delete_col]].copy()
+        both_events_deleted_left = both_events[both_events[left_delete_col] & ~both_events[right_delete_col]].copy()
+        both_events_deleted_right = both_events[~both_events[left_delete_col] & both_events[right_delete_col]].copy()
+        both_events_not_deleted = both_events[~both_events[left_delete_col] & ~both_events[right_delete_col]].copy()
+
+        right_events = pd.concat([right_events, both_events_deleted_left, both_events_not_deleted])
+        left_events = pd.concat([left_events, both_events_deleted_right])
 
         left_raw_cols = self._get_raw_cols()
         right_raw_cols = eventstream._get_raw_cols()
@@ -280,22 +290,25 @@ class Eventstream(
 
         result_left_part = pd.DataFrame()
         result_right_part = pd.DataFrame()
+        result_both_part = pd.DataFrame()
 
         for col in cols:
             result_left_part[col] = get_merged_col(df=left_events, colname=col, suffix="_x")
+            result_both_part[col] = get_merged_col(df=both_events_deleted, colname=col, suffix="_x")
             result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
 
         for col in left_raw_cols:
+            result_both_part[col] = get_merged_col(df=both_events_deleted, colname=col, suffix="_x")
             result_left_part[col] = get_merged_col(df=left_events, colname=col, suffix="_x")
 
         for col in right_raw_cols:
             result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
 
         result_left_part[DELETE_COL_NAME] = get_merged_col(df=left_events, colname=DELETE_COL_NAME, suffix="_x")
+        result_both_part[DELETE_COL_NAME] = get_merged_col(df=both_events_deleted, colname=DELETE_COL_NAME, suffix="_x")
         result_right_part[DELETE_COL_NAME] = get_merged_col(df=right_events, colname=DELETE_COL_NAME, suffix="_y")
 
-        self.__events = pd.concat([result_left_part, result_right_part])
-        self._soft_delete(deleted_events)
+        self.__events = pd.concat([result_left_part, result_both_part, result_right_part])
         self.index_events()
 
     def _join_eventstream(self, eventstream: Eventstream) -> None:  # type: ignore
@@ -329,11 +342,9 @@ class Eventstream(
 
         left_id_colname = f"{self.schema.event_id}_y"
 
-        both_events = merged_events[(merged_events["_merge"] == "both")]
         left_events = merged_events[(merged_events["_merge"] == "left_only")]
-        right_events = merged_events[
-            (merged_events["_merge"] == "both") | (merged_events[left_id_colname].isin(not_related_events_ids))
-        ]
+        both_events = merged_events[(merged_events["_merge"] == "both")]
+        right_events = merged_events[(merged_events[left_id_colname].isin(not_related_events_ids))]
 
         left_raw_cols = self._get_raw_cols()
         right_raw_cols = eventstream._get_raw_cols()
@@ -341,29 +352,31 @@ class Eventstream(
 
         result_left_part = pd.DataFrame()
         result_right_part = pd.DataFrame()
-        result_deleted_events = pd.DataFrame()
+        result_both_part = pd.DataFrame()
 
         for col in cols:
             result_left_part[col] = get_merged_col(df=left_events, colname=col, suffix="_x")
-            result_deleted_events[col] = get_merged_col(df=both_events, colname=col, suffix="_x")
             result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
+            result_both_part[col] = get_merged_col(df=both_events, colname=col, suffix="_y")
 
         for col in left_raw_cols:
+            result_both_part[col] = get_merged_col(df=both_events, colname=col, suffix="_x")
             result_left_part[col] = get_merged_col(df=left_events, colname=col, suffix="_x")
-            result_deleted_events[col] = get_merged_col(df=both_events, colname=col, suffix="_x")
 
         for col in right_raw_cols:
             result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
 
         result_left_part[DELETE_COL_NAME] = get_merged_col(df=left_events, colname=DELETE_COL_NAME, suffix="_x")
 
-        result_deleted_events[DELETE_COL_NAME] = True
-
-        left_delete_col = f"{DELETE_COL_NAME}_x"
         right_delete_col = f"{DELETE_COL_NAME}_y"
-        result_right_part[DELETE_COL_NAME] = right_events[left_delete_col] | right_events[right_delete_col]
+        result_right_part[DELETE_COL_NAME] = right_events[right_delete_col]
+        result_both_part[DELETE_COL_NAME] = both_events[right_delete_col]
 
-        self.__events = pd.concat([result_left_part, result_right_part, result_deleted_events])
+        result_both_part[self.schema.event_id] = get_merged_col(
+            df=both_events, colname=self.schema.event_id, suffix="_x"
+        )
+
+        self.__events = pd.concat([result_left_part, result_right_part, result_both_part])
         self.__events[self.schema.user_id] = self.__events[self.schema.user_id].astype(user_id_type)
 
         self.schema.custom_cols = self._get_both_custom_cols(eventstream)

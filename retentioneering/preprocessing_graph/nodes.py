@@ -33,6 +33,9 @@ class BaseNode:
             data["processor"] = processor.to_dict()
         return data
 
+    def copy(self) -> BaseNode:
+        return BaseNode()
+
 
 class SourceNode(BaseNode):
     events: EventstreamType
@@ -42,6 +45,15 @@ class SourceNode(BaseNode):
         super().__init__()
         self.events = source
         self.description = description
+
+    def __copy__(self) -> SourceNode:
+        return SourceNode(
+            source=self.events.copy(),
+            description=self.description,
+        )
+
+    def copy(self) -> SourceNode:
+        return self.__copy__()
 
 
 class EventsNode(BaseNode):
@@ -73,6 +85,15 @@ class EventsNode(BaseNode):
     def calc_events(self, parent: EventstreamType) -> None:
         self.events = self.processor.apply(parent)
 
+    def __copy__(self) -> EventsNode:
+        return EventsNode(
+            processor=self.processor.copy(),
+            description=self.description,
+        )
+
+    def copy(self) -> EventsNode:
+        return self.__copy__()
+
 
 class MergeNode(BaseNode):
     """
@@ -97,6 +118,14 @@ class MergeNode(BaseNode):
         super().__init__()
         self.events = None
         self.description = description
+
+    def __copy__(self) -> MergeNode:
+        return MergeNode(
+            description=self.description,
+        )
+
+    def copy(self) -> MergeNode:
+        return self.__copy__()
 
 
 Node = Union[SourceNode, EventsNode, MergeNode]

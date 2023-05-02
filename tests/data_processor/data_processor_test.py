@@ -52,3 +52,16 @@ class TestDataProcessor:
 
             unregister_dataprocessor(StubPydanticProcessor)
             processor = StubPydanticProcessor(params=model)
+
+    def test_copy(self, stub_processor) -> None:
+        StubProcessorParams: ParamsModel = stub_processor["params"]
+        StubProcessor: DataProcessor = stub_processor["processor"]
+
+        params: StubProcessorParams = StubProcessorParams(a="a")  # type: ignore
+        stub = StubProcessor(params=params)
+
+        stub_copy = stub.copy()
+        stub.params.a = "b"
+
+        assert stub.params.a == "b"  # type: ignore
+        assert stub_copy.params.a == "a"  # type: ignore

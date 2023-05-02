@@ -48,7 +48,7 @@ class Tracker(Singleton):
         if self.enabled:
             try:
                 tracking_info = TrackingInfo(
-                    client_session_id=self.user_id,
+                    user_id=self.user_id,
                     event_name=event_name,
                     event_custom_name=f"{event_custom_name}_{suffix}",
                     event_value=event_value,

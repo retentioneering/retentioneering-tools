@@ -20,7 +20,7 @@ index = get_index()
 
 @dataclass
 class TrackingInfo:
-    client_session_id: str
+    user_id: str
     event_custom_name: str
     event_name: str
     event_value: str
@@ -31,7 +31,6 @@ class TrackingInfo:
 
     event_date_local: str = ""
     # event_date_moscow: str    # @TODO: implement. Vladimir Makhanov
-    user_id: str = ""
     event_day_week: int = 0
     event_timestamp: int = 0
     event_timestamp_ms: int = 0
@@ -49,5 +48,5 @@ class TrackingInfo:
         self.event_day_week = self.event_time.weekday()
         self.event_timestamp = int(event_timestamp)
         self.event_timestamp_ms = int(event_timestamp * 1000)
-        self.user_id = f"{self.client_session_id}|none|none|none"
+        self.user_id = f"{self.user_id}|none|none|none"
         self.index = next(index)

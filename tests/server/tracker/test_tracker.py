@@ -20,7 +20,7 @@ class TestTracker:
         assert "test" == return_value
         assert 2 == len(tracker_log)
 
-        assert "12345678-1234-1234-1234-1234567890ab" == tracker_log[0]["client_session_id"]
+        assert "12345678-1234-1234-1234-1234567890ab|none|none|none" == tracker_log[0]["user_id"]
         assert "test_event_name_send" == tracker_log[0]["event_name"]
         assert "test_event_name_send" == tracker_log[1]["event_name"]
         assert "test_event_name_custom_start" == tracker_log[0]["event_custom_name"]
@@ -50,7 +50,8 @@ class TestTracker:
         assert "test" == return_value
         assert 2 == len(tracker_log)
 
-        assert "12345678-1234-1234-1234-1234567890ab" == tracker_log[0]["client_session_id"]
+        assert "12345678-1234-1234-1234-1234567890ab|none|none|none" == tracker_log[0]["user_id"]
+        assert tracker_log[0].get("client_session_id", None) is None
         assert "test_event_name_params_list" == tracker_log[0]["event_name"]
         assert "test_event_name_params_list" == tracker_log[1]["event_name"]
         assert "test_event_name_custom_start" == tracker_log[0]["event_custom_name"]

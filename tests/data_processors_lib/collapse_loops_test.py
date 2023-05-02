@@ -57,12 +57,6 @@ class TestCollapseLoops(ApplyTestBase):
     )
 
     def test_collapse_loops_apply__suffix_count__agg_min(self):
-        actual = self._apply(
-            CollapseLoopsParams(
-                suffix="count",
-                time_agg="min",
-            )
-        )
         expected = pd.DataFrame(
             [
                 [1, "event1_loop_4", "group_alias", "2022-01-01 00:02:00", False],
@@ -77,15 +71,16 @@ class TestCollapseLoops(ApplyTestBase):
             columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         expected["timestamp"] = pd.to_datetime(expected["timestamp"])
-        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
-    def test_collapse_loops_apply__suffix_count__agg_max(self):
         actual = self._apply(
             CollapseLoopsParams(
                 suffix="count",
-                time_agg="max",
+                time_agg="min",
             )
         )
+        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
+
+    def test_collapse_loops_apply__suffix_count__agg_max(self):
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
@@ -100,15 +95,16 @@ class TestCollapseLoops(ApplyTestBase):
             columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         expected["timestamp"] = pd.to_datetime(expected["timestamp"])
+
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="count",
+                time_agg="max",
+            )
+        )
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
     def test_collapse_loops_apply__suffix_loop__agg_mean(self):
-        actual = self._apply(
-            CollapseLoopsParams(
-                suffix="loop",
-                time_agg="mean",
-            )
-        )
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:02:00", True],
@@ -123,15 +119,16 @@ class TestCollapseLoops(ApplyTestBase):
             columns=["user_id", "event", "event_type", "timestamp", "_deleted"],
         )
         expected["timestamp"] = pd.to_datetime(expected["timestamp"])
+
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="loop",
+                time_agg="mean",
+            )
+        )
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
     def test_collapse_loops_apply__default_custom_cols(self):
-        actual = self._apply(
-            CollapseLoopsParams(),
-            source_df=self._source_df_custom_cols,
-            raw_data_schema=self._raw_data_schema_custom_cols,
-        )
-
         expected = pd.DataFrame(
             [
                 [1, "event1", "group_alias", "2022-01-01 00:01:00", "A", 1.5, False],
@@ -148,6 +145,12 @@ class TestCollapseLoops(ApplyTestBase):
             columns=["user_id", "event", "event_type", "timestamp", "str_col", "num_col", "_deleted"],
         )
         expected["timestamp"] = pd.to_datetime(expected["timestamp"])
+
+        actual = self._apply(
+            CollapseLoopsParams(),
+            source_df=self._source_df_custom_cols,
+            raw_data_schema=self._raw_data_schema_custom_cols,
+        )
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
 
@@ -200,12 +203,6 @@ class TestCollapseLoopsGraph(GraphTestBase):
     )
 
     def test_collapse_loops_graph__suffix_count__agg_min(self):
-        actual = self._apply(
-            CollapseLoopsParams(
-                suffix="count",
-                time_agg="min",
-            )
-        )
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -217,15 +214,16 @@ class TestCollapseLoopsGraph(GraphTestBase):
             columns=["user_id", "event", "event_type", "timestamp"],
         )
         expected["timestamp"] = pd.to_datetime(expected["timestamp"])
-        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
-    def test_collapse_loops_graph__suffix_count__agg_max(self):
         actual = self._apply(
             CollapseLoopsParams(
                 suffix="count",
-                time_agg="max",
+                time_agg="min",
             )
         )
+        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
+
+    def test_collapse_loops_graph__suffix_count__agg_max(self):
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -237,15 +235,16 @@ class TestCollapseLoopsGraph(GraphTestBase):
             columns=["user_id", "event", "event_type", "timestamp"],
         )
         expected["timestamp"] = pd.to_datetime(expected["timestamp"])
+
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix="count",
+                time_agg="max",
+            )
+        )
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
     def test_collapse_loops_graph__suffix_loop__agg_mean(self):
-        actual = self._apply(
-            CollapseLoopsParams(
-                suffix="loop",
-                time_agg="mean",
-            )
-        )
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -257,15 +256,17 @@ class TestCollapseLoopsGraph(GraphTestBase):
             columns=["user_id", "event", "event_type", "timestamp"],
         )
         expected["timestamp"] = pd.to_datetime(expected["timestamp"])
-        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
-    def test_collapse_loops_graph__suffix_none__agg_mean(self):
         actual = self._apply(
             CollapseLoopsParams(
-                suffix=None,
+                suffix="loop",
                 time_agg="mean",
             )
         )
+
+        assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
+
+    def test_collapse_loops_graph__suffix_none__agg_mean(self):
         expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
@@ -277,15 +278,17 @@ class TestCollapseLoopsGraph(GraphTestBase):
             columns=["user_id", "event", "event_type", "timestamp"],
         )
         expected["timestamp"] = pd.to_datetime(expected["timestamp"])
+
+        actual = self._apply(
+            CollapseLoopsParams(
+                suffix=None,
+                time_agg="mean",
+            )
+        )
+
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
     def test_collapse_loops_graph__default_custom_cols(self):
-        actual = self._apply(
-            CollapseLoopsParams(),
-            source_df=self._source_df_custom_cols,
-            raw_data_schema=self._raw_data_schema_custom_cols,
-        )
-
         expected = pd.DataFrame(
             [
                 [1, "event1", "group_alias", "2022-01-01 00:01:00", "A", 1.5],
@@ -297,6 +300,12 @@ class TestCollapseLoopsGraph(GraphTestBase):
             columns=["user_id", "event", "event_type", "timestamp", "str_col", "num_col"],
         )
         expected["timestamp"] = pd.to_datetime(expected["timestamp"])
+
+        actual = self._apply(
+            CollapseLoopsParams(),
+            source_df=self._source_df_custom_cols,
+            raw_data_schema=self._raw_data_schema_custom_cols,
+        )
         assert pd.testing.assert_frame_equal(actual[expected.columns], expected) is None
 
 
@@ -319,12 +328,8 @@ class TestCollapseLoopsHelper:
 
         source = Eventstream(source_df)
 
-        params = {"suffix": "count", "time_agg": "min"}
-
-        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
-
-        res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
-        correct_result_false_min = pd.DataFrame(
+        expected_columns = ["user_id", "event", "event_type", "timestamp"]
+        expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
@@ -332,10 +337,14 @@ class TestCollapseLoopsHelper:
                 [2, "event1_loop_2", "group_alias", "2022-01-02 00:00:00"],
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
             ],
-            columns=correct_result_columns,
+            columns=expected_columns,
         )
-        correct_result_false_min["timestamp"] = pd.to_datetime(correct_result_false_min["timestamp"])
-        assert pd.testing.assert_frame_equal(res, correct_result_false_min) is None
+        expected["timestamp"] = pd.to_datetime(expected["timestamp"])
+
+        params = {"suffix": "count", "time_agg": "min"}
+        actual = source.collapse_loops(**params).to_dataframe()[expected_columns].reset_index(drop=True)
+
+        assert pd.testing.assert_frame_equal(actual, expected) is None
 
     def test_collapse_loops_graph__suffix_count__agg_max(self):
         source_df = pd.DataFrame(
@@ -355,12 +364,8 @@ class TestCollapseLoopsHelper:
 
         source = Eventstream(source_df)
 
-        params = {"suffix": "count", "time_agg": "max"}
-
-        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
-
-        res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
-        correct_result_false_max = pd.DataFrame(
+        expected_columns = ["user_id", "event", "event_type", "timestamp"]
+        expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
@@ -368,10 +373,14 @@ class TestCollapseLoopsHelper:
                 [2, "event1_loop_2", "group_alias", "2022-01-02 00:00:05"],
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
             ],
-            columns=correct_result_columns,
+            columns=expected_columns,
         )
-        correct_result_false_max["timestamp"] = pd.to_datetime(correct_result_false_max["timestamp"])
-        assert pd.testing.assert_frame_equal(res, correct_result_false_max) is None
+        expected["timestamp"] = pd.to_datetime(expected["timestamp"])
+
+        params = {"suffix": "count", "time_agg": "max"}
+        actual = source.collapse_loops(**params).to_dataframe()[expected_columns].reset_index(drop=True)
+
+        assert pd.testing.assert_frame_equal(actual, expected) is None
 
     def test_collapse_loops_graph__suffix_loop__agg_mean(self):
         source_df = pd.DataFrame(
@@ -388,15 +397,10 @@ class TestCollapseLoopsHelper:
             ],
             columns=["user_id", "event", "timestamp"],
         )
-
         source = Eventstream(source_df)
 
-        params = {"suffix": "loop", "time_agg": "mean"}
-
-        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
-
-        res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
-        correct_result_true_mean = pd.DataFrame(
+        expected_columns = ["user_id", "event", "event_type", "timestamp"]
+        expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
@@ -404,10 +408,14 @@ class TestCollapseLoopsHelper:
                 [2, "event1_loop", "group_alias", "2022-01-02 00:00:02.5"],
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
             ],
-            columns=correct_result_columns,
+            columns=expected_columns,
         )
-        correct_result_true_mean["timestamp"] = pd.to_datetime(correct_result_true_mean["timestamp"])
-        assert pd.testing.assert_frame_equal(res, correct_result_true_mean) is None
+        expected["timestamp"] = pd.to_datetime(expected["timestamp"])
+
+        params = {"suffix": "loop", "time_agg": "mean"}
+        actual = source.collapse_loops(**params).to_dataframe()[expected_columns].reset_index(drop=True)
+
+        assert pd.testing.assert_frame_equal(actual, expected) is None
 
     def test_collapse_loops_graph__suffix_none__agg_mean(self):
         source_df = pd.DataFrame(
@@ -429,10 +437,10 @@ class TestCollapseLoopsHelper:
 
         params = {"suffix": None, "time_agg": "mean"}
 
-        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
+        expected_columns = ["user_id", "event", "event_type", "timestamp"]
 
-        res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
-        correct_result_true_mean = pd.DataFrame(
+        actual = source.collapse_loops(**params).to_dataframe()[expected_columns].reset_index(drop=True)
+        expected = pd.DataFrame(
             [
                 [1, "event1", "raw", "2022-01-01 00:01:00"],
                 [1, "event2", "raw", "2022-01-01 00:01:02"],
@@ -440,10 +448,10 @@ class TestCollapseLoopsHelper:
                 [2, "event1", "group_alias", "2022-01-02 00:00:02.5"],
                 [2, "event2", "raw", "2022-01-02 00:00:05"],
             ],
-            columns=correct_result_columns,
+            columns=expected_columns,
         )
-        correct_result_true_mean["timestamp"] = pd.to_datetime(correct_result_true_mean["timestamp"])
-        assert pd.testing.assert_frame_equal(res, correct_result_true_mean) is None
+        expected["timestamp"] = pd.to_datetime(expected["timestamp"])
+        assert pd.testing.assert_frame_equal(actual, expected) is None
 
     def test_collapse_loops_graph__default_custom_cols(self):
         source_df = pd.DataFrame(
@@ -471,10 +479,8 @@ class TestCollapseLoopsHelper:
             },
         )
 
-        params = {}
-        correct_result_columns = ["user_id", "event", "event_type", "timestamp", "str_col", "num_col"]
-        res = source.collapse_loops(**params).to_dataframe()[correct_result_columns].reset_index(drop=True)
-        correct_result_custom_cols = pd.DataFrame(
+        expected_columns = ["user_id", "event", "event_type", "timestamp", "str_col", "num_col"]
+        expected = pd.DataFrame(
             [
                 [1, "event1", "group_alias", "2022-01-01 00:01:00", "A", 1.5],
                 [1, "event2", "raw", "2022-01-01 00:02:02", "A", None],
@@ -482,7 +488,11 @@ class TestCollapseLoopsHelper:
                 [2, "event1", "group_alias", "2022-01-02 00:00:00", None, 7.5],
                 [2, "event2", "raw", "2022-01-02 00:00:05", "A", 1],
             ],
-            columns=correct_result_columns,
+            columns=expected_columns,
         )
-        correct_result_custom_cols["timestamp"] = pd.to_datetime(correct_result_custom_cols["timestamp"])
-        assert pd.testing.assert_frame_equal(res, correct_result_custom_cols) is None
+        expected["timestamp"] = pd.to_datetime(expected["timestamp"])
+
+        params = {}
+        actual = source.collapse_loops(**params).to_dataframe()[expected_columns].reset_index(drop=True)
+
+        assert pd.testing.assert_frame_equal(actual, expected) is None

@@ -15,6 +15,8 @@ def _numeric_values_processing(x: pd.Series) -> int | float:
 
 
 def _string_values_processing(x: pd.Series) -> str | None:
+    # check if all the values in the collapsing group are equal
+    # NaN values are ignored
     if x.nunique() == 1:
         return x.dropna().max()
     else:
@@ -169,15 +171,14 @@ class CollapseLoops(DataProcessor):
                 cols_with_na = df_to_del[custom_cols].isna().sum()
                 rows_to_show = df_to_del[df_to_del.isnull().any(axis=1)].head(3)
 
-                warning_message = (
-                    f"\n\nThere are some NaN values in the input custom columns!\n"
-                    f"The total amount of NaN values in each column:\n\n"
-                    f"{cols_with_na}\n\n"
-                    f"As a reference, here are some rows where NaNs occurred:\n\n"
-                    f"{rows_to_show[cols_to_show]}\n\n"
-                    f"These NaN values will be ignored in the further calculation, "
-                    f"see collapse_loops documentation {link_url}\n\n"
-                )
+                warning_message = f"""
+\nThere are some NaN values in the input custom columns!
+The total amount of NaN values in each column:\n
+{cols_with_na}\n
+As a reference, here are some rows where NaNs occurred:\n
+{rows_to_show[cols_to_show]}\n
+These NaN values will be ignored in the further calculation, see collapse_loops documentation {link_url}\n
+                    """
                 warnings.warn(warning_message)
 
             if loops[custom_cols].isna().values.sum() > 0:
@@ -188,14 +189,14 @@ class CollapseLoops(DataProcessor):
                 cols_with_na = loops[custom_cols].isna().sum()
                 rows_to_show = loops[loops.isnull().any(axis=1)].head(3)
 
-                warning_message = (
-                    f"\n\nThere are NaN values in the aggregated custom columns!\n"
-                    f"The total amount of NaN values in each column:\n\n"
-                    f"{cols_with_na}\n\n"
-                    f"As a reference, here are some rows where NaNs occurred:\n\n"
-                    f"{rows_to_show[cols_to_show]}\n\n"
-                    f"For more information, see collapse_loops documentation {link_url}\n\n"
-                )
+                warning_message = f"""
+\nThere are NaN values in the aggregated custom columns!
+The total amount of NaN values in each column:\n
+{cols_with_na}\n
+As a reference, here are some rows where NaNs occurred:\n
+{rows_to_show[cols_to_show]}\n
+For more information, see collapse_loops documentation {link_url}\n
+                    """
                 warnings.warn(warning_message)
 
         df_loops = pd.concat([loops, df_to_del])

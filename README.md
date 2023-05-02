@@ -33,6 +33,7 @@ We recommend starting your Retentioneering journey with the :doc:`Quick Start do
 
 ## Changelog
 @TODO: replace release3 with 3.0. dpanina
+
 This is new major release Retentioneering 3.0. Change log is available [here](https://doc.retentioneering.com/release3/doc/whatsnew/v3.0.0.html).
 
 Complete documentation is available [here](https://doc.retentioneering.com/release3/doc/index.html).
@@ -55,9 +56,11 @@ pip3 install retentioneering
 
 ## Quick start
 @TODO: replace release3 with 3.0. dpanina
+
 [Start using Retentioneering for clickstream analysis](https://doc.retentioneering.com/release3/doc/getting_started/quick_start.html)
 
 @TODO: Which Colab. dpanina
+
 Or directly open this notebook in [Google Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/examples/graph_tutorial.ipynb) to run with sample data.
 
 

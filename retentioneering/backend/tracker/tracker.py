@@ -28,7 +28,7 @@ class Tracker(Singleton):
         return self._user_id
 
     def __obtain_user_id(self) -> str:
-        return RETE_CONFIG.tracking.tracking_id
+        return RETE_CONFIG.user.pk
 
     def clear_params(self, params: dict[str, Any], allowed_params: list[str] | None = None) -> list[str]:
         if allowed_params is None:

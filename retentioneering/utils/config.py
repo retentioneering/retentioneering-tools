@@ -12,7 +12,15 @@ from pydantic.dataclasses import dataclass
 
 from retentioneering.utils.hwid import get_hwid  # type: ignore
 
+
+def get_user_id() -> str:
+    return get_hwid() or str(uuid.uuid4())
+
+
 DEFAULT_CONFIG = {
+    "user": {
+        "pk": get_user_id(),
+    },
     "transition_graph": {
         "width": 960,
         "height": 900,
@@ -36,11 +44,15 @@ class TrackingConfig(BaseConfig):
     """
 
     is_tracking_allowed: bool = True
-    tracking_id: str = ""
+
+
+@dataclass
+class UserConfig(BaseConfig):
+    pk: str = ""
 
     def __post_init__(self) -> None:
-        if self.tracking_id == "":
-            self.tracking_id = get_hwid() or str(uuid.uuid4())
+        if self.pk == "":
+            self.pk = get_user_id()
 
 
 @dataclass
@@ -75,6 +87,7 @@ class Config(BaseConfig):
     """
 
     tracking: TrackingConfig = TrackingConfig()
+    user: UserConfig = UserConfig()
     transition_graph: TransitionGraphConfig = TransitionGraphConfig()
     preprocessing_graph: PreprocessiongGraphConfig = PreprocessiongGraphConfig()
 
@@ -101,6 +114,7 @@ class Config(BaseConfig):
                 try:
                     config = json.load(f)
                     self.tracking = TrackingConfig(**config.get("tracking", {}))
+                    self.user = UserConfig(**config.get("user", {}))
                     self.transition_graph = TransitionGraphConfig(**config.get("transition_graph", {}))
                     self.preprocessing_graph = PreprocessiongGraphConfig(**config.get("preprocessing_graph", {}))
                 except json.decoder.JSONDecodeError:
@@ -113,6 +127,7 @@ class Config(BaseConfig):
         # get current data as dict
         config_data = {
             "tracking": asdict(self.tracking),
+            "user": asdict(self.user),
             "transition_graph": asdict(self.transition_graph),
             "preprocessing_graph": asdict(self.preprocessing_graph),
         }

@@ -144,15 +144,16 @@ class TestPreprocessingGraph:
         assert event_names == ["pageview", "add_to_cart", "pageview", "add_to_cart"]
         assert event_types == ["raw", "group_alias", "raw", "group_alias"]
 
-    def test_combine_merge_node(self):
+    def test_combine_merge_node_with_groups(self):
         source_df = pd.DataFrame(
             [
                 {"event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
                 {"event_name": "cart_btn_click", "event_timestamp": "2021-10-26 12:02", "user_id": "1"},
                 {"event_name": "pageview", "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
                 {"event_name": "trash_event", "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
-                {"event_name": "exit_btn_click", "event_timestamp": "2021-10-26 12:04", "user_id": "2"},
-                {"event_name": "plus_icon_click", "event_timestamp": "2021-10-26 12:05", "user_id": "1"},
+                {"event_name": "trash_event", "event_timestamp": "2021-10-26 12:04", "user_id": "2"},
+                {"event_name": "exit_btn_click", "event_timestamp": "2021-10-26 12:06", "user_id": "2"},
+                {"event_name": "plus_icon_click", "event_timestamp": "2021-10-26 12:07", "user_id": "2"},
             ]
         )
 
@@ -163,7 +164,13 @@ class TestPreprocessingGraph:
             raw_data=source_df,
         )
 
-        cart_events = EventsNode(
+        allowed_events = EventsNode(
+            FilterEvents(FilterEventsParams(func=lambda df, schema: df[schema.event_name] != "trash_event"))
+        )
+
+        user_1 = EventsNode(FilterEvents(FilterEventsParams(func=lambda df, schema: df[schema.user_id] == "1")))
+
+        cart_events_1 = EventsNode(
             GroupEvents(
                 GroupEventsParams(
                     event_name="add_to_cart",
@@ -171,29 +178,39 @@ class TestPreprocessingGraph:
                 )
             )
         )
-        logout_events = EventsNode(
-            GroupEvents(
+
+        logout_events_1 = EventsNode(
+            processor=GroupEvents(
                 GroupEventsParams(
                     event_name="logout",
                     func=lambda df, schema: df[schema.event_name] == "exit_btn_click",
                 )
-            )
+            ),
+            description="logout_events_1",
         )
-        allowed_events = EventsNode(
-            FilterEvents(FilterEventsParams(func=lambda df, schema: df[schema.event_name] != "trash_event"))  # type: ignore
-        )
+
+        user_2 = EventsNode(FilterEvents(FilterEventsParams(func=lambda df, schema: df[schema.user_id] == "2")))
+
+        cart_events_2 = cart_events_1.copy()
+        logout_events_2 = logout_events_1.copy()
+
         merge = MergeNode()
 
         graph = PreprocessingGraph(source)
-        graph.add_node(node=cart_events, parents=[graph.root])
-        graph.add_node(node=logout_events, parents=[graph.root])
         graph.add_node(node=allowed_events, parents=[graph.root])
+        graph.add_node(node=user_1, parents=[allowed_events])
+        graph.add_node(node=cart_events_1, parents=[user_1])
+        graph.add_node(node=logout_events_1, parents=[cart_events_1])
+
+        graph.add_node(node=user_2, parents=[allowed_events])
+        graph.add_node(node=cart_events_2, parents=[user_2])
+        graph.add_node(node=logout_events_2, parents=[cart_events_2])
+
         graph.add_node(
             node=merge,
             parents=[
-                cart_events,
-                logout_events,
-                allowed_events,
+                logout_events_1,
+                logout_events_2,
             ],
         )
 
@@ -214,7 +231,70 @@ class TestPreprocessingGraph:
 
         assert event_types == ["raw", "group_alias", "raw", "group_alias", "group_alias"]
 
-        assert user_ids == ["1", "1", "1", "2", "1"]
+        assert user_ids == ["1", "1", "1", "2", "2"]
+
+    def test_combine_merge_node_delete_events(self) -> None:
+        source_df = pd.DataFrame(
+            [
+                {"event_name": "pageview", "event_timestamp": "2021-10-26 12:00", "user_id": "1"},
+                {"event_name": "cart_btn_click", "event_timestamp": "2021-10-26 12:02", "user_id": "1"},
+                {"event_name": "pageview", "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
+                {"event_name": "trash_event", "event_timestamp": "2021-10-26 12:03", "user_id": "1"},
+                {"event_name": "exit_btn_click", "event_timestamp": "2021-10-26 12:04", "user_id": "1"},
+                {"event_name": "plus_icon_click", "event_timestamp": "2021-10-26 12:05", "user_id": "1"},
+            ]
+        )
+
+        source = Eventstream(
+            raw_data_schema=RawDataSchema(
+                event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
+            ),
+            raw_data=source_df,
+        )
+
+        do_nothing_node_1 = EventsNode(
+            processor=FilterEvents(
+                FilterEventsParams(func=lambda df, schema: df[schema.user_id] == "1"),
+            ),
+            description="do_nothing_node_1",
+        )
+
+        delete_trash_events_1 = EventsNode(
+            processor=FilterEvents(FilterEventsParams(func=lambda df, schema: df[schema.event_name] != "trash_event")),
+            description="delete_trash_events_1",
+        )
+
+        do_nothing_node_2 = EventsNode(
+            FilterEvents(
+                FilterEventsParams(func=lambda df, schema: df[schema.user_id] == "1"),
+            )
+        )
+
+        delete_trash_events_2 = EventsNode(
+            FilterEvents(FilterEventsParams(func=lambda df, schema: df[schema.event_name] != "trash_event"))
+        )
+
+        merge = MergeNode()
+        graph = PreprocessingGraph(source)
+        graph.add_node(node=do_nothing_node_1, parents=[graph.root])
+        graph.add_node(node=do_nothing_node_2, parents=[graph.root])
+        graph.add_node(node=delete_trash_events_1, parents=[do_nothing_node_1])
+        graph.add_node(node=delete_trash_events_2, parents=[do_nothing_node_2])
+
+        graph.add_node(
+            node=merge,
+            parents=[
+                delete_trash_events_1,
+                delete_trash_events_2,
+            ],
+        )
+
+        result = graph.combine(merge)
+        result_df = result.to_dataframe()
+
+        event_names: list[str] = result_df[source.schema.event_name].to_list()
+
+        assert event_names == ["pageview", "cart_btn_click", "pageview", "exit_btn_click", "plus_icon_click"]
 
     def test_get_values(self) -> None:
         source_df = pd.DataFrame(

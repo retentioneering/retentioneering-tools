@@ -75,14 +75,10 @@ class Clusters:
             "method",
             "n_clusters",
             "X",
+            "random_state",
         ],
     )
-    def fit(
-        self,
-        method: Method,
-        n_clusters: int,
-        X: pd.DataFrame,
-    ) -> Clusters:
+    def fit(self, method: Method, n_clusters: int, X: pd.DataFrame, random_state: int | None = None) -> Clusters:
         """
         Prepare features and compute clusters for the input eventstream data.
 
@@ -98,6 +94,9 @@ class Clusters:
         X : pd.DataFrame
             ``pd.DataFrame`` representing a custom vectorization of the user paths. The index corresponds to user_ids,
             the columns are vectorized values of the path. See :py:func:`extract_features`.
+        random_state : int, optional
+            Use an int to make the randomness deterministic. Calling ``fit`` multiple times with the same
+            ``random_state`` leads to the same clustering results.
 
         Returns
         -------
@@ -107,7 +106,7 @@ class Clusters:
 
         self._method, self._n_clusters, self._X = self.__validate_input(method, n_clusters, X)
 
-        self.__cluster_result = self._prepare_clusters()
+        self.__cluster_result = self._prepare_clusters(random_state=random_state)
         self._user_clusters = self.__cluster_result.copy()
 
         self.__segments = Segments(
@@ -582,15 +581,15 @@ class Clusters:
 
         return _method, _n_clusters, X
 
-    def _prepare_clusters(self) -> pd.Series:
+    def _prepare_clusters(self, random_state: int | None) -> pd.Series:
         user_clusters = pd.Series(dtype=np.int64)
 
         features = self._X.copy()  # type: ignore
         if self._n_clusters is not None:
             if self._method == "kmeans":
-                cluster_result = self._kmeans(features=features, n_clusters=self._n_clusters)
+                cluster_result = self._kmeans(features=features, n_clusters=self._n_clusters, random_state=random_state)
             elif self._method == "gmm":
-                cluster_result = self._gmm(features=features, n_clusters=self._n_clusters)
+                cluster_result = self._gmm(features=features, n_clusters=self._n_clusters, random_state=random_state)
             else:
                 raise ValueError("Unknown method: %s" % self._method)
 
@@ -768,13 +767,13 @@ class Clusters:
         return bar
 
     @staticmethod
-    def _kmeans(features: pd.DataFrame, n_clusters: int = 8, random_state: int = 0) -> np.ndarray:
+    def _kmeans(features: pd.DataFrame, random_state: int | None, n_clusters: int = 8) -> np.ndarray:
         km = KMeans(random_state=random_state, n_clusters=n_clusters)
         cl = km.fit_predict(features.values)
         return cl
 
     @staticmethod
-    def _gmm(features: pd.DataFrame, n_clusters: int = 8, random_state: int = 0) -> np.ndarray:
+    def _gmm(features: pd.DataFrame, random_state: int | None, n_clusters: int = 8) -> np.ndarray:
         km = GaussianMixture(random_state=random_state, n_components=n_clusters)
         cl = km.fit_predict(features.values)
         return cl

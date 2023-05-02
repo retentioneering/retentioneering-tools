@@ -37,9 +37,6 @@ class StepSankey(EndedEventsMixin):
     threshold: int | float
     sorting: list | None
     targets: list[str] | str | None
-    autosize: bool
-    width: int | None
-    height: int | None
 
     data_grp_nodes: pd.DataFrame
     data: pd.DataFrame
@@ -266,7 +263,14 @@ class StepSankey(EndedEventsMixin):
         data["time_to_next"].fillna(data["time_to_next"].min(), inplace=True)
         return data
 
-    def _render_plot(self, data_for_plot: dict, data_grp_nodes: pd.DataFrame) -> go.Figure:
+    def _render_plot(
+        self,
+        data_for_plot: dict,
+        data_grp_nodes: pd.DataFrame,
+        autosize: bool = True,
+        width: int | None = None,
+        height: int | None = None,
+    ) -> go.Figure:
         # NOTE fill lists for plot
         targets = []
         sources = []
@@ -320,9 +324,7 @@ class StepSankey(EndedEventsMixin):
                 )
             ]
         )
-        fig.update_layout(
-            font=dict(size=15), plot_bgcolor="white", autosize=self.autosize, width=self.width, height=self.height
-        )
+        fig.update_layout(font=dict(size=15), plot_bgcolor="white", autosize=autosize, width=width, height=height)
 
         return fig
 
@@ -601,10 +603,13 @@ class StepSankey(EndedEventsMixin):
 
         """
 
-        self.autosize = autosize
-        self.width = width
-        self.height = height
-        figure = self._render_plot(self.data_for_plot, self.data_grp_nodes)
+        figure = self._render_plot(
+            data_for_plot=self.data_for_plot,
+            data_grp_nodes=self.data_grp_nodes,
+            autosize=autosize,
+            width=width,
+            height=height,
+        )
         return figure
 
     @property
@@ -645,7 +650,4 @@ class StepSankey(EndedEventsMixin):
             "threshold": self.threshold,
             "sorting": self.sorting,
             "targets": self.targets,
-            "autosize": self.autosize,
-            "width": self.width,
-            "height": self.height,
         }

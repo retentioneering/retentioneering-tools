@@ -197,7 +197,7 @@ class CollapseLoops(DataProcessor):
                     where_nans="custom",
                     total_nan_amount=cols_with_na,
                     nan_example=rows_to_show[cols_to_show],
-                    further_calc_info="",
+                    input_data_add_info="",
                     link=link_url,
                 )
 

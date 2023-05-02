@@ -33,7 +33,7 @@ class BaseNode:
             data["processor"] = processor.to_dict()
         return data
 
-    def clone(self) -> BaseNode:
+    def copy(self) -> BaseNode:
         return BaseNode()
 
 
@@ -46,11 +46,14 @@ class SourceNode(BaseNode):
         self.events = source
         self.description = description
 
-    def clone(self) -> SourceNode:
+    def __copy__(self) -> SourceNode:
         return SourceNode(
-            source=self.events,
+            source=self.events.copy(),
             description=self.description,
         )
+
+    def copy(self) -> SourceNode:
+        return self.__copy__()
 
 
 class EventsNode(BaseNode):
@@ -116,10 +119,13 @@ class MergeNode(BaseNode):
         self.events = None
         self.description = description
 
-    def clone(self) -> MergeNode:
+    def __copy__(self) -> MergeNode:
         return MergeNode(
             description=self.description,
         )
+
+    def copy(self) -> MergeNode:
+        return self.__copy__()
 
 
 Node = Union[SourceNode, EventsNode, MergeNode]

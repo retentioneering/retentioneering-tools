@@ -64,6 +64,20 @@ html_theme_options = {
     "show_toc_level": 2,
     # @TODO: fix when a new repo name appears. Vladimir Kukushkin
     "github_url": "https://github.com/retentioneering/retentioneering-tools-new-arch",
+    "icon_links": [
+        {
+            "name": "Discord",
+            "url": "https://discord.gg/hBnuQABEV2",
+            "icon": "fab fa-discord",
+            "type": "fontawesome",
+        },
+        {
+            "name": "Telegram",
+            "url": "https://t.me/retentioneering_support",
+            "icon": "fab fa-telegram",
+            "type": "fontawesome",
+        },
+    ],
     "use_edit_page_button": True,
     "header_links_before_dropdown": 6,
     # "check_switcher": False,

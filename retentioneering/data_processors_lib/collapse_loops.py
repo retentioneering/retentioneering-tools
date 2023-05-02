@@ -163,40 +163,44 @@ class CollapseLoops(DataProcessor):
 
         if len(custom_cols) > 0:
             cols_to_show = [user_col, time_col, type_col, event_col] + custom_cols
-            if df_to_del[custom_cols].isna().values.sum() > 0:
-                link_url = (
-                    "https://doc.retentioneering.com/release3/doc/api/preprocessing/data_processors/collapse_loops.html"
-                )
+            link_url = (
+                "https://doc.retentioneering.com/release3/doc/api/preprocessing/data_processors/collapse_loops.html"
+            )
+            message_template = """
+                                    \nThere are NaN values in the {where_nans} columns!
+                                    \nThe total amount of NaN values in each column:
+                                    \n{total_nan_amount}
+                                    \nAs a reference, here are some rows where NaNs occurred:
+                                    \n{nan_example}{input_data_add_info}
+                                    \nFor more information, see collapse_loops documentation {link}\n
+                                """
 
+            if df_to_del[custom_cols].isna().values.sum() > 0:
                 cols_with_na = df_to_del[custom_cols].isna().sum()
                 rows_to_show = df_to_del[df_to_del.isnull().any(axis=1)].head(3)
 
-                warning_message = f"""
-\nThere are some NaN values in the input custom columns!
-The total amount of NaN values in each column:\n
-{cols_with_na}\n
-As a reference, here are some rows where NaNs occurred:\n
-{rows_to_show[cols_to_show]}\n
-These NaN values will be ignored in the further calculation, see collapse_loops documentation {link_url}\n
-                    """
+                warning_message = message_template.format(
+                    where_nans="input",
+                    total_nan_amount=cols_with_na,
+                    nan_example=rows_to_show[cols_to_show],
+                    input_data_add_info="\n\nThese NaN values will be ignored in the further calculation",
+                    link=link_url,
+                )
+
                 warnings.warn(warning_message)
 
             if loops[custom_cols].isna().values.sum() > 0:
-                link_url = (
-                    "https://doc.retentioneering.com/release3/doc/api/preprocessing/data_processors/collapse_loops.html"
-                )
-
                 cols_with_na = loops[custom_cols].isna().sum()
                 rows_to_show = loops[loops.isnull().any(axis=1)].head(3)
 
-                warning_message = f"""
-\nThere are NaN values in the aggregated custom columns!
-The total amount of NaN values in each column:\n
-{cols_with_na}\n
-As a reference, here are some rows where NaNs occurred:\n
-{rows_to_show[cols_to_show]}\n
-For more information, see collapse_loops documentation {link_url}\n
-                    """
+                warning_message = message_template.format(
+                    where_nans="custom",
+                    total_nan_amount=cols_with_na,
+                    nan_example=rows_to_show[cols_to_show],
+                    further_calc_info="",
+                    link=link_url,
+                )
+
                 warnings.warn(warning_message)
 
         df_loops = pd.concat([loops, df_to_del])

@@ -21,7 +21,6 @@ DEFAULT_CONFIG = {
         "show_nodes_names": True,
         "show_all_edges_for_targets": True,
         "show_nodes_without_links": False,
-        "url": "https://static.server.retentioneering.com/viztools/transition-graph/v3/transition-graph.umd.js",
     },
     "preprocessing_graph": {
         "width": 960,
@@ -50,7 +49,6 @@ class TransitionGraphConfig(BaseConfig):
     Configuration for the transition graph.
     """
 
-    url: str = "https://static.server.retentioneering.com/viztools/transition-graph/v3/transition-graph.umd.js"
     width: int = 960
     height: int = 900
     show_weights: bool = True

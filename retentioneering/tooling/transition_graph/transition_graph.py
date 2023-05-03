@@ -780,7 +780,7 @@ class TransitionGraph:
         graph_body = self.render.body()
 
         graph_script_src = (
-            "https://static.server.retentioneering.com/viztools/transition-graph/v3/transition-graph.umd.js?id="
+            "https://static.server.retentioneering.com/package/@rete/transition-graph/version/1/dist/transition-graph.umd.js?id="
             + self.generateId()
         )
 

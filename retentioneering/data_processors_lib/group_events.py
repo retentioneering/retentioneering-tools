@@ -2,6 +2,7 @@ from typing import Any, Callable, Optional
 
 import pandas as pd
 
+from retentioneering.backend.tracker import track
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamSchemaType, EventstreamType
 from retentioneering.params_model import ParamsModel
@@ -65,9 +66,19 @@ class GroupEvents(DataProcessor):
 
     params: GroupEventsParams
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="group_events",
+        allowed_params=[],
+    )
     def __init__(self, params: GroupEventsParams) -> None:
         super().__init__(params=params)
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "apply"},
+        scope="group_events",
+        allowed_params=[],
+    )
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from retentioneering.eventstream.eventstream import Eventstream
 

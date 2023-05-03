@@ -2,12 +2,22 @@ from __future__ import annotations
 
 from typing import Optional, Tuple
 
+from retentioneering.backend.tracker import track
 from retentioneering.constants import DATETIME_UNITS
 
 from ..types import EventstreamType
 
 
 class LabelCroppedPathsHelperMixin:
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="label_cropped_paths",
+        event_value="combine",
+        allowed_params=[
+            "left_cutoff",
+            "right_cutoff",
+        ],
+    )
     def label_cropped_paths(
         self,
         left_cutoff: Optional[Tuple[float, DATETIME_UNITS]],

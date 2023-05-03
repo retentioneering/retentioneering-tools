@@ -2,10 +2,20 @@ from __future__ import annotations
 
 from typing import List, Literal, Union
 
+from retentioneering.backend.tracker import track
+
 from ..types import EventstreamType
 
 
 class LabelNewUsersHelperMixin:
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="label_new_users",
+        event_value="combine",
+        allowed_params=[
+            "new_users_list",
+        ],
+    )
     def label_new_users(self, new_users_list: Union[List[int], Literal["all"]]) -> EventstreamType:
         """
         A method of ``Eventstream`` class that creates one

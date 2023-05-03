@@ -4,6 +4,7 @@ from typing import List, Literal, Union
 
 from pandas import DataFrame
 
+from retentioneering.backend.tracker import track
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.params_model import ParamsModel
@@ -54,9 +55,19 @@ class LabelNewUsers(DataProcessor):
 
     params: LabelNewUsersParams
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="label_new_users",
+        allowed_params=[],
+    )
     def __init__(self, params: LabelNewUsersParams):
         super().__init__(params=params)
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "apply"},
+        scope="label_new_users",
+        allowed_params=[],
+    )
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from retentioneering.eventstream.eventstream import Eventstream
 

@@ -4,10 +4,20 @@ from typing import Callable
 
 from pandas import DataFrame, Series
 
+from retentioneering.backend.tracker import track
+
 from ..types import EventstreamSchemaType, EventstreamType
 
 
 class FilterEventsHelperMixin:
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="add_negative_events",
+        event_value="combine",
+        allowed_params=[
+            "func",
+        ],
+    )
     def filter_events(self, func: Callable[[DataFrame, EventstreamSchemaType], Series]) -> EventstreamType:
         """
         A method of ``Eventstream`` class that filters input ``eventstream`` based on custom conditions.

@@ -4,6 +4,7 @@ from typing import Any, Literal, Optional
 
 import pandas as pd
 
+from retentioneering.backend.tracker import track
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.params_model import ParamsModel
@@ -65,9 +66,19 @@ class TruncatePaths(DataProcessor):
 
     params: TruncatePathsParams
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="truncate_paths",
+        allowed_params=[],
+    )
     def __init__(self, params: TruncatePathsParams):
         super().__init__(params=params)
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "apply"},
+        scope="truncate_paths",
+        allowed_params=[],
+    )
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from retentioneering.eventstream.eventstream import Eventstream
 

@@ -3,6 +3,7 @@ from typing import Callable
 import pandas as pd
 from pandas import DataFrame, Series
 
+from retentioneering.backend.tracker import track
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.eventstream.types import EventstreamSchemaType, EventstreamType
@@ -48,9 +49,19 @@ class FilterEvents(DataProcessor):
 
     params: FilterEventsParams
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="filter_events",
+        allowed_params=[],
+    )
     def __init__(self, params: FilterEventsParams):
         super().__init__(params=params)
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "apply"},
+        scope="filter_events",
+        allowed_params=[],
+    )
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from retentioneering.eventstream.eventstream import Eventstream
 

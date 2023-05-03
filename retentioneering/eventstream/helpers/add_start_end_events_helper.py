@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+from retentioneering.backend.tracker import track
+
 from ..types import EventstreamType
 
 
 class AddStartEndEventsHelperMixin:
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="add_negative_events",
+        event_value="combine",
+        allowed_params=[],
+    )
     def add_start_end_events(self) -> EventstreamType:
         """
         A method of ``Eventstream`` class that creates

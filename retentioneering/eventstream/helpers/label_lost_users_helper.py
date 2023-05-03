@@ -2,12 +2,22 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple
 
+from retentioneering.backend.tracker import track
 from retentioneering.constants import DATETIME_UNITS
 
 from ..types import EventstreamType
 
 
 class LabelLostUsersHelperMixin:
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="label_lost_users",
+        event_value="combine",
+        allowed_params=[
+            "timeout",
+            "lost_users_list",
+        ],
+    )
     def label_lost_users(
         self, timeout: Optional[Tuple[float, DATETIME_UNITS]] = None, lost_users_list: Optional[List[int]] = None
     ) -> EventstreamType:

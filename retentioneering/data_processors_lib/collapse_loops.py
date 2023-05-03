@@ -5,6 +5,7 @@ from typing import Any, Callable, Literal, Optional
 
 import pandas as pd
 
+from retentioneering.backend.tracker import track
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.params_model import ParamsModel
@@ -97,9 +98,19 @@ class CollapseLoops(DataProcessor):
     params: CollapseLoopsParams
     NUMERIC_DTYPES = ["integer", "floating", "boolean", "mixed-integer-float"]
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="collapse_loops",
+        allowed_params=[],
+    )
     def __init__(self, params: CollapseLoopsParams):
         super().__init__(params=params)
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "apply"},
+        scope="collapse_loops",
+        allowed_params=[],
+    )
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from retentioneering.eventstream.eventstream import Eventstream
 

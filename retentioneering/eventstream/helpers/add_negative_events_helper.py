@@ -2,10 +2,21 @@ from __future__ import annotations
 
 from typing import Callable, List, Optional
 
+from retentioneering.backend.tracker import track
+
 from ..types import EventstreamType
 
 
 class AddNegativeEventsHelperMixin:
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="add_negative_events",
+        event_value="combine",
+        allowed_params=[
+            "targets",
+            "func",
+        ],
+    )
     def add_negative_events(self, targets: List[str], func: Optional[Callable] = None) -> EventstreamType:
         """
         A method of ``Eventstream`` class that creates new synthetic

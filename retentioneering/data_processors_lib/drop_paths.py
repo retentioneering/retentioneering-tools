@@ -4,6 +4,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 
+from retentioneering.backend.tracker import track
 from retentioneering.constants import DATETIME_UNITS
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamType
@@ -59,9 +60,19 @@ class DropPaths(DataProcessor):
 
     params: DropPathsParams
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="drop_paths",
+        allowed_params=[],
+    )
     def __init__(self, params: DropPathsParams):
         super().__init__(params=params)
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "apply"},
+        scope="drop_paths",
+        allowed_params=[],
+    )
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from retentioneering.eventstream.eventstream import Eventstream
 

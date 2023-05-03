@@ -2,12 +2,23 @@ from __future__ import annotations
 
 from typing import Optional, Tuple
 
+from retentioneering.backend.tracker import track
 from retentioneering.constants import DATETIME_UNITS
 
 from ..types import EventstreamType
 
 
 class SplitSessionsHelperMixin:
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="split_sessions",
+        event_value="combine",
+        allowed_params=[
+            "timeout",
+            "session_col",
+            "mark_truncated",
+        ],
+    )
     def split_sessions(
         self,
         timeout: Tuple[float, DATETIME_UNITS],

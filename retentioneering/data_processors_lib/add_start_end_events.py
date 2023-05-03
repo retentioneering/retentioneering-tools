@@ -3,6 +3,7 @@ from __future__ import annotations
 import pandas as pd
 from pandas import DataFrame
 
+from retentioneering.backend.tracker import track
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamType
 from retentioneering.params_model import ParamsModel
@@ -37,9 +38,15 @@ class AddStartEndEvents(DataProcessor):
 
     params: AddStartEndEventsParams
 
+    @track(tracking_info={"event_name": "init"}, scope="add_start_end_events", allowed_params=[])  # type: ignore
     def __init__(self, params: AddStartEndEventsParams) -> None:
         super().__init__(params=params)
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "apply"},
+        scope="add_start_end_events",
+        allowed_params=[],
+    )
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from retentioneering.eventstream.eventstream import Eventstream
 

@@ -2,10 +2,25 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
+from retentioneering.backend.tracker import track
+
 from ..types import EventstreamType
 
 
 class TruncatePathsHelperMixin:
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="truncate_paths",
+        event_value="combine",
+        allowed_params=[
+            "drop_before",
+            "drop_after",
+            "occurrence_before",
+            "occurrence_after",
+            "shift_before",
+            "shift_after",
+        ],
+    )
     def truncate_paths(
         self,
         drop_before: Optional[str] = None,

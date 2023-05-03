@@ -4,6 +4,7 @@ from typing import Any, Callable, List
 
 import pandas as pd
 
+from retentioneering.backend.tracker import track
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.eventstream.types import EventstreamType
@@ -87,9 +88,19 @@ class AddNegativeEvents(DataProcessor):
 
     params: AddNegativeEventsParams
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="add_negative_events",
+        allowed_params=[],
+    )
     def __init__(self, params: AddNegativeEventsParams):
         super().__init__(params=params)
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "apply"},
+        scope="add_negative_events",
+        allowed_params=[],
+    )
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from retentioneering.eventstream.eventstream import Eventstream
 

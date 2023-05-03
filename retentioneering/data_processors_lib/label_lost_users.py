@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
+from retentioneering.backend.tracker import track
 from retentioneering.constants import DATETIME_UNITS
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.types import EventstreamType
@@ -71,9 +72,19 @@ class LabelLostUsers(DataProcessor):
 
     params: LabelLostUsersParams
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="label_lost_users",
+        allowed_params=[],
+    )
     def __init__(self, params: LabelLostUsersParams):
         super().__init__(params=params)
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "apply"},
+        scope="label_lost_users",
+        allowed_params=[],
+    )
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from retentioneering.eventstream.eventstream import Eventstream
 

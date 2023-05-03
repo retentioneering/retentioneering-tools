@@ -2,10 +2,21 @@ from __future__ import annotations
 
 from typing import Literal, Union
 
+from retentioneering.backend.tracker import track
+
 from ..types import EventstreamType
 
 
 class CollapseLoopsHelperMixin:
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="collapse_loops",
+        event_value="combine",
+        allowed_params=[
+            "suffix",
+            "time_agg",
+        ],
+    )
     def collapse_loops(
         self,
         suffix: Union[Literal["loop", "count"], None] = None,

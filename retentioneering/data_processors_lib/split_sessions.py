@@ -5,6 +5,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 
+from retentioneering.backend.tracker import track
 from retentioneering.constants import DATETIME_UNITS
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
@@ -105,9 +106,19 @@ class SplitSessions(DataProcessor):
 
     params: SplitSessionsParams
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "init"},
+        scope="split_sessions",
+        allowed_params=[],
+    )
     def __init__(self, params: SplitSessionsParams) -> None:
         super().__init__(params=params)
 
+    @track(  # type: ignore
+        tracking_info={"event_name": "apply"},
+        scope="split_sessions",
+        allowed_params=[],
+    )
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from retentioneering.eventstream.eventstream import Eventstream
 

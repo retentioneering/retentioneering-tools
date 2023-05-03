@@ -4,12 +4,24 @@ from typing import Any, Callable
 
 import pandas as pd
 
+from retentioneering.backend.tracker import track
+
 from ..types import EventstreamSchemaType, EventstreamType
 
 EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchemaType], Any]
 
 
 class GroupEventsHelperMixin:
+    @track(  # type: ignore
+        tracking_info={"event_name": "helper"},
+        scope="group_events",
+        event_value="combine",
+        allowed_params=[
+            "event_name",
+            "func",
+            "event_type",
+        ],
+    )
     def group_events(
         self,
         event_name: str,

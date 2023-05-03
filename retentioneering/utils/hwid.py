@@ -62,3 +62,6 @@ def get_hwid() -> str:
     except Exception as e:
         hwid = ""
     return hwid
+
+
+__all__ = ("get_hwid",)

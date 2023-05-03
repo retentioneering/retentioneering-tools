@@ -24,7 +24,7 @@ As a natural part of the [Jupyter](https://jupyter.org/) environment, Retentione
 
 ### Retentioneering structure
 
-Retentioneering consists of two major parts: [the preprocessing module](https://doc.retentioneering.com/3.0/doc/getting_started/quick_start.html#quick-start-preprocessing), and [the path analysis tools](https://doc.retentioneering.com/3.0/doc/getting_started/quick_start.html#quick-start-rete-tools).
+Retentioneering consists of two major parts: [the preprocessing module](https://doc.retentioneering.com/3.0/doc/getting_started/quick_start.html#quick-start-preprocessing) and [the path analysis tools](https://doc.retentioneering.com/3.0/doc/getting_started/quick_start.html#quick-start-rete-tools).
 
 The **preprocessing module** provides a wide range of hands-on methods specifically designed for processing clickstream data, which can be called either using code, or via the preprocessing GUI. With separate methods for grouping or filtering events, splitting a clickstream into sessions, and much more, the Retentioneering preprocessing module enables you to dramatically reduce the amount of code, and therefore potential errors. Plus, if you’re dealing with a branchy analysis, which often happens, the preprocessing methods will help you make the calculations structured and reproducible, and organize them as a calculation graph. This is especially helpful for working with a team.
 

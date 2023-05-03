@@ -10,7 +10,7 @@ classifiers = [
     "Operating System :: Unix",
     "Operating System :: MacOS",
 ]
-license = {text = "Retentioneering Software Non-Exclusive License"}
+license = {text = "Retentioneering Software Non-Exclusive License", file = "LICENSE.md"}
 authors = [
   { name="Retentioneering User Trajectory Analysis Lab", email="retentioneering@gmail.com" },
 ]

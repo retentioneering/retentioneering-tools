@@ -1,4 +1,4 @@
-[![Rete logo](https://github.com/retentioneering/pics/blob/master/pics/logo_long_black.png)](https://github.com/retentioneering/retentioneering-tools)
+[![Rete logo](https://raw.githubusercontent.com/retentioneering/pics/master/pics/logo_long_black.png)](https://github.com/retentioneering/retentioneering-tools)
 
 [![Discord](https://img.shields.io/badge/server-on%20discord-blue)](https://discord.com/invite/hBnuQABEV2)
 [![Telegram](https://img.shields.io/badge/chat-on%20telegram-blue)](https://t.me/retentioneering_support)
@@ -15,7 +15,7 @@ You can use Retentioneering to explore user behavior, segment users, and form hy
 
 Retentioneering uses clickstream data to build behavioral segments, highlighting the events and patterns in user behavior that impact your conversion rates, retention, and revenue. The Retentioneering library is created for data analysts, marketing analysts, product owners, managers, and anyone else whose job is to improve a product’s quality.
 
-[![A simplified scenario of user behavior exploration with Retentioneering.](https://github.com/retentioneering/pics/blob/master/pics/rete20/intro_0.png)](https://github.com/retentioneering/retentioneering-tools)
+[![A simplified scenario of user behavior exploration with Retentioneering.](https://raw.githubusercontent.com/retentioneering/pics/master/pics/rete20/intro_0.png)](https://github.com/retentioneering/retentioneering-tools)
 
 
 As a natural part of the [Jupyter](https://jupyter.org/) environment, Retentioneering extends the abilities of [pandas](https://pandas.pydata.org), [NetworkX](https://networkx.org/), [scikit-learn](https://scikit-learn.org) libraries to process sequential events data more efficiently. Retentioneering tools are interactive and tailored for analytical research, so you do not have to be a Python expert to use it. With just a few lines of code, you can wrangle data, explore customer journey maps, and make visualizations.

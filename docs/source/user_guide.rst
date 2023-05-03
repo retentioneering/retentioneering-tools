@@ -32,3 +32,11 @@ Path analysis tools
     Funnel <user_guides/funnel.rst>
     Cohorts <user_guides/cohorts.rst>
     Stattests <user_guides/stattests.rst>
+
+
+Tracking options
+----------------
+.. toctree::
+   :maxdepth: 1
+
+    Tracking options <user_guides/tracking_options.rst>

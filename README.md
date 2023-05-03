@@ -28,7 +28,7 @@ Retentioneering consists of two major parts: [the preprocessing module](https://
 
 The **preprocessing module** provides a wide range of hands-on methods specifically designed for processing clickstream data, which can be called either using code, or via the preprocessing GUI. With separate methods for grouping or filtering events, splitting a clickstream into sessions, and much more, the Retentioneering preprocessing module enables you to dramatically reduce the amount of code, and therefore potential errors. Plus, if you’re dealing with a branchy analysis, which often happens, the preprocessing methods will help you make the calculations structured and reproducible, and organize them as a calculation graph. This is especially helpful for working with a team.
 
-The **path analysis tools** bring behavior-driven segmentation of users to product analysis by providing a powerful set of techniques for performing in-depth analysis of customer journey maps. The tools feature informative and interactive visualizations that make it possible to quickly understand in very high resolution the complex structure of a clickstream. And enable you to easily and intuitively explore user behavior patterns in-depth.
+The **path analysis tools** bring behavior-driven segmentation of users to product analysis by providing a powerful set of techniques for performing in-depth analysis of customer journey maps. The tools feature informative and interactive visualizations that make it possible to quickly understand in very high resolution the complex structure of a clickstream.
 
 ## Documentation
 
@@ -61,7 +61,7 @@ We recommend starting your Retentioneering journey with the [Quick Start documen
 
 - [Data processors](https://doc.retentioneering.com/3.0/doc/user_guides/dataprocessors.html)
 - [Preprocessing graph](https://doc.retentioneering.com/3.0/doc/user_guides/preprocessing.html)
-- [Preprocessing complex tutorial](https://colab.research.google.com/drive/1WwVI5oQF81xp9DJ6rP5HyM_UjuNPjUk0?usp=sharing)
+- [Preprocessing tutorial](https://colab.research.google.com/drive/1WwVI5oQF81xp9DJ6rP5HyM_UjuNPjUk0?usp=sharing)
 
 ### Path analysis tools
 

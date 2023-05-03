@@ -19,7 +19,7 @@ around three following purposes:
   See :doc:`Preprocessing user guide <../user_guides/preprocessing>` for more details.
 
 - **Applying analytical tools**. Eventstream integrates with retentioneering tools and
-  allows you to seamlessly apply them. See a :ref:`user guide on the path analysis tools<UG_path_analysis_tools>`.
+  allows you to seamlessly apply them. See :ref:`user guides on the path analysis tools<UG_path_analysis_tools>`.
 
 
 .. _eventstream_creation:
@@ -32,7 +32,7 @@ Default field names
 
 An ``Eventstream`` is a container for clickstream data, that is initialized from a ``pandas.DataFrame``.
 The class constructor expects the DataFrame to have at least 3 columns:
-``user_id``, ``event``, ``timestamps``.
+``user_id``, ``event``, ``timestamp``.
 
 Let us create a dummy DataFrame to illustrate Eventstream init process:
 
@@ -277,6 +277,7 @@ following way to handle ``session_id`` support:
           <th>timestamp</th>
           <th>user_id</th>
           <th>event_type</th>
+          <th>session_id</th>
           <th>event_index</th>
           <th>event_id</th>
         </tr>
@@ -288,8 +289,9 @@ following way to handle ``session_id`` support:
           <td>2023-01-01 00:00:00</td>
           <td>user_1</td>
           <td>raw</td>
+          <td>session_1</td>
           <td>0</td>
-          <td>7427d9f5-8666-4821-b0a9-f74a962f6d72</td>
+          <td>c15ff01a-6822-464f-a4cc-dc6118e44e6d</td>
         </tr>
         <tr>
           <th>1</th>
@@ -297,8 +299,9 @@ following way to handle ``session_id`` support:
           <td>2023-01-01 00:00:01</td>
           <td>user_1</td>
           <td>raw</td>
+          <td>session_1</td>
           <td>1</td>
-          <td>6c9fef69-a176-45d1-bb13-628796e68602</td>
+          <td>359c5e0e-d533-4101-8f9c-86247cb78590</td>
         </tr>
         <tr>
           <th>2</th>
@@ -306,8 +309,9 @@ following way to handle ``session_id`` support:
           <td>2023-01-01 00:00:02</td>
           <td>user_2</td>
           <td>raw</td>
+          <td>session_2</td>
           <td>2</td>
-          <td>7aee8104-b1cc-4df4-8a8d-f569395ffad9</td>
+          <td>ce03482c-0b47-42eb-9947-8ee3cc39ecd9</td>
         </tr>
       </tbody>
     </table>
@@ -603,7 +607,7 @@ These are some technical columns, containing the following:
 - ``event_index`` - an integer which is associated with the event order. By default, an eventstream
   is sorted by timestamp. As for the synthetic events which are often placed at the beginning or in the
   end of a user's path, special sorting is applied. See explanation of :ref:`reindex <reindex_explanation>`
-  for the details and also :ref:`data processors<synthetic_events_order>` user guide.
+  for the details and also :ref:`data processors user guide<synthetic_events_order>`.
   Please note that the event index might contain gaps. It is ok due to its design.
 
 - ``event_id`` - a string identifier of an eventstream row.
@@ -1601,7 +1605,7 @@ The method has multiple parameters:
 .. note::
 
     The method is especially useful for selecting parameters to
-    :py:meth:`DropPaths<retentioneering.data_processors_lib.drop_path.DropPaths>`
+    :py:meth:`DropPaths<retentioneering.data_processors_lib.drop_paths.DropPaths>`.
     See :doc:`the user guide on preprocessing</user_guides/dataprocessors>` for details.
 
 .. _eventstream_timedelta_hist:
@@ -1812,7 +1816,7 @@ Eventstream global events
 ``event_pair`` argument can accept a couple of auxiliary events: ``eventstream_start`` and ``eventstream_end``.
 They indicate the first and the last events in an evenstream.
 
-It is especially useful for choosing the ``cutoff`` parameter for
+It is especially useful for choosing ``left_cutoff`` and  ``right_cutoff`` parameters for
 :py:meth:`LabelCroppedPaths<retentioneering.data_processors_lib.label_cropped_paths.LabelCroppedPaths>` data processor.
 Before you choose it, you can explore how a path's beginning/end margin from the right/left edge of an eventstream.
 In the histogram below, :math:`\Delta_1` illustrates such a margin for ``event_pair=('eventstream_start', 'B')``.
@@ -1825,7 +1829,7 @@ event.
 
 :math:`\Delta_1` in the following example illustrates a margin for ``event_pair=('B', 'eventstream_end')``.
 And again, only one timedelta per userpath is calculated - from the 'B' event (its last occurrence) to the
-.eventstream_end'.
+'eventstream_end'.
 
 .. figure:: /_static/user_guides/eventstream/11_timedelta_event_pair_with_global_end.png
     :width: 500
@@ -1845,7 +1849,7 @@ And again, only one timedelta per userpath is calculated - from the 'B' event (i
 .. figure:: /_static/user_guides/eventstream/12_timedelta_eventstream_start_path_end.png
     :width: 500
 
-For more details on how this histogram helps to define the ``cutoff`` parameter see
+For more details on how this histogram helps to define ``left_cutoff`` and  ``right_cutoff`` parameters see
 :ref:`LabelCroppedPaths section<label_cropped_paths>` in the data processors user guide.
 
 .. _eventstream_events_timestamp:

@@ -280,7 +280,8 @@ Cluster analysis
     from retentioneering.tooling.clusters import Clusters
 
     clusters = Clusters(stream)
-    clusters.fit(method='kmeans', n_clusters=8, feature_type='tfidf', ngram_range=(1, 2))
+    features = clusters.extract_features(feature_type='tfidf', ngram_range=(1, 2))
+    clusters.fit(method='kmeans', n_clusters=8, X=features)
     clusters.plot(targets=['payment_done', 'cart'])
 
 .. figure:: /_static/getting_started/quick_start/clusters.png

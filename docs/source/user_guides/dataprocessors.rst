@@ -1331,7 +1331,7 @@ policy:
    from the right, and create ``cropped_right`` synthetic event at the
    trajectory end.
 
-.. figure:: /_static/user_guides/data_processor/dp_8_truncate.png
+.. figure:: /_static/user_guides/data_processor/dp_8_label_cropped_paths.png
 
 
 
@@ -1611,12 +1611,12 @@ the paths of length less than ``min_steps`` or ``min_time``.
 
 Diagram for specified ``min_steps``:
 
-.. figure:: /_static/user_guides/data_processor/dp_10_delete_events.png
+.. figure:: /_static/user_guides/data_processor/dp_10_drop_paths_steps.png
 
 
 Diagram for specified ``min_time``:
 
-.. figure:: /_static/user_guides/data_processor/dp_10_delete_min_time.png
+.. figure:: /_static/user_guides/data_processor/dp_10_drop_paths_min_time.png
 
 
 Let us showcase both variants of the ``DropPaths``

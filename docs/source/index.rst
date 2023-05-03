@@ -1,3 +1,11 @@
+.. raw:: html
+
+    <style>
+        .orange {color:#ffc524; font-weight:bold;}
+    </style>
+
+.. role:: orange
+
 .. title:: Retentioneering Tools
 
 retentioneering documentation
@@ -43,6 +51,12 @@ retentioneering documentation
         :img-top: _static/tool_icons/funnel.png
         :link: /user_guides/funnel
         :link-type: doc
+
+    .. grid-item-card:: Preprocessing Graph :orange:`(beta)`
+        :img-top: _static/tool_icons/preprocessing_graph.png
+        :link: /user_guides/preprocessing
+        :link-type: doc
+
 
 Installation
 ============

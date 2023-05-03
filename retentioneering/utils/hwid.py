@@ -1,6 +1,6 @@
 # type: ignore
 # @FIXME: All code about subprocesses and uuids return either str or bytes or something else. Vladimir Makhanov.
-
+import os
 import platform
 import subprocess
 import uuid
@@ -27,9 +27,12 @@ def get_windows_hwid() -> str:
 
 def get_linux_hwid() -> str:
     try:
-        hw = subprocess.check_output(["cat", "/etc/machine-id"], stderr=subprocess.DEVNULL)
-        hw = hw.decode().strip()
-        hwid = str(uuid.UUID(hw))
+        if os.access("/etc/machine-id", os.R_OK):
+            hw = subprocess.check_output(["cat", "/etc/machine-id"], stderr=subprocess.DEVNULL)
+            hw = hw.decode().strip()
+            hwid = str(uuid.UUID(hw))
+        else:
+            hwid = ""
     except Exception:  # not sure if this is the right exception, but I don't know right one. Vladimir Makhanov.
         hwid = ""
     return hwid
@@ -37,9 +40,12 @@ def get_linux_hwid() -> str:
 
 def get_mac_hwid() -> str:
     try:
-        hw = subprocess.check_output(["cat", "/etc/machine-id"], stderr=subprocess.DEVNULL)
-        hw = hw.decode().strip()
-        hwid = str(uuid.UUID(hw))
+        if os.access("/etc/machine-id", os.R_OK):
+            hw = subprocess.check_output(["cat", "/etc/machine-id"], stderr=subprocess.DEVNULL)
+            hw = hw.decode().strip()
+            hwid = str(uuid.UUID(hw))
+        else:
+            hwid = ""
     except Exception:  # not sure if this is the right exception, but I don't know right one. Vladimir Makhanov.
         hwid = ""
     return hwid

@@ -24,7 +24,7 @@ As a natural part of the [Jupyter](https://jupyter.org/) environment, Retentione
 
 ### Retentioneering structure
 
-Retentioneering consists of two major parts: [the preprocessing module] (https://doc.retentioneering.com/release3/doc/getting_started/quick_start.html#quick-start-preprocessing), and [the path analysis tools](https://doc.retentioneering.com/release3/doc/getting_started/quick_start.html#quick-start-rete-tools).
+Retentioneering consists of two major parts: [the preprocessing module](https://doc.retentioneering.com/release3/doc/getting_started/quick_start.html#quick-start-preprocessing), and [the path analysis tools](https://doc.retentioneering.com/release3/doc/getting_started/quick_start.html#quick-start-rete-tools).
 
 The **preprocessing module** provides a wide range of hands-on methods specifically designed for processing clickstream data, which can be called either using code, or via the preprocessing GUI. With separate methods for grouping or filtering events, splitting a clickstream into sessions, and much more, the Retentioneering preprocessing module enables you to dramatically reduce the amount of code, and therefore potential errors. Plus, if you’re dealing with a branchy analysis, which often happens, the preprocessing methods will help you make the calculations structured and reproducible, and organize them as a calculation graph. This is especially helpful for working with a team.
 
@@ -65,9 +65,7 @@ pip3 install retentioneering
 
 ## Quick start
 
-[Start using Retentioneering for clickstream analysis](https://doc.retentioneering.com/release3/doc/getting_started/quick_start.html)
-
-Or directly open this notebook in [Google Colab](https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/examples/graph_tutorial.ipynb) to run with sample data.
+We recommend starting your Retentioneering journey with the [Quick Start document](https://doc.retentioneering.com/release3/doc/getting_started/quick_start.html)
 
 
 ## Step-by-step guides
@@ -88,7 +86,7 @@ Or directly open this notebook in [Google Colab](https://colab.research.google.c
 - [Cohorts](https://doc.retentioneering.com/release3/doc/user_guides/cohorts.html)
 - [Stattests](https://doc.retentioneering.com/release3/doc/user_guides/stattests.html)
 
-## Preprocessing complex example
+### Preprocessing complex example
 
 The following tutorial is available as [Google Colab notebook](https://colab.research.google.com/drive/1WwVI5oQF81xp9DJ6rP5HyM_UjuNPjUk0?usp=sharing).
 

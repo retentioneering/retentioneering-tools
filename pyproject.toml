@@ -8,6 +8,9 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License ::  Retentioneering Software Non-Exclusive License (License)"
 ]
+authors = [
+  { name="Retentioneering User Trajectory Analysis Lab", email="retentioneering@gmail.com" },
+]
 
 [project.urls]
 "Homepage" = "https://github.com/retentioneering/retentioneering-tools"

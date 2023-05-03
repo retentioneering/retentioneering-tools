@@ -71,7 +71,7 @@ Changes to syntax and compatibility
 Documentation
 -------------
 
-- The official documentation for Retentioneering version 3 is available at https://doc.retentioneering.com/release3/doc/
+- The official documentation for Retentioneering version 3 is available at https://doc.retentioneering.com/3.0/doc/
 - We have added :doc:`tutorials<../tutorials>` to our documentation that demonstrate how to use our instruments for various tasks.
 - We have also included :doc:`descriptions of the datasets <../datasets>` we use in our documentation and tutorials.
 

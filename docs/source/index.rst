@@ -1,3 +1,11 @@
+.. raw:: html
+
+    <style>
+        .orange {color:#ffc524; font-weight:bold;}
+    </style>
+
+.. role:: orange
+
 .. title:: Retentioneering Tools
 
 retentioneering documentation
@@ -44,12 +52,26 @@ retentioneering documentation
         :link: /user_guides/funnel
         :link-type: doc
 
+    .. grid-item-card:: Preprocessing Graph :orange:`(beta)`
+        :img-top: _static/tool_icons/preprocessing_graph.png
+        :link: /user_guides/preprocessing
+        :link-type: doc
+
+
 Installation
 ============
+
+Retentioneering can be installed via pip using `PyPI <https://pypi.org/project/retentioneering/>`_.
 
 .. code-block:: python
 
     pip install retentioneering
+
+Or directly from Jupyter notebook or `google.colab <https://colab.research.google.com/>`_.
+
+.. code-block:: ipython
+
+    !pip install retentioneering
 
 
 Contents

@@ -315,7 +315,7 @@ SplitSessions
 
 :py:meth:`SplitSessions<retentioneering.data_processors_lib.split_sessions.SplitSessions>`
 data processor cuts user paths into sessions based on the defined ``timeout``
-timeout parameter. For each session, it creates a couple of synthetic
+parameter. For each session, it creates a couple of synthetic
 events ``session_start`` and ``session_end``, like
 ``AddStartEndEvents``. Session identifiers are formed according to the
 template ``<user_id>_<user_session_number>`` and can be found in
@@ -324,8 +324,7 @@ session ordinal number within a user path and always starts with 1.
 
 .. figure:: /_static/user_guides/data_processor/dp_2_split_sessions.png
 
-Applying ``SplitSessions`` to split user paths into sessions with
-session cutoff=10 minutes:
+Applying ``SplitSessions`` to split user paths into sessions with timeout=10 minutes:
 
 .. code-block:: python
 
@@ -1332,7 +1331,7 @@ policy:
    from the right, and create ``cropped_right`` synthetic event at the
    trajectory end.
 
-.. figure:: /_static/user_guides/data_processor/dp_8_truncate.png
+.. figure:: /_static/user_guides/data_processor/dp_8_label_cropped_paths.png
 
 
 
@@ -1612,12 +1611,12 @@ the paths of length less than ``min_steps`` or ``min_time``.
 
 Diagram for specified ``min_steps``:
 
-.. figure:: /_static/user_guides/data_processor/dp_10_delete_events.png
+.. figure:: /_static/user_guides/data_processor/dp_10_drop_paths_steps.png
 
 
 Diagram for specified ``min_time``:
 
-.. figure:: /_static/user_guides/data_processor/dp_10_delete_min_time.png
+.. figure:: /_static/user_guides/data_processor/dp_10_drop_paths_min_time.png
 
 
 Let us showcase both variants of the ``DropPaths``
@@ -2244,41 +2243,41 @@ had three consecutive ``catalog`` events.
       </thead>
       <tbody>
         <tr>
-          <th>3550</th>
+          <th>3327</th>
           <td>raw</td>
-          <td>3550</td>
+          <td>3327</td>
           <td>main</td>
           <td>2019-12-24 12:58:04</td>
           <td>2112338</td>
         </tr>
         <tr>
-          <th>3551</th>
+          <th>3328</th>
           <td>raw</td>
-          <td>3551</td>
+          <td>3328</td>
           <td>catalog</td>
           <td>2019-12-24 12:58:08</td>
           <td>2112338</td>
         </tr>
         <tr>
-          <th>3552</th>
+          <th>3329</th>
           <td>raw</td>
-          <td>3552</td>
+          <td>3329</td>
           <td>catalog</td>
           <td>2019-12-24 12:58:16</td>
           <td>2112338</td>
         </tr>
         <tr>
-          <th>3553</th>
+          <th>3330</th>
           <td>raw</td>
-          <td>3553</td>
+          <td>3330</td>
           <td>catalog</td>
           <td>2019-12-24 12:58:44</td>
           <td>2112338</td>
         </tr>
         <tr>
-          <th>3554</th>
+          <th>3331</th>
           <td>raw</td>
-          <td>3554</td>
+          <td>3331</td>
           <td>main</td>
           <td>2019-12-24 12:58:52</td>
           <td>2112338</td>

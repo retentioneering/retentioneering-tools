@@ -199,7 +199,7 @@ Parameter ``cut_right`` allows us to remove the last period column, which reflec
 
 .. figure:: /_static/user_guides/cohorts/cohorts_14_cut_diagonal.png
 
-Parameter ``cut diagonal`` deletes values below the diagonal that runs to the left and down from the last period of the first cohort. Thus, we get rid of all boundary values.
+Parameter ``cut_diagonal`` deletes values below the diagonal that runs to the left and down from the last period of the first cohort. Thus, we get rid of all boundary values.
 
 Using a separate instance
 -------------------------
@@ -229,7 +229,7 @@ We can also build lineplots based on our data. By default, each line is one ``Co
 
 .. code-block:: python
 
-    cohorts.lineplot(width=5, height=5), plot_type='cohorts')
+    cohorts.lineplot(width=5, height=5, plot_type='cohorts')
 
 .. figure:: /_static/user_guides/cohorts/cohorts_5_lineplot_default.png
 
@@ -266,7 +266,7 @@ values
         average=False,
         show_plot=False
     ).values
-    cohorts.values
+
 
 .. raw:: html
 

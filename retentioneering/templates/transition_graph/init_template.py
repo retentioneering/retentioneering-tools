@@ -20,6 +20,6 @@ init_code = """
     showNodesWithoutLinks: {show_nodes_without_links},
     useLayoutDump: Boolean({layout_dump}),
     weightTemplate: {weight_template},
-    trackingHWID: {tracking_hardware_id}
+    trackingHWID: '{tracking_hardware_id}'
 }})
 """

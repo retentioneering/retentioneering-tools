@@ -773,6 +773,7 @@ class TransitionGraph:
                 nodes_threshold=self._to_js_val(norm_nodes_threshold),
                 links_threshold=self._to_js_val(norm_links_threshold),
                 weight_template="undefined",
+                tracking_hardware_id=RETE_CONFIG.user.pk,
             )
         )
 
@@ -806,6 +807,7 @@ class TransitionGraph:
                 nodes_threshold="<%= nodes_threshold %>",
                 links_threshold="<%= links_threshold %>",
                 weight_template="undefined",
+                tracking_hardware_id=RETE_CONFIG.user.pk,
             )
         )
 

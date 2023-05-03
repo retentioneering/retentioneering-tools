@@ -19,6 +19,7 @@ init_code = """
     showAllEdgesForTargets: {show_all_edges_for_targets},
     showNodesWithoutLinks: {show_nodes_without_links},
     useLayoutDump: Boolean({layout_dump}),
-    weightTemplate: {weight_template}
+    weightTemplate: {weight_template},
+    trackingHWID: {tracking_hardware_id}
 }})
 """

@@ -313,21 +313,27 @@ class Eventstream(
         result_right_part = pd.DataFrame()
         result_both_part = pd.DataFrame()
 
-        for col in cols:
-            result_left_part[col] = get_merged_col(df=left_events, colname=col, suffix="_x")
-            result_both_part[col] = get_merged_col(df=both_events_deleted, colname=col, suffix="_x")
-            result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
+        with warnings.catch_warnings():
+            # disable warning for pydantic schema Callable type
+            warnings.simplefilter(action="ignore", category=FutureWarning)
 
-        for col in left_raw_cols:
-            result_both_part[col] = get_merged_col(df=both_events_deleted, colname=col, suffix="_x")
-            result_left_part[col] = get_merged_col(df=left_events, colname=col, suffix="_x")
+            for col in cols:
+                result_left_part[col] = get_merged_col(df=left_events, colname=col, suffix="_x")
+                result_both_part[col] = get_merged_col(df=both_events_deleted, colname=col, suffix="_x")
+                result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
 
-        for col in right_raw_cols:
-            result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
+            for col in left_raw_cols:
+                result_both_part[col] = get_merged_col(df=both_events_deleted, colname=col, suffix="_x")
+                result_left_part[col] = get_merged_col(df=left_events, colname=col, suffix="_x")
 
-        result_left_part[DELETE_COL_NAME] = get_merged_col(df=left_events, colname=DELETE_COL_NAME, suffix="_x")
-        result_both_part[DELETE_COL_NAME] = get_merged_col(df=both_events_deleted, colname=DELETE_COL_NAME, suffix="_x")
-        result_right_part[DELETE_COL_NAME] = get_merged_col(df=right_events, colname=DELETE_COL_NAME, suffix="_y")
+            for col in right_raw_cols:
+                result_right_part[col] = get_merged_col(df=right_events, colname=col, suffix="_y")
+
+            result_left_part[DELETE_COL_NAME] = get_merged_col(df=left_events, colname=DELETE_COL_NAME, suffix="_x")
+            result_both_part[DELETE_COL_NAME] = get_merged_col(
+                df=both_events_deleted, colname=DELETE_COL_NAME, suffix="_x"
+            )
+            result_right_part[DELETE_COL_NAME] = get_merged_col(df=right_events, colname=DELETE_COL_NAME, suffix="_y")
 
         self.__events = pd.concat([result_left_part, result_both_part, result_right_part])
         self.index_events()
@@ -396,8 +402,11 @@ class Eventstream(
         result_both_part[self.schema.event_id] = get_merged_col(
             df=both_events, colname=self.schema.event_id, suffix="_x"
         )
+        with warnings.catch_warnings():
+            # disable warning for pydantic schema Callable type
+            warnings.simplefilter(action="ignore", category=FutureWarning)
+            self.__events = pd.concat([result_left_part, result_right_part, result_both_part])
 
-        self.__events = pd.concat([result_left_part, result_right_part, result_both_part])
         self.__events[self.schema.user_id] = self.__events[self.schema.user_id].astype(user_id_type)
 
         self.schema.custom_cols = self._get_both_custom_cols(eventstream)

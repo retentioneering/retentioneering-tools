@@ -23,7 +23,7 @@ DEFAULT_CONFIG = {
     },
     "transition_graph": {
         "width": 960,
-        "height": 900,
+        "height": 600,
         "show_weights": True,
         "show_percents": False,
         "show_nodes_names": True,
@@ -32,7 +32,7 @@ DEFAULT_CONFIG = {
     },
     "preprocessing_graph": {
         "width": 960,
-        "height": 900,
+        "height": 600,
     },
 }
 
@@ -62,7 +62,7 @@ class TransitionGraphConfig(BaseConfig):
     """
 
     width: int = 960
-    height: int = 900
+    height: int = 600
     show_weights: bool = True
     show_percents: bool = False
     show_nodes_names: bool = True
@@ -77,7 +77,7 @@ class PreprocessiongGraphConfig(BaseConfig):
     """
 
     width: int = 960
-    height: int = 900
+    height: int = 600
 
 
 @dataclass

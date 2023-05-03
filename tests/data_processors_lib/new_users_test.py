@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import pandas as pd
 
-from retentioneering.data_processors_lib import NewUsersEvents, NewUsersParams
+from retentioneering.data_processors_lib import LabelNewUsers, LabelNewUsersParams
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
 class TestNewUsers(ApplyTestBase):
-    _Processor = NewUsersEvents
+    _Processor = LabelNewUsers
     _source_df = pd.DataFrame(
         [
             [1, "event1", "2022-01-01 00:01:00"],
@@ -30,9 +30,9 @@ class TestNewUsers(ApplyTestBase):
         event_timestamp="timestamp",
     )
 
-    def test_new_users__apply__new_users_list_id(self):
+    def test_label_new_users__apply__new_users_list_id(self):
         actual = self._apply(
-            NewUsersParams(
+            LabelNewUsersParams(
                 new_users_list=[2],
             )
         )
@@ -45,9 +45,9 @@ class TestNewUsers(ApplyTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-    def test_new_users__apply__new_users_list_all(self):
+    def test_label_new_users__apply__new_users_list_all(self):
         actual = self._apply(
-            NewUsersParams(
+            LabelNewUsersParams(
                 new_users_list="all",
             )
         )
@@ -60,7 +60,7 @@ class TestNewUsers(ApplyTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-    def test_new_users__apply__new_users_list_id_str(self):
+    def test_label_new_users__apply__new_users_list_id_str(self):
         source_df = pd.DataFrame(
             [
                 ["user111", "event1", "2022-01-01 00:01:00"],
@@ -76,7 +76,7 @@ class TestNewUsers(ApplyTestBase):
             columns=["user_id", "event", "timestamp"],
         )
         actual = self._apply(
-            NewUsersParams(
+            LabelNewUsersParams(
                 new_users_list=["user222"],
             ),
             source_df=source_df,
@@ -91,8 +91,8 @@ class TestNewUsers(ApplyTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestNewUsersGraph(GraphTestBase):
-    _Processor = NewUsersEvents
+class TestLabelNewUsersGraph(GraphTestBase):
+    _Processor = LabelNewUsers
     _source_df = pd.DataFrame(
         [
             [1, "event1", "2022-01-01 00:01:00"],
@@ -113,9 +113,9 @@ class TestNewUsersGraph(GraphTestBase):
         event_timestamp="timestamp",
     )
 
-    def test_new_users_graph__new_users_list_id(self):
+    def test_label_new_users_graph__new_users_list_id(self):
         actual = self._apply(
-            NewUsersParams(
+            LabelNewUsersParams(
                 new_users_list=[2],
             )
         )
@@ -137,9 +137,9 @@ class TestNewUsersGraph(GraphTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-    def test_new_users_graph__new_users_list_all(self):
+    def test_label_new_users_graph__new_users_list_all(self):
         actual = self._apply(
-            NewUsersParams(
+            LabelNewUsersParams(
                 new_users_list="all",
             )
         )
@@ -161,7 +161,7 @@ class TestNewUsersGraph(GraphTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
-    def test_new_users__helper__new_users_list_id_str(self):
+    def test_label_new_users__helper__new_users_list_id_str(self):
         source_df = pd.DataFrame(
             [
                 ["user111", "event1", "2022-01-01 00:01:00"],
@@ -177,7 +177,7 @@ class TestNewUsersGraph(GraphTestBase):
             columns=["user_id", "event", "timestamp"],
         )
         actual = self._apply(
-            NewUsersParams(
+            LabelNewUsersParams(
                 new_users_list=["user222"],
             ),
             source_df=source_df,
@@ -201,8 +201,8 @@ class TestNewUsersGraph(GraphTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestNewUsersHelper:
-    def test_new_users_graph__new_users_list_id(self):
+class TestLabelNewUsersHelper:
+    def test_label_new_users_graph__new_users_list_id(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -237,12 +237,12 @@ class TestNewUsersHelper:
             columns=correct_result_columns,
         )
 
-        result = source.add_new_users(new_users_list=[2])
+        result = source.label_new_users(new_users_list=[2])
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_new_users_graph__new_users_list_all(self):
+    def test_label_new_users_graph__new_users_list_all(self):
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:01:00"],
@@ -276,12 +276,12 @@ class TestNewUsersHelper:
             ],
             columns=correct_result_columns,
         )
-        result = source.add_new_users(new_users_list="all")
+        result = source.label_new_users(new_users_list="all")
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 
         assert result_df.compare(correct_result).shape == (0, 0)
 
-    def test_new_users__helper__new_users_list_id_str(self):
+    def test_label_new_users__helper__new_users_list_id_str(self):
         source_df = pd.DataFrame(
             [
                 ["user111", "event1", "2022-01-01 00:01:00"],
@@ -315,6 +315,6 @@ class TestNewUsersHelper:
             ],
             columns=correct_result_columns,
         )
-        result = source.add_new_users(new_users_list=["user222"])
+        result = source.label_new_users(new_users_list=["user222"])
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
         assert result_df.compare(correct_result).shape == (0, 0)

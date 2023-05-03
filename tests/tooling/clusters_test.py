@@ -5,9 +5,14 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from retentioneering.eventstream import Eventstream, EventstreamSchema
+from retentioneering.eventstream.types import EventstreamType
 from retentioneering.tooling.clusters import Clusters
-from tests.tooling.fixtures.clusters import custom_X, stream_simple_shop, test_stream
+from tests.tooling.fixtures.clusters import (
+    custom_X,
+    features_tfidf_input,
+    stream_simple_shop,
+    test_stream,
+)
 from tests.tooling.fixtures.clusters_corr import (
     X_corr,
     cluster_mapping_corr,
@@ -23,10 +28,11 @@ from tests.tooling.fixtures.clusters_corr import (
 
 
 class TestClusters:
-    def test_clusters__simple_shop_no_exceptions(self, stream_simple_shop):
+    def test_clusters__simple_shop_no_exceptions(self, stream_simple_shop: EventstreamType) -> None:
         c = Clusters(eventstream=stream_simple_shop)
         try:
-            c.fit(method="kmeans", n_clusters=4, feature_type="tfidf", ngram_range=(1, 1))
+            X_calc = c.extract_features(feature_type="tfidf", ngram_range=(1, 1))
+            c.fit(method="kmeans", n_clusters=4, X=X_calc, random_state=0)
         except Exception as e:
             pytest.fail("Runtime error in Clusters.fit. " + str(e))
 
@@ -68,58 +74,66 @@ class TestClusters:
         except Exception as e:
             pytest.fail("Runtime error in Clusters.set_clusters. " + str(e))
 
-    def test_clusters_vectorization__markov(self, test_stream, markov_corr):
+    def test_clusters_vectorization__markov(self, test_stream: EventstreamType, markov_corr: pd.DataFrame) -> None:
         correct_features = markov_corr
         c = Clusters(eventstream=test_stream)
         features = c.extract_features(feature_type="markov")
         assert pd.testing.assert_frame_equal(features[correct_features.columns], correct_features) is None
 
-    def test_clusters_vectorization__count(self, test_stream, count_corr):
+    def test_clusters_vectorization__count(self, test_stream: EventstreamType, count_corr: pd.DataFrame) -> None:
         correct_features = count_corr
         c = Clusters(eventstream=test_stream)
         features = c.extract_features(feature_type="count", ngram_range=(1, 1))
         assert pd.testing.assert_frame_equal(features[correct_features.columns], correct_features) is None
 
-    def test_clusters_vectorization__time(self, test_stream, time_corr):
+    def test_clusters_vectorization__time(self, test_stream: EventstreamType, time_corr: pd.DataFrame) -> None:
         correct_features = time_corr
         c = Clusters(eventstream=test_stream)
         features = c.extract_features(feature_type="time", ngram_range=(1, 1))
         assert pd.testing.assert_frame_equal(features[correct_features.columns], correct_features) is None
 
-    def test_clusters_vectorization__time_fraction(self, test_stream, time_fraction_corr):
+    def test_clusters_vectorization__time_fraction(
+        self, test_stream: EventstreamType, time_fraction_corr: pd.DataFrame
+    ) -> None:
         correct_features = time_fraction_corr
         c = Clusters(eventstream=test_stream)
         features = round(c.extract_features(feature_type="time_fraction", ngram_range=(1, 1)), 3)
         assert pd.testing.assert_frame_equal(features[correct_features.columns], correct_features) is None
 
-    def test_clusters_method__kmeans_(self, test_stream, kmeans_corr):
+    def test_clusters_method__kmeans_(
+        self, test_stream: EventstreamType, features_tfidf_input, kmeans_corr: pd.Series
+    ) -> None:
         correct_result = kmeans_corr
         c = Clusters(eventstream=test_stream)
-        c.fit(method="kmeans", n_clusters=2, feature_type="tfidf", ngram_range=(1, 1))
+        c.fit(method="kmeans", n_clusters=2, X=features_tfidf_input, random_state=0)
         result = c.user_clusters
         assert pd.testing.assert_series_equal(result, correct_result, check_dtype=False) is None
 
-    def test_clusters_method__gmm(self, test_stream, gmm_corr):
+    def test_clusters_method__gmm(
+        self, test_stream: EventstreamType, features_tfidf_input: pd.DataFrame, gmm_corr: pd.Series
+    ) -> None:
         correct_result = gmm_corr
         c = Clusters(eventstream=test_stream)
-        c.fit(method="gmm", n_clusters=2, feature_type="tfidf", ngram_range=(1, 1))
+        c.fit(method="gmm", n_clusters=2, X=features_tfidf_input, random_state=0)
         result = c.user_clusters
         assert pd.testing.assert_series_equal(result, correct_result, check_dtype=True) is None
 
-    def test_clusters__cluster_mapping(self, test_stream, cluster_mapping_corr):
+    def test_clusters__cluster_mapping(
+        self, test_stream: EventstreamType, features_tfidf_input: pd.DataFrame, cluster_mapping_corr: dict
+    ) -> None:
         correct_result = cluster_mapping_corr
         c = Clusters(eventstream=test_stream)
-        c.fit(method="gmm", n_clusters=2, feature_type="tfidf", ngram_range=(1, 1))
+        c.fit(method="gmm", n_clusters=2, X=features_tfidf_input, random_state=0)
         result = c.cluster_mapping
         assert result == correct_result
 
-    def test_clusters__ngram_range(self, test_stream, ngram_range_corr):
+    def test_clusters__ngram_range(self, test_stream: EventstreamType, ngram_range_corr: pd.DataFrame) -> None:
         correct_features = ngram_range_corr
         c = Clusters(eventstream=test_stream)
         features = c.extract_features(feature_type="count", ngram_range=(3, 3))
         assert pd.testing.assert_frame_equal(features[correct_features.columns], correct_features) is None
 
-    def test_clusters__set_clusters(self, test_stream, set_clusters_corr):
+    def test_clusters__set_clusters(self, test_stream: EventstreamType, set_clusters_corr: dict) -> None:
         correct_result = set_clusters_corr
         c = Clusters(eventstream=test_stream)
         user_clusters = pd.Series([1, 3, 0, 2])
@@ -127,9 +141,9 @@ class TestClusters:
         result = c.cluster_mapping
         assert result == correct_result
 
-    def test_clusters__X(self, test_stream, custom_X, X_corr):
+    def test_clusters__X(self, test_stream: EventstreamType, custom_X: pd.DataFrame, X_corr: pd.Series) -> None:
         correct_result = X_corr
         c = Clusters(eventstream=test_stream)
-        c.fit(method="kmeans", n_clusters=2, X=custom_X)
+        c.fit(method="kmeans", n_clusters=2, X=custom_X, random_state=0)
         result = c.user_clusters
         assert pd.testing.assert_series_equal(result, correct_result, check_dtype=False) is None

@@ -5,21 +5,19 @@ import pytest
 
 from retentioneering import datasets
 from retentioneering.data_processors_lib import (
+    AddStartEndEvents,
+    AddStartEndEventsParams,
     FilterEvents,
     FilterEventsParams,
-    StartEndEvents,
-    StartEndEventsParams,
 )
-from retentioneering.eventstream import Eventstream, EventstreamSchema, RawDataSchema
-from retentioneering.preprocessing_graph.preprocessing_graph import (
-    EventsNode,
-    PreprocessingGraph,
-)
+from retentioneering.eventstream import Eventstream, RawDataSchema
+from retentioneering.eventstream.types import EventstreamType
+from retentioneering.preprocessing_graph import EventsNode, PreprocessingGraph
 
 FLOAT_PRECISION = 3
 
 
-def read_test_data(filename):
+def read_test_data(filename) -> pd.DataFrame:
     current_dir = os.path.dirname(os.path.realpath(__file__))
     test_data_dir = os.path.join(current_dir, "../../datasets/tooling/step_matrix")
     filepath = os.path.join(test_data_dir, filename)
@@ -28,27 +26,27 @@ def read_test_data(filename):
 
 
 @pytest.fixture
-def stream_simple_shop():
-    stream = datasets.load_simple_shop().add_start_end()
+def stream_simple_shop() -> EventstreamType:
+    stream = datasets.load_simple_shop().add_start_end_events()
     return stream
 
 
 @pytest.fixture
-def test_stream_end_path():
+def test_stream_end_path() -> EventstreamType:
     df = read_test_data("test_stream_end_path.csv")
     source_stream = Eventstream(df)
     return source_stream
 
 
 @pytest.fixture
-def test_stream():
+def test_stream() -> EventstreamType:
     df = read_test_data("test_stream.csv")
     source_stream = Eventstream(df)
     return source_stream
 
 
 @pytest.fixture
-def test_weight_col():
+def test_weight_col() -> EventstreamType:
     df = read_test_data("test_weight_col.csv")
 
     raw_data_schema = RawDataSchema(

@@ -1,7 +1,7 @@
 from typing import Callable
 
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, Series
 
 from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
@@ -16,7 +16,7 @@ class FilterEventsParams(ParamsModel):
 
     """
 
-    func: Callable[[DataFrame, EventstreamSchema], bool]
+    func: Callable[[DataFrame, EventstreamSchema], Series]
 
     _widgets = {
         "func": ReteFunction(),
@@ -33,7 +33,7 @@ class FilterEvents(DataProcessor):
         Custom function that returns boolean mask the same length as input ``eventstream``.
 
         - If ``True`` - the row will be left in the eventstream.
-        - If ``False`` - the row will be deleted from the eeventstream.
+        - If ``False`` - the row will be deleted from the eventstream.
 
     Returns
     -------
@@ -54,7 +54,7 @@ class FilterEvents(DataProcessor):
     def apply(self, eventstream: EventstreamType) -> EventstreamType:
         from retentioneering.eventstream.eventstream import Eventstream
 
-        func: Callable[[DataFrame, EventstreamSchemaType], bool] = self.params.func  # type: ignore
+        func: Callable[[DataFrame, EventstreamSchemaType], Series] = self.params.func  # type: ignore
         events: pd.DataFrame = eventstream.to_dataframe()
         mask = func(events, eventstream.schema)
         events_to_delete = events[~mask]

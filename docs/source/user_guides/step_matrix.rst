@@ -285,7 +285,6 @@ We pass the following list ofr the events to the ``sorting`` parameter:
         'product1',
         'product2',
         'cart',
-        'lost',
         'THRESHOLDED_7',
         'ENDED'
     ]
@@ -358,7 +357,8 @@ Consider another example of differential step matrix usage. Now we will compare 
     from retentioneering.tooling.clusters import Clusters
 
     clusters = Clusters(eventstream=stream)
-    clusters.fit(method='kmeans', n_clusters=8, feature_type='count', ngram_range=(1, 1))
+    features = clusters.extract_features(feature_type='count', ngram_range=(1, 1))
+    clusters.fit(method='kmeans', n_clusters=8, X=features, random_state=42)
     clusters.plot(targets=['payment_done', 'cart']);
 
 .. figure:: /_static/user_guides/step_matrix/output_57_0.png
@@ -385,7 +385,7 @@ All we need is to get ``user_id`` collections from the :ref:`cluster_mapping <cl
 
 .. figure:: /_static/user_guides/step_matrix/output_59_1.png
 
-The differential step matrix clearly shows the difference between clusters #1 and #3. Users from cluster #1, after adding a product to the cart tend to return to the catalog and continue shopping more often. On the other hand, users from cluster #3 tend to fall into payment flow and eventually make purchase.
+The differential step matrix shows the difference between clusters #1 and #3. Users from cluster #1, after adding a product to the cart tend to return to the catalog and continue shopping more often or, on the opposite, finish their trajectory. On the other hand, users from cluster #3 tend to fall into payment flow and eventually make purchase. They can also return to the catalog, but in later steps.
 
 Weighting step matrix values
 ----------------------------
@@ -433,8 +433,8 @@ Here is an example how you can manage it:
 
     from retentioneering.tooling.step_matrix import StepMatrix
 
-    step_matrix = StepMatrix(stream, max_steps=12, targets=['payment_done'])
-    step_matrix.fit()
+    step_matrix = StepMatrix(stream)
+    step_matrix.fit(max_steps=12, targets=['payment_done'])
     step_matrix.plot()
 
 .. figure:: /_static/user_guides/step_matrix/output_75_0.png

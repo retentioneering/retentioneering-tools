@@ -1,3 +1,5 @@
+from .utils import RETE_CONFIG
+from .__version__ import __version__
 from . import (
     datasets,
     eventstream,
@@ -20,4 +22,6 @@ __all__ = (
     "widget",
     "data_processor",
     "data_processors_lib",
+    "__version__",
+    "RETE_CONFIG",
 )

@@ -66,24 +66,24 @@ class TestListDataprocessors:
                         "name": "suffix",
                         "optional": True,
                         "widget": "enum",
-                        "default": "loop",
+                        "default": None,
                         "params": ["loop", "count"],
                     },
                     {
-                        "name": "timestamp_aggregation_type",
+                        "name": "time_agg",
                         "optional": True,
                         "widget": "enum",
-                        "default": "max",
+                        "default": "min",
                         "params": ["max", "min", "mean"],
                     },
                 ],
             },
             {
-                "name": "DeleteUsersByPathLength",
+                "name": "DropPaths",
                 "params": [
-                    {"name": "events_num", "optional": True, "widget": "integer", "default": None},
+                    {"name": "min_steps", "optional": True, "widget": "integer", "default": None},
                     {
-                        "name": "cutoff",
+                        "name": "min_time",
                         "default": None,
                         "optional": True,
                         "params": [
@@ -137,10 +137,10 @@ class TestListDataprocessors:
                 ],
             },
             {
-                "name": "LostUsersEvents",
+                "name": "LabelLostUsers",
                 "params": [
                     {
-                        "name": "lost_cutoff",
+                        "name": "timeout",
                         "default": None,
                         "optional": True,
                         "params": [
@@ -176,24 +176,24 @@ class TestListDataprocessors:
                 ],
             },
             {
-                "name": "NegativeTarget",
+                "name": "AddNegativeEvents",
                 "params": [
                     {
-                        "name": "negative_target_events",
+                        "name": "targets",
                         "default": None,
                         "optional": False,
                         "widget": "list_of_string",
                     },
                     {
                         "name": "func",
-                        "default": 'def _default_func(eventstream: EventstreamType, negative_target_events: List[str]) -> pd.DataFrame:\n    """\n    Filters rows with target events from the input eventstream.\n\n    Parameters\n    ----------\n    eventstream : Eventstream\n        Source eventstream or output from previous nodes.\n\n    negative_target_events : list of str\n        Each event from that list is associated with the bad result (scenario)\n        of user\'s behaviour (experience) in the product.\n        If there are several target events in user path - the event with minimum timestamp is taken.\n\n    Returns\n    -------\n    pd.DataFrame\n        Filtered DataFrame with negative_target_events and its timestamps.\n    """\n    user_col = eventstream.schema.user_id\n    time_col = eventstream.schema.event_timestamp\n    event_col = eventstream.schema.event_name\n    df = eventstream.to_dataframe()\n\n    negative_events_index = (\n        df[df[event_col].isin(negative_target_events)].groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n    return df.loc[negative_events_index]  # type: ignore\n',
+                        "default": 'def _default_func(eventstream: EventstreamType, targets: List[str]) -> pd.DataFrame:\n    """\n    Filter rows with target events from the input eventstream.\n\n    Parameters\n    ----------\n    eventstream : Eventstream\n        Source eventstream or output from previous nodes.\n\n    targets : list of str\n        Each event from that list is associated with the bad result (scenario)\n        of user\'s behaviour (experience) in the product.\n        If there are several target events in user path - the event with minimum timestamp is taken.\n\n    Returns\n    -------\n    pd.DataFrame\n        Filtered DataFrame with targets and its timestamps.\n    """\n    user_col = eventstream.schema.user_id\n    time_col = eventstream.schema.event_timestamp\n    event_col = eventstream.schema.event_name\n    df = eventstream.to_dataframe()\n\n    targets_index = df[df[event_col].isin(targets)].groupby(user_col)[time_col].idxmin()  # type: ignore\n\n    return df.loc[targets_index]  # type: ignore\n',
                         "optional": True,
                         "widget": "function",
                     },
                 ],
             },
             {
-                "name": "NewUsersEvents",
+                "name": "LabelNewUsers",
                 "params": [
                     {
                         "name": "new_users_list",
@@ -207,17 +207,17 @@ class TestListDataprocessors:
                 ],
             },
             {
-                "name": "PositiveTarget",
+                "name": "AddPositiveEvents",
                 "params": [
                     {
-                        "name": "positive_target_events",
+                        "name": "targets",
                         "default": None,
                         "optional": False,
                         "widget": "list_of_string",
                     },
                     {
                         "name": "func",
-                        "default": 'def _default_func(eventstream: EventstreamType, positive_target_events: list[str]) -> pd.DataFrame:\n    """\n    Filters rows with target events from the input eventstream.\n\n    Parameters\n    ----------\n    eventstream : Eventstream\n        Source eventstream or output from previous nodes.\n\n    positive_target_events : list of str\n        Condition for eventstream filtering.\n        Each event from that list is associated with a conversion goal of the user behaviour in the product.\n        If there are several target events in user path - the event with minimum timestamp is taken.\n\n    Returns\n    -------\n    pd.DataFrame\n        Filtered DataFrame with positive_target_events and its timestamps.\n    """\n    user_col = eventstream.schema.user_id\n    time_col = eventstream.schema.event_timestamp\n    event_col = eventstream.schema.event_name\n    df = eventstream.to_dataframe()\n\n    positive_events_index = (\n        df[df[event_col].isin(positive_target_events)].groupby(user_col)[time_col].idxmin()  # type: ignore\n    )\n\n    return df.loc[positive_events_index]  # type: ignore\n',
+                        "default": 'def _default_func(eventstream: EventstreamType, targets: list[str]) -> pd.DataFrame:\n    """\n    Filter rows with target events from the input eventstream.\n\n    Parameters\n    ----------\n    eventstream : Eventstream\n        Source eventstream or output from previous nodes.\n\n    targets : list of str\n        Condition for eventstream filtering.\n        Each event from that list is associated with a conversion goal of the user behaviour in the product.\n        If there are several target events in user path - the event with minimum timestamp is taken.\n\n    Returns\n    -------\n    pd.DataFrame\n        Filtered DataFrame with targets and its timestamps.\n    """\n    user_col = eventstream.schema.user_id\n    time_col = eventstream.schema.event_timestamp\n    event_col = eventstream.schema.event_name\n    df = eventstream.to_dataframe()\n\n    targets_index = df[df[event_col].isin(targets)].groupby(user_col)[time_col].idxmin()  # type: ignore\n\n    return df.loc[targets_index]  # type: ignore\n',
                         "optional": True,
                         "widget": "function",
                     },
@@ -227,7 +227,7 @@ class TestListDataprocessors:
                 "name": "SplitSessions",
                 "params": [
                     {
-                        "name": "session_cutoff",
+                        "name": "timeout",
                         "optional": False,
                         "default": None,
                         "params": [
@@ -258,9 +258,9 @@ class TestListDataprocessors:
                     {"name": "session_col", "optional": True, "widget": "string", "default": "session_id"},
                 ],
             },
-            {"name": "StartEndEvents", "params": []},
+            {"name": "AddStartEndEvents", "params": []},
             {
-                "name": "TruncatePath",
+                "name": "TruncatePaths",
                 "params": [
                     {"name": "drop_before", "optional": True, "widget": "string", "default": None},
                     {"name": "drop_after", "optional": True, "widget": "string", "default": None},
@@ -283,10 +283,10 @@ class TestListDataprocessors:
                 ],
             },
             {
-                "name": "TruncatedEvents",
+                "name": "LabelCroppedPaths",
                 "params": [
                     {
-                        "name": "left_truncated_cutoff",
+                        "name": "left_cutoff",
                         "optional": True,
                         "default": None,
                         "params": [
@@ -314,7 +314,7 @@ class TestListDataprocessors:
                         "widget": "time_widget",
                     },
                     {
-                        "name": "right_truncated_cutoff",
+                        "name": "right_cutoff",
                         "optional": True,
                         "default": None,
                         "params": [

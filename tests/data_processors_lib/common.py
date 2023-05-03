@@ -4,10 +4,7 @@ from retentioneering.data_processor import DataProcessor
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import EventstreamSchema, RawDataSchema
 from retentioneering.params_model.params_model import ParamsModel
-from retentioneering.preprocessing_graph.preprocessing_graph import (
-    EventsNode,
-    PreprocessingGraph,
-)
+from retentioneering.preprocessing_graph import EventsNode, PreprocessingGraph
 
 _default_raw_data_schema = RawDataSchema(
     user_id="user_id",
@@ -23,7 +20,6 @@ def apply_processor(
     stream = Eventstream(
         raw_data_schema=raw_data_schema,
         raw_data=source_df.copy(),
-        schema=EventstreamSchema(),
     )
     original_df = stream.to_dataframe(show_deleted=True).reset_index(drop=True)
     result = data_processor.apply(stream)
@@ -51,11 +47,17 @@ def apply_processor_with_graph(
 class ApplyTestBase:
     _Processor: DataProcessor
 
-    def _apply(self, params: ParamsModel, source_df: pd.DataFrame = None, return_with_original: bool = False):
+    def _apply(
+        self,
+        params: ParamsModel,
+        source_df: pd.DataFrame = None,
+        return_with_original: bool = False,
+        raw_data_schema: RawDataSchema = None,
+    ):
         original, actual = apply_processor(
             self._Processor(params),
             self._source_df if source_df is None else source_df,
-            raw_data_schema=self._raw_data_schema,
+            self._raw_data_schema if raw_data_schema is None else raw_data_schema,
         )
         if return_with_original:
             return original, actual
@@ -66,11 +68,17 @@ class ApplyTestBase:
 class GraphTestBase:
     _Processor: DataProcessor
 
-    def _apply(self, params: ParamsModel, source_df: pd.DataFrame = None, return_with_original: bool = False):
+    def _apply(
+        self,
+        params: ParamsModel,
+        source_df: pd.DataFrame = None,
+        return_with_original: bool = False,
+        raw_data_schema: RawDataSchema = None,
+    ):
         original, actual = apply_processor_with_graph(
             self._Processor(params),
             self._source_df if source_df is None else source_df,
-            raw_data_schema=self._raw_data_schema,
+            self._raw_data_schema if raw_data_schema is None else raw_data_schema,
         )
         if return_with_original:
             return original, actual

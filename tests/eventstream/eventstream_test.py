@@ -51,7 +51,7 @@ class TestEventstream:
         assert "event" in df.columns
         assert "random_col" in df.columns
         try:
-            stream.add_start_end()
+            stream.add_start_end_events()
         except Exception as e:
             raise pytest.UsageError(e)
 
@@ -186,7 +186,7 @@ class TestEventstream:
         deleted_events = result_with_deleted[result_with_deleted[DELETE_COL_NAME] == True]
         deleted_events_names: list[str] = deleted_events[schema.event_name].to_list()
 
-        assert deleted_events_names == ["cart_btn_click", "plus_icon_click"]
+        assert deleted_events_names == []
 
     def test_soft_delete(self, test_stream_1):
         df = test_stream_1.to_dataframe()
@@ -244,14 +244,14 @@ class TestEventstream:
         result_df = source.to_dataframe()
         result_events_names: list[str] = result_df[source.schema.event_name].to_list()
 
-        assert result_events_names == ["click_2"]
+        assert result_events_names == ["pageview", "click_2"]
 
         with_deleted_events = source.to_dataframe(show_deleted=True)
 
         deleted_events = with_deleted_events[with_deleted_events[DELETE_COL_NAME] == True]
         deleted_events_names: list[str] = deleted_events[source.schema.event_name].to_list()
 
-        assert deleted_events_names == ["pageview", "pageview", "click_1", "click_1"]
+        assert deleted_events_names == ["click_1"]
 
     def test_sampling__user_sample_size__float(self, test_data_sampling):
         user_sample_share = 0.8

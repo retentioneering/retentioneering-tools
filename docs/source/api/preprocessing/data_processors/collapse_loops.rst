@@ -1,5 +1,5 @@
-Collapse Loops
-========================
+CollapseLoops
+=============
 
 Data processor
 --------------

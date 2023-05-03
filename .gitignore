@@ -12,3 +12,4 @@ retentioneering/retentioneering_tools.egg-info/
 .hypothesis/
 dist/
 examples/
+retentioneering_config.json

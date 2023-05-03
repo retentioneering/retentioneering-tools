@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import pandas as pd
 
-from retentioneering.data_processors_lib import StartEndEvents, StartEndEventsParams
+from retentioneering.data_processors_lib import (
+    AddStartEndEvents,
+    AddStartEndEventsParams,
+)
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import RawDataSchema
 from tests.data_processors_lib.common import ApplyTestBase, GraphTestBase
 
 
-class TestStartEndEvents(ApplyTestBase):
-    _Processor = StartEndEvents
+class TestAddStartEndEvents(ApplyTestBase):
+    _Processor = AddStartEndEvents
     _source_df = pd.DataFrame(
         [
             [1, "pageview", "raw", "2021-10-26 12:00"],
@@ -25,8 +28,8 @@ class TestStartEndEvents(ApplyTestBase):
         event_timestamp="timestamp",
     )
 
-    def test_start_end__apply(self):
-        actual = self._apply(StartEndEventsParams())
+    def test_add_start_end_events__apply(self):
+        actual = self._apply(AddStartEndEventsParams())
         expected = pd.DataFrame(
             [
                 [1, "path_start", "path_start", "2021-10-26 12:00:00"],
@@ -37,8 +40,8 @@ class TestStartEndEvents(ApplyTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestStartEndEventsGraph(GraphTestBase):
-    _Processor = StartEndEvents
+class TestAddStartEndEventsGraph(GraphTestBase):
+    _Processor = AddStartEndEvents
     _source_df = pd.DataFrame(
         [
             [1, "event1", "2022-01-01 00:00:00"],
@@ -54,8 +57,8 @@ class TestStartEndEventsGraph(GraphTestBase):
         event_timestamp="timestamp",
     )
 
-    def test_start_end__graph(self):
-        actual = self._apply(StartEndEventsParams())
+    def test_add_start_end_events__graph(self):
+        actual = self._apply(AddStartEndEventsParams())
         expected = pd.DataFrame(
             [
                 [1, "path_start", "path_start", "2022-01-01 00:00:00"],
@@ -72,8 +75,8 @@ class TestStartEndEventsGraph(GraphTestBase):
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
 
-class TestStartEndEventsHelper:
-    def test_start_end_events_helper(self) -> None:
+class TestAddStartEndEventsHelper:
+    def test_add_start_end_events_helper(self) -> None:
         source_df = pd.DataFrame(
             [
                 [1, "event1", "2022-01-01 00:00:00"],
@@ -101,6 +104,6 @@ class TestStartEndEventsHelper:
 
         stream = Eventstream(source_df)
 
-        result = stream.add_start_end()
+        result = stream.add_start_end_events()
         result_df = result.to_dataframe()[correct_result_columns]
         assert result_df.compare(correct_result).shape == (0, 0)

@@ -1,4 +1,4 @@
-What’s new in 3.0.0 (April 2023)
+What’s new in 3.0.0 (May 2023)
 ================================
 
 Overview

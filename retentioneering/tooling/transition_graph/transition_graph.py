@@ -4,12 +4,14 @@ import copy
 import json
 import random
 import string
+import warnings
 from typing import Any, Dict, List, MutableMapping, MutableSequence, Union, cast
 
 import networkx as nx
 import pandas as pd
 from IPython.core.display import HTML, display
 
+from retentioneering import RETE_CONFIG
 from retentioneering.backend import ServerManager
 from retentioneering.backend.tracker import track
 from retentioneering.backend.tracker.hwid import get_hwid
@@ -60,6 +62,7 @@ class TransitionGraph:
 
     _weights: MutableMapping[str, str] | None = None
     _edges_norm_type: NormType = None
+    _nodes_norm_type: NormType = None
     _nodes_threshold: Threshold
     _edges_threshold: Threshold
 
@@ -69,7 +72,7 @@ class TransitionGraph:
 
     @nodes_thresholds.setter
     def nodes_thresholds(self, value: Threshold) -> None:
-        if self._check_thresholds_for_norm_type(value):
+        if self._check_thresholds_for_norm_type(value=value, norm_type=self.nodes_norm_type):
             self._nodes_threshold = value
 
     @property
@@ -78,25 +81,22 @@ class TransitionGraph:
 
     @edges_thresholds.setter
     def edges_thresholds(self, value: Threshold) -> None:
-        if self._check_thresholds_for_norm_type(value):
+        if self._check_thresholds_for_norm_type(value=value, norm_type=self.edges_norm_type):
             self._edges_threshold = value
 
-    def _check_thresholds_for_norm_type(self, value: Threshold) -> bool:
-        if self.edges_norm_type is None:
+    def _check_thresholds_for_norm_type(self, value: Threshold, norm_type: NormType) -> bool:
+        if norm_type is None:
             if not all(map(lambda x: x is None or x >= 0, value.values())):
-                raise ValueError(
-                    f"For normalization type {self.edges_norm_type} all thresholds must be positive or None"
-                )
+                raise ValueError(f"For normalization type {norm_type} all thresholds must be positive or None")
         else:
             if not all(map(lambda x: x is None or 0 <= x <= 1, value.values())):
-                raise ValueError(
-                    f"For normalization type {self.edges_norm_type} all thresholds must be between 0 and 1 or None"
-                )
+                raise ValueError(f"For normalization type {norm_type} all thresholds must be between 0 and 1 or None")
 
         return True
 
     @track(  # type: ignore
-        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_init"},
+        tracking_info={"event_name": "init"},
+        scope="transition_graph",
     )
     def __init__(
         self,
@@ -168,6 +168,16 @@ class TransitionGraph:
             self._edges_norm_type = edges_norm_type
         else:
             raise ValueError("Norm type should be one of: %s" % allowed_edges_norm_types)
+
+    @property
+    def nodes_norm_type(self) -> NormType:  # type: ignore
+        return self._nodes_norm_type
+
+    @nodes_norm_type.setter
+    def nodes_norm_type(self, nodes_norm_type: NormType) -> None:  # type: ignore
+        if nodes_norm_type is not None:
+            warnings.warn(f"Currently nodes_norm_type allowed to be None only")
+        self._nodes_norm_type = None
 
     def _on_recalc_request(
         self, rename_rules: list[RenameRule]
@@ -546,7 +556,8 @@ class TransitionGraph:
         return "none" if edges_norm_type is None else str(edges_norm_type).lower()
 
     @track(  # type: ignore
-        tracking_info={"event_name": "transition_graph", "event_custom_name": "transition_graph_plot_graph"},
+        tracking_info={"event_name": "plot"},
+        scope="transition_graph",
         allowed_params=[
             "edges_norm_type",
             "targets",
@@ -555,6 +566,13 @@ class TransitionGraph:
             "nodes_weight_col",
             "edges_weight_col",
             "custom_weight_cols",
+            "width",
+            "height",
+            "show_weights",
+            "show_percents",
+            "show_nodes_names",
+            "show_all_edges_for_targets",
+            "show_nodes_without_links",
         ],
     )
     def plot(
@@ -562,12 +580,13 @@ class TransitionGraph:
         targets: MutableMapping[str, str | None] | None = None,
         edges_norm_type: NormType | None = None,
         nodes_threshold: Threshold | None = None,
+        nodes_norm_type: NormType | None = None,
         edges_threshold: Threshold | None = None,
         nodes_weight_col: str | None = None,
         edges_weight_col: str | None = None,
         custom_weight_cols: list[str] | None = None,
         width: int = 960,
-        height: int = 900,
+        height: int = 600,
         show_weights: bool = True,
         show_percents: bool = False,
         show_nodes_names: bool = True,
@@ -579,7 +598,7 @@ class TransitionGraph:
 
         Parameters
         ----------
-        edges_norm_type: {"full", "node", None}, default None
+        edges_norm_type : {"full", "node", None}, default None
             Type of normalization that is used to calculate weights for graph edges.
             Based on ``edges_weight_col`` parameter the weight values are calculated.
 
@@ -589,7 +608,10 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
-        edges_weight_col: str, optional
+        nodes_norm_type : {"full", "node", None}, default None
+            Currently not implemented. Always None.
+
+        edges_weight_col : str, optional
             A column name from the :py:class:`.EventstreamSchema` which values will control the final
             edges' weights and displayed width as well.
 
@@ -602,7 +624,7 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
-        edges_threshold: dict, optional
+        edges_threshold : dict, optional
             Threshold mapping that defines the minimal weights for edges displayed on the canvas.
 
             - Keys should be of type str and contain the weight column names (the values from the
@@ -615,7 +637,7 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide<transition_graph_thresholds>` for the details.
 
-        nodes_weight_col: str, optional
+        nodes_weight_col : str, optional
             A column name from the :py:class:`.EventstreamSchema` which values control the final
             nodes' weights and displayed diameter as well.
 
@@ -628,7 +650,7 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide <transition_graph_weights>` for the details.
 
-        nodes_threshold: dict, optional
+        nodes_threshold : dict, optional
             Threshold mapping that defines the minimal weights for nodes displayed on the canvas.
 
             - Keys should be of type str and contain the weight column names (the values from the
@@ -642,7 +664,7 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide<transition_graph_thresholds>` for the details.
 
-        targets: dict, optional
+        targets : dict, optional
             Events mapping that defines which nodes and edges should be colored for better visualization.
 
             - Possible keys: "positive" (green), "negative" (red), "source" (orange).
@@ -650,25 +672,25 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide<transition_graph_targets>` for the details.
 
-        custom_weight_cols: list of str, optional
+        custom_weight_cols : list of str, optional
             Custom columns from the :py:class:`.EventstreamSchema` that can be selected in ``edges_weight_col``
             and ``nodes_weight_col`` parameters. If ``session_col=session_id`` exists,
             it is added by default to this list.
-        width: int, default 960
+        width : int, default 960
             Width of plot in pixels.
-        height: int, default 960
+        height : int, default 600
             Height of plot in pixels.
-        show_weights: bool, default True
+        show_weights : bool, default True
             Hide/display the edge weight labels. By default, weights are shown.
-        show_percents: bool, default False
+        show_percents : bool, default False
             Display edge weights as percents. Available only if an edge normalization type is chosen.
             By default, weights are displayed in fractions.
-        show_nodes_names: bool, default True
+        show_nodes_names : bool, default True
             Hide/display the node names. By default, names are shown.
-        show_all_edges_for_targets: bool, default True
+        show_all_edges_for_targets : bool, default True
             This displaying option allows to ignore the threshold filters and always display
             any edge connected to a target node. By default, all such edges are shown.
-        show_nodes_without_links: bool, default False
+        show_nodes_without_links : bool, default False
             Setting a threshold filter might remove all the edges connected to a node.
             Such isolated nodes might be considered as useless. This displaying option
             hides them in the canvas as well.
@@ -687,13 +709,14 @@ class TransitionGraph:
 
         See :doc:`TransitionGraph user guide </user_guides/transition_graph>` for the details.
         """
-        if not edges_norm_type and show_percents:
+        if edges_norm_type is None and show_percents:
             raise ValueError("If show_percents=True, edges_norm_type should be 'full' or 'node'!")
 
         self.__prepare_graph_for_plot(
             edges_weight_col=edges_weight_col,
             edges_threshold=edges_threshold,
             edges_norm_type=edges_norm_type,
+            nodes_norm_type=nodes_norm_type,
             nodes_weight_col=nodes_weight_col,
             nodes_threshold=nodes_threshold,
             targets=targets,
@@ -728,7 +751,6 @@ class TransitionGraph:
         shown_links_weight = self.edges_weight_col
         selected_nodes_col_for_thresholds = shown_nodes_col
         selected_links_weight_for_thresholds = shown_links_weight
-
         init_graph_js = self.render.init(
             **dict(
                 server_id=self.server.pk,
@@ -826,6 +848,7 @@ class TransitionGraph:
         nodes_weight_col: str | None = None,
         nodes_threshold: Threshold | None = None,
         edges_norm_type: NormType | None = None,
+        nodes_norm_type: NormType | None = None,
         targets: MutableMapping[str, str | None] | None = None,
         custom_weight_cols: list[str] | None = None,
     ) -> None:
@@ -845,14 +868,14 @@ class TransitionGraph:
         self.nodes_weight_col = nodes_weight_col if nodes_weight_col else self.eventstream.schema.event_id
         self.edges_weight_col = edges_weight_col if edges_weight_col else self.eventstream.schema.event_id
 
-        self.edges_weight_col = self.eventstream.schema.event_id
-        self.edges_norm_type: NormType | None = edges_norm_type
+        self.nodes_norm_type = nodes_norm_type
         self.nodelist: Nodelist = Nodelist(
             weight_cols=self.weight_cols,
             time_col=self.event_time_col,
             event_col=self.event_col,
         )
         self.nodelist.calculate_nodelist(data=self.eventstream.to_dataframe())
+        self.edges_norm_type: NormType | None = edges_norm_type
         self.edgelist: Edgelist = Edgelist(eventstream=self.eventstream)
         self.edgelist.calculate_edgelist(
             weight_cols=self.weight_cols,

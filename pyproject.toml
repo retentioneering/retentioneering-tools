@@ -33,7 +33,7 @@ classifiers = [
     "Operating System :: MacOS",
 ]
 authors = ["Retentioneering User Trajectory Analysis Lab <retentioneering@gmail.com>"]
-
+include = ["LICENSE.md"]
 packages = [
     { include = "retentioneering"}
 ]

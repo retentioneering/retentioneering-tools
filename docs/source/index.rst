@@ -61,9 +61,17 @@ retentioneering documentation
 Installation
 ============
 
+Retentioneering can be installed via pip using `PyPI <https://pypi.org/project/retentioneering/>`_.
+
 .. code-block:: python
 
     pip install retentioneering
+
+Or directly from Jupyter notebook or `google.colab <https://colab.research.google.com/>`_.
+
+.. code-block:: ipython
+
+    !pip install retentioneering
 
 
 Contents

@@ -163,9 +163,7 @@ class CollapseLoops(DataProcessor):
 
         if len(custom_cols) > 0:
             cols_to_show = [user_col, time_col, type_col, event_col] + custom_cols
-            link_url = (
-                "https://doc.retentioneering.com/release3/doc/api/preprocessing/data_processors/collapse_loops.html"
-            )
+            link_url = "https://doc.retentioneering.com/3.0/doc/api/preprocessing/data_processors/collapse_loops.html"
             message_template = """
                                     \nThere are NaN values in the {where_nans} columns!
                                     \nThe total amount of NaN values in each column:

@@ -1,24 +1,29 @@
 [project]
 name = "retentioneering"
 version = "3.0.0rc2"
-description = "Retentioneering is a`Python library that makes analyzing clickstreams, user paths (trajectories), and event logs much easier, and yields much broader and deeper insights than funnel analysis. You can use Retentioneering to explore user behavior, segment users, and form hypotheses about what drives users to desirable actions or to churning away from a product."
-readme = "README.md"
-requires-python = ">=3.8,<3.11"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: Microsoft :: Windows",
-    "Operating System :: Unix",
-    "Operating System :: MacOS",
-]
-license = {text = "Retentioneering Software Non-Exclusive License", file = "LICENSE.md"}
 authors = [
   { name="Retentioneering User Trajectory Analysis Lab", email="retentioneering@gmail.com" },
 ]
+description = "Retentioneering is a powerful Python library for user retention analysis. It provides a simple and intuitive interface for tracking user behavior, analyzing data, and gaining valuable insights into your users."
+readme = "README.md"
+requires-python = ">=3.8,<3.11"
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+	"Operating System :: Microsoft :: Windows",
+	"Operating System :: Unix",
+	"Operating System :: MacOS",
+]
+license = {text = "Retentioneering Software Non-Exclusive License"}
+keywords = ["ANALYTICS", "CLICKSTREAM", "RETENTION", "GRAPHS", "TRAJECTORIES", "CJM", "CUSTOMER-SEGMENTATION"]
+
 
 [project.urls]
 "Homepage" = "https://github.com/retentioneering/retentioneering-tools"
 "Bug Tracker" = "https://github.com/retentioneering/retentioneering-tools/issues"
-"Documentation" = "https://doc.retentioneering.com/release3/doc/"
+"Documentation" = "https://doc.retentioneering.com/3.0/doc/"
+
+
 
 [tool.poetry]
 name = "retentioneering"

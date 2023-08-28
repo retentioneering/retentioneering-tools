@@ -41,7 +41,7 @@ For our first example, we will split users 50/50 based on the index:
     array([315196393, 443659932, 865093748, ..., 965024600, 831491833,
            962761227])
 
-Optionally, we cat define the names of the groups to be display in the method output with the ``group_names`` argument.
+Optionally, we can define the names of the groups to be display in the method output with the ``group_names`` argument.
 
 Let us say we are interested in the proportion of ``cart`` events in a user's path. So the ``func`` parameter will look like this:
 

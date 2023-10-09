@@ -1,0 +1,38 @@
+:root {
+    --sd-color-card-border-hover: #459db9;
+}
+
+/*Make a table tight removing a horizontal scroll bar*/
+.tight-table td {
+    white-space: normal !important;
+}
+
+html[data-theme="dark"] {
+    --pst-color-background: #363634;
+    --pst-color-on-background: #363634;
+}
+
+/*delete double :*/
+dl.field-list > dt:after {
+    content: "";
+}
+
+.small-icon .sd-card {
+    height: 67px ;
+}
+
+.small-icon .sd-card img {
+    height: 70% ;
+    background: none !important;
+    padding: 0.4rem;
+
+}
+
+.small-icon .sd-card .sd-card-title {
+    margin-top: -1.35rem;
+    font-size: .85rem;
+}
+
+.sd-card {
+    height: 96% ;
+}

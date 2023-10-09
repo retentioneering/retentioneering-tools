@@ -1,0 +1,4 @@
+step,event,usr_cnt,usr_cnt_total,perc,color,index,sorting,order_by
+1,thresholded_4,5,5,100.0,"(80, 190, 151)",0,100,100
+2,thresholded_4,5,5,100.0,"(80, 190, 151)",1,100,0
+3,thresholded_4,5,5,100.0,"(80, 190, 151)",2,100,1

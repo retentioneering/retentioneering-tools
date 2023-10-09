@@ -1,0 +1,94 @@
+What’s new in 3.0.1 (May 2023)
+================================
+
+Overview
+--------
+
+Retentioneering 3.0.1 is now available! This release features significant updates and improvements compared to its predecessors. It includes major changes to the library’s architecture and functionality.
+
+You can get started with the new features by referring to the :doc:`Getting Started <../getting_started/quick_start>` section in our documentation
+
+Features and enhancements
+-------------------------
+
+- Retentioreering's functionality has undergone a major overhaul, and as a result, it no longer operates as an extension of pandas.DataFrame. Instead, a class system has been implemented to improve the library’s architecture and functionality.
+- We're excited to announce the addition of a new class to the retentioneering library - the :doc:`Eventstream class<../user_guides/eventstream>`! This powerful data structure is designed to serve as a core component for clickstream data storage, preprocessing, and seamless integration with retentioneering's analytical tools.
+- We have added a set of :doc:`Data processors user guide <../user_guides/dataprocessors>` to the library which includes a library of typical operations on eventstream (clickstream), that can be combined into preprocessing scripts. This functionality has significantly expanded the capability of the library and allows users to preprocess their data in a more efficient and customizable manner.
+- Two new tools have been added to Retentioneering in version 3.0.1: Step Sankey and Cohorts.
+
+  - Step Sankey allows users to create visualizations of user flows through various steps or events in a process.
+
+    - :doc:`User guide<../user_guides/step_sankey>`
+
+    - :doc:`API references<../api/tooling/step_sankey>`
+
+  - Cohorts enables users to analyze user behavior and retention rates based on cohort segments.
+
+    - :doc:`User guide<../user_guides/cohorts>`
+
+    - :doc:`API references<../api/tooling/cohorts>`
+
+- We have added new features and improvements to the existing tools:
+
+  - Transition Graph. We have made significant changes to the Transition Graph tool to provide a more intuitive and user-friendly visualization of user flow across different stages of the user journey.
+
+    - :doc:`User guide<../user_guides/transition_graph>`
+
+    - :doc:`API references<../api/tooling/transition_graph>`
+
+  - Funnel. Now includes two new types of funnels, providing more flexibility in analyzing conversion rates.
+
+    - :doc:`User guide<../user_guides/funnel>`
+
+    - :doc:`API references<../api/tooling/funnel>`
+
+  - Clusters. We have expanded the functionality of the Clusters tool by adding two types of vectorization, removing restrictions on the number of available colors, and enabling the ability to set your own clustering methods.
+
+    - :doc:`User guide<../user_guides/clusters>`
+
+    - :doc:`API references<../api/tooling/clusters>`
+
+  - Stattests (ex. Compare groups). We have added new statistical tests to the Compare Groups function, providing more options for comparing user groups.
+
+    - :doc:`User guide<../user_guides/stattests>`
+
+    - :doc:`API references<../api/tooling/stattests>`
+
+- The step matrix tool has been successfully ported to the new architecture of Retentioneering 3.0.1 without any major changes. Users will continue to enjoy the same functionality and benefits of this tool.
+
+  - :doc:`User guide<../user_guides/step_matrix>`
+
+  - :doc:`API references<../api/tooling/step_matrix>`
+
+
+Changes to syntax and compatibility
+-----------------------------------
+
+- Retentioneering 3.0.1 has changed the syntax of working with the library. It now uses a class system instead of an extension of pandas.DataFrame.
+- There is no backward compatibility with previous versions of the library.
+- Retentioneering 3.0.1 supports Python versions 3.8, 3.9, and 3.10, Python 3.7 has been dropped.
+
+Documentation
+-------------
+
+- The official documentation for Retentioneering version 3 is available at https://doc.retentioneering.com/3.0/doc/
+- We have added :doc:`tutorials<../tutorials>` to our documentation that demonstrate how to use our instruments for various tasks.
+- We have also included :doc:`descriptions of the datasets <../datasets>` we use in our documentation and tutorials.
+
+
+Optimized environments for visual tools
+---------------------------------------
+
+To ensure the best performance when using our visual tools, we recommend running them in the following environments:
+
+- Environment
+
+  - Jupyter Notebook
+
+  - Jupyter Lab
+
+  - Google Colab
+
+- Browser
+
+  - Google Chrome

@@ -1,0 +1,17 @@
+__pycache__
+.ipynb_checkpoints
+typings
+.vscode
+.idea/
+.python-version
+.pytest_cache
+.tox
+retentioneering/retentioneering_tools.egg-info/
+.coverage
+.spyproject/
+.hypothesis/
+dist/
+examples/
+retentioneering_config.json
+requirements.txt
+e2e_tests/test.cvs

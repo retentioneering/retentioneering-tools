@@ -1,0 +1,71 @@
+<iframe
+    id="iframe-{{ id }}"
+    allow="fullscreen"
+    src="about:blank"
+    style="{{ style }}"
+    title="Loading ..."
+></iframe>
+{% include "rete-helpers.html" %}
+<script>
+  (() => {
+    const TITLE = 'Retentioneering Transition Graph Application'
+
+    const iframeDocument = document.implementation.createHTMLDocument(TITLE)
+
+    const h = tag => iframeDocument.createElement(tag)
+    const toHead = element => iframeDocument.head.appendChild(element)
+    const toBody = element => iframeDocument.body.appendChild(element)
+
+    iframeDocument.documentElement.lang = 'en'
+
+    try {
+      window.__RETE_HELPERS__.proxyNotebookEnv(iframeDocument, window.top.document)
+    } catch (error) {
+      console.warn('Can not proxy environment', error)
+    }
+
+    const metaCharset = h('meta')
+    metaCharset.setAttribute('charset', 'UTF-8')
+    toHead(metaCharset)
+
+    const metaViewport = h('meta')
+    metaViewport.name = 'viewport'
+    metaViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'
+    toHead(metaViewport)
+
+    const metaThemeColor = h('meta')
+    metaThemeColor.name = 'theme-color'
+    metaThemeColor.content = '#000000'
+    toHead(metaThemeColor)
+
+    const stateScript = h('script')
+    stateScript.id = 'rete-state-script'
+    stateScript.type = 'application/json'
+    stateScript.text = `{{ state }}`
+    toHead(stateScript)
+
+    const noScript = h('noscript')
+    noScript.innerText = 'You need to enable JavaScript to run this app.'
+    toBody(noScript)
+
+    const appRoot = h('div')
+    appRoot.id = 'root'
+    toBody(appRoot)
+
+    const appScript = h('script')
+    appScript.id = 'rete-app-script'
+    appScript.src = `{{ script_url }}`
+    toBody(appScript)
+
+    const iframeElement = document.getElementById('iframe-{{ id }}')
+
+    if (iframeElement) {
+      iframeElement.title = TITLE
+
+      const iframeContentDocument = iframeElement.contentDocument;
+      iframeContentDocument.open()
+      iframeContentDocument.write('<!DOCTYPE html>' + iframeDocument.documentElement.outerHTML)
+      iframeContentDocument.close();
+    }
+  })()
+</script>

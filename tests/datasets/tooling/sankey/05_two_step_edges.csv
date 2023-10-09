@@ -1,0 +1,4 @@
+step,event,next_event,usr_cnt,time_to_next_sum,index,next_step,next_index
+1,event1,event2,2,0 days 00:00:02,0,2,2
+1,event1,event3,2,0 days 00:00:02,0,2,3
+1,event1,event1,1,0 days 00:00:01,0,2,1

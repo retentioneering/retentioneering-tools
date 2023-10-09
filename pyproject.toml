@@ -1,0 +1,148 @@
+[project]
+name = "retentioneering"
+version = "3.1.0"
+authors = [
+  { name="Retentioneering User Trajectory Analysis Lab", email="retentioneering@gmail.com" },
+]
+description = "Retentioneering is a powerful Python library for user retention analysis. It provides a simple and intuitive interface for tracking user behavior, analyzing data, and gaining valuable insights into your users."
+readme = "README.md"
+requires-python = ">=3.8,<3.12"
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+	"Operating System :: Microsoft :: Windows",
+	"Operating System :: Unix",
+	"Operating System :: MacOS",
+]
+license = {text = "Retentioneering Software Non-Exclusive License"}
+keywords = ["ANALYTICS", "CLICKSTREAM", "RETENTION", "GRAPHS", "TRAJECTORIES", "CJM", "CUSTOMER-SEGMENTATION"]
+
+
+[project.urls]
+"Homepage" = "https://github.com/retentioneering/retentioneering-tools"
+"Bug Tracker" = "https://github.com/retentioneering/retentioneering-tools/issues"
+"Documentation" = "https://doc.retentioneering.com/stable/doc/"
+
+
+
+[tool.poetry]
+name = "retentioneering"
+version = "3.1.0"
+description = "Retentioneering is a Python library that makes analyzing clickstreams, user paths (trajectories), and event logs much easier, and yields much broader and deeper insights than funnel analysis. You can use Retentioneering to explore user behavior, segment users, and form hypotheses about what drives users to desirable actions or to churning away from a product."
+readme = "README.md"
+license = "Retentioneering Software Non-Exclusive License"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: Unix",
+    "Operating System :: MacOS",
+]
+authors = ["Retentioneering User Trajectory Analysis Lab <retentioneering@gmail.com>"]
+include = ["LICENSE.md"]
+packages = [
+    { include = "retentioneering"}
+]
+
+[[tool.poetry.source]]
+name = "main"
+url = "https://pypi.python.org/simple"
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.12"
+virtualenv = ">=20.17"
+numpy = ">=1.22,!=1.24"
+pandas = ">=1.5.0,<2.0.0"
+jupyterlab = ">=3.4.7"
+notebook = ">=6.5.6"
+pydantic = ">=1.10.2, <2"
+networkx = "2.8.6"
+plotly = ">=5.10.0"
+seaborn = ">=0.12.1"
+umap-learn = ">=0.5.3"
+scikit-learn = ">=1.2.0, <1.3.0"
+statsmodels = ">=0.14.0"
+scipy = [
+    { version = ">=1.11.2", python = ">=3.9"},
+    { version = "1.10.1", python = "<3.9"}
+]
+ipywidgets = ">=8.0.4, !=8.0.5"
+docrep = "^0.3.2"
+nanoid = "^2.0.0"
+ipython = "7.34.0"
+ipykernel = "5.5.6"
+tornado = "6.3.2"
+pyzmq = "23.2.1"
+matplotlib = "3.7.2"
+
+[tool.poetry.group.dev.dependencies]
+poetry-dynamic-versioning = ">=0.21.4"
+pre-commit = ">=2.20.0"
+poetry = ">=1.2.1"
+pytest = ">=7.1.3"
+tox-poetry = ">=0.4.1"
+mypy = ">=0.971"
+types-requests = ">=2.28.11.16"
+pandas-stubs = ">=1.4.4"
+
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "5.0.2"
+pydata-sphinx-theme = "0.11"
+numpydoc = "^1.5.0"
+autodoc = "^0.5.0"
+sphinx-design = "^0.4.1"
+sphinx-copybutton = "^0.5.2"
+sphinx-togglebutton = "^0.3.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+format-jinja = "{{ serialize_pep440(base, stage, revision) }}"
+
+[tool.poetry-dynamic-versioning.substitution]
+files = ["retentioneering/__version__.py"]
+
+[tool.black]
+line-length = 120
+
+[tool.pyright]
+useLibraryCodeForTypes = false
+typeCheckingMode = 'basic'
+stubPath = './typings'
+exclude = [
+    '**/__init__.py',
+    './typings',
+    './examples',
+    './.tox',
+    './tests',
+    './examples',
+    './venv'
+    ]
+strictListInference = true
+strictDictionaryInference = true
+strictSetInference = true
+strictParameterNoneValue = true
+reportUntypedClassDecorator = "error"
+reportUntypedBaseClass = "error"
+reportUnusedClass = "error"
+reportUnnecessaryCast = "error"
+reportUnnecessaryComparison = "error"
+reportUnnecessaryContains = "error"
+reportUnnecessaryIsInstance = "error"
+reportImportCycles = "error"
+reportDuplicateImport = "error"
+reportUntypedFunctionDecorator = false
+
+[tool.pytest.ini_options]
+addopts = "-rfs"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::pytest.PytestExperimentalApiWarning",
+    "ignore::FutureWarning",
+    "ignore::UserWarning",
+#    "ignore::pandas.errors.SettingWithCopyWarning",
+]

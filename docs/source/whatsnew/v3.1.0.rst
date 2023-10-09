@@ -1,0 +1,97 @@
+What’s new in 3.1.0 (October 2023)
+====================================
+
+New Features
+------------
+
+Transition graph
+~~~~~~~~~~~~~~~~
+
+- Added ``layout_dump`` parameter to the :py:meth:`plot<retentioneering.tooling.transition_graph.transition_graph.TransitionGraph.plot>` method. Now you can specify the path to the JSON file containing the saved node positions using this parameter. It ensures that the saved positions are applied, maintaining the desired mutual positioning of the nodes. See the :ref:`transition graph user guide<transition_graph_layout_dump>` for details.
+
+.. code-block:: python
+
+    stream.transition_graph(layout_dump='/path/to/node_params.json')
+
+- Added a switcher that excludes the nodes from the sourcing eventstream. See the :ref:`transition graph user guide<transition_graph_nodes_block>` for details.
+
+- Added :py:meth:`TransitionGraph.recalculation_result<retentioneering.tooling.transition_graph.transition_graph.TransitionGraph.recalculation_result>` attribute to the :py:meth:`TransitionGraph<retentioneering.tooling.transition_graph.transition_graph.TransitionGraph>`. It exports a modified eventstream after applying such GUI actions as grouping or nodes switching. See :ref:`transition graph user guide <transition_graph_recalculation_result>` for details.
+
+  **Known issue:** There may be problems with renamed groups, nodes, and nested nodes on the front end for this feature.
+
+Preprocessing graph
+~~~~~~~~~~~~~~~~~~~
+
+Introduced the ability export and import a preprocessing graph from/to a configuration with two new methods :py:meth:`PreprocessingGraph.export_to_file()<retentioneering.preprocessing_graph.preprocessing_graph.PreprocessingGraph.export_to_file>` and :py:meth:`PreprocessingGraph.import_from_file()<retentioneering.preprocessing_graph.preprocessing_graph.PreprocessingGraph.import_from_file>`. See :ref:`preprocessing user guide<preprocessing_import_export>` for details.
+
+.. code-block:: python
+
+    # save preprocessing config to file
+    path_to_file = '/path/to/pgraph_config.json'
+    pgraph.export_to_file(path_to_file)
+
+    # create new PreprocessingGraph instance
+    new_pgraph = stream.preprocessing_graph()
+
+    # restore the preserved preprocessing configurations
+    new_pgraph.import_from_file(path_to_file)
+
+Step matrix
+~~~~~~~~~~~
+
+The default value of the ``threshold`` has been changed from 0 to 0.01. By default, the events of low frequency are collapsed now to the ``THRESHOLDED`` artificial event. See :ref:`the Step matrix user guide<transition_matrix_collapsing_events>` for the details.
+
+Eventstream
+~~~~~~~~~~~
+
+Added ``events_order`` parameter to :py:meth:`Evenstream<retentioneering.eventstream.eventstream.Eventstream>` constructor. It sets the order of raw events with the same timestamps. See :ref:`eventstream user guide<index_explanation>` for details.
+
+.. code-block:: python
+
+    df = pd.DataFrame(
+        [
+            ['user_1', 'A', '2023-01-01 00:00:00'],
+            ['user_1', 'B', '2023-01-01 00:00:00'],
+            ['user_2', 'B', '2023-01-01 00:00:03'],
+            ['user_2', 'A', '2023-01-01 00:00:03'],
+            ['user_2', 'A', '2023-01-01 00:00:04']
+        ],
+        columns=['user_id', 'event', 'timestamp']
+    )
+    stream = Eventstream(df, events_order=["B", "A"])
+
+SplitSessions
+~~~~~~~~~~~~~
+
+Two new parameters ``delimiter_events`` and ``delimiter_col`` have been added. The former enables the ability to split sessions based on either a single separating event or a pair of events. With the latter, you can specify a custom column that contains session identifiers. The data processor will automatically insert ``session_start`` and ``session_end`` events at the appropriate locations in the eventstream based on the provided column values.
+
+.. code-block:: python
+
+    stream.split_sessions(delimiter_events=["session_delimiter"])
+
+.. code-block:: python
+
+    stream.split_sessions(delimiter_events=["custom_start", "custom_end"])
+
+.. code-block:: python
+
+    stream.split_sessions(delimiter_col="custom_ses_id")
+
+See :ref:`Data processors user guide<split_sessions>` for details.
+
+Improvements
+------------
+
+* Added support for Python 3.11. See :doc:`installation guide <../getting_started/installation>` for details.
+* Resolved a significant number of warnings.
+* Increased the library's dependency sustainability.
+* Added support for Safari and Firefox browsers. See :doc:`installation guide <../getting_started/installation>` for details.
+* Stabilized the functionality of TransitionGraph and PreprocessingGraph GUIs in popular environments: JupyterLab, Jupyter Notebook, and JupyterHub. See :doc:`installation guide <../getting_started/installation>` for details.
+* Developed a new data processor architecture, resulting in enhanced performance and reduced resource requirements.
+* Added custom columns aggregation in :py:meth:`CollapseLoops<retentioneering.data_processors_lib.collapse_loops.CollapseLoops>` data processor.
+
+Bug fixes
+---------
+* Bug in :py:meth:`Clusters.set_clusters()<retentioneering.tooling.clusters.clusters.Clusters.set_clusters>` was assigning user clusters incorrectly ignoring ``pd.Series`` index.
+* Bug in :py:meth:`Stattests<retentioneering.tooling.stattests.stattests.StatTests>` output was swapping the group labels.
+* Bug in :py:meth:`StepMatrix<retentioneering.tooling.step_matrix.step_matrix.StepMatrix>` was raising an exception when using ``target`` and ``groups`` arguments simultaneously.

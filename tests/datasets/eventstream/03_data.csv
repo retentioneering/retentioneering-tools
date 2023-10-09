@@ -1,0 +1,5 @@
+,event_name,event_timestamp,user_id
+0,pageview,2021-10-26 12:00,1
+1,cart_btn_click,2021-10-26 12:02,1
+2,pageview,2021-10-26 12:03,1
+3,plus_icon_click,2021-10-26 12:04,1

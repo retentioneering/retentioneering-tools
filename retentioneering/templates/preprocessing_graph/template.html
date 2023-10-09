@@ -1,0 +1,77 @@
+<div id="{{block_id}}">
+</div>
+{% include "rete-helpers.html" %}
+<script>
+  (function () {
+    const width = Number("{{width}}") // 960
+    const height = Number("{{height}}") // 900
+
+    const iframe = document.createElement("iframe")
+
+    iframe.src = "about:blank"
+    iframe.width = width
+    iframe.height = height
+
+    const init = () => {
+      iframe.contentWindow.__SERVER_ID__ = "{{server_id}}"
+      iframe.contentWindow.__ENV__ = "{{env}}"
+      iframe.contentWindow.__WIDTH__ = width
+      iframe.contentWindow.__HEIGHT__ = height
+
+      {% if kernel_id %}
+      iframe.contentWindow.__KERNEL_ID__ = "{{kernel_id}}"
+      {% endif %}
+
+      {% if tracking_hardware_id %}
+      iframe.contentWindow.__TRACKING_HARDWARE_ID__ = "{{tracking_hardware_id}}"
+      {% endif %}
+
+      {% if tracking_eventstream_index >= 0 %}
+      iframe.contentWindow.__TRACKING_EVENTSTREAM_INDEX__ = Number("{{tracking_eventstream_index}}")
+      {% endif %}
+
+      {% if tracking_scope %}
+      iframe.contentWindow.__TRACKING_SCOPE__ = "{{tracking_scope}}"
+      {% endif %}
+
+      const iframeDocument = iframe.contentDocument
+
+      if (!iframeDocument.doctype) {
+        iframeDocument.insertBefore(document.implementation.createDocumentType('html', '', ''), iframeDocument.childNodes[0])
+      }
+
+      window.__RETE_HELPERS__.proxyNotebookEnv(iframeDocument, window.top.document)
+
+      const container = iframeDocument.createElement("div")
+      container.id = "root"
+
+      const script = iframeDocument.createElement("script")
+      script.src = "{{graph_url}}?block={{block_id}}"
+      script.type = "text/javascript"
+
+      const link = iframeDocument.createElement("link")
+      link.rel = "stylesheet"
+      link.href = "{{graph_style_url}}?block={{block_id}}"
+
+      const font1 = iframeDocument.createElement("link")
+      font1.rel = "stylesheet"
+      font1.href = "https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap"
+
+      const font2 = iframeDocument.createElement("link")
+      font2.rel = "stylesheet"
+      font2.href = "https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@300;400&display=swap"
+
+      iframeDocument.body.appendChild(container)
+      iframeDocument.body.appendChild(script)
+      iframeDocument.body.appendChild(link)
+      iframeDocument.body.appendChild(font1)
+      iframeDocument.body.appendChild(font2)
+    }
+
+    iframe.onload = () => {
+      init()
+    }
+
+    document.getElementById("{{block_id}}")?.appendChild(iframe)
+  })()
+</script>

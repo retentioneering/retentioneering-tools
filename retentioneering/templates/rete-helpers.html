@@ -1,0 +1,42 @@
+<script>
+  window.__RETE_HELPERS__ = window.__RETE_HELPERS__ || {
+    /**
+     * We render our widgets inside of iframes (to isolate javascript).
+     * The @jupyterlab/services library we use reads the basic URL parameters
+     * for the Jupyter Kernel Gateway and ws connections) from the DOM.
+     * These parameters are not present in the nested iframe.
+     * This function copies this configuration to the DOM of the current
+     * iframe so that PageConfig
+     * (https://github.com/jupyterlab/jupyterlab/blob/master/packages/coreutils/src/pageconfig.ts#L36)
+     * can retrieve them
+     *
+     * @param {Document} iframeDocument
+     * @param {Document} parentDocument
+     */
+    proxyNotebookEnv(iframeDocument, parentDocument) {
+      // For Jupyter Notebook
+      for (const [name, val] of Object.entries(parentDocument.body.dataset)) {
+        iframeDocument.body.dataset[name] = val
+      }
+
+      const id = 'jupyter-config-data'
+
+      // For Jupyter Lab
+      if (!iframeDocument.getElementById(id)) {
+        const currentConfigScript = parentDocument.getElementById(id)
+
+        if (currentConfigScript) {
+          const newConfigScript = iframeDocument.createElement('script')
+
+          newConfigScript.id = id
+          newConfigScript.text = currentConfigScript.text
+          if (currentConfigScript.type) {
+            newConfigScript.type = currentConfigScript.type
+          }
+
+          iframeDocument.body.appendChild(newConfigScript)
+        }
+      }
+    }
+  }
+</script>

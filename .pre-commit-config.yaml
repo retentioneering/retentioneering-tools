@@ -1,0 +1,42 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+        exclude: "^(docs/source/_static/|src/datasets/)"
+        args: ["--maxkb=1100"]
+  - repo: https://github.com/hadialqattan/pycln
+    rev: v2.2.2 # Possible releases: https://github.com/hadialqattan/pycln/releases
+    hooks:
+      - id: pycln
+        args: [ --config=pyproject.toml ]
+  - repo: https://github.com/psf/black
+    rev: 23.9.1
+    hooks:
+      - id: black
+        language_version: python3
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: [ "--profile", "black", "--filter-files" ]
+        exclude: "^(retentioneering/__init__.py)"
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: 'v1.5.1'
+    hooks:
+      - id: mypy
+        exclude: "^(tests/|venv/)"
+        additional_dependencies: ['types-requests']
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: pyright
+        language: node
+        pass_filenames: false
+        exclude: "^(tests/|venv/)"
+        types: [ python ]
+        # Replace the version below with the latest pyright version
+        additional_dependencies: [ 'pyright@1.1.308' ]

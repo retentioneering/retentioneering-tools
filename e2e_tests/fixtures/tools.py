@@ -297,5 +297,5 @@ def clusters_filter_params() -> dict:
 
 @pytest.fixture
 def preprocessing_graph_combine_params() -> dict:
-    performance_info = {"custom_cols": 3, "shape": [37329, 19], "unique_events": 21, "unique_users": 2294, "index": 10}
+    performance_info = {"custom_cols": 2, "shape": [37329, 8], "unique_events": 21, "unique_users": 2294, "index": 10}
     return {"performance_info": performance_info}

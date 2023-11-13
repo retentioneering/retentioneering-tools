@@ -17,7 +17,7 @@ def read_test_data(filename):
 @pytest.fixture
 def simple_data():
     source_df = read_test_data("01_simple_data.csv")
-    source_stream = Eventstream(source_df)
+    source_stream = Eventstream(source_df, add_start_end_events=False)
     return source_stream
 
 
@@ -36,6 +36,7 @@ def continuous_data():
         ),
         raw_data_schema=raw_data_schema,
         raw_data=source_df,
+        add_start_end_events=False,
     )
     return source
 
@@ -43,5 +44,5 @@ def continuous_data():
 @pytest.fixture
 def non_equal_target_data():
     source_df = read_test_data("03_non_equal_target_data.csv")
-    source_stream = Eventstream(source_df)
+    source_stream = Eventstream(source_df, add_start_end_events=False)
     return source_stream

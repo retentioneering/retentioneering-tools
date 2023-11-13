@@ -4,10 +4,12 @@ from .add_start_end_events_helper import AddStartEndEventsHelperMixin
 from .collapse_loops_helper import CollapseLoopsHelperMixin
 from .drop_paths_helper import DropPathsHelperMixin
 from .filter_events_helper import FilterEventsHelperMixin
+from .group_events_bulk_helper import GroupEventsBulkHelperMixin
 from .group_events_helper import GroupEventsHelperMixin
 from .label_cropped_paths_helper import LabelCroppedPathsHelperMixin
 from .label_lost_users_helper import LabelLostUsersHelperMixin
 from .label_new_users_helper import LabelNewUsersHelperMixin
+from .pipe_helper import PipeHelperMixin
 from .rename_helper import RenameHelperMixin
 from .split_sessions_helper import SplitSessionsHelperMixin
 from .truncate_paths_helper import TruncatePathsHelperMixin

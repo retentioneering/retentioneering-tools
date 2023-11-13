@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import pandas as pd
 
@@ -13,7 +13,7 @@ from retentioneering.utils.doc_substitution import docstrings
 
 from ..types import EventstreamSchemaType, EventstreamType
 
-EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchemaType], Any]
+EventstreamFilter = Callable[[pd.DataFrame, Optional[EventstreamSchemaType]], Any]
 
 
 class GroupEventsHelperMixin:

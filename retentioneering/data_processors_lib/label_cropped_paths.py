@@ -111,7 +111,7 @@ class LabelCroppedPaths(DataProcessor):
         if not left_cutoff and not right_cutoff:
             raise ValueError("Either left_cutoff or right_cutoff must be specified!")
 
-        userpath = df.groupby(user_col)[time_col].agg([np.min, np.max]).rename(columns={"amin": "start", "amax": "end"})
+        userpath = df.groupby(user_col)[time_col].agg(start=np.min, end=np.max)  # type: ignore
 
         if left_cutoff:
             timedelta = (userpath["end"] - df[time_col].min()) / np.timedelta64(1, left_truncated_unit)  # type: ignore

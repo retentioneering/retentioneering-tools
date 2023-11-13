@@ -33,7 +33,7 @@ def test_stream():
         ],
         columns=["user_id", "event", "timestamp"],
     )
-    stream = Eventstream(raw_data=source_df)
+    stream = Eventstream(raw_data=source_df, add_start_end_events=False)
     return stream
 
 
@@ -70,5 +70,5 @@ def test_stream_custom_col():
         event_timestamp="timestamp",
         custom_cols=[{"custom_col": "user_type_col", "raw_data_col": "user_type"}],
     )
-    stream = Eventstream(raw_data_schema=raw_data_schema, raw_data=source_df)
+    stream = Eventstream(raw_data_schema=raw_data_schema, raw_data=source_df, add_start_end_events=False)
     return stream

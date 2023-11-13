@@ -90,6 +90,9 @@ html_theme_options = {
         "version_match": version,
     },
     "footer_items": ["copyright", "sphinx-version", "footer_extension"],
+    "analytics": {
+        "google_analytics_id": "G-M0RGDZCYGM",
+    },
 }
 
 autodoc_typehints = "none"
@@ -136,7 +139,6 @@ rst_epilog = """
 .. |warning| replace:: ⚠️
 
 """
-
 
 extlinks = {
     "numpy_link": ("https://numpy.org/doc/stable/reference/arrays.datetime.html#datetime-units/%s", None),

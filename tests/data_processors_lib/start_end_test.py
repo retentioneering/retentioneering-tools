@@ -107,8 +107,38 @@ class TestAddStartEndEventsHelper:
             columns=correct_result_columns,
         )
 
-        stream = Eventstream(source_df)
+        stream = Eventstream(source_df, add_start_end_events=True)
+        result_df = stream.to_dataframe()[correct_result_columns]
+        assert result_df.compare(correct_result).shape == (0, 0)
 
-        result = stream.add_start_end_events()
-        result_df = result.to_dataframe()[correct_result_columns]
+    def test_add_start_end_events_duplicates(self):
+        source_df = pd.DataFrame(
+            [
+                [1, "path_start", "path_start", "2022-01-01 00:00:00"],
+                [1, "event1", "raw", "2022-01-01 00:00:00"],
+                [1, "event2", "raw", "2022-01-01 00:00:01"],
+                [1, "event3", "raw", "2022-01-01 00:00:02"],
+                [1, "path_end", "path_end", "2022-01-01 00:00:02"],
+                [2, "event4", "raw", "2022-01-02 00:00:00"],
+            ],
+            columns=["user_id", "event", "event_type", "timestamp"],
+        )
+
+        correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
+        correct_result = pd.DataFrame(
+            [
+                [1, "path_start", "path_start", "2022-01-01 00:00:00"],
+                [1, "event1", "raw", "2022-01-01 00:00:00"],
+                [1, "event2", "raw", "2022-01-01 00:00:01"],
+                [1, "event3", "raw", "2022-01-01 00:00:02"],
+                [1, "path_end", "path_end", "2022-01-01 00:00:02"],
+                [2, "path_start", "path_start", "2022-01-02 00:00:00"],
+                [2, "event4", "raw", "2022-01-02 00:00:00"],
+                [2, "path_end", "path_end", "2022-01-02 00:00:00"],
+            ],
+            columns=correct_result_columns,
+        )
+
+        stream = Eventstream(source_df, raw_data_schema={"event_type": "event_type"}, add_start_end_events=True)
+        result_df = stream.to_dataframe()[correct_result_columns]
         assert result_df.compare(correct_result).shape == (0, 0)

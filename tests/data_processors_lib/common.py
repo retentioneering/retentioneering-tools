@@ -23,6 +23,7 @@ def apply_processor_with_graph(
         raw_data_schema=raw_data_schema,
         raw_data=source_df.copy(),
         schema=EventstreamSchema(),
+        add_start_end_events=False,
     )
     original_df = stream.to_dataframe().reset_index(drop=True)
     graph = PreprocessingGraph(source_stream=stream)
@@ -55,6 +56,7 @@ class ApplyTestBase:
         stream = Eventstream(
             raw_data=df,
             raw_data_schema=raw_schema,
+            add_start_end_events=False,
         )
 
         dataprocessor = self._Processor(
@@ -71,6 +73,7 @@ class ApplyTestBase:
         result_stream = Eventstream(
             raw_data=result,
             raw_data_schema=raw_schema,
+            add_start_end_events=False,
         )
         return result_stream.to_dataframe()
 

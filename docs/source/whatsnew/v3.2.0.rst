@@ -1,0 +1,47 @@
+What’s new in 3.2.0 (2023-11-13)
+================================
+
+New Features
+------------
+
+Eventstream
+~~~~~~~~~~~
+
+- Improved working with ``RawDataSchema``. All columns of a raw DataFrame except ``user_id``, ``event``, ``timestamp`` are considered as custom now and added to the eventstream automatically. New argument ``custom_cols`` shapes a white list for the columns to be added only. See :ref:`eventstream user guide<eventstream_custom_cols>` for details.
+
+- ``EventstreamSchema`` can be defined as a dictionary. See :ref:`eventstream user guide<eventstream_field_names>`.
+
+- Synthetic events ``path_start`` and ``path_end`` are added automatically to an eventstream as if :py:class:`.AddStartEndEvents` was applied.
+
+Data processors
+~~~~~~~~~~~~~~~
+
+- Added :ref:`GroupEventsBulk<group_events_bulk>` data processor. Now you can apply multiple grouping operations simultaneously.
+
+.. code-block:: python
+
+    stream.group_events_bulk(
+        {
+            'product': lambda _df: _df['event'].str.startswith('product'),
+            'delivery': lambda _df: _df['event'].str.startswith('delivery')
+        }
+    )
+
+- Added :ref:`Pipe<pipe>` data processor. It allows you to modify an eventstream as if you worked with pandas DataFrame.
+
+.. code-block:: python
+
+    stream.pipe(lambda _df: _df.assign(new_column=100))
+
+- ``schema`` argument is not mandatory for custom functions of :py:class:`.FilterEvents` and :py:class:`.GroupEvents` data processors.
+
+.. code-block:: python
+
+    stream.filter_events(lambda _df: _df['user_id'] == 'user_12345')
+
+- The architecture of the data processors was improved and simplified. Some legacy features were removed.
+
+Transition graph
+~~~~~~~~~~~~~~~~
+
+- The default ``edges_weight_col`` and ``nodes_weight_col`` is set to ``user_id``. It means that the default weights are associated with the number of unique users who had given transition or experienced given event.

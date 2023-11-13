@@ -14,4 +14,6 @@ Data Processors
     DropPaths <data_processors/drop_paths.rst>
     TruncatePaths <data_processors/truncate_paths.rst>
     GroupEvents <data_processors/group_events.rst>
+    GroupEventsBulk <data_processors/group_events_bulk.rst>
     CollapseLoops <data_processors/collapse_loops.rst>
+    Pipe <data_processors/pipe.rst>

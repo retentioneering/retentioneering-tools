@@ -13,7 +13,7 @@ Quick start with Retentioneering
 
 .. |colab| raw:: html
 
-    <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/user_guides_notebooks/quick_start.ipynb">
+    <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/user_guides_notebooks/quick_start.ipynb" target="_blank">
       <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Google Colab"/>
     </a>
 
@@ -116,7 +116,7 @@ If you are OK with the simple_shop dataset, you can proceed to the next section.
     data = pd.read_csv("your_own_data_file.csv")
     stream = Eventstream(data)
 
-If the input table columns have different names, either rename them in the DataFrame, or explicitly set data schema (see :ref:`Eventstream user guide <eventstream_custom_fields>` for the instructions). Likewise, if the table has additional custom columns, setting the data schema is also required.
+If the input table columns have different names, either rename them in the DataFrame, or explicitly set data schema (see :ref:`Eventstream user guide <eventstream_raw_data_schema>` for the instructions). Likewise, if the table has additional custom columns, setting the data schema is also required.
 
 Getting a CSV file with data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

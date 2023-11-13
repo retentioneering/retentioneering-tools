@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import Callable, Optional
 
 from pandas import DataFrame, Series
 
@@ -22,7 +22,7 @@ class FilterEventsHelperMixin:
         event_value="combine",
     )
     def filter_events(
-        self: EventstreamType, func: Callable[[DataFrame, EventstreamSchemaType], Series]
+        self: EventstreamType, func: Callable[[DataFrame, Optional[EventstreamSchemaType]], Series]
     ) -> EventstreamType:
         """
         A method of ``Eventstream`` class that filters input ``eventstream`` based on custom conditions.

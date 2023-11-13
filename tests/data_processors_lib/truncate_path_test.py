@@ -619,7 +619,7 @@ class TestTruncatePathsHelper:
             columns=correct_result_columns,
         )
 
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
 
         result = source.truncate_paths(drop_before="event3", drop_after="event5")
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
@@ -672,7 +672,7 @@ class TestTruncatePathsHelper:
         correct_result = pd.DataFrame(source_df, copy=True)
         correct_result.columns = correct_result_columns
 
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
 
         result = source.truncate_paths(drop_before="missing_event")
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
@@ -696,7 +696,7 @@ class TestTruncatePathsHelper:
         correct_result = pd.DataFrame(source_df, copy=True)
         correct_result.columns = correct_result_columns
 
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
 
         result = source.truncate_paths(drop_after="missing_event")
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)

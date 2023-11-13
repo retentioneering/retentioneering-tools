@@ -18,7 +18,7 @@ class TrackerMainConnector(ConnectorProtocol):
 
     def __init__(self) -> None:
         super().__init__()
-        self.url = "https://t.trsbf.com/endpoint/event"
+        self.url = "https://ftrack-1.server.retentioneering.com/endpoint/event"
         self.source = "rete_tools_backend"
         adapter = HTTPAdapter(pool_connections=30, pool_maxsize=30)
         self.session = requests.Session()

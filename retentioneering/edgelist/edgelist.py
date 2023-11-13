@@ -94,7 +94,10 @@ class Edgelist:
         edgelist = abs_values
         # denumerator_full = total number of transitions/users/sessions
         if norm_type == "full":
-            denumerator_full = bigrams[self.weight_col].nunique()
+            if self.weight_col != "event_id":
+                denumerator_full = bigrams[self.weight_col].nunique()
+            else:
+                denumerator_full = len(bigrams)
             edgelist = abs_values / denumerator_full
         # denumerator_node = total number of transitions/users/sessions that started with edge_from event
         if norm_type == "node":

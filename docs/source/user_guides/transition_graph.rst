@@ -13,7 +13,7 @@ Transition Graph
 
 .. |colab| raw:: html
 
-    <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/user_guides_notebooks/transition_graph.ipynb">
+    <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/user_guides_notebooks/transition_graph.ipynb" target="_blank">
       <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Google Colab"/>
     </a>
 
@@ -53,7 +53,7 @@ The primary way to build a transition graph is to call :py:meth:`Eventstream.tra
     ></iframe>
     </div>
 
-According to the transition graph definition, we see here the events represented as nodes connected with the edges. By default, the nodes and edges weights are simply the total numbers of the events/transitions occurred in the sourcing eventstream. All the edges are labeled with these numbers in the graph. For example, among the others, we can see that there were 1709 ``catalog → cart`` transitions, 1042 ``main → main`` self-transitions, and there were no ``product1 → payment_done`` transitions. The thickness of the edges and the size of the nodes are proportional to their weights.
+According to the transition graph definition, we see here the events represented as nodes connected with the edges. By default, the nodes and edges weights are the number of unique users who experienced the corresponding event or transition. All the edges are labeled with these numbers in the graph. For example, among the others, we can see that there are 1324 unique users who had ``catalog → cart`` transitions, 603 users with ``main → main`` self-transitions, and there were none with ``product1 → payment_done`` transitions. The thickness of the edges and the size of the nodes are proportional to their weights.
 
 The graph is interactive. You can move the nodes, zoom in/out the chart, and finally reveal or hide a :ref:`control panel <transition_graph_control_panel>` by clicking on the left edge of the chart. You can check the interactive features out even in the transition graphs embedded in this document.
 
@@ -74,7 +74,7 @@ Edge weights calculation
 
 The edge weight values are controlled by ``edges_norm_type`` and ``edges_weight_col`` parameters of :py:meth:`Eventstream.transition_graph()<retentioneering.eventstream.eventstream.Eventstream.transition_graph>` method.
 
-As we mentioned earlier, the most straightforward way to assign an edge weight is to calculate the number of the transitions associating with the edge in the entire eventstream. In this case we use ``edges_norm_type=None`` and ``edges_weight_col='event_id'``, meaning that no normalization is needed and ``event_id`` column is used as a weighting column (we will explain the concept of weighting columns below).
+Let us start from the explanation of the configuration ``edges_norm_type=None`` and ``edges_weight_col='event_id'`` which means that no normalization is needed and ``event_id`` column is used as a weighting column (we will explain the concept of weighting columns below). This combination defines edge weight as the number of the transitions associated with the edge in the entire eventstream.
 
 By weight normalization we mean dividing the transition counts (calculated for ``edges_norm_type=None`` case) by some denominator, so we get rational weights instead of integer. Except ``None``, two normalization types are possible: ``full`` and ``node``. Full normalization defines the denominator as the overall number of the transitions in the eventstream. Node normalization works as follows. Consider a hypothetical ``A → B`` transition. To normalize the weight of this edge we need to divide the number of ``A → B`` transitions by the total number of the transitions coming out of ``A`` node. In other words, node-normalized weight is essentially the probability of a user to transit to event ``B`` standing on event ``A``.
 
@@ -130,7 +130,9 @@ In comparison with the case for ``user_id`` weight column, there are some import
 Node weights
 ^^^^^^^^^^^^
 
-Besides edge weights, a transition graph also have node weights that control the diameters of the nodes. Unfortunately, so far only one option is supported: ``norm_type=None`` along with weighting columns. However, if you want to know how the node weights for ``norm_type='full'`` are calculated, expand the following text snippet:
+Besides edge weights, a transition graph also have node weights that control the diameters of the nodes. Unfortunately, so far only one option is supported: ``norm_type=None`` along with weighting columns. By default, ``weight_col='user_id'``.
+
+If you want to know how the node weights for ``norm_type='full'`` are calculated, expand the following text snippet:
 
 .. toggle::
 
@@ -177,9 +179,9 @@ Finally, we demonstrate how to set the weighting options for a graph. As it has 
     +----------------------------------------+-------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
     | edges_norm_type → \ edges_weight_col ↓ | None                                                                          | full                                                                                                                        | node                                                                                                                                                                              |
     +========================================+===============================================================================+=============================================================================================================================+===================================================================================================================================================================================+
-    | None or event_id                       | The total number of the ``A → B`` **transitions**.                            | The total number of the ``A → B`` transitions divided by the number of all the **transitions**.                             | The total number of the ``A → B`` transitions divided by the **total number of** ``A → *`` **transitions**.                                                                       |
+    | event_id                               | The total number of the ``A → B`` **transitions**.                            | The total number of the ``A → B`` transitions divided by the number of all the **transitions**.                             | The total number of the ``A → B`` transitions divided by the **total number of** ``A → *`` **transitions**.                                                                       |
     +----------------------------------------+-------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-    | user_id                                | The total number of the **unique users** who had the ``A → B`` transition.    | The total number of the **unique users** who had the ``A → B`` transition divided by the number of all the **users**.       | The total number of the **unique users** who had the ``A → B`` transition divided by the number of the **unique users who had any** ``A → *`` **transition**.                     |
+    | None or user_id                        | The total number of the **unique users** who had the ``A → B`` transition.    | The total number of the **unique users** who had the ``A → B`` transition divided by the number of all the **users**.       | The total number of the **unique users** who had the ``A → B`` transition divided by the number of the **unique users who had any** ``A → *`` **transition**.                     |
     +----------------------------------------+-------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
     | session_id                             | The total number of the **unique sessions** who had the ``A → B`` transition. | The total number of the **unique sessions** who had the ``A → B`` transition divided by the number of all the **sessions**. | The total number of the **unique sessions** where the ``A → B`` transition occurred divided by the number of the **unique sessions where any** ``A → *`` **transition occurred**. |
     +----------------------------------------+-------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+

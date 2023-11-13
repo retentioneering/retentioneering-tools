@@ -215,6 +215,40 @@ class TestDataProcessorHelpersTracking:
         assert log["performance_after"] == group_events_full_params["performance_after"]
 
     @pytest.mark.usefixtures("set_local_tracker")
+    def test_tracking_group_events_bulk_helper_full(
+        self, test_stream: Eventstream, group_events_bulk_full_params: dict
+    ) -> None:
+        test_stream.group_events_bulk(**group_events_bulk_full_params["args"])
+
+        log = get_log("group_events_bulk")
+
+        assert log["args"] == group_events_bulk_full_params["expected_args"]
+        assert log["performance_before"] == group_events_bulk_full_params["performance_before"]
+        assert log["performance_after"] == group_events_bulk_full_params["performance_after"]
+
+    @pytest.mark.usefixtures("set_local_tracker")
+    def test_tracking_group_events_bulk_dict_helper_full(
+        self, test_stream: Eventstream, group_events_bulk_dict_full_params: dict
+    ) -> None:
+        test_stream.group_events_bulk(**group_events_bulk_dict_full_params["args"])
+
+        log = get_log("group_events_bulk")
+
+        assert log["args"] == group_events_bulk_dict_full_params["expected_args"]
+        assert log["performance_before"] == group_events_bulk_dict_full_params["performance_before"]
+        assert log["performance_after"] == group_events_bulk_dict_full_params["performance_after"]
+
+    @pytest.mark.usefixtures("set_local_tracker")
+    def test_tracking_pipe_helper_full(self, test_stream: Eventstream, pipe_full_params: dict) -> None:
+        test_stream.pipe(**pipe_full_params["args"])
+
+        log = get_log("pipe")
+
+        assert log["args"] == pipe_full_params["expected_args"]
+        assert log["performance_before"] == pipe_full_params["performance_before"]
+        assert log["performance_after"] == pipe_full_params["performance_after"]
+
+    @pytest.mark.usefixtures("set_local_tracker")
     def test_tracking_collapse_loops_helper_full(
         self, test_stream: Eventstream, collapse_loops_full_params: dict
     ) -> None:

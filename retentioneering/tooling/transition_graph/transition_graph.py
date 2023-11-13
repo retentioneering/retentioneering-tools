@@ -818,8 +818,8 @@ class TransitionGraph:
 
             For each edge is calculated:
 
-            - If ``None`` or ``event_id`` - the number of transitions.
-            - If ``user_id`` - the number of unique users.
+            - If ``None`` or ``user_id`` - the number of unique users.
+            - If ``event_id`` - the number of transitions.
             - If ``session_id`` - the number of unique sessions.
             - If ``custom_col`` - the number of unique values in selected column.
 
@@ -844,8 +844,8 @@ class TransitionGraph:
 
             For each node is calculated:
 
-            - If ``None`` or ``event_id`` - the number of events.
-            - If ``user_id`` - the number of unique users.
+            - If ``None`` or ``user_id`` - the number of unique users.
+            - If ``event_id`` - the number of events.
             - If ``session_id`` - the number of unique sessions.
             - If ``custom_col`` - the number of unique values in selected column.
 
@@ -984,11 +984,6 @@ class TransitionGraph:
 
         prepared_nodes = self._prepare_nodes_for_plot(node_list=nodes)
 
-        shown_nodes_col = self.nodes_weight_col
-        shown_links_weight = self.edges_weight_col
-        selected_nodes_col_for_thresholds = shown_nodes_col
-        selected_links_weight_for_thresholds = shown_links_weight
-
         env = Env(
             id=self.env,
             serverId=self.server.pk,
@@ -1007,8 +1002,8 @@ class TransitionGraph:
             selectedNormalizationId=self.render_edge_norm_type,
             columns=prepared_nodes["columns"],
             threshold=self.edges_thresholds,
-            selectedThresholdColumnId=self.edgelist_default_col,
-            selectedWeightsColumnId=self.edgelist_default_col,
+            selectedThresholdColumnId=self.edges_weight_col,
+            selectedWeightsColumnId=self.edges_weight_col,
         )
         settings = Settings(
             showEdgesWeightsOnCanvas=show_weights,
@@ -1059,8 +1054,8 @@ class TransitionGraph:
             items=node_list,
             columns=columns,
             threshold=self.nodes_thresholds,
-            selectedThresholdColumnId=self.nodelist_default_col,
-            selectedWeightsColumnId=self.nodelist_default_col,
+            selectedThresholdColumnId=self.nodes_weight_col,
+            selectedWeightsColumnId=self.nodes_weight_col,
             targets=self.allowed_targets,
             defaultColumnId=self.nodelist_default_col,
             sortField="name",
@@ -1092,8 +1087,8 @@ class TransitionGraph:
         self.edgelist_default_col = self.eventstream.schema.event_id
         self.targets = targets if targets else {"positive": None, "negative": None, "source": None}
         self.weight_cols = self._define_weight_cols(custom_weight_cols)
-        self.nodes_weight_col = nodes_weight_col if nodes_weight_col else self.eventstream.schema.event_id
-        self.edges_weight_col = edges_weight_col if edges_weight_col else self.eventstream.schema.event_id
+        self.nodes_weight_col = nodes_weight_col if nodes_weight_col else self.eventstream.schema.user_id
+        self.edges_weight_col = edges_weight_col if edges_weight_col else self.eventstream.schema.user_id
 
         self.nodes_norm_type = nodes_norm_type
         self.nodelist: Nodelist = Nodelist(

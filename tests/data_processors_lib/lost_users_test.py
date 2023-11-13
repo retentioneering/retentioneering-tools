@@ -167,7 +167,7 @@ class TestLabelLostUsersHelper:
             ],
             columns=["user_id", "event", "timestamp"],
         )
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
 
         correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = pd.DataFrame(
@@ -207,7 +207,7 @@ class TestLabelLostUsersHelper:
             ],
             columns=["user_id", "event", "timestamp"],
         )
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
 
         correct_result_columns = ["user_id", "event", "event_type", "timestamp"]
         correct_result = pd.DataFrame(

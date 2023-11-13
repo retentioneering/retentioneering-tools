@@ -20,52 +20,15 @@ def add_col_processor():
         def __init__(self, params: AddColParamsModel) -> None:
             super().__init__(params=params)
 
-        def apply_diff(self, eventstream: Eventstream) -> Eventstream:
-            df = eventstream.to_dataframe(copy=True)
-            new_data = df[eventstream.schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
+        def apply(self, df: pd.DataFrame, schema: EventstreamSchema) -> pd.DataFrame:
+            new_data = df[schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
             df[self.params.column_name] = new_data
-            df["ref"] = df[eventstream.schema.event_id]
-
-            eventstream.add_custom_col(name=self.params.column_name, data=new_data)
-            eventstream = Eventstream(
-                raw_data_schema=eventstream.schema.to_raw_data_schema(),
-                raw_data=df,
-                relations=[{"raw_col": "ref", "eventstream": eventstream}],
-            )
-
-            return eventstream
-
-    class NoHelperAddColProcessor(DataProcessor):
-        params: AddColParamsModel
-
-        def __init__(self, params: AddColParamsModel) -> None:
-            super().__init__(params=params)
-
-        def apply_diff(self, eventstream: Eventstream) -> Eventstream:
-            df = eventstream.to_dataframe(copy=True)
-            new_data = df[eventstream.schema.event_name].isin(["cart_btn_click", "plus_icon_click"])
-            df[self.params.column_name] = new_data
-            df["ref"] = df[eventstream.schema.event_id]
-
-            raw_data_schema = eventstream.schema.to_raw_data_schema()
-            raw_data_schema.custom_cols.append(
-                {"custom_col": self.params.column_name, "raw_data_col": self.params.column_name}
-            )
-            eventstream = Eventstream(
-                schema=EventstreamSchema(custom_cols=[self.params.column_name]),
-                raw_data_schema=raw_data_schema,
-                raw_data=df,
-                relations=[{"raw_col": "ref", "eventstream": eventstream}],
-            )
-
-            return eventstream
+            return df
 
     yield {
         "AddColParamsModel": AddColParamsModel,
         "HelperAddColProcessor": HelperAddColProcessor,
-        "NoHelperAddColProcessor": NoHelperAddColProcessor,
     }
 
     unregister_dataprocessor(HelperAddColProcessor)
-    unregister_dataprocessor(NoHelperAddColProcessor)
     unregister_params_model(AddColParamsModel)

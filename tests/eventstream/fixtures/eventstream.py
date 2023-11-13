@@ -31,6 +31,16 @@ def test_data_1():
 
 
 @pytest.fixture
+def test_data_with_custom_col_and_type():
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    test_data_dir = os.path.join(current_dir, "../../datasets/eventstream")
+    filepath = os.path.join(test_data_dir, "01_data_with_custom_col_and_type.csv")
+
+    data = pd.read_csv(filepath)
+    return data
+
+
+@pytest.fixture
 def test_schema_1():
     return RawDataSchema(event_name="name", event_timestamp="event_timestamp", user_id="user_id")
 
@@ -45,6 +55,7 @@ def test_stream_1():
         raw_data=pd.read_csv(filepath),
         raw_data_schema=RawDataSchema(event_name="name", event_timestamp="event_timestamp", user_id="user_id"),
         schema=EventstreamSchema(),
+        add_start_end_events=False,
     )
 
     return stream
@@ -71,6 +82,7 @@ def test_stream_2():
             event_name="name", event_timestamp="event_timestamp", user_id="user_id", event_type="type"
         ),
         schema=EventstreamSchema(),
+        add_start_end_events=False,
     )
 
     return stream

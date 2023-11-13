@@ -236,7 +236,7 @@ class TestDropPathsHelper:
             columns=correct_result_columns,
         )
 
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
 
         result = source.drop_paths(min_steps=4)
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
@@ -294,7 +294,7 @@ class TestDropPathsHelper:
             columns=correct_result_columns,
         )
 
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
         result = source.drop_paths(min_time=(1.5, "m"))
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)
 

@@ -22,7 +22,7 @@ class TestEventstreamTransitionMatrix:
     def test_eventstream_transition_matrix__simple(
         self, test_stream: EventstreamType, simple_corr: pd.DataFrame
     ) -> None:
-        result = test_stream.transition_matrix()
+        result = test_stream.transition_matrix(weight_col=test_stream.schema.event_id)
         correct = simple_corr
 
         assert pd.testing.assert_frame_equal(result, correct) is None
@@ -30,7 +30,7 @@ class TestEventstreamTransitionMatrix:
     def test_eventstream_transition_matrix__norm_full(
         self, test_stream: EventstreamType, full_corr: pd.DataFrame
     ) -> None:
-        result = test_stream.transition_matrix(norm_type="full")
+        result = test_stream.transition_matrix(norm_type="full", weight_col=test_stream.schema.event_id)
         correct = full_corr
 
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
@@ -38,7 +38,7 @@ class TestEventstreamTransitionMatrix:
     def test_eventstream_transition_matrix__norm_node(
         self, test_stream: EventstreamType, node_corr: pd.DataFrame
     ) -> None:
-        result = test_stream.transition_matrix(norm_type="node")
+        result = test_stream.transition_matrix(norm_type="node", weight_col=test_stream.schema.event_id)
         correct = node_corr
 
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None

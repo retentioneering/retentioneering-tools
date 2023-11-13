@@ -18,5 +18,5 @@ def read_test_data(filename: str) -> pd.Series:
 @pytest.fixture
 def test_stream() -> EventstreamType:
     source_df = read_test_data("input.csv")
-    source_stream = Eventstream(source_df).add_start_end_events()
+    source_stream = Eventstream(source_df)
     return source_stream

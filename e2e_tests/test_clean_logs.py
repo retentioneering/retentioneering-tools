@@ -13,7 +13,7 @@ from .fixtures.utils import set_local_tracker
 class TestCleanLogs:
     @pytest.mark.usefixtures("set_local_tracker")
     def test_simple_shop_stream(self) -> None:
-        args = {"as_dataframe": False}
+        args = {"as_dataframe": False, "add_start_end_events": False}
 
         stream = load_simple_shop(**args)
         sleep(3)

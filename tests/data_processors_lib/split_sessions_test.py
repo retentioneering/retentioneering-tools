@@ -40,13 +40,13 @@ class TestSplitSessions(ApplyTestBase):
 
     def test_params__check_set_of_params(self):
         with pytest.raises(ValueError):
-            stream = datasets.load_simple_shop()
+            stream = datasets.load_simple_shop(add_start_end_events=False)
             stream.split_sessions(delimiter_events=["main", "catalog"], delimiter_col="event")
             stream.split_sessions(delimiter_events=["main", "catalog"], timeout=(30, "m"))
             stream.split_sessions()
 
     def test_split_session_apply_1_basic(self, test_df_1: pd.DataFrame, basic_corr: pd.DataFrame) -> None:
-        stream = Eventstream(test_df_1)
+        stream = Eventstream(test_df_1, add_start_end_events=False)
 
         dataprocessor = SplitSessions(
             params=SplitSessionsParams(
@@ -67,6 +67,7 @@ class TestSplitSessions(ApplyTestBase):
         actual_stream = Eventstream(
             raw_data=actual,
             raw_data_schema=raw_data_schema_new,
+            add_start_end_events=False,
         )
 
         actual = actual_stream.to_dataframe()
@@ -80,7 +81,7 @@ class TestSplitSessions(ApplyTestBase):
     def test_split_session_apply_2_mark_truncated_true(
         self, test_df_2: pd.DataFrame, mark_truncated_true_corr: pd.DataFrame
     ) -> None:
-        stream = Eventstream(test_df_2)
+        stream = Eventstream(test_df_2, add_start_end_events=False)
 
         dataprocessor = SplitSessions(
             params=SplitSessionsParams(
@@ -102,6 +103,7 @@ class TestSplitSessions(ApplyTestBase):
         actual_stream = Eventstream(
             raw_data=actual,
             raw_data_schema=raw_data_schema_new,
+            add_start_end_events=False,
         )
 
         actual = actual_stream.to_dataframe()
@@ -121,12 +123,13 @@ class TestSplitSessions(ApplyTestBase):
             )
         )
 
-        stream = Eventstream(test_df_3)
+        stream = Eventstream(test_df_3, add_start_end_events=False)
         actual = dataprocessor.apply(df=stream.to_dataframe(copy=True), schema=EventstreamSchema())
 
         actual_stream = Eventstream(
             raw_data=actual,
             raw_data_schema=self._raw_data_schema,
+            add_start_end_events=False,
         )
 
         actual = actual_stream.to_dataframe()
@@ -140,12 +143,13 @@ class TestSplitSessions(ApplyTestBase):
     ) -> None:
         dataprocessor = SplitSessions(params=SplitSessionsParams(delimiter_events=["custom_start", "custom_end"]))
 
-        stream = Eventstream(test_df_4)
+        stream = Eventstream(test_df_4, add_start_end_events=False)
         actual = dataprocessor.apply(df=stream.to_dataframe(copy=True), schema=EventstreamSchema())
 
         actual_stream = Eventstream(
             raw_data=actual,
             raw_data_schema=self._raw_data_schema,
+            add_start_end_events=False,
         )
 
         actual = actual_stream.to_dataframe()
@@ -160,11 +164,11 @@ class TestSplitSessions(ApplyTestBase):
     ) -> None:
         dataprocessor = SplitSessions(params=SplitSessionsParams(delimiter_col="session_id"))
         raw_data_schema = {"custom_cols": [{"raw_data_col": "session_id", "custom_col": "session_id"}]}
-        stream = Eventstream(test_df_5, raw_data_schema=raw_data_schema)
+        stream = Eventstream(test_df_5, raw_data_schema=raw_data_schema, add_start_end_events=False)
         actual = dataprocessor.apply(df=stream.to_dataframe(copy=True), schema=EventstreamSchema())
 
         raw_data_schema_new = dict(raw_data_schema, **{"event_type": "event_type", "event_index": "event_index"})
-        actual_stream = Eventstream(actual, raw_data_schema=raw_data_schema_new)
+        actual_stream = Eventstream(actual, raw_data_schema=raw_data_schema_new, add_start_end_events=False)
 
         actual = actual_stream.to_dataframe()
 
@@ -263,7 +267,7 @@ class TestSplitSessionsHelper:
         correct_result = basic_corr
         correct_result_columns = correct_result.columns
 
-        stream = Eventstream(test_df_1)
+        stream = Eventstream(test_df_1, add_start_end_events=False)
 
         res = (
             stream.split_sessions(timeout=(30, "m"), session_col="session_id")
@@ -277,7 +281,7 @@ class TestSplitSessionsHelper:
     def test_split_sesssion_helper_2_mark_truncated_true(
         self, test_df_2: pd.DataFrame, mark_truncated_true_corr: pd.DataFrame
     ) -> None:
-        stream = Eventstream(test_df_2)
+        stream = Eventstream(test_df_2, add_start_end_events=False)
         correct_result = mark_truncated_true_corr
         correct_result_columns = correct_result.columns
 
@@ -293,7 +297,7 @@ class TestSplitSessionsHelper:
     def test_split_session_helper_3_one_delimiter_event(
         self, test_df_3: pd.DataFrame, one_delimiter_event_corr: pd.DataFrame
     ) -> None:
-        stream = Eventstream(test_df_3)
+        stream = Eventstream(test_df_3, add_start_end_events=False)
 
         expected = one_delimiter_event_corr
 
@@ -309,7 +313,7 @@ class TestSplitSessionsHelper:
     def test_split_session_helper_4_two_delimiter_events(
         self, test_df_4: pd.DataFrame, two_delimiter_events_corr: pd.DataFrame
     ) -> None:
-        stream = Eventstream(test_df_4)
+        stream = Eventstream(test_df_4, add_start_end_events=False)
 
         expected = two_delimiter_events_corr
 
@@ -326,7 +330,7 @@ class TestSplitSessionsHelper:
         self, test_df_5: pd.DataFrame, delimiter_col_corr: pd.DataFrame
     ) -> None:
         raw_data_schema = {"custom_cols": [{"raw_data_col": "session_id", "custom_col": "session_id"}]}
-        stream = Eventstream(test_df_5, raw_data_schema=raw_data_schema)
+        stream = Eventstream(test_df_5, raw_data_schema=raw_data_schema, add_start_end_events=False)
 
         expected = delimiter_col_corr
 
@@ -359,7 +363,7 @@ class TestSplitSessionsHelper:
             )
             correct_result_columns = ["user_id", "event", "event_type", "timestamp", "session_id"]
 
-            stream = Eventstream(source_df)
+            stream = Eventstream(source_df, add_start_end_events=False)
 
             res = (
                 stream.split_sessions(timeout=(30, "xxx"), session_col="session_id", mark_truncated=True)

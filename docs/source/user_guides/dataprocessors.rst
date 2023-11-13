@@ -13,7 +13,7 @@ Data processors user guide
 
 .. |colab| raw:: html
 
-    <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/user_guides_notebooks/dataprocessors.ipynb">
+    <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/user_guides_notebooks/dataprocessors.ipynb" target="_blank">
       <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Google Colab"/>
     </a>
 
@@ -177,53 +177,59 @@ The table below summarizes all the data processors implemented in retentioneerin
     | | Data processor                                    | What it does                                        |
     | | Helper                                            |                                                     |
     +=====================================================+=====================================================+
-    | | AddStartEndEvents                                 | Adds two synthetic events in each user’s path:      |
+    | | AddStartEndEvents                                 | Add two synthetic events in each user’s path:       |
     | | :ref:`add_start_end_events<add_start_end_events>` | ``path_start`` and ``path_end``.                    |
     |                                                     |                                                     |
     +-----------------------------------------------------+-----------------------------------------------------+
-    | | SplitSessions                                     | Cuts user path into sessions and adds synthetic     |
+    | | SplitSessions                                     | Cut user path into sessions and adds synthetic      |
     | | :ref:`split_sessions<split_sessions>`             | events ``session_start``, ``session_end``.          |
     |                                                     |                                                     |
     +-----------------------------------------------------+-----------------------------------------------------+
-    | | LabelNewUsers                                     | Adds synthetic event ``new_user`` in the beginning  |
+    | | LabelNewUsers                                     | Add synthetic event ``new_user`` in the beginning   |
     | | :ref:`label_new_users<label_new_users>`           | of a user’s path if the user is considered as new.  |
     |                                                     | Otherwise adds ``existing_user``.                   |
     |                                                     |                                                     |
     +-----------------------------------------------------+-----------------------------------------------------+
-    | | LabelLostUsers                                    | Adds synthetic event ``lost_user`` in the end of    |
+    | | LabelLostUsers                                    | Add synthetic event ``lost_user`` in the end of     |
     | | :ref:`label_lost_users<label_lost_users>`         | user’s path if the user never comes back to the     |
     |                                                     | product. Otherwise adds ``absent_user`` event.      |
     |                                                     |                                                     |
     +-----------------------------------------------------+-----------------------------------------------------+
-    | | AddPositiveEvents                                 | Adds synthetic event ``positive_target`` for all    |
+    | | AddPositiveEvents                                 | Add synthetic event ``positive_target`` for all     |
     | | :ref:`add_positive_events<add_positive_events>`   | events which are considered as positive.            |
     |                                                     |                                                     |
     +-----------------------------------------------------+-----------------------------------------------------+
-    | | AddNegativeEvents                                 | Adds synthetic event ``negative_target`` for all    |
+    | | AddNegativeEvents                                 | Add synthetic event ``negative_target`` for all     |
     | | :ref:`add_negative_events<add_negative_events>`   | events which are considered as negative.            |
     |                                                     |                                                     |
     +-----------------------------------------------------+-----------------------------------------------------+
-    | | LabelCroppedPaths                                 | Adds synthetic events ``cropped_left`` and/or       |
+    | | LabelCroppedPaths                                 | Add synthetic events ``cropped_left`` and/or        |
     | | :ref:`label_cropped_paths<label_cropped_paths>`   | ``cropped_right`` for those user paths which are    |
     |                                                     | considered as truncated by the edges of the whole   |
     |                                                     | dataset.                                            |
     +-----------------------------------------------------+-----------------------------------------------------+
-    | | FilterEvents                                      | Removes events from an eventstream.                 |
+    | | FilterEvents                                      | Remove events from an eventstream.                  |
     | | :ref:`filter_events<filter_events>`               |                                                     |
     +-----------------------------------------------------+-----------------------------------------------------+
-    | | DropPaths                                         | Removes a too short user paths (in terms of number  |
+    | | DropPaths                                         | Remove a too short user paths (in terms of number   |
     | | :ref:`drop_paths<drop_paths>`                     | of events or time duration).                        |
     |                                                     |                                                     |
     +-----------------------------------------------------+-----------------------------------------------------+
-    | | TruncatePaths                                     | Leaves a part of an eventstream between a couple    |
+    | | TruncatePaths                                     | Leave a part of an eventstream between a couple     |
     | | :ref:`truncate_paths<truncate_paths>`             | of selected events.                                 |
     |                                                     |                                                     |
     +-----------------------------------------------------+-----------------------------------------------------+
-    | | GroupEvents                                       | Groups given events into a single synthetic event.  |
+    | | GroupEvents                                       | Group given events into a single synthetic event.   |
     | | :ref:`group_events<group_events>`                 |                                                     |
     +-----------------------------------------------------+-----------------------------------------------------+
-    | | CollapseLoops                                     | Groups sequences of repetitive events with new      |
+    | | GroupEventsBulk                                   | Apply multiple grouping rules simultaneously.       |
+    | | :ref:`group_events_bulk<group_events_bulk>`       |                                                     |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | CollapseLoops                                     | Group sequences of repetitive events with new       |
     | | :ref:`collapse_loops<collapse_loops>`             | synthetic events. E.g. ``A, A, A → A``.             |
+    +-----------------------------------------------------+-----------------------------------------------------+
+    | | Pipe                                              | Apply a custom operation to an eventstream as if    |
+    | | :ref:`pipe<pipe>`                                 | it is a pandas DataFrame                            |
     +-----------------------------------------------------+-----------------------------------------------------+
 
 Data processors can be partitioned into three groups:
@@ -1554,12 +1560,11 @@ The resulting eventstream includes these three users only:
 
     array([219483890, 964964743, 965024600])
 
-
-Note that the masking function accepts not just ``pandas.DataFrame``
-associated with the eventstream, but ``schema`` parameter as well.
-Having this parameter, you can access any eventstream column,
+Note that the masking function accepts ``schema`` optional argument.
+Having this parameter defined, you can access any eventstream column,
 defined in its
 :py:meth:`EventstreamSchema<retentioneering.eventstream.schema.EventstreamSchema>`.
+However, you could also access ``user_id`` directly with ``df['user_id']`` calling.
 
 This makes such masking functions reusable regardless of eventstream
 column titles.
@@ -2203,6 +2208,51 @@ Previously, both events were named
 You can also notice that the newly created ``product`` events have
 ``event_id`` that differs from their parents' event_ids.
 
+.. note::
+
+    ``schema`` parameter of the grouping function is optional as well as in
+    :ref:`FilterEvents<filter_events>` data processor.
+
+.. _group_events_bulk:
+
+GroupEventsBulk
+^^^^^^^^^^^^^^^
+
+GroupEventsBulk is a simple extension of the :ref:`GroupEvents<group_events>` data processor. It allows to apply multiple grouping operations simultaneously. The only positional argument ``grouping_rules`` defines grouping rules to be applied to the eventstream.
+
+One option is to define grouping rules as a list of dictionaries. Each dictionary must contain two keys: ``event_name`` and ``func``, ``event_type`` key is optional. The meaning of the keys is exactly the same as for :ref:`GroupEvents<group_events>` data processor.
+
+.. code-block:: python
+
+    stream.group_events_bulk(
+        [
+            {
+                'event_name': 'product',
+                'event_type': 'group_product',
+                'func': lambda _df: _df['event'].str.startswith('product')
+            },
+            {
+                'event_name': 'delivery',
+                'func': lambda _df: _df['event'].str.startswith('delivery')
+            }
+        ]
+    )
+
+An alternative way to set grouping rules is to use a dictionary. The keys and the values are considered as ``event_name`` and ``func`` correspondingly. Setting ``event_type`` is not supported in this case.
+
+.. code-block:: python
+
+    stream.group_events_bulk(
+        {
+            'product': lambda _df: _df['event'].str.startswith('product'),
+            'delivery': lambda _df: _df['event'].str.startswith('delivery')
+        }
+    )
+
+.. note::
+
+    If at least two grouping rules might be applied to the same original event, ``ValueError`` is thrown. This behaviour is controlled by ``ignore_intersections`` flag. If ``ignore_intersections=True``, the first grouping rule is applied in case of such conflicts.
+
 .. _collapse_loops:
 
 CollapseLoops
@@ -2419,6 +2469,60 @@ data:
 - by packing loop information into single events,
 - removing looping events, in case they are not desirable
   (which can be a common case in clickstream visualization).
+
+.. _pipe:
+
+Pipe
+^^^^
+
+Pipe is a data processor similar to `pandas pipe <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.pipe.html>`_
+method. It modifies an input eventstream in an arbitrary way by applying given function.
+The function must accept a DataFrame associated with the input eventstream and return a new state
+of the modified eventstream.
+
+.. code-block:: python
+
+    stream.pipe(lambda _df: _df.assign(new_column=100))\
+        .to_dataframe()\
+        .head(3)
+
+.. raw:: html
+
+    <div><table class="dataframe">
+        <thead>
+            <tr style="text-align: right;">
+              <th></th>
+              <th>user_id</th>
+              <th>event</th>
+              <th>timestamp</th>
+              <th>new_column</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>0</th>
+              <td>219483890</td>
+              <td>path_start</td>
+              <td>2019-11-01 17:59:13.273932</td>
+              <td>100</td>
+            </tr>
+            <tr>
+              <th>1</th>
+              <td>219483890</td>
+              <td>catalog</td>
+              <td>2019-11-01 17:59:13.273932</td>
+              <td>100</td>
+            </tr>
+            <tr>
+              <th>2</th>
+              <td>219483890</td>
+              <td>product1</td>
+              <td>2019-11-01 17:59:28.459271</td>
+              <td>100</td>
+            </tr>
+          </tbody>
+        </table>
+    </div>
 
 .. _synthetic_events_order:
 

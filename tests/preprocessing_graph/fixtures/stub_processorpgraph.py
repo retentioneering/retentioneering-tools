@@ -21,8 +21,8 @@ def stub_processorpgraph():
         def __init__(self, params: StubPProcessorParams):
             super().__init__(params=params)
 
-        def apply_diff(self, eventstream: Eventstream) -> Eventstream:
-            return eventstream.copy()
+        def apply(self, df: pd.DataFrame, schema: EventstreamSchema) -> pd.DataFrame:
+            return df
 
     yield {"params": StubPProcessorParams, "processor": StubProcessorPreprocessingGraph}
 

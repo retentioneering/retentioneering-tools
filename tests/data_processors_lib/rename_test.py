@@ -45,7 +45,7 @@ class TestRename(ApplyTestBase):
         simple_rules: list[dict[str, str]],
         simple_expected_results: pd.DataFrame,
     ):
-        source = Eventstream(simple_dataset_for_rename)
+        source = Eventstream(simple_dataset_for_rename, add_start_end_events=False)
 
         actual = source.rename(rules=simple_rules)
         result_df = actual.to_dataframe()[simple_expected_results.columns].reset_index(drop=True)

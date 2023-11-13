@@ -6,6 +6,7 @@ typings
 .python-version
 .pytest_cache
 .tox
+.env
 retentioneering/retentioneering_tools.egg-info/
 .coverage
 .spyproject/

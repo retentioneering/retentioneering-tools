@@ -47,6 +47,28 @@ class TestGroupEvents(ApplyTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
+    def test_group_events_apply_1_without_schema(self) -> None:
+        def _filter(df: pd.DataFrame):
+            return df["event"].isin(["cart_btn_click", "plus_icon_click"])
+
+        actual = self._apply_dataprocessor(
+            params=GroupEventsParams(
+                event_name="add_to_cart",
+                event_type="group_alias",
+                func=_filter,
+            ),
+        )
+        expected = pd.DataFrame(
+            [
+                [1, "pageview", "raw", "2021-10-26 12:00"],
+                [1, "add_to_cart", "group_alias", "2021-10-26 12:02"],
+                [1, "pageview", "raw", "2021-10-26 12:03"],
+                [2, "add_to_cart", "group_alias", "2021-10-26 12:04"],
+            ],
+            columns=["user_id", "event", "event_type", "timestamp"],
+        )
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
+
     def test_group_events_apply_2_none_grouped(self) -> None:
         def _filter(df: pd.DataFrame, schema: EventstreamSchema):
             return df[schema.event_name].isin([])

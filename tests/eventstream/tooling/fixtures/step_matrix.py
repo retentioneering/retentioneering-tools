@@ -16,6 +16,7 @@ def test_stream():
         raw_data=pd.read_csv(filepath),
         raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
         schema=EventstreamSchema(),
+        add_start_end_events=False,
     )
 
     return source_stream

@@ -13,7 +13,7 @@ Stattests
 
 .. |colab| raw:: html
 
-    <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/user_guides_notebooks/stattests.ipynb">
+    <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/user_guides_notebooks/stattests.ipynb" target="_blank">
       <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Google Colab"/>
     </a>
 

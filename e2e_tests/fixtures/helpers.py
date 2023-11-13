@@ -210,8 +210,8 @@ def pgraph_params() -> dict:
 
 @pytest.fixture
 def add_start_end_events_full_params() -> dict:
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [39785, 15], "unique_events": 14, "unique_users": 3751, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [39785, 7], "unique_events": 14, "unique_users": 3751, "index": 4}
     return {
         "args": {},
         "expected_args": {},
@@ -226,8 +226,8 @@ def add_negative_events_full_params() -> dict:
         "func": "f4ceab15e57d39ae4d83209b81e28b772763cada8ef130f2719ac4b0d8950e10",
         "targets": {"len": 1, "len_flatten": 1},
     }
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [64566, 15], "unique_events": 24, "unique_users": 3751, "index": 5}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [64566, 7], "unique_events": 24, "unique_users": 3751, "index": 5}
     return {
         "args": {"func": lambda stream, targets: stream.to_dataframe(), "targets": ["delivery_courier"]},
         "expected_args": expected_args,
@@ -242,8 +242,8 @@ def add_positive_events_full_params() -> dict:
         "func": "f4ceab15e57d39ae4d83209b81e28b772763cada8ef130f2719ac4b0d8950e10",
         "targets": {"len": 1, "len_flatten": 1},
     }
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [64566, 15], "unique_events": 24, "unique_users": 3751, "index": 5}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [64566, 7], "unique_events": 24, "unique_users": 3751, "index": 5}
     return {
         "args": {"func": lambda stream, targets: stream.to_dataframe(), "targets": ["delivery_courier"]},
         "expected_args": expected_args,
@@ -262,8 +262,8 @@ def split_sessions_by_timeout() -> dict:
         "session_col": "38f7dc148fd5d753237adbf2ff6c46fbaf3973b66fcf54890d50474e2c0a8f0b",
         "mark_truncated": True,
     }
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 3, "shape": [45197, 19], "unique_events": 16, "unique_users": 3751, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 2, "shape": [45197, 8], "unique_events": 16, "unique_users": 3751, "index": 4}
     return {
         "args": args,
         "expected_args": expected_args,
@@ -286,8 +286,8 @@ def split_sessions_by_events() -> dict:
         "session_col": "38f7dc148fd5d753237adbf2ff6c46fbaf3973b66fcf54890d50474e2c0a8f0b",
         "mark_truncated": True,
     }
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 2, "shape": [32283, 17], "unique_events": 12, "unique_users": 3751, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 2, "shape": [32283, 8], "unique_events": 12, "unique_users": 3751, "index": 4}
     return {
         "args": args,
         "expected_args": expected_args,
@@ -306,8 +306,8 @@ def split_sessions_by_col() -> dict:
         "session_col": "38f7dc148fd5d753237adbf2ff6c46fbaf3973b66fcf54890d50474e2c0a8f0b",
         "mark_truncated": True,
     }
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 2, "shape": [42637, 17], "unique_events": 14, "unique_users": 3751, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 2, "shape": [42637, 8], "unique_events": 14, "unique_users": 3751, "index": 4}
     return {
         "args": args,
         "expected_args": expected_args,
@@ -318,8 +318,8 @@ def split_sessions_by_col() -> dict:
 
 @pytest.fixture
 def label_new_users_full_params(groups: tuple[list, list]) -> dict:
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [36034, 15], "unique_events": 14, "unique_users": 3751, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [36034, 7], "unique_events": 14, "unique_users": 3751, "index": 4}
     return {
         "args": {"new_users_list": groups[0]},
         "expected_args": {"new_users_list": {"len": 1875, "len_flatten": 1875}},
@@ -330,8 +330,8 @@ def label_new_users_full_params(groups: tuple[list, list]) -> dict:
 
 @pytest.fixture
 def label_lost_users_with_list(groups: tuple[list, list]) -> dict:
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [36034, 15], "unique_events": 14, "unique_users": 3751, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [36034, 7], "unique_events": 14, "unique_users": 3751, "index": 4}
     return {
         "args": {"lost_users_list": groups[1]},
         "expected_args": {"lost_users_list": {"len": 1876, "len_flatten": 1876}, "timeout": None},
@@ -342,8 +342,8 @@ def label_lost_users_with_list(groups: tuple[list, list]) -> dict:
 
 @pytest.fixture
 def label_lost_users_with_time() -> dict:
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [36034, 15], "unique_events": 14, "unique_users": 3751, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [36034, 7], "unique_events": 14, "unique_users": 3751, "index": 4}
     return {
         "args": {"timeout": (5, "m")},
         "expected_args": {"timeout": [5, "m"], "lost_users_list": None},
@@ -354,8 +354,8 @@ def label_lost_users_with_time() -> dict:
 
 @pytest.fixture
 def label_cropped_paths_full_params() -> dict:
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [32560, 15], "unique_events": 14, "unique_users": 3751, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [32560, 7], "unique_events": 14, "unique_users": 3751, "index": 4}
     return {
         "args": {"left_cutoff": (4, "D"), "right_cutoff": (3, "D")},
         "expected_args": {"left_cutoff": [4, "D"], "right_cutoff": [3, "D"]},
@@ -368,8 +368,8 @@ def label_cropped_paths_full_params() -> dict:
 def filter_events_full_params() -> dict:
     events_to_exclude = ["catalog", "main"]
 
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [12130, 15], "unique_events": 10, "unique_users": 2592, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [12130, 7], "unique_events": 10, "unique_users": 2592, "index": 4}
     return {
         "args": {"func": lambda df, schema: ~df[schema.event_name].isin(events_to_exclude)},
         "expected_args": {"func": "d6bca7d722394ff48eccb379df92cda85e28246a3aedd514f152c1b4b2c4f97f"},
@@ -380,8 +380,8 @@ def filter_events_full_params() -> dict:
 
 @pytest.fixture
 def drop_paths_with_steps() -> dict:
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [28896, 15], "unique_events": 12, "unique_users": 2294, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [28896, 7], "unique_events": 12, "unique_users": 2294, "index": 4}
     return {
         "args": {"min_steps": 5},
         "expected_args": {"min_steps": 5, "min_time": None},
@@ -392,8 +392,8 @@ def drop_paths_with_steps() -> dict:
 
 @pytest.fixture
 def drop_paths_with_time() -> dict:
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [20101, 15], "unique_events": 12, "unique_users": 1320, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [20101, 7], "unique_events": 12, "unique_users": 1320, "index": 4}
     return {
         "args": {"min_time": (5, "m")},
         "expected_args": {"min_steps": None, "min_time": [5, "m"]},
@@ -420,8 +420,8 @@ def truncate_paths_full_params() -> dict:
         "shift_before": -2,
         "shift_after": 2,
     }
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [22541, 15], "unique_events": 12, "unique_users": 3622, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [22541, 7], "unique_events": 12, "unique_users": 3622, "index": 4}
     return {
         "args": args,
         "expected_args": expected_args,
@@ -447,8 +447,69 @@ def group_events_full_params() -> dict:
         "func": "3022c066185234056c48237e8a6992a73906685bbaeaa4d6e74da83fc44d3082",
         "event_type": "d7439bee24773bcbfa2d0a97947ee36227b10d1022b1a55847e928965bb6bfde",
     }
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [32283, 15], "unique_events": 11, "unique_users": 3751, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 11, "unique_users": 3751, "index": 4}
+    return {
+        "args": args,
+        "expected_args": expected_args,
+        "performance_before": performance_before,
+        "performance_after": performance_after,
+    }
+
+
+@pytest.fixture
+def group_events_bulk_full_params() -> dict:
+    grouping_rules = [
+        {"event_name": "product", "func": lambda _df: _df["event"].str.startswith("product")},
+        {"event_name": "delivery", "func": lambda _df: _df["event"].str.startswith("delivery")},
+    ]
+
+    args = {"grouping_rules": grouping_rules, "ignore_intersections": False}
+
+    expected_args = {"grouping_rules": {"len": 2, "len_flatten": 2}, "ignore_intersections": False}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 9, "unique_users": 3751, "index": 4}
+    return {
+        "args": args,
+        "expected_args": expected_args,
+        "performance_before": performance_before,
+        "performance_after": performance_after,
+    }
+
+
+@pytest.fixture
+def group_events_bulk_dict_full_params() -> dict:
+    grouping_rules = {
+        "product": lambda _df: _df["event"].str.startswith("product"),
+        "delivery": lambda _df: _df["event"].str.startswith("delivery"),
+    }
+
+    args = {"grouping_rules": grouping_rules, "ignore_intersections": False}
+
+    expected_args = {
+        "grouping_rules": {
+            "a8792157cb4f27fb949c035f45518c61e884bb86e6f420204379c2baa8beb66e": "001002d66a5840f440e0dcc55ce6c8e198301c49f0911b455e01567160875e8a",
+            "b4af39d5b65a14849e885a9d65f0efe4f4e689989689c28c16cfcb3a6e78db5a": "a1f182eb98a06ba8bf210f0a167d8a3adb6f323e492b14c823b8f1b4fff8cf3d",
+        },
+        "ignore_intersections": False,
+    }
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 9, "unique_users": 3751, "index": 4}
+    return {
+        "args": args,
+        "expected_args": expected_args,
+        "performance_before": performance_before,
+        "performance_after": performance_after,
+    }
+
+
+@pytest.fixture
+def pipe_full_params() -> dict:
+    args = {"func": lambda _df: _df.assign(new_column=100, axis=1)}
+
+    expected_args = {"func": "7b83475da05c2d681ab9e8630b81081b3bdfaf0d594649af9ad98266d756fe98"}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 3, "shape": [32283, 9], "unique_events": 12, "unique_users": 3751, "index": 4}
     return {
         "args": args,
         "expected_args": expected_args,
@@ -459,8 +520,8 @@ def group_events_full_params() -> dict:
 
 @pytest.fixture
 def collapse_loops_full_params() -> dict:
-    performance_before = {"custom_cols": 1, "shape": [32283, 12], "unique_events": 12, "unique_users": 3751, "index": 2}
-    performance_after = {"custom_cols": 1, "shape": [26383, 15], "unique_events": 15, "unique_users": 3751, "index": 4}
+    performance_before = {"custom_cols": 1, "shape": [32283, 7], "unique_events": 12, "unique_users": 3751, "index": 2}
+    performance_after = {"custom_cols": 1, "shape": [26383, 7], "unique_events": 15, "unique_users": 3751, "index": 4}
     return {
         "args": {"suffix": "loop", "time_agg": "max"},
         "expected_args": {"suffix": "loop", "time_agg": "max"},

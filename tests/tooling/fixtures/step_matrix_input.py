@@ -20,21 +20,21 @@ def read_test_data(filename) -> pd.DataFrame:
 
 @pytest.fixture
 def stream_simple_shop() -> EventstreamType:
-    stream = datasets.load_simple_shop().add_start_end_events()
+    stream = datasets.load_simple_shop(add_start_end_events=True)
     return stream
 
 
 @pytest.fixture
 def test_stream_end_path() -> EventstreamType:
     df = read_test_data("test_stream_end_path.csv")
-    source_stream = Eventstream(df)
+    source_stream = Eventstream(df, add_start_end_events=False)
     return source_stream
 
 
 @pytest.fixture
 def test_stream() -> EventstreamType:
     df = read_test_data("test_stream.csv")
-    source_stream = Eventstream(df)
+    source_stream = Eventstream(df, add_start_end_events=False)
     return source_stream
 
 
@@ -48,5 +48,5 @@ def test_weight_col() -> EventstreamType:
         user_id="user_id",
         custom_cols=[{"custom_col": "session_id", "raw_data_col": "session_id"}],
     )
-    source_stream = Eventstream(df, raw_data_schema)
+    source_stream = Eventstream(df, raw_data_schema, add_start_end_events=False)
     return source_stream

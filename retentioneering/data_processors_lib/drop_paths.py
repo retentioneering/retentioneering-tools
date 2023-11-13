@@ -91,9 +91,7 @@ class DropPaths(DataProcessor):
             raise ValueError("Either min_steps or min_time must be specified!")
 
         if min_time and time_unit:
-            userpath = (
-                df.groupby(user_col)[time_col].agg([np.min, np.max]).rename(columns={"amin": "start", "amax": "end"})
-            )
+            userpath = df.groupby(user_col)[time_col].agg(start=np.min, end=np.max)  # type: ignore
             mask_ = (userpath["end"] - userpath["start"]) / np.timedelta64(1, time_unit) < min_time  # type: ignore
 
         else:

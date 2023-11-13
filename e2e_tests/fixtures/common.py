@@ -13,7 +13,7 @@ def test_stream() -> Eventstream:
     import retentioneering.datasets as datasets
 
     rng = np.random.default_rng(seed=42)
-    simple_shop: pd.DataFrame = datasets.load_simple_shop(as_dataframe=True)  # type: ignore
+    simple_shop: pd.DataFrame = datasets.load_simple_shop(as_dataframe=True, add_start_end_events=False)  # type: ignore
 
     simple_shop["session_id"] = rng.binomial(1, 1 / 20, size=simple_shop.shape[0])
     simple_shop["session_id"] = simple_shop.groupby("user_id")["session_id"].cumsum()
@@ -22,7 +22,7 @@ def test_stream() -> Eventstream:
     raw_data_schema: dict[str, str | list[RawDataCustomColSchema]] = {
         "custom_cols": [{"raw_data_col": "session_id", "custom_col": "session_id"}]
     }
-    stream = Eventstream(simple_shop, raw_data_schema=raw_data_schema)
+    stream = Eventstream(simple_shop, raw_data_schema=raw_data_schema, add_start_end_events=False)
 
     return stream
 
@@ -59,7 +59,7 @@ def test_stream_small() -> Eventstream:
         ],
         columns=["user_id", "event", "timestamp"],
     )
-    stream = Eventstream(source_df)
+    stream = Eventstream(source_df, add_start_end_events=False)
     return stream
 
 

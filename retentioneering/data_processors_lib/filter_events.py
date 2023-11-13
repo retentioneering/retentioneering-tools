@@ -1,4 +1,5 @@
-from typing import Callable
+from inspect import signature
+from typing import Callable, Optional
 
 import pandas as pd
 from pandas import DataFrame, Series
@@ -23,7 +24,7 @@ class FilterEventsParams(ParamsModel):
 
     """
 
-    func: Callable[[DataFrame, EventstreamSchema], Series]
+    func: Callable[[DataFrame, Optional[EventstreamSchema]], Series]
 
     _widgets = {
         "func": ReteFunction(),
@@ -37,7 +38,7 @@ class FilterEvents(DataProcessor):
 
     Parameters
     ----------
-    func : Callable[[DataFrame, EventstreamSchema], bool]
+    func : Callable[[DataFrame, Optional[EventstreamSchema]], bool]
         Custom function that returns boolean mask the same length as input ``eventstream``.
 
         - If ``True`` - the row will be left in the eventstream.
@@ -68,8 +69,14 @@ class FilterEvents(DataProcessor):
         event_name="apply",
     )
     def apply(self, df: DataFrame, schema: EventstreamSchemaType) -> DataFrame:
-        func: Callable[[DataFrame, EventstreamSchemaType], Series] = self.params.func  # type: ignore
-        mask = func(df, schema)
+        func: Callable[[DataFrame, Optional[EventstreamSchemaType]], Series] = self.params.func  # type: ignore
+
+        expected_args_count = len(signature(func).parameters)
+        if expected_args_count == 1:
+            mask = func(df)  # type: ignore
+        else:
+            mask = func(df, schema)
+
         result = df[mask]
 
         collect_data_performance(

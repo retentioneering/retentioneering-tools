@@ -13,7 +13,7 @@ Step matrix
 
 .. |colab| raw:: html
 
-    <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/user_guides_notebooks/step_matrix.ipynb">
+    <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/user_guides_notebooks/step_matrix.ipynb" target="_blank">
       <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Google Colab"/>
     </a>
 
@@ -293,6 +293,7 @@ We pass the following list ofr the events to the ``sorting`` parameter:
 .. code-block:: python
 
     custom_order = [
+        'path_start',
         'main',
         'catalog',
         'product1',

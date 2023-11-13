@@ -22,21 +22,21 @@ from tests.tooling.fixtures.transition_matrix_input import test_stream
 class TestTransitionMatrix:
     def test_transition_matrix__simple(self, test_stream: EventstreamType, simple_corr: pd.DataFrame) -> None:
         tm = _TransitionMatrix(eventstream=test_stream)
-        result = tm._values()
+        result = tm._values(weight_col="event_id")
         correct = simple_corr
 
         assert pd.testing.assert_frame_equal(result, correct) is None
 
     def test_transition_matrix__norm_full(self, test_stream: EventstreamType, full_corr: pd.DataFrame) -> None:
         tm = _TransitionMatrix(eventstream=test_stream)
-        result = tm._values(norm_type="full")
+        result = tm._values(norm_type="full", weight_col="event_id")
         correct = full_corr
 
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None
 
     def test_transition_matrix__norm_node(self, test_stream: EventstreamType, node_corr: pd.DataFrame) -> None:
         tm = _TransitionMatrix(eventstream=test_stream)
-        result = tm._values(norm_type="node")
+        result = tm._values(norm_type="node", weight_col="event_id")
         correct = node_corr
 
         assert pd.testing.assert_frame_equal(result, correct, atol=0.001) is None

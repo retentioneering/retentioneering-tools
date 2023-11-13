@@ -98,7 +98,7 @@ class CollapseLoops(DataProcessor):
       ``None`` values in the input data will be ignored.
 
     See :doc:`Data processors user guide</user_guides/dataprocessors>` and :ref:`Eventstream custom columns'
-    explanation<eventstream_custom_fields>` for the details.
+    explanation<eventstream_raw_data_schema>` for the details.
     """
 
     params: CollapseLoopsParams

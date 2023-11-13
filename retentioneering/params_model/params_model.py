@@ -95,6 +95,11 @@ class ParamsModel(BaseModel):
                     "title": field_name.title(),
                     "type": "callable",
                 }
+            elif not params_schema["properties"].get(field_name):
+                params_schema["properties"][field_name] = {
+                    "title": field_name.title(),
+                    "type": "unknown",
+                }
             params_schema["properties"][field_name]["default"] = field.default
 
         properties: dict[str, dict] = params_schema.get("properties", {})

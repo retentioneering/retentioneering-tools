@@ -242,7 +242,7 @@ class TestLabelCroppedPathsHelper:
             columns=correct_result_columns,
         )
 
-        stream = Eventstream(source_df)
+        stream = Eventstream(source_df, add_start_end_events=False)
 
         res = stream.label_cropped_paths(left_cutoff=(1, "h"), right_cutoff=(1, "h")).to_dataframe()[
             correct_result_columns

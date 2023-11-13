@@ -20,6 +20,6 @@ def test_stream():
     )
     raw_data: pd.DataFrame = pd.read_csv(filepath)
     raw_data = raw_data.rename(columns={"event": "event_col"})
-    stream = Eventstream(raw_data=raw_data, raw_data_schema=raw_data_schema)
+    stream = Eventstream(raw_data=raw_data, raw_data_schema=raw_data_schema, add_start_end_events=False)
 
     return stream

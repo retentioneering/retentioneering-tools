@@ -34,7 +34,7 @@ class TestChainHelper:
             columns=correct_result_columns,
         )
 
-        stream = Eventstream(source_df)
+        stream = Eventstream(source_df, add_start_end_events=False)
 
         result = stream.add_start_end_events().label_new_users(new_users_list="all")
         result_df = result.to_dataframe()[correct_result_columns].reset_index(drop=True)

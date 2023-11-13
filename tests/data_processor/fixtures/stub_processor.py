@@ -21,8 +21,8 @@ def stub_processor():
         def __init__(self, params: StubProcessorParams):
             super().__init__(params=params)
 
-        def apply_diff(self, eventstream: Eventstream) -> Eventstream:
-            return eventstream.copy()
+        def apply(self, df: pd.DataFrame, schema: EventstreamSchema) -> pd.DataFrame:
+            return df
 
     yield {"params": StubProcessorParams, "processor": StubProcessor}
 

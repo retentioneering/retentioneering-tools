@@ -19,7 +19,7 @@ module_path = dirname(__file__)
     event_name="load_simple_shop",
     event_value="load_simple_shop",
 )
-def load_simple_shop(as_dataframe: bool = False) -> pd.DataFrame | Eventstream:
+def load_simple_shop(as_dataframe: bool = False, add_start_end_events: bool = True) -> pd.DataFrame | Eventstream:
     """
     Load a `simple_shop` demonstration dataset.
 
@@ -29,7 +29,7 @@ def load_simple_shop(as_dataframe: bool = False) -> pd.DataFrame | Eventstream:
         - If ``False`` the dataset is returned as eventstream
         - If ``True`` the dataset is returned as pandas.DataFrame
     """
-    params = {"as_dataframe": as_dataframe}
+    params = {"as_dataframe": as_dataframe, "add_start_end_events": add_start_end_events}
 
     df = pd.read_csv(module_path + "/data/simple-onlineshop.csv")
     if as_dataframe:
@@ -47,6 +47,7 @@ def load_simple_shop(as_dataframe: bool = False) -> pd.DataFrame | Eventstream:
             raw_data=df,
             raw_data_schema=RawDataSchema(event_name="event", event_timestamp="timestamp", user_id="user_id"),
             schema=EventstreamSchema(),
+            add_start_end_events=add_start_end_events,
         )
         collect_data_performance(
             scope="dataset",

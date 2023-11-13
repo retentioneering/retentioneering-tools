@@ -38,4 +38,4 @@ def test_stream():
         event_type="event_type",
         event_timestamp="timestamp",
     )
-    return Eventstream(source_df, raw_data_schema=raw_data_schema)
+    return Eventstream(source_df, raw_data_schema=raw_data_schema, add_start_end_events=False)

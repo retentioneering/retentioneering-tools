@@ -107,6 +107,7 @@ class AddPositiveEvents(DataProcessor):
         eventstream = Eventstream(
             raw_data_schema=schema.to_raw_data_schema(event_index=True),
             raw_data=df,
+            add_start_end_events=False,
         )
 
         positive_targets = func(eventstream, targets)

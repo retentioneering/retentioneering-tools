@@ -1,0 +1,4 @@
+event_id,action,event_timestamp,user_id,random_col,event_type
+0,pageview,2021-10-26 12:00,1,456,group_alias
+1,click_1,2021-10-26 12:02,1,23465,raw
+2,click_2,2021-10-26 12:03,1,876,raw

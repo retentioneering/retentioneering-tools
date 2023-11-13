@@ -18,8 +18,8 @@ class AddStartEndEventsParams(ParamsModel):
 @docstrings.get_sections(base="AddStartEndEvents")  # type: ignore
 class AddStartEndEvents(DataProcessor):
     """
-    Create two synthetic events in each user's path:
-    ``path_start`` and ``path_end``.
+    Create two synthetic events in each user's path: ``path_start`` and ``path_end``.
+    If ``path_start`` or ``path_end`` already exists in a path, a new one is not added.
 
     Returns
     -------
@@ -55,10 +55,12 @@ class AddStartEndEvents(DataProcessor):
         event_col = schema.event_name
 
         matched_events_start: DataFrame = df.groupby(user_col, as_index=False).first()  # type: ignore
+        matched_events_start = matched_events_start[matched_events_start[type_col] != "path_start"]
         matched_events_start[type_col] = "path_start"
         matched_events_start[event_col] = "path_start"
 
         matched_events_end: DataFrame = df.groupby(user_col, as_index=False).last()  # type: ignore
+        matched_events_end = matched_events_end[matched_events_end[type_col] != "path_end"]
         matched_events_end[type_col] = "path_end"
         matched_events_end[event_col] = "path_end"
 

@@ -437,6 +437,7 @@ class Clusters:
             raw_data=df,
             raw_data_schema=eventstream.schema.to_raw_data_schema(),
             schema=eventstream.schema.copy(),
+            add_start_end_events=False,
         )
         collect_data_performance(
             scope="clusters",

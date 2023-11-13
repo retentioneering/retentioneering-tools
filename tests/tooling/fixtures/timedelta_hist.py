@@ -18,26 +18,26 @@ def read_test_data(filename: str) -> pd.DataFrame:
 @pytest.fixture
 def test_stream() -> EventstreamType:
     source_df = read_test_data("input.csv")
-    source_stream = Eventstream(source_df)
+    source_stream = Eventstream(source_df, add_start_end_events=False)
     return source_stream
 
 
 @pytest.fixture
 def source_stream_for_log_scale() -> EventstreamType:
     source_df = read_test_data("input_for_log_scale.csv")
-    source_stream = Eventstream(source_df)
+    source_stream = Eventstream(source_df, add_start_end_events=False)
     return source_stream
 
 
 @pytest.fixture
 def source_stream_add_start_end_events() -> EventstreamType:
     source_df = read_test_data("input.csv")
-    source_stream = Eventstream(source_df).add_start_end_events()
+    source_stream = Eventstream(source_df)
     return source_stream
 
 
 @pytest.fixture
 def source_stream_sessions() -> EventstreamType:
     source_df = read_test_data("input.csv")
-    source_stream = Eventstream(source_df).add_start_end_events().split_sessions(timeout=(1, "s"))
+    source_stream = Eventstream(source_df).split_sessions(timeout=(1, "s"))
     return source_stream

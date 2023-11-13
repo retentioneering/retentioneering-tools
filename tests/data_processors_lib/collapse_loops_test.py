@@ -312,7 +312,7 @@ class TestCollapseLoopsHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
 
         expected_columns = ["user_id", "event", "event_type", "timestamp", "event_index"]
         expected = pd.DataFrame(
@@ -348,7 +348,7 @@ class TestCollapseLoopsHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
 
         expected_columns = ["user_id", "event", "event_type", "timestamp", "event_index"]
         expected = pd.DataFrame(
@@ -383,7 +383,7 @@ class TestCollapseLoopsHelper:
             ],
             columns=["user_id", "event", "timestamp"],
         )
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
 
         expected_columns = ["user_id", "event", "event_type", "timestamp", "event_index"]
         expected = pd.DataFrame(
@@ -419,7 +419,7 @@ class TestCollapseLoopsHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
 
         params = {"suffix": None, "time_agg": "mean"}
 
@@ -463,6 +463,7 @@ class TestCollapseLoopsHelper:
                     {"raw_data_col": "num_col", "custom_col": "num_col"},
                 ]
             },
+            add_start_end_events=False,
         )
 
         expected_columns = ["user_id", "event", "event_type", "timestamp", "str_col", "num_col", "event_index"]
@@ -498,7 +499,7 @@ class TestCollapseLoopsHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
 
         expected_columns = ["user_id", "event", "timestamp", "event_type", "event_index"]
         expected = pd.DataFrame(
@@ -533,7 +534,7 @@ class TestCollapseLoopsHelper:
             columns=["user_id", "event", "timestamp"],
         )
 
-        source = Eventstream(source_df)
+        source = Eventstream(source_df, add_start_end_events=False)
 
         source.index_order[8] = "group_alias"
         source.index_order[7] = "raw"

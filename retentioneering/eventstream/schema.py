@@ -69,6 +69,16 @@ class EventstreamSchema(EventstreamSchemaType):
             and (set(self.custom_cols).issubset(schema.custom_cols))
         )
 
+    def get_default_cols(self) -> List[str]:
+        return [
+            self.event_id,
+            self.event_type,
+            self.event_index,
+            self.event_name,
+            self.event_timestamp,
+            self.user_id,
+        ]
+
     def get_cols(self) -> list[str]:
         return [
             self.event_id,
@@ -114,7 +124,7 @@ class RawDataSchema(RawDataSchemaType):
 
     Notes
     -----
-    See :ref:`Eventstream user guide<eventstream_custom_fields>` for the details.
+    See :ref:`Eventstream user guide<eventstream_raw_data_schema>` for the details.
 
     """
 
@@ -125,6 +135,24 @@ class RawDataSchema(RawDataSchemaType):
     event_type: Optional[str] = None
     event_id: Optional[str] = None
     custom_cols: List[RawDataCustomColSchema] = field(default_factory=list)
+
+    def get_default_cols(self) -> List[str]:
+        cols: List[str] = [
+            self.event_name,
+            self.event_timestamp,
+            self.user_id,
+        ]
+
+        if self.event_index:
+            cols.append(self.event_index)
+
+        if self.event_type:
+            cols.append(self.event_type)
+
+        if self.event_id:
+            cols.append(self.event_id)
+
+        return cols
 
     def copy(self) -> RawDataSchema:
         return RawDataSchema(

@@ -13,7 +13,7 @@ Eventstream
 
 .. |colab| raw:: html
 
-    <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/user_guides_notebooks/eventstream.ipynb">
+    <a href="https://colab.research.google.com/github/retentioneering/retentioneering-tools/blob/master/docs/source/_static/user_guides_notebooks/eventstream.ipynb" target="_blank">
       <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Google Colab"/>
     </a>
 
@@ -151,10 +151,10 @@ However, the method is not just a converter. Using it, we can display the intern
 
 We will describe the columns of the resulting DataFrame later in `Displaying eventstream`_ section.
 
-.. _eventstream_custom_fields:
+.. _eventstream_raw_data_schema:
 
-Custom field names
-~~~~~~~~~~~~~~~~~~
+Changing default field names
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For custom DataFrame column names you can either rename them
 using pandas, or set a mapping rule that would tell the Eventstream constructor
@@ -239,46 +239,36 @@ containing the same data but with different column names
 As we see, ``raw_data_schema`` argument maps fields ``client_id``, ``action``,
 and ``datetime`` so that they are imported to the eventstream correctly.
 
+.. _eventstream_custom_cols:
+
+Custom columns
+~~~~~~~~~~~~~~
+
 Another common case is when your DataFrame has some additional columns
-that you want to be included in the eventstream. ``raw_data_schema``
-argument supports this scenario too with the help of ``custom_cols``
-key value. The value for this key is a list of dictionaries,
-one dict per one custom field.
+that you want to add to the eventstream. By default, these columns are included automatically. In case you want to explicitly control what columns should be included, you can add them in the ``custom_cols`` argument.
 
-A single dict must contain two fields: ``raw_data_col`` and ``custom_col``.
-The former stands for a field name from the sourcing dataframe, the latter
-stands for the corresponding field name to be set at the resulting eventstream.
-
-Suppose the initial DataFrame now also contains a session identifier:
-``session_id`` column. In that case, ``raw_data_schema`` supports the
-following way to handle ``session_id`` support:
+Suppose the initial DataFrame now also contains two columns: ``session`` and ``device``, and you want to leave the former column only. Then you can use ``custom_cols`` parameter that works as a whitelist.
 
 .. code-block:: python
 
     df3 = pd.DataFrame(
         [
-            ['user_1', 'A', '2023-01-01 00:00:00', 'session_1'],
-            ['user_1', 'B', '2023-01-01 00:00:01', 'session_1'],
-            ['user_2', 'B', '2023-01-01 00:00:02', 'session_2'],
-            ['user_2', 'A', '2023-01-01 00:00:03', 'session_3'],
-            ['user_2', 'A', '2023-01-01 00:00:04', 'session_3']
+            ['user_1', 'A', '2023-01-01 00:00:00', 'session_1', 'mobile'],
+            ['user_1', 'B', '2023-01-01 00:00:01', 'session_1', 'mobile'],
+            ['user_2', 'B', '2023-01-01 00:00:02', 'session_2', 'desktop'],
+            ['user_2', 'A', '2023-01-01 00:00:03', 'session_3', 'desktop'],
+            ['user_2', 'A', '2023-01-01 00:00:04', 'session_3', 'desktop']
         ],
-        columns=['client_id', 'action', 'datetime', 'session']
+        columns=['client_id', 'action', 'datetime', 'session', 'device']
     )
 
     raw_data_schema = {
         'user_id': 'client_id',
         'event_name': 'action',
         'event_timestamp': 'datetime',
-        'custom_cols': [
-            {
-                'raw_data_col': 'session',
-                'custom_col': 'session_id'
-            }
-        ]
     }
 
-    stream3 = Eventstream(df3, raw_data_schema=raw_data_schema)
+    stream3 = Eventstream(df3, raw_data_schema=raw_data_schema, custom_cols=['session'])
     stream3.to_dataframe().head(3)
 
 .. raw:: html
@@ -292,7 +282,7 @@ following way to handle ``session_id`` support:
           <th>timestamp</th>
           <th>user_id</th>
           <th>event_type</th>
-          <th>session_id</th>
+          <th>session</th>
           <th>event_index</th>
           <th>event_id</th>
         </tr>
@@ -333,44 +323,48 @@ following way to handle ``session_id`` support:
     </div>
     <br>
 
+As we see from above, the ``session`` column was included in the eventstream while ``device`` was not.
+
+The same results could be achieved if you pass ``custom_cols`` as a key in the ``RawDataSchema``. In this case, the value must be a list of dictionaries, one dict per one custom field. A single dict must contain two fields: ``raw_data_col`` and ``custom_col``. The former stands for a field name from the sourcing dataframe, the latter stands for the corresponding field name to be set in the resulting eventstream.
+
+.. code-block:: python
+
+    raw_data_schema = {
+        'user_id': 'client_id',
+        'event_name': 'action',
+        'event_timestamp': 'datetime',
+        'custom_cols': [
+            {
+                'raw_data_col': 'session',
+                'custom_col': 'session_id'
+            }
+        ]
+    }
+
+    stream3 = Eventstream(df3, raw_data_schema=raw_data_schema)
+    stream3.to_dataframe().head(3)
+
 Here we see that the original ``session`` column is stored in ``session_id`` column,
 according to the defined ``raw_data_schema``
 
-If the core triple columns of the DataFrame were titled with the default names
+If the core triple columns of the DataFrame are titled with the default names
 ``user_id``, ``event``, ``timestamp`` (instead of ``client_id``, ``action``, ``datetime``)
-then you could just ignore their mapping in setting ``raw_data_schema`` and pass ``custom_cols`` key only.
+then you can ignore their mapping in the ``raw_data_schema`` and pass ``custom_cols`` argument only.
 
 .. _eventstream_field_names:
 
 Eventstream field names
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Using the :py:meth:`EventstreamSchema<retentioneering.eventstream.schema.EventstreamSchema>` attribute you can:
-
-1. Regulate how ``Eventstream`` column names will be displayed as an output of
-   :py:meth:`to_dataframe()<retentioneering.eventstream.eventstream.Eventstream.to_dataframe>` method.
-   For example, it can be useful if it is more common and important to operate with custom column names;
-
-2. Get access to the eventstream columns which is used for such preprocessing tools as:
-
-- :py:meth:`AddPositiveEvents <retentioneering.data_processors_lib.add_positive_events>`,
-- :py:meth:`AddNegativeEvents <retentioneering.data_processors_lib.add_negative_events>`,
-- :py:meth:`FilterEvents <retentioneering.data_processors_lib.filter_events>`,
-- :py:meth:`GroupEvents <retentioneering.data_processors_lib.group_events>`.
-
-To demonstrate how eventstream schema works we use the same ``stream1`` that we have already
-used :ref:`above<eventstream_stream1>`. Let us set the names of the core triple columns as
-``client_id``, ``action``, and ``datetime`` with the help of ``schema`` argument:
+You can also set the names of the eventstream columns (the default names are ``user_id``, ``event``, ``timestamp``) by defining ``schema`` argument. It is a dictionary with :py:meth:`the following possible keys<retentioneering.eventstream.schema.EventstreamSchema>`, the values are the desired column names. In the example below we set a schema for the same :ref:`stream1<eventstream_stream1>` and define the names of the basic columns as ``client_id``, ``action``, and ``datetime``:
 
 .. code-block:: python
 
-    from retentioneering.eventstream import EventstreamSchema
-
-    new_eventstream_schema = EventstreamSchema(
-        user_id='client_id',
-        event_name='action',
-        event_timestamp='datetime'
-    )
+    new_eventstream_schema = {
+        'user_id': 'client_id',
+        'event_name': 'action',
+        'event_timestamp': 'datetime'
+    }
 
     stream1_new_schema = Eventstream(df1, schema=new_eventstream_schema)
     stream1_new_schema.to_dataframe().head(3)
@@ -424,14 +418,7 @@ used :ref:`above<eventstream_stream1>`. Let us set the names of the core triple 
     </div>
     <br>
 
-As we can see, the names of the main columns have changed.
-It happened because an ``Eventstream`` object stores an instance of the
-:py:meth:`EventstreamSchema<retentioneering.eventstream.schema.EventstreamSchema>`
-class with the mapping to custom column names.
-
-If you want to get the full list of the fields supported by EventstreamSchema, get
-``EventstreamSchema.schema`` property.
-Each of these fields can be modified with EventstreamSchema.
+The full list of an eventstream fields and the corresponding values is available in :py:meth:`Eventstream.schema<retentioneering.eventstream.schema.EventstreamSchema>` attribute:
 
 .. code-block:: python
 
@@ -448,6 +435,11 @@ Each of these fields can be modified with EventstreamSchema.
         user_id='client_id',
         custom_cols=[]
     )
+
+Path start and end
+~~~~~~~~~~~~~~~~~~
+
+For many practical reasons it is useful to keep synthetic events indicating path start and path end. Eventstream constructor adds ``path_start`` and ``path_end`` events explicitly. See also :ref:`add_start_end_events<add_start_end_events>` data processor.
 
 User sampling
 ~~~~~~~~~~~~~

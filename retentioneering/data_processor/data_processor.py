@@ -53,14 +53,7 @@ class DataProcessor:
     def _get_new_data(self, eventstream: EventstreamType) -> EventstreamType:
         from retentioneering.eventstream.eventstream import Eventstream
 
-        # TODO: legacy fallback, удалить после переноса датапроцессоров
         copy = eventstream.copy()
-
-        diff: EventstreamType | None = call_if_implemented(self, "apply_diff", [copy])
-        if diff is not None:
-            copy._join_eventstream(diff)
-            return copy
-
         curr_events = copy.to_dataframe()
         new_events = self.apply(df=curr_events, schema=copy.schema)
         new_schema = self._define_new_schema(df=new_events, schema=copy.schema)
@@ -70,15 +63,12 @@ class DataProcessor:
             raw_data_schema=new_schema.to_raw_data_schema(event_id=True, event_index=True),
             schema=new_schema,  # type: ignore
             index_order=copy.index_order,
+            add_start_end_events=False,
         )
 
-        new_stream.drop_soft_deleted_events()
         return new_stream
 
     def apply(self, df: pd.DataFrame, schema: EventstreamSchemaType) -> pd.DataFrame:
-        raise NotImplementedError
-
-    def apply_diff(self, eventstream: EventstreamType) -> EventstreamType:
         raise NotImplementedError
 
     def export(self) -> dict[str, Any]:

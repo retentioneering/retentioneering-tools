@@ -336,8 +336,8 @@ class SplitSessions(DataProcessor):
             start_to_start = (session_starts[time_col] - dataset_start) / np.timedelta64(1, timeout_unit)
             end_to_end = (dataset_end - session_ends[time_col]) / np.timedelta64(1, timeout_unit)
 
-            session_starts_truncated = session_starts[start_to_start < timeout].reset_index()
-            session_ends_truncated = session_ends[end_to_end < timeout].reset_index()
+            session_starts_truncated = session_starts[start_to_start < timeout]
+            session_ends_truncated = session_ends[end_to_end < timeout]
 
             session_starts_truncated[event_col] = "session_start_cropped"
             session_starts_truncated[type_col] = "session_start_cropped"
@@ -350,6 +350,7 @@ class SplitSessions(DataProcessor):
 
         result = pd.concat([df, session_starts, session_ends])
         result = result.drop([self.IS_SESSION_START_COL], axis=1)
+        df = df.drop([self.IS_SESSION_START_COL], axis=1)
 
         collect_data_performance(
             scope="split_sessions",

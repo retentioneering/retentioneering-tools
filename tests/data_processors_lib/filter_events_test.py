@@ -41,6 +41,22 @@ class TestFilterEvents(ApplyTestBase):
         )
         assert actual[expected.columns].compare(expected).shape == (0, 0)
 
+    def test_filter_events_apply_1_some_filtered_without_schema(self) -> None:
+        def _filter(df: pd.DataFrame, schema: EventstreamSchema):
+            return df["event"].isin(["cart_btn_click", "plus_icon_click"])
+
+        actual = self._apply_dataprocessor(
+            params=FilterEventsParams(func=_filter),
+        )
+        expected = pd.DataFrame(
+            [
+                [1, "cart_btn_click", "2021-10-26 12:02:00"],
+                [2, "plus_icon_click", "2021-10-26 12:04:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        assert actual[expected.columns].compare(expected).shape == (0, 0)
+
     def test_filter_events_apply_2_none_filtered(self) -> None:
         def _filter(df: pd.DataFrame, schema: EventstreamSchema):
             return df[schema.event_name].isin([])

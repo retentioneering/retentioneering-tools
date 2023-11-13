@@ -130,6 +130,7 @@ class TestPreprocessingGraph:
                 event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
             ),
             raw_data=source_df,
+            add_start_end_events=False,
         )
 
         def cart_func(df: pd.DataFrame, schema: EventstreamSchema) -> pd.Series[bool]:
@@ -166,6 +167,7 @@ class TestPreprocessingGraph:
                 event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
             ),
             raw_data=source_df,
+            add_start_end_events=False,
         )
 
         allowed_events = EventsNode(
@@ -254,6 +256,7 @@ class TestPreprocessingGraph:
                 event_name="event_name", event_timestamp="event_timestamp", user_id="user_id"
             ),
             raw_data=source_df,
+            add_start_end_events=False,
         )
 
         do_nothing_node_1 = EventsNode(

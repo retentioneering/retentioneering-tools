@@ -1,3 +1,4 @@
+from inspect import signature
 from typing import Any, Callable, Optional
 
 import pandas as pd
@@ -10,7 +11,7 @@ from retentioneering.utils.doc_substitution import docstrings
 from retentioneering.utils.hash_object import hash_dataframe
 from retentioneering.widget.widgets import ReteFunction
 
-EventstreamFilter = Callable[[pd.DataFrame, EventstreamSchemaType], Any]
+EventstreamFilter = Callable[[pd.DataFrame, Optional[EventstreamSchemaType]], Any]
 
 
 class GroupEventsParams(ParamsModel):
@@ -37,7 +38,7 @@ class GroupEvents(DataProcessor):
     ----------
     event_name : str
         Name of the created event.
-    func : Callable[[DataFrame, EventstreamSchema], Any]
+    func : Callable[[DataFrame, Optional[EventstreamSchema]], Any]
         Custom function that returns boolean mask with the same length as input eventstream.
 
         - If ``True`` - events will be grouped.
@@ -51,16 +52,15 @@ class GroupEvents(DataProcessor):
     Eventstream
         ``Eventstream`` with:
 
-         - new synthetic events with ``group_alias`` or custom type
-         - raw events marked ``_deleted=True``
+         - new synthetic events with ``group_alias`` or custom type`
 
-        +-----------------+----------------+-------------------+----------------+
-        | **event_name**  | **event_type** | **timestamp**     |  **_deleted**  |
-        +-----------------+----------------+-------------------+----------------+
-        | raw_event_name  | raw            | raw_event         |  True          |
-        +-----------------+----------------+-------------------+----------------+
-        | new_event_name  | group_alias    | raw_event         |  False         |
-        +-----------------+----------------+-------------------+----------------+
+        +-----------------+----------------+-------------------+
+        | **event_name**  | **event_type** | **timestamp**     |
+        +-----------------+----------------+-------------------+
+        | raw_event_name  | raw            | raw_event         |
+        +-----------------+----------------+-------------------+
+        | new_event_name  | group_alias    | raw_event         |
+        +-----------------+----------------+-------------------+
 
     Notes
     -----
@@ -90,7 +90,11 @@ class GroupEvents(DataProcessor):
             "hash": hash_dataframe(df),
         }
 
-        mask = func(df, schema)
+        expected_args_count = len(signature(func).parameters)
+        if expected_args_count == 1:
+            mask = func(df)  # type: ignore
+        else:
+            mask = func(df, schema)
 
         with pd.option_context("mode.chained_assignment", None):
             if event_type is not None:

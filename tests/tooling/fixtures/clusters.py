@@ -8,7 +8,7 @@ from retentioneering.eventstream.types import EventstreamType
 
 @pytest.fixture
 def stream_simple_shop() -> EventstreamType:
-    test_stream = datasets.load_simple_shop()
+    test_stream = datasets.load_simple_shop(add_start_end_events=False)
     return test_stream
 
 
@@ -37,7 +37,7 @@ def test_stream() -> EventstreamType:
         ],
         columns=["user_id", "event", "timestamp"],
     )
-    stream = Eventstream(source_df)
+    stream = Eventstream(source_df, add_start_end_events=False)
     return stream
 
 

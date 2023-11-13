@@ -12,7 +12,7 @@ class TestSimpleShop:
     def test_simple_shop_stream(self) -> None:
         from retentioneering.datasets import load_simple_shop
 
-        args = {"as_dataframe": False}
+        args = {"as_dataframe": False, "add_start_end_events": False}
 
         stream = load_simple_shop(**args)
         sleep(3)
@@ -30,7 +30,7 @@ class TestSimpleShop:
     def test_simple_shop_dataframe(self) -> None:
         from retentioneering.datasets import load_simple_shop
 
-        args = {"as_dataframe": True}
+        args = {"as_dataframe": True, "add_start_end_events": False}
 
         stream = load_simple_shop(**args)
         sleep(2)

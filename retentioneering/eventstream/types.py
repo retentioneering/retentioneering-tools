@@ -9,15 +9,9 @@ import pandas as pd
 IndexOrder = List[Optional[str]]
 
 
-class Relation(TypedDict):
-    eventstream: "EventstreamType"
-    raw_col: Optional[str]
-
-
 class EventstreamType(Protocol):
     schema: EventstreamSchemaType
     index_order: IndexOrder
-    relations: List[Relation]
     __raw_data_schema: RawDataSchemaType
     __events: pd.DataFrame | pd.Series[Any]
 
@@ -40,31 +34,11 @@ class EventstreamType(Protocol):
         ...
 
     @abstractmethod
-    def _join_eventstream(self, eventstream: EventstreamType) -> None:
-        ...
-
-    @abstractmethod
-    def drop_soft_deleted_events(self) -> None:
-        ...
-
-    @abstractmethod
-    def to_dataframe(self, raw_cols: bool = False, show_deleted: bool = False, copy: bool = False) -> pd.DataFrame:
-        ...
-
-    @abstractmethod
-    def _get_raw_cols(self) -> list[str]:
-        ...
-
-    @abstractmethod
-    def _get_relation_cols(self) -> list[str]:
+    def to_dataframe(self, copy: bool = False) -> pd.DataFrame:
         ...
 
     @abstractmethod
     def add_custom_col(self, name: str, data: pd.Series[Any] | None) -> None:
-        ...
-
-    @abstractmethod
-    def _soft_delete(self, events: pd.DataFrame) -> None:
         ...
 
 
@@ -83,6 +57,10 @@ class EventstreamSchemaType(Protocol):
 
     @abstractmethod
     def is_equal(self, schema: EventstreamSchemaType) -> bool:
+        ...
+
+    @abstractmethod
+    def get_default_cols(self) -> List[str]:
         ...
 
     @abstractmethod
@@ -107,6 +85,10 @@ class RawDataSchemaType(Protocol):
     event_type: Optional[str] = None
     event_id: Optional[str] = None
     custom_cols: List[RawDataCustomColSchema] = field(default_factory=list)
+
+    @abstractmethod
+    def get_default_cols(self) -> List[str]:
+        ...
 
     @abstractmethod
     def copy(self) -> RawDataSchemaType:

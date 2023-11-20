@@ -123,6 +123,8 @@ html_css_files = [
     "css/custom.css",
 ]
 
+html_js_files = [("https://static.server.retentioneering.com/static/retedocs.min.js", {"async": "async"})]
+
 # This is a solution for deeply nested lists while building the doc as a pdf-file.
 # https://stackoverflow.com/a/28454426
 latex_elements = {"preamble": "\\usepackage{enumitem}\\setlistdepth{99}"}

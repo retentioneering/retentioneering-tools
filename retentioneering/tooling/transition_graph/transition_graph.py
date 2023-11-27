@@ -54,10 +54,12 @@ from .interface import (
     Column,
     EdgeItem,
     Edges,
+    EdgesCustomColors,
     Env,
     InitializationParams,
     NodeItem,
     Nodes,
+    NodesCusomColors,
     Normalization,
     RecalculationSuccessResponse,
     RenameRule,
@@ -578,14 +580,20 @@ class TransitionGraph:
             return value
 
     def _prepare_nodes(
-        self, nodelist: pd.DataFrame, node_params: NodeParams | None = None, pos: Position | None = None
+        self,
+        nodelist: pd.DataFrame,
+        node_params: NodeParams | None = None,
+        pos: Position | None = None,
+        nodes_custom_colors: NodesCusomColors | None = None,
     ) -> list[NodeItem]:
         node_names = set(nodelist[self.event_col])
+        nodes_custom_colors = nodes_custom_colors if nodes_custom_colors else {}
 
         cols = self.__get_nodelist_cols()
         nodes_set: list[NodeItem] = []
         for idx, node_name in enumerate(node_names):
             row = nodelist.loc[nodelist[self.event_col] == node_name]
+            custom_color = nodes_custom_colors.get(node_name)
             degree = {}
             weight = {}
             size = {}
@@ -616,6 +624,9 @@ class TransitionGraph:
             if parent is not None:
                 node["parentNodeId"] = parent
 
+            if custom_color is not None:
+                node["customColor"] = custom_color
+
             if node_pos is not None:
                 node["x"] = node_pos.x
                 node["y"] = node_pos.y
@@ -624,13 +635,19 @@ class TransitionGraph:
 
         return nodes_set
 
-    def _prepare_edges(self, edgelist: pd.DataFrame, nodes_set: list[NodeItem]) -> list[EdgeItem]:
+    def _prepare_edges(
+        self,
+        edgelist: pd.DataFrame,
+        nodes_set: list[NodeItem],
+        edges_custom_colors: EdgesCustomColors | None = None,
+    ) -> list[EdgeItem]:
         default_col = self.nodelist_default_col
         source_col = edgelist.columns[0]
         target_col = edgelist.columns[1]
         weight_col = edgelist.columns[2]
         custom_cols: list[str] = self.weight_cols
         edges: list[EdgeItem] = []
+        edges_custom_colors = edges_custom_colors if edges_custom_colors else {}
 
         edgelist["weight_norm"] = edgelist[weight_col] / edgelist[weight_col].abs().max()
         for _, row in edgelist.iterrows():
@@ -654,25 +671,35 @@ class TransitionGraph:
             source_node_name = str(row[source_col])  # type: ignore
             target_node_name = str(row[target_col])  # type: ignore
 
+            custom_color = edges_custom_colors.get((source_node_name, target_node_name))
+
             # list comprehension faster than filter
             source_node = [node for node in nodes_set if node["name"] == source_node_name][0]
             target_node = [node for node in nodes_set if node["name"] == target_node_name][0]
 
             if source_node is not None and target_node is not None:  # type: ignore
-                edges.append(
-                    EdgeItem(
-                        id=generate(),
-                        sourceNodeId=source_node_name,
-                        targetNodeId=target_node_name,
-                        weight={col_name: round(weight["weight"], 2) for col_name, weight in weights.items()},
-                        size={col_name: round(weight["weight_norm"], 2) for col_name, weight in weights.items()},
-                        aggregatedEdges=[],
-                    )
+                edge_item = EdgeItem(
+                    id=generate(),
+                    sourceNodeId=source_node_name,
+                    targetNodeId=target_node_name,
+                    weight={col_name: round(weight["weight"], 2) for col_name, weight in weights.items()},
+                    size={col_name: round(weight["weight_norm"], 2) for col_name, weight in weights.items()},
+                    aggregatedEdges=[],
                 )
+
+                if custom_color is not None:
+                    edge_item["customColor"] = custom_color
+
+                edges.append(edge_item)
 
         return edges
 
-    def _make_template_data(self, node_params: NodeParams) -> tuple[list[NodeItem], list[EdgeItem]]:
+    def _make_template_data(
+        self,
+        node_params: NodeParams,
+        nodes_custom_colors: NodesCusomColors | None = None,
+        edges_custom_colors: EdgesCustomColors | None = None,
+    ) -> tuple[list[NodeItem], list[EdgeItem]]:
         edgelist = self.edgelist.edgelist_df.copy()
         nodelist = self.nodelist.nodelist_df.copy()
 
@@ -687,9 +714,9 @@ class TransitionGraph:
             1,  # type: ignore
         )
 
-        nodes = self._prepare_nodes(nodelist=nodelist, node_params=node_params)
+        nodes = self._prepare_nodes(nodelist=nodelist, node_params=node_params, nodes_custom_colors=nodes_custom_colors)
 
-        links = self._prepare_edges(edgelist=edgelist, nodes_set=nodes)
+        links = self._prepare_edges(edgelist=edgelist, nodes_set=nodes, edges_custom_colors=edges_custom_colors)
         return nodes, links
 
     def _to_json(self, data: Any) -> str:
@@ -793,6 +820,8 @@ class TransitionGraph:
         show_nodes_without_links: bool = False,
         show_edge_info_on_hover: bool = True,
         layout_dump: str | None = None,
+        nodes_custom_colors: NodesCusomColors | None = None,
+        edges_custom_colors: EdgesCustomColors | None = None,
     ) -> None:
         """
         Create interactive transition graph visualization with callback to sourcing eventstream.
@@ -865,18 +894,30 @@ class TransitionGraph:
 
             See :ref:`Transition graph user guide<transition_graph_thresholds>` for the details.
 
+        custom_weight_cols : list of str, optional
+            Custom columns from the :py:class:`.EventstreamSchema` that can be selected in ``edges_weight_col``
+            and ``nodes_weight_col`` parameters. If ``session_col=session_id`` exists,
+            it is added by default to this list.
+
         targets : dict, optional
             Events mapping that defines which nodes and edges should be colored for better visualization.
 
             - Possible keys: "positive" (green), "negative" (red), "source" (orange).
             - Possible values: list of events of a given type.
 
-            See :ref:`Transition graph user guide<transition_graph_targets>` for the details.
+            See :ref:`Transition graph user guide<transition_graph_color_settings>` for the details.
 
-        custom_weight_cols : list of str, optional
-            Custom columns from the :py:class:`.EventstreamSchema` that can be selected in ``edges_weight_col``
-            and ``nodes_weight_col`` parameters. If ``session_col=session_id`` exists,
-            it is added by default to this list.
+        nodes_custom_colors : dict, optional
+            Set nodes color explicitly. The dict keys are node names, the values are the corresponding colors.
+            A color can be defined either as an HTML standard color name or a HEX code.
+            See :ref:`Transition graph user guide<transition_graph_color_settings>` for the details.
+
+        edges_custom_colors : dict, optional
+            Set edges color explicitly. The dict keys are tuples of length 2, e.g. (path_start', 'catalog'),
+            the values are the corresponding colors.
+            A color can be defined either as an HTML standard color name or a HEX code.
+            See :ref:`Transition graph user guide<transition_graph_color_settings>` for the details.
+
         width : str, int or float, default "100%"
             The width of the plot can be specified in the following ways:
 
@@ -980,6 +1021,8 @@ class TransitionGraph:
 
         nodes, links = self._make_template_data(
             node_params=node_params,
+            nodes_custom_colors=nodes_custom_colors,
+            edges_custom_colors=edges_custom_colors,
         )
 
         prepared_nodes = self._prepare_nodes_for_plot(node_list=nodes)

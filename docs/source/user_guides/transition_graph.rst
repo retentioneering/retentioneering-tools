@@ -245,17 +245,18 @@ The thresholds are set with a couple of ``nodes_threshold``, ``edges_threshold``
 
 This example is an extension of the previous one. We use the same normalization configuration as before. Since we have added an edges threshold of ``0.12`` for ``user_id`` weighting column, the edge ``product1`` → ``main`` that we observed in the previous example is hidden now (its weight is 11.4%). As for the nodes threshold, note that event ``payment_cash`` is hidden now (as we can see from the Nodes block in the Control panel, its weight is 197).
 
-.. _transition_graph_targets:
+.. _transition_graph_color_settings:
 
-Targets
-~~~~~~~
+Color settings
+~~~~~~~~~~~~~~
 
-As we have already mentioned, the graph nodes are often of different importance. Sometimes we need not just to hide unimportant nodes, but to highlight important nodes instead. Transition graph identifies three types of the nodes: positive, negative, and sourcing. Three colors relate to these node types: green, ren and orange correspondingly. You can color the nodes with these colors by defining their types in the ``targets`` parameter:
+As we have already mentioned, the graph nodes and edges are often of different importance. Sometimes we need not just to hide graph unimportant elements, but to highlight important ones instead. There are two ways to set colors of nodes and edges.
+
+The first one is setting ``targets`` parameter. It associates given nodes with one of three target types and the corresponding colors: ``positive`` (green), ``negative`` (red), and ``source`` (orange). As a result, the nodes and all their income and outcome edges are colored. Below is an example of the ``targets`` usage.
 
 .. code-block:: python
 
     stream\
-        .add_start_end_events()\
         .transition_graph(
             targets={
                 'positive': ['payment_done', 'cart'],
@@ -276,7 +277,40 @@ As we have already mentioned, the graph nodes are often of different importance.
     ></iframe>
     </div>
 
-In the example above we additionally use :py:meth:`Eventstream.add_start_end_events() <retentioneering.eventstream.helpers.add_start_end_events_helper.AddStartEndEventsHelperMixin.add_start_end_events>` data processor helper to add ``path_start`` and ``path_end`` events.
+The second option is to set a color for each node or edge explicitly. Use ``nodes_custom_colors`` and ``edges_custom_colors`` parameters for this. The colors may be set using standard HTML color names or with HEX codes. ``targets`` parameter is compatible in this case too.
+
+.. code-block:: python
+
+    nodes_custom_colors = {
+        'product1': 'gold',
+        'product2': 'gold',
+        'cart': 'green'
+    }
+
+    edges_custom_colors = {
+        ('path_start', 'catalog'): '#cc29c4',
+        ('path_start', 'main'): '#cc29c4',
+    }
+
+    stream\
+        .transition_graph(
+            nodes_custom_colors=nodes_custom_colors,
+            edges_custom_colors=edges_custom_colors,
+            targets={'negative': 'path_end'}
+        )
+
+.. raw:: html
+
+    <div style="overflow:auto;">
+    <iframe
+        width="670"
+        height="630"
+        src="../_static/user_guides/transition_graph/colors.html"
+        frameborder="0"
+        allowfullscreen
+    ></iframe>
+    </div>
+
 
 .. _transition_graph_settings:
 

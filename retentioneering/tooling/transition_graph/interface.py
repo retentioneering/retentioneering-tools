@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, TypedDict, Union
+from typing import Dict, List, Literal, Tuple, TypedDict, Union
 
 from typing_extensions import NotRequired, TypeAlias
 
@@ -44,6 +44,7 @@ class NodeItem(TypedDict):
     x: NotRequired[float]
     y: NotRequired[float]
     targetId: NotRequired[TargetId]
+    customColor: NotRequired[str]
 
 
 class EdgeItem(TypedDict):
@@ -54,6 +55,7 @@ class EdgeItem(TypedDict):
     weight: NumericColumnMap
     aggregatedEdges: list[str]  # NOSONAR
     description: NotRequired[str]
+    customColor: NotRequired[str]
 
 
 class Column(TypedDict):
@@ -68,6 +70,10 @@ class Normalization(TypedDict):
     name: str
     type: NormalizationType
     description: NotRequired[str]
+
+
+NodesCusomColors = Dict[NodeId, str]
+EdgesCustomColors = Dict[Tuple[NodeId, NodeId], str]
 
 
 @dataclass

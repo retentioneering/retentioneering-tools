@@ -1,0 +1,10 @@
+What’s new in 3.2.1 (2023-11-27)
+================================
+
+New Features
+------------
+
+Transition graph
+~~~~~~~~~~~~~~~~
+
+- added new arguments ``nodes_custom_colors`` and ``edges_custom_colors`` to the graph drawing method. These arguments allow to color nodes and edges of the graph

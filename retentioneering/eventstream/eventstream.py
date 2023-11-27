@@ -5,7 +5,7 @@ import uuid
 import warnings
 from collections.abc import Collection
 from dataclasses import asdict
-from typing import Any, Callable, List, Literal, MutableMapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Literal, MutableMapping, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -1460,6 +1460,8 @@ class Eventstream(
         show_nodes_without_links: bool = False,
         show_edge_info_on_hover: bool = True,
         layout_dump: str | None = None,
+        nodes_custom_colors: Dict[str, str] | None = None,
+        edges_custom_colors: Dict[Tuple[str, str], str] | None = None,
     ) -> TransitionGraph:
         """
 
@@ -1525,6 +1527,8 @@ class Eventstream(
             show_nodes_without_links=show_nodes_without_links,
             layout_dump=layout_dump,
             show_edge_info_on_hover=show_edge_info_on_hover,
+            nodes_custom_colors=nodes_custom_colors,
+            edges_custom_colors=edges_custom_colors,
         )
         return self.__transition_graph
 

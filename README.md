@@ -75,6 +75,7 @@ Raw data can be downloaded from Google Analytics BigQuery stream, or any other s
 
 ## Changelog
 
+- [Version 3.3.0](https://doc.retentioneering.com/stable/doc/whatsnew/v3.3.0.html)
 - [Version 3.2.1](https://doc.retentioneering.com/stable/doc/whatsnew/v3.2.1.html)
 - [Version 3.2](https://doc.retentioneering.com/stable/doc/whatsnew/v3.2.0.html)
 - [Version 3.1](https://doc.retentioneering.com/stable/doc/whatsnew/v3.1.0.html)

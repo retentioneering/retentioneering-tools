@@ -7,4 +7,26 @@ New Features
 Transition graph
 ~~~~~~~~~~~~~~~~
 
-- added new arguments ``nodes_custom_colors`` and ``edges_custom_colors`` to the graph drawing method. These arguments allow to color nodes and edges of the graph
+- added new arguments ``nodes_custom_colors`` and ``edges_custom_colors`` to the graph drawing method. These arguments allow to color nodes and edges of the graph like this:
+
+.. code-block:: python
+
+    nodes_custom_colors = {
+        'product1': 'gold',
+        'product2': 'gold',
+        'cart': 'green'
+    }
+
+    edges_custom_colors = {
+        ('path_start', 'catalog'): '#cc29c4',
+        ('path_start', 'main'): '#cc29c4',
+    }
+
+    stream\
+        .transition_graph(
+            nodes_custom_colors=nodes_custom_colors,
+            edges_custom_colors=edges_custom_colors,
+            targets={'negative': 'path_end'}
+        )
+
+See :ref:`Transition graph user guide <transition_graph_color_settings>` for the details.

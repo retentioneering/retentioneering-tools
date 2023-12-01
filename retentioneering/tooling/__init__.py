@@ -2,6 +2,7 @@ from .clusters import Clusters
 from .cohorts import Cohorts
 from .event_timestamp_hist import EventTimestampHist
 from .funnel import Funnel
+from .sequences import Sequences
 from .stattests import StatTests
 from .step_matrix import StepMatrix
 from .step_sankey import StepSankey

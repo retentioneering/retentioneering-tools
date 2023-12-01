@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from .common import custom_X, groups, test_stream
+from .common import custom_X, groups, groups_small_session_id
 
 
 @pytest.fixture
@@ -299,3 +299,45 @@ def clusters_filter_params() -> dict:
 def preprocessing_graph_combine_params() -> dict:
     performance_info = {"custom_cols": 2, "shape": [37329, 8], "unique_events": 21, "unique_users": 2294, "index": 10}
     return {"performance_info": performance_info}
+
+
+@pytest.fixture
+def sequences_fit_params(groups_small_session_id: tuple[list, list]) -> dict:
+    args = {
+        "ngram_range": (2, 2),
+        "groups": groups_small_session_id,
+        "group_names": ("pay", "nopay"),
+        "weight_col": "session_id",
+    }
+
+    expected_args = {
+        "ngram_range": [2, 2],
+        "groups": {"len": 2, "len_flatten": 6},
+        "group_names": {"len": 2, "len_flatten": 2},
+        "weight_col": "5c3a09bf22e12411b6af48dfe0b85c2d9d1181cd391e089574c8cf3ca1e5e4ad",
+    }
+    performance_info = {"shape": [6, 19]}
+    return {"args": args, "expected_args": expected_args, "performance_info": performance_info}
+
+
+@pytest.fixture
+def sequences_plot_params() -> dict:
+    args = {
+        "metrics": ["paths", "count"],
+        "threshold": [("paths", "pay"), 1],
+        "sorting": (("count", "delta_abs"), True),
+        "heatmap_cols": [("count", "pay")],
+        "sample_size": 2,
+        "precision": 3,
+    }
+
+    expected_args = {
+        "metrics": ["paths", "count"],
+        "threshold": {"len": 2, "len_flatten": 3},
+        "sorting": {"len": 2, "len_flatten": 3},
+        "heatmap_cols": {"len": 1, "len_flatten": 2},
+        "sample_size": 2,
+        "precision": 3,
+    }
+    performance_info = {"shape": [5, 11]}
+    return {"args": args, "expected_args": expected_args, "performance_info": performance_info}

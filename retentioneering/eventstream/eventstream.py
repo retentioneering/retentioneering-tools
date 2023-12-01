@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, List, Literal, MutableMapping, Optional,
 
 import numpy as np
 import pandas as pd
+from IPython.display import display
 
 from retentioneering.backend import counter
 from retentioneering.backend.tracker import (
@@ -30,6 +31,7 @@ from retentioneering.tooling import (
     Cohorts,
     EventTimestampHist,
     Funnel,
+    Sequences,
     StatTests,
     StepMatrix,
     StepSankey,
@@ -75,6 +77,7 @@ EventsOrder = List[str]
 FeatureType = Literal["tfidf", "count", "frequency", "binary", "time", "time_fraction", "external"]
 NgramRange = Tuple[int, int]
 Method = Literal["kmeans", "gmm"]
+MetricsType = Literal["paths", "paths_share", "count", "count_share"]
 
 DEFAULT_INDEX_ORDER: IndexOrder = [
     "profile",
@@ -191,6 +194,7 @@ class Eventstream(
     __step_matrix: StepMatrix
     __sankey: StepSankey
     __stattests: StatTests
+    __sequences: Sequences
     __transition_graph: TransitionGraph
     __timedelta_hist: TimedeltaHist
     __user_lifetime_hist: UserLifetimeHist
@@ -1024,7 +1028,7 @@ class Eventstream(
         test: STATTEST_NAMES,
         groups: Tuple[list[str | int], list[str | int]],
         func: Callable,
-        group_names: Tuple[str, str] = ("group_1", "group_2"),
+        group_names: Tuple[str, str],
         alpha: float = 0.05,
     ) -> StatTests:
         """
@@ -1616,3 +1620,79 @@ class Eventstream(
 
         matrix = _TransitionMatrix(eventstream=self)
         return matrix._values(weight_col=weight_col, norm_type=norm_type)
+
+    @time_performance(
+        scope="sequences",
+        event_name="helper",
+        event_value="plot",
+    )
+    def sequences(
+        self,
+        ngram_range: Tuple[int, int] = (1, 1),
+        groups: Tuple[list, list] | None = None,
+        group_names: Tuple[str, str] | None = None,
+        weight_col: str | None = None,
+        metrics: MetricsType | None = None,
+        threshold: tuple[str, float | int] | None = None,
+        sorting: tuple[str | tuple, bool] | tuple[list[str | tuple], list[bool]] | None = None,
+        heatmap_cols: str | list[str | tuple] | None = None,
+        sample_size: int | None = 1,
+        precision: int = 2,
+        show_plot: bool = True,
+    ) -> Sequences:
+        """
+        Calculate statistics on n-grams found in eventstream.
+
+        Parameters
+        ----------
+        show_plot : bool, default True
+            If ``True``, a sankey diagram is shown.
+        See other parameters' description
+            :py:class:`.Sequences`
+
+        Returns
+        -------
+        Sequences
+            A ``Sequences`` class instance fitted to the given parameters.
+
+        """
+
+        params = {
+            "ngram_range": ngram_range,
+            "groups": groups,
+            "group_names": group_names,
+            "weight_col": weight_col,
+            "metrics": metrics,
+            "threshold": threshold,
+            "sorting": sorting,
+            "heatmap_cols": heatmap_cols,
+            "sample_size": sample_size,
+            "precision": precision,
+            "show_plot": show_plot,
+        }
+        not_hash_values = ["metrics", "ngram_range"]
+
+        collect_data_performance(
+            scope="sequences",
+            event_name="metadata",
+            called_params=params,
+            not_hash_values=not_hash_values,
+            performance_data={},
+            eventstream_index=self._eventstream_index,
+        )
+
+        self.__sequences = Sequences(eventstream=self)
+
+        self.__sequences.fit(ngram_range=ngram_range, groups=groups, group_names=group_names, weight_col=weight_col)
+
+        styler_sequences = self.__sequences.plot(
+            metrics=metrics,
+            threshold=threshold,
+            sorting=sorting,
+            heatmap_cols=heatmap_cols,
+            sample_size=sample_size,
+            precision=precision,
+        )
+        if show_plot:
+            display(styler_sequences)
+        return self.__sequences

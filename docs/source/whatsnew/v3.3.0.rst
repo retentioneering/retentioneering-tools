@@ -1,0 +1,10 @@
+What’s new in 3.3.0 (2023-11-29)
+================================
+
+New Features
+------------
+
+Sequences
+~~~~~~~~~
+
+We introduce new a brand new tool Sequences. It aims to calculate frequency statistics regarding each particular n-gram represented in an eventstream. See :doc:`Sequences user guide</user_guides/sequences>`.

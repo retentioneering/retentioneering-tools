@@ -1,6 +1,6 @@
 FROM python:3.10
 RUN apt-get update && apt-get upgrade -y
-RUN pip install poetry
+RUN python -m pip install poetry==1.8.2
 COPY pyproject.toml /app/pyproject.toml
 WORKDIR /app
 RUN poetry export --only main --without-hashes -f requirements.txt --output requirements.txt

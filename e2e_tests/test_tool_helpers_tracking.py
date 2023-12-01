@@ -9,7 +9,7 @@ import pytest
 from retentioneering.eventstream import Eventstream
 from retentioneering.utils.tracker_analytics_tools import get_inner_calls, process_data
 
-from .fixtures.common import test_stream
+from .fixtures.common import test_stream, test_stream_small
 from .fixtures.helpers import *
 from .fixtures.utils import set_local_tracker
 
@@ -169,3 +169,12 @@ class TestToolHelpersTracking:
 
         assert log["args"] == pgraph_params["expected_args"]
         assert log["performance_info"] == pgraph_params["performance_info"]
+
+    @pytest.mark.usefixtures("set_local_tracker")
+    def test_tracking_sequences_helper_full(self, test_stream_small: Eventstream, sequences_full_params: dict) -> None:
+        test_stream_small.sequences(**sequences_full_params["args"])
+
+        log = get_log("sequences", performance_name="sequences_plot")
+
+        assert log["args"] == sequences_full_params["expected_args"]
+        assert log["performance_info"] == sequences_full_params["performance_info"]

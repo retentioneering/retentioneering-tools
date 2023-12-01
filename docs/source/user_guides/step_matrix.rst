@@ -401,6 +401,8 @@ All we need is to get ``user_id`` collections from the :ref:`cluster_mapping <cl
 
 The differential step matrix shows the difference between clusters #1 and #4. Users from cluster #1, after adding a product to the cart tend to return to the catalog and continue shopping more often or, on the opposite, finish their trajectory. On the other hand, users from cluster #4 tend to fall into payment flow and eventually make purchase. They can also return to the catalog, but in later steps.
 
+.. _step_matrix_weight_col:
+
 Weighting step matrix values
 ----------------------------
 

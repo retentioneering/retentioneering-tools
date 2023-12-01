@@ -9,6 +9,7 @@ from retentioneering.tooling import (
     Clusters,
     Cohorts,
     Funnel,
+    Sequences,
     StatTests,
     StepMatrix,
     StepSankey,
@@ -16,7 +17,12 @@ from retentioneering.tooling import (
 )
 from retentioneering.utils.tracker_analytics_tools import process_data
 
-from .fixtures.common import groups, test_stream, test_stream_small
+from .fixtures.common import (
+    groups,
+    groups_small_session_id,
+    test_stream,
+    test_stream_small,
+)
 from .fixtures.tools import *
 from .fixtures.utils import set_local_tracker
 
@@ -277,3 +283,26 @@ class TestToolsTracking:
 
         assert log["args"] == {}
         assert log["performance_info"] == {}
+
+    @pytest.mark.usefixtures("set_local_tracker")
+    def test_tracking_sequences_fit(self, test_stream_small: Eventstream, sequences_fit_params: dict) -> None:
+        sequences = Sequences(test_stream_small)
+        sequences.fit(**sequences_fit_params["args"])
+
+        log = get_log("sequences_fit")
+
+        assert log["args"] == sequences_fit_params["expected_args"]
+        assert log["performance_info"] == sequences_fit_params["performance_info"]
+
+    @pytest.mark.usefixtures("set_local_tracker")
+    def test_tracking_sequences_plot(
+        self, test_stream_small: Eventstream, sequences_fit_params: dict, sequences_plot_params: dict
+    ) -> None:
+        sequences = Sequences(test_stream_small)
+
+        sequences.fit(**sequences_fit_params["args"])
+        sequences.plot(**sequences_plot_params["args"])
+        log = get_log("sequences_plot")
+
+        assert log["args"] == sequences_plot_params["expected_args"]
+        assert log["performance_info"] == sequences_plot_params["performance_info"]

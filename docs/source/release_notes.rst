@@ -1,8 +1,16 @@
 Release notes
 =============
 
-Version 3.2.1
+Version 3.3
 -----------
+
+.. toctree::
+    :maxdepth: 1
+
+    What's new in 3.3.0 (2023-11-29)<whatsnew/v3.3.0>
+
+Version 3.2.1
+-------------
 
 .. toctree::
     :maxdepth: 1

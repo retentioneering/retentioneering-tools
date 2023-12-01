@@ -31,6 +31,7 @@ Path analysis tools
     Clusters <user_guides/clusters.rst>
     Funnel <user_guides/funnel.rst>
     Cohorts <user_guides/cohorts.rst>
+    Sequences <user_guides/sequences.rst>
     Stattests <user_guides/stattests.rst>
 
 

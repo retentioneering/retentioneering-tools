@@ -12,3 +12,4 @@ Path analysis tools
     Transition graph <tooling/transition_graph.rst>
     Transition matrix <tooling/transition_matrix.rst>
     Stattests <tooling/stattests.rst>
+    Sequences <tooling/sequences.rst>

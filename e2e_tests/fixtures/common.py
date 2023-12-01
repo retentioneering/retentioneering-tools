@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from retentioneering.eventstream import Eventstream
+from retentioneering.eventstream import Eventstream, RawDataSchema
 from retentioneering.eventstream.types import RawDataCustomColSchema
 
 
@@ -38,29 +38,43 @@ def groups(test_stream: Eventstream) -> tuple[list, list]:
 def test_stream_small() -> Eventstream:
     source_df = pd.DataFrame(
         [
-            [1, "event1", "2022-01-01 00:01:00"],
-            [1, "event2", "2022-01-01 00:01:02"],
-            [1, "event1", "2022-01-01 00:02:00"],
-            [1, "event1", "2022-01-01 00:03:00"],
-            [1, "event1", "2022-01-01 00:03:00"],
-            [1, "event3", "2022-01-01 00:03:30"],
-            [1, "event1", "2022-01-01 00:04:00"],
-            [1, "event3", "2022-01-01 00:04:30"],
-            [1, "event1", "2022-01-01 00:05:00"],
-            [2, "event1", "2022-01-02 00:00:00"],
-            [2, "event2", "2022-01-02 00:00:05"],
-            [2, "event2", "2022-01-02 00:01:05"],
-            [3, "event1", "2022-01-02 00:01:10"],
-            [3, "event1", "2022-01-02 00:02:05"],
-            [3, "event4", "2022-01-02 00:03:05"],
-            [4, "event1", "2022-01-02 00:01:10"],
-            [4, "event1", "2022-01-02 00:02:05"],
-            [4, "event1", "2022-01-02 00:03:05"],
+            [1, "event1", "2022-01-01 00:01:00", "1_1"],
+            [1, "event2", "2022-01-01 00:01:02", "1_1"],
+            [1, "event1", "2022-01-01 00:02:00", "1_1"],
+            [1, "event1", "2022-01-01 00:03:00", "1_1"],
+            [1, "event1", "2022-01-01 00:03:00", "1_2"],
+            [1, "event3", "2022-01-01 00:03:30", "1_2"],
+            [1, "event1", "2022-01-01 00:04:00", "1_2"],
+            [1, "event3", "2022-01-01 00:04:30", "1_2"],
+            [1, "event1", "2022-01-01 00:05:00", "1_2"],
+            [2, "event1", "2022-01-02 00:00:00", "2_1"],
+            [2, "event2", "2022-01-02 00:00:05", "2_1"],
+            [2, "event2", "2022-01-02 00:01:05", "2_2"],
+            [3, "event1", "2022-01-02 00:01:10", "3_1"],
+            [3, "event1", "2022-01-02 00:02:05", "3_1"],
+            [3, "event4", "2022-01-02 00:03:05", "3_1"],
+            [4, "event1", "2022-01-02 00:01:10", "4_1"],
+            [4, "event1", "2022-01-02 00:02:05", "4_1"],
+            [4, "event1", "2022-01-02 00:03:05", "4_1"],
         ],
-        columns=["user_id", "event", "timestamp"],
+        columns=["user_id", "event", "timestamp", "session_id"],
     )
-    stream = Eventstream(source_df, add_start_end_events=False)
+    raw_data_schema = RawDataSchema(
+        event_name="event",
+        event_timestamp="timestamp",
+        user_id="user_id",
+        custom_cols=[{"custom_col": "session_id", "raw_data_col": "session_id"}],
+    )
+
+    stream = Eventstream(source_df, raw_data_schema=raw_data_schema, add_start_end_events=False)
     return stream
+
+
+@pytest.fixture
+def groups_small_session_id(test_stream_small: Eventstream) -> tuple[list, list]:
+    sessions = test_stream_small.to_dataframe()["session_id"].unique()
+    index_separator = int(sessions.shape[0] / 2)
+    return list(sessions[:index_separator]), list(sessions[index_separator:])
 
 
 @pytest.fixture

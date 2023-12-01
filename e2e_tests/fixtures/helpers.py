@@ -5,7 +5,7 @@ import pytest
 
 from retentioneering.eventstream import EventstreamSchema
 
-from .common import groups, test_stream
+from .common import groups, groups_small_session_id
 
 
 @pytest.fixture
@@ -640,3 +640,35 @@ def event_timestamp_hist_full_params() -> dict:
         "show_plot": False,
     }
     return {"args": args, "expected_args": expected_args, "performance_info": {}}
+
+
+@pytest.fixture
+def sequences_full_params(groups_small_session_id: tuple[list, list]) -> dict:
+    args = {
+        "ngram_range": (2, 2),
+        "groups": groups_small_session_id,
+        "group_names": ("pay", "nopay"),
+        "weight_col": "session_id",
+        "metrics": ["paths", "count"],
+        "threshold": [("paths", "pay"), 1],
+        "sorting": (("count", "delta_abs"), True),
+        "heatmap_cols": [("count", "pay")],
+        "sample_size": 2,
+        "precision": 3,
+        "show_plot": True,
+    }
+    expected_args = {
+        "ngram_range": [2, 2],
+        "groups": {"len": 2, "len_flatten": 6},
+        "group_names": {"len": 2, "len_flatten": 2},
+        "weight_col": "5c3a09bf22e12411b6af48dfe0b85c2d9d1181cd391e089574c8cf3ca1e5e4ad",
+        "metrics": ["paths", "count"],
+        "threshold": {"len": 2, "len_flatten": 3},
+        "sorting": {"len": 2, "len_flatten": 3},
+        "heatmap_cols": {"len": 1, "len_flatten": 2},
+        "sample_size": 2,
+        "precision": 3,
+        "show_plot": True,
+    }
+    performance_info = {"shape": [5, 11]}
+    return {"args": args, "expected_args": expected_args, "performance_info": performance_info}

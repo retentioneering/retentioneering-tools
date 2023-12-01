@@ -357,3 +357,20 @@ Here is an outline of the *cohort matrix* calculation:
     :height: 500
 
 See :doc:`Cohorts user guide<../user_guides/cohorts>` for a deeper understanding of this tool.
+
+Sequence analysis
+~~~~~~~~~~~~~~~~~
+
+Sequences tool aims to calculate frequency statistics regarding each particular n-gram represented in an eventstream. It supports group comparison.
+
+.. code-block:: python
+
+    stream.sequences(
+        ngram_range=(2, 3),
+        threshold=['count', 1200],
+        sample_size=3
+    )
+
+.. figure:: /_static/getting_started/quick_start/sequences.png
+
+See :doc:`Sequences user guide<../user_guides/sequences>` for the details.

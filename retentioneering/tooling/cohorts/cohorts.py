@@ -77,6 +77,9 @@ class Cohorts:
         data["user_min_date_gr"] = data.groupby(self.user_col)[self.time_col].transform(min)
         min_cohort_date = data["user_min_date_gr"].min().to_period(freq).start_time
         max_cohort_date = data["user_min_date_gr"].max()
+        # Normalize timezone for comparison - numpy operations strip tz info
+        if hasattr(max_cohort_date, 'tz') and max_cohort_date.tz is not None:
+            max_cohort_date = max_cohort_date.tz_convert(None)
         if DATETIME_UNITS_LIST.index(cohort_start_unit) < DATETIME_UNITS_LIST.index(cohort_period_unit):
             freq = cohort_period_unit
 

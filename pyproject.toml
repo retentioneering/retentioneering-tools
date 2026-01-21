@@ -6,7 +6,7 @@ authors = [
 ]
 description = "Retentioneering is a powerful Python library for user retention analysis. It provides a simple and intuitive interface for tracking user behavior, analyzing data, and gaining valuable insights into your users."
 readme = "README.md"
-requires-python = ">=3.8,<3.12"
+requires-python = ">=3.9,<3.13"
 
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -48,31 +48,28 @@ name = "main"
 url = "https://pypi.python.org/simple"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.12"
+python = ">=3.9,<3.13"
 virtualenv = ">=20.17"
-numpy = ">=1.22,!=1.24,<2.0"
-pandas = ">=1.5.0,<2.0.0"
+numpy = ">=1.22,!=1.24"
+pandas = ">=1.5.0"
 jupyterlab = ">=3.4.7"
 notebook = ">=6.5.6"
 pydantic = ">=1.10.2, <2"
-networkx = "2.8.6"
+networkx = ">=2.8.6"
 plotly = ">=5.10.0"
 seaborn = ">=0.12.1"
 umap-learn = ">=0.5.3"
-scikit-learn = ">=1.2.0, <1.3.0"
+scikit-learn = ">=1.2.0"
 statsmodels = ">=0.14.0"
-scipy = [
-    { version = ">=1.11.2", python = ">=3.9"},
-    { version = "1.10.1", python = "<3.9"}
-]
+scipy = ">=1.11.2"
 ipywidgets = ">=8.0.4, !=8.0.5"
 docrep = "^0.3.2"
 nanoid = "^2.0.0"
-ipython = "7.34.0"
-ipykernel = "5.5.6"
-tornado = "6.3.2"
-pyzmq = "23.2.1"
-matplotlib = "3.7.2"
+ipython = ">=7.34.0"
+ipykernel = ">=5.5.6"
+tornado = ">=6.3.2"
+pyzmq = ">=23.2.1"
+matplotlib = ">=3.7.2"
 
 [tool.poetry.group.dev.dependencies]
 poetry-dynamic-versioning = ">=0.21.4"

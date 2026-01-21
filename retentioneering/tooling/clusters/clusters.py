@@ -214,7 +214,7 @@ class Clusters:
         events_to_keep = top_cluster[lambda x: ~x.index.isin(targets)].iloc[:top_n_events].index.tolist()  # type: ignore
         target_separator_position = len(events_to_keep)
         events_to_keep += list(targets)
-        top_cluster = top_cluster.loc[events_to_keep].reset_index()  # type: ignore
+        top_cluster = top_cluster.loc[events_to_keep].reset_index(name="freq")  # type: ignore
 
         if cluster_id2 is None:
             cluster2 = self.__eventstream.to_dataframe()
@@ -230,11 +230,11 @@ class Clusters:
             top_all = cluster2[self.event_col].value_counts(normalize=True)
 
         # make sure top_all has all events from cluster 1
-        for event in set(top_cluster["index"]) - set(top_all.index):
+        for event in set(top_cluster[self.event_col]) - set(top_all.index):
             top_all.loc[event] = 0
 
         # keep only top_n_events from cluster1
-        top_all = top_all.loc[top_cluster["index"]].reset_index()  # type: ignore
+        top_all = top_all.loc[top_cluster[self.event_col]].reset_index(name="freq")  # type: ignore
 
         top_all.columns = [self.event_col, "freq"]  # type: ignore
         top_cluster.columns = [self.event_col, "freq"]  # type: ignore
@@ -244,7 +244,7 @@ class Clusters:
 
         total_size = self.__eventstream.to_dataframe()[self.user_col].nunique()
         figure = self._plot_diff(
-            top_all.append(top_cluster, ignore_index=True, sort=False),  # type: ignore
+            pd.concat([top_all, top_cluster], ignore_index=True),  # type: ignore
             cl1=cluster_id1,
             sizes=[
                 cluster1[self.user_col].nunique() / total_size,

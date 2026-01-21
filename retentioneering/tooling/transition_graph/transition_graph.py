@@ -11,7 +11,7 @@ from typing import Any, MutableMapping, MutableSequence, cast
 
 import networkx as nx
 import pandas as pd
-from IPython.core.display import HTML, display
+from IPython.display import HTML, display
 from nanoid import generate
 
 from retentioneering import RETE_CONFIG

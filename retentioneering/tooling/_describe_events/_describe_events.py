@@ -61,7 +61,7 @@ class _DescribeEvents:
 
         for stat in self.STATS_ORDER:
             mult_ind = (first_time, stat)
-            df_agg_event[mult_ind] = pd.to_timedelta(df_agg_event[mult_ind], unit="s").round(self.TIME_ROUND_UNIT)  # type: ignore
+            df_agg_event[mult_ind] = pd.to_timedelta(df_agg_event[mult_ind], unit="s").dt.round(self.TIME_ROUND_UNIT)  # type: ignore
 
         return df_agg_event
 

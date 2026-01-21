@@ -50,7 +50,7 @@ url = "https://pypi.python.org/simple"
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
 virtualenv = ">=20.17"
-numpy = ">=1.22,!=1.24"
+numpy = ">=1.22,!=1.24,<2.0"
 pandas = ">=1.5.0,<2.0.0"
 jupyterlab = ">=3.4.7"
 notebook = ">=6.5.6"

@@ -1,4 +1,4 @@
-.PHONY: install build build-viz build-widget test watch clean release
+.PHONY: install build build-viz build-widget test watch clean release test-release
 
 install:
 	uv sync
@@ -52,3 +52,15 @@ release:
 	git tag -a v$(VERSION) -m "Release v$(VERSION)"
 	git push origin v$(VERSION)
 	@echo "✓ Pushed tag v$(VERSION) -- release.yml will build and publish to PyPI."
+
+# Dry-runs the packaging + publish pipeline against test.pypi.org, from
+# whatever branch you're currently on -- doesn't touch the real PyPI project
+# or require being on master. Bump pyproject.toml's version first if you've
+# already used this version string on TestPyPI (it won't accept a repeat).
+#
+# Usage: make test-release
+test-release:
+	git push origin HEAD
+	gh workflow run test-release.yml --ref $$(git branch --show-current)
+	@echo "✓ Dispatched test-release.yml. Watch it with:"
+	@echo "    gh run watch"

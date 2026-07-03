@@ -1,0 +1,6 @@
+# git blame --ignore-revs-file .git-blame-ignore-revs
+# git config blame.ignoreRevsFile .git-blame-ignore-revs   (to make it default)
+# GitHub's web blame view picks this file up automatically.
+
+# style: apply ruff format to the entire codebase (whitespace/style only)
+f642b303fe24a0c67c21db8f1b511a6f96706857

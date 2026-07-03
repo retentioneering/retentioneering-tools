@@ -1,0 +1,182 @@
+/**
+ * Single anywidget entry-point for all Retentioneering widgets.
+ * The Python side sets `widget_type` traitlet to choose which component to render.
+ */
+import { render as renderTransitionGraph }  from "./index";
+import { render as renderStepSankey }       from "./step_sankey";
+import { render as renderStepMatrix }       from "./step_matrix";
+import { render as renderFunnel }           from "./funnel";
+import { render as renderSegmentOverview }  from "./segment_overview";
+import { render as renderClusterAnalysis }  from "./cluster_analysis";
+
+interface AnyWidgetModel {
+  get(key: string): unknown;
+  set(key: string, value: unknown): void;
+  save_changes(): void;
+  on(event: string, cb: () => void): void;
+  off(event: string, cb: () => void): void;
+}
+
+/** Focus a node or animate an edge in a transition graph after renderStatic.
+ *  eventRef can be:
+ *    "basket"           → pan/zoom to node, activate click-mode
+ *    "basket->purchase" → pan/zoom to edge, play marching-ants animation
+ */
+export function focusNode(eventRef: string, el: HTMLElement) {
+  const findCy = (node: Element): any => {
+    if ((node as any).__cy) return (node as any).__cy;
+    for (let i = 0; i < node.children.length; i++) {
+      const found = findCy(node.children[i]);
+      if (found) return found;
+    }
+    return null;
+  };
+  const cy = findCy(el);
+  if (!cy) return;
+
+  const arrowIdx = eventRef.indexOf("->");
+  if (arrowIdx !== -1) {
+    // Edge reference
+    const source = eventRef.slice(0, arrowIdx).trim();
+    const target = eventRef.slice(arrowIdx + 2).trim();
+    const edge = cy.edges(`[source = "${source}"][target = "${target}"]`);
+    if (!edge || !edge.length) return;
+
+    // Stop any previous edge animation on this cy instance
+    if ((cy as any).__stopEdgeAnim) (cy as any).__stopEdgeAnim();
+
+    cy.animate({ fit: { eles: edge, padding: 120 } }, { duration: 400 });
+
+    // Use the edge's own colour so dashes match the edge
+    const origColor      = edge.style("line-color") as string;
+    const origArrowColor = edge.style("target-arrow-color") as string;
+    const origWidth      = (edge.numericStyle("width") as number) || 2;
+    edge.style({
+      "line-style": "dashed",
+      "line-dash-pattern": [10, 6],
+      "line-dash-offset": 0,
+      "line-color": origColor,
+      "target-arrow-color": origArrowColor,
+      "width": Math.max(origWidth, 2),
+    });
+
+    let offset = 0;
+    const iv = setInterval(() => {
+      offset = (offset + 1) % 32;   // slower: +1 step
+      edge.style("line-dash-offset", -offset);
+    }, 60);                          // slower: 60 ms interval
+
+    const stopAnim = () => {
+      clearInterval(iv);
+      edge.removeStyle();
+      cy.off("tap", tapHandler);
+      (cy as any).__stopEdgeAnim = null;
+    };
+    // Stop when user clicks empty canvas
+    const tapHandler = (event: any) => { if (event.target === cy) stopAnim(); };
+    cy.on("tap", tapHandler);
+    (cy as any).__stopEdgeAnim = stopAnim;
+  } else {
+    // Node reference
+    const node = cy.getElementById(eventRef);
+    if (node && node.length) {
+      cy.animate({ fit: { eles: node, padding: 80 } }, { duration: 400 });
+      node.emit("tap");
+    }
+  }
+}
+
+/** Scroll to a row or specific cell in a static step matrix.
+ *  eventRef can be:
+ *    "basket"    → scroll to row "basket"
+ *    "basket@4"  → expand step_window if needed, scroll to cell at step 4
+ */
+export function scrollToEvent(eventRef: string, el: HTMLElement) {
+  let eventName = eventRef;
+  let step: number | null = null;
+
+  const atIdx = eventRef.indexOf("@");
+  if (atIdx !== -1) {
+    eventName = eventRef.slice(0, atIdx).trim();
+    const parsed = parseInt(eventRef.slice(atIdx + 1), 10);
+    if (!isNaN(parsed)) step = parsed;
+  }
+
+  // Use __matrixApi when available (step matrix — also expands step_window)
+  const matrixApi = (el as any).__matrixApi;
+  if (matrixApi && step !== null) {
+    matrixApi.scrollToCell(eventName, step);
+    return;
+  }
+
+  // Use __segmentApi when available (segment overview)
+  const segApi = (el as any).__segmentApi;
+  if (segApi) {
+    if (step !== null) {
+      // step is actually a segment value encoded via parseInt — won't match, skip
+    } else if (atIdx !== -1) {
+      // eventRef was "metric@segment" — step is null means segment wasn't a number
+      const segValue = eventRef.slice(atIdx + 1).trim();
+      segApi.focusCell(eventName, segValue);
+    } else {
+      segApi.focusAny(eventName);
+    }
+    return;
+  }
+
+  // DOM fallback
+  const rows = el.querySelectorAll("tr[data-event]");
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i] as HTMLElement;
+    if (row.dataset.event === eventName) {
+      if (step !== null) {
+        const cell = row.querySelector(`td[data-step="${step}"]`) as HTMLElement | null;
+        if (cell) {
+          cell.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+          const prev = cell.style.background;
+          cell.style.background = "#fef3c7";
+          setTimeout(() => { cell.style.background = prev; }, 900);
+          return;
+        }
+      }
+      row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      const td = row.querySelector("td") as HTMLElement | null;
+      if (td) {
+        const prev = td.style.background;
+        td.style.background = "#fef3c7";
+        setTimeout(() => { td.style.background = prev; }, 900);
+      }
+      break;
+    }
+  }
+}
+
+export function renderStatic(data: Record<string, unknown>, el: HTMLElement) {
+  const noop = () => {};
+  const model: AnyWidgetModel = {
+    get: (key: string) => {
+      const v = data[key];
+      // anywidget traitlets always return JSON strings for objects/arrays,
+      // not parsed JS values — serialise so widget code can JSON.parse() them
+      if (v !== null && v !== undefined && typeof v === "object") {
+        return JSON.stringify(v);
+      }
+      return v ?? null;
+    },
+    set: noop,
+    save_changes: noop,
+    on: noop,
+    off: noop,
+  };
+  render({ model, el, isStatic: true });
+}
+
+export function render(ctx: { model: AnyWidgetModel; el: HTMLElement; isStatic?: boolean }) {
+  const type = (ctx.model.get("widget_type") as string) ?? "transition_graph";
+  if (type === "step_sankey")       return renderStepSankey(ctx);
+  if (type === "step_matrix")       return renderStepMatrix(ctx);
+  if (type === "funnel")            return renderFunnel(ctx);
+  if (type === "segment_overview")  return renderSegmentOverview(ctx);
+  if (type === "cluster_analysis")  return renderClusterAnalysis(ctx);
+  return renderTransitionGraph(ctx);
+}

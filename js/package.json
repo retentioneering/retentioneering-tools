@@ -1,0 +1,8 @@
+{
+  "name": "@retentioneering/js",
+  "private": true,
+  "workspaces": [
+    "viz-core",
+    "widget"
+  ]
+}

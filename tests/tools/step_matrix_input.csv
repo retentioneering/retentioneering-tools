@@ -1,0 +1,21 @@
+user_id	event	timestamp	session_id	country
+user_1	A	2020-01-01 00:00:00	session_1	US
+user_1	B	2020-01-01 00:00:00	session_1	US
+user_1	C	2020-01-01 00:00:00	session_1	US
+user_1	A	2020-01-01 00:00:00	session_1	US
+user_1	B	2020-01-01 00:00:00	session_1	US
+user_1	C	2020-01-01 00:00:00	session_1	US
+user_1	B	2020-01-01 00:00:00	session_2	US
+user_1	B	2020-01-01 00:00:00	session_2	US
+user_1	B	2020-01-01 00:00:00	session_2	US
+
+user_2	A	2020-01-01 00:00:00	session_3	UK
+user_2	B	2020-01-01 00:00:00	session_3	UK
+user_2	A	2020-01-01 00:00:00	session_3	UK
+user_2	B	2020-01-01 00:00:00	session_3	UK
+user_2	C	2020-01-01 00:00:00	session_3	UK
+user_2	C	2020-01-01 00:00:00	session_3	UK
+
+user_3	B	2020-01-01 00:00:00	session_4	UK
+user_3	B	2020-01-01 00:00:00	session_4	UK
+user_3	B	2020-01-01 00:00:00	session_4	UK

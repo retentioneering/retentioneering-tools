@@ -1,1 +1,0 @@
-from .funnel import Funnel

@@ -17,33 +17,33 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
     _esm = _get_esm()
     _css = _STATIC / "widget.css"
 
-    widget_type  = traitlets.Unicode("transition_graph").tag(sync=True)
+    widget_type = traitlets.Unicode("transition_graph").tag(sync=True)
 
     # ── recompute triggers ─────────────────────────────────────────────────────
     edge_weight = traitlets.Unicode("proba_out").tag(sync=True)
-    diff        = traitlets.Unicode("").tag(sync=True)
+    diff = traitlets.Unicode("").tag(sync=True)
     path_id_col = traitlets.Unicode("").tag(sync=True)
 
     # ── catalogues ─────────────────────────────────────────────────────────────
-    path_cols       = traitlets.Unicode("[]").tag(sync=True)
-    event_counts    = traitlets.Unicode("{}").tag(sync=True)
+    path_cols = traitlets.Unicode("[]").tag(sync=True)
+    event_counts = traitlets.Unicode("{}").tag(sync=True)
     event_counts_g1 = traitlets.Unicode("{}").tag(sync=True)
     event_counts_g2 = traitlets.Unicode("{}").tag(sync=True)
-    segment_levels  = traitlets.Unicode("{}").tag(sync=True)
+    segment_levels = traitlets.Unicode("{}").tag(sync=True)
 
     # ── result ─────────────────────────────────────────────────────────────────
-    result     = traitlets.Unicode("{}").tag(sync=True)
+    result = traitlets.Unicode("{}").tag(sync=True)
     is_loading = traitlets.Bool(False).tag(sync=True)
-    error      = traitlets.Unicode("").tag(sync=True)
+    error = traitlets.Unicode("").tag(sync=True)
 
     # ── display / persistent ───────────────────────────────────────────────────
-    height           = traitlets.Int(500).tag(sync=True)
-    sidebar_open     = traitlets.Bool(True).tag(sync=True)
-    node_positions   = traitlets.Unicode("{}").tag(sync=True)
+    height = traitlets.Int(500).tag(sync=True)
+    sidebar_open = traitlets.Bool(True).tag(sync=True)
+    node_positions = traitlets.Unicode("{}").tag(sync=True)
     event_visibility = traitlets.Unicode("{}").tag(sync=True)
 
     # ── generic compute protocol ───────────────────────────────────────────────
-    compute_request  = traitlets.Unicode("").tag(sync=True)
+    compute_request = traitlets.Unicode("").tag(sync=True)
     compute_response = traitlets.Unicode("").tag(sync=True)
 
     def __init__(
@@ -71,11 +71,11 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
         except Exception:
             self.event_counts = "{}"
 
-        self.edge_weight  = edge_weight if edge_weight is not _UNSET else "proba_out"
-        _diff_val         = diff         if diff         is not _UNSET else None
-        self.diff         = json.dumps(list(_diff_val)) if _diff_val else ""
-        self.path_id_col  = path_id_col  if path_id_col  is not _UNSET else ""
-        self.height       = height       if height       is not _UNSET else 500
+        self.edge_weight = edge_weight if edge_weight is not _UNSET else "proba_out"
+        _diff_val = diff if diff is not _UNSET else None
+        self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
+        self.path_id_col = path_id_col if path_id_col is not _UNSET else ""
+        self.height = height if height is not _UNSET else 500
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
         self.node_positions = "{}"
 
@@ -85,10 +85,12 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
             self._recompute()
 
         self._initialized = True
-        self.observe(self._on_params_change,           names=["edge_weight", "diff", "path_id_col"])
-        self.observe(self._on_positions_change,        names=["node_positions"])
+        self.observe(
+            self._on_params_change, names=["edge_weight", "diff", "path_id_col"]
+        )
+        self.observe(self._on_positions_change, names=["node_positions"])
         self.observe(self._on_event_visibility_change, names=["event_visibility"])
-        self.observe(self._on_compute_request,         names=["compute_request"])
+        self.observe(self._on_compute_request, names=["compute_request"])
 
     # ── widget-specific observers ──────────────────────────────────────────────
 
@@ -120,7 +122,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
         except Exception:
             return
         req_id = req.get("id", "")
-        tool   = req.get("tool", "")
+        tool = req.get("tool", "")
         params = req.get("params", {})
         try:
             result = self._dispatch(tool, params)
@@ -135,14 +137,14 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
             **self._base_state(),
             "params": {
                 "edge_weight": self.edge_weight,
-                "diff":        self.diff,
+                "diff": self.diff,
                 "path_id_col": self.path_id_col,
             },
             "display": {
-                "height":       self.height,
+                "height": self.height,
                 "sidebar_open": self.sidebar_open,
             },
-            "node_positions":   json.loads(self.node_positions or "{}"),
+            "node_positions": json.loads(self.node_positions or "{}"),
             "event_visibility": json.loads(self.event_visibility or "{}"),
         }
 
@@ -150,8 +152,8 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
         p = state.get("params", {})
         d = state.get("display", {})
 
-        self.edge_weight  = p.get("edge_weight", "proba_out")
-        self.height       = d.get("height", 500)
+        self.edge_weight = p.get("edge_weight", "proba_out")
+        self.height = d.get("height", 500)
         self.sidebar_open = d.get("sidebar_open", True)
         pos = state.get("node_positions", {})
         self.node_positions = json.dumps(pos) if pos else "{}"
@@ -159,7 +161,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
         self.event_visibility = json.dumps(ev) if ev else "{}"
 
         _diff, _pid, _mismatch = self._apply_base_state(state)
-        self.diff        = json.dumps(list(_diff)) if _diff else ""
+        self.diff = json.dumps(list(_diff)) if _diff else ""
         self.path_id_col = _pid
 
         self._recompute()
@@ -193,7 +195,9 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
 
             if diff_list:
                 try:
-                    s1, s2 = self._eventstream.split_two(diff_list, path_id_col=self.path_id_col or None)
+                    s1, s2 = self._eventstream.split_two(
+                        diff_list, path_id_col=self.path_id_col or None
+                    )
                     c1 = s1.get_event_counts()
                     c2 = s2.get_event_counts()
                     pid = self.path_id_col or s1.schema.path_cols[0]
@@ -217,7 +221,9 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
 
     def _compute_tm_raw(self, edge_weight: str, path_id_col=None, diff=None) -> dict:
         tm = self._eventstream.transition_graph_data(
-            edge_weight=edge_weight, path_id_col=path_id_col, diff=diff,
+            edge_weight=edge_weight,
+            path_id_col=path_id_col,
+            diff=diff,
         )
         if diff is not None:
             tm, tm1, tm2 = tm
@@ -232,6 +238,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
     def _compute_graph_layout(self, params: dict) -> dict:
         try:
             from retentioneering.tools.graph_layout import GraphLayout  # type: ignore
+
             result = GraphLayout(self._eventstream).fit(
                 sample_size=params.get("sample_size", 1000),
                 embedding_dim=params.get("embedding_dim", 32),
@@ -241,7 +248,6 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
             return {"result": result}
         except Exception:
             return {"result": {}}
-
 
     # ── HTML export ───────────────────────────────────────────────────────────
 
@@ -266,20 +272,20 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
             Supports basic markdown (bold, italic, bullet lists, tables, headings).
         """
         data = {
-            "widget_type":      "transition_graph",
-            "result":           json.loads(self.result or "{}"),
-            "edge_weight":      self.edge_weight,
-            "diff":             json.loads(self.diff) if self.diff else None,
-            "event_counts":     json.loads(self.event_counts or "{}"),
-            "event_counts_g1":  json.loads(self.event_counts_g1 or "{}"),
-            "event_counts_g2":  json.loads(self.event_counts_g2 or "{}"),
-            "node_positions":   json.loads(self.node_positions or "{}"),
+            "widget_type": "transition_graph",
+            "result": json.loads(self.result or "{}"),
+            "edge_weight": self.edge_weight,
+            "diff": json.loads(self.diff) if self.diff else None,
+            "event_counts": json.loads(self.event_counts or "{}"),
+            "event_counts_g1": json.loads(self.event_counts_g1 or "{}"),
+            "event_counts_g2": json.loads(self.event_counts_g2 or "{}"),
+            "node_positions": json.loads(self.node_positions or "{}"),
             "event_visibility": json.loads(self.event_visibility or "{}"),
-            "segment_levels":   json.loads(self.segment_levels or "{}"),
-            "path_cols":        json.loads(self.path_cols or "[]"),
-            "path_id_col":      self.path_id_col or "",
-            "height":           self.height,
-            "sidebar_open":     False,
+            "segment_levels": json.loads(self.segment_levels or "{}"),
+            "path_cols": json.loads(self.path_cols or "[]"),
+            "path_id_col": self.path_id_col or "",
+            "height": self.height,
+            "sidebar_open": False,
         }
         write_html(path, title, "Transition Graph", data, analysis)
 
@@ -297,8 +303,8 @@ def _render_analysis(text: str) -> str:  # noqa: F401 — backward compat shim
             s,
         )
         s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
-        s = re.sub(r"\*(.+?)\*",     r"<em>\1</em>", s)
-        s = re.sub(r"`(.+?)`",       r"<code>\1</code>", s)
+        s = re.sub(r"\*(.+?)\*", r"<em>\1</em>", s)
+        s = re.sub(r"`(.+?)`", r"<code>\1</code>", s)
         return s
 
     def esc(s: str) -> str:
@@ -342,10 +348,14 @@ def _render_analysis(text: str) -> str:  # noqa: F401 — backward compat shim
                     i += 1
                 th = "".join(f"<th>{_inline(esc(h))}</th>" for h in headers)
                 tbody = "".join(
-                    "<tr>" + "".join(f"<td>{_inline(esc(c))}</td>" for c in row) + "</tr>"
+                    "<tr>"
+                    + "".join(f"<td>{_inline(esc(c))}</td>" for c in row)
+                    + "</tr>"
                     for row in rows
                 )
-                out.append(f"<table><thead><tr>{th}</tr></thead><tbody>{tbody}</tbody></table>")
+                out.append(
+                    f"<table><thead><tr>{th}</tr></thead><tbody>{tbody}</tbody></table>"
+                )
                 continue
 
         # Unordered list
@@ -373,10 +383,12 @@ def _render_analysis(text: str) -> str:  # noqa: F401 — backward compat shim
             if not s:
                 i += 1
                 break
-            if (re.match(r"^#{1,6}\s", s) or
-                    re.match(r"^[-*_]{3,}\s*$", s) or
-                    re.match(r"^[-*+]\s", s) or
-                    re.match(r"^\d+[.)]\s", s)):
+            if (
+                re.match(r"^#{1,6}\s", s)
+                or re.match(r"^[-*_]{3,}\s*$", s)
+                or re.match(r"^[-*+]\s", s)
+                or re.match(r"^\d+[.)]\s", s)
+            ):
                 break
             if "|" in s:
                 nxt = lines[i + 1].strip() if i + 1 < len(lines) else ""
@@ -552,8 +564,10 @@ _HTML_TEMPLATE_ANALYSIS = """<!DOCTYPE html>
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 
+
 def _df_to_list(df) -> list:
     import pandas as pd
+
     rows = []
     for _, row in df.iterrows():
         cells = []

@@ -39,9 +39,13 @@ class TruncatePaths(DataProcessor):
         event_col: str | None = None,
     ) -> None:
         if not left:
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Parameter 'left' must be a non-empty string.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Parameter 'left' must be a non-empty string."
+            )
         if not right:
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Parameter 'right' must be a non-empty string.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Parameter 'right' must be a non-empty string."
+            )
 
         self.left = left
         self.right = right

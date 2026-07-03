@@ -3,16 +3,21 @@ import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
 
+
 def get_df():
-    df = pd.DataFrame([
-        ["user_1", "A", "2020-01-01 00:00:00", "US"],
-        ["user_1", "B", "2020-01-02 00:00:00", "US"],
-        ["user_1", "C", "2020-01-03 00:00:00", "US"],
-        ["user_2", "A", "2020-01-01 00:00:00", "US"],
-        ["user_3", "B", "2020-01-01 00:00:00", "UK"],
-        ["user_3", "B", "2020-01-02 00:01:00", "UK"],
-    ], columns=["user_id", "event", "timestamp", "country"])
+    df = pd.DataFrame(
+        [
+            ["user_1", "A", "2020-01-01 00:00:00", "US"],
+            ["user_1", "B", "2020-01-02 00:00:00", "US"],
+            ["user_1", "C", "2020-01-03 00:00:00", "US"],
+            ["user_2", "A", "2020-01-01 00:00:00", "US"],
+            ["user_3", "B", "2020-01-01 00:00:00", "UK"],
+            ["user_3", "B", "2020-01-02 00:01:00", "UK"],
+        ],
+        columns=["user_id", "event", "timestamp", "country"],
+    )
     return df
+
 
 class TestFilterEvents:
     def test__add_segment_values(self) -> None:
@@ -64,7 +69,14 @@ class TestFilterEvents:
         res = stream.add_segment(name=segment_name, sql=query)
 
         expected_df = df.copy()
-        expected_df[segment_name] = ["seg_1", "seg_1", "seg_1", "seg_2", "seg_3", "seg_3"]
+        expected_df[segment_name] = [
+            "seg_1",
+            "seg_1",
+            "seg_1",
+            "seg_2",
+            "seg_3",
+            "seg_3",
+        ]
         expected_schema = {"segment_cols": ["country", segment_name]}
         expected = Eventstream(expected_df, expected_schema)
 
@@ -113,9 +125,15 @@ class TestFilterEvents:
             stream.add_segment(name=segment_name, sql=query)
 
     def test__add_segment_sql_big_df(self) -> None:
-        df = pd.DataFrame({"user_id":
-            [111]*100000 + [222]*100000 + [333]*100000 + [444]*100000 + [555]*100000,
-        })
+        df = pd.DataFrame(
+            {
+                "user_id": [111] * 100000
+                + [222] * 100000
+                + [333] * 100000
+                + [444] * 100000
+                + [555] * 100000,
+            }
+        )
         df["event"] = "A"
         df["timestamp"] = "2020-01-01 00:00:00"
         stream = Eventstream(df)
@@ -129,13 +147,19 @@ class TestFilterEvents:
         res = stream.add_segment(name=segment_name, sql=query)
 
         expected_df = df.copy()
-        expected_df[segment_name] = ["1"]*100000 + ["0"]*100000 + ["1"]*100000 + ["0"]*100000 + ["1"]*100000
+        expected_df[segment_name] = (
+            ["1"] * 100000
+            + ["0"] * 100000
+            + ["1"] * 100000
+            + ["0"] * 100000
+            + ["1"] * 100000
+        )
         expected_schema = {"segment_cols": [segment_name]}
         expected = Eventstream(expected_df, expected_schema)
 
         assert res.equals(expected)
 
-        segment_name_2 = segment_name  + "_2"
+        segment_name_2 = segment_name + "_2"
         res2 = res.add_segment(name=segment_name_2, sql=query)
         assert all(res2.df[segment_name] == res2.df[segment_name_2])
 
@@ -174,13 +198,16 @@ class TestFilterEvents:
 class TestSplitTwo:
     def test__split_two_outer_literal(self) -> None:
         """Test split_two with <OUTER> literal for complement selection."""
-        df = pd.DataFrame([
-            ["user_1", "A", "2020-01-01 00:00:00", "seg_1"],
-            ["user_2", "B", "2020-01-02 00:00:00", "seg_1"],
-            ["user_3", "C", "2020-01-01 00:00:00", "seg_2"],
-            ["user_4", "D", "2020-01-01 00:00:00", "seg_3"],
-            ["user_5", "E", "2020-01-02 00:00:00", "seg_3"],
-        ], columns=["user_id", "event", "timestamp", "my_segment"])
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "seg_1"],
+                ["user_2", "B", "2020-01-02 00:00:00", "seg_1"],
+                ["user_3", "C", "2020-01-01 00:00:00", "seg_2"],
+                ["user_4", "D", "2020-01-01 00:00:00", "seg_3"],
+                ["user_5", "E", "2020-01-02 00:00:00", "seg_3"],
+            ],
+            columns=["user_id", "event", "timestamp", "my_segment"],
+        )
         schema = {"segment_cols": ["my_segment"]}
         stream = Eventstream(df, schema)
 

@@ -1,4 +1,5 @@
 """Shared helpers for widget modules."""
+
 from __future__ import annotations
 
 import json

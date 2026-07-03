@@ -4,4 +4,10 @@ from .funnel import Funnel
 from .segment_overview import SegmentOverview
 from .cluster_analysis import ClusterAnalysis
 
-__all__ = ["TransitionMatrix", "StepMatrix", "Funnel", "SegmentOverview", "ClusterAnalysis"]
+__all__ = [
+    "TransitionMatrix",
+    "StepMatrix",
+    "Funnel",
+    "SegmentOverview",
+    "ClusterAnalysis",
+]

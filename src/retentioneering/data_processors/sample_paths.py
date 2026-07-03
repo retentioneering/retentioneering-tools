@@ -28,7 +28,9 @@ class SamplePaths(DataProcessor):
         if isinstance(self.sample_size, float) and (
             self.sample_size > 1.0 or self.sample_size <= 0.0
         ):
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Float sample size must be between 0 and 1.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Float sample size must be between 0 and 1."
+            )
 
         query_template = """
             {set_threads}
@@ -51,7 +53,9 @@ class SamplePaths(DataProcessor):
         elif isinstance(self.sample_size, int):
             sample_chunk = f"{self.sample_size} rows"
         else:
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Sample size must be either a float or an integer.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Sample size must be either a float or an integer."
+            )
 
         query = query_template.format(
             path_id_col=path_id_col,

@@ -21,13 +21,18 @@ def _to_datetime_auto(series: pd.Series) -> pd.Series:
 try:
     from retentioneering._tracking import tracked as _tracked
 except Exception:
+
     def _tracked(event_name, condition=None):  # type: ignore[misc]
-        def decorator(func): return func
+        def decorator(func):
+            return func
+
         return decorator
 
 
 class Eventstream:
-    def __init__(self, df: "pd.DataFrame | str", schema: dict | None = None, prepare: bool = True):
+    def __init__(
+        self, df: "pd.DataFrame | str", schema: dict | None = None, prepare: bool = True
+    ):
         self._df = df
         self._schema = schema
         self.prepare = prepare
@@ -45,15 +50,17 @@ class Eventstream:
     def df(self, v: pd.DataFrame):
         self._df = v
 
-    @_tracked("eventstream_created",
-              condition=lambda self: self.prepare,
-              props_fn=lambda self: {
-                  "rows": self._df.shape[0],
-                  "cols": self._df.shape[1],
-                  "n_path_cols":     len(self.schema.path_cols),
-                  "n_segment_cols":  len(self.schema.segment_cols),
-                  "n_event_cols":    len(self.schema.event_cols),
-              })
+    @_tracked(
+        "eventstream_created",
+        condition=lambda self: self.prepare,
+        props_fn=lambda self: {
+            "rows": self._df.shape[0],
+            "cols": self._df.shape[1],
+            "n_path_cols": len(self.schema.path_cols),
+            "n_segment_cols": len(self.schema.segment_cols),
+            "n_event_cols": len(self.schema.event_cols),
+        },
+    )
     def _post_init(self):
         if self.prepare:
             self._prepare()
@@ -67,7 +74,9 @@ class Eventstream:
         elif isinstance(self._df, pd.DataFrame):
             df = self._df.copy()
         else:
-            raise ValueError(f"_df must be a DataFrame or CSV path, got {type(self._df)}")
+            raise ValueError(
+                f"_df must be a DataFrame or CSV path, got {type(self._df)}"
+            )
 
         schema = self.schema
         event_types = EventTypes()
@@ -105,9 +114,18 @@ class Eventstream:
     def empty(self, exclude_start_end: bool = True) -> bool:
         return self.to_dataframe(exclude_start_end=exclude_start_end).empty
 
-    def equals(self, other: "Eventstream", exclude_start_end: bool = False, ignore_technical_columns: bool = True) -> bool:
-        df1 = self.to_dataframe(exclude_start_end=exclude_start_end).reset_index(drop=True)
-        df2 = other.to_dataframe(exclude_start_end=exclude_start_end).reset_index(drop=True)
+    def equals(
+        self,
+        other: "Eventstream",
+        exclude_start_end: bool = False,
+        ignore_technical_columns: bool = True,
+    ) -> bool:
+        df1 = self.to_dataframe(exclude_start_end=exclude_start_end).reset_index(
+            drop=True
+        )
+        df2 = other.to_dataframe(exclude_start_end=exclude_start_end).reset_index(
+            drop=True
+        )
         if ignore_technical_columns:
             drop = [self.schema.event_type, self.schema.index, self.schema.subindex]
             df1 = df1.drop(columns=[c for c in drop if c in df1.columns])
@@ -119,6 +137,7 @@ class Eventstream:
 
     def get_event_counts(self, event_col: str | None = None) -> dict[str, int]:
         import duckdb
+
         event_col = event_col or self.schema.event_col
         df = self._df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
         query = f"SELECT {event_col}, COUNT(*) AS cnt FROM df GROUP BY {event_col}"
@@ -130,24 +149,27 @@ class Eventstream:
         Computed once and cached. Not cryptographically unique — collisions are theoretically possible
         but practically unlikely for datasets with different event sets or distributions."""
         import hashlib
+
         ec = self.schema.event_col
         pc = self.schema.path_col
         counts = sorted(
-            (str(k), int(v))
-            for k, v in self._df[ec].value_counts().items()
+            (str(k), int(v)) for k, v in self._df[ec].value_counts().items()
         )
         s = self.schema
-        payload = json.dumps({
-            "n_rows": len(self._df),
-            "n_paths": int(self._df[pc].nunique()),
-            "event_counts": counts,
-            "schema": {
-                "path_cols":    sorted(s.path_cols),
-                "event_cols":   sorted(s.event_cols),
-                "segment_cols": sorted(s.segment_cols),
-                "custom_cols":  sorted(s.custom_cols),
+        payload = json.dumps(
+            {
+                "n_rows": len(self._df),
+                "n_paths": int(self._df[pc].nunique()),
+                "event_counts": counts,
+                "schema": {
+                    "path_cols": sorted(s.path_cols),
+                    "event_cols": sorted(s.event_cols),
+                    "segment_cols": sorted(s.segment_cols),
+                    "custom_cols": sorted(s.custom_cols),
+                },
             },
-        }, sort_keys=True)
+            sort_keys=True,
+        )
         return hashlib.md5(payload.encode()).hexdigest()
 
     def get_all_segment_levels(self) -> dict[str, list[str]]:
@@ -157,7 +179,9 @@ class Eventstream:
         }
 
     @_tracked("dp_filter_events")
-    def filter_events(self, by_column: dict | None = None, func=None, sql: str | None = None) -> "Eventstream":
+    def filter_events(
+        self, by_column: dict | None = None, func=None, sql: str | None = None
+    ) -> "Eventstream":
         """
         Keep only rows that match a column filter, a Python predicate, or a SQL WHERE clause.
 
@@ -185,13 +209,28 @@ class Eventstream:
             stream.filter_events(sql="SELECT * FROM eventstream WHERE event NOT LIKE 'system_%'")
         """
         from retentioneering.data_processors.filter_events import FilterEvents
+
         if by_column is None and func is None and sql is None:
             return Eventstream(self._df.copy(), asdict(self.schema), prepare=False)
-        new_df, new_schema = FilterEvents(values=by_column, func=func, sql=sql).apply(self._df, self.schema)
+        new_df, new_schema = FilterEvents(values=by_column, func=func, sql=sql).apply(
+            self._df, self.schema
+        )
         return Eventstream(new_df, asdict(new_schema), prepare=False)
 
     @_tracked("dp_add_clusters")
-    def add_clusters(self, segment_name: str, features: list, method: str = "kmeans", scaler=None, n_clusters=None, min_cluster_size=None, cluster_selection_epsilon=None, nmf_k=None, path_id_col=None, event_col=None) -> "Eventstream":
+    def add_clusters(
+        self,
+        segment_name: str,
+        features: list,
+        method: str = "kmeans",
+        scaler=None,
+        n_clusters=None,
+        min_cluster_size=None,
+        cluster_selection_epsilon=None,
+        nmf_k=None,
+        path_id_col=None,
+        event_col=None,
+    ) -> "Eventstream":
         """
         Cluster paths using ML and add a new segment column with integer cluster labels.
 
@@ -240,11 +279,36 @@ class Eventstream:
             )
         """
         from retentioneering.data_processors.add_clusters import AddClusters
-        new_df, new_schema = AddClusters(eventstream=self, segment_name=segment_name, features=features, method=method, scaler=scaler, n_clusters=n_clusters, min_cluster_size=min_cluster_size, cluster_selection_epsilon=cluster_selection_epsilon, nmf_k=nmf_k, path_id_col=path_id_col, event_col=event_col).apply(self._df, self.schema)
+
+        new_df, new_schema = AddClusters(
+            eventstream=self,
+            segment_name=segment_name,
+            features=features,
+            method=method,
+            scaler=scaler,
+            n_clusters=n_clusters,
+            min_cluster_size=min_cluster_size,
+            cluster_selection_epsilon=cluster_selection_epsilon,
+            nmf_k=nmf_k,
+            path_id_col=path_id_col,
+            event_col=event_col,
+        ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), prepare=False)
 
     @_tracked("dp_url_events")
-    def url_events(self, column: str, nodes: list, strip_host: bool = True, strip_cgi: bool = True, strip_locale: bool = True, slug_enabled: bool = True, host_col=None, cgi_col=None, locale_col=None, slug_col=None) -> "Eventstream":
+    def url_events(
+        self,
+        column: str,
+        nodes: list,
+        strip_host: bool = True,
+        strip_cgi: bool = True,
+        strip_locale: bool = True,
+        slug_enabled: bool = True,
+        host_col=None,
+        cgi_col=None,
+        locale_col=None,
+        slug_col=None,
+    ) -> "Eventstream":
         """
         Parse a raw URL column into structured event name labels using a path tree.
 
@@ -287,11 +351,28 @@ class Eventstream:
             )
         """
         from retentioneering.data_processors.url_events import UrlEvents
-        new_df, new_schema = UrlEvents(column=column, nodes=nodes, strip_host=strip_host, strip_cgi=strip_cgi, strip_locale=strip_locale, slug_enabled=slug_enabled, host_col=host_col, cgi_col=cgi_col, locale_col=locale_col, slug_col=slug_col).apply(self._df, self.schema)
+
+        new_df, new_schema = UrlEvents(
+            column=column,
+            nodes=nodes,
+            strip_host=strip_host,
+            strip_cgi=strip_cgi,
+            strip_locale=strip_locale,
+            slug_enabled=slug_enabled,
+            host_col=host_col,
+            cgi_col=cgi_col,
+            locale_col=locale_col,
+            slug_col=slug_col,
+        ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), prepare=False)
 
     @_tracked("dp_filter_paths")
-    def filter_paths(self, ast_condition: dict, path_id_col: str | None = None, event_col: str | None = None) -> "Eventstream":
+    def filter_paths(
+        self,
+        ast_condition: dict,
+        path_id_col: str | None = None,
+        event_col: str | None = None,
+    ) -> "Eventstream":
         """
         Keep only paths that satisfy an AST-based metric condition.
 
@@ -341,7 +422,9 @@ class Eventstream:
         metric_configs = dp._get_metric_configs(ast_condition)
 
         # Build metrics
-        metrics = self.get_metrics(metric_configs, path_id_col=path_id_col).reset_index()  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
+        metrics = self.get_metrics(  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
+            metric_configs, path_id_col=path_id_col
+        ).reset_index()
         condition = dp._get_where_condition(ast_condition)
         query = f"SELECT {path_id_col} FROM metrics WHERE {condition}"
         path_ids = duckdb.sql(query).df()[path_id_col].tolist()
@@ -349,12 +432,16 @@ class Eventstream:
         if len(path_ids) == 0:
             raise EmptyEventstreamError("no paths match the filter_paths condition")
 
-        result_stream = self.filter_events(by_column={"column": path_id_col, "values": path_ids})
+        result_stream = self.filter_events(
+            by_column={"column": path_id_col, "values": path_ids}
+        )
         if result_stream.empty():
             raise EmptyEventstreamError("no events remain after filter_paths")
         return result_stream
 
-    def get_metrics(self, metrics: list, path_id_col: str | None = None) -> pd.DataFrame:
+    def get_metrics(
+        self, metrics: list, path_id_col: str | None = None
+    ) -> pd.DataFrame:
         """
         Build metrics for each path in the eventstream.
 
@@ -366,11 +453,14 @@ class Eventstream:
             DataFrame with path_id as index and metrics as columns
         """
         from retentioneering.metrics.metric_builder import MetricBuilder
+
         builder = MetricBuilder(self)
         return builder.build_metrics(metrics, path_id_col)
 
     @_tracked("dp_add_events")
-    def add_events(self, new_event_name: str, source_events=None, sql=None, churn=None) -> "Eventstream":
+    def add_events(
+        self, new_event_name: str, source_events=None, sql=None, churn=None
+    ) -> "Eventstream":
         """
         Insert synthetic events derived from existing events or a SQL query.
 
@@ -403,12 +493,22 @@ class Eventstream:
             stream.add_events("churned", churn={"inactivity_days": 30, "active_events": ["purchase"]})
         """
         from retentioneering.data_processors.add_events import AddEvents
-        new_df, new_schema = AddEvents(new_event_name, source_events=source_events, sql=sql, churn=churn).apply(self._df, self.schema)
+
+        new_df, new_schema = AddEvents(
+            new_event_name, source_events=source_events, sql=sql, churn=churn
+        ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), prepare=False)
 
     @_tracked("dp_add_segment")
-    def add_segment(self, name: str, values=None, func=None, sql=None,
-                    funnel_events=None, path_id_col=None) -> "Eventstream":
+    def add_segment(
+        self,
+        name: str,
+        values=None,
+        func=None,
+        sql=None,
+        funnel_events=None,
+        path_id_col=None,
+    ) -> "Eventstream":
         """
         Add a new categorical segment column to the eventstream.
 
@@ -468,14 +568,29 @@ class Eventstream:
             )
         """
         from retentioneering.data_processors.add_segment import AddSegment
+
         new_df, new_schema = AddSegment(
-            name, values=values, func=func, sql=sql,
-            funnel_events=funnel_events, path_id_col=path_id_col,
+            name,
+            values=values,
+            func=func,
+            sql=sql,
+            funnel_events=funnel_events,
+            path_id_col=path_id_col,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), prepare=False)
 
     @_tracked("dp_collapse_events")
-    def collapse_events(self, repetitive=None, event_groups=None, event_from_col=None, session_id_col=None, session_type_col=None, agg=None, path_id_col=None, event_col=None) -> "Eventstream":
+    def collapse_events(
+        self,
+        repetitive=None,
+        event_groups=None,
+        event_from_col=None,
+        session_id_col=None,
+        session_type_col=None,
+        agg=None,
+        path_id_col=None,
+        event_col=None,
+    ) -> "Eventstream":
         """
         Merge consecutive or grouped events into a single representative event.
 
@@ -521,11 +636,28 @@ class Eventstream:
             stream.collapse_events(event_groups=[{"events": ["checkout_start", "checkout_step", "checkout_confirm"], "name": "checkout"}])
         """
         from retentioneering.data_processors.collapse_events import CollapseEvents
-        new_df, new_schema = CollapseEvents(repetitive=repetitive, event_groups=event_groups, event_from_col=event_from_col, session_id_col=session_id_col, session_type_col=session_type_col, agg=agg, path_id_col=path_id_col, event_col=event_col).apply(self._df, self.schema)
+
+        new_df, new_schema = CollapseEvents(
+            repetitive=repetitive,
+            event_groups=event_groups,
+            event_from_col=event_from_col,
+            session_id_col=session_id_col,
+            session_type_col=session_type_col,
+            agg=agg,
+            path_id_col=path_id_col,
+            event_col=event_col,
+        ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), prepare=False)
 
     @_tracked("dp_daily_states")
-    def daily_states(self, active_events=None, max_dormant_days: int = 30, agg=None, path_id_col=None, event_col=None) -> "Eventstream":
+    def daily_states(
+        self,
+        active_events=None,
+        max_dormant_days: int = 30,
+        agg=None,
+        path_id_col=None,
+        event_col=None,
+    ) -> "Eventstream":
         """
         Convert the eventstream into daily lifecycle-state events.
 
@@ -567,6 +699,7 @@ class Eventstream:
             {"type": "daily_states", "active_events": ["purchase"], "max_dormant_days": 60}
         """
         from retentioneering.data_processors.daily_states import DailyStates
+
         new_df, new_schema = DailyStates(
             active_events=active_events,
             max_dormant_days=max_dormant_days,
@@ -591,6 +724,7 @@ class Eventstream:
             stream.drop_segment("cluster")
         """
         from retentioneering.data_processors.drop_segment import DropSegment
+
         new_df, new_schema = DropSegment(name).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), prepare=False)
 
@@ -616,7 +750,10 @@ class Eventstream:
             stream.edit_events(delete=["debug_event", "internal_event"])
         """
         from retentioneering.data_processors.edit_events import EditEvents
-        new_df, new_schema = EditEvents(rename=rename, delete=delete).apply(self._df, self.schema)
+
+        new_df, new_schema = EditEvents(rename=rename, delete=delete).apply(
+            self._df, self.schema
+        )
         return Eventstream(new_df, asdict(new_schema), prepare=False)
 
     @_tracked("dp_rename_events")
@@ -637,11 +774,14 @@ class Eventstream:
             stream.rename_events({"old_checkout": "checkout", "cart_add": "add_to_cart"})
         """
         from retentioneering.data_processors.rename_events import RenameEvents
+
         new_df, new_schema = RenameEvents(mapping).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), prepare=False)
 
     @_tracked("dp_sample_paths")
-    def sample_paths(self, sample_size, random_state=None, path_id_col=None) -> "Eventstream":
+    def sample_paths(
+        self, sample_size, random_state=None, path_id_col=None
+    ) -> "Eventstream":
         """
         Randomly sample paths (and all their events).
 
@@ -661,11 +801,24 @@ class Eventstream:
             stream.sample_paths(0.1, random_state=42)  # 10 % of paths
         """
         from retentioneering.data_processors.sample_paths import SamplePaths
-        new_df, new_schema = SamplePaths(sample_size=sample_size, random_state=random_state, path_id_col=path_id_col).apply(self._df, self.schema)
+
+        new_df, new_schema = SamplePaths(
+            sample_size=sample_size, random_state=random_state, path_id_col=path_id_col
+        ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), prepare=False)
 
     @_tracked("dp_split_sessions")
-    def split_sessions(self, session_col="session_id", session_index_col="session_index", separator=None, start_event=None, end_event=None, timeout=None, path_id_col=None, event_col=None) -> "Eventstream":
+    def split_sessions(
+        self,
+        session_col="session_id",
+        session_index_col="session_index",
+        separator=None,
+        start_event=None,
+        end_event=None,
+        timeout=None,
+        path_id_col=None,
+        event_col=None,
+    ) -> "Eventstream":
         """
         Split each path into sub-sessions and add session ID and index columns.
 
@@ -705,11 +858,23 @@ class Eventstream:
             stream.split_sessions(separator="app_open", timeout=3600)
         """
         from retentioneering.data_processors.split_sessions import SplitSessions
-        new_df, new_schema = SplitSessions(session_col=session_col, session_index_col=session_index_col, separator=separator, start_event=start_event, end_event=end_event, timeout=timeout, path_id_col=path_id_col, event_col=event_col).apply(self._df, self.schema)
+
+        new_df, new_schema = SplitSessions(
+            session_col=session_col,
+            session_index_col=session_index_col,
+            separator=separator,
+            start_event=start_event,
+            end_event=end_event,
+            timeout=timeout,
+            path_id_col=path_id_col,
+            event_col=event_col,
+        ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), prepare=False)
 
     @_tracked("dp_truncate_paths")
-    def truncate_paths(self, left: str, right: str, path_id_col=None, event_col=None) -> "Eventstream":
+    def truncate_paths(
+        self, left: str, right: str, path_id_col=None, event_col=None
+    ) -> "Eventstream":
         """
         Trim each path to the window between two anchor events (inclusive).
 
@@ -733,11 +898,15 @@ class Eventstream:
             stream.truncate_paths(left="registration", right="purchase")
         """
         from retentioneering.data_processors.truncate_paths import TruncatePaths
-        new_df, new_schema = TruncatePaths(left=left, right=right, path_id_col=path_id_col, event_col=event_col).apply(self._df, self.schema)
+
+        new_df, new_schema = TruncatePaths(
+            left=left, right=right, path_id_col=path_id_col, event_col=event_col
+        ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), prepare=False)
 
     def split_two(self, split, path_id_col: str | None = None):
         from retentioneering.exceptions import EmptyEventstreamError, DiffConfigError
+
         if len(split) == 3:
             segment_col, v1, v2 = split[0], split[1], split[2]
             if segment_col not in self.schema.segment_cols:
@@ -764,7 +933,10 @@ class Eventstream:
 
     @_tracked("dp_add_start_end_events")
     def add_start_end_events(self, path_id_col: str | None = None) -> "Eventstream":
-        from retentioneering.data_processors.add_start_end_events import AddStartEndEvents
+        from retentioneering.data_processors.add_start_end_events import (
+            AddStartEndEvents,
+        )
+
         dp = AddStartEndEvents(path_id_col)
         new_df, new_schema = dp.apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), prepare=False)
@@ -777,6 +949,7 @@ class Eventstream:
         diff: T_Diff = None,
     ) -> pd.DataFrame:
         from retentioneering.tools.transition_matrix import TransitionMatrix
+
         return TransitionMatrix(self).fit(edge_weight, diff, path_id_col)
 
     @_tracked("headless_step_sankey")
@@ -788,9 +961,12 @@ class Eventstream:
         path_pattern: str | None = None,
     ):
         from retentioneering.tools.step_matrix import StepMatrix
+
         return StepMatrix(self).fit(
-            max_steps=max_steps, diff=diff,
-            path_id_col=path_id_col, path_pattern=path_pattern,
+            max_steps=max_steps,
+            diff=diff,
+            path_id_col=path_id_col,
+            path_pattern=path_pattern,
         )
 
     @_tracked("widget_step_sankey")
@@ -805,15 +981,16 @@ class Eventstream:
         sidebar_open=None,
     ):
         from retentioneering.widgets.step_sankey import StepSankeyWidget, _UNSET
+
         return StepSankeyWidget(
             eventstream=self,
-            max_steps=max_steps         if max_steps    is not None else _UNSET,
-            diff=diff                   if diff         is not None else _UNSET,
-            path_id_col=path_id_col     if path_id_col  is not None else _UNSET,
-            path_pattern=path_pattern   if path_pattern is not None else _UNSET,
-            step_window=step_window     if step_window  is not None else _UNSET,
-            height=height               if height       is not None else _UNSET,
-            sidebar_open=sidebar_open   if sidebar_open is not None else _UNSET,
+            max_steps=max_steps if max_steps is not None else _UNSET,
+            diff=diff if diff is not None else _UNSET,
+            path_id_col=path_id_col if path_id_col is not None else _UNSET,
+            path_pattern=path_pattern if path_pattern is not None else _UNSET,
+            step_window=step_window if step_window is not None else _UNSET,
+            height=height if height is not None else _UNSET,
+            sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
         )
 
     @_tracked("widget_step_matrix")
@@ -829,15 +1006,16 @@ class Eventstream:
     ):
         """Interactive Step Matrix heatmap widget for Jupyter notebooks."""
         from retentioneering.widgets.step_matrix import StepMatrixWidget, _UNSET
+
         return StepMatrixWidget(
             eventstream=self,
             cloud_file_name=cloud_file_name,
-            max_steps=max_steps         if max_steps    is not None else _UNSET,
-            diff=diff                   if diff         is not None else _UNSET,
-            path_id_col=path_id_col     if path_id_col  is not None else _UNSET,
-            path_pattern=path_pattern   if path_pattern is not None else _UNSET,
-            height=height               if height       is not None else _UNSET,
-            sidebar_open=sidebar_open   if sidebar_open is not None else _UNSET,
+            max_steps=max_steps if max_steps is not None else _UNSET,
+            diff=diff if diff is not None else _UNSET,
+            path_id_col=path_id_col if path_id_col is not None else _UNSET,
+            path_pattern=path_pattern if path_pattern is not None else _UNSET,
+            height=height if height is not None else _UNSET,
+            sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
         )
 
     @_tracked("widget_transition_graph")
@@ -850,14 +1028,18 @@ class Eventstream:
         sidebar_open=None,
         cloud_file_name: str | None = None,
     ):
-        from retentioneering.widgets.transition_graph import TransitionGraphWidget, _UNSET
+        from retentioneering.widgets.transition_graph import (
+            TransitionGraphWidget,
+            _UNSET,
+        )
+
         return TransitionGraphWidget(
             eventstream=self,
             cloud_file_name=cloud_file_name,
-            edge_weight=edge_weight   if edge_weight is not None else _UNSET,
-            diff=diff             if diff         is not None else _UNSET,
+            edge_weight=edge_weight if edge_weight is not None else _UNSET,
+            diff=diff if diff is not None else _UNSET,
             path_id_col=path_id_col if path_id_col is not None else _UNSET,
-            height=height         if height       is not None else _UNSET,
+            height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
         )
 
@@ -872,13 +1054,14 @@ class Eventstream:
     ):
         """Interactive funnel widget for Jupyter notebooks."""
         from retentioneering.widgets.funnel import FunnelWidget, _UNSET
+
         return FunnelWidget(
             eventstream=self,
-            steps=steps               if steps         is not None else _UNSET,
-            diff=diff                 if diff          is not None else _UNSET,
-            path_id_col=path_id_col   if path_id_col   is not None else _UNSET,
-            height=height             if height        is not None else _UNSET,
-            sidebar_open=sidebar_open if sidebar_open  is not None else _UNSET,
+            steps=steps if steps is not None else _UNSET,
+            diff=diff if diff is not None else _UNSET,
+            path_id_col=path_id_col if path_id_col is not None else _UNSET,
+            height=height if height is not None else _UNSET,
+            sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
         )
 
     @_tracked("headless_funnel")
@@ -896,6 +1079,7 @@ class Eventstream:
         conversion_rate (and diff fields when diff is provided).
         """
         from retentioneering.tools.funnel import Funnel
+
         if not steps:
             return {"steps": []}
         return Funnel(self).fit(steps=steps, diff=diff, path_id_col=path_id_col)
@@ -910,14 +1094,18 @@ class Eventstream:
         sidebar_open: bool | None = None,
     ):
         """Interactive Segment Overview heatmap widget for Jupyter notebooks."""
-        from retentioneering.widgets.segment_overview import SegmentOverviewWidget, _UNSET
+        from retentioneering.widgets.segment_overview import (
+            SegmentOverviewWidget,
+            _UNSET,
+        )
+
         return SegmentOverviewWidget(
             eventstream=self,
-            segment_col=segment_col         if segment_col    is not None else _UNSET,
-            metrics_config=metrics_config   if metrics_config is not None else _UNSET,
-            path_id_col=path_id_col         if path_id_col    is not None else _UNSET,
-            height=height                   if height         is not None else _UNSET,
-            sidebar_open=sidebar_open       if sidebar_open   is not None else _UNSET,
+            segment_col=segment_col if segment_col is not None else _UNSET,
+            metrics_config=metrics_config if metrics_config is not None else _UNSET,
+            path_id_col=path_id_col if path_id_col is not None else _UNSET,
+            height=height if height is not None else _UNSET,
+            sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
         )
 
     @_tracked("headless_segment_overview")
@@ -934,6 +1122,7 @@ class Eventstream:
         Always includes segment_size and segment_share as first two rows.
         """
         from retentioneering.tools.segment_overview import SegmentOverview
+
         return SegmentOverview(self).fit(
             segment_col=segment_col,
             metrics_config=metrics_config or [],
@@ -954,17 +1143,21 @@ class Eventstream:
         sidebar_open: bool | None = None,
     ):
         """Interactive Cluster Analysis widget for Jupyter notebooks."""
-        from retentioneering.widgets.cluster_analysis import ClusterAnalysisWidget, _UNSET
+        from retentioneering.widgets.cluster_analysis import (
+            ClusterAnalysisWidget,
+            _UNSET,
+        )
+
         return ClusterAnalysisWidget(
             eventstream=self,
-            features=features             if features       is not None else _UNSET,
-            method=method                 if method         is not None else _UNSET,
-            scaler=scaler                 if scaler         is not None else _UNSET,
-            n_clusters=n_clusters         if n_clusters     is not None else _UNSET,
+            features=features if features is not None else _UNSET,
+            method=method if method is not None else _UNSET,
+            scaler=scaler if scaler is not None else _UNSET,
+            n_clusters=n_clusters if n_clusters is not None else _UNSET,
             metrics_config=metrics_config if metrics_config is not None else _UNSET,
-            path_id_col=path_id_col       if path_id_col    is not None else _UNSET,
-            height=height                 if height         is not None else _UNSET,
-            sidebar_open=sidebar_open     if sidebar_open   is not None else _UNSET,
+            path_id_col=path_id_col if path_id_col is not None else _UNSET,
+            height=height if height is not None else _UNSET,
+            sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
         )
 
     @_tracked("headless_cluster_analysis")
@@ -987,6 +1180,7 @@ class Eventstream:
         with silhouette scoring.
         """
         from retentioneering.tools.cluster_analysis import ClusterAnalysis
+
         return ClusterAnalysis(self).fit(
             features_config=features,
             method=method,
@@ -1017,6 +1211,7 @@ class Eventstream:
             List of two strings → compare the two distributions.
         """
         from retentioneering.tools.segment_overview import SegmentOverview
+
         return SegmentOverview(self).metric_distribution(
             segment_col=segment_col,
             segment_value=segment_value,

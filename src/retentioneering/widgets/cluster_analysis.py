@@ -17,32 +17,31 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
     widget_type = traitlets.Unicode("cluster_analysis").tag(sync=True)
 
     # ── config ─────────────────────────────────────────────────────────────
-    features       = traitlets.Unicode("[]").tag(sync=True)   # JSON list of metric configs
-    method         = traitlets.Unicode("kmeans").tag(sync=True)
-    scaler         = traitlets.Unicode("minmax").tag(sync=True)
-    n_clusters     = traitlets.Unicode("").tag(sync=True)      # "" | "3" | "3-8" | "[3,4,5]"
-    nmf_k          = traitlets.Unicode("").tag(sync=True)      # "" | "3" | "3,5,7"
-    nmf_enabled    = traitlets.Bool(False).tag(sync=True)
+    features = traitlets.Unicode("[]").tag(sync=True)  # JSON list of metric configs
+    method = traitlets.Unicode("kmeans").tag(sync=True)
+    scaler = traitlets.Unicode("minmax").tag(sync=True)
+    n_clusters = traitlets.Unicode("").tag(sync=True)  # "" | "3" | "3-8" | "[3,4,5]"
+    nmf_k = traitlets.Unicode("").tag(sync=True)  # "" | "3" | "3,5,7"
+    nmf_enabled = traitlets.Bool(False).tag(sync=True)
     metrics_config = traitlets.Unicode("[]").tag(sync=True)
-    aggregation    = traitlets.Unicode("mean").tag(sync=True)
-    path_id_col    = traitlets.Unicode("").tag(sync=True)
-    apply_trigger  = traitlets.Unicode("").tag(sync=True)
+    aggregation = traitlets.Unicode("mean").tag(sync=True)
+    path_id_col = traitlets.Unicode("").tag(sync=True)
+    apply_trigger = traitlets.Unicode("").tag(sync=True)
 
     # ── catalogues ─────────────────────────────────────────────────────────
-    event_list     = traitlets.Unicode("[]").tag(sync=True)
-    path_cols      = traitlets.Unicode("[]").tag(sync=True)
-    segment_cols   = traitlets.Unicode("[]").tag(sync=True)
+    event_list = traitlets.Unicode("[]").tag(sync=True)
+    path_cols = traitlets.Unicode("[]").tag(sync=True)
+    segment_cols = traitlets.Unicode("[]").tag(sync=True)
     segment_levels = traitlets.Unicode("{}").tag(sync=True)
 
     # ── result ─────────────────────────────────────────────────────────────
-    result     = traitlets.Unicode("{}").tag(sync=True)
+    result = traitlets.Unicode("{}").tag(sync=True)
     is_loading = traitlets.Bool(False).tag(sync=True)
-    error      = traitlets.Unicode("").tag(sync=True)
-
+    error = traitlets.Unicode("").tag(sync=True)
 
     # ── display ────────────────────────────────────────────────────────────
-    widget_id    = traitlets.Unicode("").tag(sync=True)
-    height       = traitlets.Int(520).tag(sync=True)
+    widget_id = traitlets.Unicode("").tag(sync=True)
+    height = traitlets.Int(520).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
 
     def __init__(
@@ -66,44 +65,62 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
 
         # Catalogues
         try:
-            all_events = sorted(eventstream.df[eventstream.schema.event_col].astype(str).unique().tolist())
+            all_events = sorted(
+                eventstream.df[eventstream.schema.event_col]
+                .astype(str)
+                .unique()
+                .tolist()
+            )
             self.event_list = json.dumps(all_events)
         except Exception:
             self.event_list = "[]"
-        self.path_cols      = json.dumps(eventstream.schema.path_cols)
-        self.segment_cols   = json.dumps(eventstream.schema.segment_cols)
+        self.path_cols = json.dumps(eventstream.schema.path_cols)
+        self.segment_cols = json.dumps(eventstream.schema.segment_cols)
         try:
             self.segment_levels = json.dumps(eventstream.get_all_segment_levels())
         except Exception:
             self.segment_levels = "{}"
 
-
         _feat = features if features is not _UNSET else None
         if _feat is None:
             try:
                 all_events = json.loads(self.event_list)
-                _feat = [{"metric": "event_count", "metric_args": {"events": all_events}}]
+                _feat = [
+                    {"metric": "event_count", "metric_args": {"events": all_events}}
+                ]
             except Exception:
                 _feat = []
-        self.features       = json.dumps(_feat) if isinstance(_feat, list) else (_feat or "[]")
-        self.method         = method         if method         is not _UNSET else "kmeans"
-        self.scaler         = scaler         if scaler         is not _UNSET else "minmax"
+        self.features = (
+            json.dumps(_feat) if isinstance(_feat, list) else (_feat or "[]")
+        )
+        self.method = method if method is not _UNSET else "kmeans"
+        self.scaler = scaler if scaler is not _UNSET else "minmax"
         _nc = n_clusters if n_clusters is not _UNSET else ""
-        self.n_clusters     = json.dumps(_nc) if isinstance(_nc, list) else (str(_nc) if _nc else "3-8")
-        self.nmf_enabled    = False
-        self.nmf_k          = ""
+        self.n_clusters = (
+            json.dumps(_nc) if isinstance(_nc, list) else (str(_nc) if _nc else "3-8")
+        )
+        self.nmf_enabled = False
+        self.nmf_k = ""
         _mc = metrics_config if metrics_config is not _UNSET else None
         if _mc is None:
             try:
                 all_events = json.loads(self.event_list)
-                _mc = [{"metric": "event_count", "metric_args": {"events": all_events}, "agg": "mean"}]
+                _mc = [
+                    {
+                        "metric": "event_count",
+                        "metric_args": {"events": all_events},
+                        "agg": "mean",
+                    }
+                ]
             except Exception:
                 _mc = []
-        self.metrics_config = json.dumps(_mc) if isinstance(_mc, list) else (_mc or "[]")
-        self.aggregation    = "mean"
-        self.path_id_col    = path_id_col    if path_id_col    is not _UNSET else ""
-        self.height         = height         if height         is not _UNSET else 520
-        self.sidebar_open   = sidebar_open   if sidebar_open   is not _UNSET else True
+        self.metrics_config = (
+            json.dumps(_mc) if isinstance(_mc, list) else (_mc or "[]")
+        )
+        self.aggregation = "mean"
+        self.path_id_col = path_id_col if path_id_col is not _UNSET else ""
+        self.height = height if height is not _UNSET else 520
+        self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
         self._initialized = True
         self.observe(self._on_apply, names=["apply_trigger"])
@@ -134,7 +151,11 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
             # Apply global aggregation to metrics that don't have their own agg
             metrics = [{**m, "agg": m.get("agg") or agg} for m in metrics]
             n_clusters = _parse_n_clusters(self.n_clusters)
-            nmf_k = _parse_n_clusters(self.nmf_k) if self.nmf_enabled and self.nmf_k else None
+            nmf_k = (
+                _parse_n_clusters(self.nmf_k)
+                if self.nmf_enabled and self.nmf_k
+                else None
+            )
             pid = self.path_id_col or None
 
             raw = self._eventstream.cluster_analysis_data(
@@ -151,14 +172,16 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
             if "overview_df" in raw and raw["overview_df"] is not None:
                 df = raw["overview_df"]
                 result["overview"] = {
-                    "metrics":  df.index.tolist(),
+                    "metrics": df.index.tolist(),
                     "segments": df.columns.tolist(),
-                    "values":   [[_safe(v) for v in df.loc[m].tolist()] for m in df.index],
+                    "values": [
+                        [_safe(v) for v in df.loc[m].tolist()] for m in df.index
+                    ],
                 }
             if "silhouette" in raw:
                 sil = raw["silhouette"]
                 result["silhouette"] = {
-                    "params":     sil["params"],
+                    "params": sil["params"],
                     "silhouette": [_safe(s) for s in sil["silhouette"]],
                 }
             if "nmf" in raw and raw["nmf"] is not None:
@@ -173,10 +196,13 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
 
     # ── persistence ────────────────────────────────────────────────────────
 
+
 # ── helpers ───────────────────────────────────────────────────────────────────
+
 
 def _safe(v):
     import math
+
     if v is None:
         return None
     try:

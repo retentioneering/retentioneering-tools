@@ -14,7 +14,18 @@ from retentioneering.data_processors.truncate_paths import TruncatePaths
 from retentioneering.data_processors.url_events import UrlEvents
 
 __all__ = [
-    "AddClusters", "AddEvents", "AddSegment", "AddStartEndEvents", "CollapseEvents", "DropSegment",
-    "EditEvents", "FilterEvents", "FilterPaths", "RenameEvents", "SamplePaths",
-    "SplitSessions", "TruncatePaths", "UrlEvents",
+    "AddClusters",
+    "AddEvents",
+    "AddSegment",
+    "AddStartEndEvents",
+    "CollapseEvents",
+    "DropSegment",
+    "EditEvents",
+    "FilterEvents",
+    "FilterPaths",
+    "RenameEvents",
+    "SamplePaths",
+    "SplitSessions",
+    "TruncatePaths",
+    "UrlEvents",
 ]

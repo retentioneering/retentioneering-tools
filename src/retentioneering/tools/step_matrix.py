@@ -31,24 +31,34 @@ class StepMatrix:
         path_id_col = path_id_col or self.eventstream.schema.path_col
 
         if self.eventstream.empty():
-            raise EmptyEventstreamError("Cannot calculate step matrix for empty eventstream")
+            raise EmptyEventstreamError(
+                "Cannot calculate step matrix for empty eventstream"
+            )
 
         if path_id_col not in self.eventstream.schema.path_cols:
-            raise InvalidParameterError("path_id_col", path_id_col, self.eventstream.schema.path_cols)
+            raise InvalidParameterError(
+                "path_id_col", path_id_col, self.eventstream.schema.path_cols
+            )
 
         if path_pattern is None:
             if diff is None:
                 sm = self._regular(max_steps, path_id_col)
                 return (sm,)
             else:
-                sms, sms1, sms2 = self._process_diff_matrix(max_steps, diff, path_id_col)
+                sms, sms1, sms2 = self._process_diff_matrix(
+                    max_steps, diff, path_id_col
+                )
                 return tuple(sms), tuple(sms1), tuple(sms2)
         else:
             if diff is None:
-                sms = self._process_pattern_matrix(max_steps, None, path_pattern, path_id_col)
+                sms = self._process_pattern_matrix(
+                    max_steps, None, path_pattern, path_id_col
+                )
                 return tuple(sms)
             else:
-                sms, sms1, sms2 = self._process_pattern_matrix(max_steps, diff, path_pattern, path_id_col)
+                sms, sms1, sms2 = self._process_pattern_matrix(
+                    max_steps, diff, path_pattern, path_id_col
+                )
                 return tuple(sms), tuple(sms1), tuple(sms2)
 
     @staticmethod
@@ -103,7 +113,9 @@ class StepMatrix:
         sm = (
             duckdb.sql(query)
             .df()
-            .pivot_table(index=event_col, columns="step", values="value", observed=False)
+            .pivot_table(
+                index=event_col, columns="step", values="value", observed=False
+            )
         )
 
         sm = sm.reindex(columns=range(max_steps + 1)).fillna(0)
@@ -130,7 +142,7 @@ class StepMatrix:
             pat = pattern.split("->")
             pat_len = len(pat)
             for i in range(len(seq) - pat_len + 1):
-                if seq[i:i + pat_len] == pat:
+                if seq[i : i + pat_len] == pat:
                     return i + 1
             return None
         else:
@@ -147,7 +159,7 @@ class StepMatrix:
                     sub_pat = part.split("->") if part else []
                     found = False
                     for i in range(idx, len(seq) - len(sub_pat) + 1):
-                        if seq[i:i + len(sub_pat)] == sub_pat:
+                        if seq[i : i + len(sub_pat)] == sub_pat:
                             matched_indices.append(i)
                             idx = i + len(sub_pat)
                             found = True
@@ -162,12 +174,14 @@ class StepMatrix:
                 return last_index + 1
             return None
 
-    def _filter_paths_by_pattern(self, path_pattern: str, path_id_col: str) -> "Eventstream":
+    def _filter_paths_by_pattern(
+        self, path_pattern: str, path_id_col: str
+    ) -> "Eventstream":
         """Filter eventstream to paths matching the given path_pattern."""
         path_start = EventTypes().PATH_START.name
-        path_end   = EventTypes().PATH_END.name
-        event_col  = self.eventstream.schema.event_col
-        index_col  = self.eventstream.schema.index
+        path_end = EventTypes().PATH_END.name
+        event_col = self.eventstream.schema.event_col
+        index_col = self.eventstream.schema.index
         subindex_col = self.eventstream.schema.subindex
         df = self.eventstream.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
 
@@ -190,10 +204,13 @@ class StepMatrix:
         if not matching_ids:
             raise PatternNoMatchError(path_pattern)
 
-        return self.eventstream.filter_events({"column": path_id_col, "values": matching_ids})
+        return self.eventstream.filter_events(
+            {"column": path_id_col, "values": matching_ids}
+        )
 
     def _process_pattern_matrix(self, max_steps, diff, path_pattern, path_id_col):
         from retentioneering.exceptions import EmptyEventstreamError as _Empty
+
         path_id_col = path_id_col or self.eventstream.schema.path_col
         index_col = self.eventstream.schema.index
         subindex_col = self.eventstream.schema.subindex
@@ -202,8 +219,9 @@ class StepMatrix:
         path_end = EventTypes().PATH_END.name
 
         try:
-            stream = self._filter_paths_by_pattern(path_pattern, path_id_col) \
-                .add_start_end_events(path_id_col=path_id_col)
+            stream = self._filter_paths_by_pattern(
+                path_pattern, path_id_col
+            ).add_start_end_events(path_id_col=path_id_col)
         except PatternNoMatchError:
             raise
         except _Empty:
@@ -248,9 +266,13 @@ class StepMatrix:
                     groupby_col = "step"
                     df_centered = df.copy()
                 else:
-                    centers = paths.map(
-                        lambda x: self._find_center_position(x, current_pattern_str)
-                    ).loc[lambda s: s.notnull()].to_frame("center")
+                    centers = (
+                        paths.map(
+                            lambda x: self._find_center_position(x, current_pattern_str)
+                        )
+                        .loc[lambda s: s.notnull()]
+                        .to_frame("center")
+                    )
 
                     df_centered = (
                         df.merge(centers, how="left", on=[path_id_col])
@@ -259,7 +281,12 @@ class StepMatrix:
                     )
                     groupby_col = "step_centered"
 
-                sm = df_centered.groupby(groupby_col)[event_col].value_counts().unstack(level=0).fillna(0)
+                sm = (
+                    df_centered.groupby(groupby_col)[event_col]
+                    .value_counts()
+                    .unstack(level=0)
+                    .fillna(0)
+                )
 
                 if is_start_anchored:
                     steps = len(pattern_part.split("->")) + max_steps
@@ -269,22 +296,40 @@ class StepMatrix:
                         sm = sm.reindex(columns=range(max_steps + 1)).fillna(0)
                 else:
                     steps_left = max_steps
-                    steps_right = 0 if pattern_part.endswith(path_end) else len(pattern_part.split("->")) + max_steps - 1
-                    sm = sm.reindex(columns=range(-steps_left, steps_right + 1)).fillna(0)
+                    steps_right = (
+                        0
+                        if pattern_part.endswith(path_end)
+                        else len(pattern_part.split("->")) + max_steps - 1
+                    )
+                    sm = sm.reindex(columns=range(-steps_left, steps_right + 1)).fillna(
+                        0
+                    )
                     sm.columns.name = "step"
 
                 if not is_start_anchored:
                     total_paths = sm[0].sum()
-                    totals = sm.drop(index=[path_start, path_end], errors="ignore").sum()
-                    sm.loc[path_start, :] = pd.Series(total_paths, index=sm.columns[sm.columns < 0]) - totals
-                    sm.loc[path_end, :]   = pd.Series(total_paths, index=sm.columns[sm.columns >= 0]) - totals
+                    totals = sm.drop(
+                        index=[path_start, path_end], errors="ignore"
+                    ).sum()
+                    sm.loc[path_start, :] = (
+                        pd.Series(total_paths, index=sm.columns[sm.columns < 0])
+                        - totals
+                    )
+                    sm.loc[path_end, :] = (
+                        pd.Series(total_paths, index=sm.columns[sm.columns >= 0])
+                        - totals
+                    )
                     sm = sm.fillna(0)
                 else:
                     sm.loc[path_end] = sm.loc[path_end].cumsum()
 
                 sm = sm / sm.sum()
 
-                rows_order = [path_start] + sm.index.drop([path_start, path_end]).tolist() + [path_end]
+                rows_order = (
+                    [path_start]
+                    + sm.index.drop([path_start, path_end]).tolist()
+                    + [path_end]
+                )
                 sm = sm.loc[rows_order]
                 sm.index = pd.Index(sm.index.tolist(), name=event_col)
                 sms.append(sm)
@@ -297,15 +342,23 @@ class StepMatrix:
         else:
             stream1, stream2 = self.eventstream.split_two(diff, path_id_col=path_id_col)
             # Use original_pattern so skip_first_matrix logic applies correctly in each sub-call
-            kwargs = dict(max_steps=max_steps, path_pattern=original_pattern, path_id_col=path_id_col)
+            kwargs = dict(
+                max_steps=max_steps,
+                path_pattern=original_pattern,
+                path_id_col=path_id_col,
+            )
             try:
                 sms1 = stream1.step_sankey_data(**kwargs)
             except PatternNoMatchError:
-                raise PatternNoMatchError(original_pattern, group="the first diff group")
+                raise PatternNoMatchError(
+                    original_pattern, group="the first diff group"
+                )
             try:
                 sms2 = stream2.step_sankey_data(**kwargs)
             except PatternNoMatchError:
-                raise PatternNoMatchError(original_pattern, group="the second diff group")
+                raise PatternNoMatchError(
+                    original_pattern, group="the second diff group"
+                )
 
             new_sms1, new_sms2 = self._align_matrices(list(sms1), list(sms2))
             sms = [new_sms2[i] - new_sms1[i] for i in range(len(new_sms1))]

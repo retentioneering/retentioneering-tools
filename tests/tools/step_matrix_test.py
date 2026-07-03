@@ -3,6 +3,7 @@ import pytest
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.exceptions import PatternNoMatchError
 
+
 class TestStepMatrix:
     def test__simple(self, fx_read_csv):
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
@@ -10,13 +11,17 @@ class TestStepMatrix:
         max_steps = 5
         res = stream.step_sankey_data(max_steps=max_steps)[0]
 
-        expected = pd.DataFrame([
-            [1.,  0., 0.,  0.,  0.,  0.],
-            [0., 2/3, 0., 1/3, 1/3,  0.],
-            [0., 1/3, 1., 1/3, 1/3, 1/3],
-            [0.,  0., 0., 1/3,  0., 1/3],
-            [0.,  0., 0.,  0., 1/3, 1/3]
-        ], index=["path_start", "A", "B", "C", "path_end"], columns=range(max_steps + 1))
+        expected = pd.DataFrame(
+            [
+                [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 2 / 3, 0.0, 1 / 3, 1 / 3, 0.0],
+                [0.0, 1 / 3, 1.0, 1 / 3, 1 / 3, 1 / 3],
+                [0.0, 0.0, 0.0, 1 / 3, 0.0, 1 / 3],
+                [0.0, 0.0, 0.0, 0.0, 1 / 3, 1 / 3],
+            ],
+            index=["path_start", "A", "B", "C", "path_end"],
+            columns=range(max_steps + 1),
+        )
         expected.index.name = "event"
         expected.columns.name = "step"
 
@@ -24,17 +29,25 @@ class TestStepMatrix:
 
     def test__diff(self, fx_read_csv):
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
-        stream = Eventstream(df, {"path_cols": ["session_id"], "segment_cols": ["country"]})
+        stream = Eventstream(
+            df, {"path_cols": ["session_id"], "segment_cols": ["country"]}
+        )
         max_steps = 5
-        res = stream.step_sankey_data(max_steps=max_steps, diff=("country", "US", "UK"), path_id_col="session_id")[0][0]
+        res = stream.step_sankey_data(
+            max_steps=max_steps, diff=("country", "US", "UK"), path_id_col="session_id"
+        )[0][0]
 
-        expected = pd.DataFrame([
-            [0.,  0., 0.,    0.,    0.,   0.],
-            [0.,  0., 0.,   1/2, -1/2.,   0.],
-            [0.,  0., 0.,    0.,   1/2, -1/2],
-            [ 0.,  0., 0., -1/2,    0.,  1/2],
-            [ 0.,  0., 0.,   0.,    0.,    0.]
-        ], index=["path_start", "A", "B", "C", "path_end"], columns=range(max_steps + 1))
+        expected = pd.DataFrame(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1 / 2, -1 / 2.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 1 / 2, -1 / 2],
+                [0.0, 0.0, 0.0, -1 / 2, 0.0, 1 / 2],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            ],
+            index=["path_start", "A", "B", "C", "path_end"],
+            columns=range(max_steps + 1),
+        )
         expected.index.name = "event"
         expected.columns.name = "step"
 
@@ -45,42 +58,57 @@ class TestStepMatrix:
         schema = {"path_cols": ["user_id", "session_id"]}
         stream = Eventstream(df, schema)
         max_steps = 5
-        res = stream.step_sankey_data(max_steps=max_steps, path_pattern=".*->path_end", path_id_col="session_id")[0]
+        res = stream.step_sankey_data(
+            max_steps=max_steps, path_pattern=".*->path_end", path_id_col="session_id"
+        )[0]
 
-        expected = pd.DataFrame([
-            [2/4, 2/4,  0.,  0.,  0.,  0.],
-            [ 0., 1/4, 1/4,  0.,  0.,  0.],
-            [2/4,  0., 3/4, 3/4, 1/2,  0.],
-            [ 0., 1/4,  0., 1/4, 1/2,  0.],
-            [ 0.,  0.,  0.,  0.,  0.,  1.]
-        ], index=["path_start", "A", "B", "C", "path_end"], columns=range(-max_steps, 1))
+        expected = pd.DataFrame(
+            [
+                [2 / 4, 2 / 4, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 1 / 4, 1 / 4, 0.0, 0.0, 0.0],
+                [2 / 4, 0.0, 3 / 4, 3 / 4, 1 / 2, 0.0],
+                [0.0, 1 / 4, 0.0, 1 / 4, 1 / 2, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            ],
+            index=["path_start", "A", "B", "C", "path_end"],
+            columns=range(-max_steps, 1),
+        )
         expected.index.name = "event"
         expected.columns.name = "step"
 
         pd.testing.assert_frame_equal(res, expected)
 
-
     def test__path_pattern_1(self, fx_read_csv):
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         stream = Eventstream(df)
         max_steps = 2
-        res = stream.step_sankey_data(max_steps=max_steps, path_pattern="path_start->.*->C")
+        res = stream.step_sankey_data(
+            max_steps=max_steps, path_pattern="path_start->.*->C"
+        )
 
-        expected_0 = pd.DataFrame([
-            [1., 0., 0.],
-            [0., 1., 0.],
-            [0., 0., 1.],
-            [0., 0., 0.],
-            [0., 0., 0.]
-        ], index=["path_start", "A", "B", "C", "path_end"], columns=list(range(max_steps + 1)))
+        expected_0 = pd.DataFrame(
+            [
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            index=["path_start", "A", "B", "C", "path_end"],
+            columns=list(range(max_steps + 1)),
+        )
 
-        expected_1 = pd.DataFrame([
-            [0., 0., 0., 0.,  0. ],
-            [1., 0., 0., 0.5, 0. ],
-            [0., 1., 0., 0.,  0.5],
-            [0., 0., 1., 0.5, 0. ],
-            [0., 0., 0., 0.,  0.5]
-        ], index=["path_start", "A", "B", "C", "path_end"], columns=range(-max_steps, max_steps + 1))
+        expected_1 = pd.DataFrame(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0, 0.5, 0.0],
+                [0.0, 1.0, 0.0, 0.0, 0.5],
+                [0.0, 0.0, 1.0, 0.5, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.5],
+            ],
+            index=["path_start", "A", "B", "C", "path_end"],
+            columns=range(-max_steps, max_steps + 1),
+        )
 
         expected_0.index.name = "event"
         expected_1.index.name = "event"
@@ -94,25 +122,33 @@ class TestStepMatrix:
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         stream = Eventstream(df)
         max_steps = 3
-        res = stream.step_sankey_data(max_steps=max_steps, path_pattern="path_start->.*->path_end")
+        res = stream.step_sankey_data(
+            max_steps=max_steps, path_pattern="path_start->.*->path_end"
+        )
 
-        expected_0 = pd.DataFrame([
-            [1., 0.,  0., 0. ],
-            [0., 2/3, 0., 1/3],
-            [0., 1/3, 1., 1/3],
-            [0., 0.,  0., 1/3],
-            [0., 0.,  0., 0. ]
-        ], index=pd.Index(["path_start", "A", "B", "C", "path_end"], name="event"),
-           columns=pd.Index(range(max_steps + 1), name="step"))
+        expected_0 = pd.DataFrame(
+            [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 2 / 3, 0.0, 1 / 3],
+                [0.0, 1 / 3, 1.0, 1 / 3],
+                [0.0, 0.0, 0.0, 1 / 3],
+                [0.0, 0.0, 0.0, 0.0],
+            ],
+            index=pd.Index(["path_start", "A", "B", "C", "path_end"], name="event"),
+            columns=pd.Index(range(max_steps + 1), name="step"),
+        )
 
-        expected_1 = pd.DataFrame([
-            [0.,  0.,  0.,  0.],
-            [0.,  0.,  0.,  0.],
-            [1., 2/3, 2/3,  0.],
-            [0., 1/3, 1/3,  0.],
-            [0.,  0.,  0.,  1.]
-        ], index=pd.Index(["path_start", "A", "B", "C", "path_end"], name="event"),
-           columns=pd.Index(range(-max_steps, 1), name="step"))
+        expected_1 = pd.DataFrame(
+            [
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [1.0, 2 / 3, 2 / 3, 0.0],
+                [0.0, 1 / 3, 1 / 3, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+            index=pd.Index(["path_start", "A", "B", "C", "path_end"], name="event"),
+            columns=pd.Index(range(-max_steps, 1), name="step"),
+        )
 
         pd.testing.assert_frame_equal(res[0], expected_0)
         pd.testing.assert_frame_equal(res[1], expected_1)
@@ -121,33 +157,47 @@ class TestStepMatrix:
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         stream = Eventstream(df)
         max_steps = 2
-        res = stream.step_sankey_data(max_steps=max_steps, path_pattern="path_start->A->.*->C->.*->path_end")
+        res = stream.step_sankey_data(
+            max_steps=max_steps, path_pattern="path_start->A->.*->C->.*->path_end"
+        )
 
         index = pd.Index(["path_start", "A", "B", "C", "path_end"], name="event")
 
-        expected_0 = pd.DataFrame([
-            [1., 0., 0., 0. ],
-            [0., 1., 0., 0.5],
-            [0., 0., 1., 0. ],
-            [0., 0., 0., 0.5],
-            [0., 0., 0., 0. ]
-        ], index=index, columns=pd.Index(range(max_steps + 1 + 1), name="step"))
+        expected_0 = pd.DataFrame(
+            [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.5],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.5],
+                [0.0, 0.0, 0.0, 0.0],
+            ],
+            index=index,
+            columns=pd.Index(range(max_steps + 1 + 1), name="step"),
+        )
 
-        expected_1 = pd.DataFrame([
-            [0., 0., 0., 0.,  0. ],
-            [1., 0., 0., 0.5, 0. ],
-            [0., 1., 0., 0.,  0.5],
-            [0., 0., 1., 0.5, 0. ],
-            [0., 0., 0., 0.,  0.5]
-        ], index=index, columns=pd.Index(range(-max_steps, max_steps + 1), name="step"))
+        expected_1 = pd.DataFrame(
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0, 0.5, 0.0],
+                [0.0, 1.0, 0.0, 0.0, 0.5],
+                [0.0, 0.0, 1.0, 0.5, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.5],
+            ],
+            index=index,
+            columns=pd.Index(range(-max_steps, max_steps + 1), name="step"),
+        )
 
-        expected_2 = pd.DataFrame([
-            [0.,  0.,  0.],
-            [0.,  0.,  0.],
-            [0.5, 0.5, 0.],
-            [0.5, 0.5, 0.],
-            [0.,  0.,  1.]
-        ], index=index, columns=pd.Index(range(-max_steps, 1), name="step"))
+        expected_2 = pd.DataFrame(
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [0.5, 0.5, 0.0],
+                [0.5, 0.5, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            index=index,
+            columns=pd.Index(range(-max_steps, 1), name="step"),
+        )
 
         pd.testing.assert_frame_equal(res[0], expected_0)
         pd.testing.assert_frame_equal(res[1], expected_1)
@@ -157,32 +207,46 @@ class TestStepMatrix:
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         stream = Eventstream(df)
         max_steps = 2
-        res = stream.step_sankey_data(max_steps=max_steps, path_pattern="path_start->.*->B->B->.*->path_end")
+        res = stream.step_sankey_data(
+            max_steps=max_steps, path_pattern="path_start->.*->B->B->.*->path_end"
+        )
         index = pd.Index(["path_start", "A", "B", "C", "path_end"], name="event")
 
-        expected_0 = pd.DataFrame([
-            [1., 0.,  0.],
-            [0., 0.5, 0.],
-            [0., 0.5, 1.],
-            [0., 0.,  0.],
-            [0., 0.,  0.]
-        ], index=index, columns=pd.Index(range(max_steps + 1), name="step"))
+        expected_0 = pd.DataFrame(
+            [
+                [1.0, 0.0, 0.0],
+                [0.0, 0.5, 0.0],
+                [0.0, 0.5, 1.0],
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            index=index,
+            columns=pd.Index(range(max_steps + 1), name="step"),
+        )
 
-        expected_1 = pd.DataFrame([
-            [0.5, 0.5, 0., 0., 0., 0.],
-            [0.,  0.,  0., 0., 0., 0.],
-            [0.5, 0.,  1., 1., 1., 0.],
-            [0.,  0.5, 0., 0., 0., 0.],
-            [0.,  0.,  0., 0., 0., 1.]
-        ], index=index, columns=pd.Index(range(-2, 4), name="step"))
+        expected_1 = pd.DataFrame(
+            [
+                [0.5, 0.5, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.5, 0.0, 1.0, 1.0, 1.0, 0.0],
+                [0.0, 0.5, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            ],
+            index=index,
+            columns=pd.Index(range(-2, 4), name="step"),
+        )
 
-        expected_2 = pd.DataFrame([
-            [0., 0., 0.],
-            [0., 0., 0.],
-            [1., 1., 0.],
-            [0., 0., 0.],
-            [0., 0., 1.]
-        ], index=index, columns=pd.Index(range(-max_steps, 1), name="step"))
+        expected_2 = pd.DataFrame(
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            index=index,
+            columns=pd.Index(range(-max_steps, 1), name="step"),
+        )
 
         pd.testing.assert_frame_equal(res[0], expected_0)
         pd.testing.assert_frame_equal(res[1], expected_1)
@@ -192,24 +256,34 @@ class TestStepMatrix:
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         stream = Eventstream(df)
         max_steps = 2
-        res = stream.step_sankey_data(max_steps=max_steps, path_pattern="B->B->.*->path_end")
+        res = stream.step_sankey_data(
+            max_steps=max_steps, path_pattern="B->B->.*->path_end"
+        )
         index = pd.Index(["path_start", "A", "B", "C", "path_end"], name="event")
 
-        expected_0 = pd.DataFrame([
-            [0.5, 0.5, 0., 0., 0., 0.],
-            [0.,  0.,  0., 0., 0., 0.],
-            [0.5, 0.,  1., 1., 1., 0.],
-            [0.,  0.5, 0., 0., 0., 0.],
-            [0.,  0.,  0., 0., 0., 1.]
-        ], index=index, columns=pd.Index(range(-2, 4), name="step"))
+        expected_0 = pd.DataFrame(
+            [
+                [0.5, 0.5, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.5, 0.0, 1.0, 1.0, 1.0, 0.0],
+                [0.0, 0.5, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            ],
+            index=index,
+            columns=pd.Index(range(-2, 4), name="step"),
+        )
 
-        expected_1 = pd.DataFrame([
-            [0., 0., 0.],
-            [0., 0., 0.],
-            [1., 1., 0.],
-            [0., 0., 0.],
-            [0., 0., 1.]
-        ], index=index, columns=pd.Index(range(-max_steps, 1), name="step"))
+        expected_1 = pd.DataFrame(
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            index=index,
+            columns=pd.Index(range(-max_steps, 1), name="step"),
+        )
 
         pd.testing.assert_frame_equal(res[0], expected_0)
         pd.testing.assert_frame_equal(res[1], expected_1)
@@ -221,13 +295,17 @@ class TestStepMatrix:
         res = stream.step_sankey_data(max_steps=max_steps, path_pattern="B->B")
         index = pd.Index(["path_start", "A", "B", "C", "path_end"], name="event")
 
-        expected_0 = pd.DataFrame([
-            [0.5, 0.5, 0., 0., 0., 0.],
-            [0.,  0.,  0., 0., 0., 0.],
-            [0.5, 0.,  1., 1., 1., 0.],
-            [0.,  0.5, 0., 0., 0., 0.],
-            [0.,  0.,  0., 0., 0., 1.]
-        ], index=index, columns=pd.Index(range(-2, 4), name="step"))
+        expected_0 = pd.DataFrame(
+            [
+                [0.5, 0.5, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.5, 0.0, 1.0, 1.0, 1.0, 0.0],
+                [0.0, 0.5, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            ],
+            index=index,
+            columns=pd.Index(range(-2, 4), name="step"),
+        )
 
         pd.testing.assert_frame_equal(res[0], expected_0)
 
@@ -238,16 +316,19 @@ class TestStepMatrix:
         res = stream.step_sankey_data(max_steps=max_steps, path_pattern=".*->path_end")
         index = pd.Index(["path_start", "A", "B", "C", "path_end"], name="event")
 
-        expected = pd.DataFrame([
-            [ 0.,   0., 0.],
-            [ 0.,   0., 0.],
-            [2/3, 2/3, 0.],
-            [1/3, 1/3, 0.],
-            [ 0.,  0., 1.]
-        ], index=index, columns=pd.Index(range(-max_steps, 1), name="step"))
+        expected = pd.DataFrame(
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [2 / 3, 2 / 3, 0.0],
+                [1 / 3, 1 / 3, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            index=index,
+            columns=pd.Index(range(-max_steps, 1), name="step"),
+        )
 
         pd.testing.assert_frame_equal(res[0], expected)
-
 
     def test__path_pattern_8(self, fx_read_csv):
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
@@ -256,13 +337,17 @@ class TestStepMatrix:
         res = stream.step_sankey_data(max_steps=max_steps, path_pattern="path_end")
         index = pd.Index(["path_start", "A", "B", "C", "path_end"], name="event")
 
-        expected = pd.DataFrame([
-            [ 0.,   0., 0.],
-            [ 0.,   0., 0.],
-            [2/3, 2/3, 0.],
-            [1/3, 1/3, 0.],
-            [ 0.,  0., 1.]
-        ], index=index, columns=pd.Index(range(-max_steps, 1), name="step"))
+        expected = pd.DataFrame(
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [2 / 3, 2 / 3, 0.0],
+                [1 / 3, 1 / 3, 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            index=index,
+            columns=pd.Index(range(-max_steps, 1), name="step"),
+        )
 
         pd.testing.assert_frame_equal(res[0], expected)
 
@@ -275,7 +360,9 @@ class TestStepMatrix:
         non_matching_pattern = "path_start->X->Y->Z->path_end"
 
         with pytest.raises(PatternNoMatchError) as exc_info:
-            stream.step_sankey_data(max_steps=max_steps, path_pattern=non_matching_pattern)
+            stream.step_sankey_data(
+                max_steps=max_steps, path_pattern=non_matching_pattern
+            )
 
         assert exc_info.value.error_code == "PATTERN_NO_MATCH"
         assert non_matching_pattern in exc_info.value.message
@@ -283,7 +370,9 @@ class TestStepMatrix:
     def test__path_pattern_empty_raises_error_with_diff(self, fx_read_csv):
         """Test that PatternNoMatchError is raised when path_pattern matches no paths (diff case)"""
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
-        stream = Eventstream(df, {"path_cols": ["session_id"], "segment_cols": ["country"]})
+        stream = Eventstream(
+            df, {"path_cols": ["session_id"], "segment_cols": ["country"]}
+        )
         max_steps = 2
         # Use a pattern that will match no paths
         non_matching_pattern = "path_start->X->Y->Z->path_end"
@@ -293,7 +382,7 @@ class TestStepMatrix:
                 max_steps=max_steps,
                 path_pattern=non_matching_pattern,
                 diff=("country", "US", "UK"),
-                path_id_col="session_id"
+                path_id_col="session_id",
             )
 
         assert exc_info.value.error_code == "PATTERN_NO_MATCH"

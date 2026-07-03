@@ -18,13 +18,17 @@ class EventstreamSchema:
             raise ValueError("EventstreamSchema: path_cols must not be empty")
         if not self.event_cols:
             raise ValueError("EventstreamSchema: event_cols must not be empty")
-        all_cols = self.path_cols + self.event_cols + self.segment_cols + self.custom_cols
+        all_cols = (
+            self.path_cols + self.event_cols + self.segment_cols + self.custom_cols
+        )
         seen: set[str] = set()
         dups: set[str] = set()
         for c in all_cols:
             (dups if c in seen else seen).add(c)
         if dups:
-            raise ValueError(f"EventstreamSchema: duplicate column names: {sorted(dups)}")
+            raise ValueError(
+                f"EventstreamSchema: duplicate column names: {sorted(dups)}"
+            )
 
     @property
     def path_col(self):
@@ -36,13 +40,22 @@ class EventstreamSchema:
 
     @property
     def public_cols(self):
-        return self.path_cols + self.event_cols + [self.timestamp] + self.segment_cols + self.custom_cols
+        return (
+            self.path_cols
+            + self.event_cols
+            + [self.timestamp]
+            + self.segment_cols
+            + self.custom_cols
+        )
 
     @property
     def cols(self):
         return (
-            self.path_cols + self.event_cols + [self.timestamp]
-            + self.segment_cols + self.custom_cols
+            self.path_cols
+            + self.event_cols
+            + [self.timestamp]
+            + self.segment_cols
+            + self.custom_cols
             + [self.event_type, self.index, self.subindex]
         )
 

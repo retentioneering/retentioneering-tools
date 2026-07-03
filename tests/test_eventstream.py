@@ -6,17 +6,21 @@ from retentioneering import Eventstream
 
 @pytest.fixture
 def simple_df():
-    return pd.DataFrame({
-        "user_id": ["u1", "u1", "u1", "u2", "u2"],
-        "event":   ["home", "catalog", "cart", "home", "checkout"],
-        "timestamp": pd.to_datetime([
-            "2024-01-01 10:00",
-            "2024-01-01 10:05",
-            "2024-01-01 10:10",
-            "2024-01-01 11:00",
-            "2024-01-01 11:15",
-        ]),
-    })
+    return pd.DataFrame(
+        {
+            "user_id": ["u1", "u1", "u1", "u2", "u2"],
+            "event": ["home", "catalog", "cart", "home", "checkout"],
+            "timestamp": pd.to_datetime(
+                [
+                    "2024-01-01 10:00",
+                    "2024-01-01 10:05",
+                    "2024-01-01 10:10",
+                    "2024-01-01 11:00",
+                    "2024-01-01 11:15",
+                ]
+            ),
+        }
+    )
 
 
 def test_eventstream_creates(simple_df):
@@ -96,6 +100,8 @@ def test_to_dataframe_excludes_start_end(simple_df):
 
 def test_from_csv(tmp_path):
     csv = tmp_path / "data.csv"
-    csv.write_text("user_id,event,timestamp\nu1,A,2024-01-01 10:00\nu1,B,2024-01-01 10:05\n")
+    csv.write_text(
+        "user_id,event,timestamp\nu1,A,2024-01-01 10:00\nu1,B,2024-01-01 10:05\n"
+    )
     es = Eventstream(str(csv))
     assert len(es.df) == 2

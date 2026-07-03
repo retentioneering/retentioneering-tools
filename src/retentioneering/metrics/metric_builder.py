@@ -38,15 +38,22 @@ from retentioneering.utils.sequences import generate_patterns_with_optional_gaps
 
 # Valid metric names
 VALID_METRICS = {
-    "length", "duration", "event_count", "has", "time_between",
-    "first_event_dt", "active_days", "matches", "belongs_to"
+    "length",
+    "duration",
+    "event_count",
+    "has",
+    "time_between",
+    "first_event_dt",
+    "active_days",
+    "matches",
+    "belongs_to",
 }
 
 # Valid modes for belongs_to metric
 BELONGS_TO_MODES = {
-    "any",            # segment_value appears at least once
-    "all",            # segment_value is the only value in the segment column
-    "event_share",    # segment_value appears in at least N% of events
+    "any",  # segment_value appears at least once
+    "all",  # segment_value is the only value in the segment column
+    "event_share",  # segment_value appears in at least N% of events
 }
 
 
@@ -70,6 +77,7 @@ def format_value_for_sql(value) -> str:
         # Fallback: convert to string
         escaped = str(value).replace("'", "''")
         return f"'{escaped}'"
+
 
 # Special synthetic events that don't need to exist in the eventstream
 SYNTHETIC_EVENTS = {EventTypes().PATH_START.name, EventTypes().PATH_END.name}
@@ -231,7 +239,9 @@ class MetricConfig:
             }
         elif metric == "belongs_to":
             segment_name = metric_args.get("segment_name")
-            segment_value = metric_args.get("segment_value")  # Can be None, scalar (str/int/float/bool), or list
+            segment_value = metric_args.get(
+                "segment_value"
+            )  # Can be None, scalar (str/int/float/bool), or list
             mode = metric_args.get("mode", "any")
 
             if not segment_name:
@@ -254,7 +264,9 @@ class MetricConfig:
                         "'belongs_to' metric requires non-empty 'segment_value' list"
                     )
                 segment_values = segment_value
-                metric_names = [f"belongs_to_{segment_name}_{v}_{mode}" for v in segment_values]
+                metric_names = [
+                    f"belongs_to_{segment_name}_{v}_{mode}" for v in segment_values
+                ]
             elif isinstance(segment_value, (str, int, float, bool)):
                 # Single scalar value (string, number, or boolean)
                 segment_values = [segment_value]
@@ -321,7 +333,9 @@ class MetricBuilder:
 
         metric_name = metric.get("metric")
         if not metric_name:
-            raise InvalidMetricConfigError("Metric configuration must include 'metric' field")
+            raise InvalidMetricConfigError(
+                "Metric configuration must include 'metric' field"
+            )
 
         if metric_name not in VALID_METRICS:
             raise InvalidMetricConfigError(
@@ -364,7 +378,10 @@ class MetricBuilder:
                     "'time_between' metric requires 'event_from' and 'event_to' in metric_args"
                 )
             # path_start and path_end are synthetic events, don't validate them
-            if event_from not in SYNTHETIC_EVENTS and event_from not in available_events:
+            if (
+                event_from not in SYNTHETIC_EVENTS
+                and event_from not in available_events
+            ):
                 raise InvalidMetricConfigError(
                     f"Event '{event_from}' not found. Available events: {sorted(available_events)}"
                 )
@@ -382,7 +399,9 @@ class MetricBuilder:
 
         elif metric_name == "belongs_to":
             segment_name = metric_args.get("segment_name")
-            segment_value = metric_args.get("segment_value")  # Can be None, string, or list
+            segment_value = metric_args.get(
+                "segment_value"
+            )  # Can be None, string, or list
             mode = metric_args.get("mode", "any")
 
             if not segment_name:
@@ -426,7 +445,11 @@ class MetricBuilder:
                     raise InvalidMetricConfigError(
                         "'event_share' mode requires 'threshold' (e.g., 0.1 for 10%)"
                     )
-                if not isinstance(threshold, (int, float)) or threshold < 0 or threshold > 1:
+                if (
+                    not isinstance(threshold, (int, float))
+                    or threshold < 0
+                    or threshold > 1
+                ):
                     raise InvalidMetricConfigError(
                         f"'event_share' mode requires 'threshold' between 0 and 1 (got {threshold})"
                     )
@@ -449,7 +472,6 @@ class MetricBuilder:
 
         metric_config = MetricConfig(config)
         path_ids = self.df[path_id_col].unique()
-
 
         metric_dfs: List[pd.DataFrame] = []
         result_df = pd.DataFrame(index=path_ids)
@@ -495,9 +517,7 @@ class MetricBuilder:
         elif config["type"] == "belongs_to":
             return self._build_belongs_to(config, path_id_col)
         else:
-            raise InvalidMetricConfigError(
-                f"Unknown metric type: '{config['type']}'"
-            )
+            raise InvalidMetricConfigError(f"Unknown metric type: '{config['type']}'")
 
     def _build_event_count(
         self, config: Dict[str, Any], path_id_col: str, event_col: str
@@ -524,8 +544,7 @@ class MetricBuilder:
 
         # Pivot: path_id as index, events as columns
         metrics_df = (
-            result
-            .set_index([path_id_col, event_col])["count"]
+            result.set_index([path_id_col, event_col])["count"]
             .unstack(fill_value=0)
             .reindex(columns=event_names, fill_value=0)
         )
@@ -540,7 +559,9 @@ class MetricBuilder:
 
         metrics_df = self._build_event_count(config, path_id_col, event_col)
         metrics_df = (metrics_df > 0).astype(int)
-        metrics_df.columns = [col.replace("event_count_", "has_") for col in metrics_df.columns]
+        metrics_df.columns = [
+            col.replace("event_count_", "has_") for col in metrics_df.columns
+        ]
 
         return metrics_df
 
@@ -554,7 +575,9 @@ class MetricBuilder:
 
         # Lazy load dataframe with start_end events (needed for path_start/path_end)
         if self.df_with_start_end is None:
-            self.df_with_start_end = self.eventstream.add_start_end_events(path_id_col=path_id_col).df
+            self.df_with_start_end = self.eventstream.add_start_end_events(
+                path_id_col=path_id_col
+            ).df
 
         query = f"""
         WITH first_events AS (
@@ -577,7 +600,9 @@ class MetricBuilder:
 
         metric_name = f"time_from_{event_from}_to_{event_to}"
         if len(result) > 0:
-            return result.set_index(path_id_col).rename(columns={"time_diff_seconds": metric_name})
+            return result.set_index(path_id_col).rename(
+                columns={"time_diff_seconds": metric_name}
+            )
         else:
             # Empty result - no paths have both events
             return pd.DataFrame(columns=[metric_name])
@@ -626,7 +651,9 @@ class MetricBuilder:
         timestamp_col = self.schema.timestamp
         event_col = self.schema.event_col
         if active_events:
-            ev_list = active_events if isinstance(active_events, list) else [active_events]
+            ev_list = (
+                active_events if isinstance(active_events, list) else [active_events]
+            )
             quoted = ", ".join(f"'{e}'" for e in ev_list)
             count_expr = f"COUNT(DISTINCT CASE WHEN {event_col} IN ({quoted}) THEN CAST({timestamp_col} AS DATE) END)"
         else:
@@ -649,7 +676,9 @@ class MetricBuilder:
 
         # Lazy load dataframe with start_end events (needed for path_start/path_end in patterns)
         if self.df_with_start_end is None:
-            self.df_with_start_end = self.eventstream.add_start_end_events(path_id_col=path_id_col).df
+            self.df_with_start_end = self.eventstream.add_start_end_events(
+                path_id_col=path_id_col
+            ).df
 
         # Build path strings for each path_id
         query = f"""
@@ -686,7 +715,6 @@ class MetricBuilder:
         segment_name = config["segment_name"]
         segment_values = config["segment_values"]
         mode = config["mode"]
-        timestamp_col = self.schema.timestamp  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
 
         df = self.df
 

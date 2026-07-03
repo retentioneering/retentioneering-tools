@@ -6,7 +6,10 @@ import pandas as pd
 
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
-from retentioneering.exceptions import PreprocessingConfigError, PreprocessingColumnNotFoundError
+from retentioneering.exceptions import (
+    PreprocessingConfigError,
+    PreprocessingColumnNotFoundError,
+)
 
 PROCESSOR_NAME = "url_events"
 
@@ -126,7 +129,7 @@ def _build_event_name(
         return cut_path, None
 
     # Case B
-    tail = effective_path[len(cut_path) + 1:]   # strip "cut_path/"
+    tail = effective_path[len(cut_path) + 1 :]  # strip "cut_path/"
     first_seg = tail.split("/")[0]
     child_path = cut_path + "/" + first_seg
 
@@ -218,9 +221,7 @@ class UrlEvents(DataProcessor):
         processed.sort(key=lambda n: len(n["_norm_path"]), reverse=True)
 
         self._nodes = processed
-        self._nodes_by_path: Dict[str, dict] = {
-            n["_norm_path"]: n for n in processed
-        }
+        self._nodes_by_path: Dict[str, dict] = {n["_norm_path"]: n for n in processed}
 
         super().__init__()
 
@@ -290,9 +291,13 @@ class UrlEvents(DataProcessor):
         df = df.copy()
 
         # Parse each URL into (path, host, query, locale)
-        url_parts = df[self.column].astype(str).apply(
-            lambda url: _parse_url_parts(
-                url, self._strip_host, self._strip_cgi, self._strip_locale
+        url_parts = (
+            df[self.column]
+            .astype(str)
+            .apply(
+                lambda url: _parse_url_parts(
+                    url, self._strip_host, self._strip_cgi, self._strip_locale
+                )
             )
         )
         effective_paths = url_parts.apply(lambda p: p[0])
@@ -330,10 +335,10 @@ class UrlEvents(DataProcessor):
 
         # Write optional extraction columns and update schema
         extra_cols = [
-            (self._host_col,   hosts),
-            (self._cgi_col,    queries),
+            (self._host_col, hosts),
+            (self._cgi_col, queries),
             (self._locale_col, locales),
-            (self._slug_col,   slugs.fillna("")),
+            (self._slug_col, slugs.fillna("")),
         ]
         has_new_cols = any(col for col, _ in extra_cols)
         out_schema = schema.copy() if has_new_cols else schema

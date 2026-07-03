@@ -58,7 +58,9 @@ def build_session_ctes(
         return _ctes_events(group, path_id_col, event_col, ts_col, subindex_col)
     if mode == _MODE_SEPARATOR:
         if separator_starts:
-            return _ctes_separator_start(group, path_id_col, event_col, ts_col, subindex_col)
+            return _ctes_separator_start(
+                group, path_id_col, event_col, ts_col, subindex_col
+            )
         return _ctes_separator(group, path_id_col, event_col, ts_col, subindex_col)
     if mode == _MODE_START_END:
         return _ctes_start_end(group, path_id_col, event_col, ts_col, subindex_col)
@@ -68,6 +70,7 @@ def build_session_ctes(
 # ---------------------------------------------------------------------------
 # Internal builders
 # ---------------------------------------------------------------------------
+
 
 def _timeout_or_clause(group: Dict[str, Any], path_id_col: str, ts_col: str) -> str:
     timeout = group.get("timeout")

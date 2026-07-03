@@ -27,10 +27,15 @@ class FilterPaths(DataProcessor):
     def apply(self, df, schema) -> Tuple[pd.DataFrame, EventstreamSchema]:
         # This method should not be called directly anymore
         # All filtering is done via AST conditions in Eventstream.filter_paths()
-        raise PreprocessingConfigError(PROCESSOR_NAME, "FilterPaths.apply() should not be called directly. Use Eventstream.filter_paths() with ast_condition.")
+        raise PreprocessingConfigError(
+            PROCESSOR_NAME,
+            "FilterPaths.apply() should not be called directly. Use Eventstream.filter_paths() with ast_condition.",
+        )
 
     @staticmethod
-    def _build_metric_names(metric: str, metric_args: Dict[str, Any] | None) -> List[str]:
+    def _build_metric_names(
+        metric: str, metric_args: Dict[str, Any] | None
+    ) -> List[str]:
         """
         Builds full metric name(s) from metric type and arguments.
         Returns a list of metric names (usually just one, but can be multiple for has/event_count with list).
@@ -84,14 +89,16 @@ class FilterPaths(DataProcessor):
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME,
                     "'belongs_to' metric with segment_value=None cannot be used in ast_condition "
-                    "(column names are not known until runtime)"
+                    "(column names are not known until runtime)",
                 )
             if isinstance(segment_value, list):
                 return [f"belongs_to_{segment_name}_{v}_{mode}" for v in segment_value]
             return [f"belongs_to_{segment_name}_{segment_value}_{mode}"]
 
         else:
-            raise PreprocessingConfigError(PROCESSOR_NAME, f"Unknown metric type: {metric}")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, f"Unknown metric type: {metric}"
+            )
 
     @staticmethod
     def _extract_metric_configs(node: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -118,10 +125,9 @@ class FilterPaths(DataProcessor):
                     key = (metric, str(sorted((metric_args or {}).items())))
                     if key not in seen_keys:
                         seen_keys.add(key)
-                        configs.append({
-                            "metric": metric,
-                            "metric_args": metric_args or {}
-                        })
+                        configs.append(
+                            {"metric": metric, "metric_args": metric_args or {}}
+                        )
             else:
                 # comparison node
                 metric = n.get("metric")
@@ -131,10 +137,9 @@ class FilterPaths(DataProcessor):
                     key = (metric, str(sorted((metric_args or {}).items())))
                     if key not in seen_keys:
                         seen_keys.add(key)
-                        configs.append({
-                            "metric": metric,
-                            "metric_args": metric_args or {}
-                        })
+                        configs.append(
+                            {"metric": metric, "metric_args": metric_args or {}}
+                        )
 
         walk(node)
         return configs
@@ -143,7 +148,9 @@ class FilterPaths(DataProcessor):
     def _quote_ident(ident: str) -> str:
         # Simple identifier quoting for DuckDB
         if not isinstance(ident, str):
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Identifier must be a string")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Identifier must be a string"
+            )
         escaped = ident.replace('"', '""')
         return f'"{escaped}"'
 
@@ -156,39 +163,53 @@ class FilterPaths(DataProcessor):
         if isinstance(value, str):
             escaped = value.replace("'", "''")
             return f"'{escaped}'"
-        raise PreprocessingConfigError(PROCESSOR_NAME, f"Unsupported literal type in ast_condition: {type(value)}")
+        raise PreprocessingConfigError(
+            PROCESSOR_NAME, f"Unsupported literal type in ast_condition: {type(value)}"
+        )
 
     def _ast_to_sql(self, node: Dict[str, Any]) -> str:
         op = node.get("op")
         if op.upper() in {"AND", "OR"}:
             args = node.get("args", [])
             if not args:
-                raise PreprocessingConfigError(PROCESSOR_NAME, f"Logical operator '{op}' requires args")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, f"Logical operator '{op}' requires args"
+                )
             joiner = " AND " if op.upper() == "AND" else " OR "
             return "(" + joiner.join(self._ast_to_sql(a) for a in args) + ")"
         elif op.upper() == "NOT":
             args = node.get("args", [])
             if len(args) != 1:
-                raise PreprocessingConfigError(PROCESSOR_NAME, "'NOT' operator requires exactly one arg")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "'NOT' operator requires exactly one arg"
+                )
             return "(NOT " + self._ast_to_sql(args[0]) + ")"
         elif op.upper() == "IN":
             metric = node.get("metric")
             if not metric:
-                raise PreprocessingConfigError(PROCESSOR_NAME, "'IN' operator requires 'metric' field")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "'IN' operator requires 'metric' field"
+                )
 
             metric_args = node.get("metric_args")
             metric_names = self._build_metric_names(metric, metric_args)
 
             # Check if we have multiple metrics (list case for has)
             if len(metric_names) > 1:
-                raise PreprocessingConfigError(PROCESSOR_NAME, "'IN' operator not supported with multiple metrics (list events)")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    "'IN' operator not supported with multiple metrics (list events)",
+                )
 
             metric_name = metric_names[0]
             values = node.get("value")
             if values is None:
                 values = node.get("args")
             if not isinstance(values, list) or len(values) == 0:
-                raise PreprocessingConfigError(PROCESSOR_NAME, "'IN' operator requires non-empty list of values in 'value' or 'args'")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    "'IN' operator requires non-empty list of values in 'value' or 'args'",
+                )
 
             left_sql = self._quote_ident(metric_name)
 
@@ -202,21 +223,29 @@ class FilterPaths(DataProcessor):
             return f"({left_sql} IN ({values_sql}))"
 
         if op not in {"=", "!=", ">", "<", ">=", "<="}:
-            raise PreprocessingConfigError(PROCESSOR_NAME, f"Unsupported comparison operator: {op}")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, f"Unsupported comparison operator: {op}"
+            )
 
         # comparison node
         metric = node.get("metric")
         if not metric:
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Comparison nodes must have 'metric' field")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Comparison nodes must have 'metric' field"
+            )
 
         metric_args = node.get("metric_args")
         metric_names = self._build_metric_names(metric, metric_args)
         value = node.get("value")
 
         if value is None:
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Comparison nodes must have 'value' field")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Comparison nodes must have 'value' field"
+            )
         if not isinstance(value, (str, int, float, bool)):
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Comparison nodes must have primitive 'value'")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Comparison nodes must have primitive 'value'"
+            )
 
         # Special handling for has metric with multiple events (list)
         if metric == "has" and len(metric_names) > 1:
@@ -228,22 +257,37 @@ class FilterPaths(DataProcessor):
                 if isinstance(value, bool):
                     joiner = " AND " if value else " OR "
                     right_sql = "1" if value else "0"
-                    conditions = [f"{self._quote_ident(name)} {op} {right_sql}" for name in metric_names]
+                    conditions = [
+                        f"{self._quote_ident(name)} {op} {right_sql}"
+                        for name in metric_names
+                    ]
                     return "(" + joiner.join(conditions) + ")"
                 else:
-                    raise PreprocessingConfigError(PROCESSOR_NAME, "has metric with list of events only supports boolean values")
+                    raise PreprocessingConfigError(
+                        PROCESSOR_NAME,
+                        "has metric with list of events only supports boolean values",
+                    )
             elif op == "!=":
                 if isinstance(value, bool):
                     # != true means at least one should be false (OR)
                     # != false means all should be true (AND)
                     joiner = " OR " if value else " AND "
                     right_sql = "1" if value else "0"
-                    conditions = [f"{self._quote_ident(name)} {op} {right_sql}" for name in metric_names]
+                    conditions = [
+                        f"{self._quote_ident(name)} {op} {right_sql}"
+                        for name in metric_names
+                    ]
                     return "(" + joiner.join(conditions) + ")"
                 else:
-                    raise PreprocessingConfigError(PROCESSOR_NAME, "has metric with list of events only supports boolean values")
+                    raise PreprocessingConfigError(
+                        PROCESSOR_NAME,
+                        "has metric with list of events only supports boolean values",
+                    )
             else:
-                raise PreprocessingConfigError(PROCESSOR_NAME, f"Operator '{op}' not supported for has metric with list of events")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    f"Operator '{op}' not supported for has metric with list of events",
+                )
 
         # Single metric case
         metric_name = metric_names[0]

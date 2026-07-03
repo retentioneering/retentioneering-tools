@@ -7,7 +7,7 @@ import traitlets
 _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
-from retentioneering.widgets._esm import _get_esm   # noqa: E402
+from retentioneering.widgets._esm import _get_esm  # noqa: E402
 from retentioneering.widgets._utils import parse_diff as _parse_diff  # noqa: E402
 
 
@@ -18,24 +18,23 @@ class FunnelWidget(anywidget.AnyWidget):
     widget_type = traitlets.Unicode("funnel").tag(sync=True)
 
     # ── recompute triggers ────────────────────────────────────────────────────
-    steps       = traitlets.Unicode("[]").tag(sync=True)
-    diff        = traitlets.Unicode("").tag(sync=True)
+    steps = traitlets.Unicode("[]").tag(sync=True)
+    diff = traitlets.Unicode("").tag(sync=True)
     path_id_col = traitlets.Unicode("").tag(sync=True)
 
     # ── catalogues ────────────────────────────────────────────────────────────
-    event_list     = traitlets.Unicode("[]").tag(sync=True)
-    path_cols      = traitlets.Unicode("[]").tag(sync=True)
+    event_list = traitlets.Unicode("[]").tag(sync=True)
+    path_cols = traitlets.Unicode("[]").tag(sync=True)
     segment_levels = traitlets.Unicode("{}").tag(sync=True)
 
     # ── result ────────────────────────────────────────────────────────────────
-    result     = traitlets.Unicode("{}").tag(sync=True)
+    result = traitlets.Unicode("{}").tag(sync=True)
     is_loading = traitlets.Bool(False).tag(sync=True)
-    error      = traitlets.Unicode("").tag(sync=True)
-
+    error = traitlets.Unicode("").tag(sync=True)
 
     # ── display ───────────────────────────────────────────────────────────────
-    widget_id    = traitlets.Unicode("").tag(sync=True)
-    height       = traitlets.Int(420).tag(sync=True)
+    widget_id = traitlets.Unicode("").tag(sync=True)
+    height = traitlets.Int(420).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
 
     def __init__(
@@ -54,7 +53,10 @@ class FunnelWidget(anywidget.AnyWidget):
 
         try:
             all_events = sorted(
-                eventstream.df[eventstream.schema.event_col].astype(str).unique().tolist()
+                eventstream.df[eventstream.schema.event_col]
+                .astype(str)
+                .unique()
+                .tolist()
             )
             self.event_list = json.dumps(all_events)
         except Exception:
@@ -66,11 +68,15 @@ class FunnelWidget(anywidget.AnyWidget):
         self.path_cols = json.dumps(eventstream.schema.path_cols)
 
         _steps_val = steps if steps is not _UNSET else []
-        self.steps        = json.dumps(_steps_val) if isinstance(_steps_val, list) else (_steps_val or "[]")
-        _diff_val         = diff if diff is not _UNSET else None
-        self.diff         = json.dumps(list(_diff_val)) if _diff_val else ""
-        self.path_id_col  = path_id_col  if path_id_col  is not _UNSET else ""
-        self.height       = height       if height       is not _UNSET else 420
+        self.steps = (
+            json.dumps(_steps_val)
+            if isinstance(_steps_val, list)
+            else (_steps_val or "[]")
+        )
+        _diff_val = diff if diff is not _UNSET else None
+        self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
+        self.path_id_col = path_id_col if path_id_col is not _UNSET else ""
+        self.height = height if height is not _UNSET else 420
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
         self._recompute()
@@ -87,9 +93,11 @@ class FunnelWidget(anywidget.AnyWidget):
         self.error = ""
         try:
             steps = json.loads(self.steps) if self.steps else []
-            diff  = _parse_diff(self.diff)
-            pid   = self.path_id_col or None
-            result = self._eventstream.funnel_data(steps=steps, diff=diff, path_id_col=pid)
+            diff = _parse_diff(self.diff)
+            pid = self.path_id_col or None
+            result = self._eventstream.funnel_data(
+                steps=steps, diff=diff, path_id_col=pid
+            )
             if diff and len(diff) == 3:
                 result["group1_label"] = str(diff[1])
                 result["group2_label"] = str(diff[2])

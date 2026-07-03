@@ -35,7 +35,7 @@ class PreprocessingColumnNotFoundError(RetentioneeringError):
     def __init__(self, processor: str, column: str, available: list):
         super().__init__(
             f"[{processor}] Column '{column}' not found. Available: {available}",
-            "PREPROCESSING_COLUMN_NOT_FOUND"
+            "PREPROCESSING_COLUMN_NOT_FOUND",
         )
 
 
@@ -57,7 +57,9 @@ class MetricDistributionError(RetentioneeringError):
 
 
 class SegmentValueNotFoundError(MetricDistributionError):
-    def __init__(self, segment_value: str, segment_col: str, available_values: list | None = None):
+    def __init__(
+        self, segment_value: str, segment_col: str, available_values: list | None = None
+    ):
         message = f"Segment value '{segment_value}' not found in column '{segment_col}'"
         if available_values:
             message += f". Available values: {available_values}"

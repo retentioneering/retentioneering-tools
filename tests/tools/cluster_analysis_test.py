@@ -6,32 +6,35 @@ from retentioneering.eventstream.eventstream import Eventstream
 
 def get_df():
     """Create test dataframe with multiple users and varying path characteristics"""
-    df = pd.DataFrame([
-        # User 1: short path, no purchase
-        ["user_1", "login", "2020-01-01 00:00:00"],
-        ["user_1", "view", "2020-01-01 00:01:00"],
-        # User 2: short path, no purchase
-        ["user_2", "login", "2020-01-01 00:00:00"],
-        ["user_2", "logout", "2020-01-01 00:02:00"],
-        # User 3: medium path with purchase
-        ["user_3", "login", "2020-01-01 00:00:00"],
-        ["user_3", "view", "2020-01-01 00:01:00"],
-        ["user_3", "purchase", "2020-01-01 00:05:00"],
-        # User 4: long path with purchase
-        ["user_4", "login", "2020-01-01 00:00:00"],
-        ["user_4", "view", "2020-01-01 00:01:00"],
-        ["user_4", "view", "2020-01-01 00:02:00"],
-        ["user_4", "view", "2020-01-01 00:03:00"],
-        ["user_4", "purchase", "2020-01-01 00:10:00"],
-        # User 5: long path with purchase
-        ["user_5", "login", "2020-01-01 00:00:00"],
-        ["user_5", "view", "2020-01-01 00:01:00"],
-        ["user_5", "view", "2020-01-01 00:02:00"],
-        ["user_5", "purchase", "2020-01-01 00:08:00"],
-        # User 6: short path, no purchase
-        ["user_6", "login", "2020-01-01 00:00:00"],
-        ["user_6", "view", "2020-01-01 00:01:00"],
-    ], columns=["user_id", "event", "timestamp"])
+    df = pd.DataFrame(
+        [
+            # User 1: short path, no purchase
+            ["user_1", "login", "2020-01-01 00:00:00"],
+            ["user_1", "view", "2020-01-01 00:01:00"],
+            # User 2: short path, no purchase
+            ["user_2", "login", "2020-01-01 00:00:00"],
+            ["user_2", "logout", "2020-01-01 00:02:00"],
+            # User 3: medium path with purchase
+            ["user_3", "login", "2020-01-01 00:00:00"],
+            ["user_3", "view", "2020-01-01 00:01:00"],
+            ["user_3", "purchase", "2020-01-01 00:05:00"],
+            # User 4: long path with purchase
+            ["user_4", "login", "2020-01-01 00:00:00"],
+            ["user_4", "view", "2020-01-01 00:01:00"],
+            ["user_4", "view", "2020-01-01 00:02:00"],
+            ["user_4", "view", "2020-01-01 00:03:00"],
+            ["user_4", "purchase", "2020-01-01 00:10:00"],
+            # User 5: long path with purchase
+            ["user_5", "login", "2020-01-01 00:00:00"],
+            ["user_5", "view", "2020-01-01 00:01:00"],
+            ["user_5", "view", "2020-01-01 00:02:00"],
+            ["user_5", "purchase", "2020-01-01 00:08:00"],
+            # User 6: short path, no purchase
+            ["user_6", "login", "2020-01-01 00:00:00"],
+            ["user_6", "view", "2020-01-01 00:01:00"],
+        ],
+        columns=["user_id", "event", "timestamp"],
+    )
     return df
 
 
@@ -60,7 +63,6 @@ class TestClusterAnalysis:
         assert "segment_share" in overview_df.index
         assert "length_mean" in overview_df.index
         assert len(overview_df.columns) <= 2
-
 
     def test_kmeans_silhouette(self) -> None:
         """Test silhouette mode returns scores for each k"""
@@ -138,7 +140,9 @@ class TestClusterAnalysis:
         # Best clustering overview is returned
         assert "overview_df" in result
 
-    @pytest.mark.skip(reason="HDBSCAN cluster_selection_epsilon grid triggers sklearn/numpy scalar bug")
+    @pytest.mark.skip(
+        reason="HDBSCAN cluster_selection_epsilon grid triggers sklearn/numpy scalar bug"
+    )
     def test_hdbscan_silhouette_grid(self) -> None:
         """Test HDBSCAN parameter search with both ranges (grid search)"""
         df = get_df()
@@ -214,7 +218,11 @@ class TestClusterAnalysis:
         )
 
         assert "silhouette" in result
-        assert result["silhouette"]["params"] == [{"n_clusters": 2}, {"n_clusters": 3}, {"n_clusters": 4}]
+        assert result["silhouette"]["params"] == [
+            {"n_clusters": 2},
+            {"n_clusters": 3},
+            {"n_clusters": 4},
+        ]
         # NMF data returned for the best clustering
         assert result["nmf"] is not None
         assert len(result["nmf"]["H_matrix"]) == 2  # nmf_k=2

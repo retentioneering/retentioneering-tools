@@ -45,7 +45,9 @@ def _inject_row_idx(sql: str) -> str:
         elif c == ")":
             depth -= 1
         elif depth == 0 and stripped[i : i + 6].upper() == "SELECT":
-            before_ok = i == 0 or not (stripped[i - 1].isalnum() or stripped[i - 1] == "_")
+            before_ok = i == 0 or not (
+                stripped[i - 1].isalnum() or stripped[i - 1] == "_"
+            )
             end_pos = i + 6
             after_ok = end_pos >= len(stripped) or not (
                 stripped[end_pos].isalnum() or stripped[end_pos] == "_"
@@ -101,16 +103,17 @@ def _build_funnel_segment_query(
     w = f"PARTITION BY {path_id_col}"
 
     def _sum(ev: str) -> str:
-        return f"SUM(CASE WHEN {event_col} = {_sql_str(ev)} THEN 1 ELSE 0 END) OVER ({w})"
+        return (
+            f"SUM(CASE WHEN {event_col} = {_sql_str(ev)} THEN 1 ELSE 0 END) OVER ({w})"
+        )
 
     def _max(ev: str) -> str:
         return f"MAX(CASE WHEN {event_col} = {_sql_str(ev)} THEN {index_col} ELSE 0 END) OVER ({w})"
 
     def _reached_k(k: int) -> str:
-        has   = " AND ".join(f"{_sum(funnel_events[i])} > 0" for i in range(k + 1))
+        has = " AND ".join(f"{_sum(funnel_events[i])} > 0" for i in range(k + 1))
         order = " AND ".join(
-            f"{_max(funnel_events[i])} < {_max(funnel_events[i + 1])}"
-            for i in range(k)
+            f"{_max(funnel_events[i])} < {_max(funnel_events[i + 1])}" for i in range(k)
         )
         return f"{has} AND {order}" if order else has
 
@@ -154,7 +157,7 @@ class AddSegment(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 "One and only one of the arguments must be defined: "
-                "values, func, sql, funnel_events."
+                "values, func, sql, funnel_events.",
             )
         if funnel_events is not None and len(funnel_events) < 2:
             raise PreprocessingConfigError(
@@ -175,18 +178,22 @@ class AddSegment(DataProcessor):
 
         if self.name in df.columns:
             if self.name in schema.segment_cols:
-                raise PreprocessingConfigError(PROCESSOR_NAME, f"Segment '{self.name}' already exists.")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, f"Segment '{self.name}' already exists."
+                )
             else:
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME,
-                    f"Name '{self.name}' is already reserved in the eventstream."
+                    f"Name '{self.name}' is already reserved in the eventstream.",
                 )
 
         values = None
 
         if self.values is not None:
             if not isinstance(self.values, Collection):
-                raise PreprocessingConfigError(PROCESSOR_NAME, "Segment values must be a collection.")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "Segment values must be a collection."
+                )
 
             cases = "CASE"
             for item in self.values[:-1]:
@@ -204,7 +211,9 @@ class AddSegment(DataProcessor):
 
         elif self.sql is not None:
             if not isinstance(self.sql, str):
-                raise PreprocessingConfigError(PROCESSOR_NAME, "SQL query must be a string.")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "SQL query must be a string."
+                )
 
             # Copy df and add a row index so we can restore original order after
             # DuckDB reorders rows during window function (PARTITION BY) execution.
@@ -215,17 +224,23 @@ class AddSegment(DataProcessor):
             result = duckdb.sql(tracking_sql).df()
 
             if len(result.columns) != 2:
-                raise PreprocessingConfigError(PROCESSOR_NAME, "SQL script must return a single column.")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "SQL script must return a single column."
+                )
 
             result = result.sort_values(_ROW_IDX_COL).reset_index(drop=True)
             values = result.iloc[:, 1].tolist()
 
         elif self.func is not None:
             if not isinstance(self.func, Callable):
-                raise PreprocessingConfigError(PROCESSOR_NAME, "Function must be callable.")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "Function must be callable."
+                )
             result = self.func(df)
             if not isinstance(result, Collection):
-                raise PreprocessingConfigError(PROCESSOR_NAME, "Function must return a collection.")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "Function must return a collection."
+                )
             values = list(result)
 
         elif self.funnel_events is not None:
@@ -234,8 +249,11 @@ class AddSegment(DataProcessor):
             eventstream = df.copy()
             eventstream[_ROW_IDX_COL] = range(len(df))
             query = _build_funnel_segment_query(
-                pid_col, schema.event_col, schema.index,
-                self.funnel_events, "__funnel_level__",
+                pid_col,
+                schema.event_col,
+                schema.index,
+                self.funnel_events,
+                "__funnel_level__",
             )
             result = duckdb.sql(query).df()
             result = result.sort_values(_ROW_IDX_COL).reset_index(drop=True)

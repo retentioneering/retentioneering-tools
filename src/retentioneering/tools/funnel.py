@@ -24,8 +24,8 @@ class Funnel:
         path_id_col: str | None = None,
     ) -> dict:
         path_id_col = path_id_col or self.eventstream.schema.path_col
-        event_col   = self.eventstream.schema.event_col
-        index_col   = self.eventstream.schema.index
+        event_col = self.eventstream.schema.event_col
+        index_col = self.eventstream.schema.index
 
         if diff is None:
             df = self.eventstream.df
@@ -41,15 +41,19 @@ class Funnel:
                         WHERE {event_col} = {ev}
                     """
                 else:
-                    prev_conditions = " AND ".join([
-                        f"SUM(CASE WHEN {event_col} = {_sql_str(steps[i])} THEN 1 ELSE 0 END) > 0"
-                        for i in range(step_idx)
-                    ])
-                    order_conditions = " AND ".join([
-                        f"MAX(CASE WHEN {event_col} = {_sql_str(steps[i])} THEN {index_col} ELSE 0 END) < "
-                        f"MAX(CASE WHEN {event_col} = {_sql_str(steps[i+1])} THEN {index_col} ELSE 0 END)"
-                        for i in range(step_idx)
-                    ])
+                    prev_conditions = " AND ".join(
+                        [
+                            f"SUM(CASE WHEN {event_col} = {_sql_str(steps[i])} THEN 1 ELSE 0 END) > 0"
+                            for i in range(step_idx)
+                        ]
+                    )
+                    order_conditions = " AND ".join(
+                        [
+                            f"MAX(CASE WHEN {event_col} = {_sql_str(steps[i])} THEN {index_col} ELSE 0 END) < "
+                            f"MAX(CASE WHEN {event_col} = {_sql_str(steps[i + 1])} THEN {index_col} ELSE 0 END)"
+                            for i in range(step_idx)
+                        ]
+                    )
                     query = f"""
                         SELECT COUNT(DISTINCT {path_id_col}) AS count
                         FROM (
@@ -62,11 +66,15 @@ class Funnel:
                         )
                     """
                 count = int(duckdb.query(query).df()["count"].iloc[0])
-                funnel_data.append({
-                    "step": step_event,
-                    "unique_paths": count,
-                    "conversion_rate": count / total_paths if total_paths > 0 else 0.0,
-                })
+                funnel_data.append(
+                    {
+                        "step": step_event,
+                        "unique_paths": count,
+                        "conversion_rate": count / total_paths
+                        if total_paths > 0
+                        else 0.0,
+                    }
+                )
 
             return {"steps": funnel_data}
 
@@ -78,13 +86,16 @@ class Funnel:
             combined = []
             for i, step in enumerate(steps):
                 s1, s2 = f1["steps"][i], f2["steps"][i]
-                combined.append({
-                    "step": step,
-                    "funnel1_unique_paths":    s1["unique_paths"],
-                    "funnel1_conversion_rate": s1["conversion_rate"],
-                    "funnel2_unique_paths":    s2["unique_paths"],
-                    "funnel2_conversion_rate": s2["conversion_rate"],
-                    "delta_unique_paths":      s2["unique_paths"]    - s1["unique_paths"],
-                    "delta_conversion_rate":   s2["conversion_rate"] - s1["conversion_rate"],
-                })
+                combined.append(
+                    {
+                        "step": step,
+                        "funnel1_unique_paths": s1["unique_paths"],
+                        "funnel1_conversion_rate": s1["conversion_rate"],
+                        "funnel2_unique_paths": s2["unique_paths"],
+                        "funnel2_conversion_rate": s2["conversion_rate"],
+                        "delta_unique_paths": s2["unique_paths"] - s1["unique_paths"],
+                        "delta_conversion_rate": s2["conversion_rate"]
+                        - s1["conversion_rate"],
+                    }
+                )
             return {"steps": combined}

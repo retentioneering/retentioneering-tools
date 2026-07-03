@@ -52,6 +52,7 @@ _DATA_FILE = pathlib.Path(__file__).parent / "ecom.csv.gz"
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def load_ecom(n_users: int = 600, seed: int = 42) -> pd.DataFrame:
     """Load the synthetic e-commerce dataset.
 
@@ -85,29 +86,31 @@ def _generate_ecom(n_users: int = 600, seed: int = 42) -> pd.DataFrame:
     N_DAYS = 181  # Jan 1 – Jun 30
 
     # ── User profiles ────────────────────────────────────────────────────────
-    reg_day = rng.integers(0, 120, size=n_users)        # register Jan–Apr
+    reg_day = rng.integers(0, 120, size=n_users)  # register Jan–Apr
     channels = rng.choice(
         ["organic", "paid_search", "email", "social", "direct"],
-        size=n_users, p=[0.37, 0.28, 0.15, 0.15, 0.05],
+        size=n_users,
+        p=[0.37, 0.28, 0.15, 0.15, 0.05],
     )
     platforms = rng.choice(
         ["desktop", "mobile", "tablet"],
-        size=n_users, p=[0.52, 0.38, 0.10],
+        size=n_users,
+        p=[0.52, 0.38, 0.10],
     )
     user_ids = [f"user_{i:04d}" for i in range(n_users)]
 
     # ── Special periods (day indices, 0-based) ───────────────────────────────
-    ANOM_START, ANOM_END       = 59,  62   # viral article
-    BUG_START,  BUG_END        = 99,  130  # checkout bug
-    PAY_START,  PAY_END        = 139, 159  # payment incident
+    ANOM_START, ANOM_END = 59, 62  # viral article
+    BUG_START, BUG_END = 99, 130  # checkout bug
+    PAY_START, PAY_END = 139, 159  # payment incident
 
     records: list[dict] = []
     session_counter = 0
 
     for i, uid in enumerate(user_ids):
-        user_reg_day   = int(reg_day[i])
-        channel        = channels[i]
-        platform_base  = platforms[i]  # dominant platform for this user
+        user_reg_day = int(reg_day[i])
+        channel = channels[i]
+        platform_base = platforms[i]  # dominant platform for this user
 
         # Number of sessions: 3-9, spread after registration
         available_days = list(range(user_reg_day, N_DAYS))
@@ -128,9 +131,9 @@ def _generate_ecom(n_users: int = 600, seed: int = 42) -> pd.DataFrame:
                 plat = platform_base
 
             # Special period flags
-            is_anom  = ANOM_START <= sess_day <= ANOM_END
-            is_bug   = BUG_START  <= sess_day <= BUG_END
-            is_pay   = PAY_START  <= sess_day <= PAY_END
+            is_anom = ANOM_START <= sess_day <= ANOM_END
+            is_bug = BUG_START <= sess_day <= BUG_END
+            is_pay = PAY_START <= sess_day <= PAY_END
 
             # User lifecycle stage at this session
             age_days = sess_day - user_reg_day
@@ -149,22 +152,26 @@ def _generate_ecom(n_users: int = 600, seed: int = 42) -> pd.DataFrame:
             )
 
             # Timestamps: random hour of day, ~30-180 s between events
-            base_ts = START + pd.Timedelta(days=int(sess_day),
-                                           hours=int(rng.integers(8, 22)),
-                                           minutes=int(rng.integers(0, 59)))
+            base_ts = START + pd.Timedelta(
+                days=int(sess_day),
+                hours=int(rng.integers(8, 22)),
+                minutes=int(rng.integers(0, 59)),
+            )
             for e_idx, ev in enumerate(events):
                 gap = int(rng.integers(15, 180))
-                ts  = base_ts + pd.Timedelta(seconds=gap * (e_idx + 1))
-                records.append({
-                    "user_id":             uid,
-                    "session_id":          sid,
-                    "event":               ev,
-                    "timestamp":           ts,
-                    "platform":            plat,
-                    "acquisition_channel": channel,
-                    "user_cohort":         cohort,
-                    "user_lifecycle":      lifecycle,
-                })
+                ts = base_ts + pd.Timedelta(seconds=gap * (e_idx + 1))
+                records.append(
+                    {
+                        "user_id": uid,
+                        "session_id": sid,
+                        "event": ev,
+                        "timestamp": ts,
+                        "platform": plat,
+                        "acquisition_channel": channel,
+                        "user_cohort": cohort,
+                        "user_lifecycle": lifecycle,
+                    }
+                )
 
     df = pd.DataFrame(records)
     df["timestamp"] = pd.to_datetime(df["timestamp"])
@@ -176,8 +183,10 @@ def _generate_ecom(n_users: int = 600, seed: int = 42) -> pd.DataFrame:
 # Session generator (state machine)
 # ---------------------------------------------------------------------------
 
-def _add_to_cart_prob(age_seg: str, channel: str, platform: str,
-                      is_anom: bool) -> float:
+
+def _add_to_cart_prob(
+    age_seg: str, channel: str, platform: str, is_anom: bool
+) -> float:
     """Base probability of proceeding to add_to_cart from product_view."""
     base = {"loyal": 0.28, "returning": 0.18, "new": 0.10}.get(age_seg, 0.15)
     if channel == "paid_search":
@@ -187,7 +196,7 @@ def _add_to_cart_prob(age_seg: str, channel: str, platform: str,
     if platform == "mobile":
         base -= 0.04
     if is_anom:
-        base *= 0.30   # anomaly visitors rarely buy
+        base *= 0.30  # anomaly visitors rarely buy
     return max(0.03, min(base, 0.45))
 
 
@@ -197,8 +206,8 @@ def _generate_session(
     platform: str,
     channel: str,
     is_anom: bool,
-    is_bug:  bool,
-    is_pay:  bool,
+    is_bug: bool,
+    is_pay: bool,
 ) -> list[str]:
     """Return a list of event strings for one session."""
 
@@ -222,8 +231,18 @@ def _generate_session(
         if state in ("purchase", "_exit"):
             break
 
-        nxt = _next_event(rng, state, age_seg, platform, channel,
-                          is_anom, is_bug, is_pay, p_atc, events)
+        nxt = _next_event(
+            rng,
+            state,
+            age_seg,
+            platform,
+            channel,
+            is_anom,
+            is_bug,
+            is_pay,
+            p_atc,
+            events,
+        )
         if nxt == "_exit":
             break
         events.append(nxt)
@@ -231,17 +250,32 @@ def _generate_session(
 
         # Inject noise events occasionally
         if rng.random() < 0.06:
-            noise = rng.choice(["account_page", "promo_page", "wishlist_add",
-                                 "error_page", "support_chat"],
-                                p=[0.30, 0.25, 0.20, 0.15, 0.10])
+            noise = rng.choice(
+                [
+                    "account_page",
+                    "promo_page",
+                    "wishlist_add",
+                    "error_page",
+                    "support_chat",
+                ],
+                p=[0.30, 0.25, 0.20, 0.15, 0.10],
+            )
             events.append(noise)
 
     return events
 
 
 def _next_event(
-    rng, state, age_seg, platform, channel,
-    is_anom, is_bug, is_pay, p_atc, events_so_far,
+    rng,
+    state,
+    age_seg,
+    platform,
+    channel,
+    is_anom,
+    is_bug,
+    is_pay,
+    p_atc,
+    events_so_far,
 ) -> str:
     """Transition function: given current state return next event or '_exit'."""
 
@@ -261,22 +295,29 @@ def _next_event(
     if state == "catalog":
         self_loop_p = 0.18 if is_anom else 0.10
         left = 1 - self_loop_p
-        opts  = ["product_view", "search", "filter_results", "catalog", "home", "_exit"]
-        probs = [0.42*left, 0.15*left, 0.20*left, self_loop_p, 0.15*left, 0.08*left]
+        opts = ["product_view", "search", "filter_results", "catalog", "home", "_exit"]
+        probs = [
+            0.42 * left,
+            0.15 * left,
+            0.20 * left,
+            self_loop_p,
+            0.15 * left,
+            0.08 * left,
+        ]
         return rng.choice(opts, p=_norm(probs))
 
     if state == "search":
         self_loop_p = 0.28 if is_anom else 0.18
         left = 1 - self_loop_p
-        opts  = ["product_view", "search", "filter_results", "catalog", "_exit"]
-        probs = [0.38*left, self_loop_p, 0.30*left, 0.22*left, 0.10*left]
+        opts = ["product_view", "search", "filter_results", "catalog", "_exit"]
+        probs = [0.38 * left, self_loop_p, 0.30 * left, 0.22 * left, 0.10 * left]
         return rng.choice(opts, p=_norm(probs))
 
     if state == "filter_results":
         self_loop_p = 0.22
         left = 1 - self_loop_p
-        opts  = ["product_view", "filter_results", "catalog", "_exit"]
-        probs = [0.55*left, self_loop_p, 0.35*left, 0.10*left]
+        opts = ["product_view", "filter_results", "catalog", "_exit"]
+        probs = [0.55 * left, self_loop_p, 0.35 * left, 0.10 * left]
         return rng.choice(opts, p=_norm(probs))
 
     if state == "product_view":
@@ -284,27 +325,50 @@ def _next_event(
         sl = 0.22 if channel == "social" else 0.14
         left = 1 - sl
         p_exit = 0.12 if age_seg == "new" else 0.06
-        opts  = ["product_view", "add_to_cart", "catalog", "search",
-                 "wishlist_add", "compare", "review_page", "_exit"]
-        probs = [sl, p_atc*left, 0.28*left, 0.15*left,
-                 0.08*left, 0.05*left, 0.07*left, p_exit*left]
+        opts = [
+            "product_view",
+            "add_to_cart",
+            "catalog",
+            "search",
+            "wishlist_add",
+            "compare",
+            "review_page",
+            "_exit",
+        ]
+        probs = [
+            sl,
+            p_atc * left,
+            0.28 * left,
+            0.15 * left,
+            0.08 * left,
+            0.05 * left,
+            0.07 * left,
+            p_exit * left,
+        ]
         return rng.choice(opts, p=_norm(probs))
 
     if state == "wishlist_add":
-        return rng.choice(["product_view", "catalog", "add_to_cart", "_exit"],
-                          p=[0.45, 0.30, 0.15, 0.10])
+        return rng.choice(
+            ["product_view", "catalog", "add_to_cart", "_exit"],
+            p=[0.45, 0.30, 0.15, 0.10],
+        )
 
     if state == "compare":
-        return rng.choice(["product_view", "add_to_cart", "catalog", "_exit"],
-                          p=[0.50, 0.25, 0.20, 0.05])
+        return rng.choice(
+            ["product_view", "add_to_cart", "catalog", "_exit"],
+            p=[0.50, 0.25, 0.20, 0.05],
+        )
 
     if state == "review_page":
-        return rng.choice(["product_view", "catalog", "add_to_cart", "_exit"],
-                          p=[0.55, 0.25, 0.12, 0.08])
+        return rng.choice(
+            ["product_view", "catalog", "add_to_cart", "_exit"],
+            p=[0.55, 0.25, 0.12, 0.08],
+        )
 
     if state == "promo_page":
-        return rng.choice(["product_view", "catalog", "home", "_exit"],
-                          p=[0.50, 0.30, 0.15, 0.05])
+        return rng.choice(
+            ["product_view", "catalog", "home", "_exit"], p=[0.50, 0.30, 0.15, 0.05]
+        )
 
     if state == "account_page":
         return rng.choice(["home", "catalog", "_exit"], p=[0.45, 0.35, 0.20])
@@ -315,36 +379,43 @@ def _next_event(
 
     if state == "cart":
         abandon_p = 0.22 if platform == "mobile" else 0.14
-        return rng.choice(["shipping_details", "catalog", "home", "_exit"],
-                          p=_norm([1-abandon_p-0.05, abandon_p*0.55, abandon_p*0.30, 0.05]))
+        return rng.choice(
+            ["shipping_details", "catalog", "home", "_exit"],
+            p=_norm([1 - abandon_p - 0.05, abandon_p * 0.55, abandon_p * 0.30, 0.05]),
+        )
 
     if state == "shipping_details":
         # CHECKOUT BUG: mobile during bug period → checkout_bug (marker) → add_to_cart
         if is_bug and platform == "mobile" and rng.random() < 0.55:
             return "checkout_bug"
         fwd_p = 0.68 if platform == "mobile" else 0.82
-        return rng.choice(["payment_details", "cart", "home", "_exit"],
-                          p=_norm([fwd_p, (1-fwd_p)*0.55, (1-fwd_p)*0.35, 0.02]))
+        return rng.choice(
+            ["payment_details", "cart", "home", "_exit"],
+            p=_norm([fwd_p, (1 - fwd_p) * 0.55, (1 - fwd_p) * 0.35, 0.02]),
+        )
 
     if state == "payment_details":
         # PAYMENT ISSUE: ~70 % of users hit the fake error (payment_error marker event)
         if is_pay and rng.random() < 0.70:
             return "payment_error"
-        return rng.choice(["purchase", "shipping_details", "_exit"],
-                          p=[0.88, 0.08, 0.04])
+        return rng.choice(
+            ["purchase", "shipping_details", "_exit"], p=[0.88, 0.08, 0.04]
+        )
 
     if state == "support_chat":
         if is_pay and rng.random() < 0.40:
-            return "payment_details"   # retry — but only 40 % succeed second time
+            return "payment_details"  # retry — but only 40 % succeed second time
         return rng.choice(["home", "catalog", "_exit"], p=[0.40, 0.30, 0.30])
 
     if state == "purchase":
-        return rng.choice(["review_page", "account_page", "home", "_exit"],
-                          p=[0.30, 0.20, 0.45, 0.05])
+        return rng.choice(
+            ["review_page", "account_page", "home", "_exit"], p=[0.30, 0.20, 0.45, 0.05]
+        )
 
     if state == "error_page":
-        return rng.choice(["home", "catalog", "support_chat", "_exit"],
-                          p=[0.35, 0.30, 0.20, 0.15])
+        return rng.choice(
+            ["home", "catalog", "support_chat", "_exit"], p=[0.35, 0.30, 0.20, 0.15]
+        )
 
     if state == "checkout_bug":
         # Broken back-button: always sends user back to add_to_cart

@@ -20,23 +20,23 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
     widget_type = traitlets.Unicode("step_matrix").tag(sync=True)
 
     # ── recompute triggers ─────────────────────────────────────────────────────
-    max_steps    = traitlets.Int(10).tag(sync=True)
-    diff         = traitlets.Unicode("").tag(sync=True)
-    path_id_col  = traitlets.Unicode("").tag(sync=True)
+    max_steps = traitlets.Int(10).tag(sync=True)
+    diff = traitlets.Unicode("").tag(sync=True)
+    path_id_col = traitlets.Unicode("").tag(sync=True)
     path_pattern = traitlets.Unicode("").tag(sync=True)
 
     # ── catalogues ─────────────────────────────────────────────────────────────
-    event_list     = traitlets.Unicode("[]").tag(sync=True)
-    path_cols      = traitlets.Unicode("[]").tag(sync=True)
+    event_list = traitlets.Unicode("[]").tag(sync=True)
+    path_cols = traitlets.Unicode("[]").tag(sync=True)
     segment_levels = traitlets.Unicode("{}").tag(sync=True)
 
     # ── result ─────────────────────────────────────────────────────────────────
-    result     = traitlets.Unicode("{}").tag(sync=True)
+    result = traitlets.Unicode("{}").tag(sync=True)
     is_loading = traitlets.Bool(False).tag(sync=True)
-    error      = traitlets.Unicode("").tag(sync=True)
+    error = traitlets.Unicode("").tag(sync=True)
 
     # ── display ────────────────────────────────────────────────────────────────
-    height       = traitlets.Int(600).tag(sync=True)
+    height = traitlets.Int(600).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
 
     def __init__(
@@ -57,7 +57,12 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
         self.widget_type = "step_matrix"
 
         try:
-            all_events = sorted(eventstream.df[eventstream.schema.event_col].astype(str).unique().tolist())
+            all_events = sorted(
+                eventstream.df[eventstream.schema.event_col]
+                .astype(str)
+                .unique()
+                .tolist()
+            )
             self.event_list = json.dumps(all_events)
         except Exception:
             self.event_list = "[]"
@@ -67,12 +72,12 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)
 
-        self.max_steps    = max_steps    if max_steps    is not _UNSET else 10
-        _diff_val         = diff         if diff         is not _UNSET else None
-        self.diff         = json.dumps(list(_diff_val)) if _diff_val else ""
-        self.path_id_col  = path_id_col  if path_id_col  is not _UNSET else ""
+        self.max_steps = max_steps if max_steps is not _UNSET else 10
+        _diff_val = diff if diff is not _UNSET else None
+        self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
+        self.path_id_col = path_id_col if path_id_col is not _UNSET else ""
         self.path_pattern = path_pattern if path_pattern is not _UNSET else ""
-        self.height       = height       if height       is not _UNSET else 600
+        self.height = height if height is not _UNSET else 600
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
         self._init_cloud(cloud_file_name)  # registers all cloud observers
@@ -81,7 +86,10 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
             self._recompute()
         self._initialized = True
 
-        self.observe(self._on_params_change, names=["max_steps", "diff", "path_id_col", "path_pattern"])
+        self.observe(
+            self._on_params_change,
+            names=["max_steps", "diff", "path_id_col", "path_pattern"],
+        )
 
     # ── widget-specific observer ───────────────────────────────────────────────
 
@@ -111,10 +119,14 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
         finally:
             self.is_loading = False
 
-    def _compute_raw(self, max_steps, path_id_col=None, diff=None, path_pattern=None) -> dict:
+    def _compute_raw(
+        self, max_steps, path_id_col=None, diff=None, path_pattern=None
+    ) -> dict:
         raw = self._eventstream.step_sankey_data(
-            max_steps=max_steps, diff=diff,
-            path_id_col=path_id_col, path_pattern=path_pattern,
+            max_steps=max_steps,
+            diff=diff,
+            path_id_col=path_id_col,
+            path_pattern=path_pattern,
         )
         if diff is not None:
             diff_sms, sms1, sms2 = raw
@@ -132,15 +144,22 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
 
         try:
             pid = path_id_col or self._eventstream.schema.path_col
-            ec  = self._eventstream.schema.event_col
+            ec = self._eventstream.schema.event_col
             import duckdb
-            df  = self._eventstream._df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
+
+            df = self._eventstream._df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
             event_counts = (
-                duckdb.sql(f"SELECT {ec}, COUNT(DISTINCT {pid}) AS cnt FROM df GROUP BY {ec}")
-                .df().set_index(ec)["cnt"].to_dict()
+                duckdb.sql(
+                    f"SELECT {ec}, COUNT(DISTINCT {pid}) AS cnt FROM df GROUP BY {ec}"
+                )
+                .df()
+                .set_index(ec)["cnt"]
+                .to_dict()
             )
             event_counts = {str(k): int(v) for k, v in event_counts.items()}
-            total_paths = int(duckdb.sql(f"SELECT COUNT(DISTINCT {pid}) FROM df").fetchone()[0])
+            total_paths = int(
+                duckdb.sql(f"SELECT COUNT(DISTINCT {pid}) FROM df").fetchone()[0]
+            )
             for s in ("path_start", "path_end"):
                 if s not in event_counts:
                     event_counts[s] = total_paths
@@ -152,16 +171,27 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
         if diff is not None:
             try:
                 import duckdb as _duckdb
+
                 _pid = path_id_col or self._eventstream.schema.path_col
-                _ec  = self._eventstream.schema.event_col
-                _df  = self._eventstream._df
+                _ec = self._eventstream.schema.event_col
+                _df = self._eventstream._df
                 _seg_col, _val1, _val2 = diff
                 for _val, _target in [(_val1, "g1"), (_val2, "g2")]:
                     _d = _df[_df[_seg_col] == _val]
-                    _c = (_duckdb.sql(f"SELECT {_ec}, COUNT(DISTINCT {_pid}) AS cnt FROM _d GROUP BY {_ec}")
-                          .df().set_index(_ec)["cnt"].to_dict())
+                    _c = (
+                        _duckdb.sql(
+                            f"SELECT {_ec}, COUNT(DISTINCT {_pid}) AS cnt FROM _d GROUP BY {_ec}"
+                        )
+                        .df()
+                        .set_index(_ec)["cnt"]
+                        .to_dict()
+                    )
                     _c = {str(k): int(v) for k, v in _c.items()}
-                    _tot = int(_duckdb.sql(f"SELECT COUNT(DISTINCT {_pid}) FROM _d").fetchone()[0])
+                    _tot = int(
+                        _duckdb.sql(
+                            f"SELECT COUNT(DISTINCT {_pid}) FROM _d"
+                        ).fetchone()[0]
+                    )
                     for _s in ("path_start", "path_end"):
                         if _s not in _c:
                             _c[_s] = _tot
@@ -172,8 +202,12 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
             except Exception:
                 pass
 
-        return {"matrices": matrices, "event_counts": event_counts,
-                "event_counts_g1": event_counts_g1, "event_counts_g2": event_counts_g2}
+        return {
+            "matrices": matrices,
+            "event_counts": event_counts,
+            "event_counts_g1": event_counts_g1,
+            "event_counts_g2": event_counts_g2,
+        }
 
     # ── HTML export ───────────────────────────────────────────────────────────
 
@@ -196,18 +230,18 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
             Optional analysis text. Supports basic markdown and [event] links.
         """
         data = {
-            "widget_type":      "step_matrix",
-            "result":           json.loads(self.result or "{}"),
-            "max_steps":        self.max_steps,
-            "diff":             json.loads(self.diff) if self.diff else None,
-            "path_id_col":      self.path_id_col or "",
-            "path_pattern":     self.path_pattern or "",
-            "path_cols":        json.loads(self.path_cols or "[]"),
-            "segment_levels":   json.loads(self.segment_levels or "{}"),
-            "event_list":       json.loads(self.event_list or "[]"),
-            "height":           self.height,
-            "sidebar_open":     False,
-            "display_prefs":    "{}",
+            "widget_type": "step_matrix",
+            "result": json.loads(self.result or "{}"),
+            "max_steps": self.max_steps,
+            "diff": json.loads(self.diff) if self.diff else None,
+            "path_id_col": self.path_id_col or "",
+            "path_pattern": self.path_pattern or "",
+            "path_cols": json.loads(self.path_cols or "[]"),
+            "segment_levels": json.loads(self.segment_levels or "{}"),
+            "event_list": json.loads(self.event_list or "[]"),
+            "height": self.height,
+            "sidebar_open": False,
+            "display_prefs": "{}",
         }
         write_html(path, title, "Step Matrix", data, analysis)
 
@@ -217,14 +251,14 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
         return {
             **self._base_state(),
             "params": {
-                "max_steps":    self.max_steps,
-                "diff":         self.diff,
-                "path_id_col":  self.path_id_col,
+                "max_steps": self.max_steps,
+                "diff": self.diff,
+                "path_id_col": self.path_id_col,
                 "path_pattern": self.path_pattern,
             },
             "display": {
-                "height":        self.height,
-                "sidebar_open":  self.sidebar_open,
+                "height": self.height,
+                "sidebar_open": self.sidebar_open,
                 "display_prefs": self.display_prefs,
             },
         }
@@ -233,13 +267,13 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
         p = state.get("params", {})
         d = state.get("display", {})
 
-        self.max_steps    = p.get("max_steps", 10)
+        self.max_steps = p.get("max_steps", 10)
         self.path_pattern = p.get("path_pattern") or ""
-        self.height       = d.get("height", 600)
+        self.height = d.get("height", 600)
         self.sidebar_open = d.get("sidebar_open", True)
 
         _diff, _pid, mismatch = self._apply_base_state(state)
-        self.diff        = json.dumps(list(_diff)) if _diff else ""
+        self.diff = json.dumps(list(_diff)) if _diff else ""
         self.path_id_col = _pid
 
         prefs_raw = d.get("display_prefs", "{}")
@@ -258,7 +292,7 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
 
 def _df_to_matrix(df) -> dict:
     return {
-        "events":  df.index.tolist(),
-        "values":  df.values.tolist(),
+        "events": df.index.tolist(),
+        "values": df.values.tolist(),
         "columns": [int(c) for c in df.columns.tolist()],
     }

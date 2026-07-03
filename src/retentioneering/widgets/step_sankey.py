@@ -7,44 +7,45 @@ import traitlets
 _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
-from retentioneering.widgets._esm import _get_esm   # noqa: E402
+from retentioneering.widgets._esm import _get_esm  # noqa: E402
 from retentioneering.widgets._utils import parse_diff as _parse_diff  # noqa: E402
 
 
 class StepSankeyWidget(anywidget.AnyWidget):
-    _esm = _get_esm()   # dev: local file; installed: CDN URL
+    _esm = _get_esm()  # dev: local file; installed: CDN URL
     _css = _STATIC / "widget.css"
 
-    widget_type  = traitlets.Unicode("step_sankey").tag(sync=True)
+    widget_type = traitlets.Unicode("step_sankey").tag(sync=True)
 
     # ── recompute triggers ────────────────────────────────────────────────────
-    max_steps    = traitlets.Int(10).tag(sync=True)
-    diff         = traitlets.Unicode("").tag(sync=True)   # "" | '["col","v1","v2"]'
-    path_id_col  = traitlets.Unicode("").tag(sync=True)
-    path_pattern = traitlets.Unicode("").tag(sync=True)   # "" | "path_start->.*->event->.*->path_end"
+    max_steps = traitlets.Int(10).tag(sync=True)
+    diff = traitlets.Unicode("").tag(sync=True)  # "" | '["col","v1","v2"]'
+    path_id_col = traitlets.Unicode("").tag(sync=True)
+    path_pattern = traitlets.Unicode("").tag(
+        sync=True
+    )  # "" | "path_start->.*->event->.*->path_end"
 
     # ── catalogues ────────────────────────────────────────────────────────────
-    path_cols      = traitlets.Unicode("[]").tag(sync=True)
+    path_cols = traitlets.Unicode("[]").tag(sync=True)
     segment_levels = traitlets.Unicode("{}").tag(sync=True)
 
     # ── result ────────────────────────────────────────────────────────────────
-    result     = traitlets.Unicode("{}").tag(sync=True)
+    result = traitlets.Unicode("{}").tag(sync=True)
     is_loading = traitlets.Bool(False).tag(sync=True)
-    error      = traitlets.Unicode("").tag(sync=True)
-
+    error = traitlets.Unicode("").tag(sync=True)
 
     # ── display ───────────────────────────────────────────────────────────────
-    widget_id    = traitlets.Unicode("").tag(sync=True)
-    height       = traitlets.Int(500).tag(sync=True)
+    widget_id = traitlets.Unicode("").tag(sync=True)
+    height = traitlets.Int(500).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
     # 0 = use default (3); >0 = show only this many variable columns per anchor
-    step_window  = traitlets.Int(3).tag(sync=True)
+    step_window = traitlets.Int(3).tag(sync=True)
 
     # ── persistent state ──────────────────────────────────────────────────────
     node_positions = traitlets.Unicode("{}").tag(sync=True)
 
     # ── compute protocol ──────────────────────────────────────────────────────
-    compute_request  = traitlets.Unicode("").tag(sync=True)
+    compute_request = traitlets.Unicode("").tag(sync=True)
     compute_response = traitlets.Unicode("").tag(sync=True)
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -73,21 +74,23 @@ class StepSankeyWidget(anywidget.AnyWidget):
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)
 
-
-        self.max_steps    = max_steps    if max_steps    is not _UNSET else 10
-        _diff_val         = diff         if diff         is not _UNSET else None
-        self.diff         = json.dumps(list(_diff_val)) if _diff_val else ""
-        self.path_id_col  = path_id_col  if path_id_col  is not _UNSET else ""
+        self.max_steps = max_steps if max_steps is not _UNSET else 10
+        _diff_val = diff if diff is not _UNSET else None
+        self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
+        self.path_id_col = path_id_col if path_id_col is not _UNSET else ""
         self.path_pattern = path_pattern if path_pattern is not _UNSET else ""
-        self.height       = height       if height       is not _UNSET else 500
+        self.height = height if height is not _UNSET else 500
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
-        self.step_window  = step_window  if step_window  is not _UNSET else 3
+        self.step_window = step_window if step_window is not _UNSET else 3
         self.node_positions = "{}"
 
         self._recompute()
 
         self._initialized = True
-        self.observe(self._on_params_change, names=["max_steps", "diff", "path_id_col", "path_pattern"])
+        self.observe(
+            self._on_params_change,
+            names=["max_steps", "diff", "path_id_col", "path_pattern"],
+        )
         self.observe(self._on_positions_change, names=["node_positions"])
 
         self.observe(self._on_compute_request, names=["compute_request"])
@@ -112,7 +115,7 @@ class StepSankeyWidget(anywidget.AnyWidget):
         except Exception:
             return
         req_id = req.get("id", "")
-        tool   = req.get("tool", "")
+        tool = req.get("tool", "")
         params = req.get("params", {})
         try:
             result = self._dispatch(tool, params)
@@ -151,7 +154,9 @@ class StepSankeyWidget(anywidget.AnyWidget):
         finally:
             self.is_loading = False
 
-    def _compute_raw(self, max_steps: int, path_id_col=None, diff=None, path_pattern=None) -> dict:
+    def _compute_raw(
+        self, max_steps: int, path_id_col=None, diff=None, path_pattern=None
+    ) -> dict:
         raw = self._eventstream.step_sankey_data(
             max_steps=max_steps,
             diff=diff,
@@ -161,7 +166,7 @@ class StepSankeyWidget(anywidget.AnyWidget):
 
         if diff is not None:
             diff_sms, sms1, sms2 = raw
-            matrices   = [_df_to_matrix(sm) for sm in diff_sms]
+            matrices = [_df_to_matrix(sm) for sm in diff_sms]
             group1_mats = [_df_to_matrix(sm) for sm in sms1]
             group2_mats = [_df_to_matrix(sm) for sm in sms2]
             for i, m in enumerate(matrices):
@@ -178,6 +183,7 @@ class StepSankeyWidget(anywidget.AnyWidget):
             event_col = self._eventstream.schema.event_col
             df = self._eventstream._df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
             import duckdb
+
             counts = (
                 duckdb.sql(
                     f"SELECT {event_col}, COUNT(DISTINCT {path_col}) AS cnt "
@@ -188,7 +194,9 @@ class StepSankeyWidget(anywidget.AnyWidget):
                 .to_dict()
             )
             event_counts = {str(k): int(v) for k, v in counts.items()}
-            total_paths = int(duckdb.sql(f"SELECT COUNT(DISTINCT {path_col}) FROM df").fetchone()[0])
+            total_paths = int(
+                duckdb.sql(f"SELECT COUNT(DISTINCT {path_col}) FROM df").fetchone()[0]
+            )
             for synthetic in ("path_start", "path_end"):
                 if synthetic not in event_counts:
                     event_counts[synthetic] = total_paths
@@ -198,10 +206,9 @@ class StepSankeyWidget(anywidget.AnyWidget):
         return {"matrices": matrices, "event_counts": event_counts}
 
 
-
 def _df_to_matrix(df) -> dict:
     return {
-        "events":  df.index.tolist(),
-        "values":  df.values.tolist(),
+        "events": df.index.tolist(),
+        "values": df.values.tolist(),
         "columns": [int(c) for c in df.columns.tolist()],
     }

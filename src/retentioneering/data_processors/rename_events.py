@@ -14,9 +14,15 @@ class RenameEvents(DataProcessor):
 
     def __init__(self, mapping: Dict[str, str]) -> None:
         if not isinstance(mapping, dict):
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Argument 'mapping' must be a dictionary.")
-        if not all(isinstance(k, str) and isinstance(v, str) for k, v in mapping.items()):
-            raise PreprocessingConfigError(PROCESSOR_NAME, "All keys and values in 'mapping' must be strings.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Argument 'mapping' must be a dictionary."
+            )
+        if not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in mapping.items()
+        ):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "All keys and values in 'mapping' must be strings."
+            )
 
         self.mapping = mapping
         super().__init__()
@@ -36,7 +42,7 @@ class RenameEvents(DataProcessor):
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME,
                     f"Unknown event names in 'mapping': {sorted(unknown)}. "
-                    f"Available events: {sorted(existing)}."
+                    f"Available events: {sorted(existing)}.",
                 )
 
             series = df[event_col].astype(str).replace(self.mapping)

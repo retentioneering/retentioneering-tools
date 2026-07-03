@@ -70,18 +70,29 @@ class ClusterAnalysis:
 
         if is_search:
             search_data = self._search(
-                features_scaled, feature_names, method,
-                nmf_k, n_clusters, min_cluster_size, cluster_selection_epsilon,
+                features_scaled,
+                feature_names,
+                method,
+                nmf_k,
+                n_clusters,
+                min_cluster_size,
+                cluster_selection_epsilon,
             )
-            result: Dict[str, Any] = {"silhouette": {
-                "params": search_data["params"],
-                "silhouette": search_data["silhouette"],
-            }}
+            result: Dict[str, Any] = {
+                "silhouette": {
+                    "params": search_data["params"],
+                    "silhouette": search_data["silhouette"],
+                }
+            }
 
             best = search_data.get("best")
             if best is not None:
                 result["overview_df"] = self._build_overview(
-                    best["labels"], metrics_df.index, path_id_col, event_col, metrics_config or []
+                    best["labels"],
+                    metrics_df.index,
+                    path_id_col,
+                    event_col,
+                    metrics_config or [],
                 )
                 if best.get("nmf_data") is not None:
                     nmf_data = best["nmf_data"]
@@ -103,7 +114,11 @@ class ClusterAnalysis:
             }
 
         cluster_labels = self._cluster(
-            features_scaled, method, n_clusters, min_cluster_size, cluster_selection_epsilon
+            features_scaled,
+            method,
+            n_clusters,
+            min_cluster_size,
+            cluster_selection_epsilon,
         )
 
         if nmf_data is not None:
@@ -112,7 +127,11 @@ class ClusterAnalysis:
             )
 
         overview_df = self._build_overview(
-            cluster_labels, metrics_df.index, path_id_col, event_col, metrics_config or []
+            cluster_labels,
+            metrics_df.index,
+            path_id_col,
+            event_col,
+            metrics_config or [],
         )
 
         return {
@@ -161,9 +180,11 @@ class ClusterAnalysis:
         if len(unique_labels) < 2:
             return None
         sample_size = min(SILHOUETTE_SAMPLE_SIZE, mask.sum())
-        return float(silhouette_score(
-            features[mask], labels[mask], sample_size=sample_size, random_state=42
-        ))
+        return float(
+            silhouette_score(
+                features[mask], labels[mask], sample_size=sample_size, random_state=42
+            )
+        )
 
     def _search(
         self,
@@ -199,9 +220,15 @@ class ClusterAnalysis:
                 X = features_scaled
 
             if method == "kmeans":
-                nc_values = n_clusters if isinstance(n_clusters, (list, tuple)) else [n_clusters]
+                nc_values = (
+                    n_clusters
+                    if isinstance(n_clusters, (list, tuple))
+                    else [n_clusters]
+                )
                 for nc in nc_values:
-                    labels = KMeans(n_clusters=nc, random_state=42, n_init="auto").fit_predict(X)
+                    labels = KMeans(
+                        n_clusters=nc, random_state=42, n_init="auto"
+                    ).fit_predict(X)
                     score = self._safe_silhouette(X, labels)
                     p = {"n_clusters": nc}
                     if is_nmf_search:
@@ -216,8 +243,16 @@ class ClusterAnalysis:
                         best_W = X if nk is not None else None
 
             elif method == "hdbscan":
-                mcs_values = min_cluster_size if isinstance(min_cluster_size, (list, tuple)) else [min_cluster_size or 5]
-                eps_values = cluster_selection_epsilon if isinstance(cluster_selection_epsilon, (list, tuple)) else [cluster_selection_epsilon or 0.0]
+                mcs_values = (
+                    min_cluster_size
+                    if isinstance(min_cluster_size, (list, tuple))
+                    else [min_cluster_size or 5]
+                )
+                eps_values = (
+                    cluster_selection_epsilon
+                    if isinstance(cluster_selection_epsilon, (list, tuple))
+                    else [cluster_selection_epsilon or 0.0]
+                )
                 for mcs in mcs_values:
                     for eps in eps_values:
                         labels = HDBSCAN(
@@ -239,11 +274,17 @@ class ClusterAnalysis:
 
         result: Dict[str, Any] = {"params": params, "silhouette": scores}
         if best_labels is not None:
-            result["best"] = {"labels": best_labels, "nmf_data": best_nmf_data, "W": best_W}
+            result["best"] = {
+                "labels": best_labels,
+                "nmf_data": best_nmf_data,
+                "W": best_W,
+            }
         return result
 
     @staticmethod
-    def _compute_w_cluster_means(W: np.ndarray, labels: np.ndarray) -> Dict[str, List[float]]:
+    def _compute_w_cluster_means(
+        W: np.ndarray, labels: np.ndarray
+    ) -> Dict[str, List[float]]:
         """Compute mean W coordinates per cluster. Returns {cluster_name: [mean_w1, mean_w2, ...]}."""
         result: Dict[str, List[float]] = {}
         for label in sorted(set(labels)):

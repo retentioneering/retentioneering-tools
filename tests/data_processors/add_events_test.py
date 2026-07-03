@@ -6,13 +6,16 @@ from retentioneering.exceptions import PreprocessingConfigError
 
 
 def get_df():
-    return pd.DataFrame([
-        ["user_1", "A", "2020-01-01 00:00:00"],
-        ["user_1", "B", "2020-01-02 00:00:00"],
-        ["user_1", "C", "2020-01-03 00:00:00"],
-        ["user_2", "A", "2020-01-01 00:00:00"],
-        ["user_2", "B", "2020-01-02 00:00:00"],
-    ], columns=["user_id", "event", "timestamp"])
+    return pd.DataFrame(
+        [
+            ["user_1", "A", "2020-01-01 00:00:00"],
+            ["user_1", "B", "2020-01-02 00:00:00"],
+            ["user_1", "C", "2020-01-03 00:00:00"],
+            ["user_2", "A", "2020-01-01 00:00:00"],
+            ["user_2", "B", "2020-01-02 00:00:00"],
+        ],
+        columns=["user_id", "event", "timestamp"],
+    )
 
 
 SCHEMA_WITH_EVENT_TYPE = {"event_type": "event_type"}
@@ -22,22 +25,28 @@ SCHEMA_WITH_EVENT_TYPE = {"event_type": "event_type"}
 # Mode 1: source_events
 # ---------------------------------------------------------------------------
 
-class TestAddEventsBySourceEvents:
 
+class TestAddEventsBySourceEvents:
     def test__single_source_event(self) -> None:
         stream = Eventstream(get_df())
 
         res = stream.add_events(new_event_name="S", source_events=["A"])
 
-        expected = Eventstream(pd.DataFrame([
-            ["user_1", "A",    "raw",       "2020-01-01 00:00:00"],
-            ["user_1", "S",    "synthetic", "2020-01-01 00:00:00"],
-            ["user_1", "B",    "raw",       "2020-01-02 00:00:00"],
-            ["user_1", "C",    "raw",       "2020-01-03 00:00:00"],
-            ["user_2", "A",    "raw",       "2020-01-01 00:00:00"],
-            ["user_2", "S",    "synthetic", "2020-01-01 00:00:00"],
-            ["user_2", "B",    "raw",       "2020-01-02 00:00:00"],
-        ], columns=["user_id", "event", "event_type", "timestamp"]), SCHEMA_WITH_EVENT_TYPE)
+        expected = Eventstream(
+            pd.DataFrame(
+                [
+                    ["user_1", "A", "raw", "2020-01-01 00:00:00"],
+                    ["user_1", "S", "synthetic", "2020-01-01 00:00:00"],
+                    ["user_1", "B", "raw", "2020-01-02 00:00:00"],
+                    ["user_1", "C", "raw", "2020-01-03 00:00:00"],
+                    ["user_2", "A", "raw", "2020-01-01 00:00:00"],
+                    ["user_2", "S", "synthetic", "2020-01-01 00:00:00"],
+                    ["user_2", "B", "raw", "2020-01-02 00:00:00"],
+                ],
+                columns=["user_id", "event", "event_type", "timestamp"],
+            ),
+            SCHEMA_WITH_EVENT_TYPE,
+        )
 
         assert res.equals(expected)
 
@@ -46,17 +55,23 @@ class TestAddEventsBySourceEvents:
 
         res = stream.add_events(new_event_name="S", source_events=["A", "B"])
 
-        expected = Eventstream(pd.DataFrame([
-            ["user_1", "A",    "raw",       "2020-01-01 00:00:00"],
-            ["user_1", "S",    "synthetic", "2020-01-01 00:00:00"],
-            ["user_1", "B",    "raw",       "2020-01-02 00:00:00"],
-            ["user_1", "S",    "synthetic", "2020-01-02 00:00:00"],
-            ["user_1", "C",    "raw",       "2020-01-03 00:00:00"],
-            ["user_2", "A",    "raw",       "2020-01-01 00:00:00"],
-            ["user_2", "S",    "synthetic", "2020-01-01 00:00:00"],
-            ["user_2", "B",    "raw",       "2020-01-02 00:00:00"],
-            ["user_2", "S",    "synthetic", "2020-01-02 00:00:00"],
-        ], columns=["user_id", "event", "event_type", "timestamp"]), SCHEMA_WITH_EVENT_TYPE)
+        expected = Eventstream(
+            pd.DataFrame(
+                [
+                    ["user_1", "A", "raw", "2020-01-01 00:00:00"],
+                    ["user_1", "S", "synthetic", "2020-01-01 00:00:00"],
+                    ["user_1", "B", "raw", "2020-01-02 00:00:00"],
+                    ["user_1", "S", "synthetic", "2020-01-02 00:00:00"],
+                    ["user_1", "C", "raw", "2020-01-03 00:00:00"],
+                    ["user_2", "A", "raw", "2020-01-01 00:00:00"],
+                    ["user_2", "S", "synthetic", "2020-01-01 00:00:00"],
+                    ["user_2", "B", "raw", "2020-01-02 00:00:00"],
+                    ["user_2", "S", "synthetic", "2020-01-02 00:00:00"],
+                ],
+                columns=["user_id", "event", "event_type", "timestamp"],
+            ),
+            SCHEMA_WITH_EVENT_TYPE,
+        )
 
         assert res.equals(expected)
 
@@ -68,10 +83,13 @@ class TestAddEventsBySourceEvents:
         assert res.equals(stream)
 
     def test__all_columns_copied_from_source(self) -> None:
-        df = pd.DataFrame([
-            ["user_1", "A", "2020-01-01 00:00:00", "US"],
-            ["user_1", "B", "2020-01-02 00:00:00", "US"],
-        ], columns=["user_id", "event", "timestamp", "country"])
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "US"],
+                ["user_1", "B", "2020-01-02 00:00:00", "US"],
+            ],
+            columns=["user_id", "event", "timestamp", "country"],
+        )
         stream = Eventstream(df, {"custom_cols": ["country"]})
 
         res = stream.add_events(new_event_name="S", source_events=["A"])
@@ -99,7 +117,9 @@ class TestAddEventsBySourceEvents:
 
     def test__unknown_source_event_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(new_event_name="S", source_events=["UNKNOWN"])
+            Eventstream(get_df()).add_events(
+                new_event_name="S", source_events=["UNKNOWN"]
+            )
 
     def test__source_events_not_list_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
@@ -114,8 +134,8 @@ class TestAddEventsBySourceEvents:
 # Mode 2: sql
 # ---------------------------------------------------------------------------
 
-class TestAddEventsBySql:
 
+class TestAddEventsBySql:
     def test__sql_basic(self) -> None:
         stream = Eventstream(get_df())
 
@@ -124,15 +144,21 @@ class TestAddEventsBySql:
             sql="SELECT * FROM eventstream WHERE event = 'A'",
         )
 
-        expected = Eventstream(pd.DataFrame([
-            ["user_1", "A",    "raw",       "2020-01-01 00:00:00"],
-            ["user_1", "S",    "synthetic", "2020-01-01 00:00:00"],
-            ["user_1", "B",    "raw",       "2020-01-02 00:00:00"],
-            ["user_1", "C",    "raw",       "2020-01-03 00:00:00"],
-            ["user_2", "A",    "raw",       "2020-01-01 00:00:00"],
-            ["user_2", "S",    "synthetic", "2020-01-01 00:00:00"],
-            ["user_2", "B",    "raw",       "2020-01-02 00:00:00"],
-        ], columns=["user_id", "event", "event_type", "timestamp"]), SCHEMA_WITH_EVENT_TYPE)
+        expected = Eventstream(
+            pd.DataFrame(
+                [
+                    ["user_1", "A", "raw", "2020-01-01 00:00:00"],
+                    ["user_1", "S", "synthetic", "2020-01-01 00:00:00"],
+                    ["user_1", "B", "raw", "2020-01-02 00:00:00"],
+                    ["user_1", "C", "raw", "2020-01-03 00:00:00"],
+                    ["user_2", "A", "raw", "2020-01-01 00:00:00"],
+                    ["user_2", "S", "synthetic", "2020-01-01 00:00:00"],
+                    ["user_2", "B", "raw", "2020-01-02 00:00:00"],
+                ],
+                columns=["user_id", "event", "event_type", "timestamp"],
+            ),
+            SCHEMA_WITH_EVENT_TYPE,
+        )
 
         assert res.equals(expected)
 
@@ -152,23 +178,26 @@ class TestAddEventsBySql:
 # Mode 3: churn
 # ---------------------------------------------------------------------------
 
-class TestAddEventsByChurn:
 
+class TestAddEventsByChurn:
     def get_churn_df(self):
         """
         user_1: A(Jan1), B(Jan10), C(Mar1)  — B→C gap 50d, C is dataset max
         user_2: A(Jan1), B(Jan10)           — B is last, dataset_end(Mar1) - Jan10 = 50d
         user_3: A(Jan1), B(Feb20)           — A→B gap 50d; B is last, dataset_end - Feb20 = 9d
         """
-        return pd.DataFrame([
-            ["user_1", "A", "2020-01-01"],
-            ["user_1", "B", "2020-01-10"],
-            ["user_1", "C", "2020-03-01"],
-            ["user_2", "A", "2020-01-01"],
-            ["user_2", "B", "2020-01-10"],
-            ["user_3", "A", "2020-01-01"],
-            ["user_3", "B", "2020-02-20"],
-        ], columns=["user_id", "event", "timestamp"])
+        return pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01"],
+                ["user_1", "B", "2020-01-10"],
+                ["user_1", "C", "2020-03-01"],
+                ["user_2", "A", "2020-01-01"],
+                ["user_2", "B", "2020-01-10"],
+                ["user_3", "A", "2020-01-01"],
+                ["user_3", "B", "2020-02-20"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
 
     def test__churn_any_event(self) -> None:
         """Without active_events: any event resets the inactivity clock."""
@@ -176,18 +205,24 @@ class TestAddEventsByChurn:
 
         res = stream.add_events(new_event_name="churn", churn={"inactivity_days": 30})
 
-        expected = Eventstream(pd.DataFrame([
-            ["user_1", "A",     "raw",       "2020-01-01"],
-            ["user_1", "B",     "raw",       "2020-01-10"],
-            ["user_1", "churn", "synthetic", "2020-01-10"],
-            ["user_1", "C",     "raw",       "2020-03-01"],
-            ["user_2", "A",     "raw",       "2020-01-01"],
-            ["user_2", "B",     "raw",       "2020-01-10"],
-            ["user_2", "churn", "synthetic", "2020-01-10"],
-            ["user_3", "A",     "raw",       "2020-01-01"],
-            ["user_3", "churn", "synthetic", "2020-01-01"],
-            ["user_3", "B",     "raw",       "2020-02-20"],
-        ], columns=["user_id", "event", "event_type", "timestamp"]), SCHEMA_WITH_EVENT_TYPE)
+        expected = Eventstream(
+            pd.DataFrame(
+                [
+                    ["user_1", "A", "raw", "2020-01-01"],
+                    ["user_1", "B", "raw", "2020-01-10"],
+                    ["user_1", "churn", "synthetic", "2020-01-10"],
+                    ["user_1", "C", "raw", "2020-03-01"],
+                    ["user_2", "A", "raw", "2020-01-01"],
+                    ["user_2", "B", "raw", "2020-01-10"],
+                    ["user_2", "churn", "synthetic", "2020-01-10"],
+                    ["user_3", "A", "raw", "2020-01-01"],
+                    ["user_3", "churn", "synthetic", "2020-01-01"],
+                    ["user_3", "B", "raw", "2020-02-20"],
+                ],
+                columns=["user_id", "event", "event_type", "timestamp"],
+            ),
+            SCHEMA_WITH_EVENT_TYPE,
+        )
 
         assert res.equals(expected)
 
@@ -203,13 +238,16 @@ class TestAddEventsByChurn:
 
     def test__churn_with_active_events(self) -> None:
         """Only active_events reset the clock; non-active events are ignored."""
-        df = pd.DataFrame([
-            ["user_1", "login",    "2020-01-01"],
-            ["user_1", "purchase", "2020-01-10"],
-            ["user_1", "login",    "2020-01-15"],
-            ["user_1", "login",    "2020-02-01"],
-            ["user_1", "purchase", "2020-03-20"],  # dataset max
-        ], columns=["user_id", "event", "timestamp"])
+        df = pd.DataFrame(
+            [
+                ["user_1", "login", "2020-01-01"],
+                ["user_1", "purchase", "2020-01-10"],
+                ["user_1", "login", "2020-01-15"],
+                ["user_1", "login", "2020-02-01"],
+                ["user_1", "purchase", "2020-03-20"],  # dataset max
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
         stream = Eventstream(df)
 
         res = stream.add_events(
@@ -227,13 +265,17 @@ class TestAddEventsByChurn:
     def test__churn_empty_active_events_is_noop(self) -> None:
         stream = Eventstream(self.get_churn_df())
 
-        res = stream.add_events(new_event_name="churn", churn={"inactivity_days": 30, "active_events": []})
+        res = stream.add_events(
+            new_event_name="churn", churn={"inactivity_days": 30, "active_events": []}
+        )
 
         assert res.equals(stream)
 
     def test__churn_missing_inactivity_days_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(self.get_churn_df()).add_events(new_event_name="churn", churn={})
+            Eventstream(self.get_churn_df()).add_events(
+                new_event_name="churn", churn={}
+            )
 
     def test__churn_negative_inactivity_days_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
@@ -243,12 +285,15 @@ class TestAddEventsByChurn:
 
     def test__churn_not_dict_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(self.get_churn_df()).add_events(new_event_name="churn", churn=30)
+            Eventstream(self.get_churn_df()).add_events(
+                new_event_name="churn", churn=30
+            )
 
     def test__churn_active_events_not_list_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
             Eventstream(self.get_churn_df()).add_events(
-                new_event_name="churn", churn={"inactivity_days": 30, "active_events": "purchase"}
+                new_event_name="churn",
+                churn={"inactivity_days": 30, "active_events": "purchase"},
             )
 
 
@@ -256,8 +301,8 @@ class TestAddEventsByChurn:
 # Common validation
 # ---------------------------------------------------------------------------
 
-class TestAddEventsValidation:
 
+class TestAddEventsValidation:
     def test__no_mode_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
             Eventstream(get_df()).add_events(new_event_name="S")

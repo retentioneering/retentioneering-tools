@@ -9,7 +9,12 @@ from retentioneering.data_processors.filter_paths import FilterPaths
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import PreprocessingConfigError
-from retentioneering.utils.session_detection import build_session_ctes, detect_mode, to_list, _MODE_TIMEOUT
+from retentioneering.utils.session_detection import (
+    build_session_ctes,
+    detect_mode,
+    to_list,
+    _MODE_TIMEOUT,
+)
 
 PROCESSOR_NAME = "collapse_events"
 
@@ -65,7 +70,9 @@ class CollapseEvents(DataProcessor):
 
         if event_groups is not None:
             if not event_groups:
-                raise PreprocessingConfigError(PROCESSOR_NAME, "event_groups must not be empty")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "event_groups must not be empty"
+                )
             for g in event_groups:
                 self._validate_group(g)
 
@@ -83,15 +90,22 @@ class CollapseEvents(DataProcessor):
                 "each group must define exactly one boundary mode: 'events', 'separator', or 'start_event'+'end_event'",
             )
         if has_start and not has_end:
-            raise PreprocessingConfigError(PROCESSOR_NAME, "'start_event' requires 'end_event'")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "'start_event' requires 'end_event'"
+            )
         if has_end and not has_start:
-            raise PreprocessingConfigError(PROCESSOR_NAME, "'end_event' requires 'start_event'")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "'end_event' requires 'start_event'"
+            )
         if not g.get("default") and not g.get("cases"):
             raise PreprocessingConfigError(
-                PROCESSOR_NAME, "each group must specify 'default' or at least one item in 'cases'"
+                PROCESSOR_NAME,
+                "each group must specify 'default' or at least one item in 'cases'",
             )
 
-    def apply(self, df: pd.DataFrame, schema: EventstreamSchema) -> Tuple[pd.DataFrame, EventstreamSchema]:
+    def apply(
+        self, df: pd.DataFrame, schema: EventstreamSchema
+    ) -> Tuple[pd.DataFrame, EventstreamSchema]:
         path_id_col = self.path_id_col or schema.path_col
         event_col = self.event_col or schema.event_col
 
@@ -100,7 +114,9 @@ class CollapseEvents(DataProcessor):
         elif self.event_groups:
             result = df
             for group in self.event_groups:
-                result = self._collapse_group(result, schema, path_id_col, event_col, group)
+                result = self._collapse_group(
+                    result, schema, path_id_col, event_col, group
+                )
         elif self.event_from_col is not None:
             return self._collapse_by_col(df, schema, path_id_col, event_col)
         else:
@@ -145,7 +161,9 @@ class CollapseEvents(DataProcessor):
         return agg_exprs
 
     @staticmethod
-    def _metric_agg_sql(mc: Dict[str, Any], event_col: str, ts_col: str) -> List[Tuple[str, str]]:
+    def _metric_agg_sql(
+        mc: Dict[str, Any], event_col: str, ts_col: str
+    ) -> List[Tuple[str, str]]:
         metric = mc["metric"]
         args = mc.get("metric_args") or {}
 
@@ -158,7 +176,10 @@ class CollapseEvents(DataProcessor):
         elif metric == "event_count":
             events = to_list(args.get("event", []))
             return [
-                (f"event_count_{e}", f"COUNT(CASE WHEN {event_col} = '{e}' THEN 1 ELSE NULL END)")
+                (
+                    f"event_count_{e}",
+                    f"COUNT(CASE WHEN {event_col} = '{e}' THEN 1 ELSE NULL END)",
+                )
                 for e in events
             ]
         elif metric == "duration":
@@ -197,9 +218,7 @@ class CollapseEvents(DataProcessor):
         agg_chunk = (", ".join(agg_exprs)) if agg_exprs else ""
 
         if self.repetitive is True:
-            is_start_condition = (
-                f"LAG({event_col}) OVER (PARTITION BY {path_id_col} ORDER BY {timestamp_col}, {schema.subindex}) = {event_col}"
-            )
+            is_start_condition = f"LAG({event_col}) OVER (PARTITION BY {path_id_col} ORDER BY {timestamp_col}, {schema.subindex}) = {event_col}"
         else:
             events_list = ", ".join(f"'{event}'" for event in self.repetitive)
             is_start_condition = (
@@ -250,9 +269,13 @@ class CollapseEvents(DataProcessor):
         if mode == _MODE_TIMEOUT:
             default = group.get("default", "session")
         else:
-            default = group.get("default", to_list(group.get("events") or ["session"])[0])
+            default = group.get(
+                "default", to_list(group.get("events") or ["session"])[0]
+            )
 
-        session_ctes = build_session_ctes(group, path_id_col, event_col, ts_col, subindex_col)
+        session_ctes = build_session_ctes(
+            group, path_id_col, event_col, ts_col, subindex_col
+        )
 
         fp = FilterPaths(None, None, None)
         all_metric_configs: List[Dict[str, Any]] = []
@@ -272,17 +295,21 @@ class CollapseEvents(DataProcessor):
                     metric_col_names.append(col_name)
                     metric_agg_parts.append(f'{agg_sql} AS "{col_name}"')
 
-        metric_agg_chunk = (", " + ", ".join(metric_agg_parts)) if metric_agg_parts else ""
+        metric_agg_chunk = (
+            (", " + ", ".join(metric_agg_parts)) if metric_agg_parts else ""
+        )
 
         if cases:
             case_when_parts = [
-                f"WHEN {fp._ast_to_sql(case['condition'])} THEN '{case['new_name'].replace(chr(39), chr(39)*2)}'"
+                f"WHEN {fp._ast_to_sql(case['condition'])} THEN '{case['new_name'].replace(chr(39), chr(39) * 2)}'"
                 for case in cases
             ]
             default_escaped = default.replace("'", "''")
-            classify_expr = f"CASE {' '.join(case_when_parts)} ELSE '{default_escaped}' END"
+            classify_expr = (
+                f"CASE {' '.join(case_when_parts)} ELSE '{default_escaped}' END"
+            )
         else:
-            classify_expr = f"'{default.replace(chr(39), chr(39)*2)}'"
+            classify_expr = f"'{default.replace(chr(39), chr(39) * 2)}'"
 
         exclude_cols = {path_id_col, event_col, event_type_col, ts_col}
         agg_exprs = self._session_agg_exprs(df, self.agg, exclude_cols, ts_col)
@@ -340,13 +367,23 @@ class CollapseEvents(DataProcessor):
         col = self.event_from_col
 
         if col not in df.columns:
-            raise PreprocessingConfigError(PROCESSOR_NAME, f"column '{col}' not found in eventstream")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, f"column '{col}' not found in eventstream"
+            )
         if col == event_col:
             raise PreprocessingConfigError(
-                PROCESSOR_NAME, f"'event_from_col' must differ from event column '{event_col}'"
+                PROCESSOR_NAME,
+                f"'event_from_col' must differ from event column '{event_col}'",
             )
 
-        explicit_cols = {path_id_col, event_col, event_type_col, ts_col, subindex_col, col}
+        explicit_cols = {
+            path_id_col,
+            event_col,
+            event_type_col,
+            ts_col,
+            subindex_col,
+            col,
+        }
         agg_exprs = self._session_agg_exprs(df, self.agg, explicit_cols, ts_col)
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
         group_col_select = f", {col}" if col in schema.cols else ""
@@ -418,11 +455,23 @@ class CollapseEvents(DataProcessor):
         session_type_col = self.session_type_col
 
         if session_id_col not in df.columns:
-            raise PreprocessingConfigError(PROCESSOR_NAME, f"column '{session_id_col}' not found in eventstream")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, f"column '{session_id_col}' not found in eventstream"
+            )
         if session_type_col not in df.columns:
-            raise PreprocessingConfigError(PROCESSOR_NAME, f"column '{session_type_col}' not found in eventstream")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, f"column '{session_type_col}' not found in eventstream"
+            )
 
-        explicit_cols = {path_id_col, event_col, event_type_col, ts_col, subindex_col, session_id_col, session_type_col}
+        explicit_cols = {
+            path_id_col,
+            event_col,
+            event_type_col,
+            ts_col,
+            subindex_col,
+            session_id_col,
+            session_type_col,
+        }
         agg_exprs = self._session_agg_exprs(df, self.agg, explicit_cols, ts_col)
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
         cols_list = json.dumps(schema.cols)[1:-1]
@@ -433,7 +482,9 @@ class CollapseEvents(DataProcessor):
         if session_id_col in schema.cols:
             extra_session_cols += f", ANY_VALUE({session_id_col}) AS {session_id_col}"
         if session_type_col in schema.cols:
-            extra_session_cols += f", ANY_VALUE({session_type_col}) AS {session_type_col}"
+            extra_session_cols += (
+                f", ANY_VALUE({session_type_col}) AS {session_type_col}"
+            )
 
         query = f"""
         WITH collapsed AS (

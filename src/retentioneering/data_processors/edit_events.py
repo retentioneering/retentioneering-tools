@@ -24,20 +24,30 @@ class EditEvents(DataProcessor):
         self.delete = delete if delete is not None else []
 
         if not isinstance(self.rename, dict):
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Argument 'rename' must be a dictionary.")
-        if not all(isinstance(k, str) and isinstance(v, str) for k, v in self.rename.items()):
-            raise PreprocessingConfigError(PROCESSOR_NAME, "All keys and values in 'rename' must be strings.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Argument 'rename' must be a dictionary."
+            )
+        if not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in self.rename.items()
+        ):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "All keys and values in 'rename' must be strings."
+            )
 
         if not isinstance(self.delete, list):
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Argument 'delete' must be a list.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Argument 'delete' must be a list."
+            )
         if not all(isinstance(e, str) for e in self.delete):
-            raise PreprocessingConfigError(PROCESSOR_NAME, "All elements in 'delete' must be strings.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "All elements in 'delete' must be strings."
+            )
 
         overlap = set(self.delete) & set(self.rename.keys())
         if overlap:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"Events cannot be both deleted and renamed: {sorted(overlap)}."
+                f"Events cannot be both deleted and renamed: {sorted(overlap)}.",
             )
 
         super().__init__()
@@ -52,9 +62,15 @@ class EditEvents(DataProcessor):
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME,
                     f"Unknown event names in 'delete': {sorted(unknown)}. "
-                    f"Available events: {sorted(existing)}."
+                    f"Available events: {sorted(existing)}.",
                 )
-            dp = FilterEvents(values={"column": schema.event_col, "values": self.delete, "exclude": True})
+            dp = FilterEvents(
+                values={
+                    "column": schema.event_col,
+                    "values": self.delete,
+                    "exclude": True,
+                }
+            )
             df, schema = dp.apply(df, schema)
 
         if self.rename:

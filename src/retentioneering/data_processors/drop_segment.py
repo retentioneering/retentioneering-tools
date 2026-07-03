@@ -18,7 +18,9 @@ class DropSegment(DataProcessor):
 
     def apply(self, df, schema) -> Tuple[pd.DataFrame, EventstreamSchema]:
         if self.name not in schema.segment_cols:
-            raise PreprocessingConfigError(PROCESSOR_NAME, f"Segment '{self.name}' is not found.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, f"Segment '{self.name}' is not found."
+            )
 
         new_df = df.drop(columns=self.name)
         new_schema = schema.copy()

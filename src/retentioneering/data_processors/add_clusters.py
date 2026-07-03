@@ -99,16 +99,23 @@ class AddClusters(DataProcessor):
         # Validate method and collect method-specific parameters
         if method == "kmeans":
             if n_clusters is None:
-                raise PreprocessingConfigError(PROCESSOR_NAME, "n_clusters is required for kmeans method")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "n_clusters is required for kmeans method"
+                )
             self.method_params = {"n_clusters": n_clusters}
         elif method == "hdbscan":
             self.method_params = {}
             if min_cluster_size is not None:
                 self.method_params["min_cluster_size"] = min_cluster_size
             if cluster_selection_epsilon is not None:
-                self.method_params["cluster_selection_epsilon"] = cluster_selection_epsilon
+                self.method_params["cluster_selection_epsilon"] = (
+                    cluster_selection_epsilon
+                )
         else:
-            raise PreprocessingConfigError(PROCESSOR_NAME, f"Unknown clustering method: {method}. Use 'kmeans' or 'hdbscan'.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"Unknown clustering method: {method}. Use 'kmeans' or 'hdbscan'.",
+            )
 
         super().__init__()
 
@@ -128,11 +135,13 @@ class AddClusters(DataProcessor):
         # Validate segment name doesn't exist
         if self.segment_name in df.columns:
             if self.segment_name in schema.segment_cols:
-                raise PreprocessingConfigError(PROCESSOR_NAME, f"Segment '{self.segment_name}' already exists.")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, f"Segment '{self.segment_name}' already exists."
+                )
             else:
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME,
-                    f"Name '{self.segment_name}' is already reserved in the eventstream."
+                    f"Name '{self.segment_name}' is already reserved in the eventstream.",
                 )
 
         path_id_col = self.path_id_col or schema.path_col
@@ -143,13 +152,18 @@ class AddClusters(DataProcessor):
         metrics_df = metric_builder.build_metrics(self.features, path_id_col)
 
         if metrics_df.empty:
-            raise PreprocessingConfigError(PROCESSOR_NAME, "No features were computed. Check metric configurations.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                "No features were computed. Check metric configurations.",
+            )
 
         # Handle NaN values - fill with 0 for clustering
         features = metrics_df.fillna(0).values
 
         if features.shape[1] == 0:
-            raise PreprocessingConfigError(PROCESSOR_NAME, "No feature columns were generated from features.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "No feature columns were generated from features."
+            )
 
         # Apply scaling
         features_scaled = self._scale_features(features)
@@ -164,9 +178,7 @@ class AddClusters(DataProcessor):
 
         # Create cluster labels Series indexed by path_id
         cluster_series = pd.Series(
-            cluster_labels,
-            index=metrics_df.index,
-            name=self.segment_name
+            cluster_labels, index=metrics_df.index, name=self.segment_name
         )
 
         # Convert labels to string for categorical representation
@@ -205,7 +217,9 @@ class AddClusters(DataProcessor):
             scaler = StandardScaler()
             return scaler.fit_transform(features)
         else:
-            raise PreprocessingConfigError(PROCESSOR_NAME, f"Unknown scaler method: {self.scaler}")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, f"Unknown scaler method: {self.scaler}"
+            )
 
     def _cluster(self, features: np.ndarray) -> np.ndarray:
         """
@@ -221,18 +235,22 @@ class AddClusters(DataProcessor):
             clusterer = KMeans(
                 n_clusters=self.method_params["n_clusters"],
                 random_state=42,
-                n_init="auto"
+                n_init="auto",
             )
             return clusterer.fit_predict(features)
         elif self.method == "hdbscan":
             # Set defaults for HDBSCAN if not provided
             min_cluster_size = self.method_params.get("min_cluster_size", 5)
-            cluster_selection_epsilon = self.method_params.get("cluster_selection_epsilon", 0.0)
+            cluster_selection_epsilon = self.method_params.get(
+                "cluster_selection_epsilon", 0.0
+            )
 
             clusterer = HDBSCAN(
                 min_cluster_size=min_cluster_size,
-                cluster_selection_epsilon=cluster_selection_epsilon
+                cluster_selection_epsilon=cluster_selection_epsilon,
             )
             return clusterer.fit_predict(features)
         else:
-            raise PreprocessingConfigError(PROCESSOR_NAME, f"Unknown clustering method: {self.method}")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, f"Unknown clustering method: {self.method}"
+            )

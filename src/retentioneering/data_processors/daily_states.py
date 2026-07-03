@@ -84,14 +84,16 @@ class DailyStates(DataProcessor):
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
         path_id_col = self.path_id_col or schema.path_col
-        event_col   = self.event_col   or schema.event_col
-        timestamp_col       = schema.timestamp
-        event_type_col      = schema.event_type
+        event_col = self.event_col or schema.event_col
+        timestamp_col = schema.timestamp
+        event_type_col = schema.event_type
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
-        max_dormant_days    = self.max_dormant_days
+        max_dormant_days = self.max_dormant_days
 
         if self.active_events:
-            quoted = ", ".join("'" + e.replace("'", "''") + "'" for e in self.active_events)
+            quoted = ", ".join(
+                "'" + e.replace("'", "''") + "'" for e in self.active_events
+            )
             is_active_today = (
                 f"(SUM(CASE WHEN {event_col} IN ({quoted}) THEN 1 ELSE 0 END) > 0)"
             )
@@ -108,16 +110,24 @@ class DailyStates(DataProcessor):
             other_path_cols_chunk = f", {other_path_cols_chunk}"
 
         special_cols = schema.segment_cols + schema.custom_cols
-        special_cols_chunk = ", ".join([
-            f"COALESCE({c}, LAST_VALUE({c} IGNORE NULLS) OVER "
-            f"(PARTITION BY {path_id_col} ORDER BY {timestamp_col} "
-            f"ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)) AS {c}"
-            for c in special_cols
-        ])
+        special_cols_chunk = ", ".join(
+            [
+                f"COALESCE({c}, LAST_VALUE({c} IGNORE NULLS) OVER "
+                f"(PARTITION BY {path_id_col} ORDER BY {timestamp_col} "
+                f"ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)) AS {c}"
+                for c in special_cols
+            ]
+        )
 
         exclude_cols = (
-            ["active_today", "last_active", "had_week", "had_month",
-             schema.index, schema.subindex]
+            [
+                "active_today",
+                "last_active",
+                "had_week",
+                "had_month",
+                schema.index,
+                schema.subindex,
+            ]
             + other_path_cols
             + special_cols
         )
@@ -198,7 +208,7 @@ class DailyStates(DataProcessor):
                 PARTITION BY {path_id_col}
                 ORDER BY {timestamp_col}, {schema.subindex}
             ) AS {schema.index}
-            {(', ' + special_cols_chunk) if special_cols_chunk else ''}
+            {(", " + special_cols_chunk) if special_cols_chunk else ""}
         FROM states
         ORDER BY {path_id_col}, {timestamp_col}, {schema.subindex}
         """

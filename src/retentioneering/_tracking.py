@@ -1,4 +1,5 @@
 """PostHog analytics tracking for retentioneering."""
+
 import contextvars
 import functools
 import json
@@ -8,18 +9,20 @@ import platform
 import sys
 import uuid
 
-_KEY  = "phc_sev8i3cCtComzsYJJ7KLfYYMqUCSAS49bVep8mkyoKYn"
+_KEY = "phc_sev8i3cCtComzsYJJ7KLfYYMqUCSAS49bVep8mkyoKYn"
 _HOST = "https://eu.i.posthog.com"
 _CONFIG = pathlib.Path.home() / ".retentioneering" / "config.json"
 
 try:
     from posthog import Posthog
+
     _ph = Posthog(project_api_key=_KEY, host=_HOST)
 except Exception:
     _ph = None  # type: ignore[assignment]
 
 
 # ── distinct_id ────────────────────────────────────────────────────────────────
+
 
 def _distinct_id() -> tuple[str, str]:
     """Return (distinct_id, id_type)."""
@@ -56,6 +59,7 @@ def _distinct_id() -> tuple[str, str]:
 
 # ── environment detection ──────────────────────────────────────────────────────
 
+
 def _detect_env() -> str:
     if "google.colab" in sys.modules or os.environ.get("COLAB_BACKEND_VERSION"):
         return "colab"
@@ -73,6 +77,7 @@ def _detect_env() -> str:
 def _kernel_id() -> str | None:
     try:
         import ipykernel
+
         conn = ipykernel.get_connection_file()
         basename = pathlib.Path(conn).stem  # e.g. "kernel-abc123"
         return basename.replace("kernel-", "")
@@ -82,9 +87,11 @@ def _kernel_id() -> str | None:
 
 # ── cached base properties ─────────────────────────────────────────────────────
 
+
 def _lib_version() -> str:
     try:
         from importlib.metadata import version
+
         return version("retentioneering")
     except Exception:
         return "unknown"
@@ -93,11 +100,11 @@ def _lib_version() -> str:
 _DISTINCT_ID, _DISTINCT_ID_TYPE = _distinct_id()
 
 _BASE_PROPS: dict = {
-    "lib_version":      _lib_version(),
-    "os":               platform.system(),
-    "os_version":       platform.release(),
-    "python_version":   platform.python_version(),
-    "env":              _detect_env(),
+    "lib_version": _lib_version(),
+    "os": platform.system(),
+    "os_version": platform.release(),
+    "python_version": platform.python_version(),
+    "env": _detect_env(),
     "distinct_id_type": _DISTINCT_ID_TYPE,
 }
 
@@ -108,11 +115,13 @@ if _kernel:
 
 # ── opt-out ────────────────────────────────────────────────────────────────────
 
+
 def _no_track_requested() -> bool:
     if os.environ.get("RETENTIONEERING_NO_TRACK"):
         return True
     try:
         from google.colab import userdata  # type: ignore[import]
+
         # Raises SecretNotFoundError for users without the secret — no popup shown.
         if userdata.get("RETENTIONEERING_NO_TRACK"):
             return True
@@ -124,7 +133,9 @@ def _no_track_requested() -> bool:
 # ── caller context ─────────────────────────────────────────────────────────────
 
 # Set to "mcp" inside MCP tool calls; defaults to "user" everywhere else.
-_caller_type: contextvars.ContextVar[str] = contextvars.ContextVar("retentioneering_caller_type", default="user")
+_caller_type: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "retentioneering_caller_type", default="user"
+)
 
 
 # ── public API ─────────────────────────────────────────────────────────────────
@@ -150,6 +161,7 @@ def tracked(event_name: str, condition=None, props_fn=None):
     props_fn:  optional callable(self) → dict; called after execution to collect properties.
                Tracking fires after the method succeeds so props_fn has access to the result.
     """
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -165,5 +177,7 @@ def tracked(event_name: str, condition=None, props_fn=None):
                 return result
             finally:
                 _depth -= 1
+
         return wrapper
+
     return decorator

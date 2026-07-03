@@ -6,7 +6,11 @@ from typing import Any, List, Tuple
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
-from retentioneering.utils.session_detection import build_session_ctes, sql_list, to_list
+from retentioneering.utils.session_detection import (
+    build_session_ctes,
+    sql_list,
+    to_list,
+)
 
 PROCESSOR_NAME = "split_sessions"
 
@@ -46,10 +50,12 @@ class SplitSessions(DataProcessor):
         self._validate()
 
     def _validate(self) -> None:
-        boundary_count = sum([
-            bool(self.separator),
-            bool(self.start_event) or bool(self.end_event),
-        ])
+        boundary_count = sum(
+            [
+                bool(self.separator),
+                bool(self.start_event) or bool(self.end_event),
+            ]
+        )
         if boundary_count > 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
@@ -61,7 +67,10 @@ class SplitSessions(DataProcessor):
                 "specify at least one of: 'separator', 'start_event'+'end_event', 'timeout'",
             )
         if bool(self.start_event) != bool(self.end_event):
-            raise PreprocessingConfigError(PROCESSOR_NAME, "'start_event' and 'end_event' must be specified together")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                "'start_event' and 'end_event' must be specified together",
+            )
 
     def _as_group(self) -> dict:
         g: dict[str, Any] = {}
@@ -75,7 +84,9 @@ class SplitSessions(DataProcessor):
             g["timeout"] = self.timeout
         return g
 
-    def apply(self, df: pd.DataFrame, schema: EventstreamSchema) -> Tuple[pd.DataFrame, EventstreamSchema]:
+    def apply(
+        self, df: pd.DataFrame, schema: EventstreamSchema
+    ) -> Tuple[pd.DataFrame, EventstreamSchema]:
         path_id_col = self.path_id_col or schema.path_col
         event_col = self.event_col or schema.event_col
         ts_col = schema.timestamp
@@ -96,7 +107,6 @@ class SplitSessions(DataProcessor):
         if self.separator:
             where_clause = "WHERE w._is_sep = 0"
         elif self.start_event:
-
             where_clause = f"WHERE {event_col} NOT IN ({sql_list(self.start_event + self.end_event)})"
         else:
             where_clause = ""

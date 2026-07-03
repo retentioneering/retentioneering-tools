@@ -6,6 +6,7 @@ Usage in a Jupyter notebook:
     serve(stream)
     serve(stream, context={"description": "...", "events": {...}})
 """
+
 from __future__ import annotations
 
 import inspect
@@ -74,6 +75,7 @@ def serve(
 
 # ── server builder ─────────────────────────────────────────────────────────────
 
+
 def _build_server(
     stream: "Eventstream",
     context: dict,
@@ -90,6 +92,7 @@ def _build_server(
 
     def _tool():
         """@mcp.tool() that sets caller='mcp' in the tracking context."""
+
         def decorator(fn):
             @wraps(fn)
             def wrapper(*args, **kwargs):
@@ -98,7 +101,9 @@ def _build_server(
                     return fn(*args, **kwargs)
                 finally:
                     _tracking_caller_type.reset(token)
+
             return mcp.tool()(wrapper)
+
         return decorator
 
     # Report builder state — accumulates widgets across add_* calls,
@@ -150,12 +155,15 @@ def _build_server(
         _base_preprocessors.extend(preprocessors)
         s = new_stream.schema
         df = new_stream.df
-        return json.dumps({
-            "status":         "base stream updated",
-            "n_paths":        int(df[s.path_col].nunique()),
-            "n_events_total": len(df),
-            "events":         sorted(df[s.event_col].astype(str).unique().tolist()),
-        }, ensure_ascii=False)
+        return json.dumps(
+            {
+                "status": "base stream updated",
+                "n_paths": int(df[s.path_col].nunique()),
+                "n_events_total": len(df),
+                "events": sorted(df[s.event_col].astype(str).unique().tolist()),
+            },
+            ensure_ascii=False,
+        )
 
     @_tool()
     def reset_base_stream() -> str:
@@ -169,12 +177,15 @@ def _build_server(
         _active[0] = stream
         s = stream.schema
         df = stream.df
-        return json.dumps({
-            "status":         "base stream reset to original",
-            "n_paths":        int(df[s.path_col].nunique()),
-            "n_events_total": len(df),
-            "events":         sorted(df[s.event_col].astype(str).unique().tolist()),
-        }, ensure_ascii=False)
+        return json.dumps(
+            {
+                "status": "base stream reset to original",
+                "n_paths": int(df[s.path_col].nunique()),
+                "n_events_total": len(df),
+                "events": sorted(df[s.event_col].astype(str).unique().tolist()),
+            },
+            ensure_ascii=False,
+        )
 
     @_tool()
     def playbook(scenario: str = "") -> str:
@@ -185,7 +196,9 @@ def _build_server(
 
         Pass "" (empty) to list all available scenarios.
         """
-        return json.dumps(_PLAYBOOK.get(scenario.strip(), _playbook_index()), ensure_ascii=False)
+        return json.dumps(
+            _PLAYBOOK.get(scenario.strip(), _playbook_index()), ensure_ascii=False
+        )
 
     @_tool()
     def describe_tool(tool: str = "") -> str:
@@ -209,12 +222,16 @@ def _build_server(
         if not t:
             return json.dumps(_tool_docs_index(), ensure_ascii=False)
         if t in _STATIC_TOOL_DOCS:
-            return json.dumps({"topic": t, "docs": _STATIC_TOOL_DOCS[t]}, ensure_ascii=False)
+            return json.dumps(
+                {"topic": t, "docs": _STATIC_TOOL_DOCS[t]}, ensure_ascii=False
+            )
         method = getattr(Eventstream, t, None)
         doc = inspect.getdoc(method) if method and callable(method) else None
         if doc:
             return json.dumps({"preprocessor": t, "docs": doc}, ensure_ascii=False)
-        return json.dumps({"error": f"Unknown tool {t!r}.", **_tool_docs_index()}, ensure_ascii=False)
+        return json.dumps(
+            {"error": f"Unknown tool {t!r}.", **_tool_docs_index()}, ensure_ascii=False
+        )
 
     @_tool()
     def describe() -> str:
@@ -226,18 +243,18 @@ def _build_server(
         df = cur.df
         ts_col = s.timestamp
         result = {
-            "n_paths":        int(df[pc].nunique()),
+            "n_paths": int(df[pc].nunique()),
             "n_events_total": len(df),
-            "event_col":      ec,
-            "path_col":       pc,
-            "path_cols":      s.path_cols,
-            "segment_cols":   s.segment_cols,
-            "timestamp_col":  ts_col,
-            "date_range":     {
+            "event_col": ec,
+            "path_col": pc,
+            "path_cols": s.path_cols,
+            "segment_cols": s.segment_cols,
+            "timestamp_col": ts_col,
+            "date_range": {
                 "min": str(df[ts_col].min())[:10],
                 "max": str(df[ts_col].max())[:10],
             },
-            "events":         sorted(df[ec].astype(str).unique().tolist()),
+            "events": sorted(df[ec].astype(str).unique().tolist()),
         }
         if context.get("events"):
             result["event_descriptions"] = context["events"]
@@ -285,34 +302,40 @@ def _build_server(
             applies to multiple visualisations.
         """
         src = _apply_preprocessors(_active[0], local_preprocessors or [])
-        widget = src.transition_graph(edge_weight=edge_weight, diff=diff,
-                                      path_id_col=path_id_col or None)
+        widget = src.transition_graph(
+            edge_weight=edge_weight, diff=diff, path_id_col=path_id_col or None
+        )
         if widget.error:
             return json.dumps({"error": widget.error, "label": label})
         data = {
-            "widget_type":      "transition_graph",
-            "result":           json.loads(widget.result or "{}"),
-            "edge_weight":      widget.edge_weight,
-            "diff":             json.loads(widget.diff) if widget.diff else None,
-            "event_counts":     json.loads(widget.event_counts or "{}"),
-            "event_counts_g1":  json.loads(widget.event_counts_g1 or "{}"),
-            "event_counts_g2":  json.loads(widget.event_counts_g2 or "{}"),
-            "node_positions":   {},
+            "widget_type": "transition_graph",
+            "result": json.loads(widget.result or "{}"),
+            "edge_weight": widget.edge_weight,
+            "diff": json.loads(widget.diff) if widget.diff else None,
+            "event_counts": json.loads(widget.event_counts or "{}"),
+            "event_counts_g1": json.loads(widget.event_counts_g1 or "{}"),
+            "event_counts_g2": json.loads(widget.event_counts_g2 or "{}"),
+            "node_positions": {},
             "event_visibility": {},
-            "segment_levels":   json.loads(widget.segment_levels or "{}"),
-            "path_cols":        json.loads(widget.path_cols or "[]"),
-            "path_id_col":      widget.path_id_col or "",
-            "height":           widget.height,
-            "sidebar_open":     False,
+            "segment_levels": json.loads(widget.segment_levels or "{}"),
+            "path_cols": json.loads(widget.path_cols or "[]"),
+            "path_id_col": widget.path_id_col or "",
+            "height": widget.height,
+            "sidebar_open": False,
         }
         tab_id = f"tab-{len(_pending)}"
-        _pending.append({"label": label, "data": data,
-                         "local_preprocessors": local_preprocessors or []})
+        _pending.append(
+            {
+                "label": label,
+                "data": data,
+                "local_preprocessors": local_preprocessors or [],
+            }
+        )
 
         result_raw = json.loads(widget.result or "{}")
         summary = _transition_graph_summary(result_raw, _context_events, edge_weight)
         summary["tab_id"] = tab_id
-        summary["label"]  = label
+        summary["label"] = label
         return json.dumps(summary, ensure_ascii=False)
 
     @_tool()
@@ -351,34 +374,40 @@ def _build_server(
         """
         src = _apply_preprocessors(_active[0], local_preprocessors or [])
         widget = src.step_matrix(
-            max_steps=max_steps, diff=diff,
+            max_steps=max_steps,
+            diff=diff,
             path_id_col=path_id_col or None,
             path_pattern=path_pattern or None,
         )
         if widget.error:
             return json.dumps({"error": widget.error, "label": label})
         data = {
-            "widget_type":    "step_matrix",
-            "result":         json.loads(widget.result or "{}"),
-            "max_steps":      widget.max_steps,
-            "diff":           json.loads(widget.diff) if widget.diff else None,
-            "path_id_col":    widget.path_id_col or "",
-            "path_pattern":   widget.path_pattern or "",
-            "path_cols":      json.loads(widget.path_cols or "[]"),
+            "widget_type": "step_matrix",
+            "result": json.loads(widget.result or "{}"),
+            "max_steps": widget.max_steps,
+            "diff": json.loads(widget.diff) if widget.diff else None,
+            "path_id_col": widget.path_id_col or "",
+            "path_pattern": widget.path_pattern or "",
+            "path_cols": json.loads(widget.path_cols or "[]"),
             "segment_levels": json.loads(widget.segment_levels or "{}"),
-            "event_list":     json.loads(widget.event_list or "[]"),
-            "height":         widget.height,
-            "sidebar_open":   False,
-            "display_prefs":  "{}",
+            "event_list": json.loads(widget.event_list or "[]"),
+            "height": widget.height,
+            "sidebar_open": False,
+            "display_prefs": "{}",
         }
         tab_id = f"tab-{len(_pending)}"
-        _pending.append({"label": label, "data": data,
-                         "local_preprocessors": local_preprocessors or []})
+        _pending.append(
+            {
+                "label": label,
+                "data": data,
+                "local_preprocessors": local_preprocessors or [],
+            }
+        )
 
         result_raw = json.loads(widget.result or "{}")
         summary = _step_matrix_summary(result_raw, _context_events)
         summary["tab_id"] = tab_id
-        summary["label"]  = label
+        summary["label"] = label
         return json.dumps(summary, ensure_ascii=False)
 
     @_tool()
@@ -457,26 +486,31 @@ def _build_server(
         if widget.error:
             return json.dumps({"error": widget.error, "label": label})
         data = {
-            "widget_type":    "segment_overview",
-            "result":         json.loads(widget.result or "{}"),
-            "segment_col":    widget.segment_col or "",
-            "path_id_col":    widget.path_id_col or "",
+            "widget_type": "segment_overview",
+            "result": json.loads(widget.result or "{}"),
+            "segment_col": widget.segment_col or "",
+            "path_id_col": widget.path_id_col or "",
             "metrics_config": json.loads(widget.metrics_config or "[]"),
-            "segment_cols":   json.loads(widget.segment_cols or "[]"),
+            "segment_cols": json.loads(widget.segment_cols or "[]"),
             "segment_levels": json.loads(widget.segment_levels or "{}"),
-            "path_cols":      json.loads(widget.path_cols or "[]"),
-            "event_list":     json.loads(widget.event_list or "[]"),
-            "height":         widget.height,
-            "sidebar_open":   False,
+            "path_cols": json.loads(widget.path_cols or "[]"),
+            "event_list": json.loads(widget.event_list or "[]"),
+            "height": widget.height,
+            "sidebar_open": False,
         }
         tab_id = f"tab-{len(_pending)}"
-        _pending.append({"label": label, "data": data,
-                         "local_preprocessors": local_preprocessors or []})
+        _pending.append(
+            {
+                "label": label,
+                "data": data,
+                "local_preprocessors": local_preprocessors or [],
+            }
+        )
 
         result_raw = json.loads(widget.result or "{}")
         summary = _segment_overview_summary(result_raw, _context_events)
         summary["tab_id"] = tab_id
-        summary["label"]  = label
+        summary["label"] = label
         return json.dumps(summary, ensure_ascii=False)
 
     @_tool()
@@ -502,20 +536,26 @@ def _build_server(
         """
         issues = _find_unlinked_numbers(analysis)
         if not issues:
-            return json.dumps({
-                "status": "ok",
-                "message": "All numbers have links. Proceed with export_report.",
-            }, ensure_ascii=False)
-        return json.dumps({
-            "status": "needs_fixes",
-            "count":  len(issues),
-            "issues": issues,
-            "instruction": (
-                "Add a [tab_label:element] anchor link to each listed line. "
-                "For transitions use edge links [tab:src->tgt]. "
-                "Then call check_analysis again until status is 'ok'."
-            ),
-        }, ensure_ascii=False)
+            return json.dumps(
+                {
+                    "status": "ok",
+                    "message": "All numbers have links. Proceed with export_report.",
+                },
+                ensure_ascii=False,
+            )
+        return json.dumps(
+            {
+                "status": "needs_fixes",
+                "count": len(issues),
+                "issues": issues,
+                "instruction": (
+                    "Add a [tab_label:element] anchor link to each listed line. "
+                    "For transitions use edge links [tab:src->tgt]. "
+                    "Then call check_analysis again until status is 'ok'."
+                ),
+            },
+            ensure_ascii=False,
+        )
 
     @_tool()
     def export_report(
@@ -545,7 +585,11 @@ def _build_server(
             Destination file path. If None, a temp file is created.
         """
         if not _pending:
-            return json.dumps({"error": "No widgets added. Call add_transition_graph or add_step_matrix first."})
+            return json.dumps(
+                {
+                    "error": "No widgets added. Call add_transition_graph or add_step_matrix first."
+                }
+            )
 
         if path is None:
             tmp = tempfile.NamedTemporaryFile(
@@ -557,16 +601,23 @@ def _build_server(
         widgets = list(_pending)
 
         data_sources_html = _build_data_note(list(_base_preprocessors), widgets)
-        write_report_html(path, title, widgets, analysis,
-                          data_sources_html=data_sources_html)
+        write_report_html(
+            path, title, widgets, analysis, data_sources_html=data_sources_html
+        )
         _pending.clear()  # only clear after successful write
-        return json.dumps({"path": str(pathlib.Path(path).resolve()), "title": title,
-                           "tabs": [w["label"] for w in widgets]})
+        return json.dumps(
+            {
+                "path": str(pathlib.Path(path).resolve()),
+                "title": title,
+                "tabs": [w["label"] for w in widgets],
+            }
+        )
 
     return mcp
 
 
 # ── helpers ────────────────────────────────────────────────────────────────────
+
 
 def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
     """Apply an ordered list of preprocessing steps to an Eventstream."""
@@ -578,21 +629,25 @@ def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
                 event_groups=step.get("event_groups"),
             )
         elif t == "filter_paths":
-            condition = {k: v for k, v in step.items() if k not in ("type", "path_id_col")}
+            condition = {
+                k: v for k, v in step.items() if k not in ("type", "path_id_col")
+            }
             stream = stream.filter_paths(condition, path_id_col=step.get("path_id_col"))
         elif t == "filter_events":
             by_col = {k: v for k, v in step.items() if k not in ("type",)}
             stream = stream.filter_events(by_column=by_col)
         elif t == "truncate_paths":
             stream = stream.truncate_paths(
-                left=step["left"], right=step["right"],
+                left=step["left"],
+                right=step["right"],
                 path_id_col=step.get("path_id_col"),
             )
         elif t == "rename_events":
             stream = stream.rename_events(mapping=step["mapping"])
         elif t == "edit_events":
             stream = stream.edit_events(
-                rename=step.get("rename"), delete=step.get("delete"),
+                rename=step.get("rename"),
+                delete=step.get("delete"),
             )
         elif t == "add_events":
             stream = stream.add_events(
@@ -653,7 +708,9 @@ def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
     return stream
 
 
-def _transition_graph_summary(result_raw: dict, context_events: set, edge_weight: str, top_n: int = 25) -> dict:
+def _transition_graph_summary(
+    result_raw: dict, context_events: set, edge_weight: str, top_n: int = 25
+) -> dict:
     """Compact transition graph summary: top-N edges, context events prioritised."""
     events = result_raw.get("events", [])
     values = result_raw.get("values", [])
@@ -696,35 +753,43 @@ def _transition_graph_summary(result_raw: dict, context_events: set, edge_weight
                 d["g2"] = g2v
             return d
 
-        pos = sorted([e for e in edges if e[2] > 0],  key=lambda e: (not e[3], -e[2]))[:top_n // 2]
-        neg = sorted([e for e in edges if e[2] < 0],  key=lambda e: (not e[3],  e[2]))[:top_n // 2]
+        pos = sorted([e for e in edges if e[2] > 0], key=lambda e: (not e[3], -e[2]))[
+            : top_n // 2
+        ]
+        neg = sorted([e for e in edges if e[2] < 0], key=lambda e: (not e[3], e[2]))[
+            : top_n // 2
+        ]
         return {
-            "n_events":       n,
-            "top_increases":  [_fmt(e) for e in pos],
-            "top_decreases":  [_fmt(e) for e in neg],
-            "note": f"Top {len(pos)+len(neg)} diff edges of {len(edges)} non-zero. Full graph in tab.",
+            "n_events": n,
+            "top_increases": [_fmt(e) for e in pos],
+            "top_decreases": [_fmt(e) for e in neg],
+            "note": f"Top {len(pos) + len(neg)} diff edges of {len(edges)} non-zero. Full graph in tab.",
         }
     else:
         shown = sorted(edges, key=lambda e: (not e[3], -abs(e[2])))[:top_n]
         return {
-            "n_events":   n,
+            "n_events": n,
             "edge_weight": edge_weight,
-            "top_edges":  [{"from": s, "to": t, "weight": round(w, 4)} for s, t, w, _ in shown],
+            "top_edges": [
+                {"from": s, "to": t, "weight": round(w, 4)} for s, t, w, _ in shown
+            ],
             "note": f"Top {len(shown)} of {len(edges)} non-zero edges. Full graph in tab.",
         }
 
 
-def _step_matrix_summary(result_raw: dict, context_events: set, top_per_step: int = 5) -> dict:
+def _step_matrix_summary(
+    result_raw: dict, context_events: set, top_per_step: int = 5
+) -> dict:
     """Compact step matrix: top events per step + full rows for context events."""
     matrices = result_raw.get("matrices", [])
     if not matrices:
         return {"note": "no data"}
 
-    m         = matrices[0]
-    events    = m.get("events", [])
-    columns   = m.get("columns", [])
-    values    = m.get("values", [])
-    is_diff   = bool(m.get("group1"))
+    m = matrices[0]
+    events = m.get("events", [])
+    columns = m.get("columns", [])
+    values = m.get("values", [])
+    is_diff = bool(m.get("group1"))
 
     if not events or not columns:
         return {"n_events": 0}
@@ -740,20 +805,26 @@ def _step_matrix_summary(result_raw: dict, context_events: set, top_per_step: in
             except IndexError:
                 pass
         step_vals.sort(reverse=True)
-        by_step[str(col)] = [{"event": ev, "value": round(v, 4)} for _, v, ev in step_vals[:top_per_step]]
+        by_step[str(col)] = [
+            {"event": ev, "value": round(v, 4)} for _, v, ev in step_vals[:top_per_step]
+        ]
 
     ctx_rows: dict = {}
     for ri, ev in enumerate(events):
         if ev in context_events and ri < len(values):
-            row = {str(col): round(values[ri][ci], 4)
-                   for ci, col in enumerate(columns)
-                   if ri < len(values) and ci < len(values[ri]) and values[ri][ci] is not None}
+            row = {
+                str(col): round(values[ri][ci], 4)
+                for ci, col in enumerate(columns)
+                if ri < len(values)
+                and ci < len(values[ri])
+                and values[ri][ci] is not None
+            }
             if row:
                 ctx_rows[ev] = row
 
     result: dict = {
         "n_events": len(events),
-        "steps":    columns,
+        "steps": columns,
         "top_events_per_step": by_step,
     }
     if ctx_rows:
@@ -767,9 +838,9 @@ def _step_matrix_summary(result_raw: dict, context_events: set, top_per_step: in
 
 def _segment_overview_summary(result_raw: dict, context_events: set) -> dict:
     """Compact segment overview: full metrics table + highlight rows with large spread."""
-    metrics  = result_raw.get("metrics",  [])
+    metrics = result_raw.get("metrics", [])
     segments = result_raw.get("segments", [])
-    values   = result_raw.get("values",   [])
+    values = result_raw.get("values", [])
 
     if not metrics or not segments or not values:
         return {"note": "no data"}
@@ -802,9 +873,9 @@ def _segment_overview_summary(result_raw: dict, context_events: set) -> dict:
 
 def _df_to_matrix(df: Any) -> dict:
     return {
-        "events":  df.index.tolist(),
+        "events": df.index.tolist(),
         "columns": [int(c) for c in df.columns.tolist()],
-        "values":  df.values.tolist(),
+        "values": df.values.tolist(),
     }
 
 
@@ -844,7 +915,9 @@ def _step_to_code(step: dict) -> str:
         if args.get("funnel_events"):
             return f"stream.add_segment(name={args['name']!r}, funnel_events={args['funnel_events']!r})"
         elif args.get("values"):
-            return f"stream.add_segment(name={args['name']!r}, values={args['values']!r})"
+            return (
+                f"stream.add_segment(name={args['name']!r}, values={args['values']!r})"
+            )
         elif args.get("sql"):
             return f"stream.add_segment(name={args['name']!r}, sql={args['sql']!r})"
     return f"stream.{t}({kw})" if kw else f"stream.{t}()"
@@ -880,12 +953,14 @@ def _find_unlinked_numbers(analysis: str) -> list[dict]:
         for cm in re.finditer(r"`([^`]*)`", s):
             span = cm.group(1)
             if _EDGE_PAT.search(span):
-                issues.append({
-                    "line":   lineno,
-                    "number": cm.group(),
-                    "text":   s[:120] + ("…" if len(s) > 120 else ""),
-                    "hint":   "Edge in code span — use [tab:src->tgt] link instead.",
-                })
+                issues.append(
+                    {
+                        "line": lineno,
+                        "number": cm.group(),
+                        "text": s[:120] + ("…" if len(s) > 120 else ""),
+                        "hint": "Edge in code span — use [tab:src->tgt] link instead.",
+                    }
+                )
 
         # Remove inline code spans before the remaining checks
         s_no_code = re.sub(r"`[^`]*`", "", s)
@@ -902,23 +977,27 @@ def _find_unlinked_numbers(analysis: str) -> list[dict]:
                 for lm in re.finditer(r"\[[^\]]+\]", s_no_code)
             )
             if not in_link:
-                issues.append({
-                    "line":   lineno,
-                    "number": m.group(),
-                    "text":   s[:120] + ("…" if len(s) > 120 else ""),
-                    "hint":   "Edge in plain text — use [tab:src->tgt] link.",
-                })
+                issues.append(
+                    {
+                        "line": lineno,
+                        "number": m.group(),
+                        "text": s[:120] + ("…" if len(s) > 120 else ""),
+                        "hint": "Edge in plain text — use [tab:src->tgt] link.",
+                    }
+                )
 
         # Check each percentage / multiplier individually
         for m in re.finditer(r"\d+[.,]?\d*\s*%|×\s*\d+\.?\d*", s_no_code):
             pos = m.start()
             nearby = any(abs(lp - pos) <= 200 for lp in link_positions)
             if not nearby:
-                issues.append({
-                    "line":   lineno,
-                    "number": m.group(),
-                    "text":   s[:120] + ("…" if len(s) > 120 else ""),
-                })
+                issues.append(
+                    {
+                        "line": lineno,
+                        "number": m.group(),
+                        "text": s[:120] + ("…" if len(s) > 120 else ""),
+                    }
+                )
 
     return issues
 
@@ -957,6 +1036,7 @@ def _build_data_note(base_preprocessors: list, widgets: list) -> str:
 
 
 # ── playbook / describe_tool ───────────────────────────────────────────────────
+
 
 def _load_playbook() -> dict[str, str]:
     """Parse playbook.md into {scenario_key: content_string}."""
@@ -1013,13 +1093,26 @@ def _playbook_index() -> dict:
 
 def _tool_docs_index() -> dict:
     preprocessors = sorted(
-        m for m in dir(Eventstream)
-        if not m.startswith("_") and callable(getattr(Eventstream, m))
+        m
+        for m in dir(Eventstream)
+        if not m.startswith("_")
+        and callable(getattr(Eventstream, m))
         and inspect.getdoc(getattr(Eventstream, m))
-        and m in {
-            "filter_events", "filter_paths", "add_segment", "collapse_events",
-            "truncate_paths", "rename_events", "edit_events", "add_events",
-            "drop_segment", "add_clusters", "url_events", "sample_paths", "split_sessions",
+        and m
+        in {
+            "filter_events",
+            "filter_paths",
+            "add_segment",
+            "collapse_events",
+            "truncate_paths",
+            "rename_events",
+            "edit_events",
+            "add_events",
+            "drop_segment",
+            "add_clusters",
+            "url_events",
+            "sample_paths",
+            "split_sessions",
         }
     )
     return {
@@ -1029,7 +1122,9 @@ def _tool_docs_index() -> dict:
     }
 
 
-def _system_instructions(stream: "Eventstream", context: dict, notebook_dir: str = "") -> str:
+def _system_instructions(
+    stream: "Eventstream", context: dict, notebook_dir: str = ""
+) -> str:
     s = stream.schema
     df = stream.df
     n_paths = int(df[s.path_col].nunique())
@@ -1171,7 +1266,8 @@ def _system_instructions(stream: "Eventstream", context: dict, notebook_dir: str
         "  collapse_events repetitive=True  — removes self-loops",
         "  filter_paths length > N          — removes very short sessions",
         "  filter_events column/values      — removes specific noise events",
-        f"- Save reports to the notebook directory: {notebook_dir}" if notebook_dir else
-        "- Save reports to a convenient local path.",
+        f"- Save reports to the notebook directory: {notebook_dir}"
+        if notebook_dir
+        else "- Save reports to a convenient local path.",
     ]
     return "\n".join(lines)

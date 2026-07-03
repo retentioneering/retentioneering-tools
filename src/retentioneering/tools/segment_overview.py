@@ -152,7 +152,9 @@ class SegmentOverview:
 
         result_data = {
             "segment_size": segment_sizes,
-            "segment_share": segment_sizes / total_paths if total_paths > 0 else segment_sizes * 0,
+            "segment_share": segment_sizes / total_paths
+            if total_paths > 0
+            else segment_sizes * 0,
         }
 
         # Aggregate standard columns using groupby.agg()
@@ -415,7 +417,9 @@ class SegmentOverview:
         counts, _ = np.histogram(data, bins=bin_edges)
         return bin_edges, counts
 
-    def _build_kde(self, data: np.ndarray, n_points: int = 1000) -> List[List[float]] | None:
+    def _build_kde(
+        self, data: np.ndarray, n_points: int = 1000
+    ) -> List[List[float]] | None:
         """
         Build kernel density estimate for data.
 
@@ -487,7 +491,9 @@ class SegmentOverview:
             kde = self._build_kde(data_for_hist)
 
         total_count = counts.sum()
-        counts_normalized = (counts / total_count).tolist() if total_count > 0 else counts.tolist()
+        counts_normalized = (
+            (counts / total_count).tolist() if total_count > 0 else counts.tolist()
+        )
 
         return {
             "bins": bins.tolist(),
@@ -519,7 +525,11 @@ class SegmentOverview:
             }
 
         # Combine data to determine if discrete and to compute shared bins
-        combined_data = np.concatenate([data_1, data_2]) if len(data_1) > 0 and len(data_2) > 0 else (data_1 if len(data_1) > 0 else data_2)
+        combined_data = (
+            np.concatenate([data_1, data_2])
+            if len(data_1) > 0 and len(data_2) > 0
+            else (data_1 if len(data_1) > 0 else data_2)
+        )
         is_discrete = self._is_discrete(combined_data)
 
         # Determine if we should use log scale (based on combined data)
@@ -538,7 +548,9 @@ class SegmentOverview:
         if is_discrete:
             unique_values = np.unique(combined_hist)
             # Use shared bins
-            shared_bins = self._build_discrete_histogram(combined_hist, unique_values)[0]
+            shared_bins = self._build_discrete_histogram(combined_hist, unique_values)[
+                0
+            ]
             if len(data_1_hist) > 0:
                 counts_1, _ = np.histogram(data_1_hist, bins=shared_bins)
             else:
@@ -574,8 +586,12 @@ class SegmentOverview:
         # Compute normalized counts
         total_1 = counts_1.sum() if len(counts_1) > 0 else 0
         total_2 = counts_2.sum() if len(counts_2) > 0 else 0
-        counts_normalized_1 = (counts_1 / total_1).tolist() if total_1 > 0 else counts_1.tolist()
-        counts_normalized_2 = (counts_2 / total_2).tolist() if total_2 > 0 else counts_2.tolist()
+        counts_normalized_1 = (
+            (counts_1 / total_1).tolist() if total_1 > 0 else counts_1.tolist()
+        )
+        counts_normalized_2 = (
+            (counts_2 / total_2).tolist() if total_2 > 0 else counts_2.tolist()
+        )
 
         # Compute Wasserstein distance (on transformed data if log scale)
         if len(data_1_hist) > 0 and len(data_2_hist) > 0:
@@ -589,16 +605,24 @@ class SegmentOverview:
                 "counts": counts_1.tolist(),
                 "counts_normalized": counts_normalized_1,
                 "kde": kde_1,
-                "mean": float(np.mean(data_1_hist)) if len(data_1_hist) > 0 else float("nan"),
-                "median": float(np.median(data_1_hist)) if len(data_1_hist) > 0 else float("nan"),
+                "mean": float(np.mean(data_1_hist))
+                if len(data_1_hist) > 0
+                else float("nan"),
+                "median": float(np.median(data_1_hist))
+                if len(data_1_hist) > 0
+                else float("nan"),
             },
             "distribution_2": {
                 "bins": bins_2.tolist(),
                 "counts": counts_2.tolist(),
                 "counts_normalized": counts_normalized_2,
                 "kde": kde_2,
-                "mean": float(np.mean(data_2_hist)) if len(data_2_hist) > 0 else float("nan"),
-                "median": float(np.median(data_2_hist)) if len(data_2_hist) > 0 else float("nan"),
+                "mean": float(np.mean(data_2_hist))
+                if len(data_2_hist) > 0
+                else float("nan"),
+                "median": float(np.median(data_2_hist))
+                if len(data_2_hist) > 0
+                else float("nan"),
             },
             "distance": distance,
             "log_scale": log_scale,

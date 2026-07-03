@@ -32,14 +32,22 @@ class TransitionMatrix:
         time_values = ["time_median", "time_q95"]
 
         if self.eventstream.empty():
-            raise EmptyEventstreamError("Cannot calculate transition matrix for empty eventstream")
+            raise EmptyEventstreamError(
+                "Cannot calculate transition matrix for empty eventstream"
+            )
 
         if diff is None:
             df = self.eventstream.add_start_end_events(path_id_col=path_id_col).df
             event_types = EventTypes()
             tm = pd.DataFrame()
 
-            if values in ["count", "transition_rate", "per_path", "proba_out", "proba_in"]:
+            if values in [
+                "count",
+                "transition_rate",
+                "per_path",
+                "proba_out",
+                "proba_in",
+            ]:
                 query = f"""
                 select {event_col}, next_{event_col}, count(*) as cnt
                 from (
@@ -122,12 +130,16 @@ class TransitionMatrix:
                 group by {event_col}, next_{event_col}
                 """
                 timedeltas = duckdb.query(query).df()
-                timedeltas = timedeltas.set_index([event_col, f"next_{event_col}"])["timedelta"]
+                timedeltas = timedeltas.set_index([event_col, f"next_{event_col}"])[
+                    "timedelta"
+                ]
                 timedeltas = pd.to_timedelta(timedeltas, unit="s")
                 tm = timedeltas.unstack()
 
             else:
-                raise InvalidParameterError("values", values, list(TRANSITION_MATRIX_VALUES_OPTIONS))
+                raise InvalidParameterError(
+                    "values", values, list(TRANSITION_MATRIX_VALUES_OPTIONS)
+                )
 
             path_start = event_types.PATH_START.name
             path_end = event_types.PATH_END.name
@@ -138,7 +150,9 @@ class TransitionMatrix:
             )
             event_order = [path_start] + events + [path_end]
             fill_value = 0 if values not in time_values else pd.NaT
-            tm = tm.reindex(index=event_order, columns=event_order, fill_value=fill_value)
+            tm = tm.reindex(
+                index=event_order, columns=event_order, fill_value=fill_value
+            )
             return tm
 
         else:

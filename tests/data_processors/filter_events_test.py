@@ -3,16 +3,21 @@ import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
 
+
 def get_df():
-    df = pd.DataFrame([
-        ["user_1", "A", "2020-01-01 00:00:00", "US"],
-        ["user_1", "B", "2020-01-02 00:00:00", "US"],
-        ["user_1", "C", "2020-01-03 00:00:00", "US"],
-        ["user_2", "A", "2020-01-01 00:00:00", "US"],
-        ["user_3", "B", "2020-01-01 00:00:00", "UK"],
-        ["user_3", "B", "2020-01-02 00:01:00", "UK"],
-    ], columns=["user_id", "event", "timestamp", "country"])
+    df = pd.DataFrame(
+        [
+            ["user_1", "A", "2020-01-01 00:00:00", "US"],
+            ["user_1", "B", "2020-01-02 00:00:00", "US"],
+            ["user_1", "C", "2020-01-03 00:00:00", "US"],
+            ["user_2", "A", "2020-01-01 00:00:00", "US"],
+            ["user_3", "B", "2020-01-01 00:00:00", "UK"],
+            ["user_3", "B", "2020-01-02 00:01:00", "UK"],
+        ],
+        columns=["user_id", "event", "timestamp", "country"],
+    )
     return df
+
 
 class TestFilterEvents:
     def test__values_events(self) -> None:
@@ -23,11 +28,14 @@ class TestFilterEvents:
         res = stream.filter_events(by_column={"column": "event", "values": ["A", "C"]})
 
         expected_columns = ["user_id", "event", "timestamp", "country"]
-        expected = pd.DataFrame([
-            ["user_1", "A", "2020-01-01 00:00:00", "US"],
-            ["user_1", "C", "2020-01-03 00:00:00", "US"],
-            ["user_2", "A", "2020-01-01 00:00:00", "US"],
-        ], columns=expected_columns)
+        expected = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "US"],
+                ["user_1", "C", "2020-01-03 00:00:00", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "US"],
+            ],
+            columns=expected_columns,
+        )
         expected_schema = {"custom_cols": ["country"]}
         expected = Eventstream(expected, expected_schema)
 
@@ -41,12 +49,15 @@ class TestFilterEvents:
         res = stream.filter_events(by_column={"column": "country", "values": ["US"]})
 
         expected_columns = ["user_id", "event", "timestamp", "country"]
-        expected = pd.DataFrame([
-            ["user_1", "A", "2020-01-01 00:00:00", "US"],
-            ["user_1", "B", "2020-01-02 00:00:00", "US"],
-            ["user_1", "C", "2020-01-03 00:00:00", "US"],
-            ["user_2", "A", "2020-01-01 00:00:00", "US"],
-        ], columns=expected_columns)
+        expected = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "US"],
+                ["user_1", "B", "2020-01-02 00:00:00", "US"],
+                ["user_1", "C", "2020-01-03 00:00:00", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "US"],
+            ],
+            columns=expected_columns,
+        )
         expected_schema = {"custom_cols": ["country"]}
         expected = Eventstream(expected, expected_schema)
 
@@ -57,14 +68,19 @@ class TestFilterEvents:
         schema = {"custom_cols": ["country"]}
         stream = Eventstream(df, schema)
 
-        res = stream.filter_events(by_column={"column": "event", "values": ["B"], "exclude": True})
+        res = stream.filter_events(
+            by_column={"column": "event", "values": ["B"], "exclude": True}
+        )
 
         expected_columns = ["user_id", "event", "timestamp", "country"]
-        expected = pd.DataFrame([
-            ["user_1", "A", "2020-01-01 00:00:00", "US"],
-            ["user_1", "C", "2020-01-03 00:00:00", "US"],
-            ["user_2", "A", "2020-01-01 00:00:00", "US"],
-        ], columns=expected_columns)
+        expected = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "US"],
+                ["user_1", "C", "2020-01-03 00:00:00", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "US"],
+            ],
+            columns=expected_columns,
+        )
         expected_schema = {"custom_cols": ["country"]}
         expected = Eventstream(expected, expected_schema)
 
@@ -84,11 +100,14 @@ class TestFilterEvents:
         res = stream.filter_events(func=lambda _df: _df["event"] != "B")
 
         expected_columns = ["user_id", "event", "timestamp", "country"]
-        expected = pd.DataFrame([
-            ["user_1", "A", "2020-01-01 00:00:00", "US"],
-            ["user_1", "C", "2020-01-03 00:00:00", "US"],
-            ["user_2", "A", "2020-01-01 00:00:00", "US"],
-        ], columns=expected_columns)
+        expected = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "US"],
+                ["user_1", "C", "2020-01-03 00:00:00", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "US"],
+            ],
+            columns=expected_columns,
+        )
         expected_schema = {"custom_cols": ["country"]}
         expected = Eventstream(expected, expected_schema)
 
@@ -102,13 +121,16 @@ class TestFilterEvents:
         res = stream.filter_events(func=lambda _df: _df["timestamp"] < "2020-01-03")
 
         expected_columns = ["user_id", "event", "timestamp", "country"]
-        expected = pd.DataFrame([
-            ["user_1", "A", "2020-01-01 00:00:00", "US"],
-            ["user_1", "B", "2020-01-02 00:00:00", "US"],
-            ["user_2", "A", "2020-01-01 00:00:00", "US"],
-            ["user_3", "B", "2020-01-01 00:00:00", "UK"],
-            ["user_3", "B", "2020-01-02 00:01:00", "UK"],
-        ], columns=expected_columns)
+        expected = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "US"],
+                ["user_1", "B", "2020-01-02 00:00:00", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "US"],
+                ["user_3", "B", "2020-01-01 00:00:00", "UK"],
+                ["user_3", "B", "2020-01-02 00:01:00", "UK"],
+            ],
+            columns=expected_columns,
+        )
         expected_schema = {"custom_cols": ["country"]}
         expected = Eventstream(expected, expected_schema)
 
@@ -122,13 +144,16 @@ class TestFilterEvents:
         res = stream.filter_events(sql=query)
 
         expected_columns = ["user_id", "event", "timestamp", "country"]
-        expected = pd.DataFrame([
-            ["user_1", "A", "2020-01-01 00:00:00", "US"],
-            ["user_1", "B", "2020-01-02 00:00:00", "US"],
-            ["user_2", "A", "2020-01-01 00:00:00", "US"],
-            ["user_3", "B", "2020-01-01 00:00:00", "UK"],
-            ["user_3", "B", "2020-01-02 00:01:00", "UK"],
-        ], columns=expected_columns)
+        expected = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "US"],
+                ["user_1", "B", "2020-01-02 00:00:00", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "US"],
+                ["user_3", "B", "2020-01-01 00:00:00", "UK"],
+                ["user_3", "B", "2020-01-02 00:01:00", "UK"],
+            ],
+            columns=expected_columns,
+        )
         expected_schema = {"custom_cols": ["country"]}
         expected = Eventstream(expected, expected_schema)
 
@@ -148,28 +173,37 @@ class TestFilterEvents:
         schema = {"custom_cols": ["country"]}
         stream = Eventstream(df, schema)
 
-        res = stream\
-            .add_start_end_events()\
-            .filter_events(func=lambda _df: ~_df["event"].isin(["path_end", "B"]))
+        res = stream.add_start_end_events().filter_events(
+            func=lambda _df: ~_df["event"].isin(["path_end", "B"])
+        )
 
         expected_columns = ["user_id", "event", "timestamp", "country"]
-        expected = pd.DataFrame([
-            ["user_1", "path_start", "2020-01-01 00:00:00", "US"],
-            ["user_1", "A", "2020-01-01 00:00:00", "US"],
-            ["user_1", "C", "2020-01-03 00:00:00", "US"],
-            ["user_2", "path_start", "2020-01-01 00:00:00", "US"],
-            ["user_2", "A", "2020-01-01 00:00:00", "US"],
-            ["user_3", "path_start", "2020-01-01 00:00:00", "UK"],
-        ], columns=expected_columns)
+        expected = pd.DataFrame(
+            [
+                ["user_1", "path_start", "2020-01-01 00:00:00", "US"],
+                ["user_1", "A", "2020-01-01 00:00:00", "US"],
+                ["user_1", "C", "2020-01-03 00:00:00", "US"],
+                ["user_2", "path_start", "2020-01-01 00:00:00", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "US"],
+                ["user_3", "path_start", "2020-01-01 00:00:00", "UK"],
+            ],
+            columns=expected_columns,
+        )
         expected_schema = {"custom_cols": ["country"]}
         expected = Eventstream(expected, expected_schema)
 
         assert res.equals(expected)
 
     def test__sql_big_df(self) -> None:
-        df = pd.DataFrame({"user_id":
-            [111]*100000 + [222]*100000 + [333]*100000 + [444]*100000 + [555]*100000,
-        })
+        df = pd.DataFrame(
+            {
+                "user_id": [111] * 100000
+                + [222] * 100000
+                + [333] * 100000
+                + [444] * 100000
+                + [555] * 100000,
+            }
+        )
         df["event"] = "A"
         df["timestamp"] = "2020-01-01 00:00:00"
         stream = Eventstream(df)

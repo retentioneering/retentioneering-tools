@@ -12,7 +12,6 @@ PROCESSOR_NAME = "add_events"
 
 
 class AddEvents(DataProcessor):
-
     def __init__(
         self,
         new_event_name: str,
@@ -21,33 +20,46 @@ class AddEvents(DataProcessor):
         churn: dict | None = None,
     ) -> None:
         if not isinstance(new_event_name, str) or not new_event_name:
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Argument 'new_event_name' must be a non-empty string.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Argument 'new_event_name' must be a non-empty string."
+            )
 
         n_modes = sum([source_events is not None, sql is not None, churn is not None])
         if n_modes != 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                "Exactly one of 'source_events', 'sql', or 'churn' must be provided."
+                "Exactly one of 'source_events', 'sql', or 'churn' must be provided.",
             )
 
         if source_events is not None:
             if not isinstance(source_events, list):
-                raise PreprocessingConfigError(PROCESSOR_NAME, "Argument 'source_events' must be a list.")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "Argument 'source_events' must be a list."
+                )
             if not all(isinstance(e, str) for e in source_events):
-                raise PreprocessingConfigError(PROCESSOR_NAME, "All elements in 'source_events' must be strings.")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "All elements in 'source_events' must be strings."
+                )
 
         if sql is not None and not isinstance(sql, str):
-            raise PreprocessingConfigError(PROCESSOR_NAME, "Argument 'sql' must be a string.")
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Argument 'sql' must be a string."
+            )
 
         if churn is not None:
             if not isinstance(churn, dict):
-                raise PreprocessingConfigError(PROCESSOR_NAME, "Argument 'churn' must be a dictionary.")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "Argument 'churn' must be a dictionary."
+                )
             if "inactivity_days" not in churn:
-                raise PreprocessingConfigError(PROCESSOR_NAME, "Argument 'churn' must contain 'inactivity_days'.")
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "Argument 'churn' must contain 'inactivity_days'."
+                )
             inactivity_days = churn["inactivity_days"]
             if not isinstance(inactivity_days, (int, float)) or inactivity_days <= 0:
                 raise PreprocessingConfigError(
-                    PROCESSOR_NAME, "Value 'churn.inactivity_days' must be a positive number."
+                    PROCESSOR_NAME,
+                    "Value 'churn.inactivity_days' must be a positive number.",
                 )
             active_events = churn.get("active_events")
             if active_events is not None:
@@ -57,7 +69,8 @@ class AddEvents(DataProcessor):
                     )
                 if not all(isinstance(e, str) for e in active_events):
                     raise PreprocessingConfigError(
-                        PROCESSOR_NAME, "All elements in 'churn.active_events' must be strings."
+                        PROCESSOR_NAME,
+                        "All elements in 'churn.active_events' must be strings.",
                     )
 
         self.new_event_name = new_event_name
@@ -95,7 +108,9 @@ class AddEvents(DataProcessor):
 
         return df, schema
 
-    def _get_by_source_events(self, df: pd.DataFrame, schema: EventstreamSchema) -> pd.DataFrame:
+    def _get_by_source_events(
+        self, df: pd.DataFrame, schema: EventstreamSchema
+    ) -> pd.DataFrame:
         if not self.source_events:
             return df.iloc[0:0]
 
@@ -105,7 +120,7 @@ class AddEvents(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 f"Unknown event names in 'source_events': {sorted(unknown)}. "
-                f"Available events: {sorted(existing)}."
+                f"Available events: {sorted(existing)}.",
             )
 
         return df[df[schema.event_col].isin(self.source_events)].copy()
@@ -117,11 +132,13 @@ class AddEvents(DataProcessor):
         if set(result.columns) != columns_old:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                "The SQL query must return the same columns as the eventstream."
+                "The SQL query must return the same columns as the eventstream.",
             )
         return result
 
-    def _get_by_churn(self, df: pd.DataFrame, schema: EventstreamSchema) -> pd.DataFrame:
+    def _get_by_churn(
+        self, df: pd.DataFrame, schema: EventstreamSchema
+    ) -> pd.DataFrame:
         path_col = schema.path_col
         ts_col = schema.timestamp
         subindex_col = schema.subindex

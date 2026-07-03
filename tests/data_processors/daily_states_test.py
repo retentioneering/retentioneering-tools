@@ -4,12 +4,14 @@ from retentioneering.eventstream.eventstream import Eventstream
 
 
 class TestDailyStates:
-
     def test_first_row_is_new(self):
-        df = pd.DataFrame([
-            ["u1", "login",    "2023-01-01 10:00:00"],
-            ["u1", "purchase", "2023-01-02 10:00:00"],
-        ], columns=["user_id", "event", "timestamp"])
+        df = pd.DataFrame(
+            [
+                ["u1", "login", "2023-01-01 10:00:00"],
+                ["u1", "purchase", "2023-01-02 10:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
         stream = Eventstream(df)
 
         res = stream.daily_states(max_dormant_days=30)
@@ -18,10 +20,13 @@ class TestDailyStates:
         assert states[0] == "new"
 
     def test_active_events_filter(self):
-        df = pd.DataFrame([
-            ["u1", "login",    "2023-01-01 10:00:00"],
-            ["u1", "purchase", "2023-01-02 10:00:00"],
-        ], columns=["user_id", "event", "timestamp"])
+        df = pd.DataFrame(
+            [
+                ["u1", "login", "2023-01-01 10:00:00"],
+                ["u1", "purchase", "2023-01-02 10:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
         stream = Eventstream(df)
 
         # Only "purchase" counts as activity
@@ -32,10 +37,13 @@ class TestDailyStates:
         assert first_state in {"dormant", "at_risk_wau", "at_risk_mau"}
 
     def test_subsequent_active_day_is_current(self):
-        df = pd.DataFrame([
-            ["u1", "login", "2023-01-01 10:00:00"],
-            ["u1", "login", "2023-01-03 10:00:00"],
-        ], columns=["user_id", "event", "timestamp"])
+        df = pd.DataFrame(
+            [
+                ["u1", "login", "2023-01-01 10:00:00"],
+                ["u1", "login", "2023-01-03 10:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
         stream = Eventstream(df)
 
         res = stream.daily_states(max_dormant_days=5)

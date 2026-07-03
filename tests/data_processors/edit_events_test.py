@@ -6,27 +6,34 @@ from retentioneering.exceptions import PreprocessingConfigError
 
 
 def get_df():
-    return pd.DataFrame([
-        ["user_1", "A", "2020-01-01 00:00:00"],
-        ["user_1", "B", "2020-01-02 00:00:00"],
-        ["user_1", "C", "2020-01-03 00:00:00"],
-        ["user_2", "A", "2020-01-01 00:00:00"],
-        ["user_2", "B", "2020-01-02 00:00:00"],
-    ], columns=["user_id", "event", "timestamp"])
+    return pd.DataFrame(
+        [
+            ["user_1", "A", "2020-01-01 00:00:00"],
+            ["user_1", "B", "2020-01-02 00:00:00"],
+            ["user_1", "C", "2020-01-03 00:00:00"],
+            ["user_2", "A", "2020-01-01 00:00:00"],
+            ["user_2", "B", "2020-01-02 00:00:00"],
+        ],
+        columns=["user_id", "event", "timestamp"],
+    )
 
 
 class TestEditEvents:
-
     def test__delete_only(self) -> None:
         stream = Eventstream(get_df())
 
         res = stream.edit_events(delete=["B"])
 
-        expected = Eventstream(pd.DataFrame([
-            ["user_1", "A", "2020-01-01 00:00:00"],
-            ["user_1", "C", "2020-01-03 00:00:00"],
-            ["user_2", "A", "2020-01-01 00:00:00"],
-        ], columns=["user_id", "event", "timestamp"]))
+        expected = Eventstream(
+            pd.DataFrame(
+                [
+                    ["user_1", "A", "2020-01-01 00:00:00"],
+                    ["user_1", "C", "2020-01-03 00:00:00"],
+                    ["user_2", "A", "2020-01-01 00:00:00"],
+                ],
+                columns=["user_id", "event", "timestamp"],
+            )
+        )
 
         assert res.equals(expected)
 
@@ -35,13 +42,18 @@ class TestEditEvents:
 
         res = stream.edit_events(rename={"A": "X"})
 
-        expected = Eventstream(pd.DataFrame([
-            ["user_1", "X", "2020-01-01 00:00:00"],
-            ["user_1", "B", "2020-01-02 00:00:00"],
-            ["user_1", "C", "2020-01-03 00:00:00"],
-            ["user_2", "X", "2020-01-01 00:00:00"],
-            ["user_2", "B", "2020-01-02 00:00:00"],
-        ], columns=["user_id", "event", "timestamp"]))
+        expected = Eventstream(
+            pd.DataFrame(
+                [
+                    ["user_1", "X", "2020-01-01 00:00:00"],
+                    ["user_1", "B", "2020-01-02 00:00:00"],
+                    ["user_1", "C", "2020-01-03 00:00:00"],
+                    ["user_2", "X", "2020-01-01 00:00:00"],
+                    ["user_2", "B", "2020-01-02 00:00:00"],
+                ],
+                columns=["user_id", "event", "timestamp"],
+            )
+        )
 
         assert res.equals(expected)
 
@@ -51,11 +63,16 @@ class TestEditEvents:
 
         res = stream.edit_events(delete=["A"], rename={"B": "X"})
 
-        expected = Eventstream(pd.DataFrame([
-            ["user_1", "X", "2020-01-02 00:00:00"],
-            ["user_1", "C", "2020-01-03 00:00:00"],
-            ["user_2", "X", "2020-01-02 00:00:00"],
-        ], columns=["user_id", "event", "timestamp"]))
+        expected = Eventstream(
+            pd.DataFrame(
+                [
+                    ["user_1", "X", "2020-01-02 00:00:00"],
+                    ["user_1", "C", "2020-01-03 00:00:00"],
+                    ["user_2", "X", "2020-01-02 00:00:00"],
+                ],
+                columns=["user_id", "event", "timestamp"],
+            )
+        )
 
         assert res.equals(expected)
 
@@ -64,10 +81,15 @@ class TestEditEvents:
 
         res = stream.edit_events(delete=["A", "C"])
 
-        expected = Eventstream(pd.DataFrame([
-            ["user_1", "B", "2020-01-02 00:00:00"],
-            ["user_2", "B", "2020-01-02 00:00:00"],
-        ], columns=["user_id", "event", "timestamp"]))
+        expected = Eventstream(
+            pd.DataFrame(
+                [
+                    ["user_1", "B", "2020-01-02 00:00:00"],
+                    ["user_2", "B", "2020-01-02 00:00:00"],
+                ],
+                columns=["user_id", "event", "timestamp"],
+            )
+        )
 
         assert res.equals(expected)
 
@@ -76,13 +98,18 @@ class TestEditEvents:
 
         res = stream.edit_events(rename={"A": "X", "B": "Y"})
 
-        expected = Eventstream(pd.DataFrame([
-            ["user_1", "X", "2020-01-01 00:00:00"],
-            ["user_1", "Y", "2020-01-02 00:00:00"],
-            ["user_1", "C", "2020-01-03 00:00:00"],
-            ["user_2", "X", "2020-01-01 00:00:00"],
-            ["user_2", "Y", "2020-01-02 00:00:00"],
-        ], columns=["user_id", "event", "timestamp"]))
+        expected = Eventstream(
+            pd.DataFrame(
+                [
+                    ["user_1", "X", "2020-01-01 00:00:00"],
+                    ["user_1", "Y", "2020-01-02 00:00:00"],
+                    ["user_1", "C", "2020-01-03 00:00:00"],
+                    ["user_2", "X", "2020-01-01 00:00:00"],
+                    ["user_2", "Y", "2020-01-02 00:00:00"],
+                ],
+                columns=["user_id", "event", "timestamp"],
+            )
+        )
 
         assert res.equals(expected)
 

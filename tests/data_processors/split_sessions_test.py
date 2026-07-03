@@ -23,15 +23,17 @@ def sessions(stream):
 # Separator mode
 # ---------------------------------------------------------------------------
 
-class TestSplitSessionsSeparator:
 
+class TestSplitSessionsSeparator:
     def test_separator_basic(self):
         """Separator event starts a new session and is removed from output."""
-        stream = make_stream([
-            ["user_1", "sep", "2020-01-01 00:00:00"],
-            ["user_1", "A",   "2020-01-01 00:01:00"],
-            ["user_1", "B",   "2020-01-01 00:02:00"],
-        ])
+        stream = make_stream(
+            [
+                ["user_1", "sep", "2020-01-01 00:00:00"],
+                ["user_1", "A", "2020-01-01 00:01:00"],
+                ["user_1", "B", "2020-01-01 00:02:00"],
+            ]
+        )
         res = stream.split_sessions(separator="sep")
         df = res.df
 
@@ -42,29 +44,37 @@ class TestSplitSessionsSeparator:
 
     def test_separator_multiple_sessions(self):
         """Each separator starts a new session; session_index increments correctly."""
-        stream = make_stream([
-            ["user_1", "sep",     "2020-01-01 00:00:00"],
-            ["user_1", "event_1", "2020-01-01 00:01:00"],
-            ["user_1", "event_2", "2020-01-01 00:02:00"],
-            ["user_1", "sep",     "2020-01-01 00:03:00"],
-            ["user_1", "event_3", "2020-01-01 00:04:00"],
-        ])
+        stream = make_stream(
+            [
+                ["user_1", "sep", "2020-01-01 00:00:00"],
+                ["user_1", "event_1", "2020-01-01 00:01:00"],
+                ["user_1", "event_2", "2020-01-01 00:02:00"],
+                ["user_1", "sep", "2020-01-01 00:03:00"],
+                ["user_1", "event_3", "2020-01-01 00:04:00"],
+            ]
+        )
         res = stream.split_sessions(separator="sep")
         df = res.df
 
         assert list(df["event"].astype(str)) == ["event_1", "event_2", "event_3"]
         assert list(df["session_index"]) == [1, 1, 2]
-        assert list(df["session_id"].astype(str)) == ["user_1_1", "user_1_1", "user_1_2"]
+        assert list(df["session_id"].astype(str)) == [
+            "user_1_1",
+            "user_1_1",
+            "user_1_2",
+        ]
 
     def test_separator_same_timestamp_as_regular_event(self):
         """Separator at same timestamp as a regular event: separator starts the new session."""
-        stream = make_stream([
-            ["user_1", "sep",     "2020-01-01 00:00:00"],
-            ["user_1", "event_1", "2020-01-01 00:00:00"],
-            ["user_1", "event_2", "2020-01-01 00:01:00"],
-            ["user_1", "sep",     "2020-01-01 00:02:00"],
-            ["user_1", "event_3", "2020-01-01 00:02:00"],  # same ts as second sep
-        ])
+        stream = make_stream(
+            [
+                ["user_1", "sep", "2020-01-01 00:00:00"],
+                ["user_1", "event_1", "2020-01-01 00:00:00"],
+                ["user_1", "event_2", "2020-01-01 00:01:00"],
+                ["user_1", "sep", "2020-01-01 00:02:00"],
+                ["user_1", "event_3", "2020-01-01 00:02:00"],  # same ts as second sep
+            ]
+        )
         res = stream.split_sessions(separator="sep")
         df = res.df
 
@@ -73,13 +83,15 @@ class TestSplitSessionsSeparator:
 
     def test_separator_last_segment_has_session_index(self):
         """Events after the last separator (no following separator) get a valid session_index."""
-        stream = make_stream([
-            ["user_1", "sep",     "2020-01-01 00:00:00"],
-            ["user_1", "event_1", "2020-01-01 00:01:00"],
-            ["user_1", "sep",     "2020-01-01 00:02:00"],
-            ["user_1", "event_2", "2020-01-01 00:03:00"],
-            ["user_1", "event_3", "2020-01-01 00:04:00"],
-        ])
+        stream = make_stream(
+            [
+                ["user_1", "sep", "2020-01-01 00:00:00"],
+                ["user_1", "event_1", "2020-01-01 00:01:00"],
+                ["user_1", "sep", "2020-01-01 00:02:00"],
+                ["user_1", "event_2", "2020-01-01 00:03:00"],
+                ["user_1", "event_3", "2020-01-01 00:04:00"],
+            ]
+        )
         res = stream.split_sessions(separator="sep")
         df = res.df
 
@@ -87,11 +99,13 @@ class TestSplitSessionsSeparator:
 
     def test_separator_events_before_first_separator_have_no_session(self):
         """Events before the first separator are kept but have session_index = None."""
-        stream = make_stream([
-            ["user_1", "event_1", "2020-01-01 00:00:00"],
-            ["user_1", "sep",     "2020-01-01 00:01:00"],
-            ["user_1", "event_2", "2020-01-01 00:02:00"],
-        ])
+        stream = make_stream(
+            [
+                ["user_1", "event_1", "2020-01-01 00:00:00"],
+                ["user_1", "sep", "2020-01-01 00:01:00"],
+                ["user_1", "event_2", "2020-01-01 00:02:00"],
+            ]
+        )
         res = stream.split_sessions(separator="sep")
         df = res.df
 
@@ -101,17 +115,19 @@ class TestSplitSessionsSeparator:
 
     def test_separator_multiple_users_independent(self):
         """Sessions are counted independently per user."""
-        stream = make_stream([
-            ["user_1", "sep",     "2020-01-01 00:00:00"],
-            ["user_1", "event_1", "2020-01-01 00:00:00"],
-            ["user_1", "event_2", "2020-01-01 00:01:00"],
-            ["user_1", "sep",     "2020-01-01 00:02:00"],
-            ["user_1", "event_3", "2020-01-01 00:02:00"],
-            ["user_2", "sep",     "2020-01-01 00:00:00"],
-            ["user_2", "event_1", "2020-01-01 00:00:00"],
-            ["user_2", "event_2", "2020-01-01 00:01:00"],
-            ["user_2", "event_3", "2020-01-01 00:02:00"],
-        ])
+        stream = make_stream(
+            [
+                ["user_1", "sep", "2020-01-01 00:00:00"],
+                ["user_1", "event_1", "2020-01-01 00:00:00"],
+                ["user_1", "event_2", "2020-01-01 00:01:00"],
+                ["user_1", "sep", "2020-01-01 00:02:00"],
+                ["user_1", "event_3", "2020-01-01 00:02:00"],
+                ["user_2", "sep", "2020-01-01 00:00:00"],
+                ["user_2", "event_1", "2020-01-01 00:00:00"],
+                ["user_2", "event_2", "2020-01-01 00:01:00"],
+                ["user_2", "event_3", "2020-01-01 00:02:00"],
+            ]
+        )
         res = stream.split_sessions(separator="sep")
         df = res.df
 
@@ -125,16 +141,18 @@ class TestSplitSessionsSeparator:
 # Start / End mode
 # ---------------------------------------------------------------------------
 
-class TestSplitSessionsStartEnd:
 
+class TestSplitSessionsStartEnd:
     def test_start_end_basic(self):
         """Events between start/end are in session; start and end events are deleted."""
-        stream = make_stream([
-            ["user_1", "start",   "2020-01-01 00:00:00"],
-            ["user_1", "event_1", "2020-01-01 00:01:00"],
-            ["user_1", "event_2", "2020-01-01 00:02:00"],
-            ["user_1", "end",     "2020-01-01 00:03:00"],
-        ])
+        stream = make_stream(
+            [
+                ["user_1", "start", "2020-01-01 00:00:00"],
+                ["user_1", "event_1", "2020-01-01 00:01:00"],
+                ["user_1", "event_2", "2020-01-01 00:02:00"],
+                ["user_1", "end", "2020-01-01 00:03:00"],
+            ]
+        )
         res = stream.split_sessions(start_event="start", end_event="end")
         df = res.df
 
@@ -145,38 +163,46 @@ class TestSplitSessionsStartEnd:
 
     def test_start_end_multiple_sessions(self):
         """Second start/end pair receives session_index=2."""
-        stream = make_stream([
-            ["user_1", "start",   "2020-01-01 00:00:00"],
-            ["user_1", "event_1", "2020-01-01 00:00:00"],
-            ["user_1", "event_2", "2020-01-01 00:01:00"],
-            ["user_1", "end",     "2020-01-01 00:01:00"],
-            ["user_1", "start",   "2020-01-01 00:02:00"],
-            ["user_1", "event_3", "2020-01-01 00:02:00"],
-            ["user_1", "end",     "2020-01-01 00:02:00"],
-        ])
+        stream = make_stream(
+            [
+                ["user_1", "start", "2020-01-01 00:00:00"],
+                ["user_1", "event_1", "2020-01-01 00:00:00"],
+                ["user_1", "event_2", "2020-01-01 00:01:00"],
+                ["user_1", "end", "2020-01-01 00:01:00"],
+                ["user_1", "start", "2020-01-01 00:02:00"],
+                ["user_1", "event_3", "2020-01-01 00:02:00"],
+                ["user_1", "end", "2020-01-01 00:02:00"],
+            ]
+        )
         res = stream.split_sessions(start_event="start", end_event="end")
         df = res.df
 
         assert list(df["event"].astype(str)) == ["event_1", "event_2", "event_3"]
         assert list(df["session_index"]) == [1, 1, 2]
-        assert list(df["session_id"].astype(str)) == ["user_1_1", "user_1_1", "user_1_2"]
+        assert list(df["session_id"].astype(str)) == [
+            "user_1_1",
+            "user_1_1",
+            "user_1_2",
+        ]
 
     def test_start_end_multiple_users(self):
         """Sessions counted independently per user; user without second session gets only 1."""
-        stream = make_stream([
-            ["user_1", "start",   "2020-01-01 00:00:00"],
-            ["user_1", "event_1", "2020-01-01 00:00:00"],
-            ["user_1", "event_2", "2020-01-01 00:01:00"],
-            ["user_1", "end",     "2020-01-01 00:01:00"],
-            ["user_1", "start",   "2020-01-01 00:02:00"],
-            ["user_1", "event_3", "2020-01-01 00:02:00"],
-            ["user_1", "end",     "2020-01-01 00:02:00"],
-            ["user_2", "start",   "2020-01-01 00:00:00"],
-            ["user_2", "event_1", "2020-01-01 00:00:00"],
-            ["user_2", "event_2", "2020-01-01 00:01:00"],
-            ["user_2", "event_3", "2020-01-01 00:02:00"],
-            ["user_2", "end",     "2020-01-01 00:02:00"],
-        ])
+        stream = make_stream(
+            [
+                ["user_1", "start", "2020-01-01 00:00:00"],
+                ["user_1", "event_1", "2020-01-01 00:00:00"],
+                ["user_1", "event_2", "2020-01-01 00:01:00"],
+                ["user_1", "end", "2020-01-01 00:01:00"],
+                ["user_1", "start", "2020-01-01 00:02:00"],
+                ["user_1", "event_3", "2020-01-01 00:02:00"],
+                ["user_1", "end", "2020-01-01 00:02:00"],
+                ["user_2", "start", "2020-01-01 00:00:00"],
+                ["user_2", "event_1", "2020-01-01 00:00:00"],
+                ["user_2", "event_2", "2020-01-01 00:01:00"],
+                ["user_2", "event_3", "2020-01-01 00:02:00"],
+                ["user_2", "end", "2020-01-01 00:02:00"],
+            ]
+        )
         res = stream.split_sessions(start_event="start", end_event="end")
         df = res.df
 
@@ -190,30 +216,38 @@ class TestSplitSessionsStartEnd:
 # Schema
 # ---------------------------------------------------------------------------
 
-class TestSplitSessionsSchema:
 
+class TestSplitSessionsSchema:
     def test_session_col_in_path_cols(self):
-        stream = make_stream([
-            ["user_1", "sep", "2020-01-01 00:00:00"],
-            ["user_1", "A",   "2020-01-01 00:01:00"],
-        ])
+        stream = make_stream(
+            [
+                ["user_1", "sep", "2020-01-01 00:00:00"],
+                ["user_1", "A", "2020-01-01 00:01:00"],
+            ]
+        )
         res = stream.split_sessions(separator="sep")
         assert "session_id" in res.schema.path_cols
 
     def test_session_index_col_in_custom_cols(self):
-        stream = make_stream([
-            ["user_1", "sep", "2020-01-01 00:00:00"],
-            ["user_1", "A",   "2020-01-01 00:01:00"],
-        ])
+        stream = make_stream(
+            [
+                ["user_1", "sep", "2020-01-01 00:00:00"],
+                ["user_1", "A", "2020-01-01 00:01:00"],
+            ]
+        )
         res = stream.split_sessions(separator="sep")
         assert "session_index" in res.schema.custom_cols
 
     def test_custom_col_names(self):
-        stream = make_stream([
-            ["user_1", "sep", "2020-01-01 00:00:00"],
-            ["user_1", "A",   "2020-01-01 00:01:00"],
-        ])
-        res = stream.split_sessions(separator="sep", session_col="sid", session_index_col="snum")
+        stream = make_stream(
+            [
+                ["user_1", "sep", "2020-01-01 00:00:00"],
+                ["user_1", "A", "2020-01-01 00:01:00"],
+            ]
+        )
+        res = stream.split_sessions(
+            separator="sep", session_col="sid", session_index_col="snum"
+        )
         assert "sid" in res.schema.path_cols
         assert "snum" in res.schema.custom_cols
         assert "sid" in res.df.columns
@@ -224,8 +258,8 @@ class TestSplitSessionsSchema:
 # Validation
 # ---------------------------------------------------------------------------
 
-class TestSplitSessionsValidation:
 
+class TestSplitSessionsValidation:
     def test_raises_no_boundary_params(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError):
@@ -247,7 +281,10 @@ class TestSplitSessionsValidation:
             stream.split_sessions(separator="sep", start_event="start", end_event="end")
 
     def test_raises_session_col_already_exists(self):
-        df = pd.DataFrame([["user_1", "A", "2020-01-01", "existing"]], columns=["user_id", "event", "timestamp", "session_id"])
+        df = pd.DataFrame(
+            [["user_1", "A", "2020-01-01", "existing"]],
+            columns=["user_id", "event", "timestamp", "session_id"],
+        )
         schema = {**SCHEMA, "custom_cols": ["session_id"]}
         stream = Eventstream(df, schema)
         with pytest.raises(PreprocessingConfigError):

@@ -1,4 +1,5 @@
 """Reusable cloud save/load mixin for anywidget widgets."""
+
 from __future__ import annotations
 
 import base64 as _b64
@@ -9,12 +10,17 @@ import threading
 import traitlets
 
 from retentioneering.widgets import cloud as _cloud
-from retentioneering.widgets._utils import parse_diff as _parse_diff  # re-export for existing importers
+from retentioneering.widgets._utils import (
+    parse_diff as _parse_diff,
+)  # re-export for existing importers
 
 try:
     from retentioneering._tracking import track as _track
 except Exception:
-    def _track(event, properties=None): pass  # type: ignore[misc]
+
+    def _track(event, properties=None):
+        pass  # type: ignore[misc]
+
 
 _WARNING_MISMATCH = (
     "This configuration was saved for a different eventstream. "
@@ -25,7 +31,11 @@ _WARNING_MISMATCH = (
 
 def _cloud_enabled() -> bool:
     """Cloud save/load is opt-in: no backend is bundled with this distribution."""
-    return os.environ.get("RETENTIONEERING_CLOUD_ENABLED", "").lower() in ("1", "true", "yes")
+    return os.environ.get("RETENTIONEERING_CLOUD_ENABLED", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
 
 class CloudMixin(traitlets.HasTraits):
@@ -45,25 +55,25 @@ class CloudMixin(traitlets.HasTraits):
     """
 
     # ── Cloud traitlets ────────────────────────────────────────────────────────
-    widget_id          = traitlets.Unicode("").tag(sync=True)
-    display_prefs      = traitlets.Unicode("{}").tag(sync=True)
-    auth_token         = traitlets.Unicode("").tag(sync=True)
-    cloud_status       = traitlets.Unicode("idle").tag(sync=True)
+    widget_id = traitlets.Unicode("").tag(sync=True)
+    display_prefs = traitlets.Unicode("{}").tag(sync=True)
+    auth_token = traitlets.Unicode("").tag(sync=True)
+    cloud_status = traitlets.Unicode("idle").tag(sync=True)
     cloud_load_trigger = traitlets.Int(0).tag(sync=True)
     cloud_save_request = traitlets.Unicode("").tag(sync=True)
-    cloud_auth_shown   = traitlets.Int(0).tag(sync=True)
-    cloud_name_check   = traitlets.Unicode("").tag(sync=True)
-    cloud_name_exists  = traitlets.Bool(False).tag(sync=True)
+    cloud_auth_shown = traitlets.Int(0).tag(sync=True)
+    cloud_name_check = traitlets.Unicode("").tag(sync=True)
+    cloud_name_exists = traitlets.Bool(False).tag(sync=True)
     cloud_load_warning = traitlets.Unicode("").tag(sync=True)
-    cloud_enabled      = traitlets.Bool(False).tag(sync=True)
-    cloud_manage_url   = traitlets.Unicode("").tag(sync=True)
+    cloud_enabled = traitlets.Bool(False).tag(sync=True)
+    cloud_manage_url = traitlets.Unicode("").tag(sync=True)
 
     # ── Init ──────────────────────────────────────────────────────────────────
 
     def _init_cloud(self, cloud_file_name: str | None) -> None:
         """Call from __init__ after self._eventstream is set."""
-        self._cloud_file_name:   str | None            = cloud_file_name
-        self._cloud_save_timer:  threading.Timer | None = None
+        self._cloud_file_name: str | None = cloud_file_name
+        self._cloud_save_timer: threading.Timer | None = None
         self._loading_from_cloud: bool = False
         self._cloud_load_success: bool = False
         self._cloud_load_mismatch: bool = False
@@ -71,11 +81,11 @@ class CloudMixin(traitlets.HasTraits):
         self.cloud_enabled = _cloud_enabled()
         self.cloud_manage_url = os.environ.get("RETENTIONEERING_CLOUD_MANAGE_URL", "")
 
-        self.observe(self._on_cloud_load_trigger,  names=["cloud_load_trigger"])
-        self.observe(self._on_cloud_save_request,  names=["cloud_save_request"])
-        self.observe(self._on_cloud_auth_shown,    names=["cloud_auth_shown"])
-        self.observe(self._on_auth_token,          names=["auth_token"])
-        self.observe(self._on_cloud_name_check,    names=["cloud_name_check"])
+        self.observe(self._on_cloud_load_trigger, names=["cloud_load_trigger"])
+        self.observe(self._on_cloud_save_request, names=["cloud_save_request"])
+        self.observe(self._on_cloud_auth_shown, names=["cloud_auth_shown"])
+        self.observe(self._on_auth_token, names=["auth_token"])
+        self.observe(self._on_cloud_name_check, names=["cloud_name_check"])
         self.observe(self._on_display_prefs_change, names=["display_prefs"])
 
     # ── Observers ─────────────────────────────────────────────────────────────
@@ -111,6 +121,7 @@ class CloudMixin(traitlets.HasTraits):
                 _track("user_authenticated", {"email": email})
                 try:
                     from retentioneering._tracking import _ph, _DISTINCT_ID
+
                     if _ph:
                         _ph.identify(_DISTINCT_ID, properties={"email": email})
                 except Exception:
@@ -130,8 +141,12 @@ class CloudMixin(traitlets.HasTraits):
     def _on_display_prefs_change(self, _change):
         if not self._initialized or self._loading_from_cloud:  # type: ignore[attr-defined]
             return
-        if (self._cloud_file_name and self.auth_token
-                and self._cloud_load_success and not self._cloud_load_mismatch):
+        if (
+            self._cloud_file_name
+            and self.auth_token
+            and self._cloud_load_success
+            and not self._cloud_load_mismatch
+        ):
             self._schedule_cloud_save()
 
     # ── Cloud I/O ─────────────────────────────────────────────────────────────
@@ -210,9 +225,9 @@ class CloudMixin(traitlets.HasTraits):
             reset = True
 
         # fingerprint check
-        saved_id   = state.get("eventstream_id", "")
+        saved_id = state.get("eventstream_id", "")
         current_id = es.fingerprint
-        mismatch   = bool(saved_id and current_id and saved_id != current_id)
+        mismatch = bool(saved_id and current_id and saved_id != current_id)
 
         if mismatch or reset:
             self._cloud_load_mismatch = True

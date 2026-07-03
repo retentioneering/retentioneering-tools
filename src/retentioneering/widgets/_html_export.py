@@ -1,4 +1,5 @@
 """Shared HTML export utilities for widget static reports."""
+
 from __future__ import annotations
 
 import json
@@ -11,6 +12,7 @@ _BUNDLE_PATH = pathlib.Path(__file__).parent.parent / "static" / "widget-static.
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
+
 def write_html(
     path: str,
     title: str,
@@ -22,7 +24,9 @@ def write_html(
     if analysis is None:
         _write_bare(path, title, data)
     else:
-        write_report_html(path, title, [{"label": widget_label, "data": data}], analysis)
+        write_report_html(
+            path, title, [{"label": widget_label, "data": data}], analysis
+        )
 
 
 def write_report_html(
@@ -52,7 +56,7 @@ def write_report_html(
     # segment_col is used by render_analysis to format segment_overview links
     label_map = {
         w["label"]: {
-            "tab_id":      f"tab-{i}",
+            "tab_id": f"tab-{i}",
             "widget_type": w["data"].get("widget_type", ""),
             "segment_col": w["data"].get("segment_col", ""),
         }
@@ -62,11 +66,12 @@ def write_report_html(
     analysis_html = render_analysis(analysis, label_map=label_map) if analysis else ""
     if data_sources_html:
         analysis_html = data_sources_html + "\n" + analysis_html
-    html = (_HTML_TEMPLATE_REPORT
-            .replace("{{TITLE}}",         title)
-            .replace("{{WIDGETS_JSON}}",   widgets_json)
-            .replace("{{BUNDLE_JS}}",      bundle_js)
-            .replace("{{ANALYSIS_HTML}}", analysis_html))
+    html = (
+        _HTML_TEMPLATE_REPORT.replace("{{TITLE}}", title)
+        .replace("{{WIDGETS_JSON}}", widgets_json)
+        .replace("{{BUNDLE_JS}}", bundle_js)
+        .replace("{{ANALYSIS_HTML}}", analysis_html)
+    )
     pathlib.Path(path).write_text(html, encoding="utf-8")
 
 
@@ -82,6 +87,7 @@ def render_analysis(text: str, label_map: dict | None = None) -> str:
     def _inline(s: str) -> str:
         # [label:ref] — tab-specific link (process first, more specific)
         if label_map:
+
             def _tab_link(m: re.Match) -> str:
                 label, ref = m.group(1), m.group(2)
                 entry = label_map.get(label)
@@ -89,11 +95,11 @@ def render_analysis(text: str, label_map: dict | None = None) -> str:
                     return m.group(0)
                 # entry is either a plain tab_id string (legacy) or a metadata dict
                 if isinstance(entry, dict):
-                    tab_id      = entry["tab_id"]
+                    tab_id = entry["tab_id"]
                     widget_type = entry.get("widget_type", "")
                     segment_col = entry.get("segment_col", "")
                 else:
-                    tab_id      = entry
+                    tab_id = entry
                     widget_type = ""
                     segment_col = ""
                 # Segment overview links
@@ -104,16 +110,18 @@ def render_analysis(text: str, label_map: dict | None = None) -> str:
                         f' onclick="return focusLink(this)"'
                         f' data-tab="{tab_id}"'
                         f' title="Open: {_html_mod.escape(label)}">'
-                        f'{_html_mod.escape(label)}</a>'
+                        f"{_html_mod.escape(label)}</a>"
                     )
                 if widget_type == "segment_overview" and segment_col:
                     at = ref.find("@")
                     if at != -1:
-                        metric   = ref[:at]
-                        seg_val  = ref[at + 1:]
-                        display  = f"{metric}({_html_mod.escape(segment_col)}: {seg_val})"
+                        metric = ref[:at]
+                        seg_val = ref[at + 1 :]
+                        display = (
+                            f"{metric}({_html_mod.escape(segment_col)}: {seg_val})"
+                        )
                     else:
-                        display  = f"{_html_mod.escape(segment_col)}: {ref}"
+                        display = f"{_html_mod.escape(segment_col)}: {ref}"
                 else:
                     display = ref
                 return (
@@ -121,8 +129,9 @@ def render_analysis(text: str, label_map: dict | None = None) -> str:
                     f' onclick="return focusLink(this)"'
                     f' data-tab="{tab_id}" data-node="{ref}"'
                     f' title="Open in: {_html_mod.escape(label)}">'
-                    f'{display}</a>'
+                    f"{display}</a>"
                 )
+
             # Allow empty ref after colon: [Tab Name:] — just activate tab
             s = re.sub(r"\[([^:\]]+):(.*?)\]", _tab_link, s)
 
@@ -131,23 +140,24 @@ def render_analysis(text: str, label_map: dict | None = None) -> str:
         def _bare_link(m: re.Match) -> str:
             ref = m.group(1)
             if label_map and ref in label_map:
-                entry  = label_map[ref]
+                entry = label_map[ref]
                 tab_id = entry["tab_id"] if isinstance(entry, dict) else entry
                 return (
                     f'<a href="javascript:void(0)" class="node-link"'
                     f' onclick="return focusLink(this)"'
                     f' data-tab="{tab_id}"'
                     f' title="Open: {_html_mod.escape(ref)}">'
-                    f'{_html_mod.escape(ref)}</a>'
+                    f"{_html_mod.escape(ref)}</a>"
                 )
             return (
                 f'<a href="javascript:void(0)" class="node-link"'
                 f' onclick="return focusLink(this)" data-node="{ref}">{ref}</a>'
             )
+
         s = re.sub(r"\[([^\]]+)\]", _bare_link, s)
         s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
-        s = re.sub(r"\*(.+?)\*",     r"<em>\1</em>", s)
-        s = re.sub(r"`(.+?)`",       r"<code>\1</code>", s)
+        s = re.sub(r"\*(.+?)\*", r"<em>\1</em>", s)
+        s = re.sub(r"`(.+?)`", r"<code>\1</code>", s)
         return s
 
     def esc(s: str) -> str:
@@ -191,10 +201,14 @@ def render_analysis(text: str, label_map: dict | None = None) -> str:
                     i += 1
                 th = "".join(f"<th>{_inline(esc(h))}</th>" for h in headers)
                 tbody = "".join(
-                    "<tr>" + "".join(f"<td>{_inline(esc(c))}</td>" for c in row) + "</tr>"
+                    "<tr>"
+                    + "".join(f"<td>{_inline(esc(c))}</td>" for c in row)
+                    + "</tr>"
                     for row in rows
                 )
-                out.append(f"<table><thead><tr>{th}</tr></thead><tbody>{tbody}</tbody></table>")
+                out.append(
+                    f"<table><thead><tr>{th}</tr></thead><tbody>{tbody}</tbody></table>"
+                )
                 continue
 
         # Unordered list
@@ -222,10 +236,12 @@ def render_analysis(text: str, label_map: dict | None = None) -> str:
             if not s:
                 i += 1
                 break
-            if (re.match(r"^#{1,6}\s", s) or
-                    re.match(r"^[-*_]{3,}\s*$", s) or
-                    re.match(r"^[-*+]\s", s) or
-                    re.match(r"^\d+[.)]\s", s)):
+            if (
+                re.match(r"^#{1,6}\s", s)
+                or re.match(r"^[-*_]{3,}\s*$", s)
+                or re.match(r"^[-*+]\s", s)
+                or re.match(r"^\d+[.)]\s", s)
+            ):
                 break
             if "|" in s:
                 nxt = lines[i + 1].strip() if i + 1 < len(lines) else ""
@@ -241,6 +257,7 @@ def render_analysis(text: str, label_map: dict | None = None) -> str:
 
 # ── Templates ──────────────────────────────────────────────────────────────────
 
+
 def _write_bare(path: str, title: str, data: dict) -> None:
     """Single widget, no analysis panel."""
     if not _BUNDLE_PATH.exists():
@@ -249,10 +266,11 @@ def _write_bare(path: str, title: str, data: dict) -> None:
             "Run `npm run build` in js/widget/ to generate it."
         )
     bundle_js = _BUNDLE_PATH.read_text(encoding="utf-8")
-    html = (_HTML_TEMPLATE_BARE
-            .replace("{{TITLE}}",    title)
-            .replace("{{DATA_JSON}}", json.dumps(data, ensure_ascii=False))
-            .replace("{{BUNDLE_JS}}", bundle_js))
+    html = (
+        _HTML_TEMPLATE_BARE.replace("{{TITLE}}", title)
+        .replace("{{DATA_JSON}}", json.dumps(data, ensure_ascii=False))
+        .replace("{{BUNDLE_JS}}", bundle_js)
+    )
     pathlib.Path(path).write_text(html, encoding="utf-8")
 
 

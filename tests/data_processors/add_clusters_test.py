@@ -7,32 +7,35 @@ from retentioneering.exceptions import PreprocessingConfigError
 
 def get_df():
     """Create test dataframe with multiple users and varying path characteristics"""
-    df = pd.DataFrame([
-        # User 1: short path, no purchase
-        ["user_1", "login", "2020-01-01 00:00:00"],
-        ["user_1", "view", "2020-01-01 00:01:00"],
-        # User 2: short path, no purchase
-        ["user_2", "login", "2020-01-01 00:00:00"],
-        ["user_2", "logout", "2020-01-01 00:02:00"],
-        # User 3: medium path with purchase
-        ["user_3", "login", "2020-01-01 00:00:00"],
-        ["user_3", "view", "2020-01-01 00:01:00"],
-        ["user_3", "purchase", "2020-01-01 00:05:00"],
-        # User 4: long path with purchase
-        ["user_4", "login", "2020-01-01 00:00:00"],
-        ["user_4", "view", "2020-01-01 00:01:00"],
-        ["user_4", "view", "2020-01-01 00:02:00"],
-        ["user_4", "view", "2020-01-01 00:03:00"],
-        ["user_4", "purchase", "2020-01-01 00:10:00"],
-        # User 5: long path with purchase
-        ["user_5", "login", "2020-01-01 00:00:00"],
-        ["user_5", "view", "2020-01-01 00:01:00"],
-        ["user_5", "view", "2020-01-01 00:02:00"],
-        ["user_5", "purchase", "2020-01-01 00:08:00"],
-        # User 6: short path, no purchase
-        ["user_6", "login", "2020-01-01 00:00:00"],
-        ["user_6", "view", "2020-01-01 00:01:00"],
-    ], columns=["user_id", "event", "timestamp"])
+    df = pd.DataFrame(
+        [
+            # User 1: short path, no purchase
+            ["user_1", "login", "2020-01-01 00:00:00"],
+            ["user_1", "view", "2020-01-01 00:01:00"],
+            # User 2: short path, no purchase
+            ["user_2", "login", "2020-01-01 00:00:00"],
+            ["user_2", "logout", "2020-01-01 00:02:00"],
+            # User 3: medium path with purchase
+            ["user_3", "login", "2020-01-01 00:00:00"],
+            ["user_3", "view", "2020-01-01 00:01:00"],
+            ["user_3", "purchase", "2020-01-01 00:05:00"],
+            # User 4: long path with purchase
+            ["user_4", "login", "2020-01-01 00:00:00"],
+            ["user_4", "view", "2020-01-01 00:01:00"],
+            ["user_4", "view", "2020-01-01 00:02:00"],
+            ["user_4", "view", "2020-01-01 00:03:00"],
+            ["user_4", "purchase", "2020-01-01 00:10:00"],
+            # User 5: long path with purchase
+            ["user_5", "login", "2020-01-01 00:00:00"],
+            ["user_5", "view", "2020-01-01 00:01:00"],
+            ["user_5", "view", "2020-01-01 00:02:00"],
+            ["user_5", "purchase", "2020-01-01 00:08:00"],
+            # User 6: short path, no purchase
+            ["user_6", "login", "2020-01-01 00:00:00"],
+            ["user_6", "view", "2020-01-01 00:01:00"],
+        ],
+        columns=["user_id", "event", "timestamp"],
+    )
     return df
 
 
@@ -52,7 +55,7 @@ class TestAddClusters:
             features=features,
             method="kmeans",
             n_clusters=2,
-            scaler="minmax"
+            scaler="minmax",
         )
 
         # Check segment was added
@@ -83,7 +86,7 @@ class TestAddClusters:
             features=features,
             method="kmeans",
             n_clusters=2,
-            scaler="minmax"
+            scaler="minmax",
         )
 
         assert "buyer_cluster" in result.schema.segment_cols
@@ -104,7 +107,7 @@ class TestAddClusters:
             features=features,
             method="kmeans",
             n_clusters=2,
-            scaler="std"
+            scaler="std",
         )
 
         assert "view_cluster" in result.schema.segment_cols
@@ -121,7 +124,7 @@ class TestAddClusters:
             features=features,
             method="kmeans",
             n_clusters=2,
-            scaler=None
+            scaler=None,
         )
 
         assert "cluster" in result.schema.segment_cols
@@ -138,7 +141,7 @@ class TestAddClusters:
                 segment_name="cluster",
                 features=features,
                 method="kmeans",
-                scaler="minmax"
+                scaler="minmax",
             )
 
     def test_hdbscan_basic(self) -> None:
@@ -156,7 +159,7 @@ class TestAddClusters:
             features=features,
             method="hdbscan",
             min_cluster_size=2,
-            scaler="minmax"
+            scaler="minmax",
         )
 
         assert "cluster" in result.schema.segment_cols
@@ -180,7 +183,7 @@ class TestAddClusters:
             method="hdbscan",
             min_cluster_size=2,
             cluster_selection_epsilon=0.5,
-            scaler="std"
+            scaler="std",
         )
 
         assert "cluster" in result.schema.segment_cols
@@ -199,7 +202,7 @@ class TestAddClusters:
                 segment_name="existing_segment",
                 features=features,
                 method="kmeans",
-                n_clusters=2
+                n_clusters=2,
             )
 
     def test_reserved_column_name(self) -> None:
@@ -211,10 +214,7 @@ class TestAddClusters:
 
         with pytest.raises(PreprocessingConfigError, match="already reserved"):
             stream.add_clusters(
-                segment_name="user_id",
-                features=features,
-                method="kmeans",
-                n_clusters=2
+                segment_name="user_id", features=features, method="kmeans", n_clusters=2
             )
 
     def test_unknown_method(self) -> None:
@@ -229,7 +229,7 @@ class TestAddClusters:
                 segment_name="cluster",
                 features=features,
                 method="unknown_method",
-                n_clusters=2
+                n_clusters=2,
             )
 
     def test_cluster_labels_mapped_to_all_events(self) -> None:
@@ -244,12 +244,14 @@ class TestAddClusters:
             features=features,
             method="kmeans",
             n_clusters=2,
-            scaler="minmax"
+            scaler="minmax",
         )
 
         # All events from the same user should have the same cluster label
         for user_id in df["user_id"].unique():
-            user_clusters = result.df[result.df["user_id"] == user_id]["cluster"].unique()
+            user_clusters = result.df[result.df["user_id"] == user_id][
+                "cluster"
+            ].unique()
             assert len(user_clusters) == 1, f"User {user_id} has multiple clusters"
 
     def test_multiple_features(self) -> None:
@@ -270,7 +272,7 @@ class TestAddClusters:
             features=features,
             method="kmeans",
             n_clusters=3,
-            scaler="minmax"
+            scaler="minmax",
         )
 
         assert "multi_cluster" in result.schema.segment_cols
@@ -290,7 +292,7 @@ class TestAddClusters:
             features=features,
             method="kmeans",
             n_clusters=2,
-            scaler="std"
+            scaler="std",
         )
 
         assert "cluster" in result.schema.segment_cols
@@ -326,7 +328,9 @@ class TestAddClusters:
 
         # All events from the same user should have the same cluster label
         for user_id in df["user_id"].unique():
-            user_clusters = result.df[result.df["user_id"] == user_id]["nmf_cluster"].unique()
+            user_clusters = result.df[result.df["user_id"] == user_id][
+                "nmf_cluster"
+            ].unique()
             assert len(user_clusters) == 1
 
     def test_nmf_hdbscan(self) -> None:
@@ -358,14 +362,17 @@ class TestAddClusters:
 
     def test_custom_path_id_col(self) -> None:
         """Test clustering with custom path_id_col"""
-        df = pd.DataFrame([
-            ["session_1", "login", "2020-01-01 00:00:00"],
-            ["session_1", "view", "2020-01-01 00:01:00"],
-            ["session_2", "login", "2020-01-01 00:00:00"],
-            ["session_2", "purchase", "2020-01-01 00:05:00"],
-            ["session_3", "login", "2020-01-01 00:00:00"],
-            ["session_3", "view", "2020-01-01 00:01:00"],
-        ], columns=["session_id", "event", "timestamp"])
+        df = pd.DataFrame(
+            [
+                ["session_1", "login", "2020-01-01 00:00:00"],
+                ["session_1", "view", "2020-01-01 00:01:00"],
+                ["session_2", "login", "2020-01-01 00:00:00"],
+                ["session_2", "purchase", "2020-01-01 00:05:00"],
+                ["session_3", "login", "2020-01-01 00:00:00"],
+                ["session_3", "view", "2020-01-01 00:01:00"],
+            ],
+            columns=["session_id", "event", "timestamp"],
+        )
 
         schema = {"path_cols": ["session_id"]}
         stream = Eventstream(df, schema)
@@ -377,11 +384,13 @@ class TestAddClusters:
             features=features,
             method="kmeans",
             n_clusters=2,
-            path_id_col="session_id"
+            path_id_col="session_id",
         )
 
         assert "cluster" in result.schema.segment_cols
         # Each session should have exactly one cluster label
         for session_id in df["session_id"].unique():
-            session_clusters = result.df[result.df["session_id"] == session_id]["cluster"].unique()
+            session_clusters = result.df[result.df["session_id"] == session_id][
+                "cluster"
+            ].unique()
             assert len(session_clusters) == 1

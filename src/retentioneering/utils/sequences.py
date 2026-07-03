@@ -22,7 +22,7 @@ def generate_patterns_with_optional_gaps(pattern):
             patterns = [f"->.*{rest}" for rest in rest_parts if rest] + rest_parts
         else:
             # Always include non-'.*' parts
-            patterns = [f'->{current_part}{rest}' for rest in rest_parts]
+            patterns = [f"->{current_part}{rest}" for rest in rest_parts]
 
         return patterns
 

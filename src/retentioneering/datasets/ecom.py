@@ -180,10 +180,14 @@ def _add_to_cart_prob(age_seg: str, channel: str, platform: str,
                       is_anom: bool) -> float:
     """Base probability of proceeding to add_to_cart from product_view."""
     base = {"loyal": 0.28, "returning": 0.18, "new": 0.10}.get(age_seg, 0.15)
-    if channel == "paid_search":  base += 0.08
-    if channel == "social":       base -= 0.03
-    if platform == "mobile":      base -= 0.04
-    if is_anom:                   base *= 0.30   # anomaly visitors rarely buy
+    if channel == "paid_search":
+        base += 0.08
+    if channel == "social":
+        base -= 0.03
+    if platform == "mobile":
+        base -= 0.04
+    if is_anom:
+        base *= 0.30   # anomaly visitors rarely buy
     return max(0.03, min(base, 0.45))
 
 

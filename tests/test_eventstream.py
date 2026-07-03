@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from retentioneering import Eventstream, EventstreamSchema
+from retentioneering import Eventstream
 
 
 @pytest.fixture

@@ -1,4 +1,3 @@
-import duckdb
 import pandas as pd
 from typing import Any, Dict, List, Set, Tuple
 

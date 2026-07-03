@@ -122,17 +122,19 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
             g1 = [_df_to_matrix(sm) for sm in sms1]
             g2 = [_df_to_matrix(sm) for sm in sms2]
             for i, m in enumerate(matrices):
-                m["group1"] = g1[i]; m["group2"] = g2[i]
+                m["group1"] = g1[i]
+                m["group2"] = g2[i]
         else:
             matrices = [_df_to_matrix(sm) for sm in raw]
             for m in matrices:
-                m["group1"] = None; m["group2"] = None
+                m["group1"] = None
+                m["group2"] = None
 
         try:
             pid = path_id_col or self._eventstream.schema.path_col
             ec  = self._eventstream.schema.event_col
             import duckdb
-            df  = self._eventstream._df
+            df  = self._eventstream._df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
             event_counts = (
                 duckdb.sql(f"SELECT {ec}, COUNT(DISTINCT {pid}) AS cnt FROM df GROUP BY {ec}")
                 .df().set_index(ec)["cnt"].to_dict()
@@ -161,9 +163,12 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
                     _c = {str(k): int(v) for k, v in _c.items()}
                     _tot = int(_duckdb.sql(f"SELECT COUNT(DISTINCT {_pid}) FROM _d").fetchone()[0])
                     for _s in ("path_start", "path_end"):
-                        if _s not in _c: _c[_s] = _tot
-                    if _target == "g1": event_counts_g1 = _c
-                    else:               event_counts_g2 = _c
+                        if _s not in _c:
+                            _c[_s] = _tot
+                    if _target == "g1":
+                        event_counts_g1 = _c
+                    else:
+                        event_counts_g2 = _c
             except Exception:
                 pass
 

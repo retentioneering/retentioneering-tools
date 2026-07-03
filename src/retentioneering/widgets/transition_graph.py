@@ -286,7 +286,8 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
 
 def _render_analysis(text: str) -> str:  # noqa: F401 — backward compat shim
     """Convert markdown text to HTML. [event] → clickable node focus link."""
-    import re, html as _html
+    import re
+    import html as _html
 
     def _inline(s: str) -> str:
         s = re.sub(

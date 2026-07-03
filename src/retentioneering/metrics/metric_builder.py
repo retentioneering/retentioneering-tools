@@ -516,7 +516,7 @@ class MetricBuilder:
         GROUP BY {path_id_col}, {event_col}
         """
 
-        df = self.df
+        df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
         result = duckdb.query(query).df()
 
         if result.empty:
@@ -572,7 +572,7 @@ class MetricBuilder:
         WHERE time_from IS NOT NULL AND time_to IS NOT NULL
         """
 
-        df_with_start_end = self.df_with_start_end
+        df_with_start_end = self.df_with_start_end  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
         result = duckdb.query(query).df()
 
         metric_name = f"time_from_{event_from}_to_{event_to}"
@@ -589,7 +589,7 @@ class MetricBuilder:
         FROM df
         GROUP BY {path_id_col}
         """
-        df = self.df
+        df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
         result = duckdb.query(query).df()
         return result.set_index(path_id_col)
 
@@ -601,7 +601,7 @@ class MetricBuilder:
         FROM df
         GROUP BY {path_id_col}
         """
-        df = self.df
+        df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
         result = duckdb.query(query).df()
         result["duration"] = result["duration"].astype(float)
         return result.set_index(path_id_col)
@@ -615,7 +615,7 @@ class MetricBuilder:
         FROM df
         GROUP BY {path_id_col}
         """
-        df = self.df
+        df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
         result = duckdb.query(query).df()
         result["first_event_dt"] = result["first_event_dt"].astype(float)
         return result.set_index(path_id_col)
@@ -636,7 +636,7 @@ class MetricBuilder:
         FROM df
         GROUP BY {path_id_col}
         """
-        df = self.df
+        df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
         result = duckdb.query(query).df()
         return result.set_index(path_id_col)
 
@@ -658,8 +658,8 @@ class MetricBuilder:
         GROUP BY {path_id_col}
         """
         # df_with_start_end and paths are needed for DuckDB scripts execution
-        df_with_start_end = self.df_with_start_end
-        paths = duckdb.query(query).df()
+        df_with_start_end = self.df_with_start_end  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
+        paths = duckdb.query(query).df()  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
 
         # Generate patterns with optional gaps
         patterns = generate_patterns_with_optional_gaps(pattern)
@@ -686,7 +686,7 @@ class MetricBuilder:
         segment_name = config["segment_name"]
         segment_values = config["segment_values"]
         mode = config["mode"]
-        timestamp_col = self.schema.timestamp
+        timestamp_col = self.schema.timestamp  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
 
         df = self.df
 

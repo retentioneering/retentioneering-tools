@@ -690,8 +690,10 @@ def _transition_graph_summary(result_raw: dict, context_events: set, edge_weight
             d: dict = {"from": e[0], "to": e[1], "diff": round(e[2], 4)}
             g1v = _gval(g1_ev, g1_val, e[0], e[1])
             g2v = _gval(g2_ev, g2_val, e[0], e[1])
-            if g1v is not None: d["g1"] = g1v
-            if g2v is not None: d["g2"] = g2v
+            if g1v is not None:
+                d["g1"] = g1v
+            if g2v is not None:
+                d["g2"] = g2v
             return d
 
         pos = sorted([e for e in edges if e[2] > 0],  key=lambda e: (not e[3], -e[2]))[:top_n // 2]

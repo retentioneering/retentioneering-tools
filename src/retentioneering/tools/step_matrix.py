@@ -84,7 +84,7 @@ class StepMatrix:
         path_start = EventTypes().PATH_START.name
         path_end = EventTypes().PATH_END.name
 
-        df = self.eventstream.df
+        df = self.eventstream.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
 
         query = f"""
             select step, {event_col}, count(*) as value
@@ -169,7 +169,7 @@ class StepMatrix:
         event_col  = self.eventstream.schema.event_col
         index_col  = self.eventstream.schema.index
         subindex_col = self.eventstream.schema.subindex
-        df = self.eventstream.df
+        df = self.eventstream.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
 
         # Build path sequences prefixed/suffixed with path_start/path_end so
         # that patterns including these markers match correctly.

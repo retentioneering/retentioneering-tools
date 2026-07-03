@@ -8,7 +8,7 @@ _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
 from retentioneering.widgets._esm import _get_esm  # noqa: E402
-from retentioneering.widgets._html_export import write_html
+from retentioneering.widgets._html_export import write_html  # noqa: E402
 
 
 class SegmentOverviewWidget(anywidget.AnyWidget):

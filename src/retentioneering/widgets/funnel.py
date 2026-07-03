@@ -8,7 +8,7 @@ _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
 from retentioneering.widgets._esm import _get_esm   # noqa: E402
-from retentioneering.widgets._utils import parse_diff as _parse_diff
+from retentioneering.widgets._utils import parse_diff as _parse_diff  # noqa: E402
 
 
 class FunnelWidget(anywidget.AnyWidget):
@@ -113,5 +113,3 @@ class FunnelWidget(anywidget.AnyWidget):
             self.result = "{}"
         finally:
             self.is_loading = False
-
-

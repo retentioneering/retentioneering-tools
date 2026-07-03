@@ -1,5 +1,5 @@
 import json
-from typing import Callable, Collection, Dict, Tuple
+from typing import Callable, Dict, Tuple
 
 import duckdb
 import pandas as pd
@@ -87,7 +87,7 @@ class FilterEvents(DataProcessor):
 
         elif self.sql is not None:
             columns_old = df.columns
-            eventstream = df
+            eventstream = df  # noqa: F841 -- exposed to user SQL as `eventstream` (DuckDB replacement scan)
             df = duckdb.sql(self.sql).df()
 
             if set(df.columns) != set(columns_old):

@@ -9,7 +9,7 @@ without saving intermediate eventstream. Supports:
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Literal
+from typing import TYPE_CHECKING, Any, Dict, List, Literal
 
 import numpy as np
 import pandas as pd
@@ -17,6 +17,9 @@ from sklearn.cluster import HDBSCAN, KMeans
 from sklearn.decomposition import NMF
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+
+if TYPE_CHECKING:
+    from retentioneering.eventstream.eventstream import Eventstream
 
 
 from retentioneering.metrics.metric_builder import MetricBuilder

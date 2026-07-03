@@ -46,6 +46,8 @@ dev = [
     "ipykernel",
     "jupyterlab",
     "notebook",
+    "pre-commit",
+    "ruff>=0.8.6",
 ]
 
 [tool.hatch.build]
@@ -56,6 +58,9 @@ artifacts = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/retentioneering"]
+
+[tool.ruff]
+target-version = "py311"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -70,4 +75,6 @@ dev = [
     "ipykernel>=7.3.0",
     "jupyterlab>=4.5.8",
     "pytest>=9.1.0",
+    "pre-commit>=4.0.0",
+    "ruff>=0.8.6",
 ]

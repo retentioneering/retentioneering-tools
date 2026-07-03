@@ -1,6 +1,5 @@
 import json
 import pathlib
-import threading
 
 import anywidget
 import traitlets
@@ -9,7 +8,7 @@ _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
 from retentioneering.widgets._esm import _get_esm   # noqa: E402
-from retentioneering.widgets._utils import parse_diff as _parse_diff
+from retentioneering.widgets._utils import parse_diff as _parse_diff  # noqa: E402
 
 
 class StepSankeyWidget(anywidget.AnyWidget):
@@ -177,7 +176,7 @@ class StepSankeyWidget(anywidget.AnyWidget):
         try:
             path_col = path_id_col or self._eventstream.schema.path_col
             event_col = self._eventstream.schema.event_col
-            df = self._eventstream._df
+            df = self._eventstream._df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
             import duckdb
             counts = (
                 duckdb.sql(

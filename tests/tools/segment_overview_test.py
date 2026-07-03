@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import pytest
 from retentioneering.eventstream.eventstream import Eventstream
@@ -268,7 +267,7 @@ class TestSegmentOverview:
         # segment_1: user_1 has desktop (0), user_2 has desktop (1) -> desktop mean = 0.5
         assert result.loc["belongs_to_channel_mobile_any_mean", "segment_1"] == 1.0
         assert result.loc["belongs_to_channel_desktop_any_mean", "segment_1"] == 0.5
-        
+
         # segment_2: user_3 has mobile (0), user_4 has mobile (1) -> mobile mean = 0.5
         # segment_2: user_3 has desktop (1), user_4 has desktop (0) -> desktop mean = 0.5
         assert result.loc["belongs_to_channel_mobile_any_mean", "segment_2"] == 0.5
@@ -685,7 +684,7 @@ class TestMetricDistribution:
             segment = "segment_1" if i < 30 else "segment_2"
             for j in range(i + 1):
                 rows.append([user, f"event_{j}", segment, f"2020-01-01 00:{j % 60:02d}:00"])
-        
+
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
@@ -701,9 +700,9 @@ class TestMetricDistribution:
         assert "distribution_1" in result
         assert "distribution_2" in result
         assert "distance" in result
-        
+
         dist = result["distribution_1"]
-        
+
         # Check all required fields are present
         assert "bins" in dist
         assert "counts" in dist
@@ -711,15 +710,15 @@ class TestMetricDistribution:
         assert "kde" in dist
         assert "mean" in dist
         assert "median" in dist
-        
+
         # Check that bins and counts are consistent
         assert len(dist["bins"]) == len(dist["counts"]) + 1
         assert len(dist["counts"]) == len(dist["counts_normalized"])
-        
+
         # Check mean and median are reasonable
         assert dist["mean"] > 0
         assert dist["median"] > 0
-        
+
         # For continuous data, KDE should be computed
         assert dist["kde"] is not None
         assert len(dist["kde"]) == 2  # [x_values, y_values]
@@ -747,15 +746,15 @@ class TestMetricDistribution:
 
         assert "distribution_1" in result
         assert "distribution_2" in result
-        
+
         dist_1 = result["distribution_1"]
-        
+
         # For discrete data (0/1), KDE should be None
         assert dist_1["kde"] is None
-        
+
         # Bins should be centered on values: [-0.5, 0.5, 1.5]
         assert len(dist_1["bins"]) == 3
-        
+
         # segment_1: 2 users have purchase (1), 2 don't (0)
         assert sum(dist_1["counts"]) == 4
         assert dist_1["mean"] == 0.5
@@ -769,13 +768,13 @@ class TestMetricDistribution:
             user = f"user_1_{i}"
             for j in range(i % 5 + 1):
                 rows.append([user, f"event_{j}", "segment_1", f"2020-01-01 00:{j:02d}:00"])
-        
+
         # segment_2: longer paths (10-20 events)
         for i in range(20):
             user = f"user_2_{i}"
             for j in range(i % 10 + 10):
                 rows.append([user, f"event_{j}", "segment_2", f"2020-01-01 00:{j % 60:02d}:00"])
-        
+
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
@@ -790,13 +789,13 @@ class TestMetricDistribution:
         assert "distribution_1" in result
         assert "distribution_2" in result
         assert "distance" in result
-        
+
         # Both distributions should have same bins (shared)
         assert result["distribution_1"]["bins"] == result["distribution_2"]["bins"]
-        
+
         # Wasserstein distance should be significant (distributions are different)
         assert result["distance"] > 0
-        
+
         # Mean of segment_2 should be higher than segment_1
         assert result["distribution_2"]["mean"] > result["distribution_1"]["mean"]
 
@@ -809,13 +808,13 @@ class TestMetricDistribution:
             user = f"user_1_{i}"
             for j in range(i % 3 + 1):
                 rows.append([user, f"event_{j}", "segment_1", f"2020-01-01 00:{j:02d}:00"])
-        
+
         # segment_2: longer paths (8-10 events)
         for i in range(20):
             user = f"user_2_{i}"
             for j in range(i % 3 + 8):
                 rows.append([user, f"event_{j}", "segment_2", f"2020-01-01 00:{j % 60:02d}:00"])
-        
+
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
@@ -831,7 +830,7 @@ class TestMetricDistribution:
         assert "distribution_1" in result
         assert "distribution_2" in result
         assert "distance" in result
-        
+
         # Wasserstein distance should be positive
         assert result["distance"] > 0
 
@@ -891,7 +890,7 @@ class TestMetricDistribution:
         )
 
         dist = result["distribution_1"]
-        
+
         # segment_1: user_1: 3 clicks, user_2: 1 click, user_3: 0 clicks
         # mean = (3 + 1 + 0) / 3 = 1.333...
         assert dist["mean"] == pytest.approx(4/3, rel=0.01)
@@ -904,7 +903,7 @@ class TestMetricDistribution:
             segment = "segment_1" if i < 50 else "segment_2"
             for j in range(i % 10 + 1):
                 rows.append([user, f"event_{j}", segment, f"2020-01-01 00:{j:02d}:00"])
-        
+
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
@@ -927,7 +926,7 @@ class TestMetricDistribution:
                 user = f"user_{seg}_{i}"
                 for j in range(5):
                     rows.append([user, f"event_{j}", seg, f"2020-01-01 00:{j:02d}:00"])
-        
+
         df = pd.DataFrame(rows, columns=["user_id", "event", "segment", "timestamp"])
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
@@ -1047,7 +1046,7 @@ class TestMetricDistribution:
             duration_events = int(10 ** (i / 10))  # Creates values from 1 to 100000+
             for j in range(duration_events % 100 + 1):
                 rows.append([user, f"event_{j}", "segment_1", f"2020-01-01 00:{j % 60:02d}:{j % 60:02d}"])
-        
+
         # segment_2: similar exponential pattern
         for i in range(50):
             user = f"user_2_{i}"

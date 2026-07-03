@@ -10,11 +10,14 @@ Provides aggregated view of metrics for each segment value, with support for:
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 from scipy.stats import gaussian_kde, wasserstein_distance
+
+if TYPE_CHECKING:
+    from retentioneering.eventstream.eventstream import Eventstream
 
 
 from retentioneering.exceptions import (
@@ -300,7 +303,7 @@ class SegmentOverview:
         if len(segment_values) == 1:
             mask = metrics_df[segment_col] == segment_values[0]
             data_1 = metrics_df.loc[mask, metric_col].dropna().values
-            
+
             if use_complement:
                 data_2 = metrics_df.loc[~mask, metric_col].dropna().values
                 return self._build_pair_distribution(data_1, data_2)
@@ -322,7 +325,7 @@ class SegmentOverview:
     def _should_use_log_scale(self, data: np.ndarray) -> bool:
         """
         Determine if log scale should be used for the data.
-        
+
         Log scale is recommended when:
         - Data has large range (max/min ratio > LOG_SCALE_RANGE_RATIO)
         - Data is highly skewed (skewness > LOG_SCALE_SKEWNESS)
@@ -330,18 +333,18 @@ class SegmentOverview:
         """
         if len(data) < 2:
             return False
-        
+
         # Can't use log scale if there are negative values
         if data.min() < 0:
             return False
-        
+
         # Check range ratio (for positive values)
         positive_data = data[data > 0]
         if len(positive_data) > 0:
             range_ratio = positive_data.max() / positive_data.min()
             if range_ratio > LOG_SCALE_RANGE_RATIO:
                 return True
-        
+
         # Check skewness
         mean = np.mean(data)
         std = np.std(data)
@@ -349,13 +352,13 @@ class SegmentOverview:
             skewness = np.mean(((data - mean) / std) ** 3)
             if skewness > LOG_SCALE_SKEWNESS:
                 return True
-        
+
         return False
 
     def _log_transform(self, data: np.ndarray) -> np.ndarray:
         """
         Apply log transformation to data, handling zeros.
-        
+
         For zeros, we add a small positive value before taking log.
         """
         # Find minimum positive value in data
@@ -366,7 +369,7 @@ class SegmentOverview:
             offset = min_positive / 2
         else:
             offset = LOG_SCALE_MIN_POSITIVE
-        
+
         # Replace zeros with offset, then take log
         data_transformed = np.where(data > 0, data, offset)
         return np.log10(data_transformed)
@@ -376,7 +379,7 @@ class SegmentOverview:
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Build histogram for data with limited number of bins.
-        
+
         Returns:
             (bin_edges, counts)
         """
@@ -396,44 +399,44 @@ class SegmentOverview:
         """
         Build bar chart style histogram for discrete data.
         Creates bins centered on integer values: [-0.5, 0.5, 1.5, ...] for values [0, 1, ...]
-        
+
         Returns:
             (bin_edges, counts)
         """
         if unique_values is None:
             unique_values = np.unique(data)
-        
+
         # Sort unique values
         unique_values = np.sort(unique_values)
-        
+
         # For values [0, 1, 2], bins should be [-0.5, 0.5, 1.5, 2.5]
         bin_edges = np.concatenate([[unique_values[0] - 0.5], unique_values + 0.5])
-        
+
         counts, _ = np.histogram(data, bins=bin_edges)
         return bin_edges, counts
 
     def _build_kde(self, data: np.ndarray, n_points: int = 1000) -> List[List[float]] | None:
         """
         Build kernel density estimate for data.
-        
+
         Returns:
             [[x_values], [y_values]] or None if KDE cannot be computed
         """
         if len(data) < 2:
             return None
-        
+
         try:
             kde = gaussian_kde(data)
             x_min, x_max = data.min(), data.max()
-            
+
             # Add some padding to the range
             padding = (x_max - x_min) * 0.1
             if padding == 0:
                 padding = 0.5  # Handle case where all values are the same
-            
+
             x_values = np.linspace(x_min - padding, x_max + padding, n_points)
             y_values = kde(x_values)
-            
+
             return [x_values.tolist(), y_values.tolist()]
         except Exception:
             # KDE can fail for various reasons (e.g., singular covariance matrix)
@@ -444,11 +447,11 @@ class SegmentOverview:
     ) -> Tuple[Dict[str, Any], bool]:
         """
         Build distribution statistics for a single data array.
-        
+
         Args:
             data: Array of metric values
             use_log_scale: If None, auto-detect; if True/False, force that mode
-            
+
         Returns:
             (distribution_dict, log_scale_used)
         """
@@ -552,7 +555,7 @@ class SegmentOverview:
             _, shared_bins = np.histogram(combined_hist, bins="auto")
             if len(shared_bins) - 1 > MAX_BINS:
                 _, shared_bins = np.histogram(combined_hist, bins=MAX_BINS)
-            
+
             if len(data_1_hist) > 0:
                 bins_1, counts_1 = self._build_histogram(data_1_hist, shared_bins)
                 kde_1 = self._build_kde(data_1_hist)

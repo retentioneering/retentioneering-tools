@@ -9,6 +9,7 @@ import threading
 import traitlets
 
 from retentioneering.widgets import cloud as _cloud
+from retentioneering.widgets._utils import parse_diff as _parse_diff  # re-export for existing importers
 
 try:
     from retentioneering._tracking import track as _track
@@ -25,9 +26,6 @@ _WARNING_MISMATCH = (
 def _cloud_enabled() -> bool:
     """Cloud save/load is opt-in: no backend is bundled with this distribution."""
     return os.environ.get("RETENTIONEERING_CLOUD_ENABLED", "").lower() in ("1", "true", "yes")
-
-
-from retentioneering.widgets._utils import parse_diff as _parse_diff  # re-export for existing importers
 
 
 class CloudMixin(traitlets.HasTraits):

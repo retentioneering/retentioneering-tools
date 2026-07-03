@@ -763,7 +763,7 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
                     eventCount={eventCounts?.[ev]}
                     eventCountG1={eventCountsG1?.[ev]} eventCountG2={eventCountsG2?.[ev]}
                     onCellHover={setCellTip}
-    
+
                     dimmed />
                 ))}
               </>

@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 .venv/
+venv/
 *.egg-info/
 .pytest_cache
 .tox
@@ -26,5 +27,6 @@ src/retentioneering/static/widget-static.js
 # Editors / OS
 .vscode
 .idea/
+.claude/
 typings
 .DS_Store

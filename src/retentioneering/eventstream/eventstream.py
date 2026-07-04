@@ -938,6 +938,27 @@ class Eventstream:
 
     @_tracked("dp_add_start_end_events")
     def add_start_end_events(self, path_id_col: str | None = None) -> "Eventstream":
+        """
+        Prepend a `path_start` and append a `path_end` synthetic event to each path.
+
+        Idempotent: a path that already starts or ends with these events is left
+        unchanged on that side.
+
+        You normally don't need to call this directly — `transition_graph`,
+        `step_matrix`, and `step_sankey` insert `path_start`/`path_end` themselves,
+        each using its own `path_id_col`. Calling this upfront bakes in one
+        specific path definition and can produce misleading boundaries if a
+        widget is later given a different `path_id_col`.
+
+        Parameters
+        ----------
+        path_id_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+
+        Examples
+        --------
+            stream.add_start_end_events()
+        """
         from retentioneering.data_processors.add_start_end_events import (
             AddStartEndEvents,
         )
@@ -953,6 +974,38 @@ class Eventstream:
         path_id_col: str | None = None,
         diff: T_Diff = None,
     ) -> pd.DataFrame:
+        """
+        Compute the transition matrix between events (headless).
+
+        Parameters
+        ----------
+        edge_weight : {"proba_out", "proba_in", "count", "unique_paths", "transition_rate", "per_path", "time_median", "time_q95"}, default "proba_out"
+            Value to compute for each source -> target pair:
+              - `"proba_out"` — share of transitions out of the source event that land on this target.
+              - `"proba_in"` — share of transitions into the target event that come from this source.
+              - `"count"` — number of times the transition occurred.
+              - `"unique_paths"` — number of distinct paths containing the transition.
+              - `"transition_rate"` — share of this transition among all transitions in the eventstream.
+              - `"per_path"` — average number of occurrences per path.
+              - `"time_median"` / `"time_q95"` — median / 95th-percentile seconds between the two events.
+        path_id_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        diff : tuple, optional
+            `(segment_col, value1, value2)` to compare two segment values, or
+            `(path_ids1, path_ids2)` to compare two explicit path-id groups.
+            `value2` may be `"<OUTER>"`, meaning "every other value of `segment_col`".
+
+        Returns
+        -------
+        pd.DataFrame
+            Events x events matrix of the selected `edge_weight`. In diff mode,
+            returns `(diff, group1, group2)` — three matrices instead of one.
+
+        Examples
+        --------
+            stream.transition_graph_data(edge_weight="count")
+            diff, g1, g2 = stream.transition_graph_data(diff=("platform", "mobile", "desktop"))
+        """
         from retentioneering.tools.transition_matrix import TransitionMatrix
 
         return TransitionMatrix(self).fit(edge_weight, diff, path_id_col)
@@ -965,6 +1018,43 @@ class Eventstream:
         path_id_col: str | None = None,
         path_pattern: str | None = None,
     ):
+        """
+        Compute per-step event-share matrices for Step Matrix / Step Sankey (headless).
+
+        Both widgets render the same underlying data — Step Matrix as a heatmap,
+        Step Sankey as a flow diagram.
+
+        Parameters
+        ----------
+        max_steps : int, default 10
+            Number of path steps to compute (on each side of an anchor, when
+            `path_pattern` is given).
+        diff : tuple, optional
+            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
+            may be `"<OUTER>"`. See `transition_graph_data` for the shared diff
+            semantics.
+        path_id_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        path_pattern : str, optional
+            Restrict/split paths using a `"->"`-separated sequence of anchor
+            events, where `.*` matches any run of events, e.g.
+            `".*->add_to_cart->.*->purchase"`. Without a pattern, computes over
+            the whole path from `path_start` to `path_end`. Each anchor event in
+            the pattern produces its own matrix block.
+
+        Returns
+        -------
+        tuple of pd.DataFrame
+            One matrix per anchor block. In diff mode, returns
+            `(combined_blocks, group1_blocks, group2_blocks)`, each itself a
+            tuple of per-block DataFrames.
+
+        Examples
+        --------
+            stream.step_sankey_data(max_steps=10)
+            stream.step_sankey_data(path_pattern=".*->purchase")
+            combined, g1, g2 = stream.step_sankey_data(diff=("plan", "pro", "free"))
+        """
         from retentioneering.tools.step_matrix import StepMatrix
 
         return StepMatrix(self).fit(
@@ -985,6 +1075,41 @@ class Eventstream:
         height=None,
         sidebar_open=None,
     ):
+        """
+        Interactive step-by-step Sankey diagram for Jupyter notebooks.
+
+        Shows which events paths pass through at each step, and how paths
+        diverge over time. Each column sums to 1 (share of paths at that step);
+        in diff mode, each column shows `value2 - value1` and sums to 0. Shares
+        its underlying data with `step_matrix` (see `step_sankey_data`) — Sankey
+        renders it as a flow diagram, Step Matrix as a heatmap.
+
+        All parameters are also editable from the widget's sidebar without
+        re-running the cell.
+
+        Parameters
+        ----------
+        max_steps : int, default 10
+            Number of path steps to compute.
+        step_window : int, default 3
+            Number of step columns shown around each anchor.
+        diff : tuple, optional
+            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
+            may be `"<OUTER>"`.
+        path_id_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        path_pattern : str, optional
+            Same syntax as `step_matrix`'s `path_pattern`.
+        height : int, default 500
+            Widget height in pixels.
+        sidebar_open : bool, default True
+            Whether the sidebar starts open.
+
+        Examples
+        --------
+            stream.step_sankey(max_steps=15, path_pattern=".*->purchase->.*")
+            stream.step_sankey(diff=("country", "US", "<OUTER>"))
+        """
         from retentioneering.widgets.step_sankey import StepSankeyWidget, _UNSET
 
         return StepSankeyWidget(
@@ -1009,7 +1134,50 @@ class Eventstream:
         height=None,
         sidebar_open=None,
     ):
-        """Interactive Step Matrix heatmap widget for Jupyter notebooks."""
+        """
+        Interactive step-by-step transition heatmap for Jupyter notebooks.
+
+        Each cell shows the share of paths passing through a given event at a
+        given step relative to an anchor: columns are step offsets from the
+        anchor (negative = before, positive = after), rows are events. In
+        standard mode each column sums to 1; in diff mode each cell is
+        `value2 - value1` and columns sum to 0. Shares its underlying data with
+        `step_sankey` (see `step_sankey_data`).
+
+        All parameters are also editable from the widget's sidebar without
+        re-running the cell.
+
+        Parameters
+        ----------
+        cloud_file_name : str, optional
+            Save/restore this widget's configuration (including manual layout
+            tweaks) to the cloud under this name.
+        max_steps : int, default 10
+            Number of path steps to compute on each side of the anchor.
+        diff : tuple, optional
+            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
+            may be `"<OUTER>"`.
+        path_id_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        path_pattern : str, optional
+            Restrict/split paths using a `"->"`-separated sequence of anchor
+            events, where `.*` matches any run of events, e.g.
+            `".*->add_to_cart->.*->purchase"`. Without a pattern, shows the
+            whole path from `path_start` to `path_end`. Multiple anchors render
+            one matrix block per anchor, side by side. A pattern that doesn't
+            start at `path_start` or end at `path_end` shows a serrated edge,
+            signalling paths continue beyond the visible range.
+        height : int, default 600
+            Widget height in pixels.
+        sidebar_open : bool, default True
+            Whether the sidebar starts open.
+
+        Examples
+        --------
+            stream.step_matrix(path_pattern=".*->purchase")
+            stream.step_matrix(path_pattern=".*->add_to_cart->.*->purchase")
+            stream.step_matrix(diff=("is_new_user", False, True))
+        """
         from retentioneering.widgets.step_matrix import StepMatrixWidget, _UNSET
 
         return StepMatrixWidget(
@@ -1033,6 +1201,36 @@ class Eventstream:
         sidebar_open=None,
         cloud_file_name: str | None = None,
     ):
+        """
+        Interactive transition graph for Jupyter notebooks.
+
+        Nodes are events, edges are transitions between them. Supports diff mode
+        to compare two segments side by side. All parameters are also editable
+        from the widget's sidebar without re-running the cell.
+
+        Parameters
+        ----------
+        edge_weight : {"proba_out", "proba_in", "count", "unique_paths", "transition_rate", "per_path", "time_median", "time_q95"}, default "proba_out"
+            Value shown on edges. See `transition_graph_data` for what each
+            value means.
+        diff : tuple, optional
+            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
+            may be `"<OUTER>"`, meaning "every other value of `segment_col`".
+        path_id_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        height : int, default 500
+            Widget height in pixels.
+        sidebar_open : bool, default True
+            Whether the sidebar starts open.
+        cloud_file_name : str, optional
+            Save/restore this widget's configuration (including manual node
+            layout) to the cloud under this name.
+
+        Examples
+        --------
+            stream.transition_graph()
+            stream.transition_graph(edge_weight="count", diff=("plan", "pro", "free"))
+        """
         from retentioneering.widgets.transition_graph import (
             TransitionGraphWidget,
             _UNSET,
@@ -1057,7 +1255,33 @@ class Eventstream:
         height: int | None = None,
         sidebar_open: bool | None = None,
     ):
-        """Interactive funnel widget for Jupyter notebooks."""
+        """
+        Interactive conversion funnel for Jupyter notebooks.
+
+        A path is counted at step N if it contains that step's event after
+        already passing through all previous steps. Supports diff mode to
+        compare two segments side by side. `steps` is also editable from the
+        widget's sidebar without re-running the cell.
+
+        Parameters
+        ----------
+        steps : list of str, optional
+            Ordered event names defining the funnel steps.
+        diff : tuple, optional
+            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
+            may be `"<OUTER>"`.
+        path_id_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        height : int, default 420
+            Widget height in pixels.
+        sidebar_open : bool, default True
+            Whether the sidebar starts open.
+
+        Examples
+        --------
+            stream.funnel(steps=["page_view", "add_to_cart", "purchase"])
+            stream.funnel(steps=["add_to_cart", "purchase"], diff=("plan", "pro", "free"))
+        """
         from retentioneering.widgets.funnel import FunnelWidget, _UNSET
 
         return FunnelWidget(
@@ -1098,7 +1322,44 @@ class Eventstream:
         height: int | None = None,
         sidebar_open: bool | None = None,
     ):
-        """Interactive Segment Overview heatmap widget for Jupyter notebooks."""
+        """
+        Interactive segment comparison heatmap for Jupyter notebooks.
+
+        Rows are metrics, columns are segment values. Click a cell to see that
+        metric's distribution for the segment; shift-click a second cell in the
+        same row to compare two distributions side by side. `segment_col` and
+        `metrics_config` are also editable from the widget's sidebar without
+        re-running the cell.
+
+        Parameters
+        ----------
+        segment_col : str, optional
+            Segment column to split by; must be one of `schema.segment_cols`.
+            Required (directly or via the sidebar) before the widget computes
+            anything.
+        metrics_config : list of dict, optional
+            Metric configurations, each with a `"metric"` key, optional
+            `"metric_args"`, and an `"agg"` key (`"mean"`, `"median"`, `"q5"`,
+            `"q25"`, `"q75"`, `"q95"`, or `"complement_diff"`) controlling how
+            per-path values roll up across a segment. See `stream.get_metrics()`
+            for the metric reference.
+        path_id_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        height : int, default 480
+            Widget height in pixels.
+        sidebar_open : bool, default True
+            Whether the sidebar starts open.
+
+        Examples
+        --------
+            stream.segment_overview(
+                segment_col="plan",
+                metrics_config=[
+                    {"metric": "length", "agg": "mean"},
+                    {"metric": "event_count", "metric_args": {"events": "purchase"}, "agg": "mean"},
+                ],
+            )
+        """
         from retentioneering.widgets.segment_overview import (
             SegmentOverviewWidget,
             _UNSET,
@@ -1147,7 +1408,45 @@ class Eventstream:
         height: int | None = None,
         sidebar_open: bool | None = None,
     ):
-        """Interactive Cluster Analysis widget for Jupyter notebooks."""
+        """
+        Interactive clustering widget for Jupyter notebooks.
+
+        Clusters paths by behavioral metrics and shows a Segment Overview-style
+        heatmap for the resulting clusters. All parameters are also editable
+        from the widget's sidebar (including feature/metric configuration and
+        an NMF decomposition option not exposed here as a direct argument).
+
+        Parameters
+        ----------
+        features : list of dict, optional
+            Metric configurations used as clustering features (see
+            `stream.get_metrics()`); defaults to per-event counts for every
+            event in the eventstream.
+        method : {"kmeans", "hdbscan"}, default "kmeans"
+            Clustering algorithm.
+        scaler : {"minmax", "std"}, optional
+            Feature scaler applied before clustering; default `"minmax"`.
+        n_clusters : int, list of int, or str, optional
+            Number of clusters. A single int fixes the cluster count; a list of
+            ints or a range string (e.g. `"3-8"`) runs a silhouette-scored grid
+            search over that range and picks the best. Defaults to `"3-8"`.
+        metrics_config : list of dict, optional
+            Metrics shown in the overview heatmap after clustering (independent
+            of `features`); defaults to per-event counts for every event.
+        path_id_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        height : int, default 520
+            Widget height in pixels.
+        sidebar_open : bool, default True
+            Whether the sidebar starts open.
+
+        Examples
+        --------
+            stream.cluster_analysis(
+                features=[{"metric": "length"}, {"metric": "duration"}],
+                n_clusters="3-6",
+            )
+        """
         from retentioneering.widgets.cluster_analysis import (
             ClusterAnalysisWidget,
             _UNSET,

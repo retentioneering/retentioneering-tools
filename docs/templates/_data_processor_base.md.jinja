@@ -1,0 +1,15 @@
+# {{ title }}
+
+{{ doc.summary }}
+
+## Usage
+
+```python
+{{ doc.examples or default_call }}
+```
+
+## Parameters
+
+{{ param_table(doc.parameters) }}
+
+{% block extra %}{% endblock %}

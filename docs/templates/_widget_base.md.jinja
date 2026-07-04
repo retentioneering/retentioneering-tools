@@ -1,0 +1,39 @@
+# {{ title }}
+
+{{ doc.summary }}
+
+## Usage
+
+```python
+{{ doc.examples or default_call }}
+```
+
+## Parameters
+
+{{ param_table(doc.parameters) }}
+
+{% block extra %}{% endblock %}
+## Headless mode
+
+`stream.{{ headless_name }}()` runs the same computation and returns data instead of rendering a widget.
+
+{{ headless.summary }}
+
+### Parameters
+
+{{ param_table(headless.parameters) }}
+
+{% block headless_extra %}{% endblock %}
+{% if headless.returns %}
+### Returns
+
+{{ headless.returns }}
+
+{% endif %}
+{% if headless.examples %}
+### Examples
+
+```python
+{{ headless.examples }}
+```
+{% endif %}

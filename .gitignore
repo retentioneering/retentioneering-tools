@@ -24,6 +24,10 @@ src/retentioneering/static/widget-static.js
 # Notebooks
 .ipynb_checkpoints
 
+# Docs pages generated from docstrings by docs/scripts/render_pages.py —
+# regenerate on demand, don't let it drift from source in git history.
+docs/build/
+
 # Editors / OS
 .vscode
 .idea/

@@ -2619,6 +2619,7 @@ dependencies = [
 [package.optional-dependencies]
 dev = [
     { name = "ipykernel" },
+    { name = "jinja2" },
     { name = "jupyterlab" },
     { name = "notebook" },
     { name = "pre-commit" },
@@ -2642,6 +2643,7 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.1" },
     { name = "ipykernel", marker = "extra == 'dev'" },
     { name = "ipywidgets", specifier = ">=7.0" },
+    { name = "jinja2", marker = "extra == 'dev'", specifier = ">=3.1" },
     { name = "jupyterlab", marker = "extra == 'dev'" },
     { name = "matplotlib", specifier = ">=3.5" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.28.0" },

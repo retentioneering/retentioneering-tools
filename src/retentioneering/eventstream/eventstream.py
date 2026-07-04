@@ -667,19 +667,19 @@ class Eventstream:
         Convert the eventstream into daily lifecycle-state events.
 
         Each path is expanded to one row per calendar day from its first event
-        to ``max_dormant_days`` days after its last event. Every row is labelled
+        to `max_dormant_days` days after its last event. Every row is labelled
         with one of six engagement states.
 
         Active days:
-            ``new``          — first-ever active day for this path
-            ``current``      — active within the past 7 days
-            ``reactivated``  — active 8–30 days ago, not in the last 7
-            ``resurrected``  — last active more than 30 days ago
+            `new`          — first-ever active day for this path
+            `current`      — active within the past 7 days
+            `reactivated`  — active 8-30 days ago, not in the last 7
+            `resurrected`  — last active more than 30 days ago
 
         Inactive days:
-            ``at_risk_wau``  — was active within the past 7 days
-            ``at_risk_mau``  — was active 8–30 days ago
-            ``dormant``      — was last active more than 30 days ago
+            `at_risk_wau`  — was active within the past 7 days
+            `at_risk_mau`  — was active 8-30 days ago
+            `dormant`      — was last active more than 30 days ago
 
         Parameters
         ----------
@@ -688,7 +688,7 @@ class Eventstream:
         max_dormant_days : int, default 30
             Days after last event to continue generating state rows.
         agg : dict, optional
-            Per-column aggregation overrides (e.g. ``{"revenue": "sum"}``).
+            Per-column aggregation overrides (e.g. `{"revenue": "sum"}`).
         path_id_col : str, optional
             Override the path ID column.
         event_col : str, optional

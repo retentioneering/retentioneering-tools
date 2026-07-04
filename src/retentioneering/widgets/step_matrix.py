@@ -216,6 +216,7 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
         path: str,
         title: str = "Step Matrix",
         analysis: str | None = None,
+        sidebar_open: bool = True,
     ) -> None:
         """
         Export the step matrix as a standalone interactive HTML file.
@@ -228,6 +229,8 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
             Title shown in the browser tab.
         analysis:
             Optional analysis text. Supports basic markdown and [event] links.
+        sidebar_open:
+            Whether the settings sidebar starts open in the exported file.
         """
         data = {
             "widget_type": "step_matrix",
@@ -240,7 +243,7 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
             "segment_levels": json.loads(self.segment_levels or "{}"),
             "event_list": json.loads(self.event_list or "[]"),
             "height": self.height,
-            "sidebar_open": False,
+            "sidebar_open": sidebar_open,
             "display_prefs": "{}",
         }
         write_html(path, title, "Step Matrix", data, analysis)

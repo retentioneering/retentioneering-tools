@@ -9,6 +9,7 @@ _UNSET = object()
 
 from retentioneering.widgets._esm import _get_esm  # noqa: E402
 from retentioneering.widgets._utils import parse_diff as _parse_diff  # noqa: E402
+from retentioneering.widgets._html_export import write_html  # noqa: E402
 
 
 class FunnelWidget(anywidget.AnyWidget):
@@ -121,3 +122,40 @@ class FunnelWidget(anywidget.AnyWidget):
             self.result = "{}"
         finally:
             self.is_loading = False
+
+    # ── HTML export ───────────────────────────────────────────────────────────
+
+    def export_html(
+        self,
+        path: str,
+        title: str = "Funnel",
+        analysis: str | None = None,
+        sidebar_open: bool = True,
+    ) -> None:
+        """
+        Export the funnel as a standalone interactive HTML file.
+
+        Parameters
+        ----------
+        path:
+            Destination file path.
+        title:
+            Title shown in the browser tab.
+        analysis:
+            Optional analysis text. Supports basic markdown and [event] links.
+        sidebar_open:
+            Whether the settings sidebar starts open in the exported file.
+        """
+        data = {
+            "widget_type": "funnel",
+            "result": json.loads(self.result or "{}"),
+            "steps": json.loads(self.steps or "[]"),
+            "diff": json.loads(self.diff) if self.diff else None,
+            "path_id_col": self.path_id_col or "",
+            "path_cols": json.loads(self.path_cols or "[]"),
+            "segment_levels": json.loads(self.segment_levels or "{}"),
+            "event_list": json.loads(self.event_list or "[]"),
+            "height": self.height,
+            "sidebar_open": sidebar_open,
+        }
+        write_html(path, title, "Funnel", data, analysis)

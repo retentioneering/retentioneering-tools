@@ -8,6 +8,7 @@ _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
 from retentioneering.widgets._esm import _get_esm  # noqa: E402
+from retentioneering.widgets._html_export import write_html  # noqa: E402
 
 
 class ClusterAnalysisWidget(anywidget.AnyWidget):
@@ -194,7 +195,49 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         finally:
             self.is_loading = False
 
-    # ── persistence ────────────────────────────────────────────────────────
+    # ── HTML export ───────────────────────────────────────────────────────────
+
+    def export_html(
+        self,
+        path: str,
+        title: str = "Cluster Analysis",
+        analysis: str | None = None,
+        sidebar_open: bool = True,
+    ) -> None:
+        """
+        Export the cluster analysis as a standalone interactive HTML file.
+
+        Parameters
+        ----------
+        path:
+            Destination file path.
+        title:
+            Title shown in the browser tab.
+        analysis:
+            Optional analysis text. Supports basic markdown and [event] links.
+        sidebar_open:
+            Whether the settings sidebar starts open in the exported file.
+        """
+        data = {
+            "widget_type": "cluster_analysis",
+            "result": json.loads(self.result or "{}"),
+            "features": json.loads(self.features or "[]"),
+            "method": self.method,
+            "scaler": self.scaler,
+            "n_clusters": self.n_clusters,
+            "nmf_k": self.nmf_k,
+            "nmf_enabled": self.nmf_enabled,
+            "metrics_config": json.loads(self.metrics_config or "[]"),
+            "aggregation": self.aggregation,
+            "path_id_col": self.path_id_col or "",
+            "path_cols": json.loads(self.path_cols or "[]"),
+            "segment_cols": json.loads(self.segment_cols or "[]"),
+            "segment_levels": json.loads(self.segment_levels or "{}"),
+            "event_list": json.loads(self.event_list or "[]"),
+            "height": self.height,
+            "sidebar_open": sidebar_open,
+        }
+        write_html(path, title, "Cluster Analysis", data, analysis)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────

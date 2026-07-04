@@ -1,1 +1,11 @@
 {% extends "_widget_base.md.jinja" %}
+
+{% block demo_examples %}
+## Examples
+
+### Default
+
+<DemoWidget cmd={`stream.funnel(
+    steps=["catalog", "product_view", "add_to_cart", "purchase"],
+)`} path="/docs-demos/widgets/funnel/default.html" height={420} />
+{% endblock %}

@@ -357,9 +357,9 @@ function FeaturesOverlay({ features, events, segmentCols, segmentLevels, onFeatu
   );
 }
 
-function FeaturesTriggerButton({ count, onClick }: { count: number; onClick: () => void }) {
+function FeaturesTriggerButton({ count, onClick, disabled }: { count: number; onClick: () => void; disabled?: boolean }) {
   return (
-    <button onClick={onClick} style={{ width: "100%", padding: "6px 10px", border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "#374151", fontWeight: 500 }}>
+    <button onClick={onClick} disabled={disabled} style={{ width: "100%", padding: "6px 10px", border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: disabled ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "#374151", fontWeight: 500 }}>
       <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
@@ -432,10 +432,10 @@ function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, onMetrics
   );
 }
 
-function NCInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+function NCInput({ value, onChange, placeholder, disabled }: { value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean }) {
   return (
     <input value={value} onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
+      placeholder={placeholder} disabled={disabled}
       style={{ width: "100%", boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 6, padding: "5px 8px", fontSize: 12, outline: "none" }} />
   );
 }
@@ -479,13 +479,13 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
         <span style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>Settings</span>
         {isLoading && <span style={{ fontSize: 11, color: "#6b7280" }}>Computing…</span>}
       </div>
-      <div style={{ flex: 1, overflowY: "auto", padding: 12, opacity: isStatic ? 0.5 : 1, pointerEvents: isStatic ? "none" : undefined }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
 
         {/* Path Column — top */}
         {pathCols.length > 1 && (
           <div style={{ marginBottom: 14 }}>
             <SidebarFL>Path Column</SidebarFL>
-            <select value={pathIdCol} onChange={e => onPathIdColChange(e.target.value)} style={sel}>
+            <select value={pathIdCol} onChange={e => onPathIdColChange(e.target.value)} style={sel} disabled={isStatic}>
               {pathCols.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
@@ -495,12 +495,12 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
         <SidebarSection title="Clustering">
           <div style={{ marginBottom: 10 }}>
             <SidebarFL>Features</SidebarFL>
-            <FeaturesTriggerButton count={features.length} onClick={onOpenFeatures} />
+            <FeaturesTriggerButton count={features.length} onClick={onOpenFeatures} disabled={isStatic} />
           </div>
 
           <div style={{ marginBottom: 10 }}>
             <SidebarFL>Feature Scaling</SidebarFL>
-            <select value={scaler} onChange={e => onScalerChange(e.target.value)} style={sel}>
+            <select value={scaler} onChange={e => onScalerChange(e.target.value)} style={sel} disabled={isStatic}>
               <option value="minmax">MinMax</option>
               <option value="std">Standard</option>
               <option value="">None</option>
@@ -510,7 +510,7 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
           <div style={{ marginBottom: 10 }}>
             <SidebarFL>N Clusters</SidebarFL>
             <NCInput value={nClustersRaw} onChange={onNClustersChange}
-              placeholder="e.g. 3-8 or 4 or 3,5,7" />
+              placeholder="e.g. 3-8 or 4 or 3,5,7" disabled={isStatic} />
             <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 3 }}>Single → fixed · 3-8 or 3,5,7 → silhouette grid</div>
           </div>
 
@@ -518,10 +518,10 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: nmfEnabled ? 8 : 0 }}>
               <SidebarFL>NMF Decomposition</SidebarFL>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: isStatic ? "default" : "pointer" }}>
                 <div
-                  onClick={() => onNmfToggle(!nmfEnabled)}
-                  style={{ width: 32, height: 18, borderRadius: 9, background: nmfEnabled ? "var(--retentioneering-yellow)" : "#d1d5db", position: "relative", cursor: "pointer", transition: "background 0.2s" }}
+                  onClick={() => !isStatic && onNmfToggle(!nmfEnabled)}
+                  style={{ width: 32, height: 18, borderRadius: 9, background: nmfEnabled ? "var(--retentioneering-yellow)" : "#d1d5db", position: "relative", cursor: isStatic ? "default" : "pointer", transition: "background 0.2s" }}
                 >
                   <div style={{ position: "absolute", top: 2, left: nmfEnabled ? 16 : 2, width: 14, height: 14, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
                 </div>
@@ -529,7 +529,7 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
             </div>
             {nmfEnabled && (
               <NCInput value={nmfKRaw} onChange={onNmfKChange}
-                placeholder="e.g. 3-7 or 3,5,7" />
+                placeholder="e.g. 3-7 or 3,5,7" disabled={isStatic} />
             )}
           </div>
         </SidebarSection>
@@ -541,7 +541,7 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
               <SidebarFL>Metrics</SidebarFL>
               <InfoTip text={"Overview metrics are computed after clustering and shown in the heatmap table.\nThey describe each cluster — e.g. average session length, event counts, conversion rates.\nChoose metrics that help you interpret and compare the resulting clusters."} />
             </div>
-            <MetricsTriggerButton count={metricsConfig.length} onClick={onOpenMetrics} />
+            <MetricsTriggerButton count={metricsConfig.length} onClick={onOpenMetrics} disabled={isStatic} />
           </div>
         </SidebarSection>
 
@@ -562,9 +562,9 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
 }
 
 // Reuse MetricsTriggerButton pattern from segment_overview
-function MetricsTriggerButton({ count, onClick }: { count: number; onClick: () => void }) {
+function MetricsTriggerButton({ count, onClick, disabled }: { count: number; onClick: () => void; disabled?: boolean }) {
   return (
-    <button onClick={onClick} style={{ width: "100%", padding: "6px 10px", border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "#374151", fontWeight: 500 }}>
+    <button onClick={onClick} disabled={disabled} style={{ width: "100%", padding: "6px 10px", border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: disabled ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, color: "#374151", fontWeight: 500 }}>
       <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>

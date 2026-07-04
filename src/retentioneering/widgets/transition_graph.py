@@ -256,6 +256,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
         path: str,
         title: str = "Transition Graph",
         analysis: str | None = None,
+        sidebar_open: bool = True,
     ) -> None:
         """
         Export the current graph as a standalone interactive HTML file.
@@ -268,8 +269,10 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
             Title shown in the browser tab.
         analysis:
             Optional analysis text. Wrap event names in square brackets to make
-            them clickable, e.g. ``"Drop-off at [basket]: 78% of users leave here."``.
+            them clickable, e.g. `"Drop-off at [basket]: 78% of users leave here."`.
             Supports basic markdown (bold, italic, bullet lists, tables, headings).
+        sidebar_open:
+            Whether the settings sidebar starts open in the exported file.
         """
         data = {
             "widget_type": "transition_graph",
@@ -285,7 +288,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
             "path_cols": json.loads(self.path_cols or "[]"),
             "path_id_col": self.path_id_col or "",
             "height": self.height,
-            "sidebar_open": False,
+            "sidebar_open": sidebar_open,
         }
         write_html(path, title, "Transition Graph", data, analysis)
 

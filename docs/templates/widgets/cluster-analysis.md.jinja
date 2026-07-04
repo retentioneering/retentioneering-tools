@@ -1,1 +1,14 @@
 {% extends "_widget_base.md.jinja" %}
+
+{% block demo_examples %}
+## Examples
+
+### Default
+
+<DemoWidget cmd={`stream.cluster_analysis(
+    features=[
+        {"metric": "event_count", "metric_args": {"events": ["catalog", "product_view", "add_to_cart", "purchase"]}},
+    ],
+    n_clusters=3,
+)`} path="/docs-demos/widgets/cluster-analysis/default.html" height={520} />
+{% endblock %}

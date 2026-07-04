@@ -1,1 +1,15 @@
 {% extends "_widget_base.md.jinja" %}
+
+{% block demo_examples %}
+## Examples
+
+### Default
+
+<DemoWidget cmd={`stream.segment_overview(
+    segment_col="platform",
+    metrics_config=[
+        {"metric": "length", "agg": "mean"},
+        {"metric": "event_count", "metric_args": {"events": "purchase"}, "agg": "mean"},
+    ],
+)`} path="/docs-demos/widgets/segment-overview/default.html" height={480} />
+{% endblock %}

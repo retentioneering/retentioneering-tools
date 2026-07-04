@@ -9,6 +9,7 @@ _UNSET = object()
 
 from retentioneering.widgets._esm import _get_esm  # noqa: E402
 from retentioneering.widgets._utils import parse_diff as _parse_diff  # noqa: E402
+from retentioneering.widgets._html_export import write_html  # noqa: E402
 
 
 class StepSankeyWidget(anywidget.AnyWidget):
@@ -204,6 +205,45 @@ class StepSankeyWidget(anywidget.AnyWidget):
             event_counts = {}
 
         return {"matrices": matrices, "event_counts": event_counts}
+
+    # ── HTML export ───────────────────────────────────────────────────────────
+
+    def export_html(
+        self,
+        path: str,
+        title: str = "Step Sankey",
+        analysis: str | None = None,
+        sidebar_open: bool = True,
+    ) -> None:
+        """
+        Export the step sankey diagram as a standalone interactive HTML file.
+
+        Parameters
+        ----------
+        path:
+            Destination file path.
+        title:
+            Title shown in the browser tab.
+        analysis:
+            Optional analysis text. Supports basic markdown and [event] links.
+        sidebar_open:
+            Whether the settings sidebar starts open in the exported file.
+        """
+        data = {
+            "widget_type": "step_sankey",
+            "result": json.loads(self.result or "{}"),
+            "max_steps": self.max_steps,
+            "diff": json.loads(self.diff) if self.diff else None,
+            "path_id_col": self.path_id_col or "",
+            "path_pattern": self.path_pattern or "",
+            "path_cols": json.loads(self.path_cols or "[]"),
+            "segment_levels": json.loads(self.segment_levels or "{}"),
+            "step_window": self.step_window,
+            "node_positions": json.loads(self.node_positions or "{}"),
+            "height": self.height,
+            "sidebar_open": sidebar_open,
+        }
+        write_html(path, title, "Step Sankey", data, analysis)
 
 
 def _df_to_matrix(df) -> dict:

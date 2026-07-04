@@ -153,9 +153,12 @@ def render_param_table(params: list[Param]) -> str:
         return "_No parameters._"
     rows = ["| Parameter | Type | Description |", "|---|---|---|"]
     for p in params:
+        # Backtick-wrapped so a literal enum type like {"a", "b"} renders as
+        # code instead of raw braces — which the MDX renderer on the docs site
+        # would otherwise try to parse as a JS expression and fail on.
         type_cell = p.type.replace("|", "\\|")
         desc_cell = p.lead.replace("|", "\\|")
-        rows.append(f"| `{p.name}` | {type_cell} | {desc_cell} |")
+        rows.append(f"| `{p.name}` | `{type_cell}` | {desc_cell} |")
     return "\n".join(rows)
 
 

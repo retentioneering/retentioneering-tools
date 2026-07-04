@@ -474,7 +474,6 @@ class MetricBuilder:
         path_ids = self.df[path_id_col].unique()
 
         metric_dfs: List[pd.DataFrame] = []
-        result_df = pd.DataFrame(index=path_ids)
 
         # Build metrics for each configuration
         for config_item in metric_config.parsed_configs:
@@ -488,7 +487,10 @@ class MetricBuilder:
 
             metric_dfs.append(metric_df)
 
+        if metric_dfs:
             result_df = pd.concat(metric_dfs, axis=1)
+        else:
+            result_df = pd.DataFrame(index=path_ids)
 
         result_df.index.name = path_id_col
         return result_df

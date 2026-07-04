@@ -770,6 +770,99 @@ class TestSegmentOverview:
         assert result.loc["time_from_path_start_to_purchase_mean", "segment_1"] == 45.0
         assert result.loc["time_from_path_start_to_purchase_mean", "segment_2"] == 90.0
 
+    def test_segment_values_with_double_underscore(self) -> None:
+        """Regression: segment values containing '__' must stay distinct.
+
+        Previously the composite path id was built as path_id + '__' + segment
+        and the segment was recovered with .str.split('__').str[-1], which
+        truncated 'control__1' and 'test__1' to '1' and merged them.
+        """
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "control__1", "2020-01-01 00:00:00"],
+                ["user_1", "B", "control__1", "2020-01-01 00:01:00"],
+                ["user_2", "A", "control__1", "2020-01-01 00:00:00"],
+                ["user_3", "A", "test__1", "2020-01-01 00:00:00"],
+                ["user_3", "B", "test__1", "2020-01-01 00:01:00"],
+                ["user_3", "C", "test__1", "2020-01-01 00:02:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        result = stream.segment_overview_data(
+            segment_col="segment",
+            metrics_config=[
+                {"metric": "length", "agg": "mean"},
+            ],
+        )
+
+        # Both segment values must survive as distinct columns
+        assert sorted(result.columns) == ["control__1", "test__1"]
+        assert "1" not in result.columns
+
+        # control__1: user_1 (2 paths total in segment), test__1: user_3
+        assert result.loc["segment_size", "control__1"] == 2
+        assert result.loc["segment_size", "test__1"] == 1
+        assert result.loc["segment_share", "control__1"] == pytest.approx(2 / 3)
+        assert result.loc["segment_share", "test__1"] == pytest.approx(1 / 3)
+
+        # control__1: user_1 has 2 events, user_2 has 1 -> mean = 1.5
+        # test__1: user_3 has 3 events -> mean = 3.0
+        assert result.loc["length_mean", "control__1"] == 1.5
+        assert result.loc["length_mean", "test__1"] == 3.0
+
+    def test_path_id_with_double_underscore(self) -> None:
+        """Regression: path ids containing '__' must not corrupt segment recovery"""
+        df = pd.DataFrame(
+            [
+                ["user__1", "A", "segment_1", "2020-01-01 00:00:00"],
+                ["user__1", "B", "segment_1", "2020-01-01 00:01:00"],
+                ["user__2", "A", "segment_2", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        result = stream.segment_overview_data(
+            segment_col="segment",
+            metrics_config=[
+                {"metric": "length", "agg": "mean"},
+            ],
+        )
+
+        assert sorted(result.columns) == ["segment_1", "segment_2"]
+        assert result.loc["segment_size", "segment_1"] == 1
+        assert result.loc["segment_size", "segment_2"] == 1
+        assert result.loc["length_mean", "segment_1"] == 2.0
+        assert result.loc["length_mean", "segment_2"] == 1.0
+
+    def test_segment_values_with_double_underscore_empty_config(self) -> None:
+        """Regression: '__' segment values stay distinct with empty metrics_config"""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "control__1", "2020-01-01 00:00:00"],
+                ["user_2", "A", "test__1", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        result = stream.segment_overview_data(
+            segment_col="segment",
+            metrics_config=[],
+        )
+
+        assert sorted(result.columns) == ["control__1", "test__1"]
+        assert result.loc["segment_size", "control__1"] == 1
+        assert result.loc["segment_size", "test__1"] == 1
+
 
 class TestMetricDistribution:
     """Tests for metric_distribution method"""
@@ -1296,3 +1389,68 @@ class TestMetricDistribution:
 
         # Number of bins should not exceed MAX_BINS (50) + 1 (for edges)
         assert len(result["distribution_1"]["bins"]) <= 51
+
+    def test_segment_values_with_double_underscore(self) -> None:
+        """Regression: metric_distribution must not silently return empty
+        distributions for segment values containing '__'.
+
+        Previously the segment recovered from the composite id was truncated
+        to the piece after the last '__' ('control__1' -> '1'), so the mask
+        metrics_df[segment_col] == 'control__1' matched nothing.
+        """
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "control__1", "2020-01-01 00:00:00"],
+                ["user_1", "B", "control__1", "2020-01-01 00:01:00"],
+                ["user_2", "A", "control__1", "2020-01-01 00:00:00"],
+                ["user_3", "A", "test__1", "2020-01-01 00:00:00"],
+                ["user_3", "B", "test__1", "2020-01-01 00:01:00"],
+                ["user_3", "C", "test__1", "2020-01-01 00:02:00"],
+                ["user_4", "A", "test__1", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        result = SegmentOverview(stream).metric_distribution(
+            segment_col="segment",
+            segment_value=["control__1", "test__1"],
+            metric={"metric": "length"},
+        )
+
+        # control__1: 2 paths (lengths 2, 1); test__1: 2 paths (lengths 3, 1)
+        assert sum(result["distribution_1"]["counts"]) == 2
+        assert sum(result["distribution_2"]["counts"]) == 2
+        assert result["distribution_1"]["mean"] == pytest.approx(1.5)
+        assert result["distribution_2"]["mean"] == pytest.approx(2.0)
+
+    def test_complement_with_double_underscore_segment(self) -> None:
+        """Regression: complement mode works for segment values containing '__'"""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "control__1", "2020-01-01 00:00:00"],
+                ["user_1", "B", "control__1", "2020-01-01 00:01:00"],
+                ["user_2", "A", "test__1", "2020-01-01 00:00:00"],
+                ["user_3", "A", "test__1", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        result = SegmentOverview(stream).metric_distribution(
+            segment_col="segment",
+            segment_value="control__1",
+            metric={"metric": "length"},
+            complement=True,
+        )
+
+        # distribution_1: control__1 (1 path, length 2)
+        # distribution_2: complement = test__1 (2 paths, length 1 each)
+        assert sum(result["distribution_1"]["counts"]) == 1
+        assert sum(result["distribution_2"]["counts"]) == 2
+        assert result["distribution_1"]["mean"] == pytest.approx(2.0)
+        assert result["distribution_2"]["mean"] == pytest.approx(1.0)

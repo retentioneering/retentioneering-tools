@@ -28,6 +28,12 @@ from retentioneering.exceptions import (
 )
 from retentioneering.metrics.metric_builder import MetricBuilder, MetricConfig
 
+# Separator used to build composite (path_id, segment_value) identifiers.
+# A control character (ASCII unit separator) is used so that segment values or
+# path ids containing common substrings like "__" cannot collide or be
+# truncated when the segment value is recovered from the composite id.
+_COMPOSITE_SEP = "\x1f"
+
 # Threshold for considering metric as discrete (use bar chart instead of histogram)
 DISCRETE_THRESHOLD = 10
 
@@ -96,7 +102,7 @@ class SegmentOverview:
         # Create composite path ID: (path_id, segment_value)
         composite_col = "__composite_path_id__"
         df[composite_col] = (
-            df[path_id_col].astype(str) + "__" + df[segment_col].astype(str)
+            df[path_id_col].astype(str) + _COMPOSITE_SEP + df[segment_col].astype(str)
         )
 
         # Create a temporary eventstream with composite path ID
@@ -124,11 +130,15 @@ class SegmentOverview:
                 config=metrics_config,
                 path_id_col=composite_col,
             )
-            metrics_df[segment_col] = metrics_df.index.str.split("__").str[-1]
+            metrics_df[segment_col] = metrics_df.index.str.rsplit(
+                _COMPOSITE_SEP, n=1
+            ).str[-1]
         else:
             unique_composite_ids = df[composite_col].unique()
             metrics_df = pd.DataFrame(index=unique_composite_ids)
-            metrics_df[segment_col] = metrics_df.index.str.split("__").str[-1]
+            metrics_df[segment_col] = metrics_df.index.str.rsplit(
+                _COMPOSITE_SEP, n=1
+            ).str[-1]
 
         metric_columns = [col for col in metrics_df.columns if col != segment_col]
         total_paths = len(metrics_df)
@@ -269,7 +279,7 @@ class SegmentOverview:
         # Create composite path ID: (path_id, segment_value)
         composite_col = "__composite_path_id__"
         df[composite_col] = (
-            df[path_id_col].astype(str) + "__" + df[segment_col].astype(str)
+            df[path_id_col].astype(str) + _COMPOSITE_SEP + df[segment_col].astype(str)
         )
 
         # Create a temporary eventstream with composite path ID
@@ -285,7 +295,9 @@ class SegmentOverview:
             config=[metric],
             path_id_col=composite_col,
         )
-        metrics_df[segment_col] = metrics_df.index.str.split("__").str[-1]
+        metrics_df[segment_col] = metrics_df.index.str.rsplit(_COMPOSITE_SEP, n=1).str[
+            -1
+        ]
 
         # Get the metric column name - must be exactly one
         metric_cols = [col for col in metrics_df.columns if col != segment_col]

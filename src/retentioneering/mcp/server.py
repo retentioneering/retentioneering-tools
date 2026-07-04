@@ -635,8 +635,9 @@ def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
             }
             stream = stream.filter_paths(condition, path_id_col=step.get("path_id_col"))
         elif t == "filter_events":
-            by_col = {k: v for k, v in step.items() if k not in ("type",)}
-            stream = stream.filter_events(by_column=by_col)
+            sql = step.get("sql")
+            by_col = {k: v for k, v in step.items() if k not in ("type", "sql")}
+            stream = stream.filter_events(by_column=by_col or None, sql=sql)
         elif t == "truncate_paths":
             stream = stream.truncate_paths(
                 left=step["left"],

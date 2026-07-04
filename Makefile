@@ -55,12 +55,25 @@ release:
 
 # Dry-runs the packaging + publish pipeline against test.pypi.org, from
 # whatever branch you're currently on -- doesn't touch the real PyPI project
-# or require being on master. Bump pyproject.toml's version first if you've
-# already used this version string on TestPyPI (it won't accept a repeat).
+# or require being on master. Tags a throwaway version-bump commit and
+# pushes just the tag (which is what test-release.yml listens for), then
+# resets the bump off your branch so nothing about this sticks around.
+# TestPyPI won't accept a repeated version string, so pick a new VERSION
+# each time.
 #
-# Usage: make test-release
+# Usage: make test-release VERSION=5.0.0rc1
 test-release:
-	git push origin HEAD
-	gh workflow run test-release.yml --ref $$(git branch --show-current)
-	@echo "✓ Dispatched test-release.yml. Watch it with:"
-	@echo "    gh run watch"
+	@if [ -z "$(VERSION)" ]; then \
+	  echo "Usage: make test-release VERSION=x.y.z"; exit 1; \
+	fi
+	@if [ -n "$$(git status --porcelain)" ]; then \
+	  echo "Refusing: you have uncommitted changes (this uses git reset --hard). Commit or stash first."; exit 1; \
+	fi
+	sed -i '' 's/^version = ".*"/version = "$(VERSION)"/' pyproject.toml
+	git add pyproject.toml
+	git commit -m "test-release: $(VERSION)"
+	git tag test-v$(VERSION)
+	git push origin test-v$(VERSION)
+	git reset --hard HEAD~1
+	@echo "✓ Pushed tag test-v$(VERSION) -- test-release.yml will build and publish to TestPyPI."
+	@echo "  Your branch is unchanged; watch the run with: gh run watch"

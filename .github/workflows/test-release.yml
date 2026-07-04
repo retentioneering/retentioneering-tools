@@ -1,15 +1,22 @@
 name: Test Release (TestPyPI)
 
-# Manually triggered from any branch/ref -- lets you dry-run the whole
+# Triggered by pushing a `test-v*` tag -- lets you dry-run the whole
 # packaging + publish pipeline against test.pypi.org before cutting a real
 # release. Unlike release.yml, this never touches the real PyPI project.
+# Tag-triggered (not workflow_dispatch) specifically so it works from any
+# branch, including ones that haven't been merged to the default branch yet
+# -- workflow_dispatch requires the workflow file to already exist there.
+#
+# Use `make test-release VERSION=x.y.z` rather than tagging by hand: it
+# also keeps the version-bump commit off your actual branch history.
 #
 # TestPyPI (like real PyPI) permanently reserves each version string once
-# published -- bump pyproject.toml's version before each run if you want to
-# test again (e.g. 5.0.0rc1, 5.0.0rc2, ...).
+# published -- pick a new VERSION each time you want to test again.
 
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - "test-v*"
 
 jobs:
   test-release:

@@ -28,44 +28,50 @@ class Funnel:
         index_col = self.eventstream.schema.index
 
         if diff is None:
-            df = self.eventstream.df
-            total_paths = int(df[path_id_col].nunique())
-            funnel_data = []
+            if not steps:
+                return {"steps": []}
 
-            for step_idx, step_event in enumerate(steps):
+            df = self.eventstream.df  # noqa: F841 -- referenced by name via DuckDB replacement scan below
+            total_paths = int(df[path_id_col].nunique())
+
+            # Sequential funnel semantics: a path reaches step k iff there
+            # exist event indices i1 < i2 < ... < ik with event(i_j) = steps[j].
+            # Chained CTEs: step_k holds, per path, the earliest occurrence of
+            # steps[k-1] that comes strictly after the path's step_{k-1} match.
+            # This correctly handles repeated events and duplicate step names.
+            ctes = []
+            for step_num, step_event in enumerate(steps, start=1):
                 ev = _sql_str(step_event)
-                if step_idx == 0:
-                    query = f"""
-                        SELECT COUNT(DISTINCT {path_id_col}) AS count
-                        FROM df
-                        WHERE {event_col} = {ev}
-                    """
+                if step_num == 1:
+                    ctes.append(
+                        f"step_1 AS ("
+                        f"SELECT {path_id_col} AS path_id, MIN({index_col}) AS idx "
+                        f"FROM df "
+                        f"WHERE {event_col} = {ev} "
+                        f"GROUP BY {path_id_col}"
+                        f")"
+                    )
                 else:
-                    prev_conditions = " AND ".join(
-                        [
-                            f"SUM(CASE WHEN {event_col} = {_sql_str(steps[i])} THEN 1 ELSE 0 END) > 0"
-                            for i in range(step_idx)
-                        ]
+                    prev = f"step_{step_num - 1}"
+                    ctes.append(
+                        f"step_{step_num} AS ("
+                        f"SELECT df.{path_id_col} AS path_id, MIN(df.{index_col}) AS idx "
+                        f"FROM df "
+                        f"JOIN {prev} ON df.{path_id_col} = {prev}.path_id "
+                        f"WHERE df.{event_col} = {ev} AND df.{index_col} > {prev}.idx "
+                        f"GROUP BY df.{path_id_col}"
+                        f")"
                     )
-                    order_conditions = " AND ".join(
-                        [
-                            f"MAX(CASE WHEN {event_col} = {_sql_str(steps[i])} THEN {index_col} ELSE 0 END) < "
-                            f"MAX(CASE WHEN {event_col} = {_sql_str(steps[i + 1])} THEN {index_col} ELSE 0 END)"
-                            for i in range(step_idx)
-                        ]
-                    )
-                    query = f"""
-                        SELECT COUNT(DISTINCT {path_id_col}) AS count
-                        FROM (
-                            SELECT {path_id_col}
-                            FROM df
-                            GROUP BY {path_id_col}
-                            HAVING {prev_conditions}
-                              AND SUM(CASE WHEN {event_col} = {ev} THEN 1 ELSE 0 END) > 0
-                              AND {order_conditions}
-                        )
-                    """
-                count = int(duckdb.query(query).df()["count"].iloc[0])
+            counts = ", ".join(
+                f"(SELECT COUNT(*) FROM step_{i}) AS count_{i}"
+                for i in range(1, len(steps) + 1)
+            )
+            query = f"WITH {', '.join(ctes)} SELECT {counts}"
+            row = duckdb.query(query).df().iloc[0]
+
+            funnel_data = []
+            for step_num, step_event in enumerate(steps, start=1):
+                count = int(row[f"count_{step_num}"])
                 funnel_data.append(
                     {
                         "step": step_event,

@@ -133,6 +133,65 @@ class TestFunnel:
         assert result["steps"][2]["funnel2_unique_paths"] == 1
         assert result["steps"][2]["delta_unique_paths"] == 1
 
+    def test_funnel_repeated_event_after_step(self) -> None:
+        # Regression: path A, B, A did A->B in order, so it must be counted
+        # at step B (the old MAX-index logic rejected it because the *last*
+        # A came after the last B).
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "B", "2020-01-01 00:01:00"],
+                ["user_1", "A", "2020-01-01 00:02:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+
+        stream = Eventstream(df, {"event_cols": ["event"]})
+        result = stream.funnel_data(steps=["A", "B"])
+
+        assert result["steps"][0]["unique_paths"] == 1
+        assert result["steps"][1]["unique_paths"] == 1
+
+    def test_funnel_duplicate_step_names(self) -> None:
+        # Regression: duplicate step names made the old order conditions
+        # contradictory (MAX(c) < MAX(p) AND MAX(p) < MAX(c)), so the funnel
+        # always reported 0 for the repeated step.
+        df = pd.DataFrame(
+            [
+                ["user_1", "catalog", "2020-01-01 00:00:00"],
+                ["user_1", "product", "2020-01-01 00:01:00"],
+                ["user_1", "catalog", "2020-01-01 00:02:00"],
+                ["user_2", "catalog", "2020-01-01 00:00:00"],
+                ["user_2", "product", "2020-01-01 00:01:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+
+        stream = Eventstream(df, {"event_cols": ["event"]})
+        result = stream.funnel_data(steps=["catalog", "product", "catalog"])
+
+        # user_1 completes catalog -> product -> catalog; user_2 has no
+        # second catalog and stops after step 2.
+        assert result["steps"][0]["unique_paths"] == 2
+        assert result["steps"][1]["unique_paths"] == 2
+        assert result["steps"][2]["unique_paths"] == 1
+
+    def test_funnel_reversed_order_not_counted(self) -> None:
+        # Ordering must still be enforced: B before A is not an A->B conversion.
+        df = pd.DataFrame(
+            [
+                ["user_1", "B", "2020-01-01 00:00:00"],
+                ["user_1", "A", "2020-01-01 00:01:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+
+        stream = Eventstream(df, {"event_cols": ["event"]})
+        result = stream.funnel_data(steps=["A", "B"])
+
+        assert result["steps"][0]["unique_paths"] == 1
+        assert result["steps"][1]["unique_paths"] == 0
+
     def test_funnel_empty_steps(self) -> None:
         df = pd.DataFrame(
             [["user_1", "A", "2020-01-01"]], columns=["user_id", "event", "timestamp"]

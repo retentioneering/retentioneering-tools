@@ -217,25 +217,40 @@ class CollapseEvents(DataProcessor):
         agg_exprs = self._session_agg_exprs(df, self.agg, exclude, timestamp_col)
         agg_chunk = (", ".join(agg_exprs)) if agg_exprs else ""
 
+        # LAG/SUM below must be ordered by a unique key: (timestamp, subindex) can
+        # tie (subindex is the same for all raw events), and DuckDB's default RANGE
+        # window frame lumps tied peer rows into one group, silently merging
+        # distinct consecutive events that share a timestamp. A precomputed
+        # ROW_NUMBER (_rn) plus an explicit ROWS frame makes grouping deterministic.
         if self.repetitive is True:
-            is_start_condition = f"LAG({event_col}) OVER (PARTITION BY {path_id_col} ORDER BY {timestamp_col}, {schema.subindex}) = {event_col}"
+            is_start_condition = f"LAG({event_col}) OVER (PARTITION BY {path_id_col} ORDER BY _rn) = {event_col}"
         else:
             events_list = ", ".join(f"'{event}'" for event in self.repetitive)
             is_start_condition = (
-                f"LAG({event_col}) OVER (PARTITION BY {path_id_col} ORDER BY {timestamp_col}, {schema.subindex}) = {event_col}"
+                f"LAG({event_col}) OVER (PARTITION BY {path_id_col} ORDER BY _rn) = {event_col}"
                 f" AND {event_col} IN ({events_list})"
             )
 
         query = f"""
-        WITH event_group_starts AS (
+        WITH ordered AS (
+            SELECT *,
+                ROW_NUMBER() OVER (
+                    PARTITION BY {path_id_col} ORDER BY {timestamp_col}, {schema.subindex}
+                ) AS _rn
+            FROM df
+        ),
+        event_group_starts AS (
             SELECT *,
                 CASE WHEN {is_start_condition}
                      THEN 0 ELSE 1 END AS is_start
-            FROM df
+            FROM ordered
         ),
         event_groups AS (
             SELECT *,
-                SUM(is_start) OVER (PARTITION BY {path_id_col} ORDER BY {timestamp_col}, {schema.subindex}) AS grp
+                SUM(is_start) OVER (
+                    PARTITION BY {path_id_col} ORDER BY _rn
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                ) AS grp
             FROM event_group_starts
         )
         SELECT
@@ -245,7 +260,7 @@ class CollapseEvents(DataProcessor):
             {agg_chunk}
         FROM event_groups
         GROUP BY {path_id_col}, grp
-        ORDER BY {path_id_col}, MIN({timestamp_col}), MIN({schema.subindex})
+        ORDER BY {path_id_col}, MIN(_rn)
         """
         res = duckdb.query(query).df()
         res = res[schema.cols]

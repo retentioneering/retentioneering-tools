@@ -115,6 +115,29 @@ class TestCollapseEventsRepetitive:
         )
         assert res.equals(expected)
 
+    def test_distinct_events_with_tied_timestamps_not_merged(self):
+        """Regression: distinct consecutive events sharing the exact same timestamp
+        must survive as separate rows. DuckDB's default RANGE window frame treated
+        rows tied on (timestamp, subindex) as peers, so the running SUM gave them
+        an identical group id and they were silently merged into one 'collapsed' row.
+        """
+        df = pd.DataFrame(
+            [
+                ["u1", "A", "2020-01-01 00:00:00"],
+                ["u1", "B", "2020-01-01 00:00:00"],  # same timestamp, different event
+                ["u1", "C", "2020-01-01 00:01:00"],
+                ["u1", "C", "2020-01-01 00:02:00"],  # genuine repetition
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df)
+        res = stream.collapse_events(repetitive=True)
+
+        assert events(res) == ["A", "B", "C"]
+        # A and B are not collapsed rows; only the C-run is.
+        assert event_types(res).count(COLLAPSED) == 1
+        assert event_types(res)[-1] == COLLAPSED
+
     def test_path_id_override_and_agg(self):
         df = pd.DataFrame(
             [

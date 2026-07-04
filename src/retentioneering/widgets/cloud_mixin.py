@@ -15,10 +15,13 @@ from retentioneering.widgets._utils import (
 )  # re-export for existing importers
 
 try:
-    from retentioneering._tracking import track as _track
+    from retentioneering._tracking import identify as _identify, track as _track
 except Exception:
 
     def _track(event, properties=None):
+        pass  # type: ignore[misc]
+
+    def _identify(properties=None):
         pass  # type: ignore[misc]
 
 
@@ -119,13 +122,7 @@ class CloudMixin(traitlets.HasTraits):
             email = json.loads(_b64.urlsafe_b64decode(part)).get("email", "")
             if email:
                 _track("user_authenticated", {"email": email})
-                try:
-                    from retentioneering._tracking import _ph, _DISTINCT_ID
-
-                    if _ph:
-                        _ph.identify(_DISTINCT_ID, properties={"email": email})
-                except Exception:
-                    pass
+                _identify({"email": email})
         except Exception:
             pass
 

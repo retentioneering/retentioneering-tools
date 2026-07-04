@@ -154,6 +154,16 @@ def track(event: str, properties: dict | None = None) -> None:
         pass
 
 
+def identify(properties: dict | None = None) -> None:
+    """Fire-and-forget PostHog identify. Respects the no-track opt-out. Never raises."""
+    if _ph is None or _no_track_requested():
+        return
+    try:
+        _ph.identify(_DISTINCT_ID, properties=properties or {})
+    except Exception:
+        pass
+
+
 def tracked(event_name: str, condition=None, props_fn=None):
     """Decorator that tracks a method call only when not inside another tracked call.
 

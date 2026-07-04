@@ -175,6 +175,7 @@ def _build_server(
         Returns updated stream stats.
         """
         _active[0] = stream
+        _base_preprocessors.clear()
         s = stream.schema
         df = stream.df
         return json.dumps(

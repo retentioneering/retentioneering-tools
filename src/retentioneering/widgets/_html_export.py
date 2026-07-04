@@ -10,6 +10,16 @@ import html as _html_mod
 _BUNDLE_PATH = pathlib.Path(__file__).parent.parent / "static" / "widget-static.js"
 
 
+def _json_for_script(obj: object) -> str:
+    """Serialize ``obj`` to JSON safe for embedding inside a ``<script>`` block.
+
+    A literal ``</script>`` inside a JSON string would terminate the script
+    element (breaking the page and enabling HTML injection), so escape every
+    ``</`` as ``<\\/`` — a no-op inside JS string literals.
+    """
+    return json.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
+
+
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 
@@ -62,12 +72,12 @@ def write_report_html(
         }
         for i, w in enumerate(widgets)
     }
-    widgets_json = json.dumps(widgets, ensure_ascii=False)
+    widgets_json = _json_for_script(widgets)
     analysis_html = render_analysis(analysis, label_map=label_map) if analysis else ""
     if data_sources_html:
         analysis_html = data_sources_html + "\n" + analysis_html
     html = (
-        _HTML_TEMPLATE_REPORT.replace("{{TITLE}}", title)
+        _HTML_TEMPLATE_REPORT.replace("{{TITLE}}", _html_mod.escape(title))
         .replace("{{WIDGETS_JSON}}", widgets_json)
         .replace("{{BUNDLE_JS}}", bundle_js)
         .replace("{{ANALYSIS_HTML}}", analysis_html)
@@ -267,8 +277,8 @@ def _write_bare(path: str, title: str, data: dict) -> None:
         )
     bundle_js = _BUNDLE_PATH.read_text(encoding="utf-8")
     html = (
-        _HTML_TEMPLATE_BARE.replace("{{TITLE}}", title)
-        .replace("{{DATA_JSON}}", json.dumps(data, ensure_ascii=False))
+        _HTML_TEMPLATE_BARE.replace("{{TITLE}}", _html_mod.escape(title))
+        .replace("{{DATA_JSON}}", _json_for_script(data))
         .replace("{{BUNDLE_JS}}", bundle_js)
     )
     pathlib.Path(path).write_text(html, encoding="utf-8")

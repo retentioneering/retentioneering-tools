@@ -66,7 +66,7 @@ test-release:
 	@if [ -z "$(VERSION)" ]; then \
 	  echo "Usage: make test-release VERSION=x.y.z"; exit 1; \
 	fi
-	@if [ -n "$$(git status --porcelain)" ]; then \
+	@if [ -n "$$(git status --porcelain --untracked-files=no)" ]; then \
 	  echo "Refusing: you have uncommitted changes (this uses git reset --hard). Commit or stash first."; exit 1; \
 	fi
 	sed -i '' 's/^version = ".*"/version = "$(VERSION)"/' pyproject.toml

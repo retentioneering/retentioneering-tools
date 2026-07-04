@@ -608,6 +608,42 @@ class TestCollapseEventsGroupsCases:
         assert "purchase_session" in result_events
         assert "no_purchase_session" in result_events
 
+    def test_cases_event_count_metric(self):
+        """Cases with 'event_count' metric (documented 'events' key) name sessions by threshold."""
+        stream = make_stream(
+            [
+                # session 1: two 'click' events -> exceeds threshold
+                ["user_1", "click", "2020-01-01 00:00:00"],
+                ["user_1", "click", "2020-01-01 00:01:00"],
+                ["user_1", "sep", "2020-01-01 00:02:00"],
+                # session 2: one 'click' event -> below threshold
+                ["user_1", "click", "2020-01-01 00:03:00"],
+                ["user_1", "A", "2020-01-01 00:04:00"],
+                ["user_1", "sep", "2020-01-01 00:05:00"],
+            ]
+        )
+        res = stream.collapse_events(
+            event_groups=[
+                {
+                    "separator": "sep",
+                    "cases": [
+                        {
+                            "condition": {
+                                "op": ">",
+                                "metric": "event_count",
+                                "value": 1,
+                                "metric_args": {"events": "click"},
+                            },
+                            "new_name": "active_session",
+                        }
+                    ],
+                    "default": "quiet_session",
+                }
+            ]
+        )
+
+        assert events(res) == ["active_session", "quiet_session"]
+
     def test_cases_default_when_no_match(self):
         """When no case condition matches, the default name is used."""
         stream = make_stream(

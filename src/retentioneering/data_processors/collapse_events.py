@@ -174,7 +174,7 @@ class CollapseEvents(DataProcessor):
                 for e in events
             ]
         elif metric == "event_count":
-            events = to_list(args.get("event", []))
+            events = to_list(args.get("events", []))
             return [
                 (
                     f"event_count_{e}",

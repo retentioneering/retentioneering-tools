@@ -24,7 +24,7 @@ def to_list(value: str | List[str]) -> List[str]:
 
 
 def sql_list(values: List[str]) -> str:
-    return ", ".join(f"'{v}'" for v in values)
+    return ", ".join("'" + str(v).replace("'", "''") + "'" for v in values)
 
 
 def detect_mode(group: Dict[str, Any]) -> str:

@@ -175,7 +175,6 @@ class AddSegment(DataProcessor):
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-
         if self.name in df.columns:
             if self.name in schema.segment_cols:
                 raise PreprocessingConfigError(
@@ -199,10 +198,12 @@ class AddSegment(DataProcessor):
             for item in self.values[:-1]:
                 column, op, value, segment_value = item
                 if isinstance(value, str) and op.lower() != "in":
-                    value = f"'{value}'"
-                cases += f"\nWHEN {column} {op} {value} THEN '{segment_value}'"
+                    value = _sql_str(value)
+                cases += (
+                    f"\nWHEN {column} {op} {value} THEN {_sql_str(str(segment_value))}"
+                )
             else_segment_value = self.values[-1][0]
-            cases += f"\nELSE '{else_segment_value}'"
+            cases += f"\nELSE {_sql_str(str(else_segment_value))}"
             cases += f"\nEND AS {self.name}"
 
             sql = f"SELECT {cases} FROM df"

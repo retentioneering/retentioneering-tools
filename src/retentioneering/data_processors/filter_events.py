@@ -1,4 +1,3 @@
-import json
 from typing import Callable, Dict, Tuple
 
 import duckdb
@@ -12,6 +11,15 @@ from retentioneering.exceptions import (
 )
 
 PROCESSOR_NAME = "filter_events"
+
+
+def _sql_literal(value) -> str:
+    """Render a Python value as a safe DuckDB SQL literal."""
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, (int, float)):
+        return str(value)
+    return "'" + str(value).replace("'", "''") + "'"
 
 
 class FilterEvents(DataProcessor):
@@ -85,7 +93,7 @@ class FilterEvents(DataProcessor):
                 raise PreprocessingColumnNotFoundError(
                     PROCESSOR_NAME, filter_column, df.columns.tolist()
                 )
-            filter_values_str = json.dumps(list(filter_values)).replace('"', "'")[1:-1]
+            filter_values_str = ", ".join(_sql_literal(v) for v in filter_values)
             operator = "not in" if exclude else "in"
             query = f"""
                 select * from df

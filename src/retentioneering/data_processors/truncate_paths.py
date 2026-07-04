@@ -60,23 +60,26 @@ class TruncatePaths(DataProcessor):
         event_col = self.event_col or schema.event_col
         timestamp_col = schema.timestamp
 
+        left_literal = "'" + self.left.replace("'", "''") + "'"
+        right_literal = "'" + self.right.replace("'", "''") + "'"
+
         # SQL query to find the first occurrence of left and right events in each path
         # and keep only events between them (inclusive)
         query = f"""
         WITH left_bounds AS (
             SELECT
                 {path_id_col},
-                MIN(CASE WHEN {event_col} = '{self.left}' THEN {schema.index} END) AS left_idx
+                MIN(CASE WHEN {event_col} = {left_literal} THEN {schema.index} END) AS left_idx
             FROM df
             GROUP BY {path_id_col}
         ),
         right_bounds AS (
             SELECT
                 df.{path_id_col},
-                MIN(CASE WHEN df.{event_col} = '{self.right}' THEN df.{schema.index} END) AS right_idx
+                MIN(CASE WHEN df.{event_col} = {right_literal} THEN df.{schema.index} END) AS right_idx
             FROM df
             INNER JOIN left_bounds lb ON df.{path_id_col} = lb.{path_id_col}
-            WHERE df.{schema.index} > lb.left_idx OR (df.{schema.index} = lb.left_idx AND '{self.left}' = '{self.right}')
+            WHERE df.{schema.index} > lb.left_idx OR (df.{schema.index} = lb.left_idx AND {left_literal} = {right_literal})
             GROUP BY df.{path_id_col}
         ),
         path_bounds AS (

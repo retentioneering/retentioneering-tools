@@ -692,7 +692,9 @@ class MetricBuilder:
 
         # Generate patterns with optional gaps
         patterns = generate_patterns_with_optional_gaps(pattern)
-        patterns_chunk = " OR ".join([f"regexp_matches(path, '{p}')" for p in patterns])
+        patterns_chunk = " OR ".join(
+            f"regexp_matches(path, {format_value_for_sql(p)})" for p in patterns
+        )
 
         query = f'select {path_id_col}, {patterns_chunk} as "{metric_name}" from paths'
         result = duckdb.sql(query).df()

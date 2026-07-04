@@ -177,7 +177,7 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
                 _df = self._eventstream._df
                 _seg_col, _val1, _val2 = diff
                 for _val, _target in [(_val1, "g1"), (_val2, "g2")]:
-                    _d = _df[_df[_seg_col] == _val]
+                    _d = _df[_df[_seg_col] == _val]  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL strings below
                     _c = (
                         _duckdb.sql(
                             f"SELECT {_ec}, COUNT(DISTINCT {_pid}) AS cnt FROM _d GROUP BY {_ec}"

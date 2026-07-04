@@ -2643,7 +2643,7 @@ requires-dist = [
     { name = "ipykernel", marker = "extra == 'dev'" },
     { name = "ipywidgets", specifier = ">=7.0" },
     { name = "jupyterlab", marker = "extra == 'dev'" },
-    { name = "matplotlib", specifier = ">=3.11.0" },
+    { name = "matplotlib", specifier = ">=3.5" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.28.0" },
     { name = "notebook", marker = "extra == 'dev'" },
     { name = "numpy", specifier = ">=1.26" },

@@ -3,7 +3,7 @@
 import pandas as pd
 
 from retentioneering.eventstream.eventstream import Eventstream
-from retentioneering.mcp.server import _apply_preprocessors
+from retentioneering.mcp.server import _apply_preprocessors, _find_unlinked_numbers
 
 
 def get_stream() -> Eventstream:
@@ -47,3 +47,27 @@ class TestApplyPreprocessorsFilterEvents:
         )
 
         assert set(result.df["event"].astype(str)) == {"view"}
+
+
+class TestFindUnlinkedNumbers:
+    def test__multiplier_digits_before_sign_is_flagged(self) -> None:
+        issues = _find_unlinked_numbers("Conversion grew 2.2× during the spike")
+
+        assert any("2.2" in issue["number"] for issue in issues)
+
+    def test__multiplier_sign_before_digits_is_flagged(self) -> None:
+        issues = _find_unlinked_numbers("Conversion grew ×2.2 during the spike")
+
+        assert any("2.2" in issue["number"] for issue in issues)
+
+    def test__multiplier_with_nearby_link_is_ok(self) -> None:
+        issues = _find_unlinked_numbers(
+            "Conversion grew 2.2× during the spike [tab-0:transition graph]"
+        )
+
+        assert issues == []
+
+    def test__backticked_multiplier_is_exempt(self) -> None:
+        issues = _find_unlinked_numbers("Conversion grew `2.2×` during the spike")
+
+        assert issues == []

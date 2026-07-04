@@ -989,7 +989,9 @@ def _find_unlinked_numbers(analysis: str) -> list[dict]:
                 )
 
         # Check each percentage / multiplier individually
-        for m in re.finditer(r"\d+[.,]?\d*\s*%|×\s*\d+\.?\d*", s_no_code):
+        for m in re.finditer(
+            r"\d+[.,]?\d*\s*%|\d+[.,]?\d*\s*×|×\s*\d+\.?\d*", s_no_code
+        ):
             pos = m.start()
             nearby = any(abs(lp - pos) <= 200 for lp in link_positions)
             if not nearby:

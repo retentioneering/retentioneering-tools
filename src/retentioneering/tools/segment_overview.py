@@ -369,24 +369,33 @@ class SegmentOverview:
 
         return False
 
-    def _log_transform(self, data: np.ndarray) -> np.ndarray:
+    def _log_transform(
+        self, data: np.ndarray, offset: float | None = None
+    ) -> np.ndarray:
         """
         Apply log transformation to data, handling zeros.
 
-        For zeros, we add a small positive value before taking log.
+        For zeros, we substitute a small positive value before taking log.
+        If ``offset`` is given, it is used as that substitute; otherwise it is
+        derived from ``data`` (half of its minimum positive value). Passing a
+        shared offset keeps identical raw values aligned across related arrays
+        (e.g. the two groups of a pair distribution).
         """
-        # Find minimum positive value in data
-        positive_data = data[data > 0]
-        if len(positive_data) > 0:
-            min_positive = positive_data.min()
-            # Use half of min positive value for zeros
-            offset = min_positive / 2
-        else:
-            offset = LOG_SCALE_MIN_POSITIVE
+        if offset is None:
+            offset = self._log_zero_offset(data)
 
         # Replace zeros with offset, then take log
         data_transformed = np.where(data > 0, data, offset)
         return np.log10(data_transformed)
+
+    @staticmethod
+    def _log_zero_offset(data: np.ndarray) -> float:
+        """Compute the zero-replacement offset for log transform of ``data``."""
+        positive_data = data[data > 0]
+        if len(positive_data) > 0:
+            # Use half of min positive value for zeros
+            return float(positive_data.min()) / 2
+        return LOG_SCALE_MIN_POSITIVE
 
     def _build_histogram(
         self, data: np.ndarray, bins: np.ndarray | None = None, max_bins: int = MAX_BINS
@@ -547,11 +556,18 @@ class SegmentOverview:
         # Determine if we should use log scale (based on combined data)
         log_scale = not is_discrete and self._should_use_log_scale(combined_data)
 
-        # Transform data if using log scale
+        # Transform data if using log scale.
+        # Use a single zero-replacement offset derived from the combined data so
+        # identical raw zeros map to the same transformed value in both groups.
         if log_scale:
-            data_1_hist = self._log_transform(data_1) if len(data_1) > 0 else data_1
-            data_2_hist = self._log_transform(data_2) if len(data_2) > 0 else data_2
-            combined_hist = self._log_transform(combined_data)
+            offset = self._log_zero_offset(combined_data)
+            data_1_hist = (
+                self._log_transform(data_1, offset) if len(data_1) > 0 else data_1
+            )
+            data_2_hist = (
+                self._log_transform(data_2, offset) if len(data_2) > 0 else data_2
+            )
+            combined_hist = self._log_transform(combined_data, offset)
         else:
             data_1_hist = data_1
             data_2_hist = data_2

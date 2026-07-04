@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 from retentioneering.eventstream.eventstream import Eventstream
@@ -8,6 +9,7 @@ from retentioneering.exceptions import (
     SegmentValueNotFoundError,
 )
 from retentioneering.tools.segment_overview import SegmentOverview
+from scipy.stats import wasserstein_distance
 
 
 class TestSegmentOverview:
@@ -1454,3 +1456,76 @@ class TestMetricDistribution:
         assert sum(result["distribution_2"]["counts"]) == 2
         assert result["distribution_1"]["mean"] == pytest.approx(2.0)
         assert result["distribution_2"]["mean"] == pytest.approx(1.0)
+
+
+class TestLogScaleSharedZeroOffset:
+    """Regression tests for the log-scale branch of _build_pair_distribution.
+
+    Previously each array (data_1, data_2, combined) derived its own
+    zero-replacement offset (its min positive value / 2), so identical raw
+    zeros in the two groups mapped to different transformed values whenever
+    the groups had different minimum positive values. That distorted the
+    shared-bin histograms and injected a pure artifact into the Wasserstein
+    distance. Now a single offset derived from the combined data is used for
+    all three transforms.
+    """
+
+    # Data shapes chosen so the pair takes the log-scale continuous branch:
+    # combined data has > DISCRETE_THRESHOLD unique values (not discrete) and
+    # max/min-positive ratio 1000 / 0.01 = 1e5 > LOG_SCALE_RANGE_RATIO.
+    # Both groups contain a raw zero, but wildly different min positives
+    # (100 vs 0.01), which is exactly the case the old per-array offsets broke.
+    DATA_1 = np.array([0.0, 100.0, 200.0, 300.0, 400.0, 500.0, 1000.0])
+    DATA_2 = np.array([0.0, 0.01, 150.0, 250.0, 350.0, 450.0, 1000.0])
+
+    @staticmethod
+    def _make_overview() -> SegmentOverview:
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "segment_1", "2020-01-01 00:00:00"],
+                ["user_2", "A", "segment_2", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        return SegmentOverview(Eventstream(df, schema))
+
+    def test_identical_zeros_transform_equally_across_groups(self) -> None:
+        """Raw zeros in both groups must land at the same transformed value"""
+        overview = self._make_overview()
+        combined = np.concatenate([self.DATA_1, self.DATA_2])
+
+        offset = overview._log_zero_offset(combined)
+        transformed_1 = overview._log_transform(self.DATA_1, offset)
+        transformed_2 = overview._log_transform(self.DATA_2, offset)
+
+        # Shared offset = min positive of combined / 2 = 0.01 / 2 = 0.005
+        expected_zero = np.log10(0.005)
+        assert transformed_1[0] == pytest.approx(expected_zero)
+        assert transformed_2[0] == pytest.approx(expected_zero)
+        # Under the old per-array derivation data_1's zero mapped to
+        # log10(100 / 2) ~= +1.7 instead of ~-2.3.
+
+    def test_pair_distribution_uses_shared_offset(self) -> None:
+        """_build_pair_distribution stats must reflect the shared offset"""
+        overview = self._make_overview()
+        result = overview._build_pair_distribution(self.DATA_1, self.DATA_2)
+
+        assert result["log_scale"] is True
+
+        # Expected transforms with the single combined-data offset (0.005)
+        offset = 0.005
+        expected_1 = np.log10(np.where(self.DATA_1 > 0, self.DATA_1, offset))
+        expected_2 = np.log10(np.where(self.DATA_2 > 0, self.DATA_2, offset))
+
+        assert result["distribution_1"]["mean"] == pytest.approx(
+            float(np.mean(expected_1))
+        )
+        assert result["distribution_2"]["mean"] == pytest.approx(
+            float(np.mean(expected_2))
+        )
+        assert result["distance"] == pytest.approx(
+            float(wasserstein_distance(expected_1, expected_2))
+        )
+        # Sanity: under the old code distribution_1's mean was inflated by
+        # (log10(50) - log10(0.005)) / len(data_1) = 4 / 7 ~= 0.57.

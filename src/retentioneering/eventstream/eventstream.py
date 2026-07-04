@@ -112,7 +112,12 @@ class Eventstream:
         return df
 
     def empty(self, exclude_start_end: bool = True) -> bool:
-        return self.to_dataframe(exclude_start_end=exclude_start_end).empty
+        # Cheap check on the underlying frame — to_dataframe() would deep-copy
+        # the whole eventstream just to test emptiness.
+        if not exclude_start_end:
+            return self._df.empty
+        exclude = [EventTypes().PATH_START.type, EventTypes().PATH_END.type]
+        return bool(self._df[self.schema.event_type].isin(exclude).all())
 
     def equals(
         self,

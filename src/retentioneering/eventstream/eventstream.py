@@ -1177,7 +1177,8 @@ class Eventstream:
         """Run cluster analysis headlessly and return dict with overview_df / silhouette / nmf.
 
         Pass lists for n_clusters / nmf_k / min_cluster_size to trigger grid search
-        with silhouette scoring.
+        with silhouette scoring. n_clusters is required for the kmeans method
+        (the default), including nmf_k-only searches.
         """
         from retentioneering.tools.cluster_analysis import ClusterAnalysis
 

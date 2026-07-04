@@ -282,6 +282,40 @@ class TestClusterAnalysis:
             {"n_clusters": 3, "nmf_k": 3},
         ]
 
+    def test_kmeans_missing_n_clusters(self) -> None:
+        """Test kmeans without n_clusters raises a clean ValueError (normal mode)"""
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(
+            ValueError, match="n_clusters is required for kmeans method"
+        ):
+            stream.cluster_analysis_data(
+                features=[
+                    {"metric": "length"},
+                    {"metric": "duration"},
+                ],
+                method="kmeans",
+                nmf_k=2,
+            )
+
+    def test_kmeans_missing_n_clusters_nmf_k_search(self) -> None:
+        """Test nmf_k-only search with kmeans and no n_clusters raises a clean ValueError"""
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(
+            ValueError, match="n_clusters is required for kmeans method"
+        ):
+            stream.cluster_analysis_data(
+                features=[
+                    {"metric": "length"},
+                    {"metric": "duration"},
+                ],
+                method="kmeans",
+                nmf_k=[2, 3],
+            )
+
     def test_overview_empty_metrics_config(self) -> None:
         """Test that overview works with empty metrics_config (only segment_size/share)"""
         df = get_df()

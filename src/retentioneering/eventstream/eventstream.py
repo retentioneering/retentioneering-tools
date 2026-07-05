@@ -993,7 +993,7 @@ class Eventstream:
         diff : tuple, optional
             `(segment_col, value1, value2)` to compare two segment values, or
             `(path_ids1, path_ids2)` to compare two explicit path-id groups.
-            `value2` may be `"<OUTER>"`, meaning "every other value of `segment_col`".
+            `value2` may be `<OUTER>`, meaning "every other value of `segment_col`".
 
         Returns
         -------
@@ -1031,7 +1031,7 @@ class Eventstream:
             `path_pattern` is given).
         diff : tuple, optional
             `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `"<OUTER>"`. See `transition_graph_data` for the shared diff
+            may be `<OUTER>`. See `transition_graph_data` for the shared diff
             semantics.
         path_id_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
@@ -1076,16 +1076,15 @@ class Eventstream:
         sidebar_open=None,
     ):
         """
-        Interactive step-by-step Sankey diagram for Jupyter notebooks.
+        Displays a step-by-step Sankey diagram showing which events users experience
+        at each ordinal position in their path. The horizontal axis represents step
+        number, making it easy to see how paths diverge over time.
 
-        Shows which events paths pass through at each step, and how paths
-        diverge over time. Each column sums to 1 (share of paths at that step);
-        in diff mode, each column shows `value2 - value1` and sums to 0. Shares
-        its underlying data with `step_matrix` (see `step_sankey_data`) — Sankey
-        renders it as a flow diagram, Step Matrix as a heatmap.
+        Each column sums to 1 in standard mode, while in diff mode columns sum to 0.
 
-        All parameters are also editable from the widget's sidebar without
-        re-running the cell.
+        Step Sankey and [Step Matrix](/docs/widgets/step-matrix) visualise the same
+        underlying data in different forms: Step Sankey as a flow diagram, Step Matrix
+        as a heatmap table. Use whichever makes the pattern you are looking for easier to spot.
 
         Parameters
         ----------
@@ -1095,7 +1094,7 @@ class Eventstream:
             Number of step columns shown around each anchor.
         diff : tuple, optional
             `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `"<OUTER>"`.
+            may be `<OUTER>`.
         path_id_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         path_pattern : str, optional
@@ -1135,17 +1134,16 @@ class Eventstream:
         sidebar_open=None,
     ):
         """
-        Interactive step-by-step transition heatmap for Jupyter notebooks.
+        Displays a heatmap table of step-by-step transition probabilities. Each cell
+        shows the share of paths that pass through a given event at a given step
+        relative to an anchor. The horizontal axis represents step offset from the anchor
+        (negative steps are before it, positive are after), and the vertical axis lists the events.
 
-        Each cell shows the share of paths passing through a given event at a
-        given step relative to an anchor: columns are step offsets from the
-        anchor (negative = before, positive = after), rows are events. In
-        standard mode each column sums to 1; in diff mode each cell is
-        `value2 - value1` and columns sum to 0. Shares its underlying data with
-        `step_sankey` (see `step_sankey_data`).
+        Each column sums to 1 in standard mode, while in diff mode columns sum to 0.
 
-        All parameters are also editable from the widget's sidebar without
-        re-running the cell.
+        Step Matrix and [Step Sankey](/docs/widgets/step-sankey) visualise the same underlying
+        data in different forms: Step Matrix as a heatmap table, Step Sankey as a flow diagram.
+        Use whichever makes the pattern you are looking for easier to spot.
 
         Parameters
         ----------
@@ -1156,7 +1154,7 @@ class Eventstream:
             Number of path steps to compute on each side of the anchor.
         diff : tuple, optional
             `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `"<OUTER>"`.
+            may be `<OUTER>`.
         path_id_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         path_pattern : str, optional
@@ -1202,20 +1200,17 @@ class Eventstream:
         cloud_file_name: str | None = None,
     ):
         """
-        Interactive transition graph for Jupyter notebooks.
-
-        Nodes are events, edges are transitions between them. Supports diff mode
-        to compare two segments side by side. All parameters are also editable
-        from the widget's sidebar without re-running the cell.
+        Displays an interactive directed graph where nodes are unique events and edges represent transitions
+        between them. Edge weights can show transition probabilities, counts, or time-based metrics.
+        Supports diff mode to compare two user segments side by side.
 
         Parameters
         ----------
         edge_weight : {"proba_out", "proba_in", "count", "unique_paths", "transition_rate", "per_path", "time_median", "time_q95"}, default "proba_out"
-            Value shown on edges. See `transition_graph_data` for what each
-            value means.
+            Value shown on edges. See the [Edge Weights](/docs/widgets/transition-graph#edge-weights) section for more details.
         diff : tuple, optional
             `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `"<OUTER>"`, meaning "every other value of `segment_col`".
+            may be `<OUTER>`, meaning "every other value of `segment_col`".
         path_id_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         height : int, default 500
@@ -1269,7 +1264,7 @@ class Eventstream:
             Ordered event names defining the funnel steps.
         diff : tuple, optional
             `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `"<OUTER>"`.
+            may be `<OUTER>`.
         path_id_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         height : int, default 420

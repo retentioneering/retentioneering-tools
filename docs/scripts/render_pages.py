@@ -21,6 +21,7 @@ Usage (from repo root):
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import jinja2
@@ -29,6 +30,7 @@ from docstring_utils import bullets, get_doc, render_param_table
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 TEMPLATES_DIR = REPO_ROOT / "docs" / "templates"
+GUIDE_DIR = REPO_ROOT / "docs" / "guide"
 BUILD_DIR = REPO_ROOT / "docs" / "build"
 
 TITLE_OVERRIDES = {"url_events": "URL Events"}
@@ -122,10 +124,27 @@ def render_data_processor(env: jinja2.Environment, method_name: str) -> str:
     )
 
 
+def copy_guide_pages() -> None:
+    """Copy hand-written conceptual pages (quick-start, installation, ...) as-is.
+
+    Unlike widgets/data-processors, these have no docstring to render from —
+    docs/guide/*.md IS the source, so this step is a plain copy, not a
+    template render.
+    """
+    out_dir = BUILD_DIR / "guide"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for src in sorted(GUIDE_DIR.glob("*.md")):
+        dest = out_dir / src.name
+        shutil.copy2(src, dest)
+        print(f"wrote {dest.relative_to(REPO_ROOT)}")
+
+
 def main() -> None:
     (BUILD_DIR / "widgets").mkdir(parents=True, exist_ok=True)
     (BUILD_DIR / "data-processors").mkdir(parents=True, exist_ok=True)
     env = build_env()
+
+    copy_guide_pages()
 
     for template_rel, method_name, headless_name in WIDGETS:
         rendered = render_widget(env, template_rel, method_name, headless_name)

@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Generate static HTML demos for every <DemoWidget> tag in docs/templates.
+"""Generate static HTML demos for every <DemoWidget> tag in docs/templates
+and docs/guide.
 
 Each <DemoWidget cmd={`...`} path="..." height={N} /> found in
-docs/templates/widgets/*.md.jinja is executed against the bundled ecom
-dataset, and the resulting widget is exported as a standalone HTML file
-via the widget's own `export_html()` (the same static-export mechanism
-used for full report exports). Output paths mirror the `path` attribute,
-rooted at docs/build/demos/ — retentioneering-web serves that directory
-through a `public/docs-demos` symlink and iframes it from `<DemoWidget>`.
+docs/templates/widgets/*.md.jinja or docs/guide/*.md is executed against the
+bundled ecom dataset, and the resulting widget is exported as a standalone
+HTML file via the widget's own `export_html()` (the same static-export
+mechanism used for full report exports). Output paths mirror the `path`
+attribute, rooted at docs/build/demos/ — retentioneering-web serves that
+directory through a `public/docs-demos` symlink and iframes it from
+<DemoWidget>.
 
 Usage (from repo root):
     uv run python docs/scripts/generate_widget_demos.py
@@ -23,6 +25,7 @@ from retentioneering.eventstream import Eventstream
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 TEMPLATES_DIR = REPO_ROOT / "docs" / "templates"
+GUIDE_DIR = REPO_ROOT / "docs" / "guide"
 DEMOS_ROOT = REPO_ROOT / "docs" / "build" / "demos"
 
 # Matches: <DemoWidget cmd={`...`} path="..." height={N} />
@@ -37,10 +40,13 @@ _DEMO_RE = re.compile(
 def find_demo_tags() -> list[tuple[str, str, Path]]:
     """Return (cmd, path, source_file) for every <DemoWidget> tag found."""
     tags = []
-    for template_file in sorted(TEMPLATES_DIR.rglob("*.md.jinja")):
-        text = template_file.read_text(encoding="utf-8")
+    source_files = sorted(TEMPLATES_DIR.rglob("*.md.jinja")) + sorted(
+        GUIDE_DIR.glob("*.md")
+    )
+    for source_file in source_files:
+        text = source_file.read_text(encoding="utf-8")
         for match in _DEMO_RE.finditer(text):
-            tags.append((match.group("cmd"), match.group("path"), template_file))
+            tags.append((match.group("cmd"), match.group("path"), source_file))
     return tags
 
 

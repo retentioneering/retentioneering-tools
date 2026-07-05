@@ -8,9 +8,18 @@
 {{ doc.examples or default_call }}
 ```
 
+{% set data_params, display_params = split_by_headless(doc.parameters, headless.parameters) %}
 ## Parameters
 
-{{ param_table(doc.parameters) }}
+### Data
+
+Same as [headless mode](#headless-mode) below.
+
+{{ param_table(data_params) }}
+
+### Display
+
+{{ param_table(display_params) }}
 
 {% block extra %}{% endblock %}
 ## Headless mode

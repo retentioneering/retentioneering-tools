@@ -26,7 +26,7 @@ from pathlib import Path
 
 import jinja2
 from retentioneering.eventstream.eventstream import Eventstream
-from docstring_utils import bullets, get_doc, render_param_table
+from docstring_utils import bullets, get_doc, render_param_table, split_by_headless
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 TEMPLATES_DIR = REPO_ROOT / "docs" / "templates"
@@ -99,6 +99,7 @@ def build_env() -> jinja2.Environment:
     )
     env.globals["param_table"] = render_param_table
     env.globals["bullets"] = bullets
+    env.globals["split_by_headless"] = split_by_headless
     return env
 
 

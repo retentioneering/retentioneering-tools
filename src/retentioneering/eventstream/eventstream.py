@@ -1147,9 +1147,6 @@ class Eventstream:
 
         Parameters
         ----------
-        cloud_file_name : str, optional
-            Save/restore this widget's configuration (including manual layout
-            tweaks) to the cloud under this name.
         max_steps : int, default 10
             Number of path steps to compute on each side of the anchor.
         diff : tuple, optional
@@ -1217,9 +1214,6 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
-        cloud_file_name : str, optional
-            Save/restore this widget's configuration (including manual node
-            layout) to the cloud under this name.
 
         Examples
         --------

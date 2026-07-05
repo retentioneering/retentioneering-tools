@@ -166,6 +166,25 @@ def find_param(params: list[Param], name: str) -> Param | None:
     return next((p for p in params if p.name == name), None)
 
 
+def split_by_headless(
+    widget_params: list[Param], headless_params: list[Param]
+) -> tuple[list[Param], list[Param]]:
+    """Partition a widget's parameters into "data" (shared with its headless
+    counterpart, e.g. `edge_weight`, `diff`) and "display" (widget-only, e.g.
+    `height`, `sidebar_open`) groups.
+
+    Relies on a naming convention rather than any explicit tag: a data
+    processor/computation param is documented under the *same name* on both
+    the widget method and its headless counterpart (see `Eventstream.step_matrix`
+    vs. `Eventstream.step_sankey_data`), so membership in `headless_params` is
+    what distinguishes the two groups.
+    """
+    headless_names = {p.name for p in headless_params}
+    data_params = [p for p in widget_params if p.name in headless_names]
+    display_params = [p for p in widget_params if p.name not in headless_names]
+    return data_params, display_params
+
+
 def bullets(params: list[Param], name: str) -> str:
     """Markdown bullet list for one named parameter's `- ...` breakdown.
 

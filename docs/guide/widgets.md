@@ -43,26 +43,6 @@ stream.funnel()
 
 Arguments are a convenient way to reproduce a specific configuration without clicking through the UI. They are also useful when sharing notebooks — a reader can see the configuration at a glance without opening the widget.
 
-## Saving widget state
-
-Transition Graph and Step Matrix accept a `cloud_file_name` parameter for saving/restoring widget configuration (including manual layout tweaks) to the cloud:
-
-```python
-stream.transition_graph(cloud_file_name="my_graph")
-stream.step_matrix(cloud_file_name="my_matrix")
-```
-
-Cloud save requires a Supabase-backed service that isn't part of the open-source library by default — it's disabled unless `RETENTIONEERING_CLOUD_ENABLED` and the related Supabase environment variables are configured for your own deployment. Without that setup, the cloud icon is hidden and `cloud_file_name` has no effect.
-
-### Overriding saved state with arguments
-
-Any argument passed explicitly takes precedence over the saved state. This lets you load a saved configuration and adjust one parameter without touching the rest:
-
-```python
-# Load saved configuration but override the height
-stream.transition_graph(cloud_file_name="my_graph", height=600)
-```
-
 ## Diff mode
 
 Transition Graph, Step Sankey, Step Matrix, and Funnel support diff mode, which overlays two groups in the same visualization so you can compare their behavior directly.

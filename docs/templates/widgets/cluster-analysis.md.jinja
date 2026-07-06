@@ -3,12 +3,11 @@
 {% block demo_examples %}
 ## Examples
 
-### Default
-
+### Basic
 <DemoWidget cmd={`stream.cluster_analysis(
     features=[
         {"metric": "event_count", "metric_args": {"events": ["catalog", "product_view", "add_to_cart", "purchase"]}},
     ],
     n_clusters=3,
-)`} path="/docs-demos/widgets/cluster-analysis/default.html" height={520} />
+)`} path="/docs-demos/widgets/cluster-analysis/basic.html" height={580} />
 {% endblock %}

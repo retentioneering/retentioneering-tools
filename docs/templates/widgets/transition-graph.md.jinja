@@ -1,6 +1,6 @@
 {% extends "_widget_base.md.jinja" %}
 
-{% block headless_extra %}
+{% block extra %}
 ### Edge weights
 
 {{ bullets(headless.parameters, "edge_weight") }}
@@ -10,7 +10,13 @@
 {% block demo_examples %}
 ## Examples
 
-### Default
+### Basic
+<DemoWidget cmd={`stream.transition_graph()`} path="/docs-demos/widgets/transition-graph/basic.html" height={560} />
 
-<DemoWidget cmd={`stream.transition_graph()`} path="/docs-demos/widgets/transition-graph/default.html" height={500} />
+### Edge weight
+<DemoWidget cmd={`stream.transition_graph(edge_weight="unique_paths")`} path="/docs-demos/widgets/transition-graph/edge_weight.html" height={560} />
+
+### Diff mode
+<DemoWidget cmd={`stream.transition_graph(diff=["platform", "mobile", "desktop"])`} path="/docs-demos/widgets/transition-graph/diff.html" height={560} />
+
 {% endblock %}

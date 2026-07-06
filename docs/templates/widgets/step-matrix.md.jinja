@@ -3,7 +3,13 @@
 {% block demo_examples %}
 ## Examples
 
-### Default
+### Basic
+<DemoWidget cmd={`stream.step_matrix()`} path="/docs-demos/widgets/step-matrix/basic.html" height={660} />
 
-<DemoWidget cmd={`stream.step_matrix()`} path="/docs-demos/widgets/step-matrix/default.html" height={600} />
+### Path pattern
+<DemoWidget cmd={`stream.step_sankey(path_pattern=".*->add_to_cart->.*->purchase->.*->path_end")`} path="/docs-demos/widgets/step-matrix/path_pattern.html" height={660} />
+
+### Diff mode
+<DemoWidget cmd={`stream.step_sankey(diff=["platform", "mobile", "desktop"])`} path="/docs-demos/widgets/step-matrix/diff.html" height={660} />
+
 {% endblock %}

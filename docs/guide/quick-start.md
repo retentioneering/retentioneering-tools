@@ -37,15 +37,15 @@ stream = Eventstream(df, schema={
 
 Open an interactive Transition Graph — no arguments needed. Configure everything in the sidebar.
 
-<DemoWidget cmd={`stream.transition_graph()`} path="/docs-demos/guide/quick-start/transition-graph.html" height={500} />
+<DemoWidget cmd={`stream.transition_graph()`} path="/docs-demos/guide/quick-start/transition-graph.html" height={560} />
 
 Build a conversion funnel:
 
-<DemoWidget cmd={`stream.funnel(steps=["catalog", "add_to_cart", "cart", "purchase"])`} path="/docs-demos/guide/quick-start/funnel.html" height={420} />
+<DemoWidget cmd={`stream.funnel(steps=["catalog", "add_to_cart", "cart", "purchase"])`} path="/docs-demos/guide/quick-start/funnel.html" height={480} />
 
 Compare two user segments side by side:
 
-<DemoWidget cmd={`stream.transition_graph(diff=["platform", "mobile", "desktop"])`} path="/docs-demos/guide/quick-start/transition-graph-diff.html" height={500} />
+<DemoWidget cmd={`stream.transition_graph(diff=["platform", "mobile", "desktop"])`} path="/docs-demos/guide/quick-start/transition-graph-diff.html" height={560} />
 
 ## 4. Prepare your data
 

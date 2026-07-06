@@ -28,27 +28,9 @@ Display parameters only affect how the widget is rendered.
 {% block extra %}{% endblock %}
 ## Headless mode
 
-`stream.{{ headless_name }}()` runs the same computation and returns data instead of rendering a widget.
+`stream.{{ headless_name }}()`
 
 {{ headless.summary }}
 
-### Parameters
-
-{{ param_table(headless.parameters) }}
-
-{% block headless_extra %}{% endblock %}
-{% if headless.returns %}
-### Returns
-
-{{ headless.returns }}
-
-{% endif %}
-{% if headless.examples %}
-### Examples
-
-```python
-{{ headless.examples }}
-```
-{% endif %}
 
 {% block demo_examples %}{% endblock %}

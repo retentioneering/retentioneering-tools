@@ -133,6 +133,38 @@ class TestFunnel:
         assert result["steps"][2]["funnel2_unique_paths"] == 1
         assert result["steps"][2]["delta_unique_paths"] == 1
 
+    def test_funnel_with_diff_rest(self) -> None:
+        """diff value2="<REST>" must pool every other segment value, not just one."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "segment_1", "2020-01-01 00:00:00"],
+                ["user_1", "B", "segment_1", "2020-01-01 00:01:00"],
+                ["user_2", "A", "segment_1", "2020-01-01 00:00:00"],
+                ["user_3", "A", "segment_2", "2020-01-01 00:00:00"],
+                ["user_3", "B", "segment_2", "2020-01-01 00:01:00"],
+                ["user_3", "C", "segment_2", "2020-01-01 00:02:00"],
+                ["user_4", "A", "segment_2", "2020-01-01 00:00:00"],
+                ["user_5", "A", "segment_3", "2020-01-01 00:00:00"],
+                ["user_5", "B", "segment_3", "2020-01-01 00:01:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        stream = Eventstream(df, {"event_cols": ["event"], "segment_cols": ["segment"]})
+        result = stream.funnel_data(
+            steps=["A", "B", "C"], diff=("segment", "segment_1", "<REST>")
+        )
+
+        assert len(result["steps"]) == 3
+        # group1 = segment_1 (user_1, user_2)
+        assert result["steps"][0]["funnel1_unique_paths"] == 2
+        assert result["steps"][1]["funnel1_unique_paths"] == 1
+        assert result["steps"][2]["funnel1_unique_paths"] == 0
+        # group2 = <REST> = segment_2 + segment_3 pooled (user_3, user_4, user_5)
+        assert result["steps"][0]["funnel2_unique_paths"] == 3
+        assert result["steps"][1]["funnel2_unique_paths"] == 2
+        assert result["steps"][2]["funnel2_unique_paths"] == 1
+
     def test_funnel_repeated_event_after_step(self) -> None:
         # Regression: path A, B, A did A->B in order, so it must be counted
         # at step B (the old MAX-index logic rejected it because the *last*

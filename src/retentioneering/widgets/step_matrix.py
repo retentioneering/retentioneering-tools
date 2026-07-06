@@ -167,10 +167,9 @@ class StepMatrixWidget(anywidget.AnyWidget):
 
                 _pid = path_col or self._eventstream.schema.path_col
                 _ec = self._eventstream.schema.event_col
-                _df = self._eventstream._df
-                _seg_col, _val1, _val2 = diff
-                for _val, _target in [(_val1, "g1"), (_val2, "g2")]:
-                    _d = _df[_df[_seg_col] == _val]  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL strings below
+                _s1, _s2 = self._eventstream._split_two(diff, path_col=path_col)
+                for _stream, _target in [(_s1, "g1"), (_s2, "g2")]:
+                    _d = _stream._df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL strings below
                     _c = (
                         _duckdb.sql(
                             f"SELECT {_ec}, COUNT(DISTINCT {_pid}) AS cnt FROM _d GROUP BY {_ec}"

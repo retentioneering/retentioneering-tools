@@ -28,6 +28,12 @@ interface MatrixResult {
   event_counts_g2?: Record<string, number>;
 }
 
+// ── constants ──────────────────────────────────────────────────────────────
+
+/** Diff-mode sentinel meaning "every other value of this segment column". */
+const REST_VALUE = "<REST>";
+const REST_LABEL = "Rest (everyone else)";
+
 // ── colour ─────────────────────────────────────────────────────────────────
 
 function cellBg(v: number, min: number, max: number, isDiff: boolean, heatmapType: "overall"|"row"|"col"): string {
@@ -1125,6 +1131,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                         <span style={{ color: "rgb(239,68,68)", fontSize: 13, flexShrink: 0 }}>●</span>
                         <select value={localDiffV2} onChange={e => setLocalDiffV2(e.target.value)} style={{ ...sidebarSel, flex: 1, minWidth: 0, width: "auto" }} disabled={isLoading || isStatic}>
                           {(segLevels[localDiffSeg] ?? []).map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localDiffV1}>{String(v)}</option>)}
+                          <option value={REST_VALUE}>{REST_LABEL}</option>
                         </select>
                       </div>
                     </div>

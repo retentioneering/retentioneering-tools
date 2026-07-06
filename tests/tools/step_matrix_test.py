@@ -53,6 +53,60 @@ class TestStepMatrix:
 
         pd.testing.assert_frame_equal(res, expected)
 
+    def test__diff_with_rest_pools_all_other_segment_values(self) -> None:
+        """diff value2="<REST>" must pool every other segment value, not just one."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "session_1", "US"],
+                ["user_1", "B", "2020-01-01 00:01:00", "session_1", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "session_2", "UK"],
+                ["user_2", "B", "2020-01-01 00:01:00", "session_2", "UK"],
+                ["user_2", "C", "2020-01-01 00:02:00", "session_2", "UK"],
+                ["user_3", "A", "2020-01-01 00:00:00", "session_3", "DE"],
+            ],
+            columns=["user_id", "event", "timestamp", "session_id", "country"],
+        )
+        stream = Eventstream(
+            df, {"path_cols": ["session_id"], "segment_cols": ["country"]}
+        )
+        max_steps = 3
+        diff_sms, sms1, sms2 = stream.step_sankey_data(
+            max_steps=max_steps, diff=("country", "US", "<REST>"), path_col="session_id"
+        )
+
+        index = pd.Index(["path_start", "A", "B", "C", "path_end"], name="event")
+        columns = pd.Index(range(max_steps + 1), name="step")
+
+        # group1 = US only (session_1)
+        expected_g1 = pd.DataFrame(
+            [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+            index=index,
+            columns=columns,
+        )
+
+        # group2 = <REST> = UK + DE pooled (session_2, session_3)
+        expected_g2 = pd.DataFrame(
+            [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.5, 0.0],
+                [0.0, 0.0, 0.0, 0.5],
+                [0.0, 0.0, 0.5, 0.5],
+            ],
+            index=index,
+            columns=columns,
+        )
+
+        pd.testing.assert_frame_equal(sms1[0], expected_g1)
+        pd.testing.assert_frame_equal(sms2[0], expected_g2)
+        pd.testing.assert_frame_equal(diff_sms[0], expected_g2 - expected_g1)
+
     def test__path_end_session_id(self, fx_read_csv):
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         schema = {"path_cols": ["user_id", "session_id"]}

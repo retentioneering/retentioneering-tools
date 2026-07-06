@@ -17,6 +17,10 @@ const STEP_COLORS = ["#8b5cf6","#10b981","#0ea5e9","#84cc16","#f59e0b","#ef4444"
 const DIFF_A = "#7c3aed";
 const DIFF_B = "#06b6d4";
 
+/** Diff-mode sentinel meaning "every other value of this segment column". */
+const REST_VALUE = "<REST>";
+const REST_LABEL = "Rest (everyone else)";
+
 // Estimated heights for auto-sizing
 const HEADER_H     = 48;  // sidebar header
 const SIDEBAR_W    = 252;
@@ -557,6 +561,7 @@ function Sidebar({ steps, events, segLevels, pathCols, pathIdCol,
                 <span style={{ color: "rgb(6,182,212)", fontSize: 13, flexShrink: 0 }}>●</span>
                 <select value={localV2} onChange={e => setLocalV2(e.target.value)} style={{ ...sel, flex: 1, minWidth: 0, width: "auto" }} disabled={isLoading || isStatic}>
                   {localLevels.map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localV1}>{String(v)}</option>)}
+                  <option value={REST_VALUE}>{REST_LABEL}</option>
                 </select>
               </div>
             </div>

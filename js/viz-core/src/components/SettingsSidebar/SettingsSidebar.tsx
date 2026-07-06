@@ -13,6 +13,10 @@ import { isTimeValueType } from "../../utils/value-types";
 
 export const SIDEBAR_WIDTH = 280;
 
+/** Diff-mode sentinel meaning "every other value of this segment column". */
+const REST_VALUE = "<REST>";
+const REST_LABEL = "Rest (everyone else)";
+
 const C = {
   bg: "#ffffff", bgSection: "#f9fafb",
   border: "#e5e7eb", borderLight: "#d1d5db",
@@ -265,6 +269,7 @@ export const SettingsSidebar = observer(function SettingsSidebar({
                     disabled={isLoading || isStatic}
                   >
                     {localLevels.map((v) => <option key={String(v)} value={String(v)} disabled={String(v) === String(localVal1)}>{String(v)}</option>)}
+                    <option value={REST_VALUE}>{REST_LABEL}</option>
                   </select>
                 </div>
               </div>

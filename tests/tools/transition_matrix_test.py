@@ -276,6 +276,61 @@ class TestTransitionMatrix:
 
         pd.testing.assert_frame_equal(res, expected)
 
+    def test__diff_rest_pools_all_other_segment_values(self) -> None:
+        """diff value2="<REST>" must pool every other segment value, not just one."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "session_1", "US"],
+                ["user_1", "B", "2020-01-01 00:01:00", "session_1", "US"],
+                ["user_1", "C", "2020-01-01 00:02:00", "session_1", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "session_2", "UK"],
+                ["user_2", "B", "2020-01-01 00:01:00", "session_2", "UK"],
+                ["user_3", "A", "2020-01-01 00:00:00", "session_3", "DE"],
+                ["user_3", "C", "2020-01-01 00:01:00", "session_3", "DE"],
+            ],
+            columns=["user_id", "event", "timestamp", "session_id", "country"],
+        )
+        stream = Eventstream(
+            df, {"path_cols": ["session_id"], "segment_cols": ["country"]}
+        )
+        diff, g1, g2 = stream.transition_graph_data(
+            edge_weight="count", path_col="session_id", diff=("country", "US", "<REST>")
+        )
+
+        # group1 = US only (session_1)
+        expected_g1 = pd.DataFrame(
+            [
+                [0, 1, 0, 0, 0],
+                [0, 0, 1, 0, 0],
+                [0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 1],
+                [0, 0, 0, 0, 0],
+            ],
+            columns=["path_start", "A", "B", "C", "path_end"],
+            index=["path_start", "A", "B", "C", "path_end"],
+        )
+        expected_g1.index.name = "event"
+        expected_g1.columns.name = "next_event"
+
+        # group2 = <REST> = UK + DE pooled (session_2, session_3)
+        expected_g2 = pd.DataFrame(
+            [
+                [0, 2, 0, 0, 0],
+                [0, 0, 1, 1, 0],
+                [0, 0, 0, 0, 1],
+                [0, 0, 0, 0, 1],
+                [0, 0, 0, 0, 0],
+            ],
+            columns=["path_start", "A", "B", "C", "path_end"],
+            index=["path_start", "A", "B", "C", "path_end"],
+        )
+        expected_g2.index.name = "event"
+        expected_g2.columns.name = "next_event"
+
+        pd.testing.assert_frame_equal(g1, expected_g1)
+        pd.testing.assert_frame_equal(g2, expected_g2)
+        pd.testing.assert_frame_equal(diff, expected_g2 - expected_g1)
+
     def test__unique_paths(self, fx_read_csv):
         df = fx_read_csv("tools/transition_matrix_input.csv", sep="\t")
         stream = Eventstream(df, {"path_cols": ["user_id", "session_id"]})

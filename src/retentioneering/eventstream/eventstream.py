@@ -635,7 +635,9 @@ class Eventstream:
             Merge a set of events that belong together into a single representative event.
             Each group dict must have either an `events` key (list of event names to
             merge) or a `separator` / `start_event` + `end_event` pair. Additional keys:
-              - `name` (str) — label for the merged event; defaults to the group's first event.
+              - `default` (str) — label for the merged event (required unless
+                advanced per-case rules are given via `cases`, where it acts as
+                the fallback label).
         group_col : str, optional
             Group consecutive rows by this column's value: each run of rows sharing
             the same value is collapsed into one event named after that value.
@@ -663,7 +665,7 @@ class Eventstream:
             stream.collapse_events(consecutive=["page_view"])
 
             # Merge checkout steps into a single "checkout" event
-            stream.collapse_events(event_groups=[{"events": ["checkout_start", "checkout_step", "checkout_confirm"], "name": "checkout"}])
+            stream.collapse_events(event_groups=[{"events": ["checkout_start", "checkout_step", "checkout_confirm"], "default": "checkout"}])
         """
         from retentioneering.data_processors.collapse_events import CollapseEvents
 

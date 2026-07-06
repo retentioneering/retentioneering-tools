@@ -20,9 +20,8 @@ With average python knowledge you can quickly identify what can be improved in t
 It runs on your raw data (a pandas DataFrame or CSV is enough), and renders interactive
 widgets right in Jupyter, Cursor or whatever IDE you prefer — no SaaS, no data leaving your machine.
 
-Retentioneering 
 
-**Version 5.0 is a ground-up rewrite.** The pandas engine and CDN-loaded
+**Retentioneering-tools Version 5.0 is a ground-up rewrite.** The pandas engine and CDN-loaded
 widgets of 3.x were replaced with a much faster DuckDB-backed `Eventstream`, a new
 generation of open-source [anywidget](https://anywidget.dev)-based widgets,
 and an MCP server that lets LLM agents run analyses on your eventstream. See

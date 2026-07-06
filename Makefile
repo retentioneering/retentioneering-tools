@@ -1,4 +1,4 @@
-.PHONY: install build build-viz build-widget test watch clean release test-release
+.PHONY: install build build-viz build-widget test watch clean release test-release rc-release
 
 install:
 	uv sync
@@ -76,4 +76,39 @@ test-release:
 	git push origin test-v$(VERSION)
 	git reset --hard HEAD~1
 	@echo "✓ Pushed tag test-v$(VERSION) -- test-release.yml will build and publish to TestPyPI."
+	@echo "  Your branch is unchanged; watch the run with: gh run watch"
+
+# Publishes a release candidate straight to the REAL PyPI project from
+# whatever branch you're currently on -- e.g. to let real users
+# `pip install --pre` an rc before v5-migration is merged to master. Same
+# temp-commit/tag/push/reset dance as test-release, but pushes a real `v*`
+# tag, which release.yml picks up and publishes for real (it already marks
+# any tag containing "rc" as a GitHub prerelease).
+#
+# Restricted to versions with an "rc" suffix so this can't be used to slip
+# a final version out past the master-only gate in `release` above -- cut
+# those the normal way once v5-migration lands on master.
+#
+# Unlike test-release, PyPI publishes here are real and permanent: the
+# version string is reserved forever and the package is publicly installable
+# immediately.
+#
+# Usage: make rc-release VERSION=5.0.0rc1
+rc-release:
+	@if [ -z "$(VERSION)" ]; then \
+	  echo "Usage: make rc-release VERSION=x.y.zrcN"; exit 1; \
+	fi
+	@if ! echo "$(VERSION)" | grep -qE 'rc[0-9]+$$'; then \
+	  echo "Refusing: '$(VERSION)' doesn't look like a release candidate (need an rcN suffix, e.g. 5.0.0rc1). Use 'make release' for final versions."; exit 1; \
+	fi
+	@if [ -n "$$(git status --porcelain --untracked-files=no)" ]; then \
+	  echo "Refusing: you have uncommitted changes (this uses git reset --hard). Commit or stash first."; exit 1; \
+	fi
+	sed -i '' 's/^version = ".*"/version = "$(VERSION)"/' pyproject.toml
+	git add pyproject.toml
+	git commit -m "rc-release: $(VERSION)"
+	git tag v$(VERSION)
+	git push origin v$(VERSION)
+	git reset --hard HEAD~1
+	@echo "✓ Pushed tag v$(VERSION) -- release.yml will build and publish to the REAL PyPI."
 	@echo "  Your branch is unchanged; watch the run with: gh run watch"

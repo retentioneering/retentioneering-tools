@@ -137,19 +137,23 @@ This is a community-driven open source project in active development. Any
 contributions — new ideas, bug reports, bug fixes, documentation
 improvements — are very welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)**
 for the local development setup.
-
-##Apps are better with math, join us! :)
-Retentioneering is a community research laboratory dedicated to developing new analytics methodology and
-opensource tools. 
-Copyright retentioneering-tools v.5.0 Maxim Godzi, Vladimir Kukushkin and Anatoly Zaytsev. Updates may include software developed by the Retentioneering community.
 Please feel free to contact us at retentioneering@gmail.com if you have any questions
 regarding this repo.
 
-##License and commercial model
+## Apps are better with math, join us! :)
+
+
+
+## License and commercial model
 
 Retentioneering-tools is open-source software licensed under the Apache License, Version 2.0.
 
-You are free to use, modify, distribute, and build commercial products with Retentioneering Core, subject to the terms of the Apache-2.0 license.
+Retentioneering is a community research laboratory dedicated to developing new analytics methodology and
+opensource tools. 
+
+Copyright retentioneering-tools v.5.0 Maxim Godzi, Vladimir Kukushkin and Anatoly Zaytsev. Updates may include software developed by the Retentioneering community.
+
+You are free to use, modify, distribute, and build commercial products with Retentioneering-tools, subject to the terms of the Apache-2.0 license.
 
 Other Retentioneering libraries, packages and managed execution services, enterprise integrations, premium diagnostic workflows, hosted collaboration features are separate proprietary products and are governed by their respective commercial terms. Additional details provided in COMMERCIAL.md.
 

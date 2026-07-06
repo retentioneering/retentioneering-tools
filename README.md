@@ -14,15 +14,23 @@ happened, retentioneering shows *how* users actually behave — real paths to
 conversion, loops and dead ends, behavioral segments, and the differences in
 behavior between any two groups of users.
 
-It runs on your raw data (a pandas DataFrame or CSV is enough), and renders interactive
-widgets right in Jupyter — no SaaS, no data leaving your machine.
+Retentioneering is code-first and quickest way from raw data into detailed views and product insights.
+With average python knowledge you can quickly identify what can be improved in the website, application or chats interactions by finding and isolating specific patterns of different users at multiple scales - session to session and within each session or its pieces.
 
-**Version 5.0 is a ground-up rewrite.** The pandas engine and CDN-loaded
-widgets of 3.x were replaced with a DuckDB-backed `Eventstream`, a new
+It runs on your raw data (a pandas DataFrame or CSV is enough), and renders interactive
+widgets right in Jupyter, Cursor or whatever IDE you prefer — no SaaS, no data leaving your machine.
+
+
+**Retentioneering-tools Version 5.0 is a ground-up rewrite.** The pandas engine and CDN-loaded
+widgets of 3.x were replaced with a much faster DuckDB-backed `Eventstream`, a new
 generation of open-source [anywidget](https://anywidget.dev)-based widgets,
 and an MCP server that lets LLM agents run analyses on your eventstream. See
 [CHANGELOG.md](CHANGELOG.md) for the full 3.3.0 → 5.0 delta; the legacy 3.x
 engine lives on the [`3.x` branch](https://github.com/retentioneering/retentioneering-tools/tree/3.x).
+
+With this update we also include the opensource code for widgets front, and we highly encourage for the collaboration in its further development.
+
+Regarding migrations of any features from 3.x to next release of 5.x please feel free to open new issues or pull requests in this repo, we will focus on faster development of useful features and ideas based on your engagement.
 
 ## Documentation
 
@@ -125,13 +133,30 @@ funnel = stream.funnel_data(steps=["catalog", "add_to_cart", "purchase"])  # dic
 ## Contributing
 
 This is a community-driven open source project in active development. Any
-contributions — new ideas, bug reports, bug fixes, documentation
-improvements — are very welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)**
+contributions — bug reports, documentation improvements, examples, visualizations, analytical recipes, integrations, performance improvements, API proposals, widgets improvements, new agent skills and prompt libraries,  new analytical capabilities — are very welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)**
 for the local development setup.
-
-Apps are better with math! :)
-Retentioneering is a research laboratory, analytics methodology and
-opensource tools founded by
-[Maxim Godzi](https://www.linkedin.com/in/godsie/) in 2015. Please feel free
-to contact us at retentioneering@gmail.com if you have any questions
+Please feel free to contact us at retentioneering@gmail.com if you have any questions
 regarding this repo.
+
+## Apps are better with math, join us! :)
+
+
+
+## License and commercial model
+
+Retentioneering-tools is open-source software licensed under the Apache License, Version 2.0.
+
+Retentioneering is a community research laboratory dedicated to developing new analytics methodology and
+opensource tools.
+
+Copyright retentioneering-tools v.5.0 Maxim Godzi, Vladimir Kukushkin and Anatoly Zaytsev. Updates may include software developed by the Retentioneering community.
+
+You are free to use, modify, distribute, and build commercial products with Retentioneering-tools, subject to the terms of the Apache-2.0 license.
+
+Other Retentioneering libraries, packages and managed execution services, enterprise integrations, premium diagnostic workflows, hosted collaboration features are separate proprietary products and are governed by their respective commercial terms. Additional details provided in [COMMERCIAL.md](COMMERCIAL.md).
+
+The Apache-2.0 license applies only to the source code and assets distributed in this repository. It does not grant rights to use the Retentioneering name, logo, trademarks, hosted services, proprietary cloud infrastructure, or commercial content that is not distributed in this repository.
+
+We welcome contributions from individuals and organizations. Contributions to Retentioneering-tools are accepted under the contribution terms described in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Our goal is to keep the core analytical language and ecosystem open, extensible, and useful for independent analysts, researchers, startups, and enterprise teams, while funding long-term maintenance through optional commercial products and services.

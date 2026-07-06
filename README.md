@@ -147,16 +147,16 @@ regarding this repo.
 Retentioneering-tools is open-source software licensed under the Apache License, Version 2.0.
 
 Retentioneering is a community research laboratory dedicated to developing new analytics methodology and
-opensource tools. 
+opensource tools.
 
 Copyright retentioneering-tools v.5.0 Maxim Godzi, Vladimir Kukushkin and Anatoly Zaytsev. Updates may include software developed by the Retentioneering community.
 
 You are free to use, modify, distribute, and build commercial products with Retentioneering-tools, subject to the terms of the Apache-2.0 license.
 
-Other Retentioneering libraries, packages and managed execution services, enterprise integrations, premium diagnostic workflows, hosted collaboration features are separate proprietary products and are governed by their respective commercial terms. Additional details provided in COMMERCIAL.md.
+Other Retentioneering libraries, packages and managed execution services, enterprise integrations, premium diagnostic workflows, hosted collaboration features are separate proprietary products and are governed by their respective commercial terms. Additional details provided in [COMMERCIAL.md](COMMERCIAL.md).
 
 The Apache-2.0 license applies only to the source code and assets distributed in this repository. It does not grant rights to use the Retentioneering name, logo, trademarks, hosted services, proprietary cloud infrastructure, or commercial content that is not distributed in this repository.
 
-We welcome contributions from individuals and organizations. Contributions to Retentioneering-tools are accepted under the contribution terms described in CONTRIBUTING.md.
+We welcome contributions from individuals and organizations. Contributions to Retentioneering-tools are accepted under the contribution terms described in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Our goal is to keep the core analytical language and ecosystem open, extensible, and useful for independent analysts, researchers, startups, and enterprise teams, while funding long-term maintenance through optional commercial products and services.

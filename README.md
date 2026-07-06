@@ -133,8 +133,7 @@ funnel = stream.funnel_data(steps=["catalog", "add_to_cart", "purchase"])  # dic
 ## Contributing
 
 This is a community-driven open source project in active development. Any
-contributions — new ideas, bug reports, bug fixes, documentation
-improvements — are very welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)**
+contributions — bug reports, documentation improvements, examples, visualizations, analytical recipes, integrations, performance improvements, API proposals, widgets improvements, new agent skills and prompt libraries,  new analytical capabilities — are very welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)**
 for the local development setup.
 Please feel free to contact us at retentioneering@gmail.com if you have any questions
 regarding this repo.

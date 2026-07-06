@@ -26,14 +26,16 @@ stories make the data useful for teaching Retentioneering's analysis tools:
 Usage
 -----
 >>> from retentioneering.datasets.ecom import load_ecom
+>>> stream = load_ecom()  # Eventstream, with path_cols/segment_cols preconfigured
+
+Pass `as_dataframe=True` for the raw `pd.DataFrame` instead:
+
+>>> df = load_ecom(as_dataframe=True)
 >>> import retentioneering as hs
->>> df = load_ecom()
 >>> stream = hs.Eventstream(df, {
 ...     "path_cols": ["user_id", "session_id"],
 ...     "segment_cols": [
-...         "platform", "acquisition_channel", "user_cohort",
-...         "user_age_segment", "is_anomaly_period",
-...         "had_checkout_bug", "had_payment_issue",
+...         "platform", "acquisition_channel", "user_cohort", "user_lifecycle",
 ...     ],
 ... })
 """
@@ -41,11 +43,25 @@ Usage
 from __future__ import annotations
 
 import pathlib
+import typing
 
 import numpy as np
 import pandas as pd
 
+if typing.TYPE_CHECKING:
+    from retentioneering.eventstream.eventstream import Eventstream
+
 _DATA_FILE = pathlib.Path(__file__).parent / "ecom.csv.gz"
+
+_ECOM_SCHEMA = {
+    "path_cols": ["user_id", "session_id"],
+    "segment_cols": [
+        "platform",
+        "acquisition_channel",
+        "user_cohort",
+        "user_lifecycle",
+    ],
+}
 
 
 # ---------------------------------------------------------------------------
@@ -53,15 +69,27 @@ _DATA_FILE = pathlib.Path(__file__).parent / "ecom.csv.gz"
 # ---------------------------------------------------------------------------
 
 
-def load_ecom(n_users: int = 600, seed: int = 42) -> pd.DataFrame:
+def load_ecom(
+    n_users: int = 600, seed: int = 42, as_dataframe: bool = False
+) -> "Eventstream" | pd.DataFrame:
     """Load the synthetic e-commerce dataset.
 
     Reads ``ecom.csv.gz`` bundled with the package.  Falls back to
     on-the-fly generation via ``_generate_ecom()`` if the file is missing.
 
+    Parameters
+    ----------
+    n_users:
+        Number of users to generate when falling back to ``_generate_ecom()``.
+    seed:
+        Random seed for ``_generate_ecom()``.
+    as_dataframe:
+        If True, return the raw `pd.DataFrame` instead of an `Eventstream`.
+
     Returns
     -------
-    pd.DataFrame with columns:
+    Eventstream (with `path_cols` and `segment_cols` preconfigured) or, if
+    `as_dataframe=True`, a `pd.DataFrame` with columns:
         user_id, session_id, event, timestamp,
         platform, acquisition_channel, user_cohort, user_lifecycle
 
@@ -74,8 +102,16 @@ def load_ecom(n_users: int = 600, seed: int = 42) -> pd.DataFrame:
     ``had_payment_issue`` segments from these events in your notebook.
     """
     if _DATA_FILE.exists():
-        return pd.read_csv(_DATA_FILE, parse_dates=["timestamp"])
-    return _generate_ecom(n_users=n_users, seed=seed)
+        df = pd.read_csv(_DATA_FILE, parse_dates=["timestamp"])
+    else:
+        df = _generate_ecom(n_users=n_users, seed=seed)
+
+    if as_dataframe:
+        return df
+
+    from retentioneering.eventstream.eventstream import Eventstream
+
+    return Eventstream(df, _ECOM_SCHEMA)
 
 
 def _generate_ecom(n_users: int = 600, seed: int = 42) -> pd.DataFrame:

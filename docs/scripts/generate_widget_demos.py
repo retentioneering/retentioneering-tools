@@ -51,19 +51,7 @@ def find_demo_tags() -> list[tuple[str, str, Path]]:
 
 
 def build_stream() -> Eventstream:
-    df = load_ecom()
-    return Eventstream(
-        df,
-        schema={
-            "path_cols": ["user_id", "session_id"],
-            "segment_cols": [
-                "platform",
-                "acquisition_channel",
-                "user_cohort",
-                "user_lifecycle",
-            ],
-        },
-    )
+    return load_ecom()
 
 
 def main() -> None:

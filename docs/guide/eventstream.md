@@ -86,9 +86,16 @@ retentioneering ships with a synthetic e-commerce dataset you can use to try the
 
 ```python
 from retentioneering.datasets.ecom import load_ecom
+
+stream = load_ecom()
+```
+which is equivalent to:
+
+```python
+from retentioneering.datasets.ecom import load_ecom
 from retentioneering import Eventstream
 
-df = load_ecom()
+df = load_ecom(as_dataframe=True)
 stream = Eventstream(df, schema={
     "path_cols": ["user_id", "session_id"],
     "segment_cols": [

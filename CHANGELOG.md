@@ -37,15 +37,17 @@ runtime.
 
 Renamed or changed signature (same concept, different call shape):
 - `to_dataframe(copy=False)` → `to_dataframe(exclude_start_end=True)`
-- `filter_events(func)` → `filter_events(by_column=None, func=None, sql=None)`
-  — `func` is now one of three alternative filtering modes
-- `add_start_end_events()` → `add_start_end_events(path_id_col=None)`
+- `filter_events(func)` → `filter_events(keep=None, drop=None, func=None, sql=None)`
+  — `func` is now one of four alternative filtering modes
+- `add_start_end_events()` → `add_start_end_events(path_col=None)`
 - `split_sessions(timeout, delimiter_events, delimiter_col, session_col, mark_truncated)`
-  → `split_sessions(session_col, session_index_col, separator, start_event, end_event, timeout, path_id_col, event_col)`
+  → `split_sessions(session_id_col, session_index_col, separator, start_event, end_event, timeout, path_col, event_col)`
+  — `timeout` now takes a duration string with an explicit unit (`"30m"`) or
+  a `pandas.Timedelta`; bare numbers are rejected
 - `truncate_paths(drop_before, drop_after, occurrence_before, occurrence_after, shift_before, shift_after)`
-  → `truncate_paths(left, right, path_id_col=None, event_col=None)`
+  → `truncate_paths(start_event, end_event, path_col=None, event_col=None)`
 - `rename(rules: list[dict])` → `rename_events(mapping: dict)`
-- `collapse_loops(suffix, time_agg)` → `collapse_events(repetitive, event_groups, event_from_col, session_id_col, session_type_col, agg, path_id_col, event_col)`
+- `collapse_loops(suffix, time_agg)` → `collapse_events(consecutive, event_groups, group_col, session_id_col, session_type_col, agg, path_col, event_col)`
 
 Removed, no equivalent in this release:
 `copy()`, `append_eventstream()`, `index_events()`, `add_custom_col()`,
@@ -59,14 +61,28 @@ computation still happens internally inside `transition_graph_data()`),
 `label_cropped_paths()`, `label_lost_users()`, `label_new_users()`, `pipe()`
 
 Added, no equivalent in 3.3.0:
-`schema`/`df` properties, `empty()`, `equals()`, `get_event_counts()`,
-`fingerprint`, `get_all_segment_levels()`, `url_events()`, `filter_paths()`
-(AST-condition based), `get_metrics()`, `add_events()`, `add_segment()`,
+`schema`/`df` properties, `is_empty()`, `equals()`, `get_event_counts()`,
+`fingerprint`, `get_segment_values()`, `urls_to_events()`, `filter_paths()`
+(condition-tree based), `get_metrics()`, `add_events()`, `add_segment()`,
 `add_clusters()` (a new one-shot processor, unrelated to 3.3.0's `clusters()`),
-`daily_states()`, `drop_segment()`, `edit_events()`, `sample_paths()`,
-`split_two()`, `transition_graph_data()`, `step_sankey_data()`,
-`funnel_data()`, `segment_overview()`/`segment_overview_data()`,
-`cluster_analysis()`/`cluster_analysis_data()`, `metric_distribution()`
+`to_daily_states()`, `drop_segment()`, `edit_events()`, `drop_events()`,
+`sample_paths()`, `transition_graph_data()`, `step_sankey_data()` /
+`step_matrix_data()`, `funnel_data()`,
+`segment_overview()`/`segment_overview_data()`,
+`cluster_analysis()`/`cluster_analysis_data()`, `get_metric_distribution()`
+
+Naming conventions across the new API:
+- one column vocabulary everywhere: `path_col`, `event_col`, `timestamp_col`,
+  `session_id_col`, `segment_col`
+- window anchors are always the `start_event` / `end_event` pair
+  (`truncate_paths`, `split_sessions`, the `time_between` metric)
+- the diff-mode sentinel for "every other segment value" is `<REST>`
+- path metric names: `has_event`, `matches_pattern`, `in_segment`,
+  `first_event_time` (plus `length`, `duration`, `event_count`,
+  `time_between`, `active_days`); the `complement_distance` aggregation
+- transition-graph edge weights: `proba_out`, `proba_in`, `count`,
+  `unique_paths`, `share_of_total`, `avg_per_path`, `time_median`, `time_q95`
+- `sample_paths(n=, frac=)` mirrors `pandas.DataFrame.sample`
 
 ### Added
 

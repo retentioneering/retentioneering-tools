@@ -24,9 +24,7 @@ class TestFilterEventsEscaping:
             ]
         )
 
-        res = stream.filter_events(
-            by_column={"column": "event", "values": ["o'brien_page"]}
-        )
+        res = stream.filter_events(keep={"event": ["o'brien_page"]})
 
         assert list(res.df["event"].astype(str)) == ["o'brien_page"]
 
@@ -39,9 +37,7 @@ class TestFilterEventsEscaping:
             ]
         )
 
-        res = stream.filter_events(
-            by_column={"column": "event", "values": ["o'brien_page"], "exclude": True}
-        )
+        res = stream.filter_events(drop={"event": ["o'brien_page"]})
 
         assert list(res.df["event"].astype(str)) == ["A", "B"]
 
@@ -56,7 +52,7 @@ class TestFilterEventsEscaping:
         )
         stream = Eventstream(df)
 
-        res = stream.filter_events(by_column={"column": "user_id", "values": [1, 3]})
+        res = stream.filter_events(keep={"user_id": [1, 3]})
 
         assert sorted(res.df["user_id"].tolist()) == [1, 3]
 
@@ -73,7 +69,7 @@ class TestTruncatePathsEscaping:
             ]
         )
 
-        res = stream.truncate_paths(left="cart's_start", right="cart's_end")
+        res = stream.truncate_paths(start_event="cart's_start", end_event="cart's_end")
 
         assert list(res.df["event"].astype(str)) == ["cart's_start", "A", "cart's_end"]
 
@@ -86,7 +82,9 @@ class TestTruncatePathsEscaping:
             ]
         )
 
-        res = stream.truncate_paths(left="o'brien_page", right="o'brien_page")
+        res = stream.truncate_paths(
+            start_event="o'brien_page", end_event="o'brien_page"
+        )
 
         assert list(res.df["event"].astype(str)) == ["o'brien_page"]
 
@@ -105,7 +103,7 @@ class TestAddSegmentEscaping:
             ["event", "=", "o'brien_page", "o'brien's segment"],
             ["other's segment"],
         ]
-        res = stream.add_segment(name="seg", values=values)
+        res = stream.add_segment(name="seg", rules=values)
 
         assert list(res.df["seg"].astype(str)) == [
             "o'brien's segment",
@@ -142,7 +140,12 @@ class TestMatchesPatternEscaping:
         )
 
         metrics = stream.get_metrics(
-            [{"metric": "matches", "metric_args": {"pattern": "o'brien->purchase"}}]
+            [
+                {
+                    "metric": "matches_pattern",
+                    "metric_args": {"pattern": "o'brien->purchase"},
+                }
+            ]
         )
 
         assert not metrics[metrics.columns[0]].any()
@@ -159,7 +162,7 @@ class TestMatchesPatternEscaping:
         metrics = stream.get_metrics(
             [
                 {
-                    "metric": "matches",
+                    "metric": "matches_pattern",
                     "metric_args": {"pattern": "o'brien_page->purchase"},
                 }
             ]

@@ -8,7 +8,7 @@ Processors can be chained:
 stream = (
     Eventstream(df)
     .add_start_end_events()
-    .filter_events(by_column={"column": "event", "values": ["bot_visit"], "exclude": True})
+    .filter_events(drop={"event": ["bot_visit"]})
     .rename_events({"btn_clk": "button_click"})
 )
 ```

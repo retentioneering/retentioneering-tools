@@ -53,7 +53,7 @@ def simple_eventstream():
 
 def test_truncate_paths_basic(simple_eventstream):
     """Test basic truncate_paths functionality."""
-    result = simple_eventstream.truncate_paths(left="B", right="D")
+    result = simple_eventstream.truncate_paths(start_event="B", end_event="D")
     df = result.df
 
     # User 1: should have B, C, D
@@ -71,7 +71,7 @@ def test_truncate_paths_basic(simple_eventstream):
 
 def test_truncate_paths_same_boundary(simple_eventstream):
     """Test truncate_paths when left and right are the same event."""
-    result = simple_eventstream.truncate_paths(left="C", right="C")
+    result = simple_eventstream.truncate_paths(start_event="C", end_event="C")
     df = result.df
 
     # Each path should have exactly one 'C' event
@@ -85,7 +85,7 @@ def test_truncate_paths_same_boundary(simple_eventstream):
 
 def test_truncate_paths_no_left_boundary(simple_eventstream):
     """Test truncate_paths when left boundary doesn't exist in some paths."""
-    result = simple_eventstream.truncate_paths(left="X", right="Z")
+    result = simple_eventstream.truncate_paths(start_event="X", end_event="Z")
     df = result.df
 
     # Only user 3 has both X and Z
@@ -96,7 +96,7 @@ def test_truncate_paths_no_left_boundary(simple_eventstream):
 
 def test_truncate_paths_no_right_boundary(simple_eventstream):
     """Test truncate_paths when right boundary doesn't exist in some paths."""
-    result = simple_eventstream.truncate_paths(left="A", right="Z")
+    result = simple_eventstream.truncate_paths(start_event="A", end_event="Z")
     df = result.df
 
     # Only users without Z should be filtered out
@@ -127,7 +127,7 @@ def test_truncate_paths_reverse_order():
     )
 
     stream = Eventstream(data)
-    result = stream.truncate_paths(left="B", right="D")
+    result = stream.truncate_paths(start_event="B", end_event="D")
     df = result.df
 
     # Should be empty because 'D' appears before 'B' in the path
@@ -155,7 +155,7 @@ def test_truncate_paths_multiple_occurrences():
     )
 
     stream = Eventstream(data)
-    result = stream.truncate_paths(left="B", right="D")
+    result = stream.truncate_paths(start_event="B", end_event="D")
     df = result.df
 
     # Should keep from first B (index 2) to first D after it (index 5)
@@ -178,21 +178,23 @@ def test_truncate_paths_empty_params():
 
     stream = Eventstream(data)
 
-    # Test with empty left parameter
+    # Test with empty start_event parameter
     with pytest.raises(
-        PreprocessingConfigError, match="Parameter 'left' must be a non-empty string"
+        PreprocessingConfigError,
+        match="Parameter 'start_event' must be a non-empty string",
     ):
-        stream.truncate_paths(left="", right="C")
+        stream.truncate_paths(start_event="", end_event="C")
 
-    # Test with empty right parameter
+    # Test with empty end_event parameter
     with pytest.raises(
-        PreprocessingConfigError, match="Parameter 'right' must be a non-empty string"
+        PreprocessingConfigError,
+        match="Parameter 'end_event' must be a non-empty string",
     ):
-        stream.truncate_paths(left="A", right="")
+        stream.truncate_paths(start_event="A", end_event="")
 
 
 def test_truncate_paths_custom_columns():
-    """Test truncate_paths with custom path_id_col and event_col."""
+    """Test truncate_paths with custom path_col and event_col."""
     data = pd.DataFrame(
         {
             "user_id": [1, 1, 1, 1, 1, 1],
@@ -219,7 +221,7 @@ def test_truncate_paths_custom_columns():
 
     stream = Eventstream(data, schema)
     result = stream.truncate_paths(
-        left="B", right="A", path_id_col="session_id", event_col="custom_event"
+        start_event="B", end_event="A", path_col="session_id", event_col="custom_event"
     )
     df = result.df
 

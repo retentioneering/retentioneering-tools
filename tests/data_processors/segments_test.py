@@ -27,7 +27,7 @@ class TestFilterEvents:
 
         values = [["user_id", "in", "('user_1', 'user_3')", "female"], ["male"]]
 
-        res = stream.add_segment(name="sex", values=values)
+        res = stream.add_segment(name="sex", rules=values)
 
         expected_df = df.copy()
         expected_df["sex"] = ["female", "female", "female", "male", "female", "female"]
@@ -44,10 +44,10 @@ class TestFilterEvents:
         values = ["female", "female", "female", "male", "female", "female"]
 
         with pytest.raises(Exception):
-            stream.add_segment(name="user_id", values=values)
+            stream.add_segment(name="user_id", rules=values)
 
         with pytest.raises(Exception):
-            stream.add_segment(name="country", values=values)
+            stream.add_segment(name="country", rules=values)
 
     def test__add_segment_sql(self) -> None:
         df = get_df()
@@ -184,20 +184,20 @@ class TestFilterEvents:
         with pytest.raises(Exception):
             stream.drop_segment("event")
 
-    def test__get_all_segment_levels(self):
+    def test__get_segment_values(self):
         df = get_df()
         df["sex"] = ["female", "female", "female", "male", "female", "female"]
         schema = {"segment_cols": ["country", "sex"]}
         stream = Eventstream(df, schema)
-        res = stream.get_all_segment_levels()
+        res = stream.get_segment_values()
 
         expected = {"country": ["UK", "US"], "sex": ["female", "male"]}
         assert res == expected
 
 
 class TestSplitTwo:
-    def test__split_two_outer_literal(self) -> None:
-        """Test split_two with <OUTER> literal for complement selection."""
+    def test___split_two_outer_literal(self) -> None:
+        """Test _split_two with <REST> literal for complement selection."""
         df = pd.DataFrame(
             [
                 ["user_1", "A", "2020-01-01 00:00:00", "seg_1"],
@@ -212,7 +212,7 @@ class TestSplitTwo:
         stream = Eventstream(df, schema)
 
         # Split by segment: seg_1 vs all others (seg_2, seg_3)
-        stream1, stream2 = stream.split_two(["my_segment", "seg_1", "<OUTER>"])
+        stream1, stream2 = stream._split_two(["my_segment", "seg_1", "<REST>"])
 
         # stream1 should contain only seg_1 rows
         assert set(stream1.df["user_id"].tolist()) == {"user_1", "user_2"}

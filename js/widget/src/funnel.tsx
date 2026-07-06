@@ -603,7 +603,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [diffSeg,     setDiffSeg]     = React.useState<string | null>(() => { const d = parseJson<string[]>(model.get("diff") || "[]", []); return d[0] ?? null; });
     const [diffV1,      setDiffV1]      = React.useState<string | null>(() => { const d = parseJson<string[]>(model.get("diff") || "[]", []); return d[1] ?? null; });
     const [diffV2,      setDiffV2]      = React.useState<string | null>(() => { const d = parseJson<string[]>(model.get("diff") || "[]", []); return d[2] ?? null; });
-    const [pathIdCol,   setPathIdCol]   = React.useState<string>(() => (model.get("path_id_col") as string) || "");
+    const [pathIdCol,   setPathIdCol]   = React.useState<string>(() => (model.get("path_col") as string) || "");
     const [result,      setResult]      = React.useState<{ steps: FunnelStep[] }>(() => parseJson(model.get("result"), { steps: [] }));
     const [isLoading,   setIsLoading]   = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
     const [heightProp,  setHeightProp]  = React.useState<number>(() => (model.get("height") as number) ?? 0);
@@ -622,7 +622,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         ["sidebar_open", () => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
         ["steps",      () => setStepsState(parseJson(model.get("steps"), []))],
         ["diff",       () => { const d = parseJson<string[]>(model.get("diff") || "[]", []); setDiffSeg(d[0] ?? null); setDiffV1(d[1] ?? null); setDiffV2(d[2] ?? null); }],
-        ["path_id_col", () => setPathIdCol((model.get("path_id_col") as string) || "")],
+        ["path_col", () => setPathIdCol((model.get("path_col") as string) || "")],
       ];
       subs.forEach(([k, cb]) => model.on(`change:${k}`, cb));
       return () => subs.forEach(([k, cb]) => model.off(`change:${k}`, cb));
@@ -641,7 +641,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     }, []);
 
     const handlePathId = React.useCallback((c: string) => {
-      setPathIdCol(c); model.set("path_id_col", c); model.save_changes();
+      setPathIdCol(c); model.set("path_col", c); model.save_changes();
     }, []);
 
     const handleToggle = React.useCallback(() => {

@@ -21,7 +21,7 @@ class FunnelWidget(anywidget.AnyWidget):
     # ── recompute triggers ────────────────────────────────────────────────────
     steps = traitlets.Unicode("[]").tag(sync=True)
     diff = traitlets.Unicode("").tag(sync=True)
-    path_id_col = traitlets.Unicode("").tag(sync=True)
+    path_col = traitlets.Unicode("").tag(sync=True)
 
     # ── catalogues ────────────────────────────────────────────────────────────
     event_list = traitlets.Unicode("[]").tag(sync=True)
@@ -43,7 +43,7 @@ class FunnelWidget(anywidget.AnyWidget):
         eventstream,
         steps=_UNSET,
         diff=_UNSET,
-        path_id_col=_UNSET,
+        path_col=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
         **kwargs,
@@ -63,7 +63,7 @@ class FunnelWidget(anywidget.AnyWidget):
         except Exception:
             self.event_list = "[]"
         try:
-            self.segment_levels = json.dumps(eventstream.get_all_segment_levels())
+            self.segment_levels = json.dumps(eventstream.get_segment_values())
         except Exception:
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)
@@ -76,13 +76,13 @@ class FunnelWidget(anywidget.AnyWidget):
         )
         _diff_val = diff if diff is not _UNSET else None
         self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
-        self.path_id_col = path_id_col if path_id_col is not _UNSET else ""
+        self.path_col = path_col if path_col is not _UNSET else ""
         self.height = height if height is not _UNSET else 420
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
         self._recompute()
         self._initialized = True
-        self.observe(self._on_params_change, names=["steps", "diff", "path_id_col"])
+        self.observe(self._on_params_change, names=["steps", "diff", "path_col"])
 
     def _on_params_change(self, _change):
         if not self._initialized:
@@ -95,10 +95,8 @@ class FunnelWidget(anywidget.AnyWidget):
         try:
             steps = json.loads(self.steps) if self.steps else []
             diff = _parse_diff(self.diff)
-            pid = self.path_id_col or None
-            result = self._eventstream.funnel_data(
-                steps=steps, diff=diff, path_id_col=pid
-            )
+            pid = self.path_col or None
+            result = self._eventstream.funnel_data(steps=steps, diff=diff, path_col=pid)
             if diff and len(diff) == 3:
                 result["group1_label"] = str(diff[1])
                 result["group2_label"] = str(diff[2])
@@ -151,7 +149,7 @@ class FunnelWidget(anywidget.AnyWidget):
             "result": json.loads(self.result or "{}"),
             "steps": json.loads(self.steps or "[]"),
             "diff": json.loads(self.diff) if self.diff else None,
-            "path_id_col": self.path_id_col or "",
+            "path_col": self.path_col or "",
             "path_cols": json.loads(self.path_cols or "[]"),
             "segment_levels": json.loads(self.segment_levels or "{}"),
             "event_list": json.loads(self.event_list or "[]"),

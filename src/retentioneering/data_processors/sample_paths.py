@@ -13,52 +13,73 @@ PROCESSOR_NAME = "sample_paths"
 
 @dataclass
 class SamplePaths(DataProcessor):
-    sample_size: float | int
+    n: int | None
+    frac: float | None
     random_state: int | None
-    path_id_col: str | None
+    path_col: str | None
+
+    def __init__(
+        self,
+        n: int | None = None,
+        frac: float | None = None,
+        random_state: int | None = None,
+        path_col: str | None = None,
+    ) -> None:
+        if (n is None) == (frac is None):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Exactly one of 'n' or 'frac' must be provided."
+            )
+        if n is not None and (not isinstance(n, int) or isinstance(n, bool) or n <= 0):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "Argument 'n' must be a positive integer."
+            )
+        if frac is not None:
+            if not isinstance(frac, (int, float)) or isinstance(frac, bool):
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "Argument 'frac' must be a float in (0.0, 1.0]."
+                )
+            if frac > 1.0 or frac <= 0.0:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "Argument 'frac' must be in the range (0.0, 1.0]."
+                )
+
+        self.n = n
+        self.frac = float(frac) if frac is not None else None
+        self.random_state = random_state
+        self.path_col = path_col
+        super().__init__()
 
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-        path_id_col = self.path_id_col or schema.path_col
+        path_col = self.path_col or schema.path_col
 
-        if self.sample_size == 1.0 and isinstance(self.sample_size, float):
+        if self.frac == 1.0:
             return df, schema
-
-        if isinstance(self.sample_size, float) and (
-            self.sample_size > 1.0 or self.sample_size <= 0.0
-        ):
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME, "Float sample size must be between 0 and 1."
-            )
 
         query_template = """
             {set_threads}
              with sampled_paths as (
-                select {path_id_col}
-                from (select distinct {path_id_col} from df)
+                select {path_col}
+                from (select distinct {path_col} from df)
                 using sample reservoir({sample_chunk}) {seed_chunk}
              )
-             select * from df join sampled_paths using({path_id_col})
+             select * from df join sampled_paths using({path_col})
          """
 
-        sample_chunk = seed_chunk = set_threads = ""
+        seed_chunk = set_threads = ""
 
         if self.random_state is not None:
             seed_chunk = f"repeatable({self.random_state})"
             set_threads = "set threads = 1;"
 
-        if isinstance(self.sample_size, float):
-            sample_chunk = f"{self.sample_size * 100}%"
-        elif isinstance(self.sample_size, int):
-            sample_chunk = f"{self.sample_size} rows"
+        if self.frac is not None:
+            sample_chunk = f"{self.frac * 100}%"
         else:
-            raise PreprocessingConfigError(
-                PROCESSOR_NAME, "Sample size must be either a float or an integer."
-            )
+            sample_chunk = f"{self.n} rows"
 
         query = query_template.format(
-            path_id_col=path_id_col,
+            path_col=path_col,
             sample_chunk=sample_chunk,
             seed_chunk=seed_chunk,
             set_threads=set_threads,

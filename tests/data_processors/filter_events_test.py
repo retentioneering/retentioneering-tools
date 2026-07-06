@@ -20,12 +20,12 @@ def get_df():
 
 
 class TestFilterEvents:
-    def test__values_events(self) -> None:
+    def test__keep_events(self) -> None:
         df = get_df()
         schema = {"custom_cols": ["country"]}
         stream = Eventstream(df, schema)
 
-        res = stream.filter_events(by_column={"column": "event", "values": ["A", "C"]})
+        res = stream.filter_events(keep={"event": ["A", "C"]})
 
         expected_columns = ["user_id", "event", "timestamp", "country"]
         expected = pd.DataFrame(
@@ -41,12 +41,12 @@ class TestFilterEvents:
 
         assert res.equals(expected)
 
-    def test__values_country(self) -> None:
+    def test__keep_country(self) -> None:
         df = get_df()
         schema = {"custom_cols": ["country"]}
         stream = Eventstream(df, schema)
 
-        res = stream.filter_events(by_column={"column": "country", "values": ["US"]})
+        res = stream.filter_events(keep={"country": ["US"]})
 
         expected_columns = ["user_id", "event", "timestamp", "country"]
         expected = pd.DataFrame(
@@ -63,14 +63,12 @@ class TestFilterEvents:
 
         assert res.equals(expected)
 
-    def test__values_exclude(self) -> None:
+    def test__drop_events(self) -> None:
         df = get_df()
         schema = {"custom_cols": ["country"]}
         stream = Eventstream(df, schema)
 
-        res = stream.filter_events(
-            by_column={"column": "event", "values": ["B"], "exclude": True}
-        )
+        res = stream.filter_events(drop={"event": ["B"]})
 
         expected_columns = ["user_id", "event", "timestamp", "country"]
         expected = pd.DataFrame(
@@ -86,11 +84,57 @@ class TestFilterEvents:
 
         assert res.equals(expected)
 
-    def test__values_missing_keys_raises(self) -> None:
+    def test__keep_multiple_columns_and(self) -> None:
+        df = get_df()
+        schema = {"custom_cols": ["country"]}
+        stream = Eventstream(df, schema)
+
+        # AND semantics: event in [A, B] AND country in [US]
+        res = stream.filter_events(keep={"event": ["A", "B"], "country": ["US"]})
+
+        expected = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "US"],
+                ["user_1", "B", "2020-01-02 00:00:00", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "US"],
+            ],
+            columns=["user_id", "event", "timestamp", "country"],
+        )
+        expected = Eventstream(expected, {"custom_cols": ["country"]})
+
+        assert res.equals(expected)
+
+    def test__drop_multiple_columns_or(self) -> None:
+        df = get_df()
+        schema = {"custom_cols": ["country"]}
+        stream = Eventstream(df, schema)
+
+        # OR semantics: remove rows where event is B or country is UK
+        res = stream.filter_events(drop={"event": ["B"], "country": ["UK"]})
+
+        expected = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "US"],
+                ["user_1", "C", "2020-01-03 00:00:00", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "US"],
+            ],
+            columns=["user_id", "event", "timestamp", "country"],
+        )
+        expected = Eventstream(expected, {"custom_cols": ["country"]})
+
+        assert res.equals(expected)
+
+    def test__scalar_values_raises(self) -> None:
         stream = Eventstream(get_df(), {"custom_cols": ["country"]})
 
         with pytest.raises(Exception):
-            stream.filter_events(by_column={"event": ["A"]})
+            stream.filter_events(keep={"event": "A"})
+
+    def test__keep_and_drop_together_raises(self) -> None:
+        stream = Eventstream(get_df(), {"custom_cols": ["country"]})
+
+        with pytest.raises(Exception):
+            stream.filter_events(keep={"event": ["A"]}, drop={"event": ["B"]})
 
     def test__func_events(self) -> None:
         df = get_df()

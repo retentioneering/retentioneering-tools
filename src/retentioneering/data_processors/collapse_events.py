@@ -12,6 +12,7 @@ from retentioneering.exceptions import PreprocessingConfigError
 from retentioneering.utils.session_detection import (
     build_session_ctes,
     detect_mode,
+    parse_timeout,
     to_list,
     _MODE_TIMEOUT,
 )
@@ -21,46 +22,46 @@ PROCESSOR_NAME = "collapse_events"
 
 @dataclass
 class CollapseEvents(DataProcessor):
-    repetitive: bool | List[str] | None
+    consecutive: bool | List[str] | None
     event_groups: List[Dict[str, Any]] | None
-    event_from_col: str | None
+    group_col: str | None
     session_id_col: str | None
     session_type_col: str | None
     agg: Dict[str, str]
-    path_id_col: str | None
+    path_col: str | None
     event_col: str | None
 
     def __init__(
         self,
-        repetitive: bool | List[str] | None = None,
+        consecutive: bool | List[str] | None = None,
         event_groups: List[Dict[str, Any]] | None = None,
-        event_from_col: str | None = None,
+        group_col: str | None = None,
         session_id_col: str | None = None,
         session_type_col: str | None = None,
         agg: Dict[str, str] | None = None,
-        path_id_col: str | None = None,
+        path_col: str | None = None,
         event_col: str | None = None,
     ) -> None:
-        self.repetitive = repetitive
+        self.consecutive = consecutive
         self.event_groups = event_groups
-        self.event_from_col = event_from_col
+        self.group_col = group_col
         self.session_id_col = session_id_col
         self.session_type_col = session_type_col
         self.agg = agg or {}
-        self.path_id_col = path_id_col
+        self.path_col = path_col
         self.event_col = event_col
         super().__init__()
 
         modes = [
-            self.repetitive is not None,
+            self.consecutive is not None,
             bool(self.event_groups),
-            self.event_from_col is not None,
+            self.group_col is not None,
             self.session_id_col is not None,
         ]
         if sum(modes) != 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                "Provide exactly one of: repetitive, event_groups, event_from_col, session_id_col",
+                "Provide exactly one of: consecutive, event_groups, group_col, session_id_col",
             )
 
         if self.session_id_col is not None and self.session_type_col is None:
@@ -73,8 +74,16 @@ class CollapseEvents(DataProcessor):
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME, "event_groups must not be empty"
                 )
-            for g in event_groups:
+            self.event_groups = [dict(g) for g in event_groups]
+            for g in self.event_groups:
                 self._validate_group(g)
+                if g.get("timeout") is not None:
+                    try:
+                        g["timeout"] = parse_timeout(g["timeout"])
+                    except ValueError as exc:
+                        raise PreprocessingConfigError(
+                            PROCESSOR_NAME, str(exc)
+                        ) from exc
 
     @staticmethod
     def _validate_group(g: Dict[str, Any]) -> None:
@@ -106,21 +115,21 @@ class CollapseEvents(DataProcessor):
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-        path_id_col = self.path_id_col or schema.path_col
+        path_col = self.path_col or schema.path_col
         event_col = self.event_col or schema.event_col
 
-        if self.repetitive is not None:
-            result = self._collapse_repetitive(df, schema, path_id_col, event_col)
+        if self.consecutive is not None:
+            result = self._collapse_consecutive(df, schema, path_col, event_col)
         elif self.event_groups:
             result = df
             for group in self.event_groups:
                 result = self._collapse_group(
-                    result, schema, path_id_col, event_col, group
+                    result, schema, path_col, event_col, group
                 )
-        elif self.event_from_col is not None:
-            return self._collapse_by_col(df, schema, path_id_col, event_col)
+        elif self.group_col is not None:
+            return self._collapse_by_col(df, schema, path_col, event_col)
         else:
-            return self._collapse_by_session_type(df, schema, path_id_col, event_col)
+            return self._collapse_by_session_type(df, schema, path_col, event_col)
 
         for col in schema.event_cols + schema.segment_cols:
             if col in result.columns:
@@ -167,10 +176,13 @@ class CollapseEvents(DataProcessor):
         metric = mc["metric"]
         args = mc.get("metric_args") or {}
 
-        if metric == "has":
+        if metric == "has_event":
             events = to_list(args.get("events", []))
             return [
-                (f"has_{e}", f"MAX(CASE WHEN {event_col} = '{e}' THEN 1 ELSE 0 END)")
+                (
+                    f"has_event_{e}",
+                    f"MAX(CASE WHEN {event_col} = '{e}' THEN 1 ELSE 0 END)",
+                )
                 for e in events
             ]
         elif metric == "event_count":
@@ -187,8 +199,8 @@ class CollapseEvents(DataProcessor):
         elif metric == "length":
             return [("length", "COUNT(*)")]
         elif metric == "time_between":
-            ef = args.get("event_from", "")
-            et = args.get("event_to", "")
+            ef = args.get("start_event", "")
+            et = args.get("end_event", "")
             agg_sql = (
                 f"EPOCH("
                 f"MIN(CASE WHEN {event_col} = '{et}' THEN {ts_col} END) - "
@@ -201,19 +213,19 @@ class CollapseEvents(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 f"Metric '{metric}' is not supported in event_groups cases. "
-                f"Supported metrics: has, event_count, duration, length, time_between, active_days.",
+                f"Supported metrics: has_event, event_count, duration, length, time_between, active_days.",
             )
 
-    def _collapse_repetitive(
+    def _collapse_consecutive(
         self,
         df: pd.DataFrame,
         schema: EventstreamSchema,
-        path_id_col: str,
+        path_col: str,
         event_col: str,
     ) -> pd.DataFrame:
-        timestamp_col = schema.timestamp
+        timestamp_col = schema.timestamp_col
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
-        exclude = {path_id_col, schema.event_col, schema.event_type}
+        exclude = {path_col, schema.event_col, schema.event_type}
         agg_exprs = self._session_agg_exprs(df, self.agg, exclude, timestamp_col)
         agg_chunk = (", ".join(agg_exprs)) if agg_exprs else ""
 
@@ -222,12 +234,12 @@ class CollapseEvents(DataProcessor):
         # window frame lumps tied peer rows into one group, silently merging
         # distinct consecutive events that share a timestamp. A precomputed
         # ROW_NUMBER (_rn) plus an explicit ROWS frame makes grouping deterministic.
-        if self.repetitive is True:
-            is_start_condition = f"LAG({event_col}) OVER (PARTITION BY {path_id_col} ORDER BY _rn) = {event_col}"
+        if self.consecutive is True:
+            is_start_condition = f"LAG({event_col}) OVER (PARTITION BY {path_col} ORDER BY _rn) = {event_col}"
         else:
-            events_list = ", ".join(f"'{event}'" for event in self.repetitive)
+            events_list = ", ".join(f"'{event}'" for event in self.consecutive)
             is_start_condition = (
-                f"LAG({event_col}) OVER (PARTITION BY {path_id_col} ORDER BY _rn) = {event_col}"
+                f"LAG({event_col}) OVER (PARTITION BY {path_col} ORDER BY _rn) = {event_col}"
                 f" AND {event_col} IN ({events_list})"
             )
 
@@ -235,7 +247,7 @@ class CollapseEvents(DataProcessor):
         WITH ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_id_col} ORDER BY {timestamp_col}, {schema.subindex}
+                    PARTITION BY {path_col} ORDER BY {timestamp_col}, {schema.subindex}
                 ) AS _rn
             FROM df
         ),
@@ -248,19 +260,19 @@ class CollapseEvents(DataProcessor):
         event_groups AS (
             SELECT *,
                 SUM(is_start) OVER (
-                    PARTITION BY {path_id_col} ORDER BY _rn
+                    PARTITION BY {path_col} ORDER BY _rn
                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                 ) AS grp
             FROM event_group_starts
         )
         SELECT
-            {path_id_col},
+            {path_col},
             ANY_VALUE({event_col}) AS {event_col},
             CASE WHEN COUNT(*) > 1 THEN '{collapsed_event_type}' ELSE ARG_MIN({schema.event_type}, {timestamp_col}) END AS {schema.event_type},
             {agg_chunk}
         FROM event_groups
-        GROUP BY {path_id_col}, grp
-        ORDER BY {path_id_col}, MIN(_rn)
+        GROUP BY {path_col}, grp
+        ORDER BY {path_col}, MIN(_rn)
         """
         res = duckdb.query(query).df()
         res = res[schema.cols]
@@ -270,11 +282,11 @@ class CollapseEvents(DataProcessor):
         self,
         df: pd.DataFrame,
         schema: EventstreamSchema,
-        path_id_col: str,
+        path_col: str,
         event_col: str,
         group: Dict[str, Any],
     ) -> pd.DataFrame:
-        ts_col = schema.timestamp
+        ts_col = schema.timestamp_col
         subindex_col = schema.subindex
         event_type_col = schema.event_type
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
@@ -289,7 +301,7 @@ class CollapseEvents(DataProcessor):
             )
 
         session_ctes = build_session_ctes(
-            group, path_id_col, event_col, ts_col, subindex_col
+            group, path_col, event_col, ts_col, subindex_col
         )
 
         fp = FilterPaths(None, None, None)
@@ -326,7 +338,7 @@ class CollapseEvents(DataProcessor):
         else:
             classify_expr = f"'{default.replace(chr(39), chr(39) * 2)}'"
 
-        exclude_cols = {path_id_col, event_col, event_type_col, ts_col}
+        exclude_cols = {path_col, event_col, event_type_col, ts_col}
         agg_exprs = self._session_agg_exprs(df, self.agg, exclude_cols, ts_col)
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
@@ -341,7 +353,7 @@ class CollapseEvents(DataProcessor):
         {session_ctes},
         session_raw AS (
             SELECT
-                {path_id_col},
+                {path_col},
                 _session_counter,
                 MIN({ts_col}) AS {ts_col},
                 '{collapsed_event_type}' AS {event_type_col}
@@ -349,7 +361,7 @@ class CollapseEvents(DataProcessor):
                 {agg_chunk}
             FROM with_session_id
             WHERE _in_session = 1
-            GROUP BY {path_id_col}, _session_counter
+            GROUP BY {path_col}, _session_counter
         ),
         collapsed AS (
             SELECT {collapsed_select}
@@ -363,7 +375,7 @@ class CollapseEvents(DataProcessor):
         SELECT {cols_list} FROM collapsed
         UNION ALL
         SELECT {cols_list} FROM uncollapsed
-        ORDER BY {path_id_col}, {ts_col}, {subindex_col}
+        ORDER BY {path_col}, {ts_col}, {subindex_col}
         """
 
         return duckdb.query(query).df()
@@ -372,14 +384,14 @@ class CollapseEvents(DataProcessor):
         self,
         df: pd.DataFrame,
         schema: EventstreamSchema,
-        path_id_col: str,
+        path_col: str,
         event_col: str,
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-        ts_col = schema.timestamp
+        ts_col = schema.timestamp_col
         subindex_col = schema.subindex
         event_type_col = schema.event_type
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
-        col = self.event_from_col
+        col = self.group_col
 
         if col not in df.columns:
             raise PreprocessingConfigError(
@@ -388,11 +400,11 @@ class CollapseEvents(DataProcessor):
         if col == event_col:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"'event_from_col' must differ from event column '{event_col}'",
+                f"'group_col' must differ from event column '{event_col}'",
             )
 
         explicit_cols = {
-            path_id_col,
+            path_col,
             event_col,
             event_type_col,
             ts_col,
@@ -409,28 +421,28 @@ class CollapseEvents(DataProcessor):
         ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_id_col} ORDER BY {ts_col}, {subindex_col}
+                    PARTITION BY {path_col} ORDER BY {ts_col}, {subindex_col}
                 ) AS _rn
             FROM df
         ),
         group_starts AS (
             SELECT *,
                 CASE WHEN {col} IS DISTINCT FROM
-                          LAG({col}) OVER (PARTITION BY {path_id_col} ORDER BY _rn)
+                          LAG({col}) OVER (PARTITION BY {path_col} ORDER BY _rn)
                      THEN 1 ELSE 0 END AS _is_new_group
             FROM ordered
         ),
         with_group AS (
             SELECT *,
                 SUM(_is_new_group) OVER (
-                    PARTITION BY {path_id_col} ORDER BY _rn
+                    PARTITION BY {path_col} ORDER BY _rn
                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                 ) AS _grp
             FROM group_starts
         ),
         collapsed AS (
             SELECT
-                {path_id_col},
+                {path_col},
                 MIN({ts_col}) AS {ts_col},
                 MIN({subindex_col}) AS {subindex_col},
                 CAST({col} AS VARCHAR) AS {event_col},
@@ -438,11 +450,11 @@ class CollapseEvents(DataProcessor):
                 {group_col_select}
                 {agg_chunk}
             FROM with_group
-            GROUP BY {path_id_col}, _grp, {col}
+            GROUP BY {path_col}, _grp, {col}
         )
         SELECT {cols_list}
         FROM collapsed
-        ORDER BY {path_id_col}, {ts_col}, {subindex_col}
+        ORDER BY {path_col}, {ts_col}, {subindex_col}
         """
 
         result = duckdb.query(query).df()
@@ -459,10 +471,10 @@ class CollapseEvents(DataProcessor):
         self,
         df: pd.DataFrame,
         schema: EventstreamSchema,
-        path_id_col: str,
+        path_col: str,
         event_col: str,
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-        ts_col = schema.timestamp
+        ts_col = schema.timestamp_col
         subindex_col = schema.subindex
         event_type_col = schema.event_type
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
@@ -479,7 +491,7 @@ class CollapseEvents(DataProcessor):
             )
 
         explicit_cols = {
-            path_id_col,
+            path_col,
             event_col,
             event_type_col,
             ts_col,
@@ -504,7 +516,7 @@ class CollapseEvents(DataProcessor):
         query = f"""
         WITH collapsed AS (
             SELECT
-                {path_id_col},
+                {path_col},
                 MIN({ts_col}) AS {ts_col},
                 MIN({subindex_col}) AS {subindex_col},
                 CAST(ANY_VALUE({session_type_col}) AS VARCHAR) AS {event_col},
@@ -512,11 +524,11 @@ class CollapseEvents(DataProcessor):
                 {extra_session_cols}
                 {agg_chunk}
             FROM df
-            GROUP BY {path_id_col}, {session_id_col}
+            GROUP BY {path_col}, {session_id_col}
         )
         SELECT {cols_list}
         FROM collapsed
-        ORDER BY {path_id_col}, {ts_col}, {subindex_col}
+        ORDER BY {path_col}, {ts_col}, {subindex_col}
         """
 
         result = duckdb.query(query).df()

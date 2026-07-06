@@ -64,13 +64,7 @@ class EditEvents(DataProcessor):
                     f"Unknown event names in 'delete': {sorted(unknown)}. "
                     f"Available events: {sorted(existing)}.",
                 )
-            dp = FilterEvents(
-                values={
-                    "column": schema.event_col,
-                    "values": self.delete,
-                    "exclude": True,
-                }
-            )
+            dp = FilterEvents(drop={schema.event_col: self.delete})
             df, schema = dp.apply(df, schema)
 
         if self.rename:

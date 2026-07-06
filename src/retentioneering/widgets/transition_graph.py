@@ -22,7 +22,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
     # ── recompute triggers ─────────────────────────────────────────────────────
     edge_weight = traitlets.Unicode("proba_out").tag(sync=True)
     diff = traitlets.Unicode("").tag(sync=True)
-    path_id_col = traitlets.Unicode("").tag(sync=True)
+    path_col = traitlets.Unicode("").tag(sync=True)
 
     # ── catalogues ─────────────────────────────────────────────────────────────
     path_cols = traitlets.Unicode("[]").tag(sync=True)
@@ -52,7 +52,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
         cloud_file_name: str | None = None,
         edge_weight=_UNSET,
         diff=_UNSET,
-        path_id_col=_UNSET,
+        path_col=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
         **kwargs,
@@ -62,7 +62,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
         self._initialized = False
 
         try:
-            self.segment_levels = json.dumps(eventstream.get_all_segment_levels())
+            self.segment_levels = json.dumps(eventstream.get_segment_values())
         except Exception:
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)
@@ -74,7 +74,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
         self.edge_weight = edge_weight if edge_weight is not _UNSET else "proba_out"
         _diff_val = diff if diff is not _UNSET else None
         self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
-        self.path_id_col = path_id_col if path_id_col is not _UNSET else ""
+        self.path_col = path_col if path_col is not _UNSET else ""
         self.height = height if height is not _UNSET else 500
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
         self.node_positions = "{}"
@@ -85,9 +85,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
             self._recompute()
 
         self._initialized = True
-        self.observe(
-            self._on_params_change, names=["edge_weight", "diff", "path_id_col"]
-        )
+        self.observe(self._on_params_change, names=["edge_weight", "diff", "path_col"])
         self.observe(self._on_positions_change, names=["node_positions"])
         self.observe(self._on_event_visibility_change, names=["event_visibility"])
         self.observe(self._on_compute_request, names=["compute_request"])
@@ -138,7 +136,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
             "params": {
                 "edge_weight": self.edge_weight,
                 "diff": self.diff,
-                "path_id_col": self.path_id_col,
+                "path_col": self.path_col,
             },
             "display": {
                 "height": self.height,
@@ -162,7 +160,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
 
         _diff, _pid, _mismatch = self._apply_base_state(state)
         self.diff = json.dumps(list(_diff)) if _diff else ""
-        self.path_id_col = _pid
+        self.path_col = _pid
 
         self._recompute()
 
@@ -172,7 +170,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
         if tool == "transition_graph_data":
             return self._compute_tm_raw(
                 edge_weight=params.get("edge_weight", self.edge_weight),
-                path_id_col=params.get("path_id_col") or self.path_id_col or None,
+                path_col=params.get("path_col") or self.path_col or None,
                 diff=_parse_diff(params.get("diff")),
             )
         if tool == "graph_layout":
@@ -188,19 +186,19 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
             diff_list = _parse_diff(self.diff)
             result = self._compute_tm_raw(
                 edge_weight=self.edge_weight,
-                path_id_col=self.path_id_col or None,
+                path_col=self.path_col or None,
                 diff=diff_list,
             )
             self.result = json.dumps(result)
 
             if diff_list:
                 try:
-                    s1, s2 = self._eventstream.split_two(
-                        diff_list, path_id_col=self.path_id_col or None
+                    s1, s2 = self._eventstream._split_two(
+                        diff_list, path_col=self.path_col or None
                     )
                     c1 = s1.get_event_counts()
                     c2 = s2.get_event_counts()
-                    pid = self.path_id_col or s1.schema.path_cols[0]
+                    pid = self.path_col or s1.schema.path_cols[0]
                     for counts, s in ((c1, s1), (c2, s2)):
                         n = int(s.df[pid].nunique())
                         counts.setdefault("path_start", n)
@@ -219,10 +217,10 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
         finally:
             self.is_loading = False
 
-    def _compute_tm_raw(self, edge_weight: str, path_id_col=None, diff=None) -> dict:
+    def _compute_tm_raw(self, edge_weight: str, path_col=None, diff=None) -> dict:
         tm = self._eventstream.transition_graph_data(
             edge_weight=edge_weight,
-            path_id_col=path_id_col,
+            path_col=path_col,
             diff=diff,
         )
         if diff is not None:
@@ -286,7 +284,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
             "event_visibility": json.loads(self.event_visibility or "{}"),
             "segment_levels": json.loads(self.segment_levels or "{}"),
             "path_cols": json.loads(self.path_cols or "[]"),
-            "path_id_col": self.path_id_col or "",
+            "path_col": self.path_col or "",
             "height": self.height,
             "sidebar_open": sidebar_open,
         }

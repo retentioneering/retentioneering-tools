@@ -10,23 +10,23 @@ from retentioneering.eventstream.schema import EventstreamSchema
 
 @dataclass
 class AddStartEndEvents(DataProcessor):
-    path_id_col: str | None = field(default=None)
+    path_col: str | None = field(default=None)
 
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
         event_types = EventTypes()
-        path_id_col = self.path_id_col or schema.path_col
+        path_col = self.path_col or schema.path_col
 
         # NB: select whole boundary ROWS via drop_duplicates, not
         # groupby().first()/.last() — those return the first/last NON-NULL value
         # per column independently (pandas skipna semantics), which fabricates
         # chimera rows mixing values from different events when nullable
         # extra/segment columns are present.
-        df_sorted = df.sort_values([path_id_col, schema.timestamp, schema.subindex])
+        df_sorted = df.sort_values([path_col, schema.timestamp_col, schema.subindex])
 
         df_start = (
-            df_sorted.drop_duplicates(subset=path_id_col, keep="first")
+            df_sorted.drop_duplicates(subset=path_col, keep="first")
             .loc[lambda _df: _df[schema.event_col] != event_types.PATH_START.name]
             .copy()
         )
@@ -35,7 +35,7 @@ class AddStartEndEvents(DataProcessor):
         df_start[schema.subindex] = event_types.PATH_START.index
 
         df_end = (
-            df_sorted.drop_duplicates(subset=path_id_col, keep="last")
+            df_sorted.drop_duplicates(subset=path_col, keep="last")
             .loc[lambda _df: _df[schema.event_col] != event_types.PATH_END.name]
             .copy()
         )

@@ -24,8 +24,8 @@ const C = {
 const VALUE_OPTIONS: { value: MatrixValueType; label: string; tooltip: string }[] = [
   { value: "unique_paths", label: "Unique Paths",    tooltip: "Number of unique paths that have an A→B transition." },
   { value: "count",        label: "Count",           tooltip: "Total number of A→B transitions." },
-  { value: "transition_rate", label: "Transition Rate", tooltip: "Count divided by all transitions: #(A→B) / #(*→*)." },
-  { value: "per_path",    label: "Per Path",         tooltip: "Count divided by total paths: #(A→B) / total paths." },
+  { value: "share_of_total", label: "Share of Total", tooltip: "Count divided by all transitions: #(A→B) / #(*→*)." },
+  { value: "avg_per_path",    label: "Avg per Path",       tooltip: "Count divided by total paths: #(A→B) / total paths." },
   { value: "proba_out",   label: "Probability Out",  tooltip: "P(A→B) = #(A→B) / #(A→*). Markov transition probabilities." },
   { value: "proba_in",    label: "Probability In",   tooltip: "P(A→B) = #(A→B) / #(*→B)." },
   { value: "time_median", label: "Time Median",      tooltip: "Median time the A→B transition takes." },

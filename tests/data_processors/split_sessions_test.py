@@ -5,7 +5,11 @@ from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.exceptions import PreprocessingConfigError
 
 
-SCHEMA = {"path_cols": ["user_id"], "event_cols": ["event"], "timestamp": "timestamp"}
+SCHEMA = {
+    "path_cols": ["user_id"],
+    "event_cols": ["event"],
+    "timestamp_col": "timestamp",
+}
 
 
 def make_stream(rows):
@@ -246,7 +250,7 @@ class TestSplitSessionsSchema:
             ]
         )
         res = stream.split_sessions(
-            separator="sep", session_col="sid", session_index_col="snum"
+            separator="sep", session_id_col="sid", session_index_col="snum"
         )
         assert "sid" in res.schema.path_cols
         assert "snum" in res.schema.custom_cols
@@ -289,3 +293,45 @@ class TestSplitSessionsValidation:
         stream = Eventstream(df, schema)
         with pytest.raises(PreprocessingConfigError):
             stream.split_sessions(separator="sep")
+
+
+# ---------------------------------------------------------------------------
+# Timeout
+# ---------------------------------------------------------------------------
+
+
+class TestSplitSessionsTimeout:
+    def test_timeout_duration_string(self):
+        stream = make_stream(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "B", "2020-01-01 00:00:30"],
+                ["user_1", "C", "2020-01-01 01:00:00"],
+            ]
+        )
+        res = stream.split_sessions(timeout="1m")
+        sessions = res.df["session_id"].dropna().unique().tolist()
+        assert len(sessions) == 2
+
+    def test_timeout_timedelta(self):
+        import pandas as _pd
+
+        stream = make_stream(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "B", "2020-01-01 01:00:00"],
+            ]
+        )
+        res = stream.split_sessions(timeout=_pd.Timedelta(minutes=30))
+        sessions = res.df["session_id"].dropna().unique().tolist()
+        assert len(sessions) == 2
+
+    def test_timeout_bare_number_raises(self):
+        stream = make_stream([["user_1", "A", "2020-01-01"]])
+        with pytest.raises(PreprocessingConfigError):
+            stream.split_sessions(timeout=1800)
+
+    def test_timeout_string_without_unit_raises(self):
+        stream = make_stream([["user_1", "A", "2020-01-01"]])
+        with pytest.raises(PreprocessingConfigError):
+            stream.split_sessions(timeout="1800")

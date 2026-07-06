@@ -890,7 +890,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [isLoading,    setIsLoading]    = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
     const [height,       setHeight]       = React.useState<number>(() => (model.get("height") as number) ?? 600);
     const [sidebarOpen,  setSidebarOpen]  = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
-    const [pathIdCol,    setPathIdCol]    = React.useState<string>(() => (model.get("path_id_col") as string) || "");
+    const [pathIdCol,    setPathIdCol]    = React.useState<string>(() => (model.get("path_col") as string) || "");
     const [pathPattern,  setPathPattern]  = React.useState<string>(() => (model.get("path_pattern") as string) || "");
     const [appliedPathPattern, setAppliedPathPattern] = React.useState<string>(() => (model.get("path_pattern") as string) || "");
     const [session,      setSession]      = React.useState<AuthSession | null>(() => loadSession());
@@ -945,7 +945,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         ["is_loading",   () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
         ["height",       () => setHeight((model.get("height") as number) ?? 600)],
         ["sidebar_open", () => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
-        ["path_id_col",  () => setPathIdCol((model.get("path_id_col") as string) || "")],
+        ["path_col",  () => setPathIdCol((model.get("path_col") as string) || "")],
         ["path_pattern", () => { const v = (model.get("path_pattern") as string) || ""; setPathPattern(v); setAppliedPathPattern(v); }],
         ["diff",         () => { const d = parseJson<string[]>(model.get("diff") || "[]", []); setDiffSeg(d[0]??null); setDiffV1(d[1]??null); setDiffV2(d[2]??null); }],
         ["cloud_status", () => {
@@ -1150,7 +1150,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
               {pathCols.length > 1 && (
                 <div style={{ marginBottom: 20 }}>
                   <FLabel tip="Column used as the path identifier.">Path Column</FLabel>
-                  <select value={pathIdCol} onChange={e => { setPathIdCol(e.target.value); setParam("path_id_col", e.target.value); }} style={sidebarSel} disabled={isLoading || isStatic}>
+                  <select value={pathIdCol} onChange={e => { setPathIdCol(e.target.value); setParam("path_col", e.target.value); }} style={sidebarSel} disabled={isLoading || isStatic}>
                     {pathCols.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>

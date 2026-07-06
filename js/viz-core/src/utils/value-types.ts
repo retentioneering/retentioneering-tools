@@ -1,8 +1,8 @@
 export const MATRIX_VALUE_TYPES = [
   "unique_paths",
   "count",
-  "transition_rate",
-  "per_path",
+  "share_of_total",
+  "avg_per_path",
   "proba_out",
   "proba_in",
   "time_median",

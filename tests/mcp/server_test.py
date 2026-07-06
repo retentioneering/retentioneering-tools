@@ -38,15 +38,26 @@ class TestApplyPreprocessorsFilterEvents:
         assert "noise" not in events
         assert {"view", "purchase"} <= events
 
-    def test__by_column_form_still_works(self) -> None:
+    def test__keep_form(self) -> None:
         stream = get_stream()
 
         result = _apply_preprocessors(
             stream,
-            [{"type": "filter_events", "column": "event", "values": ["view"]}],
+            [{"type": "filter_events", "keep": {"event": ["view"]}}],
         )
 
         assert set(result.df["event"].astype(str)) == {"view"}
+
+    def test__drop_form(self) -> None:
+        stream = get_stream()
+
+        result = _apply_preprocessors(
+            stream,
+            [{"type": "filter_events", "drop": {"event": ["noise"]}}],
+        )
+
+        events = set(result.df["event"].astype(str))
+        assert "noise" not in events
 
 
 class TestFindUnlinkedNumbers:

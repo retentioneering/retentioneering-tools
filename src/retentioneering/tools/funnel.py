@@ -21,9 +21,9 @@ class Funnel:
         self,
         steps: list[str],
         diff: T_Diff = None,
-        path_id_col: str | None = None,
+        path_col: str | None = None,
     ) -> dict:
-        path_id_col = path_id_col or self.eventstream.schema.path_col
+        path_col = path_col or self.eventstream.schema.path_col
         event_col = self.eventstream.schema.event_col
         index_col = self.eventstream.schema.index
 
@@ -32,7 +32,7 @@ class Funnel:
                 return {"steps": []}
 
             df = self.eventstream.df  # noqa: F841 -- referenced by name via DuckDB replacement scan below
-            total_paths = int(df[path_id_col].nunique())
+            total_paths = int(df[path_col].nunique())
 
             # Sequential funnel semantics: a path reaches step k iff there
             # exist event indices i1 < i2 < ... < ik with event(i_j) = steps[j].
@@ -45,21 +45,21 @@ class Funnel:
                 if step_num == 1:
                     ctes.append(
                         f"step_1 AS ("
-                        f"SELECT {path_id_col} AS path_id, MIN({index_col}) AS idx "
+                        f"SELECT {path_col} AS path_id, MIN({index_col}) AS idx "
                         f"FROM df "
                         f"WHERE {event_col} = {ev} "
-                        f"GROUP BY {path_id_col}"
+                        f"GROUP BY {path_col}"
                         f")"
                     )
                 else:
                     prev = f"step_{step_num - 1}"
                     ctes.append(
                         f"step_{step_num} AS ("
-                        f"SELECT df.{path_id_col} AS path_id, MIN(df.{index_col}) AS idx "
+                        f"SELECT df.{path_col} AS path_id, MIN(df.{index_col}) AS idx "
                         f"FROM df "
-                        f"JOIN {prev} ON df.{path_id_col} = {prev}.path_id "
+                        f"JOIN {prev} ON df.{path_col} = {prev}.path_id "
                         f"WHERE df.{event_col} = {ev} AND df.{index_col} > {prev}.idx "
-                        f"GROUP BY df.{path_id_col}"
+                        f"GROUP BY df.{path_col}"
                         f")"
                     )
             counts = ", ".join(
@@ -85,9 +85,9 @@ class Funnel:
             return {"steps": funnel_data}
 
         else:
-            stream1, stream2 = self.eventstream.split_two(diff, path_id_col=path_id_col)
-            f1 = Funnel(stream1).fit(steps=steps, path_id_col=path_id_col)
-            f2 = Funnel(stream2).fit(steps=steps, path_id_col=path_id_col)
+            stream1, stream2 = self.eventstream._split_two(diff, path_col=path_col)
+            f1 = Funnel(stream1).fit(steps=steps, path_col=path_col)
+            f2 = Funnel(stream2).fit(steps=steps, path_col=path_col)
 
             combined = []
             for i, step in enumerate(steps):

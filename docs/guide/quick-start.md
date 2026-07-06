@@ -54,7 +54,7 @@ Use [data processors](/docs/data-processors) to clean and shape the eventstream 
 ```python
 stream = (
     Eventstream(df)
-    .filter_events(by_column={"column": "event", "values": ["bot_ping"], "exclude": True})
+    .filter_events(drop={"event": ["bot_ping"]})
     .rename_events({"btn_click": "button_click"})
 )
 

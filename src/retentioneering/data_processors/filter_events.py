@@ -22,52 +22,61 @@ def _sql_literal(value) -> str:
     return "'" + str(value).replace("'", "''") + "'"
 
 
+def _validate_column_filter(arg_name: str, value: Dict) -> None:
+    if not isinstance(value, dict) or not value:
+        raise PreprocessingConfigError(
+            PROCESSOR_NAME,
+            f"Argument '{arg_name}' must be a non-empty {{column: values}} dictionary.",
+        )
+    for column, values in value.items():
+        if not isinstance(column, str):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, f"Column names in '{arg_name}' must be strings."
+            )
+        if not isinstance(values, (list, tuple, set)):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"Values for column '{column}' in '{arg_name}' must be a list.",
+            )
+
+
 class FilterEvents(DataProcessor):
-    values: Dict | None
+    keep: Dict | None
+    drop: Dict | None
     func: Callable[[pd.DataFrame], pd.Series] | None
     sql: str | None
 
-    def __init__(self, values=None, func=None, sql=None) -> None:
-        self.values = values
+    def __init__(self, keep=None, drop=None, func=None, sql=None) -> None:
+        self.keep = keep
+        self.drop = drop
         self.func = func
         self.sql = sql
 
-        func_arg_name = f"{func=}".split("=")[0]
-        values_arg_name = f"{values=}".split("=")[0]
-        sql_arg_name = f"{sql=}".split("=")[0]
-
-        arg_is_not_none = [func is not None, values is not None, sql is not None]
+        arg_is_not_none = [
+            keep is not None,
+            drop is not None,
+            func is not None,
+            sql is not None,
+        ]
         if sum(arg_is_not_none) != 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"One and only one of the arguments must be provided: {func_arg_name}, {values_arg_name}, {sql_arg_name}.",
+                "One and only one of the arguments must be provided: keep, drop, func, sql.",
             )
 
         if func is not None and not isinstance(func, Callable):
-            arg_name = f"{func=}".split("=")[0]
             raise PreprocessingConfigError(
-                PROCESSOR_NAME, f"Argument '{arg_name}' must be a callable function."
+                PROCESSOR_NAME, "Argument 'func' must be a callable function."
             )
 
-        if values is not None:
-            if not isinstance(values, dict):
-                raise PreprocessingConfigError(
-                    PROCESSOR_NAME, "Argument 'values' must be a dictionary."
-                )
-            if "column" not in values or "values" not in values:
-                raise PreprocessingConfigError(
-                    PROCESSOR_NAME,
-                    "Argument 'values' must have 'column' and 'values' keys.",
-                )
-            if "exclude" in values and not isinstance(values["exclude"], bool):
-                raise PreprocessingConfigError(
-                    PROCESSOR_NAME, "Key 'exclude' in 'values' must be a boolean."
-                )
+        if keep is not None:
+            _validate_column_filter("keep", keep)
+        if drop is not None:
+            _validate_column_filter("drop", drop)
 
         if sql is not None and not isinstance(sql, str):
-            arg_name = f"{sql=}".split("=")[0]
             raise PreprocessingConfigError(
-                PROCESSOR_NAME, f"Argument '{arg_name}' must be a string."
+                PROCESSOR_NAME, "Argument 'sql' must be a string."
             )
 
         super().__init__()
@@ -84,20 +93,30 @@ class FilterEvents(DataProcessor):
                 )
             df = df[mask].copy()
 
-        elif self.values is not None:
-            filter_column = self.values["column"]
-            filter_values = self.values["values"]
-            exclude = self.values.get("exclude", False)
+        elif self.keep is not None or self.drop is not None:
+            column_filter = self.keep if self.keep is not None else self.drop
+            for column in column_filter:
+                if column not in df.columns:
+                    raise PreprocessingColumnNotFoundError(
+                        PROCESSOR_NAME, column, df.columns.tolist()
+                    )
 
-            if filter_column not in df.columns:
-                raise PreprocessingColumnNotFoundError(
-                    PROCESSOR_NAME, filter_column, df.columns.tolist()
-                )
-            filter_values_str = ", ".join(_sql_literal(v) for v in filter_values)
-            operator = "not in" if exclude else "in"
+            conditions = []
+            for column, values in column_filter.items():
+                values_str = ", ".join(_sql_literal(v) for v in values)
+                conditions.append(f"{column} in ({values_str})")
+
+            if self.keep is not None:
+                # keep: a row must match every entry (AND)
+                where = " and ".join(conditions)
+            else:
+                # drop: a row is removed if it matches any entry (OR) —
+                # the exact complement of keep
+                where = "not (" + " or ".join(conditions) + ")"
+
             query = f"""
                 select * from df
-                where {filter_column} {operator} ({filter_values_str})
+                where {where}
                 order by {schema.path_col}, {schema.index}, {schema.subindex}
             """
             df = duckdb.sql(query).df()
@@ -118,7 +137,8 @@ class FilterEvents(DataProcessor):
 
         else:
             raise PreprocessingConfigError(
-                PROCESSOR_NAME, "Either 'values', 'func', or 'sql' must be provided."
+                PROCESSOR_NAME,
+                "Either 'keep', 'drop', 'func', or 'sql' must be provided.",
             )
 
         # duckdb sets all pandas categorical columns as ordered; setting them back to unordered

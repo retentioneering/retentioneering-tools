@@ -3,7 +3,7 @@ SegmentOverview - tool for analyzing metric distributions across segment values
 
 Provides aggregated view of metrics for each segment value, with support for:
 - Basic statistics: mean, median, percentiles (q5, q25, q75, q95)
-- Distributional comparison: complement_diff (Wasserstein distance between
+- Distributional comparison: complement_distance (Wasserstein distance between
   segment value distribution and its complement)
 - Special segment-level metrics: segment_size, segment_share (always included)
 - metric_distribution: detailed distribution analysis with histogram, KDE, etc.
@@ -66,8 +66,8 @@ class SegmentOverview:
     def fit(
         self,
         segment_col: str,
-        metrics_config: List[Dict[str, Any]],
-        path_id_col: str | None = None,
+        metrics: List[Dict[str, Any]],
+        path_col: str | None = None,
         event_col: str | None = None,
     ) -> pd.DataFrame:
         """
@@ -75,15 +75,15 @@ class SegmentOverview:
 
         Args:
             segment_col: Name of the segment column to analyze
-            metrics_config: List of metric configuration dicts with keys:
+            metrics: List of metric configuration dicts with keys:
                 - 'metric': metric name (same as MetricBuilder)
                 - 'metric_args': optional metric arguments (same as MetricBuilder)
-                - 'agg': aggregation type ('mean', 'median', 'complement_diff',
+                - 'agg': aggregation type ('mean', 'median', 'complement_distance',
                          'q5', 'q25', 'q75', 'q95')
 
             segment_size and segment_share are always computed automatically.
 
-            path_id_col: Path ID column (if None, taken from schema)
+            path_col: Path ID column (if None, taken from schema)
             event_col: Event column (if None, taken from schema)
 
         Returns:
@@ -92,7 +92,7 @@ class SegmentOverview:
                 - Columns: unique segment values
                 - Values: aggregated metric values for each segment
         """
-        path_id_col = path_id_col or self.eventstream.schema.path_col
+        path_col = path_col or self.eventstream.schema.path_col
         event_col = event_col or self.eventstream.schema.event_col
         df = self.eventstream.df.copy()
 
@@ -102,7 +102,7 @@ class SegmentOverview:
         # Create composite path ID: (path_id, segment_value)
         composite_col = "__composite_path_id__"
         df[composite_col] = (
-            df[path_id_col].astype(str) + _COMPOSITE_SEP + df[segment_col].astype(str)
+            df[path_col].astype(str) + _COMPOSITE_SEP + df[segment_col].astype(str)
         )
 
         # Create a temporary eventstream with composite path ID
@@ -110,10 +110,10 @@ class SegmentOverview:
 
         temp_schema = dict(self.eventstream._schema) if self.eventstream._schema else {}
         temp_schema["path_cols"] = [composite_col]
-        temp_stream = Eventstream(df, temp_schema, prepare=False)
+        temp_stream = Eventstream(df, temp_schema, preprocess=False)
 
         # Use MetricConfig to get enriched configs with column names
-        metric_cfg = MetricConfig(metrics_config)
+        metric_cfg = MetricConfig(metrics)
         enriched_config = metric_cfg.get_enriched_configs()
 
         # Build column-to-agg mapping
@@ -124,11 +124,11 @@ class SegmentOverview:
                 column_to_agg[col] = agg
 
         # Build metrics using MetricBuilder
-        if metrics_config:
+        if metrics:
             metric_builder = MetricBuilder(temp_stream)
             metrics_df = metric_builder.build_metrics(
-                config=metrics_config,
-                path_id_col=composite_col,
+                config=metrics,
+                path_col=composite_col,
             )
             metrics_df[segment_col] = metrics_df.index.str.rsplit(
                 _COMPOSITE_SEP, n=1
@@ -145,12 +145,12 @@ class SegmentOverview:
 
         # Separate columns by aggregation type
         standard_agg_cols = {}  # {col: agg_func} for standard aggregations
-        complement_diff_cols = []  # columns requiring complement_diff
+        complement_distance_cols = []  # columns requiring complement_distance
 
         for col in metric_columns:
             agg = column_to_agg.get(col, "mean")
-            if agg == "complement_diff":
-                complement_diff_cols.append(col)
+            if agg == "complement_distance":
+                complement_distance_cols.append(col)
             elif agg in AGG_FUNCTIONS:
                 standard_agg_cols[col] = AGG_FUNCTIONS[agg]
             else:
@@ -174,22 +174,24 @@ class SegmentOverview:
                 agg_name = column_to_agg.get(col, "mean")
                 result_data[f"{col}_{agg_name}"] = aggregated[col]
 
-        # Compute complement_diff separately (needs full dataframe)
-        for col in complement_diff_cols:
-            complement_diff_values = {}
+        # Compute complement_distance separately (needs full dataframe)
+        for col in complement_distance_cols:
+            complement_distance_values = {}
             for segment_value in segment_sizes.index:
                 mask = metrics_df[segment_col] == segment_value
                 segment_data = metrics_df.loc[mask, col].dropna()
                 complement_data = metrics_df.loc[~mask, col].dropna()
 
                 if len(segment_data) > 0 and len(complement_data) > 0:
-                    complement_diff_values[segment_value] = wasserstein_distance(
+                    complement_distance_values[segment_value] = wasserstein_distance(
                         segment_data.values, complement_data.values
                     )
                 else:
-                    complement_diff_values[segment_value] = np.nan
+                    complement_distance_values[segment_value] = np.nan
 
-            result_data[f"{col}_complement_diff"] = pd.Series(complement_diff_values)
+            result_data[f"{col}_complement_distance"] = pd.Series(
+                complement_distance_values
+            )
 
         # Create result DataFrame (metrics as rows, segments as columns)
         result_df = pd.DataFrame(result_data).T
@@ -200,13 +202,13 @@ class SegmentOverview:
 
         return result_df
 
-    def metric_distribution(
+    def get_metric_distribution(
         self,
         segment_col: str,
         segment_value: str | List[str],
         metric: Dict[str, Any],
         complement: bool = False,
-        path_id_col: str | None = None,
+        path_col: str | None = None,
     ) -> Dict[str, Any]:
         """
         Calculate distribution statistics for a metric across one or two segment values.
@@ -217,7 +219,7 @@ class SegmentOverview:
             metric: Metric configuration dict with 'metric' and optional 'metric_args'
             complement: If True and segment_value is a single value, compare with
                        complement (all other values in the segment). Ignored for pairs.
-            path_id_col: Path ID column (if None, taken from schema)
+            path_col: Path ID column (if None, taken from schema)
 
         Returns:
             For single segment value:
@@ -227,12 +229,12 @@ class SegmentOverview:
         """
         df = self.eventstream.df.copy()
 
-        # Validate path_id_col
-        path_id_col = path_id_col or self.eventstream.schema.path_col
-        if path_id_col not in df.columns:
+        # Validate path_col
+        path_col = path_col or self.eventstream.schema.path_col
+        if path_col not in df.columns:
             raise InvalidParameterError(
-                "path_id_col",
-                path_id_col,
+                "path_col",
+                path_col,
                 allowed_values=self.eventstream.schema.path_cols,
             )
 
@@ -279,7 +281,7 @@ class SegmentOverview:
         # Create composite path ID: (path_id, segment_value)
         composite_col = "__composite_path_id__"
         df[composite_col] = (
-            df[path_id_col].astype(str) + _COMPOSITE_SEP + df[segment_col].astype(str)
+            df[path_col].astype(str) + _COMPOSITE_SEP + df[segment_col].astype(str)
         )
 
         # Create a temporary eventstream with composite path ID
@@ -287,13 +289,13 @@ class SegmentOverview:
 
         temp_schema = dict(self.eventstream._schema) if self.eventstream._schema else {}
         temp_schema["path_cols"] = [composite_col]
-        temp_stream = Eventstream(df, temp_schema, prepare=False)
+        temp_stream = Eventstream(df, temp_schema, preprocess=False)
 
         # Build metric using MetricBuilder
         metric_builder = MetricBuilder(temp_stream)
         metrics_df = metric_builder.build_metrics(
             config=[metric],
-            path_id_col=composite_col,
+            path_col=composite_col,
         )
         metrics_df[segment_col] = metrics_df.index.str.rsplit(_COMPOSITE_SEP, n=1).str[
             -1

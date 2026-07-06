@@ -19,8 +19,8 @@ class SegmentOverviewWidget(anywidget.AnyWidget):
 
     # ── config traitlets ───────────────────────────────────────────────────
     segment_col = traitlets.Unicode("").tag(sync=True)
-    path_id_col = traitlets.Unicode("").tag(sync=True)
-    metrics_config = traitlets.Unicode("[]").tag(sync=True)  # JSON list
+    path_col = traitlets.Unicode("").tag(sync=True)
+    metrics = traitlets.Unicode("[]").tag(sync=True)  # JSON list
     apply_trigger = traitlets.Unicode("").tag(sync=True)  # any change → recompute
 
     # ── catalogues ────────────────────────────────────────────────────────
@@ -47,8 +47,8 @@ class SegmentOverviewWidget(anywidget.AnyWidget):
         self,
         eventstream,
         segment_col=_UNSET,
-        metrics_config=_UNSET,
-        path_id_col=_UNSET,
+        metrics=_UNSET,
+        path_col=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
         **kwargs,
@@ -72,17 +72,15 @@ class SegmentOverviewWidget(anywidget.AnyWidget):
             self.event_list = "[]"
         self.segment_cols = json.dumps(eventstream.schema.segment_cols)
         try:
-            self.segment_levels = json.dumps(eventstream.get_all_segment_levels())
+            self.segment_levels = json.dumps(eventstream.get_segment_values())
         except Exception:
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)
 
         self.segment_col = segment_col if segment_col is not _UNSET else ""
-        self.path_id_col = path_id_col if path_id_col is not _UNSET else ""
-        _mc = metrics_config if metrics_config is not _UNSET else []
-        self.metrics_config = (
-            json.dumps(_mc) if isinstance(_mc, list) else (_mc or "[]")
-        )
+        self.path_col = path_col if path_col is not _UNSET else ""
+        _mc = metrics if metrics is not _UNSET else []
+        self.metrics = json.dumps(_mc) if isinstance(_mc, list) else (_mc or "[]")
         self.height = height if height is not _UNSET else 480
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
@@ -116,11 +114,11 @@ class SegmentOverviewWidget(anywidget.AnyWidget):
         self.is_loading = True
         self.error = ""
         try:
-            metrics = json.loads(self.metrics_config) if self.metrics_config else []
+            metrics = json.loads(self.metrics) if self.metrics else []
             df = self._eventstream.segment_overview_data(
                 segment_col=self.segment_col,
-                metrics_config=metrics,
-                path_id_col=self.path_id_col or None,
+                metrics=metrics,
+                path_col=self.path_col or None,
             )
             self.result = json.dumps(
                 {
@@ -150,8 +148,8 @@ class SegmentOverviewWidget(anywidget.AnyWidget):
             "widget_type": "segment_overview",
             "result": json.loads(self.result or "{}"),
             "segment_col": self.segment_col or "",
-            "path_id_col": self.path_id_col or "",
-            "metrics_config": json.loads(self.metrics_config or "[]"),
+            "path_col": self.path_col or "",
+            "metrics": json.loads(self.metrics or "[]"),
             "segment_cols": json.loads(self.segment_cols or "[]"),
             "segment_levels": json.loads(self.segment_levels or "{}"),
             "path_cols": json.loads(self.path_cols or "[]"),
@@ -164,12 +162,12 @@ class SegmentOverviewWidget(anywidget.AnyWidget):
     def _compute_distribution(self, req: dict):
         self.is_loading = True
         try:
-            result = self._eventstream.metric_distribution(
+            result = self._eventstream.get_metric_distribution(
                 segment_col=req["segment_col"],
                 segment_value=req["segment_value"],
                 metric=req["metric"],
                 complement=req.get("complement", False),
-                path_id_col=req.get("path_id_col"),
+                path_col=req.get("path_col"),
             )
             self.dist_result = json.dumps(
                 result,

@@ -30,7 +30,7 @@ class TestAddEventsBySourceEvents:
     def test__single_source_event(self) -> None:
         stream = Eventstream(get_df())
 
-        res = stream.add_events(new_event_name="S", source_events=["A"])
+        res = stream.add_events(name="S", source_events=["A"])
 
         expected = Eventstream(
             pd.DataFrame(
@@ -53,7 +53,7 @@ class TestAddEventsBySourceEvents:
     def test__multiple_source_events(self) -> None:
         stream = Eventstream(get_df())
 
-        res = stream.add_events(new_event_name="S", source_events=["A", "B"])
+        res = stream.add_events(name="S", source_events=["A", "B"])
 
         expected = Eventstream(
             pd.DataFrame(
@@ -78,7 +78,7 @@ class TestAddEventsBySourceEvents:
     def test__empty_source_events_is_noop(self) -> None:
         stream = Eventstream(get_df())
 
-        res = stream.add_events(new_event_name="S", source_events=[])
+        res = stream.add_events(name="S", source_events=[])
 
         assert res.equals(stream)
 
@@ -92,7 +92,7 @@ class TestAddEventsBySourceEvents:
         )
         stream = Eventstream(df, {"custom_cols": ["country"]})
 
-        res = stream.add_events(new_event_name="S", source_events=["A"])
+        res = stream.add_events(name="S", source_events=["A"])
 
         synthetic_rows = res.df[res.df["event"] == "S"]
         assert len(synthetic_rows) == 1
@@ -102,7 +102,7 @@ class TestAddEventsBySourceEvents:
     def test__synthetic_event_comes_after_source(self) -> None:
         stream = Eventstream(get_df())
 
-        res = stream.add_events(new_event_name="S", source_events=["A"])
+        res = stream.add_events(name="S", source_events=["A"])
 
         events_user1 = res.df[res.df["user_id"] == "user_1"]["event"].tolist()
         assert events_user1.index("A") < events_user1.index("S")
@@ -110,24 +110,22 @@ class TestAddEventsBySourceEvents:
     def test__synthetic_event_comes_before_next_raw_event(self) -> None:
         stream = Eventstream(get_df())
 
-        res = stream.add_events(new_event_name="S", source_events=["A"])
+        res = stream.add_events(name="S", source_events=["A"])
 
         events_user1 = res.df[res.df["user_id"] == "user_1"]["event"].tolist()
         assert events_user1.index("S") < events_user1.index("B")
 
     def test__unknown_source_event_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(
-                new_event_name="S", source_events=["UNKNOWN"]
-            )
+            Eventstream(get_df()).add_events(name="S", source_events=["UNKNOWN"])
 
     def test__source_events_not_list_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(new_event_name="S", source_events="A")
+            Eventstream(get_df()).add_events(name="S", source_events="A")
 
     def test__source_events_non_string_elements_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(new_event_name="S", source_events=[1, 2])
+            Eventstream(get_df()).add_events(name="S", source_events=[1, 2])
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +138,7 @@ class TestAddEventsBySql:
         stream = Eventstream(get_df())
 
         res = stream.add_events(
-            new_event_name="S",
+            name="S",
             sql="SELECT * FROM eventstream WHERE event = 'A'",
         )
 
@@ -165,13 +163,13 @@ class TestAddEventsBySql:
     def test__sql_wrong_columns_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
             Eventstream(get_df()).add_events(
-                new_event_name="S",
+                name="S",
                 sql="SELECT user_id, event FROM eventstream",
             )
 
     def test__sql_not_string_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(new_event_name="S", sql=123)
+            Eventstream(get_df()).add_events(name="S", sql=123)
 
 
 # ---------------------------------------------------------------------------
@@ -203,7 +201,7 @@ class TestAddEventsByChurn:
         """Without active_events: any event resets the inactivity clock."""
         stream = Eventstream(self.get_churn_df())
 
-        res = stream.add_events(new_event_name="churn", churn={"inactivity_days": 30})
+        res = stream.add_events(name="churn", churn={"inactivity_days": 30})
 
         expected = Eventstream(
             pd.DataFrame(
@@ -231,7 +229,7 @@ class TestAddEventsByChurn:
         because its gap to dataset_end is zero."""
         stream = Eventstream(self.get_churn_df())
 
-        res = stream.add_events(new_event_name="churn", churn={"inactivity_days": 30})
+        res = stream.add_events(name="churn", churn={"inactivity_days": 30})
 
         last_event_user1 = res.df[res.df["user_id"] == "user_1"]["event"].tolist()[-1]
         assert last_event_user1 == "C"
@@ -251,7 +249,7 @@ class TestAddEventsByChurn:
         stream = Eventstream(df)
 
         res = stream.add_events(
-            new_event_name="churn",
+            name="churn",
             churn={"inactivity_days": 30, "active_events": ["purchase"]},
         )
 
@@ -266,33 +264,29 @@ class TestAddEventsByChurn:
         stream = Eventstream(self.get_churn_df())
 
         res = stream.add_events(
-            new_event_name="churn", churn={"inactivity_days": 30, "active_events": []}
+            name="churn", churn={"inactivity_days": 30, "active_events": []}
         )
 
         assert res.equals(stream)
 
     def test__churn_missing_inactivity_days_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(self.get_churn_df()).add_events(
-                new_event_name="churn", churn={}
-            )
+            Eventstream(self.get_churn_df()).add_events(name="churn", churn={})
 
     def test__churn_negative_inactivity_days_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
             Eventstream(self.get_churn_df()).add_events(
-                new_event_name="churn", churn={"inactivity_days": -1}
+                name="churn", churn={"inactivity_days": -1}
             )
 
     def test__churn_not_dict_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(self.get_churn_df()).add_events(
-                new_event_name="churn", churn=30
-            )
+            Eventstream(self.get_churn_df()).add_events(name="churn", churn=30)
 
     def test__churn_active_events_not_list_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
             Eventstream(self.get_churn_df()).add_events(
-                new_event_name="churn",
+                name="churn",
                 churn={"inactivity_days": 30, "active_events": "purchase"},
             )
 
@@ -305,20 +299,20 @@ class TestAddEventsByChurn:
 class TestAddEventsValidation:
     def test__no_mode_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(new_event_name="S")
+            Eventstream(get_df()).add_events(name="S")
 
     def test__multiple_modes_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
             Eventstream(get_df()).add_events(
-                new_event_name="S",
+                name="S",
                 source_events=["A"],
                 churn={"inactivity_days": 30},
             )
 
-    def test__new_event_name_not_string_raises(self) -> None:
+    def test__name_not_string_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(new_event_name=123, source_events=["A"])
+            Eventstream(get_df()).add_events(name=123, source_events=["A"])
 
-    def test__new_event_name_empty_raises(self) -> None:
+    def test__name_empty_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
-            Eventstream(get_df()).add_events(new_event_name="", source_events=["A"])
+            Eventstream(get_df()).add_events(name="", source_events=["A"])

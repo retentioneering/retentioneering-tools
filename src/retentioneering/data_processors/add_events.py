@@ -14,14 +14,14 @@ PROCESSOR_NAME = "add_events"
 class AddEvents(DataProcessor):
     def __init__(
         self,
-        new_event_name: str,
+        name: str,
         source_events: List[str] | None = None,
         sql: str | None = None,
         churn: dict | None = None,
     ) -> None:
-        if not isinstance(new_event_name, str) or not new_event_name:
+        if not isinstance(name, str) or not name:
             raise PreprocessingConfigError(
-                PROCESSOR_NAME, "Argument 'new_event_name' must be a non-empty string."
+                PROCESSOR_NAME, "Argument 'name' must be a non-empty string."
             )
 
         n_modes = sum([source_events is not None, sql is not None, churn is not None])
@@ -73,7 +73,7 @@ class AddEvents(DataProcessor):
                         "All elements in 'churn.active_events' must be strings.",
                     )
 
-        self.new_event_name = new_event_name
+        self.name = name
         self.source_events = source_events
         self.sql = sql
         self.churn = churn
@@ -94,13 +94,13 @@ class AddEvents(DataProcessor):
 
         event_types = EventTypes()
         df_new = df_source.copy()
-        df_new[schema.event_col] = self.new_event_name
+        df_new[schema.event_col] = self.name
         df_new[schema.event_type] = event_types.SYNTHETIC_EVENT.type
         df_new[schema.subindex] = event_types.SYNTHETIC_EVENT.index
 
         df = (
             pd.concat([df, df_new])
-            .sort_values([schema.path_col, schema.timestamp, schema.subindex])
+            .sort_values([schema.path_col, schema.timestamp_col, schema.subindex])
             .reset_index(drop=True)
         )
 
@@ -140,7 +140,7 @@ class AddEvents(DataProcessor):
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> pd.DataFrame:
         path_col = schema.path_col
-        ts_col = schema.timestamp
+        ts_col = schema.timestamp_col
         subindex_col = schema.subindex
         event_col = schema.event_col
 

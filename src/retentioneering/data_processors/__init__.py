@@ -11,7 +11,8 @@ from retentioneering.data_processors.rename_events import RenameEvents
 from retentioneering.data_processors.sample_paths import SamplePaths
 from retentioneering.data_processors.split_sessions import SplitSessions
 from retentioneering.data_processors.truncate_paths import TruncatePaths
-from retentioneering.data_processors.url_events import UrlEvents
+from retentioneering.data_processors.to_daily_states import ToDailyStates
+from retentioneering.data_processors.urls_to_events import UrlsToEvents
 
 __all__ = [
     "AddClusters",
@@ -27,5 +28,6 @@ __all__ = [
     "SamplePaths",
     "SplitSessions",
     "TruncatePaths",
-    "UrlEvents",
+    "ToDailyStates",
+    "UrlsToEvents",
 ]

@@ -3,22 +3,22 @@ import { createPortal } from "react-dom";
 
 // ── constants ──────────────────────────────────────────────────────────────
 
-export const METRIC_NAMES = ["active_days","belongs_to","duration","event_count","first_event_dt","has","length","matches","time_between"];
-export const AGG_OPTIONS  = ["mean","median","q5","q25","q75","q95","complement_diff"];
+export const METRIC_NAMES = ["active_days","duration","event_count","first_event_time","has_event","in_segment","length","matches_pattern","time_between"];
+export const AGG_OPTIONS  = ["mean","median","q5","q25","q75","q95","complement_distance"];
 export const AGG_LABELS: Record<string, string> = {
   mean: "Mean", median: "Median", q5: "Q5", q25: "Q25", q75: "Q75", q95: "Q95",
-  complement_diff: "Complement diff",
+  complement_distance: "Complement distance",
 };
 
 const METRIC_TIPS: Record<string, string> = {
   active_days:    "Number of unique calendar days with at least one event.",
-  belongs_to:     "Path membership check for a segment value.\n• any: ≥1 event has the value\n• all: all events have the value\n• event_share: ≥ threshold share of events have the value\nIf multiple segment values are selected, a separate metric is created for each value.",
+  in_segment:     "Path membership check for a segment value.\n• any: ≥1 event has the value\n• all: all events have the value\n• event_share: ≥ threshold share of events have the value\nIf multiple segment values are selected, a separate metric is created for each value.",
   duration:       "Time (seconds) between the first and last event.",
   event_count:    "Number of times the selected event(s) occurred.",
-  first_event_dt: "Unix timestamp of the first event.",
-  has:            "1 if the selected event(s) occurred at least once, 0 otherwise.",
+  first_event_time: "Unix timestamp of the first event.",
+  has_event:            "1 if the selected event(s) occurred at least once, 0 otherwise.",
   length:         "Total number of events in the path.",
-  matches:        "1 if the path matches the pattern, 0 otherwise.\nEvents separated by ->, .* matches any sequence.\nExample: login->.*->purchase",
+  matches_pattern:        "1 if the path matches the pattern, 0 otherwise.\nEvents separated by ->, .* matches any sequence.\nExample: login->.*->purchase",
   time_between:   "Time (seconds) between the first occurrences of two events.\nNull if either event is missing.",
 };
 
@@ -29,10 +29,10 @@ const AGG_TIPS: Record<string, string> = {
   q25:             "25th percentile.",
   q75:             "75th percentile.",
   q95:             "95th percentile.",
-  complement_diff: "Wasserstein distance between this segment's distribution and all others combined. Higher = more distinctive from the rest.",
+  complement_distance: "Wasserstein distance between this segment's distribution and all others combined. Higher = more distinctive from the rest.",
 };
 
-const BELONGS_TO_MODES = ["any", "all", "event_share"];
+const IN_SEGMENT_MODES = ["any", "all", "event_share"];
 
 const mkSel = (): React.CSSProperties => ({
   boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 5,
@@ -219,19 +219,19 @@ export function validateMetricCfg(cfg: any): string | null {
     const ev = a.event;
     if (!ev || (Array.isArray(ev) ? ev.length === 0 : !ev)) return "Select at least one event";
   }
-  if (m === "has") {
+  if (m === "has_event") {
     const ev = a.events;
     if (!ev || (Array.isArray(ev) ? ev.length === 0 : !ev)) return "Select at least one event";
   }
   if (m === "time_between") {
-    if (!a.event_from) return "Select From event";
-    if (!a.event_to)   return "Select To event";
-    if (a.event_from === a.event_to) return "From and To events must differ";
+    if (!a.start_event) return "Select From event";
+    if (!a.end_event)   return "Select To event";
+    if (a.start_event === a.end_event) return "From and To events must differ";
   }
-  if (m === "matches") {
+  if (m === "matches_pattern") {
     if (!a.pattern?.trim()) return "Enter a pattern, e.g. login->.*->purchase";
   }
-  if (m === "belongs_to") {
+  if (m === "in_segment") {
     if (!a.segment_name) return "Select segment column";
     const sv = a.segment_value;
     if (!sv || (Array.isArray(sv) ? sv.length === 0 : !sv)) return "Select at least one segment value";
@@ -258,12 +258,12 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
   onRemove: () => void;
 }) {
   const sel = mkSel();
-  const needsEvent      = ["event_count", "has"].includes(cfg.metric);
+  const needsEvent      = ["event_count", "has_event"].includes(cfg.metric);
   const needsRange      = cfg.metric === "time_between";
-  const needsBelongsTo  = cfg.metric === "belongs_to";
-  const needsMatches    = cfg.metric === "matches";
+  const needsInSegment  = cfg.metric === "in_segment";
+  const needsMatches    = cfg.metric === "matches_pattern";
   const needsActiveDays = cfg.metric === "active_days";
-  const hasSecondRow    = needsEvent || needsRange || needsBelongsTo || needsMatches || needsActiveDays;
+  const hasSecondRow    = needsEvent || needsRange || needsInSegment || needsMatches || needsActiveDays;
 
   const err = showErrors ? validateMetricCfg(cfg) : null;
 
@@ -313,9 +313,9 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
         const tbEvents = ["path_start", ...events, "path_end"];
         return (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <SingleSelect value={cfg.metric_args?.event_from ?? ""} options={tbEvents} placeholder="From…" onChange={v => onChange({ ...cfg, metric_args: { ...cfg.metric_args, event_from: v } })} />
+            <SingleSelect value={cfg.metric_args?.start_event ?? ""} options={tbEvents} placeholder="From…" onChange={v => onChange({ ...cfg, metric_args: { ...cfg.metric_args, start_event: v } })} />
             <span style={{ color: "#9ca3af", fontSize: 11, flexShrink: 0 }}>→</span>
-            <SingleSelect value={cfg.metric_args?.event_to ?? ""} options={tbEvents} placeholder="To…" onChange={v => onChange({ ...cfg, metric_args: { ...cfg.metric_args, event_to: v } })} />
+            <SingleSelect value={cfg.metric_args?.end_event ?? ""} options={tbEvents} placeholder="To…" onChange={v => onChange({ ...cfg, metric_args: { ...cfg.metric_args, end_event: v } })} />
           </div>
         );
       })()}
@@ -326,7 +326,7 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
           style={{ width: "100%", boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 5, padding: "4px 7px", fontSize: 11, outline: "none" }} />
       )}
 
-      {needsBelongsTo && (() => {
+      {needsInSegment && (() => {
         const segName    = cfg.metric_args?.segment_name ?? "";
         const segValues  = (segmentLevels[segName] ?? []).map(String);
         const curVal     = cfg.metric_args?.segment_value;
@@ -346,7 +346,7 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
                 style={{ flex: 1, minWidth: 0, boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 5, padding: "4px 7px", fontSize: 11, outline: "none" }} />
             )}
             <select value={mode} onChange={e => onChange({ ...cfg, metric_args: { ...cfg.metric_args, mode: e.target.value } })} style={{ ...sel, flex: "0 0 100px" }}>
-              {BELONGS_TO_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+              {IN_SEGMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
             {mode === "event_share" && (
               <input type="text" inputMode="decimal" value={cfg.metric_args?.threshold ?? 0.5}

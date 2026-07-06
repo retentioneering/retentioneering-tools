@@ -33,15 +33,11 @@ TEMPLATES_DIR = REPO_ROOT / "docs" / "templates"
 GUIDE_DIR = REPO_ROOT / "docs" / "guide"
 BUILD_DIR = REPO_ROOT / "docs" / "build"
 
-TITLE_OVERRIDES = {"url_events": "URL Events"}
+TITLE_OVERRIDES = {"urls_to_events": "URLs to Events"}
 
-# (template, method_name, headless_method_name or None). step_matrix has no
-# data method of its own — it shares step_sankey_data with the Step Sankey
-# widget, so it's spelled out here rather than guessed from a "<name>_data"
-# naming convention.
 WIDGETS = [
     ("widgets/transition-graph.md.jinja", "transition_graph", "transition_graph_data"),
-    ("widgets/step-matrix.md.jinja", "step_matrix", "step_sankey_data"),
+    ("widgets/step-matrix.md.jinja", "step_matrix", "step_matrix_data"),
     ("widgets/step-sankey.md.jinja", "step_sankey", "step_sankey_data"),
     ("widgets/funnel.md.jinja", "funnel", "funnel_data"),
     ("widgets/segment-overview.md.jinja", "segment_overview", "segment_overview_data"),
@@ -56,14 +52,15 @@ DATA_PROCESSORS = [
     "add_clusters",
     "add_start_end_events",
     "collapse_events",
-    "daily_states",
+    "to_daily_states",
     "drop_segment",
+    "drop_events",
     "edit_events",
     "rename_events",
     "sample_paths",
     "split_sessions",
     "truncate_paths",
-    "url_events",
+    "urls_to_events",
 ]
 
 

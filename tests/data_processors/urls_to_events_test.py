@@ -7,19 +7,19 @@ Structure:
     TestSpecExamples     – spec examples
     TestExceptionCut     – exception-cut spec examples
     TestEdgeCases        – slug defaults, optional node fields, etc.
-  TestDeletion           – is_deleted logic
+  TestDeletion           – exclude logic
   TestNoCutNode          – events unchanged when no cut node matches
-  TestSlugEnabled        – slug_enabled=False bypasses cut logic
-  TestExtractionColumns  – host_col / cgi_col / locale_col / slug_col
-  TestUrlEventsApply     – integration via Eventstream.url_events()
-  TestUrlEventsValidation – constructor / apply validation errors
+  TestSlugEnabled        – keep_full_paths=True bypasses cut logic
+  TestExtractionColumns  – host_col / query_col / locale_col / slug_col
+  TestUrlsToEventsApply     – integration via Eventstream.urls_to_events()
+  TestUrlsToEventsValidation – constructor / apply validation errors
 """
 
 import pandas as pd
 import pytest
 
-from retentioneering.data_processors.url_events import (
-    UrlEvents,
+from retentioneering.data_processors.urls_to_events import (
+    UrlsToEvents,
     _normalize_path,
     _parse_effective_path,
     _parse_url_parts,
@@ -48,35 +48,40 @@ def _make_stream(rows, schema=None):
 
 # Node configurations reused across tests (paths WITHOUT leading slash)
 NODES_BASIC = [
-    {"path": "A", "is_cut": True, "custom_name": "xxx", "is_deleted": False},
-    {"path": "A/D", "is_cut": False, "custom_name": "custom-name", "is_deleted": False},
-    {"path": "shop", "is_cut": False, "custom_name": None, "is_deleted": True},
+    {"path": "A", "aggregate_children": True, "name": "xxx", "exclude": False},
+    {
+        "path": "A/D",
+        "aggregate_children": False,
+        "name": "custom-name",
+        "exclude": False,
+    },
+    {"path": "shop", "aggregate_children": False, "name": None, "exclude": True},
 ]
 
 NODES_EXCEPTION_CUT = [
-    {"path": "devices", "is_cut": True, "custom_name": "device", "is_deleted": False},
+    {"path": "devices", "aggregate_children": True, "name": "device", "exclude": False},
     {
         "path": "devices/models",
-        "is_cut": True,
-        "custom_name": "device models",
-        "is_deleted": False,
+        "aggregate_children": True,
+        "name": "device models",
+        "exclude": False,
     },
 ]
 
 
-def _event(proc: UrlEvents, path: str) -> str | None:
+def _event(proc: UrlsToEvents, path: str) -> str | None:
     """Normalize path then return just the event from _transform_path."""
     ep = _parse_effective_path(
-        path, strip_host=False, strip_cgi=False, strip_locale=False
+        path, strip_host=False, strip_query=False, strip_locale=False
     )
     event, _ = proc._transform_path(ep)
     return event
 
 
-def _slug(proc: UrlEvents, path: str) -> str | None:
+def _slug(proc: UrlsToEvents, path: str) -> str | None:
     """Normalize path then return just the slug from _transform_path."""
     ep = _parse_effective_path(
-        path, strip_host=False, strip_cgi=False, strip_locale=False
+        path, strip_host=False, strip_query=False, strip_locale=False
     )
     _, slug = proc._transform_path(ep)
     return slug
@@ -122,7 +127,7 @@ class TestNormalization:
     @pytest.mark.parametrize(
         "url,kw,expected_path,expected_host,expected_query,expected_locale",
         [
-            # strip_host=True, strip_cgi=True, strip_locale=True  (all defaults)
+            # strip_host=True, strip_query=True, strip_locale=True  (all defaults)
             ("/", {}, "/", "", "", ""),
             ("https://x.com/", {}, "/", "x.com", "", ""),
             ("https://x.com/en", {}, "/", "x.com", "", "en"),
@@ -138,7 +143,7 @@ class TestNormalization:
                 "",
                 "en",
             ),
-            # strip_host=False, strip_cgi=True
+            # strip_host=False, strip_query=True
             (
                 "/shop/cart?foo=bar",
                 {"strip_host": False},
@@ -147,10 +152,10 @@ class TestNormalization:
                 "foo=bar",
                 "",
             ),
-            # strip_host=False, strip_cgi=False: query stays in path
+            # strip_host=False, strip_query=False: query stays in path
             (
                 "/shop/cart?foo=bar",
-                {"strip_host": False, "strip_cgi": False},
+                {"strip_host": False, "strip_query": False},
                 "shop/cart?foo=bar",
                 "",
                 "foo=bar",
@@ -186,7 +191,7 @@ class TestSpecExamples:
     """Spec table examples (no-leading-slash format)."""
 
     def setup_method(self):
-        self.proc = UrlEvents(column="page_url", nodes=NODES_BASIC)
+        self.proc = UrlsToEvents(column="page_url", nodes=NODES_BASIC)
 
     def test_case_a_exact_cut(self):
         assert _event(self.proc, "A") == "a"
@@ -197,13 +202,13 @@ class TestSpecExamples:
     def test_case_b_unknown_child(self):
         assert _event(self.proc, "A/B") == "a/xxx"
 
-    def test_case_b_slug_is_custom_name(self):
+    def test_case_b_slug_is_name(self):
         assert _slug(self.proc, "A/B") == "xxx"
 
     def test_case_b_deep_unknown_child(self):
         assert _event(self.proc, "A/B/C") == "a/xxx"
 
-    def test_case_b_known_child_with_custom_name(self):
+    def test_case_b_known_child_with_name(self):
         assert _event(self.proc, "A/D") == "a/custom-name"
 
     def test_case_b_known_child_slug(self):
@@ -226,7 +231,7 @@ class TestExceptionCut:
     """Exception-cut spec examples."""
 
     def setup_method(self):
-        self.proc = UrlEvents(column="page_url", nodes=NODES_EXCEPTION_CUT)
+        self.proc = UrlsToEvents(column="page_url", nodes=NODES_EXCEPTION_CUT)
 
     def test_shallow_unknown_child(self):
         assert _event(self.proc, "devices/abc") == "devices/device"
@@ -253,50 +258,50 @@ class TestExceptionCut:
 
 
 class TestEdgeCases:
-    def test_sub_page_default_used_when_no_custom_name(self):
-        proc = UrlEvents(
+    def test_sub_page_default_used_when_no_name(self):
+        proc = UrlsToEvents(
             column="url",
             nodes=[
-                {"path": "blog", "is_cut": True, "custom_name": None},
+                {"path": "blog", "aggregate_children": True, "name": None},
             ],
         )
         assert _event(proc, "blog/some-post") == "blog/sub-page"
         assert _slug(proc, "blog/some-post") == "sub-page"
 
-    def test_empty_custom_name_treated_as_absent(self):
-        proc = UrlEvents(
+    def test_empty_name_treated_as_absent(self):
+        proc = UrlsToEvents(
             column="url",
             nodes=[
-                {"path": "blog", "is_cut": True, "custom_name": "   "},
+                {"path": "blog", "aggregate_children": True, "name": "   "},
             ],
         )
         assert _event(proc, "blog/some-post") == "blog/sub-page"
 
     def test_node_path_with_leading_slash_normalised(self):
-        proc = UrlEvents(
+        proc = UrlsToEvents(
             column="url",
             nodes=[
-                {"path": "/section", "is_cut": True, "custom_name": "item"},
+                {"path": "/section", "aggregate_children": True, "name": "item"},
             ],
         )
         assert _event(proc, "section/abc") == "section/item"
 
     def test_case_insensitive_matching(self):
-        proc = UrlEvents(
+        proc = UrlsToEvents(
             column="url",
             nodes=[
-                {"path": "Devices", "is_cut": True, "custom_name": "device"},
+                {"path": "Devices", "aggregate_children": True, "name": "device"},
             ],
         )
         assert _event(proc, "devices/abc") == "devices/device"
 
     def test_empty_nodes_list(self):
-        proc = UrlEvents(column="url", nodes=[])
+        proc = UrlsToEvents(column="url", nodes=[])
         assert _event(proc, "any/path") == "any/path"
 
     def test_optional_node_fields_default_to_false(self):
         """Node with only 'path' should not cut or delete anything."""
-        proc = UrlEvents(column="url", nodes=[{"path": "A"}])
+        proc = UrlsToEvents(column="url", nodes=[{"path": "A"}])
         assert _event(proc, "a/b") == "a/b"
 
 
@@ -307,33 +312,33 @@ class TestEdgeCases:
 
 class TestDeletion:
     def test_exact_deleted_path(self):
-        proc = UrlEvents(column="url", nodes=[{"path": "shop", "is_deleted": True}])
+        proc = UrlsToEvents(column="url", nodes=[{"path": "shop", "exclude": True}])
         assert _event(proc, "shop") is None
 
     def test_child_of_deleted_path(self):
-        proc = UrlEvents(column="url", nodes=[{"path": "shop", "is_deleted": True}])
+        proc = UrlsToEvents(column="url", nodes=[{"path": "shop", "exclude": True}])
         assert _event(proc, "shop/cart") is None
         assert _event(proc, "shop/cart/item") is None
 
     def test_sibling_not_deleted(self):
-        proc = UrlEvents(column="url", nodes=[{"path": "shop", "is_deleted": True}])
+        proc = UrlsToEvents(column="url", nodes=[{"path": "shop", "exclude": True}])
         assert _event(proc, "shopfront") == "shopfront"
 
     def test_deleted_takes_priority_over_cut(self):
-        proc = UrlEvents(
+        proc = UrlsToEvents(
             column="url",
             nodes=[
-                {"path": "A", "is_cut": True, "custom_name": "x", "is_deleted": True},
+                {"path": "A", "aggregate_children": True, "name": "x", "exclude": True},
             ],
         )
         assert _event(proc, "a/b") is None
 
     def test_deeper_deleted_node_wins_over_shorter_cut(self):
-        proc = UrlEvents(
+        proc = UrlsToEvents(
             column="url",
             nodes=[
-                {"path": "A", "is_cut": True, "custom_name": "x"},
-                {"path": "A/B", "is_deleted": True},
+                {"path": "A", "aggregate_children": True, "name": "x"},
+                {"path": "A/B", "exclude": True},
             ],
         )
         assert _event(proc, "a/b/c") is None
@@ -347,19 +352,19 @@ class TestDeletion:
 
 class TestNoCutNode:
     def test_path_returned_unchanged_when_no_cut(self):
-        proc = UrlEvents(
+        proc = UrlsToEvents(
             column="url",
             nodes=[
-                {"path": "A/D", "is_cut": False, "custom_name": "custom"},
+                {"path": "A/D", "aggregate_children": False, "name": "custom"},
             ],
         )
         assert _event(proc, "other/page") == "other/page"
 
     def test_non_cut_node_does_not_act_as_cut(self):
-        proc = UrlEvents(
+        proc = UrlsToEvents(
             column="url",
             nodes=[
-                {"path": "A", "is_cut": False, "custom_name": "something"},
+                {"path": "A", "aggregate_children": False, "name": "something"},
             ],
         )
         assert _event(proc, "a/b") == "a/b"
@@ -370,33 +375,35 @@ class TestNoCutNode:
 # ---------------------------------------------------------------------------
 
 
-class TestSlugEnabled:
-    def test_slug_enabled_false_ignores_all_cuts(self):
-        proc = UrlEvents(column="url", nodes=NODES_EXCEPTION_CUT, slug_enabled=False)
+class TestKeepFullPaths:
+    def test_keep_full_paths_ignores_all_cuts(self):
+        proc = UrlsToEvents(
+            column="url", nodes=NODES_EXCEPTION_CUT, keep_full_paths=True
+        )
         assert _event(proc, "devices/abc") == "devices/abc"
         assert _event(proc, "devices/models/abc") == "devices/models/abc"
 
-    def test_slug_enabled_false_still_deletes(self):
-        proc = UrlEvents(
+    def test_keep_full_paths_still_excludes(self):
+        proc = UrlsToEvents(
             column="url",
             nodes=[
-                {"path": "admin", "is_deleted": True},
-                {"path": "blog", "is_cut": True, "custom_name": "post"},
+                {"path": "admin", "exclude": True},
+                {"path": "blog", "aggregate_children": True, "name": "post"},
             ],
-            slug_enabled=False,
+            keep_full_paths=True,
         )
         assert _event(proc, "admin/users") is None
         assert _event(proc, "blog/article") == "blog/article"
 
-    def test_slug_enabled_via_eventstream(self):
+    def test_keep_full_paths_via_eventstream(self):
         stream = _make_stream(
             [
                 ["u1", "/devices/abc", "page_view", "2024-01-01"],
                 ["u1", "/devices/models/abc", "page_view", "2024-01-02"],
             ]
         )
-        res = stream.url_events(
-            column="page_url", nodes=NODES_EXCEPTION_CUT, slug_enabled=False
+        res = stream.urls_to_events(
+            column="page_url", nodes=NODES_EXCEPTION_CUT, keep_full_paths=True
         )
         assert res.df["event"].tolist() == [
             "page_view:/devices/abc",
@@ -420,23 +427,29 @@ class TestExtractionColumns:
                 ["u1", "https://other.org/A/B", "page_view", "2024-01-02"],
             ]
         )
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC, host_col="host")
+        res = stream.urls_to_events(
+            column="page_url", nodes=NODES_BASIC, host_col="host"
+        )
         assert "host" in res.df.columns
         assert res.df["host"].tolist() == ["example.com", "other.org"]
 
     def test_host_col_empty_when_no_domain(self):
         stream = self._stream([["u1", "/A/B", "page_view", "2024-01-01"]])
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC, host_col="host")
+        res = stream.urls_to_events(
+            column="page_url", nodes=NODES_BASIC, host_col="host"
+        )
         assert res.df["host"].tolist() == [""]
 
-    def test_cgi_col_populated(self):
+    def test_query_col_populated(self):
         stream = self._stream(
             [
                 ["u1", "/A/B?ref=home&utm=1", "page_view", "2024-01-01"],
                 ["u1", "/A/D", "page_view", "2024-01-02"],
             ]
         )
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC, cgi_col="qs")
+        res = stream.urls_to_events(
+            column="page_url", nodes=NODES_BASIC, query_col="qs"
+        )
         assert res.df["qs"].tolist() == ["ref=home&utm=1", ""]
 
     def test_locale_col_populated(self):
@@ -447,7 +460,7 @@ class TestExtractionColumns:
                 ["u1", "/A/B", "page_view", "2024-01-03"],
             ]
         )
-        res = stream.url_events(
+        res = stream.urls_to_events(
             column="page_url", nodes=NODES_BASIC, locale_col="locale"
         )
         assert res.df["locale"].tolist() == ["en", "fr-ca", ""]
@@ -455,7 +468,7 @@ class TestExtractionColumns:
     def test_locale_col_populated_even_when_strip_locale_false(self):
         """locale_col is always filled regardless of strip_locale flag."""
         stream = self._stream([["u1", "/en/A/B", "page_view", "2024-01-01"]])
-        res = stream.url_events(
+        res = stream.urls_to_events(
             column="page_url",
             nodes=NODES_BASIC,
             strip_locale=False,
@@ -481,18 +494,24 @@ class TestExtractionColumns:
                 ],  # Case B deep → slug "custom-name"
             ]
         )
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC, slug_col="slug")
+        res = stream.urls_to_events(
+            column="page_url", nodes=NODES_BASIC, slug_col="slug"
+        )
         assert res.df["slug"].tolist() == ["xxx", "custom-name", "custom-name"]
 
     def test_slug_col_empty_for_unchanged_paths(self):
         stream = self._stream([["u1", "/other/page", "page_view", "2024-01-01"]])
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC, slug_col="slug")
+        res = stream.urls_to_events(
+            column="page_url", nodes=NODES_BASIC, slug_col="slug"
+        )
         assert res.df["slug"].tolist() == [""]
 
     def test_slug_col_empty_for_case_a(self):
         """Case A (exact match with cut point) → no slug appended."""
         stream = self._stream([["u1", "/A", "page_view", "2024-01-01"]])
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC, slug_col="slug")
+        res = stream.urls_to_events(
+            column="page_url", nodes=NODES_BASIC, slug_col="slug"
+        )
         assert res.df["slug"].tolist() == [""]
 
     def test_slug_col_absent_for_deleted_rows(self):
@@ -503,7 +522,9 @@ class TestExtractionColumns:
                 ["u1", "/shop/cart", "page_view", "2024-01-02"],  # deleted
             ]
         )
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC, slug_col="slug")
+        res = stream.urls_to_events(
+            column="page_url", nodes=NODES_BASIC, slug_col="slug"
+        )
         assert len(res.df) == 1
         assert res.df["slug"].tolist() == ["xxx"]
 
@@ -514,11 +535,11 @@ class TestExtractionColumns:
                 ["u1", "https://site.com/en/A/B?ref=1", "page_view", "2024-01-01"],
             ]
         )
-        res = stream.url_events(
+        res = stream.urls_to_events(
             column="page_url",
             nodes=NODES_BASIC,
             host_col="host",
-            cgi_col="qs",
+            query_col="qs",
             locale_col="locale",
             slug_col="slug",
         )
@@ -530,7 +551,7 @@ class TestExtractionColumns:
     def test_new_cols_added_to_schema_custom_cols(self):
         """Extra columns are registered in schema.custom_cols."""
         stream = self._stream([["u1", "/A/B", "page_view", "2024-01-01"]])
-        res = stream.url_events(
+        res = stream.urls_to_events(
             column="page_url",
             nodes=NODES_BASIC,
             host_col="host",
@@ -542,7 +563,7 @@ class TestExtractionColumns:
     def test_no_extra_cols_schema_unchanged(self):
         """When no *_col args are given, schema is returned as-is."""
         stream = self._stream([["u1", "/A/B", "page_view", "2024-01-01"]])
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="page_url", nodes=NODES_BASIC)
         assert res.schema.custom_cols == stream.schema.custom_cols
 
     def test_exception_cut_slug_col(self):
@@ -552,7 +573,7 @@ class TestExtractionColumns:
                 ["u1", "/devices/models/abc", "page_view", "2024-01-01"],
             ]
         )
-        res = stream.url_events(
+        res = stream.urls_to_events(
             column="page_url",
             nodes=NODES_EXCEPTION_CUT,
             slug_col="slug",
@@ -561,11 +582,11 @@ class TestExtractionColumns:
 
 
 # ---------------------------------------------------------------------------
-# TestUrlEventsApply – integration via Eventstream
+# TestUrlsToEventsApply – integration via Eventstream
 # ---------------------------------------------------------------------------
 
 
-class TestUrlEventsApply:
+class TestUrlsToEventsApply:
     def test_basic_rename(self):
         stream = _make_stream(
             [
@@ -574,7 +595,7 @@ class TestUrlEventsApply:
                 ["u1", "/A/D", "page_view", "2024-01-03"],
             ]
         )
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="page_url", nodes=NODES_BASIC)
         assert res.df["event"].tolist() == [
             "page_view:/a",
             "page_view:/a/xxx",
@@ -589,24 +610,24 @@ class TestUrlEventsApply:
                 ["u1", "/A/B", "page_view", "2024-01-03"],
             ]
         )
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="page_url", nodes=NODES_BASIC)
         assert len(res.df) == 2
         assert "/shop/cart" not in res.df["page_url"].tolist()
 
     def test_no_matching_cut_rows_unchanged(self):
         stream = _make_stream([["u1", "/other/page", "page_view", "2024-01-01"]])
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="page_url", nodes=NODES_BASIC)
         assert res.df["event"].tolist() == ["page_view:/other/page"]
 
     def test_page_url_column_preserved(self):
         stream = _make_stream([["u1", "/A/B", "page_view", "2024-01-01"]])
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="page_url", nodes=NODES_BASIC)
         assert "page_url" in res.df.columns
         assert res.df["page_url"].tolist() == ["/A/B"]
 
     def test_event_col_is_categorical(self):
         stream = _make_stream([["u1", "/A/B", "page_view", "2024-01-01"]])
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="page_url", nodes=NODES_BASIC)
         assert res.df["event"].dtype.name == "category"
 
     def test_original_event_name_used_as_prefix(self):
@@ -617,7 +638,7 @@ class TestUrlEventsApply:
                 ["u2", "/A/B", "screen_view", "2024-01-02"],
             ]
         )
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="page_url", nodes=NODES_BASIC)
         assert res.df["event"].tolist() == [
             "page_view:/a/xxx",
             "screen_view:/a/xxx",
@@ -634,7 +655,7 @@ class TestUrlEventsApply:
             ["u1", "/other/page", "page_view", "2024-01-07"],
         ]
         stream = _make_stream(rows)
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="page_url", nodes=NODES_BASIC)
         assert len(res.df) == 6
         assert res.df["event"].tolist() == [
             "page_view:/a",
@@ -653,7 +674,7 @@ class TestUrlEventsApply:
             ["u1", "/devices/models/x/y/z", "page_view", "2024-01-04"],
         ]
         stream = _make_stream(rows)
-        res = stream.url_events(column="page_url", nodes=NODES_EXCEPTION_CUT)
+        res = stream.urls_to_events(column="page_url", nodes=NODES_EXCEPTION_CUT)
         assert res.df["event"].tolist() == [
             "page_view:/devices/device",
             "page_view:/devices/models",
@@ -665,25 +686,25 @@ class TestUrlEventsApply:
         stream = _make_stream(
             [["u1", "https://example.com/A/B", "page_view", "2024-01-01"]]
         )
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="page_url", nodes=NODES_BASIC)
         assert res.df["event"].tolist() == ["page_view:/a/xxx"]
 
-    def test_strip_cgi_removes_query_string(self):
+    def test_strip_query_removes_query_string(self):
         stream = _make_stream(
             [["u1", "/A/B?ref=home&utm=1", "page_view", "2024-01-01"]]
         )
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="page_url", nodes=NODES_BASIC)
         assert res.df["event"].tolist() == ["page_view:/a/xxx"]
 
-    def test_strip_cgi_false_keeps_query_string(self):
-        """With strip_host=False and strip_cgi=False the query stays in the path.
+    def test_strip_query_false_keeps_query_string(self):
+        """With strip_host=False and strip_query=False the query stays in the path.
         Paths not matching any cut node return the full effective_path."""
         stream = _make_stream([["u1", "/other?foo=bar", "page_view", "2024-01-01"]])
-        res = stream.url_events(
+        res = stream.urls_to_events(
             column="page_url",
             nodes=NODES_BASIC,
             strip_host=False,
-            strip_cgi=False,
+            strip_query=False,
         )
         assert res.df["event"].tolist() == ["page_view:/other?foo=bar"]
 
@@ -694,7 +715,7 @@ class TestUrlEventsApply:
                 ["u1", "/fr-ca/A/D", "page_view", "2024-01-02"],
             ]
         )
-        res = stream.url_events(column="page_url", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="page_url", nodes=NODES_BASIC)
         assert res.df["event"].tolist() == [
             "page_view:/a/xxx",
             "page_view:/a/custom-name",
@@ -702,17 +723,17 @@ class TestUrlEventsApply:
 
     def test_strip_locale_false_keeps_locale_segment(self):
         stream = _make_stream([["u1", "/en/A/B", "page_view", "2024-01-01"]])
-        res = stream.url_events(
+        res = stream.urls_to_events(
             column="page_url", nodes=NODES_BASIC, strip_locale=False
         )
         assert res.df["event"].tolist() == ["page_view:/en/a/b"]
 
     def test_payload_example_from_spec(self):
         nodes = [
-            {"path": "shop", "is_cut": True, "custom_name": "shop page"},
-            {"path": "shop/cart", "is_cut": False, "custom_name": "cart"},
-            {"path": "blog", "is_cut": True},
-            {"path": "admin", "is_deleted": True},
+            {"path": "shop", "aggregate_children": True, "name": "shop page"},
+            {"path": "shop/cart", "aggregate_children": False, "name": "cart"},
+            {"path": "blog", "aggregate_children": True},
+            {"path": "admin", "exclude": True},
         ]
         rows = [
             ["u1", "/shop", "page_view", "2024-01-01"],
@@ -724,7 +745,7 @@ class TestUrlEventsApply:
             ["u1", "/about", "page_view", "2024-01-07"],
         ]
         stream = _make_stream(rows)
-        res = stream.url_events(column="page_url", nodes=nodes, strip_locale=False)
+        res = stream.urls_to_events(column="page_url", nodes=nodes, strip_locale=False)
         assert len(res.df) == 6
         assert res.df["event"].tolist() == [
             "page_view:/shop",
@@ -752,15 +773,15 @@ class TestUrlColumnIsEventColumn:
         return Eventstream(df, {})
 
     def test_no_prefix_when_url_col_is_event_col(self):
-        # /A/B  → cut node A, child B has no custom_name → slug "xxx" → "a/xxx"
-        # /A/D/E → cut node A, child D has custom_name "custom-name" → "a/custom-name"
+        # /A/B  → cut node A, child B has no name → slug "xxx" → "a/xxx"
+        # /A/D/E → cut node A, child D has name "custom-name" → "a/custom-name"
         stream = self._stream_with_url_as_event(
             [
                 ["u1", "/A/B", "2024-01-01"],
                 ["u1", "/A/D/E", "2024-01-02"],
             ]
         )
-        res = stream.url_events(column="event", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="event", nodes=NODES_BASIC)
         assert res.df["event"].tolist() == ["a/xxx", "a/custom-name"]
 
     def test_no_prefix_exact_match(self):
@@ -769,7 +790,7 @@ class TestUrlColumnIsEventColumn:
                 ["u1", "/A", "2024-01-01"],
             ]
         )
-        res = stream.url_events(column="event", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="event", nodes=NODES_BASIC)
         assert res.df["event"].tolist() == ["a"]
 
     def test_no_prefix_unchanged_path(self):
@@ -779,7 +800,7 @@ class TestUrlColumnIsEventColumn:
                 ["u1", "/other/page", "2024-01-01"],
             ]
         )
-        res = stream.url_events(column="event", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="event", nodes=NODES_BASIC)
         assert res.df["event"].tolist() == ["other/page"]
 
     def test_no_prefix_deletion_still_works(self):
@@ -789,42 +810,42 @@ class TestUrlColumnIsEventColumn:
                 ["u1", "/A/B", "2024-01-02"],
             ]
         )
-        res = stream.url_events(column="event", nodes=NODES_BASIC)
+        res = stream.urls_to_events(column="event", nodes=NODES_BASIC)
         assert len(res.df) == 1
         assert res.df["event"].tolist() == ["a/xxx"]
 
 
 # ---------------------------------------------------------------------------
-# TestUrlEventsValidation
+# TestUrlsToEventsValidation
 # ---------------------------------------------------------------------------
 
 
-class TestUrlEventsValidation:
+class TestUrlsToEventsValidation:
     def test_empty_column_name_raises(self):
         with pytest.raises(PreprocessingConfigError):
-            UrlEvents(column="", nodes=[])
+            UrlsToEvents(column="", nodes=[])
 
     def test_non_string_column_raises(self):
         with pytest.raises(PreprocessingConfigError):
-            UrlEvents(column=123, nodes=[])  # type: ignore[arg-type]
+            UrlsToEvents(column=123, nodes=[])  # type: ignore[arg-type]
 
     def test_nodes_not_a_list_raises(self):
         with pytest.raises(PreprocessingConfigError):
-            UrlEvents(column="url", nodes={"path": "A"})  # type: ignore[arg-type]
+            UrlsToEvents(column="url", nodes={"path": "A"})  # type: ignore[arg-type]
 
     def test_node_not_a_dict_raises(self):
         with pytest.raises(PreprocessingConfigError):
-            UrlEvents(column="url", nodes=["A"])
+            UrlsToEvents(column="url", nodes=["A"])
 
     def test_node_missing_path_raises(self):
         with pytest.raises(PreprocessingConfigError):
-            UrlEvents(column="url", nodes=[{"is_cut": True}])
+            UrlsToEvents(column="url", nodes=[{"aggregate_children": True}])
 
     def test_node_path_not_string_raises(self):
         with pytest.raises(PreprocessingConfigError):
-            UrlEvents(column="url", nodes=[{"path": 42}])  # type: ignore[arg-type]
+            UrlsToEvents(column="url", nodes=[{"path": 42}])  # type: ignore[arg-type]
 
     def test_column_not_in_df_raises(self):
         stream = _make_stream([["u1", "/A", "/A", "2024-01-01"]])
         with pytest.raises(PreprocessingColumnNotFoundError):
-            stream.url_events(column="nonexistent_col", nodes=NODES_BASIC)
+            stream.urls_to_events(column="nonexistent_col", nodes=NODES_BASIC)

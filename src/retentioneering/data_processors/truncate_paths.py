@@ -12,91 +12,93 @@ PROCESSOR_NAME = "truncate_paths"
 
 class TruncatePaths(DataProcessor):
     """
-    Truncate paths by keeping only events between two boundary events (inclusive).
+    Truncate paths by keeping only events between two anchor events (inclusive).
 
     Parameters
     ----------
-    left : str
-        The left boundary event name. The truncated path will start from this event.
-    right : str
-        The right boundary event name. The truncated path will end at this event.
-    path_id_col : str, optional
+    start_event : str
+        The event that marks the start of the window. The truncated path will
+        start from this event.
+    end_event : str
+        The event that marks the end of the window. The truncated path will end
+        at this event.
+    path_col : str, optional
         Path ID column name. If None, taken from schema.
     event_col : str, optional
         Event column name. If None, taken from schema.
     """
 
-    left: str
-    right: str
-    path_id_col: str | None
+    start_event: str
+    end_event: str
+    path_col: str | None
     event_col: str | None
 
     def __init__(
         self,
-        left: str,
-        right: str,
-        path_id_col: str | None = None,
+        start_event: str,
+        end_event: str,
+        path_col: str | None = None,
         event_col: str | None = None,
     ) -> None:
-        if not left:
+        if not start_event:
             raise PreprocessingConfigError(
-                PROCESSOR_NAME, "Parameter 'left' must be a non-empty string."
+                PROCESSOR_NAME, "Parameter 'start_event' must be a non-empty string."
             )
-        if not right:
+        if not end_event:
             raise PreprocessingConfigError(
-                PROCESSOR_NAME, "Parameter 'right' must be a non-empty string."
+                PROCESSOR_NAME, "Parameter 'end_event' must be a non-empty string."
             )
 
-        self.left = left
-        self.right = right
-        self.path_id_col = path_id_col
+        self.start_event = start_event
+        self.end_event = end_event
+        self.path_col = path_col
         self.event_col = event_col
         super().__init__()
 
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
-        path_id_col = self.path_id_col or schema.path_col
+        path_col = self.path_col or schema.path_col
         event_col = self.event_col or schema.event_col
-        timestamp_col = schema.timestamp
+        timestamp_col = schema.timestamp_col
 
-        left_literal = "'" + self.left.replace("'", "''") + "'"
-        right_literal = "'" + self.right.replace("'", "''") + "'"
+        start_literal = "'" + self.start_event.replace("'", "''") + "'"
+        end_literal = "'" + self.end_event.replace("'", "''") + "'"
 
-        # SQL query to find the first occurrence of left and right events in each path
-        # and keep only events between them (inclusive)
+        # SQL query to find the first occurrence of the start and end events in
+        # each path and keep only events between them (inclusive)
         query = f"""
-        WITH left_bounds AS (
+        WITH start_bounds AS (
             SELECT
-                {path_id_col},
-                MIN(CASE WHEN {event_col} = {left_literal} THEN {schema.index} END) AS left_idx
+                {path_col},
+                MIN(CASE WHEN {event_col} = {start_literal} THEN {schema.index} END) AS start_idx
             FROM df
-            GROUP BY {path_id_col}
+            GROUP BY {path_col}
         ),
-        right_bounds AS (
+        end_bounds AS (
             SELECT
-                df.{path_id_col},
-                MIN(CASE WHEN df.{event_col} = {right_literal} THEN df.{schema.index} END) AS right_idx
+                df.{path_col},
+                MIN(CASE WHEN df.{event_col} = {end_literal} THEN df.{schema.index} END) AS end_idx
             FROM df
-            INNER JOIN left_bounds lb ON df.{path_id_col} = lb.{path_id_col}
-            WHERE df.{schema.index} > lb.left_idx OR (df.{schema.index} = lb.left_idx AND {left_literal} = {right_literal})
-            GROUP BY df.{path_id_col}
+            INNER JOIN start_bounds sb ON df.{path_col} = sb.{path_col}
+            WHERE df.{schema.index} > sb.start_idx OR (df.{schema.index} = sb.start_idx AND {start_literal} = {end_literal})
+            GROUP BY df.{path_col}
         ),
         path_bounds AS (
             SELECT
-                lb.{path_id_col},
-                lb.left_idx,
-                rb.right_idx
-            FROM left_bounds lb
-            INNER JOIN right_bounds rb ON lb.{path_id_col} = rb.{path_id_col}
+                sb.{path_col},
+                sb.start_idx,
+                eb.end_idx
+            FROM start_bounds sb
+            INNER JOIN end_bounds eb ON sb.{path_col} = eb.{path_col}
         )
         SELECT df.*
         FROM df
         INNER JOIN path_bounds pb
-            ON df.{path_id_col} = pb.{path_id_col}
+            ON df.{path_col} = pb.{path_col}
         WHERE
-            df.{schema.index} BETWEEN pb.left_idx AND pb.right_idx
-        ORDER BY df.{path_id_col}, df.{timestamp_col}, df.{schema.subindex}
+            df.{schema.index} BETWEEN pb.start_idx AND pb.end_idx
+        ORDER BY df.{path_col}, df.{timestamp_col}, df.{schema.subindex}
         """
 
         result = duckdb.query(query).df()

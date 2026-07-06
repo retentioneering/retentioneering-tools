@@ -6,7 +6,7 @@ from typing import List
 class EventstreamSchema:
     path_cols: List[str] = field(default_factory=lambda: ["user_id"])
     event_cols: List[str] = field(default_factory=lambda: ["event"])
-    timestamp: str = "timestamp"
+    timestamp_col: str = "timestamp"
     event_type: str = "event_type"
     index: str = "index"
     subindex: str = "subindex"
@@ -43,7 +43,7 @@ class EventstreamSchema:
         return (
             self.path_cols
             + self.event_cols
-            + [self.timestamp]
+            + [self.timestamp_col]
             + self.segment_cols
             + self.custom_cols
         )
@@ -53,7 +53,7 @@ class EventstreamSchema:
         return (
             self.path_cols
             + self.event_cols
-            + [self.timestamp]
+            + [self.timestamp_col]
             + self.segment_cols
             + self.custom_cols
             + [self.event_type, self.index, self.subindex]
@@ -63,7 +63,7 @@ class EventstreamSchema:
         return EventstreamSchema(
             path_cols=self.path_cols.copy(),
             event_cols=self.event_cols.copy(),
-            timestamp=self.timestamp,
+            timestamp_col=self.timestamp_col,
             event_type=self.event_type,
             index=self.index,
             subindex=self.subindex,

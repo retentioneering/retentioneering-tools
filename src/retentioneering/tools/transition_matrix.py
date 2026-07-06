@@ -22,29 +22,29 @@ class TransitionMatrix:
         self,
         values: T_TransitionMatrixValues,
         diff: T_Diff = None,
-        path_id_col: str | None = None,
+        path_col: str | None = None,
     ) -> pd.DataFrame:
-        path_id_col = path_id_col or self.eventstream.schema.path_col
+        path_col = path_col or self.eventstream.schema.path_col
         event_col = self.eventstream.schema.event_col
-        timestamp_col = self.eventstream.schema.timestamp
+        timestamp_col = self.eventstream.schema.timestamp_col
         index_col = self.eventstream.schema.index
         subindex_col = self.eventstream.schema.subindex
         time_values = ["time_median", "time_q95"]
 
-        if self.eventstream.empty():
+        if self.eventstream.is_empty():
             raise EmptyEventstreamError(
                 "Cannot calculate transition matrix for empty eventstream"
             )
 
         if diff is None:
-            df = self.eventstream.add_start_end_events(path_id_col=path_id_col).df
+            df = self.eventstream.add_start_end_events(path_col=path_col).df
             event_types = EventTypes()
             tm = pd.DataFrame()
 
             if values in [
                 "count",
-                "transition_rate",
-                "per_path",
+                "share_of_total",
+                "avg_per_path",
                 "proba_out",
                 "proba_in",
             ]:
@@ -54,10 +54,10 @@ class TransitionMatrix:
                     select
                         {event_col},
                         lead({event_col}) over (
-                            partition by {path_id_col}
+                            partition by {path_col}
                             order by {index_col}, {subindex_col}
                         ) as next_{event_col},
-                        {path_id_col}
+                        {path_col}
                     from df
                 ) where next_{event_col} is not null
                 group by {event_col}, next_{event_col}
@@ -71,11 +71,11 @@ class TransitionMatrix:
 
                 if values == "count":
                     tm = tm_abs.astype(int)
-                elif values == "transition_rate":
+                elif values == "share_of_total":
                     total = tm_abs.sum().sum()
                     tm = tm_abs / total
-                elif values == "per_path":
-                    total_paths = df[path_id_col].nunique()
+                elif values == "avg_per_path":
+                    total_paths = df[path_col].nunique()
                     tm = tm_abs / total_paths
                 elif values == "proba_out":
                     tm = tm_abs.div(tm_abs.sum(axis=1), axis=0).fillna(0)
@@ -84,15 +84,15 @@ class TransitionMatrix:
 
             elif values == "unique_paths":
                 query = f"""
-                select {event_col}, next_{event_col}, count(distinct {path_id_col}) as cnt
+                select {event_col}, next_{event_col}, count(distinct {path_col}) as cnt
                 from (
                     select
                         {event_col},
                         lead({event_col}) over (
-                            partition by {path_id_col}
+                            partition by {path_col}
                             order by {index_col}, {subindex_col}
                         ) as next_{event_col},
-                        {path_id_col}
+                        {path_col}
                     from df
                 ) where next_{event_col} is not null
                 group by {event_col}, next_{event_col}
@@ -117,11 +117,11 @@ class TransitionMatrix:
                     select
                         {event_col},
                         lead({event_col}) over (
-                            partition by {path_id_col}
+                            partition by {path_col}
                             order by {index_col}, {subindex_col}
                         ) as next_{event_col},
                         lead({timestamp_col}) over (
-                            partition by {path_id_col}
+                            partition by {path_col}
                             order by {index_col}, {subindex_col}
                         ) as next_{timestamp_col},
                         date_diff('second', {timestamp_col}, next_{timestamp_col}) as timedelta
@@ -156,9 +156,9 @@ class TransitionMatrix:
             return tm
 
         else:
-            stream1, stream2 = self.eventstream.split_two(diff, path_id_col=path_id_col)
-            tm1 = TransitionMatrix(stream1).fit(values, path_id_col=path_id_col)
-            tm2 = TransitionMatrix(stream2).fit(values, path_id_col=path_id_col)
+            stream1, stream2 = self.eventstream._split_two(diff, path_col=path_col)
+            tm1 = TransitionMatrix(stream1).fit(values, path_col=path_col)
+            tm2 = TransitionMatrix(stream2).fit(values, path_col=path_col)
             index = tm1.index.union(tm2.index)
             columns = tm1.columns.union(tm2.columns)
             fill_value = 0 if values not in time_values else pd.NaT

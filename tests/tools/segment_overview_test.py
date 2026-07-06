@@ -36,7 +36,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {"metric": "length", "agg": "mean"},
             ],
         )
@@ -67,7 +67,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[],  # Empty config - only segment_size and segment_share
+            metrics=[],  # Empty config - only segment_size and segment_share
         )
 
         # segment_size and segment_share are always first two rows
@@ -99,7 +99,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[],
+            metrics=[],
         )
 
         # segment_1: (user_1, segment_1) and (user_2, segment_1) = 2 paths
@@ -131,7 +131,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {"metric": "length", "agg": "median"},
             ],
         )
@@ -156,7 +156,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {"metric": "length", "agg": "q25"},
             ],
         )
@@ -164,7 +164,7 @@ class TestSegmentOverview:
         # Path lengths are 1, 2, 3, ..., 20 -> q25 = 5.75
         assert result.loc["length_q25", "segment_1"] == pytest.approx(5.75, rel=0.1)
 
-    def test_complement_diff_aggregation(self) -> None:
+    def test_complement_distance_aggregation(self) -> None:
         """Test Wasserstein distance between segment and complement"""
         # Create two clearly different distributions
         rows = []
@@ -186,17 +186,17 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
-                {"metric": "length", "agg": "complement_diff"},
+            metrics=[
+                {"metric": "length", "agg": "complement_distance"},
             ],
         )
 
         # segment_1 has length 1, segment_2 has length 10
         # Wasserstein distance should be 9 (|10 - 1|)
-        assert result.loc["length_complement_diff", "segment_1"] == pytest.approx(
+        assert result.loc["length_complement_distance", "segment_1"] == pytest.approx(
             9.0, rel=0.01
         )
-        assert result.loc["length_complement_diff", "segment_2"] == pytest.approx(
+        assert result.loc["length_complement_distance", "segment_2"] == pytest.approx(
             9.0, rel=0.01
         )
 
@@ -220,7 +220,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {
                     "metric": "event_count",
                     "metric_args": {"events": "checkout"},
@@ -251,18 +251,22 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
-                {"metric": "has", "metric_args": {"events": "purchase"}, "agg": "mean"},
+            metrics=[
+                {
+                    "metric": "has_event",
+                    "metric_args": {"events": "purchase"},
+                    "agg": "mean",
+                },
             ],
         )
 
         # segment_1: user_1 has purchase (1), user_2 doesn't (0) -> mean = 0.5
         # segment_2: user_3 has purchase (1), user_4 has purchase (1) -> mean = 1.0
-        assert result.loc["has_purchase_mean", "segment_1"] == 0.5
-        assert result.loc["has_purchase_mean", "segment_2"] == 1.0
+        assert result.loc["has_event_purchase_mean", "segment_1"] == 0.5
+        assert result.loc["has_event_purchase_mean", "segment_2"] == 1.0
 
-    def test_belongs_to_metric_with_list(self) -> None:
-        """Test belongs_to metric with explicit segment_value list"""
+    def test_in_segment_metric_with_list(self) -> None:
+        """Test in_segment metric with explicit segment_value list"""
         df = pd.DataFrame(
             [
                 # user_1: events in segment_1 only
@@ -285,9 +289,9 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {
-                    "metric": "belongs_to",
+                    "metric": "in_segment",
                     "metric_args": {
                         "segment_name": "channel",
                         "segment_value": ["mobile", "desktop"],
@@ -300,16 +304,16 @@ class TestSegmentOverview:
 
         # segment_1: user_1 has mobile (1), user_2 has mobile (1) -> mobile mean = 1.0
         # segment_1: user_1 has desktop (0), user_2 has desktop (1) -> desktop mean = 0.5
-        assert result.loc["belongs_to_channel_mobile_any_mean", "segment_1"] == 1.0
-        assert result.loc["belongs_to_channel_desktop_any_mean", "segment_1"] == 0.5
+        assert result.loc["in_segment_channel_mobile_any_mean", "segment_1"] == 1.0
+        assert result.loc["in_segment_channel_desktop_any_mean", "segment_1"] == 0.5
 
         # segment_2: user_3 has mobile (0), user_4 has mobile (1) -> mobile mean = 0.5
         # segment_2: user_3 has desktop (1), user_4 has desktop (0) -> desktop mean = 0.5
-        assert result.loc["belongs_to_channel_mobile_any_mean", "segment_2"] == 0.5
-        assert result.loc["belongs_to_channel_desktop_any_mean", "segment_2"] == 0.5
+        assert result.loc["in_segment_channel_mobile_any_mean", "segment_2"] == 0.5
+        assert result.loc["in_segment_channel_desktop_any_mean", "segment_2"] == 0.5
 
-    def test_belongs_to_metric_all_mode(self) -> None:
-        """Test belongs_to metric with 'all' mode (only that value in column)"""
+    def test_in_segment_metric_all_mode(self) -> None:
+        """Test in_segment metric with 'all' mode (only that value in column)"""
         df = pd.DataFrame(
             [
                 # user_1: only mobile
@@ -332,9 +336,9 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {
-                    "metric": "belongs_to",
+                    "metric": "in_segment",
                     "metric_args": {
                         "segment_name": "channel",
                         "segment_value": "mobile",
@@ -347,8 +351,8 @@ class TestSegmentOverview:
 
         # segment_1: user_1 is all mobile (1), user_2 is mixed (0) -> mean = 0.5
         # segment_2: user_3 is all desktop (0), user_4 is all mobile (1) -> mean = 0.5
-        assert result.loc["belongs_to_channel_mobile_all_mean", "segment_1"] == 0.5
-        assert result.loc["belongs_to_channel_mobile_all_mean", "segment_2"] == 0.5
+        assert result.loc["in_segment_channel_mobile_all_mean", "segment_1"] == 0.5
+        assert result.loc["in_segment_channel_mobile_all_mean", "segment_2"] == 0.5
 
     def test_multiple_metrics(self) -> None:
         """Test multiple different metrics in one config"""
@@ -369,10 +373,10 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {"metric": "length", "agg": "mean"},
                 {"metric": "duration", "agg": "median"},
-                {"metric": "has", "metric_args": {"events": "C"}, "agg": "mean"},
+                {"metric": "has_event", "metric_args": {"events": "C"}, "agg": "mean"},
             ],
         )
 
@@ -382,7 +386,7 @@ class TestSegmentOverview:
         assert list(result.index)[:2] == ["segment_size", "segment_share"]
         assert "length_mean" in result.index
         assert "duration_median" in result.index
-        assert "has_C_mean" in result.index
+        assert "has_event_C_mean" in result.index
 
     def test_invalid_segment_column(self) -> None:
         """Test error handling for invalid segment column"""
@@ -401,7 +405,7 @@ class TestSegmentOverview:
         ):
             stream.segment_overview_data(
                 segment_col="invalid_segment",
-                metrics_config=[{"metric": "length", "agg": "mean"}],
+                metrics=[{"metric": "length", "agg": "mean"}],
             )
 
     def test_invalid_aggregation(self) -> None:
@@ -419,7 +423,7 @@ class TestSegmentOverview:
         with pytest.raises(ValueError, match="Unknown aggregation type"):
             stream.segment_overview_data(
                 segment_col="segment",
-                metrics_config=[{"metric": "length", "agg": "invalid_agg"}],
+                metrics=[{"metric": "length", "agg": "invalid_agg"}],
             )
 
     def test_default_aggregation_is_mean(self) -> None:
@@ -438,7 +442,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[{"metric": "length"}],  # No 'agg' specified
+            metrics=[{"metric": "length"}],  # No 'agg' specified
         )
 
         # Default should be mean
@@ -464,7 +468,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {"metric": "duration", "agg": "mean"},
             ],
         )
@@ -504,7 +508,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="country",
-            metrics_config=[
+            metrics=[
                 {"metric": "length", "agg": "mean"},
             ],
         )
@@ -536,18 +540,22 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="country",
-            metrics_config=[
-                {"metric": "has", "metric_args": {"events": "purchase"}, "agg": "mean"},
+            metrics=[
+                {
+                    "metric": "has_event",
+                    "metric_args": {"events": "purchase"},
+                    "agg": "mean",
+                },
             ],
         )
 
         # country_A: (user_1, A) no purchase, (user_2, A) has purchase, (user_3, A) no purchase
         # -> mean = (0 + 1 + 0) / 3 = 0.333...
         # country_B: (user_1, B) has purchase -> mean = 1.0
-        assert result.loc["has_purchase_mean", "country_A"] == pytest.approx(
+        assert result.loc["has_event_purchase_mean", "country_A"] == pytest.approx(
             0.333, rel=0.01
         )
-        assert result.loc["has_purchase_mean", "country_B"] == 1.0
+        assert result.loc["has_event_purchase_mean", "country_B"] == 1.0
 
     def test_row_order(self) -> None:
         """Test that segment_size and segment_share are always first two rows"""
@@ -564,7 +572,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {"metric": "length", "agg": "mean"},
                 {"metric": "duration", "agg": "mean"},
             ],
@@ -594,9 +602,9 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {
-                    "metric": "has",
+                    "metric": "has_event",
                     "metric_args": {"events": ["purchase", "view"]},
                     "agg": "mean",
                 },
@@ -604,18 +612,18 @@ class TestSegmentOverview:
         )
 
         # Should have rows for both events
-        assert "has_purchase_mean" in result.index
-        assert "has_view_mean" in result.index
+        assert "has_event_purchase_mean" in result.index
+        assert "has_event_view_mean" in result.index
 
         # segment_1: user_1 has purchase (1), user_2 doesn't (0) -> mean = 0.5
         # segment_2: user_3 has purchase (1) -> mean = 1.0
-        assert result.loc["has_purchase_mean", "segment_1"] == 0.5
-        assert result.loc["has_purchase_mean", "segment_2"] == 1.0
+        assert result.loc["has_event_purchase_mean", "segment_1"] == 0.5
+        assert result.loc["has_event_purchase_mean", "segment_2"] == 1.0
 
         # segment_1: user_1 doesn't have view (0), user_2 has view (1) -> mean = 0.5
         # segment_2: user_3 has view (1) -> mean = 1.0
-        assert result.loc["has_view_mean", "segment_1"] == 0.5
-        assert result.loc["has_view_mean", "segment_2"] == 1.0
+        assert result.loc["has_event_view_mean", "segment_1"] == 0.5
+        assert result.loc["has_event_view_mean", "segment_2"] == 1.0
 
     def test_event_count_with_multiple_events(self) -> None:
         """Test event_count metric with a list of events returns multiple rows"""
@@ -637,7 +645,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {
                     "metric": "event_count",
                     "metric_args": {"events": ["click", "scroll"]},
@@ -685,10 +693,10 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {
                     "metric": "time_between",
-                    "metric_args": {"event_from": "login", "event_to": "purchase"},
+                    "metric_args": {"start_event": "login", "end_event": "purchase"},
                     "agg": "mean",
                 },
             ],
@@ -722,10 +730,10 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {
                     "metric": "time_between",
-                    "metric_args": {"event_from": "A", "event_to": "B"},
+                    "metric_args": {"start_event": "A", "end_event": "B"},
                     "agg": "median",
                 },
             ],
@@ -757,10 +765,13 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {
                     "metric": "time_between",
-                    "metric_args": {"event_from": "path_start", "event_to": "purchase"},
+                    "metric_args": {
+                        "start_event": "path_start",
+                        "end_event": "purchase",
+                    },
                     "agg": "mean",
                 },
             ],
@@ -796,7 +807,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {"metric": "length", "agg": "mean"},
             ],
         )
@@ -832,7 +843,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[
+            metrics=[
                 {"metric": "length", "agg": "mean"},
             ],
         )
@@ -844,7 +855,7 @@ class TestSegmentOverview:
         assert result.loc["length_mean", "segment_2"] == 1.0
 
     def test_segment_values_with_double_underscore_empty_config(self) -> None:
-        """Regression: '__' segment values stay distinct with empty metrics_config"""
+        """Regression: '__' segment values stay distinct with empty metrics"""
         df = pd.DataFrame(
             [
                 ["user_1", "A", "control__1", "2020-01-01 00:00:00"],
@@ -858,7 +869,7 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics_config=[],
+            metrics=[],
         )
 
         assert sorted(result.columns) == ["control__1", "test__1"]
@@ -885,7 +896,7 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        result = SegmentOverview(stream).metric_distribution(
+        result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value="segment_1",
             metric={"metric": "length"},
@@ -937,10 +948,10 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        result = SegmentOverview(stream).metric_distribution(
+        result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value=["segment_1", "segment_2"],
-            metric={"metric": "has", "metric_args": {"events": "purchase"}},
+            metric={"metric": "has_event", "metric_args": {"events": "purchase"}},
         )
 
         assert "distribution_1" in result
@@ -982,7 +993,7 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        result = SegmentOverview(stream).metric_distribution(
+        result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value=["segment_1", "segment_2"],
             metric={"metric": "length"},
@@ -1026,7 +1037,7 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        result = SegmentOverview(stream).metric_distribution(
+        result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value="segment_1",
             metric={"metric": "length"},
@@ -1058,7 +1069,7 @@ class TestMetricDistribution:
             InvalidParameterError,
             match="Invalid value 'invalid_segment' for parameter 'segment_col'",
         ):
-            SegmentOverview(stream).metric_distribution(
+            SegmentOverview(stream).get_metric_distribution(
                 segment_col="invalid_segment",
                 segment_value=["segment_1", "segment_2"],
                 metric={"metric": "length"},
@@ -1080,7 +1091,7 @@ class TestMetricDistribution:
         with pytest.raises(
             SegmentValueNotFoundError, match="Segment value 'non_existent' not found"
         ):
-            SegmentOverview(stream).metric_distribution(
+            SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
                 segment_value=["segment_1", "non_existent"],
                 metric={"metric": "length"},
@@ -1103,7 +1114,7 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        result = SegmentOverview(stream).metric_distribution(
+        result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value="segment_1",
             metric={"metric": "event_count", "metric_args": {"events": "click"}},
@@ -1129,7 +1140,7 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        result = SegmentOverview(stream).metric_distribution(
+        result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value=["segment_1", "segment_2"],
             metric={"metric": "length"},
@@ -1152,7 +1163,7 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        result = SegmentOverview(stream).metric_distribution(
+        result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value=["segment_1", "segment_2"],
             metric={"metric": "length"},
@@ -1179,7 +1190,7 @@ class TestMetricDistribution:
         with pytest.raises(
             InvalidMetricConfigError, match="requires exactly one metric"
         ):
-            SegmentOverview(stream).metric_distribution(
+            SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
                 segment_value=["segment_1", "segment_2"],
                 metric={
@@ -1189,7 +1200,7 @@ class TestMetricDistribution:
             )
 
     def test_has_multiple_events_error(self) -> None:
-        """Test that error is raised when 'has' metric has multiple events"""
+        """Test that error is raised when 'has_event' metric has multiple events"""
         df = pd.DataFrame(
             [
                 ["user_1", "click", "segment_1", "2020-01-01 00:00:00"],
@@ -1206,11 +1217,11 @@ class TestMetricDistribution:
         with pytest.raises(
             InvalidMetricConfigError, match="requires exactly one metric"
         ):
-            SegmentOverview(stream).metric_distribution(
+            SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
                 segment_value=["segment_1", "segment_2"],
                 metric={
-                    "metric": "has",
+                    "metric": "has_event",
                     "metric_args": {"events": ["click", "purchase"]},
                 },
             )
@@ -1231,7 +1242,7 @@ class TestMetricDistribution:
         with pytest.raises(
             InvalidComplementConfigError, match="complement must be True"
         ):
-            SegmentOverview(stream).metric_distribution(
+            SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
                 segment_value="segment_1",
                 metric={"metric": "length"},
@@ -1255,15 +1266,15 @@ class TestMetricDistribution:
             InvalidComplementConfigError,
             match="complement=True is only valid when a single segment",
         ):
-            SegmentOverview(stream).metric_distribution(
+            SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
                 segment_value=["segment_1", "segment_2"],
                 metric={"metric": "length"},
                 complement=True,
             )
 
-    def test_invalid_path_id_col(self) -> None:
-        """Test error when path_id_col doesn't exist"""
+    def test_invalid_path_col(self) -> None:
+        """Test error when path_col doesn't exist"""
         df = pd.DataFrame(
             [
                 ["user_1", "A", "segment_1", "2020-01-01 00:00:00"],
@@ -1277,13 +1288,13 @@ class TestMetricDistribution:
 
         with pytest.raises(
             InvalidParameterError,
-            match="Invalid value 'invalid_col' for parameter 'path_id_col'",
+            match="Invalid value 'invalid_col' for parameter 'path_col'",
         ):
-            SegmentOverview(stream).metric_distribution(
+            SegmentOverview(stream).get_metric_distribution(
                 segment_col="segment",
                 segment_value=["segment_1", "segment_2"],
                 metric={"metric": "length"},
-                path_id_col="invalid_col",
+                path_col="invalid_col",
             )
 
     # Note: Metric validation tests (invalid metric name, missing args, nonexistent events)
@@ -1326,7 +1337,7 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        result = SegmentOverview(stream).metric_distribution(
+        result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value=["segment_1", "segment_2"],
             metric={"metric": "length"},
@@ -1353,10 +1364,10 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        result = SegmentOverview(stream).metric_distribution(
+        result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value=["segment_1", "segment_2"],
-            metric={"metric": "has", "metric_args": {"events": "purchase"}},
+            metric={"metric": "has_event", "metric_args": {"events": "purchase"}},
         )
 
         # For discrete (has) metric, log_scale should always be False
@@ -1383,7 +1394,7 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        result = SegmentOverview(stream).metric_distribution(
+        result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value=["segment_1", "segment_2"],
             metric={"metric": "length"},
@@ -1416,7 +1427,7 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        result = SegmentOverview(stream).metric_distribution(
+        result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value=["control__1", "test__1"],
             metric={"metric": "length"},
@@ -1443,7 +1454,7 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        result = SegmentOverview(stream).metric_distribution(
+        result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value="control__1",
             metric={"metric": "length"},

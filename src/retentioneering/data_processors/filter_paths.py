@@ -9,18 +9,18 @@ PROCESSOR_NAME = "filter_paths"
 
 
 class FilterPaths(DataProcessor):
-    ast_condition: Dict[str, Any]
-    path_id_col: str | None
+    condition: Dict[str, Any]
+    path_col: str | None
     event_col: str | None
 
     def __init__(
         self,
-        ast_condition: Dict[str, Any],
-        path_id_col: str | None,
+        condition: Dict[str, Any],
+        path_col: str | None,
         event_col: str | None,
     ) -> None:
-        self.ast_condition = ast_condition
-        self.path_id_col = path_id_col
+        self.condition = condition
+        self.path_col = path_col
         self.event_col = event_col
         super().__init__()
 
@@ -29,7 +29,7 @@ class FilterPaths(DataProcessor):
         # All filtering is done via AST conditions in Eventstream.filter_paths()
         raise PreprocessingConfigError(
             PROCESSOR_NAME,
-            "FilterPaths.apply() should not be called directly. Use Eventstream.filter_paths() with ast_condition.",
+            "FilterPaths.apply() should not be called directly. Use Eventstream.filter_paths() with condition.",
         )
 
     @staticmethod
@@ -42,11 +42,11 @@ class FilterPaths(DataProcessor):
 
         Examples:
             - metric="length", metric_args=None -> ["length"]
-            - metric="has", metric_args={"events": "purchase"} -> ["has_purchase"]
-            - metric="has", metric_args={"events": ["logout", "cancellation"]} -> ["has_logout", "has_cancellation"]
+            - metric="has_event", metric_args={"events": "purchase"} -> ["has_event_purchase"]
+            - metric="has_event", metric_args={"events": ["logout", "cancellation"]} -> ["has_event_logout", "has_event_cancellation"]
             - metric="event_count", metric_args={"events": "purchase"} -> ["event_count_purchase"]
             - metric="event_count", metric_args={"events": ["view", "purchase"]} -> ["event_count_view", "event_count_purchase"]
-            - metric="time_between", metric_args={"event_from": "login", "event_to": "purchase"}
+            - metric="time_between", metric_args={"start_event": "login", "end_event": "purchase"}
               -> ["time_from_login_to_purchase"]
             - metric="active_days", metric_args={"active_events": ["login", "purchase"]}
               -> ["active_days"]
@@ -54,11 +54,11 @@ class FilterPaths(DataProcessor):
         if not metric_args:
             return [metric]
 
-        if metric == "has":
+        if metric == "has_event":
             events = metric_args.get("events")
             if isinstance(events, list):
-                return [f"has_{event}" for event in events]
-            return [f"has_{events}"]
+                return [f"has_event_{event}" for event in events]
+            return [f"has_event_{events}"]
 
         elif metric == "event_count":
             event = metric_args.get("events")
@@ -67,33 +67,33 @@ class FilterPaths(DataProcessor):
             return [f"event_count_{event}"]
 
         elif metric == "time_between":
-            event_from = metric_args.get("event_from")
-            event_to = metric_args.get("event_to")
-            return [f"time_from_{event_from}_to_{event_to}"]
+            start_event = metric_args.get("start_event")
+            end_event = metric_args.get("end_event")
+            return [f"time_from_{start_event}_to_{end_event}"]
 
         elif metric == "active_days":
             return ["active_days"]
 
-        elif metric == "matches":
+        elif metric == "matches_pattern":
             pattern = metric_args.get("pattern")
-            return [f"matches_{pattern}"]
+            return [f"matches_pattern_{pattern}"]
 
         elif metric in {"length", "duration"}:
             return [metric]
 
-        elif metric == "belongs_to":
+        elif metric == "in_segment":
             segment_name = metric_args.get("segment_name")
             segment_value = metric_args.get("segment_value")
             mode = metric_args.get("mode", "any")
             if segment_value is None:
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME,
-                    "'belongs_to' metric with segment_value=None cannot be used in ast_condition "
+                    "'in_segment' metric with segment_value=None cannot be used in condition "
                     "(column names are not known until runtime)",
                 )
             if isinstance(segment_value, list):
-                return [f"belongs_to_{segment_name}_{v}_{mode}" for v in segment_value]
-            return [f"belongs_to_{segment_name}_{segment_value}_{mode}"]
+                return [f"in_segment_{segment_name}_{v}_{mode}" for v in segment_value]
+            return [f"in_segment_{segment_name}_{segment_value}_{mode}"]
 
         else:
             raise PreprocessingConfigError(
@@ -164,11 +164,13 @@ class FilterPaths(DataProcessor):
             escaped = value.replace("'", "''")
             return f"'{escaped}'"
         raise PreprocessingConfigError(
-            PROCESSOR_NAME, f"Unsupported literal type in ast_condition: {type(value)}"
+            PROCESSOR_NAME, f"Unsupported literal type in condition: {type(value)}"
         )
 
     def _ast_to_sql(self, node: Dict[str, Any]) -> str:
         op = node.get("op")
+        if op == "==":  # Python-style equality is accepted as an alias for "="
+            op = "="
         if op.upper() in {"AND", "OR"}:
             args = node.get("args", [])
             if not args:
@@ -248,7 +250,7 @@ class FilterPaths(DataProcessor):
             )
 
         # Special handling for has metric with multiple events (list)
-        if metric == "has" and len(metric_names) > 1:
+        if metric == "has_event" and len(metric_names) > 1:
             # For has with list of events:
             # - If checking "= true": ALL events must be present (AND)
             # - If checking "= false": at least one event must be absent (OR)

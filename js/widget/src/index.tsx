@@ -94,7 +94,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [diffValue1,  setDiffValue1]  = React.useState<string | null>(initDiff[1] ?? null);
     const [diffValue2,  setDiffValue2]  = React.useState<string | null>(initDiff[2] ?? null);
     const [pathCols, setPathCols]       = React.useState<string[]>(() => parseJson(model.get("path_cols"), []));
-    const [pathIdCol, setPathIdCol]     = React.useState<string>(() => (model.get("path_id_col") as string) || "");
+    const [pathIdCol, setPathIdCol]     = React.useState<string>(() => (model.get("path_col") as string) || "");
     const [segmentLevels, setSegLvls]   = React.useState<Record<string, string[]>>(() => parseJson(model.get("segment_levels"), {}));
     const [height, setHeight]           = React.useState<number>(() => (model.get("height") as number) ?? 500);
     const [isLoading, setIsLoading]     = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
@@ -173,7 +173,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         ["height",         () => setHeight((model.get("height") as number) ?? 500)],
         ["sidebar_open",   () => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
         ["path_cols",      () => setPathCols(parseJson(model.get("path_cols"), []))],
-        ["path_id_col",    () => setPathIdCol((model.get("path_id_col") as string) || "")],
+        ["path_col",    () => setPathIdCol((model.get("path_col") as string) || "")],
         ["segment_levels", () => setSegLvls(parseJson(model.get("segment_levels"), {}))],
         ["node_positions", () => {
           const p = parseJson<Record<string, StoredPosition>>(model.get("node_positions"), {});
@@ -192,7 +192,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       setValuesType(v); model.set("edge_weight", v); model.save_changes();
     }, []);
     const handlePathIdColChange = React.useCallback((col: string) => {
-      setPathIdCol(col); model.set("path_id_col", col); model.save_changes();
+      setPathIdCol(col); model.set("path_col", col); model.save_changes();
     }, []);
     const handleDiffChange = React.useCallback(
       (seg: string | null, v1: string | null, v2: string | null) => {

@@ -138,8 +138,9 @@ def _build_server(
         preprocessors:
             Ordered list of steps. Each step is {"type": "<name>", ...args}.
             Available types: collapse_events, filter_paths, filter_events, truncate_paths,
-            rename_events, edit_events, add_events, add_segment, drop_segment, add_clusters,
-            url_events, sample_paths, split_sessions.
+            rename_events, edit_events, drop_events, add_events, to_daily_states,
+            add_segment, drop_segment, add_clusters, urls_to_events, sample_paths,
+            split_sessions.
             Call describe_tool("<type>") for full parameter reference before using any step.
 
         Returns
@@ -212,9 +213,9 @@ def _build_server(
 
         Preprocessors (use as {"type": "<name>", ...} in update_base_stream / local_preprocessors):
           collapse_events  filter_paths   filter_events   truncate_paths
-          rename_events    edit_events    add_events      add_segment
-          drop_segment     add_clusters   url_events      sample_paths
-          split_sessions
+          rename_events    edit_events    drop_events     add_events
+          to_daily_states  add_segment    drop_segment    add_clusters
+          urls_to_events   sample_paths   split_sessions
 
         Reference topics:
           report_links   (anchor link syntax for analysis text)
@@ -242,7 +243,7 @@ def _build_server(
         s = cur.schema
         ec, pc = s.event_col, s.path_col
         df = cur.df
-        ts_col = s.timestamp
+        ts_col = s.timestamp_col
         result = {
             "n_paths": int(df[pc].nunique()),
             "n_events_total": len(df),
@@ -268,7 +269,7 @@ def _build_server(
         label: str,
         edge_weight: str = "proba_out",
         diff: list | None = None,
-        path_id_col: str | None = None,
+        path_col: str | None = None,
         local_preprocessors: list | None = None,
     ) -> str:
         """
@@ -285,10 +286,10 @@ def _build_server(
             e.g. "Overall Flow" or "Mobile vs Desktop". No colons in the label.
         edge_weight:
             How to weight edges. One of: proba_out, proba_in, count, unique_paths,
-            transition_rate, per_path, time_median, time_q95.
+            share_of_total, avg_per_path, time_median, time_q95.
         diff:
             Optional diff: [segment_col, value1, value2].
-        path_id_col:
+        path_col:
             Override the path ID column.
 
         Returns
@@ -304,7 +305,7 @@ def _build_server(
         """
         src = _apply_preprocessors(_active[0], local_preprocessors or [])
         widget = src.transition_graph(
-            edge_weight=edge_weight, diff=diff, path_id_col=path_id_col or None
+            edge_weight=edge_weight, diff=diff, path_col=path_col or None
         )
         if widget.error:
             return json.dumps({"error": widget.error, "label": label})
@@ -320,7 +321,7 @@ def _build_server(
             "event_visibility": {},
             "segment_levels": json.loads(widget.segment_levels or "{}"),
             "path_cols": json.loads(widget.path_cols or "[]"),
-            "path_id_col": widget.path_id_col or "",
+            "path_col": widget.path_col or "",
             "height": widget.height,
             "sidebar_open": False,
         }
@@ -345,7 +346,7 @@ def _build_server(
         max_steps: int = 10,
         diff: list | None = None,
         path_pattern: str | None = None,
-        path_id_col: str | None = None,
+        path_col: str | None = None,
         local_preprocessors: list | None = None,
     ) -> str:
         """
@@ -364,7 +365,7 @@ def _build_server(
             Optional diff: [segment_col, value1, value2].
         path_pattern:
             Filter paths, e.g. "add_to_cart->.*->purchase".
-        path_id_col:
+        path_col:
             Override the path ID column.
 
         Returns
@@ -377,7 +378,7 @@ def _build_server(
         widget = src.step_matrix(
             max_steps=max_steps,
             diff=diff,
-            path_id_col=path_id_col or None,
+            path_col=path_col or None,
             path_pattern=path_pattern or None,
         )
         if widget.error:
@@ -387,7 +388,7 @@ def _build_server(
             "result": json.loads(widget.result or "{}"),
             "max_steps": widget.max_steps,
             "diff": json.loads(widget.diff) if widget.diff else None,
-            "path_id_col": widget.path_id_col or "",
+            "path_col": widget.path_col or "",
             "path_pattern": widget.path_pattern or "",
             "path_cols": json.loads(widget.path_cols or "[]"),
             "segment_levels": json.loads(widget.segment_levels or "{}"),
@@ -415,8 +416,8 @@ def _build_server(
     def add_segment_overview(
         label: str,
         segment_col: str,
-        metrics_config: list | None = None,
-        path_id_col: str | None = None,
+        metrics: list | None = None,
+        path_col: str | None = None,
         local_preprocessors: list | None = None,
     ) -> str:
         """
@@ -432,12 +433,12 @@ def _build_server(
             Tab label shown in the report. No colons in the label.
         segment_col:
             Column to segment by (must be listed in segment_cols from describe()).
-        metrics_config:
+        metrics:
             List of additional metric dicts. segment_size and segment_share are
             always computed automatically and do not need to be specified.
 
             Each dict: {"metric": <name>, "metric_args": {...}, "agg": <agg>}
-            "agg" choices: "mean" (default), "median", "complement_diff",
+            "agg" choices: "mean" (default), "median", "complement_distance",
                            "q5", "q25", "q75", "q95"
 
             Available metrics and their metric_args:
@@ -447,29 +448,29 @@ def _build_server(
                   — duration in seconds (first to last event)
               {"metric": "event_count", "metric_args": {"events": "purchase"}}
                   — how many times the event occurred; events can also be a list
-              {"metric": "has", "metric_args": {"events": "purchase"}}
+              {"metric": "has_event", "metric_args": {"events": "purchase"}}
                   — 0/1 whether the path contains the event (conversion rate)
               {"metric": "time_between",
-               "metric_args": {"event_from": "add_to_cart", "event_to": "purchase"}}
+               "metric_args": {"start_event": "add_to_cart", "end_event": "purchase"}}
                   — seconds between first occurrences of two events
-              {"metric": "matches",
+              {"metric": "matches_pattern",
                "metric_args": {"pattern": "add_to_cart->.*->purchase"}}
                   — 0/1 whether path matches the pattern
 
             Examples:
               Conversion rate to purchase by platform:
-                metrics_config=[
-                  {"metric": "has",  "metric_args": {"events": "purchase"}, "agg": "mean"},
+                metrics=[
+                  {"metric": "has_event",  "metric_args": {"events": "purchase"}, "agg": "mean"},
                   {"metric": "length"},
                   {"metric": "duration", "agg": "median"},
                 ]
               Time-to-purchase by acquisition channel:
-                metrics_config=[
+                metrics=[
                   {"metric": "time_between",
-                   "metric_args": {"event_from": "home", "event_to": "purchase"},
+                   "metric_args": {"start_event": "home", "end_event": "purchase"},
                    "agg": "median"},
                 ]
-        path_id_col:
+        path_col:
             Override the path ID column.
 
         Returns
@@ -481,8 +482,8 @@ def _build_server(
         src = _apply_preprocessors(_active[0], local_preprocessors or [])
         widget = src.segment_overview(
             segment_col=segment_col,
-            metrics_config=metrics_config or [],
-            path_id_col=path_id_col or None,
+            metrics=metrics or [],
+            path_col=path_col or None,
         )
         if widget.error:
             return json.dumps({"error": widget.error, "label": label})
@@ -490,8 +491,8 @@ def _build_server(
             "widget_type": "segment_overview",
             "result": json.loads(widget.result or "{}"),
             "segment_col": widget.segment_col or "",
-            "path_id_col": widget.path_id_col or "",
-            "metrics_config": json.loads(widget.metrics_config or "[]"),
+            "path_col": widget.path_col or "",
+            "metrics": json.loads(widget.metrics or "[]"),
             "segment_cols": json.loads(widget.segment_cols or "[]"),
             "segment_levels": json.loads(widget.segment_levels or "{}"),
             "path_cols": json.loads(widget.path_cols or "[]"),
@@ -626,23 +627,23 @@ def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
         t = step.get("type", "")
         if t == "collapse_events":
             stream = stream.collapse_events(
-                repetitive=step.get("repetitive"),
+                consecutive=step.get("consecutive"),
                 event_groups=step.get("event_groups"),
             )
         elif t == "filter_paths":
-            condition = {
-                k: v for k, v in step.items() if k not in ("type", "path_id_col")
-            }
-            stream = stream.filter_paths(condition, path_id_col=step.get("path_id_col"))
+            condition = {k: v for k, v in step.items() if k not in ("type", "path_col")}
+            stream = stream.filter_paths(condition, path_col=step.get("path_col"))
         elif t == "filter_events":
-            sql = step.get("sql")
-            by_col = {k: v for k, v in step.items() if k not in ("type", "sql")}
-            stream = stream.filter_events(by_column=by_col or None, sql=sql)
+            stream = stream.filter_events(
+                keep=step.get("keep"),
+                drop=step.get("drop"),
+                sql=step.get("sql"),
+            )
         elif t == "truncate_paths":
             stream = stream.truncate_paths(
-                left=step["left"],
-                right=step["right"],
-                path_id_col=step.get("path_id_col"),
+                start_event=step["start_event"],
+                end_event=step["end_event"],
+                path_col=step.get("path_col"),
             )
         elif t == "rename_events":
             stream = stream.rename_events(mapping=step["mapping"])
@@ -651,61 +652,64 @@ def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
                 rename=step.get("rename"),
                 delete=step.get("delete"),
             )
+        elif t == "drop_events":
+            stream = stream.drop_events(names=step["names"])
         elif t == "add_events":
             stream = stream.add_events(
-                new_event_name=step["new_event_name"],
+                name=step["name"],
                 source_events=step.get("source_events"),
                 sql=step.get("sql"),
                 churn=step.get("churn"),
             )
-        elif t == "daily_states":
-            stream = stream.daily_states(
+        elif t == "to_daily_states":
+            stream = stream.to_daily_states(
                 active_events=step.get("active_events"),
                 max_dormant_days=step.get("max_dormant_days", 30),
             )
         elif t == "add_segment":
             stream = stream.add_segment(
                 name=step["name"],
-                values=step.get("values"),
+                rules=step.get("rules"),
                 sql=step.get("sql"),
                 funnel_events=step.get("funnel_events"),
-                path_id_col=step.get("path_id_col"),
+                path_col=step.get("path_col"),
             )
         elif t == "drop_segment":
             stream = stream.drop_segment(name=step["name"])
         elif t == "add_clusters":
             stream = stream.add_clusters(
-                segment_name=step["segment_name"],
+                name=step["name"],
                 features=step["features"],
                 method=step.get("method", "kmeans"),
                 n_clusters=step.get("n_clusters"),
-                path_id_col=step.get("path_id_col"),
+                path_col=step.get("path_col"),
             )
-        elif t == "url_events":
-            stream = stream.url_events(
+        elif t == "urls_to_events":
+            stream = stream.urls_to_events(
                 column=step["column"],
                 nodes=step["nodes"],
                 strip_host=step.get("strip_host", True),
-                strip_cgi=step.get("strip_cgi", True),
+                strip_query=step.get("strip_query", True),
             )
         elif t == "sample_paths":
             stream = stream.sample_paths(
-                sample_size=step["sample_size"],
+                n=step.get("n"),
+                frac=step.get("frac"),
                 random_state=step.get("random_state"),
             )
         elif t == "split_sessions":
             stream = stream.split_sessions(
                 timeout=step.get("timeout"),
-                session_col=step.get("session_col", "session_id"),
+                session_id_col=step.get("session_id_col", "session_id"),
                 session_index_col=step.get("session_index_col", "session_index"),
             )
         else:
             raise ValueError(
                 f"Unknown preprocessor type: {t!r}. "
                 "Supported: collapse_events, filter_paths, filter_events, "
-                "truncate_paths, rename_events, edit_events, add_events, "
-                "add_segment, drop_segment, add_clusters, url_events, "
-                "sample_paths, split_sessions."
+                "truncate_paths, rename_events, edit_events, drop_events, "
+                "add_events, to_daily_states, add_segment, drop_segment, "
+                "add_clusters, urls_to_events, sample_paths, split_sessions."
             )
     return stream
 
@@ -905,21 +909,24 @@ def _step_to_code(step: dict) -> str:
     kw = ", ".join(f"{k}={v!r}" for k, v in args.items())
 
     if t == "collapse_events":
-        if args.get("repetitive"):
-            return "stream.collapse_events(repetitive=True)"
+        if args.get("consecutive"):
+            return "stream.collapse_events(consecutive=True)"
         elif args.get("event_groups"):
             return f"stream.collapse_events(event_groups={args['event_groups']!r})"
     elif t == "filter_events":
-        return f"stream.filter_events(by_column={args!r})"
+        if args.get("keep"):
+            return f"stream.filter_events(keep={args['keep']!r})"
+        elif args.get("drop"):
+            return f"stream.filter_events(drop={args['drop']!r})"
+        elif args.get("sql"):
+            return f"stream.filter_events(sql={args['sql']!r})"
     elif t == "filter_paths":
         return f"stream.filter_paths({args!r})"
     elif t == "add_segment":
         if args.get("funnel_events"):
             return f"stream.add_segment(name={args['name']!r}, funnel_events={args['funnel_events']!r})"
-        elif args.get("values"):
-            return (
-                f"stream.add_segment(name={args['name']!r}, values={args['values']!r})"
-            )
+        elif args.get("rules"):
+            return f"stream.add_segment(name={args['name']!r}, rules={args['rules']!r})"
         elif args.get("sql"):
             return f"stream.add_segment(name={args['name']!r}, sql={args['sql']!r})"
     return f"stream.{t}({kw})" if kw else f"stream.{t}()"
@@ -1111,10 +1118,12 @@ def _tool_docs_index() -> dict:
             "truncate_paths",
             "rename_events",
             "edit_events",
+            "drop_events",
             "add_events",
+            "to_daily_states",
             "drop_segment",
             "add_clusters",
-            "url_events",
+            "urls_to_events",
             "sample_paths",
             "split_sessions",
         }
@@ -1154,7 +1163,7 @@ def _system_instructions(
         "IMPORTANT — before doing anything else, classify the user's question:",
         "  A) Mentions a specific date range or time window?",
         "     → Apply the TEMPORAL ANOMALY pattern (see ## Analysis patterns below).",
-        "     → This REQUIRES calling update_base_stream with add_segment(values=[...]).",
+        "     → This REQUIRES calling update_base_stream with add_segment(rules=[...]).",
         "     → Do NOT skip this step and jump straight to add_transition_graph.",
         "  B) Asks why conversion from A to B is dropping?",
         "     → Apply the CONVERSION DROP-OFF pattern (funnel_events).",
@@ -1228,7 +1237,7 @@ def _system_instructions(
         "Do NOT execute Python code. Call update_base_stream (ask user to confirm) with:",
         "  preprocessors=[{",
         "    'type': 'add_segment', 'name': 'period',",
-        "    'values': [",
+        "    'rules': [",
         "      ['{timestamp_col}', '<',  'YYYY-MM-DD', 'normal'],",
         "      ['{timestamp_col}', '>',  'YYYY-MM-DD', 'normal'],",
         "      ['anomaly']",
@@ -1236,7 +1245,7 @@ def _system_instructions(
         "  }]",
         "  Replace {timestamp_col} with the value from describe() ('timestamp_col' field).",
         "  The first date is the start of the anomaly window, the second is the end.",
-        "  Values format: each entry is [column, op, value, segment_label];",
+        "  Rules format: each entry is [column, op, value, segment_label];",
         "  the last entry ['anomaly'] is the ELSE fallback.",
         "Then use diff=['period', 'anomaly', 'normal'] in add_transition_graph / add_step_matrix.",
         "Also: add_segment_overview(segment_col='period') to compare all KPIs.",
@@ -1267,7 +1276,7 @@ def _system_instructions(
         "",
         "### Noise removal before any analysis",
         "Call update_base_stream first (ask user to confirm) with one or more of:",
-        "  collapse_events repetitive=True  — removes self-loops",
+        "  collapse_events consecutive=True  — removes self-loops",
         "  filter_paths length > N          — removes very short sessions",
         "  filter_events column/values      — removes specific noise events",
         f"- Save reports to the notebook directory: {notebook_dir}"

@@ -25,39 +25,37 @@ class StepMatrix:
         self,
         max_steps: int = 10,
         diff: T_Diff = None,
-        path_id_col: str | None = None,
+        path_col: str | None = None,
         path_pattern: str | None = None,
     ) -> Tuple[pd.DataFrame, ...]:
-        path_id_col = path_id_col or self.eventstream.schema.path_col
+        path_col = path_col or self.eventstream.schema.path_col
 
-        if self.eventstream.empty():
+        if self.eventstream.is_empty():
             raise EmptyEventstreamError(
                 "Cannot calculate step matrix for empty eventstream"
             )
 
-        if path_id_col not in self.eventstream.schema.path_cols:
+        if path_col not in self.eventstream.schema.path_cols:
             raise InvalidParameterError(
-                "path_id_col", path_id_col, self.eventstream.schema.path_cols
+                "path_col", path_col, self.eventstream.schema.path_cols
             )
 
         if path_pattern is None:
             if diff is None:
-                sm = self._regular(max_steps, path_id_col)
+                sm = self._regular(max_steps, path_col)
                 return (sm,)
             else:
-                sms, sms1, sms2 = self._process_diff_matrix(
-                    max_steps, diff, path_id_col
-                )
+                sms, sms1, sms2 = self._process_diff_matrix(max_steps, diff, path_col)
                 return tuple(sms), tuple(sms1), tuple(sms2)
         else:
             if diff is None:
                 sms = self._process_pattern_matrix(
-                    max_steps, None, path_pattern, path_id_col
+                    max_steps, None, path_pattern, path_col
                 )
                 return tuple(sms)
             else:
                 sms, sms1, sms2 = self._process_pattern_matrix(
-                    max_steps, diff, path_pattern, path_id_col
+                    max_steps, diff, path_pattern, path_col
                 )
                 return tuple(sms), tuple(sms1), tuple(sms2)
 
@@ -79,15 +77,15 @@ class StepMatrix:
             aligned2.append(sms2[i].reindex(index=index, columns=cols).fillna(0))
         return aligned1, aligned2
 
-    def _process_diff_matrix(self, max_steps, diff, path_id_col):
-        stream1, stream2 = self.eventstream.split_two(diff, path_id_col=path_id_col)
-        sms1 = StepMatrix(stream1).fit(max_steps=max_steps, path_id_col=path_id_col)
-        sms2 = StepMatrix(stream2).fit(max_steps=max_steps, path_id_col=path_id_col)
+    def _process_diff_matrix(self, max_steps, diff, path_col):
+        stream1, stream2 = self.eventstream._split_two(diff, path_col=path_col)
+        sms1 = StepMatrix(stream1).fit(max_steps=max_steps, path_col=path_col)
+        sms2 = StepMatrix(stream2).fit(max_steps=max_steps, path_col=path_col)
         sms1, sms2 = self._align_matrices(list(sms1), list(sms2))
         sms = [sms2[i] - sms1[i] for i in range(len(sms1))]
         return sms, sms1, sms2
 
-    def _regular(self, max_steps: int, path_id_col: str) -> pd.DataFrame:
+    def _regular(self, max_steps: int, path_col: str) -> pd.DataFrame:
         event_col = self.eventstream.schema.event_col
         index_col = self.eventstream.schema.index
         subindex_col = self.eventstream.schema.subindex
@@ -99,9 +97,9 @@ class StepMatrix:
         query = f"""
             select step, {event_col}, count(*) as value
             from (
-                select {path_id_col}, {event_col},
+                select {path_col}, {event_col},
                     row_number() over (
-                        partition by {path_id_col}
+                        partition by {path_col}
                         order by {index_col}, {subindex_col}
                     ) as step
                 from df
@@ -175,7 +173,7 @@ class StepMatrix:
             return None
 
     def _filter_paths_by_pattern(
-        self, path_pattern: str, path_id_col: str
+        self, path_pattern: str, path_col: str
     ) -> "Eventstream":
         """Filter eventstream to paths matching the given path_pattern."""
         path_start = EventTypes().PATH_START.name
@@ -188,11 +186,11 @@ class StepMatrix:
         # Build path sequences prefixed/suffixed with path_start/path_end so
         # that patterns including these markers match correctly.
         query = f"""
-            SELECT {path_id_col}, list_aggregate(list({event_col}), 'string_agg', '->') AS path
+            SELECT {path_col}, list_aggregate(list({event_col}), 'string_agg', '->') AS path
             FROM (SELECT * FROM df ORDER BY {index_col}, {subindex_col})
-            GROUP BY {path_id_col}
+            GROUP BY {path_col}
         """
-        paths = duckdb.sql(query).df().set_index(path_id_col)["path"]
+        paths = duckdb.sql(query).df().set_index(path_col)["path"]
         paths_with_se = path_start + "->" + paths + "->" + path_end
 
         matching_ids = paths_with_se[
@@ -204,14 +202,12 @@ class StepMatrix:
         if not matching_ids:
             raise PatternNoMatchError(path_pattern)
 
-        return self.eventstream.filter_events(
-            {"column": path_id_col, "values": matching_ids}
-        )
+        return self.eventstream.filter_events(keep={path_col: matching_ids})
 
-    def _process_pattern_matrix(self, max_steps, diff, path_pattern, path_id_col):
+    def _process_pattern_matrix(self, max_steps, diff, path_pattern, path_col):
         from retentioneering.exceptions import EmptyEventstreamError as _Empty
 
-        path_id_col = path_id_col or self.eventstream.schema.path_col
+        path_col = path_col or self.eventstream.schema.path_col
         index_col = self.eventstream.schema.index
         subindex_col = self.eventstream.schema.subindex
         event_col = self.eventstream.schema.event_col
@@ -220,8 +216,8 @@ class StepMatrix:
 
         try:
             stream = self._filter_paths_by_pattern(
-                path_pattern, path_id_col
-            ).add_start_end_events(path_id_col=path_id_col)
+                path_pattern, path_col
+            ).add_start_end_events(path_col=path_col)
         except PatternNoMatchError:
             raise
         except _Empty:
@@ -241,18 +237,18 @@ class StepMatrix:
             df = stream.df
             query = f"""
                 SELECT *, row_number() OVER (
-                    PARTITION BY {path_id_col} ORDER BY {index_col}, {subindex_col}
+                    PARTITION BY {path_col} ORDER BY {index_col}, {subindex_col}
                 ) AS step
                 FROM df
             """
             df = duckdb.sql(query).df()
 
             query = f"""
-                SELECT {path_id_col}, list_aggregate(list({event_col}), 'string_agg', '->') AS path
-                FROM (SELECT * FROM df ORDER BY {path_id_col}, {index_col}, {subindex_col})
-                GROUP BY {path_id_col}
+                SELECT {path_col}, list_aggregate(list({event_col}), 'string_agg', '->') AS path
+                FROM (SELECT * FROM df ORDER BY {path_col}, {index_col}, {subindex_col})
+                GROUP BY {path_col}
             """
-            paths = duckdb.sql(query).df().set_index(path_id_col)["path"]
+            paths = duckdb.sql(query).df().set_index(path_col)["path"]
 
             current_pattern = []
             for i, pattern_part in enumerate(path_pattern.split("->.*->")):
@@ -275,7 +271,7 @@ class StepMatrix:
                     )
 
                     df_centered = (
-                        df.merge(centers, how="left", on=[path_id_col])
+                        df.merge(centers, how="left", on=[path_col])
                         .assign(step_centered=lambda _df: _df["step"] - _df["center"])
                         .drop("center", axis=1)
                     )
@@ -340,12 +336,12 @@ class StepMatrix:
             return sms
 
         else:
-            stream1, stream2 = self.eventstream.split_two(diff, path_id_col=path_id_col)
+            stream1, stream2 = self.eventstream._split_two(diff, path_col=path_col)
             # Use original_pattern so skip_first_matrix logic applies correctly in each sub-call
             kwargs = dict(
                 max_steps=max_steps,
                 path_pattern=original_pattern,
-                path_id_col=path_id_col,
+                path_col=path_col,
             )
             try:
                 sms1 = stream1.step_sankey_data(**kwargs)

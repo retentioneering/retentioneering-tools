@@ -14,7 +14,7 @@ class TestDailyStates:
         )
         stream = Eventstream(df)
 
-        res = stream.daily_states(max_dormant_days=30)
+        res = stream.to_daily_states(max_dormant_days=30)
         states = res.df["event"].tolist()
 
         assert states[0] == "new"
@@ -30,7 +30,7 @@ class TestDailyStates:
         stream = Eventstream(df)
 
         # Only "purchase" counts as activity
-        res = stream.daily_states(active_events=["purchase"], max_dormant_days=5)
+        res = stream.to_daily_states(active_events=["purchase"], max_dormant_days=5)
         first_state = res.df.loc[res.df["event"] != "path_start", "event"].iloc[0]
 
         # Day 1 had only "login" → not active → dormant or at_risk_*
@@ -46,7 +46,7 @@ class TestDailyStates:
         )
         stream = Eventstream(df)
 
-        res = stream.daily_states(max_dormant_days=5)
+        res = stream.to_daily_states(max_dormant_days=5)
         states = res.df["event"].tolist()
 
         # Jan-01 → new, Jan-03 → current (was active within last 7 days)

@@ -140,3 +140,27 @@ class TestEditEvents:
     def test__invalid_delete_type_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
             Eventstream(get_df()).edit_events(delete={"A": True})
+
+
+class TestDropEvents:
+    def test__drop_events(self):
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "debug", "2020-01-01 00:01:00"],
+                ["user_1", "B", "2020-01-01 00:02:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df)
+        res = stream.drop_events(["debug"])
+        assert set(res.df["event"].astype(str)) == {"A", "B"}
+
+    def test__drop_events_unknown_raises(self):
+        df = pd.DataFrame(
+            [["user_1", "A", "2020-01-01 00:00:00"]],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df)
+        with pytest.raises(Exception):
+            stream.drop_events(["missing_event"])

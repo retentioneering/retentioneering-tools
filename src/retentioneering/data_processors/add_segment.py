@@ -67,7 +67,7 @@ def _sql_str(value: str) -> str:
 
 
 def _build_funnel_segment_query(
-    path_id_col: str,
+    path_col: str,
     event_col: str,
     index_col: str,
     funnel_events: list[str],
@@ -100,7 +100,7 @@ def _build_funnel_segment_query(
             END AS funnel
         FROM eventstream
     """
-    w = f"PARTITION BY {path_id_col}"
+    w = f"PARTITION BY {path_col}"
 
     def _sum(ev: str) -> str:
         return (
@@ -132,24 +132,24 @@ def _build_funnel_segment_query(
 
 class AddSegment(DataProcessor):
     name: str
-    values: Collection | None
+    rules: Collection | None
     func: Callable | None
     sql: str | None
     funnel_events: list | None
-    path_id_col: str | None
+    path_col: str | None
 
     def __init__(
         self,
         name: str,
-        values: Collection | None = None,
+        rules: Collection | None = None,
         func: Callable | None = None,
         sql: str | None = None,
         funnel_events: list | None = None,
-        path_id_col: str | None = None,
+        path_col: str | None = None,
     ) -> None:
         arg_is_not_none = [
             func is not None,
-            values is not None,
+            rules is not None,
             sql is not None,
             funnel_events is not None,
         ]
@@ -157,7 +157,7 @@ class AddSegment(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 "One and only one of the arguments must be defined: "
-                "values, func, sql, funnel_events.",
+                "rules, func, sql, funnel_events.",
             )
         if funnel_events is not None and len(funnel_events) < 2:
             raise PreprocessingConfigError(
@@ -165,11 +165,11 @@ class AddSegment(DataProcessor):
             )
 
         self.name = name
-        self.values = values
+        self.rules = rules
         self.func = func
         self.sql = sql
         self.funnel_events = funnel_events
-        self.path_id_col = path_id_col
+        self.path_col = path_col
         super().__init__()
 
     def apply(
@@ -188,21 +188,21 @@ class AddSegment(DataProcessor):
 
         values = None
 
-        if self.values is not None:
-            if not isinstance(self.values, Collection):
+        if self.rules is not None:
+            if not isinstance(self.rules, Collection):
                 raise PreprocessingConfigError(
-                    PROCESSOR_NAME, "Segment values must be a collection."
+                    PROCESSOR_NAME, "Segment rules must be a collection."
                 )
 
             cases = "CASE"
-            for item in self.values[:-1]:
+            for item in self.rules[:-1]:
                 column, op, value, segment_value = item
                 if isinstance(value, str) and op.lower() != "in":
                     value = _sql_str(value)
                 cases += (
                     f"\nWHEN {column} {op} {value} THEN {_sql_str(str(segment_value))}"
                 )
-            else_segment_value = self.values[-1][0]
+            else_segment_value = self.rules[-1][0]
             cases += f"\nELSE {_sql_str(str(else_segment_value))}"
             cases += f"\nEND AS {self.name}"
 
@@ -245,7 +245,7 @@ class AddSegment(DataProcessor):
             values = list(result)
 
         elif self.funnel_events is not None:
-            pid_col = self.path_id_col or schema.path_col
+            pid_col = self.path_col or schema.path_col
             # Add row index so we can restore original order after DuckDB execution
             eventstream = df.copy()
             eventstream[_ROW_IDX_COL] = range(len(df))

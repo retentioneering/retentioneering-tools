@@ -4,8 +4,8 @@ ClusterAnalysis - tool for one-shot clustering with segment overview.
 Combines add_clusters (clustering) with segment_overview (aggregated metrics)
 without saving intermediate eventstream. Supports:
 - Parameter search: silhouette score over any combination of list-valued params
-  (nmf_k, n_clusters, min_cluster_size, cluster_selection_epsilon).
-  Note: n_clusters is always required for the kmeans method — an nmf_k-only
+  (nmf_components, n_clusters, min_cluster_size, cluster_selection_epsilon).
+  Note: n_clusters is always required for the kmeans method — an nmf_components-only
   search still needs a concrete n_clusters value (int or list of ints).
 - NMF: returns H matrix from NMF decomposition alongside results.
 """
@@ -30,7 +30,7 @@ SEGMENT_COL = "__cluster__"
 SILHOUETTE_SAMPLE_SIZE = 2_000
 
 T_ClusteringMethod = Literal["kmeans", "hdbscan"]
-T_Scaler = Literal["minmax", "std"] | None
+T_Scaler = Literal["minmax", "standard"] | None
 
 
 @dataclass
@@ -45,9 +45,9 @@ class ClusterAnalysis:
         n_clusters: int | List[int] | None = None,
         min_cluster_size: int | List[int] | None = None,
         cluster_selection_epsilon: float | List[float] | None = None,
-        nmf_k: int | List[int] | None = None,
-        metrics_config: List[Dict[str, Any]] | None = None,
-        path_id_col: str | None = None,
+        nmf_components: int | List[int] | None = None,
+        overview_metrics: List[Dict[str, Any]] | None = None,
+        path_col: str | None = None,
         event_col: str | None = None,
     ) -> Dict[str, Any]:
         if method == "kmeans":
@@ -60,12 +60,12 @@ class ClusterAnalysis:
             if n_clusters_missing:
                 raise ValueError("n_clusters is required for kmeans method")
 
-        path_id_col = path_id_col or self.eventstream.schema.path_col
+        path_col = path_col or self.eventstream.schema.path_col
         event_col = event_col or self.eventstream.schema.event_col
 
         # 1. Build feature matrix
         metric_builder = MetricBuilder(self.eventstream)
-        metrics_df = metric_builder.build_metrics(features_config, path_id_col)
+        metrics_df = metric_builder.build_metrics(features_config, path_col)
         features = metrics_df.fillna(0).values
         feature_names = metrics_df.columns.tolist()
 
@@ -74,7 +74,7 @@ class ClusterAnalysis:
 
         # 3. Search mode — any list-valued parameter triggers silhouette grid search
         is_search = (
-            isinstance(nmf_k, (list, tuple))
+            isinstance(nmf_components, (list, tuple))
             or isinstance(n_clusters, (list, tuple))
             or isinstance(min_cluster_size, (list, tuple))
             or isinstance(cluster_selection_epsilon, (list, tuple))
@@ -85,7 +85,7 @@ class ClusterAnalysis:
                 features_scaled,
                 feature_names,
                 method,
-                nmf_k,
+                nmf_components,
                 n_clusters,
                 min_cluster_size,
                 cluster_selection_epsilon,
@@ -102,9 +102,9 @@ class ClusterAnalysis:
                 result["overview_df"] = self._build_overview(
                     best["labels"],
                     metrics_df.index,
-                    path_id_col,
+                    path_col,
                     event_col,
-                    metrics_config or [],
+                    overview_metrics or [],
                 )
                 if best.get("nmf_data") is not None:
                     nmf_data = best["nmf_data"]
@@ -117,8 +117,8 @@ class ClusterAnalysis:
 
         # 4. Normal mode — single NMF + cluster + overview
         nmf_data: Dict[str, Any] | None = None
-        if nmf_k is not None:
-            nmf_model = NMF(n_components=nmf_k, random_state=42)
+        if nmf_components is not None:
+            nmf_model = NMF(n_components=nmf_components, random_state=42)
             features_scaled = nmf_model.fit_transform(features_scaled)
             nmf_data = {
                 "H_matrix": nmf_model.components_.tolist(),
@@ -141,9 +141,9 @@ class ClusterAnalysis:
         overview_df = self._build_overview(
             cluster_labels,
             metrics_df.index,
-            path_id_col,
+            path_col,
             event_col,
-            metrics_config or [],
+            overview_metrics or [],
         )
 
         return {
@@ -158,7 +158,7 @@ class ClusterAnalysis:
             return features
         elif scaler == "minmax":
             return MinMaxScaler().fit_transform(features)
-        elif scaler == "std":
+        elif scaler == "standard":
             return StandardScaler().fit_transform(features)
         else:
             raise ValueError(f"Unknown scaler: {scaler}")
@@ -203,13 +203,17 @@ class ClusterAnalysis:
         features_scaled: np.ndarray,
         feature_names: List[str],
         method: T_ClusteringMethod,
-        nmf_k: int | List[int] | None,
+        nmf_components: int | List[int] | None,
         n_clusters: int | List[int] | None,
         min_cluster_size: int | List[int] | None,
         cluster_selection_epsilon: float | List[float] | None,
     ) -> Dict[str, Any]:
-        nmf_k_values = nmf_k if isinstance(nmf_k, (list, tuple)) else [nmf_k]
-        is_nmf_search = isinstance(nmf_k, (list, tuple))
+        nmf_component_values = (
+            nmf_components
+            if isinstance(nmf_components, (list, tuple))
+            else [nmf_components]
+        )
+        is_nmf_search = isinstance(nmf_components, (list, tuple))
 
         params: List[Dict[str, Any]] = []
         scores: List[float | None] = []
@@ -219,7 +223,7 @@ class ClusterAnalysis:
         best_nmf_data: Dict[str, Any] | None = None
         best_W: np.ndarray | None = None
 
-        for nk in nmf_k_values:
+        for nk in nmf_component_values:
             nmf_data: Dict[str, Any] | None = None
             if nk is not None:
                 nmf_model = NMF(n_components=nk, random_state=42)
@@ -244,7 +248,7 @@ class ClusterAnalysis:
                     score = self._safe_silhouette(X, labels)
                     p = {"n_clusters": nc}
                     if is_nmf_search:
-                        p["nmf_k"] = nk
+                        p["nmf_components"] = nk
                     params.append(p)
                     scores.append(score)
 
@@ -274,7 +278,7 @@ class ClusterAnalysis:
                         score = self._safe_silhouette(X, labels)
                         p = {"min_cluster_size": mcs, "cluster_selection_epsilon": eps}
                         if is_nmf_search:
-                            p["nmf_k"] = nk
+                            p["nmf_components"] = nk
                         params.append(p)
                         scores.append(score)
 
@@ -308,9 +312,9 @@ class ClusterAnalysis:
         self,
         cluster_labels: np.ndarray,
         path_index: pd.Index,
-        path_id_col: str,
+        path_col: str,
         event_col: str,
-        metrics_config: List[Dict[str, Any]],
+        overview_metrics: List[Dict[str, Any]],
     ) -> pd.DataFrame:
         from retentioneering.eventstream.eventstream import Eventstream
 
@@ -320,18 +324,18 @@ class ClusterAnalysis:
         )
 
         df = self.eventstream.df.copy()
-        df[SEGMENT_COL] = df[path_id_col].map(cluster_series).astype("category")
+        df[SEGMENT_COL] = df[path_col].map(cluster_series).astype("category")
 
         schema_dict = dict(self.eventstream._schema) if self.eventstream._schema else {}
         segment_cols = list(schema_dict.get("segment_cols", []))
         segment_cols.append(SEGMENT_COL)
         schema_dict["segment_cols"] = segment_cols
 
-        temp_stream = Eventstream(df, schema_dict, prepare=False)
+        temp_stream = Eventstream(df, schema_dict, preprocess=False)
 
         return temp_stream.segment_overview_data(
             segment_col=SEGMENT_COL,
-            metrics_config=metrics_config,
-            path_id_col=path_id_col,
+            metrics=overview_metrics,
+            path_col=path_col,
             event_col=event_col,
         )

@@ -25,7 +25,7 @@ def simple_df():
 
 def test_eventstream_creates(simple_df):
     es = Eventstream(simple_df)
-    assert not es.empty()
+    assert not es.is_empty()
     assert len(es.df) == 5
 
 

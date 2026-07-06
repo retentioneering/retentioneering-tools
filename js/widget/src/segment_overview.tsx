@@ -43,7 +43,7 @@ function cellColor(value: number, min: number, max: number): string {
 function formatCell(metric: string, v: number): string {
   if (!Number.isFinite(v)) return "—";
   if (metric === "segment_share") return (v * 100).toFixed(1) + "%";
-  if (metric.startsWith("first_event_dt")) return new Date(v * 1000).toISOString().slice(0, 10);
+  if (metric.startsWith("first_event_time")) return new Date(v * 1000).toISOString().slice(0, 10);
   if (metric === "segment_size" || metric.endsWith("_size") || metric.endsWith("_count"))
     return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
   if (metric.includes("duration") || metric.includes("time"))
@@ -323,7 +323,7 @@ function metricLabel(cfg: any): string {
   const a = cfg.metric_args;
   if (a?.event)      parts.push(`(${a.event})`);
   if (a?.events)     parts.push(`(${Array.isArray(a.events) ? a.events.join(", ") : a.events})`);
-  if (a?.event_from) parts.push(`(${a.event_from} → ${a.event_to})`);
+  if (a?.start_event) parts.push(`(${a.start_event} → ${a.end_event})`);
   return parts.join(" ");
 }
 
@@ -571,8 +571,8 @@ function SidebarToggle({ onClick }: { onClick: () => void }) {
 export function render({ model, el, isStatic = false }: RenderContext) {
   function App() {
     const [segCol,     setSegColState]    = React.useState<string>(() => (model.get("segment_col") as string) || "");
-    const [pathIdCol,  setPathIdColState] = React.useState<string>(() => (model.get("path_id_col") as string) || "");
-    const [metrics,    setMetricsState]   = React.useState<any[]>(() => parseJson(model.get("metrics_config"), []));
+    const [pathIdCol,  setPathIdColState] = React.useState<string>(() => (model.get("path_col") as string) || "");
+    const [metrics,    setMetricsState]   = React.useState<any[]>(() => parseJson(model.get("metrics"), []));
     const [result,     setResult]         = React.useState<SegmentOverviewData | null>(() => {
       const r = parseJson<any>(model.get("result"), null);
       return r?.metrics ? r : null;
@@ -603,22 +603,22 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         ["height",     () => setHeight((model.get("height") as number) ?? 480)],
         ["sidebar_open", () => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
         ["segment_col", () => setSegColState((model.get("segment_col") as string) || "")],
-        ["path_id_col", () => setPathIdColState((model.get("path_id_col") as string) || "")],
-        ["metrics_config", () => setMetricsState(parseJson(model.get("metrics_config"), []))],
+        ["path_col", () => setPathIdColState((model.get("path_col") as string) || "")],
+        ["metrics", () => setMetricsState(parseJson(model.get("metrics"), []))],
       ];
       subs.forEach(([k, cb]) => model.on(`change:${k}`, cb));
       return () => subs.forEach(([k, cb]) => model.off(`change:${k}`, cb));
     }, []);
 
     const setSegCol = (c: string) => { setSegColState(c); model.set("segment_col", c); model.save_changes(); };
-    const setPathId = (c: string) => { setPathIdColState(c); model.set("path_id_col", c); model.save_changes(); };
-    const setMetrics = (m: any[]) => { setMetricsState(m); model.set("metrics_config", JSON.stringify(m)); model.save_changes(); };
+    const setPathId = (c: string) => { setPathIdColState(c); model.set("path_col", c); model.save_changes(); };
+    const setMetrics = (m: any[]) => { setMetricsState(m); model.set("metrics", JSON.stringify(m)); model.save_changes(); };
 
     // Track the last *applied* state to show Apply only when something changed
     const [lastApplied, setLastApplied] = React.useState(() => ({
       segCol:    (model.get("segment_col") as string) || "",
-      pathIdCol: (model.get("path_id_col") as string) || "",
-      metrics:   parseJson<any[]>(model.get("metrics_config"), []),
+      pathIdCol: (model.get("path_col") as string) || "",
+      metrics:   parseJson<any[]>(model.get("metrics"), []),
     }));
 
     const isDirty = segCol !== lastApplied.segCol ||
@@ -627,8 +627,8 @@ export function render({ model, el, isStatic = false }: RenderContext) {
 
     const handleApply = () => {
       model.set("segment_col", segCol);
-      model.set("path_id_col", pathIdCol);
-      model.set("metrics_config", JSON.stringify(metrics));
+      model.set("path_col", pathIdCol);
+      model.set("metrics", JSON.stringify(metrics));
       model.set("apply_trigger", (Date.now()).toString());
       model.save_changes();
       setLastApplied({ segCol, pathIdCol, metrics });
@@ -690,13 +690,13 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         const si1 = parseInt(rowCells[0].split(":")[1]);
         const si2 = parseInt(rowCells[1].split(":")[1]);
         model.set("dist_request", JSON.stringify({
-          segment_col: segCol, path_id_col: pathIdCol || null,
+          segment_col: segCol, path_col: pathIdCol || null,
           segment_value: [result.segments[si1], result.segments[si2]], metric,
         }));
       } else {
         const si  = parseInt(rowCells[0].split(":")[1]);
         model.set("dist_request", JSON.stringify({
-          segment_col: segCol, path_id_col: pathIdCol || null,
+          segment_col: segCol, path_col: pathIdCol || null,
           segment_value: result.segments[si], metric, complement: true,
         }));
       }
@@ -876,7 +876,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
 function _metricBaseName(metricName: string): string {
   // "event_count_checkout_mean" → "event_count"
   // "length_mean" → "length"
-  const known = ["event_count", "has", "time_between", "active_days", "belongs_to", "matches", "first_event_dt", "duration", "length"];
+  const known = ["event_count", "has_event", "time_between", "active_days", "in_segment", "matches_pattern", "first_event_time", "duration", "length"];
   for (const k of known) if (metricName.startsWith(k)) return k;
   return metricName.split("_")[0];
 }
@@ -888,8 +888,8 @@ function _metricArgs(metricName: string, _events: string[]): any {
     const rest = metricName.replace(/^event_count_/, "").replace(/_[a-z\d]+$/, "");
     return rest ? { event: rest } : undefined;
   }
-  if (m === "has") {
-    const rest = metricName.replace(/^has_/, "").replace(/_[a-z\d]+$/, "");
+  if (m === "has_event") {
+    const rest = metricName.replace(/^has_event_/, "").replace(/_[a-z\d]+$/, "");
     return rest ? { events: rest } : undefined;
   }
   return undefined;

@@ -6,17 +6,17 @@ Supports metrics:
 - duration - duration in seconds between first and last event
 - event_count - event count for specific event(s)
   - events: event name (string or list of strings); list of events returns multiple metrics
-- has - event presence (0/1) for specific event(s)
+- has_event - event presence (0/1) for specific event(s)
   - events: event name (string or list of strings); list of events returns multiple metrics
 - time_between - time in seconds between first occurrences of two events
-  - event_from: event name
-  - event_to: event name
-- first_event_dt - timestamp of first event
+  - start_event: event name
+  - end_event: event name
+- first_event_time - timestamp of first event
 - active_days - number of unique days with at least one event
   - active_events: event name (string or list of strings)
-- matches - whether path matches a regex pattern (0/1)
+- matches_pattern - whether path matches a regex pattern (0/1)
   - pattern: string pattern like "login->.*->purchase"
-- belongs_to - binary metric showing if a path belongs to a segment (0/1)
+- in_segment - binary metric showing if a path belongs to a segment value (0/1)
   - segment_name: segment column name
   - segment_value: segment value (string, list of strings, or None for all values)
   - mode:
@@ -41,16 +41,16 @@ VALID_METRICS = {
     "length",
     "duration",
     "event_count",
-    "has",
+    "has_event",
     "time_between",
-    "first_event_dt",
+    "first_event_time",
     "active_days",
-    "matches",
-    "belongs_to",
+    "matches_pattern",
+    "in_segment",
 }
 
-# Valid modes for belongs_to metric
-BELONGS_TO_MODES = {
+# Valid modes for the in_segment metric
+IN_SEGMENT_MODES = {
     "any",  # segment_value appears at least once
     "all",  # segment_value is the only value in the segment column
     "event_share",  # segment_value appears in at least N% of events
@@ -95,16 +95,16 @@ class MetricConfig:
         Returns original configs enriched with 'cols' key containing column names.
 
         Example:
-            Input: [{"metric": "has", "metric_args": {"events": ["A", "B"]}, "agg": "mean"}]
-            Output: [{"metric": "has", "metric_args": {"events": ["A", "B"]}, "agg": "mean", "cols": ["has_A", "has_B"]}]
+            Input: [{"metric": "has_event", "metric_args": {"events": ["A", "B"]}, "agg": "mean"}]
+            Output: [{"metric": "has_event", "metric_args": {"events": ["A", "B"]}, "agg": "mean", "cols": ["has_event_A", "has_event_B"]}]
 
-        Note: For belongs_to metric with segment_value=None, cols will be empty list
+        Note: For in_segment metric with segment_value=None, cols will be empty list
         because the actual columns are determined at build time.
         """
         enriched = []
         for parsed in self.parsed_configs:
             original = parsed["original"].copy()
-            # Handle case when metric_names is None (e.g., belongs_to with segment_value=None)
+            # Handle case when metric_names is None (e.g., in_segment with segment_value=None)
             # In this case, actual columns are determined at build time
             metric_names = parsed.get("metric_names")
             original["cols"] = metric_names if metric_names is not None else []
@@ -148,10 +148,10 @@ class MetricConfig:
                 "metric_names": ["duration"],
                 "original": config_dict,
             }
-        elif metric == "first_event_dt":
+        elif metric == "first_event_time":
             return {
-                "type": "first_event_dt",
-                "metric_names": ["first_event_dt"],
+                "type": "first_event_time",
+                "metric_names": ["first_event_time"],
                 "original": config_dict,
             }
         elif metric == "active_days":
@@ -162,23 +162,23 @@ class MetricConfig:
                 "active_events": active_events,
                 "original": config_dict,
             }
-        elif metric == "matches":
+        elif metric == "matches_pattern":
             pattern = metric_args.get("pattern")
             if not pattern:
                 raise InvalidMetricConfigError(
-                    "'matches' metric requires 'pattern' in metric_args"
+                    "'matches_pattern' metric requires 'pattern' in metric_args"
                 )
             return {
-                "type": "matches",
+                "type": "matches_pattern",
                 "pattern": pattern,
-                "metric_names": [f"matches_{pattern}"],
+                "metric_names": [f"matches_pattern_{pattern}"],
                 "original": config_dict,
             }
-        elif metric == "has":
+        elif metric == "has_event":
             events = metric_args.get("events")
             if not events:
                 raise InvalidMetricConfigError(
-                    "'has' metric requires 'events' in metric_args"
+                    "'has_event' metric requires 'events' in metric_args"
                 )
 
             if isinstance(events, str):
@@ -186,17 +186,17 @@ class MetricConfig:
             elif isinstance(events, list):
                 if len(events) == 0:
                     raise InvalidMetricConfigError(
-                        "'has' metric requires non-empty 'events' list"
+                        "'has_event' metric requires non-empty 'events' list"
                     )
                 event_names = events
             else:
                 raise InvalidMetricConfigError(
-                    "'has' metric 'events' must be string or list"
+                    "'has_event' metric 'events' must be string or list"
                 )
             return {
-                "type": "has",
+                "type": "has_event",
                 "event_names": event_names,
-                "metric_names": [f"has_{e}" for e in event_names],
+                "metric_names": [f"has_event_{e}" for e in event_names],
                 "original": config_dict,
             }
         elif metric == "event_count":
@@ -224,20 +224,20 @@ class MetricConfig:
                 "original": config_dict,
             }
         elif metric == "time_between":
-            event_from = metric_args.get("event_from")
-            event_to = metric_args.get("event_to")
-            if not event_from or not event_to:
+            start_event = metric_args.get("start_event")
+            end_event = metric_args.get("end_event")
+            if not start_event or not end_event:
                 raise InvalidMetricConfigError(
-                    "'time_between' metric requires 'event_from' and 'event_to' in metric_args"
+                    "'time_between' metric requires 'start_event' and 'end_event' in metric_args"
                 )
             return {
                 "type": "time_from_to",
-                "event_from": event_from,
-                "event_to": event_to,
-                "metric_names": [f"time_from_{event_from}_to_{event_to}"],
+                "start_event": start_event,
+                "end_event": end_event,
+                "metric_names": [f"time_from_{start_event}_to_{end_event}"],
                 "original": config_dict,
             }
-        elif metric == "belongs_to":
+        elif metric == "in_segment":
             segment_name = metric_args.get("segment_name")
             segment_value = metric_args.get(
                 "segment_value"
@@ -246,11 +246,11 @@ class MetricConfig:
 
             if not segment_name:
                 raise InvalidMetricConfigError(
-                    "'belongs_to' metric requires 'segment_name' in metric_args"
+                    "'in_segment' metric requires 'segment_name' in metric_args"
                 )
-            if mode not in BELONGS_TO_MODES:
+            if mode not in IN_SEGMENT_MODES:
                 raise InvalidMetricConfigError(
-                    f"'belongs_to' metric has invalid mode '{mode}'. Valid modes: {sorted(BELONGS_TO_MODES)}"
+                    f"'in_segment' metric has invalid mode '{mode}'. Valid modes: {sorted(IN_SEGMENT_MODES)}"
                 )
 
             # Normalize segment_values to list or None (for all values)
@@ -261,23 +261,23 @@ class MetricConfig:
             elif isinstance(segment_value, list):
                 if len(segment_value) == 0:
                     raise InvalidMetricConfigError(
-                        "'belongs_to' metric requires non-empty 'segment_value' list"
+                        "'in_segment' metric requires non-empty 'segment_value' list"
                     )
                 segment_values = segment_value
                 metric_names = [
-                    f"belongs_to_{segment_name}_{v}_{mode}" for v in segment_values
+                    f"in_segment_{segment_name}_{v}_{mode}" for v in segment_values
                 ]
             elif isinstance(segment_value, (str, int, float, bool)):
                 # Single scalar value (string, number, or boolean)
                 segment_values = [segment_value]
-                metric_names = [f"belongs_to_{segment_name}_{segment_value}_{mode}"]
+                metric_names = [f"in_segment_{segment_name}_{segment_value}_{mode}"]
             else:
                 raise InvalidMetricConfigError(
-                    f"'belongs_to' metric 'segment_value' must be string, number, boolean, list, or None. Got: {type(segment_value).__name__}"
+                    f"'in_segment' metric 'segment_value' must be string, number, boolean, list, or None. Got: {type(segment_value).__name__}"
                 )
 
             result = {
-                "type": "belongs_to",
+                "type": "in_segment",
                 "segment_name": segment_name,
                 "segment_values": segment_values,  # None means all values
                 "mode": mode,
@@ -290,7 +290,7 @@ class MetricConfig:
                 threshold = metric_args.get("threshold")
                 if threshold is None:
                     raise InvalidMetricConfigError(
-                        "'belongs_to' metric with mode 'event_share' requires 'threshold' (e.g., 0.1 for 10%)"
+                        "'in_segment' metric with mode 'event_share' requires 'threshold' (e.g., 0.1 for 10%)"
                     )
                 result["threshold"] = threshold
 
@@ -357,11 +357,11 @@ class MetricBuilder:
                         f"Event '{e}' not found. Available events: {sorted(available_events)}"
                     )
 
-        elif metric_name == "has":
+        elif metric_name == "has_event":
             events = metric_args.get("events")
             if not events:
                 raise InvalidMetricConfigError(
-                    "'has' metric requires 'events' in metric_args"
+                    "'has_event' metric requires 'events' in metric_args"
                 )
             events_to_check = [events] if isinstance(events, str) else events
             for e in events_to_check:
@@ -371,33 +371,33 @@ class MetricBuilder:
                     )
 
         elif metric_name == "time_between":
-            event_from = metric_args.get("event_from")
-            event_to = metric_args.get("event_to")
-            if not event_from or not event_to:
+            start_event = metric_args.get("start_event")
+            end_event = metric_args.get("end_event")
+            if not start_event or not end_event:
                 raise InvalidMetricConfigError(
-                    "'time_between' metric requires 'event_from' and 'event_to' in metric_args"
+                    "'time_between' metric requires 'start_event' and 'end_event' in metric_args"
                 )
             # path_start and path_end are synthetic events, don't validate them
             if (
-                event_from not in SYNTHETIC_EVENTS
-                and event_from not in available_events
+                start_event not in SYNTHETIC_EVENTS
+                and start_event not in available_events
             ):
                 raise InvalidMetricConfigError(
-                    f"Event '{event_from}' not found. Available events: {sorted(available_events)}"
+                    f"Event '{start_event}' not found. Available events: {sorted(available_events)}"
                 )
-            if event_to not in SYNTHETIC_EVENTS and event_to not in available_events:
+            if end_event not in SYNTHETIC_EVENTS and end_event not in available_events:
                 raise InvalidMetricConfigError(
-                    f"Event '{event_to}' not found. Available events: {sorted(available_events)}"
+                    f"Event '{end_event}' not found. Available events: {sorted(available_events)}"
                 )
 
-        elif metric_name == "matches":
+        elif metric_name == "matches_pattern":
             pattern = metric_args.get("pattern")
             if not pattern:
                 raise InvalidMetricConfigError(
-                    "'matches' metric requires 'pattern' in metric_args"
+                    "'matches_pattern' metric requires 'pattern' in metric_args"
                 )
 
-        elif metric_name == "belongs_to":
+        elif metric_name == "in_segment":
             segment_name = metric_args.get("segment_name")
             segment_value = metric_args.get(
                 "segment_value"
@@ -406,11 +406,11 @@ class MetricBuilder:
 
             if not segment_name:
                 raise InvalidMetricConfigError(
-                    "'belongs_to' metric requires 'segment_name' in metric_args"
+                    "'in_segment' metric requires 'segment_name' in metric_args"
                 )
-            if mode not in BELONGS_TO_MODES:
+            if mode not in IN_SEGMENT_MODES:
                 raise InvalidMetricConfigError(
-                    f"'belongs_to' metric has invalid mode '{mode}'. Valid modes: {sorted(BELONGS_TO_MODES)}"
+                    f"'in_segment' metric has invalid mode '{mode}'. Valid modes: {sorted(IN_SEGMENT_MODES)}"
                 )
 
             # Validate that segment column exists
@@ -455,29 +455,29 @@ class MetricBuilder:
                     )
 
     def build_metrics(
-        self, config: List[Dict[str, Any]], path_id_col: str | None = None
+        self, config: List[Dict[str, Any]], path_col: str | None = None
     ) -> pd.DataFrame:
         """
         Main method for building metrics
 
         Args:
             config: List of metric configuration dicts with 'metric' and optional 'metric_args' fields
-            path_id_col: Path ID column (if None, taken from schema)
+            path_col: Path ID column (if None, taken from schema)
 
         Returns:
             DataFrame with path_id as index and metrics as columns
         """
-        path_id_col = path_id_col or self.schema.path_col
+        path_col = path_col or self.schema.path_col
         event_col = self.schema.event_col
 
         metric_config = MetricConfig(config)
-        path_ids = self.df[path_id_col].unique()
+        path_ids = self.df[path_col].unique()
 
         metric_dfs: List[pd.DataFrame] = []
 
         # Build metrics for each configuration
         for config_item in metric_config.parsed_configs:
-            metric_df = self._build_metric(config_item, path_id_col, event_col)
+            metric_df = self._build_metric(config_item, path_col, event_col)
 
             # For time_from_to metrics, keep NaN values (don't fill with 0)
             if config_item["type"] == "time_from_to":
@@ -492,37 +492,37 @@ class MetricBuilder:
         else:
             result_df = pd.DataFrame(index=path_ids)
 
-        result_df.index.name = path_id_col
+        result_df.index.name = path_col
         return result_df
 
     def _build_metric(
-        self, config: Dict[str, Any], path_id_col: str, event_col: str
+        self, config: Dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds specific metric according to configuration"""
 
         if config["type"] == "event_count":
-            return self._build_event_count(config, path_id_col, event_col)
-        elif config["type"] == "has":
-            return self._build_has(config, path_id_col, event_col)
+            return self._build_event_count(config, path_col, event_col)
+        elif config["type"] == "has_event":
+            return self._build_has(config, path_col, event_col)
         elif config["type"] == "time_from_to":
-            return self._build_time_from_to(config, path_id_col, event_col)
-        elif config["type"] == "matches":
-            return self._build_matches(config, path_id_col, event_col)
+            return self._build_time_from_to(config, path_col, event_col)
+        elif config["type"] == "matches_pattern":
+            return self._build_matches(config, path_col, event_col)
         elif config["type"] == "length":
-            return self._build_length(path_id_col)
+            return self._build_length(path_col)
         elif config["type"] == "duration":
-            return self._build_duration(path_id_col)
-        elif config["type"] == "first_event_dt":
-            return self._build_first_event_dt(path_id_col)
+            return self._build_duration(path_col)
+        elif config["type"] == "first_event_time":
+            return self._build_first_event_time(path_col)
         elif config["type"] == "active_days":
-            return self._build_active_days(path_id_col, config.get("active_events"))
-        elif config["type"] == "belongs_to":
-            return self._build_belongs_to(config, path_id_col)
+            return self._build_active_days(path_col, config.get("active_events"))
+        elif config["type"] == "in_segment":
+            return self._build_in_segment(config, path_col)
         else:
             raise InvalidMetricConfigError(f"Unknown metric type: '{config['type']}'")
 
     def _build_event_count(
-        self, config: Dict[str, Any], path_id_col: str, event_col: str
+        self, config: Dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds event count metrics for one or more events"""
         event_names = config["event_names"]
@@ -530,12 +530,12 @@ class MetricBuilder:
         events_quoted = ", ".join([f"'{e}'" for e in event_names])
         query = f"""
         SELECT
-            {path_id_col},
+            {path_col},
             {event_col},
             count(*) as count
         FROM df
         WHERE {event_col} IN ({events_quoted})
-        GROUP BY {path_id_col}, {event_col}
+        GROUP BY {path_col}, {event_col}
         """
 
         df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
@@ -546,7 +546,7 @@ class MetricBuilder:
 
         # Pivot: path_id as index, events as columns
         metrics_df = (
-            result.set_index([path_id_col, event_col])["count"]
+            result.set_index([path_col, event_col])["count"]
             .unstack(fill_value=0)
             .reindex(columns=event_names, fill_value=0)
         )
@@ -555,43 +555,43 @@ class MetricBuilder:
         return metrics_df
 
     def _build_has(
-        self, config: Dict[str, Any], path_id_col: str, event_col: str
+        self, config: Dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds event presence metrics (0/1) for one or more events"""
 
-        metrics_df = self._build_event_count(config, path_id_col, event_col)
+        metrics_df = self._build_event_count(config, path_col, event_col)
         metrics_df = (metrics_df > 0).astype(int)
         metrics_df.columns = [
-            col.replace("event_count_", "has_") for col in metrics_df.columns
+            col.replace("event_count_", "has_event_") for col in metrics_df.columns
         ]
 
         return metrics_df
 
     def _build_time_from_to(
-        self, config: Dict[str, Any], path_id_col: str, event_col: str
+        self, config: Dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds time difference metric between two events (in seconds)"""
-        event_from = config["event_from"]
-        event_to = config["event_to"]
-        timestamp_col = self.schema.timestamp
+        start_event = config["start_event"]
+        end_event = config["end_event"]
+        timestamp_col = self.schema.timestamp_col
 
         # Lazy load dataframe with start_end events (needed for path_start/path_end)
         if self.df_with_start_end is None:
             self.df_with_start_end = self.eventstream.add_start_end_events(
-                path_id_col=path_id_col
+                path_col=path_col
             ).df
 
         query = f"""
         WITH first_events AS (
             SELECT
-                {path_id_col},
-                MIN(CASE WHEN {event_col} = '{event_from}' THEN {timestamp_col} END) as time_from,
-                MIN(CASE WHEN {event_col} = '{event_to}' THEN {timestamp_col} END) as time_to
+                {path_col},
+                MIN(CASE WHEN {event_col} = '{start_event}' THEN {timestamp_col} END) as time_from,
+                MIN(CASE WHEN {event_col} = '{end_event}' THEN {timestamp_col} END) as time_to
             FROM df_with_start_end
-            GROUP BY {path_id_col}
+            GROUP BY {path_col}
         )
         SELECT
-            {path_id_col},
+            {path_col},
             EPOCH(time_to - time_from) as time_diff_seconds
         FROM first_events
         WHERE time_from IS NOT NULL AND time_to IS NOT NULL
@@ -600,57 +600,57 @@ class MetricBuilder:
         df_with_start_end = self.df_with_start_end  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
         result = duckdb.query(query).df()
 
-        metric_name = f"time_from_{event_from}_to_{event_to}"
+        metric_name = f"time_from_{start_event}_to_{end_event}"
         if len(result) > 0:
-            return result.set_index(path_id_col).rename(
+            return result.set_index(path_col).rename(
                 columns={"time_diff_seconds": metric_name}
             )
         else:
             # Empty result - no paths have both events
             return pd.DataFrame(columns=[metric_name])
 
-    def _build_length(self, path_id_col: str) -> pd.DataFrame:
+    def _build_length(self, path_col: str) -> pd.DataFrame:
         """Number of steps (events) per path"""
         query = f"""
-        SELECT {path_id_col}, COUNT(*) AS length
+        SELECT {path_col}, COUNT(*) AS length
         FROM df
-        GROUP BY {path_id_col}
+        GROUP BY {path_col}
         """
         df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
         result = duckdb.query(query).df()
-        return result.set_index(path_id_col)
+        return result.set_index(path_col)
 
-    def _build_duration(self, path_id_col: str) -> pd.DataFrame:
+    def _build_duration(self, path_col: str) -> pd.DataFrame:
         """Duration in seconds between first and last event per path"""
-        timestamp_col = self.schema.timestamp
+        timestamp_col = self.schema.timestamp_col
         query = f"""
-        SELECT {path_id_col}, EPOCH(MAX({timestamp_col}) - MIN({timestamp_col})) AS duration
+        SELECT {path_col}, EPOCH(MAX({timestamp_col}) - MIN({timestamp_col})) AS duration
         FROM df
-        GROUP BY {path_id_col}
+        GROUP BY {path_col}
         """
         df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
         result = duckdb.query(query).df()
         result["duration"] = result["duration"].astype(float)
-        return result.set_index(path_id_col)
+        return result.set_index(path_col)
 
-    def _build_first_event_dt(self, path_id_col: str) -> pd.DataFrame:
+    def _build_first_event_time(self, path_col: str) -> pd.DataFrame:
         """Unix timestamp (seconds) of first event per path.
         Stored as float so mean/median/percentile aggregations work correctly."""
-        timestamp_col = self.schema.timestamp
+        timestamp_col = self.schema.timestamp_col
         query = f"""
-        SELECT {path_id_col}, EPOCH(MIN({timestamp_col})) AS first_event_dt
+        SELECT {path_col}, EPOCH(MIN({timestamp_col})) AS first_event_time
         FROM df
-        GROUP BY {path_id_col}
+        GROUP BY {path_col}
         """
         df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
         result = duckdb.query(query).df()
-        result["first_event_dt"] = result["first_event_dt"].astype(float)
-        return result.set_index(path_id_col)
+        result["first_event_time"] = result["first_event_time"].astype(float)
+        return result.set_index(path_col)
 
-    def _build_active_days(self, path_id_col: str, active_events=None) -> pd.DataFrame:
+    def _build_active_days(self, path_col: str, active_events=None) -> pd.DataFrame:
         """Number of unique days with at least one (matching) event per path.
         active_events: optional list of events to count; if None, all events count."""
-        timestamp_col = self.schema.timestamp
+        timestamp_col = self.schema.timestamp_col
         event_col = self.schema.event_col
         if active_events:
             ev_list = (
@@ -661,16 +661,16 @@ class MetricBuilder:
         else:
             count_expr = f"COUNT(DISTINCT CAST({timestamp_col} AS DATE))"
         query = f"""
-        SELECT {path_id_col}, {count_expr} AS active_days
+        SELECT {path_col}, {count_expr} AS active_days
         FROM df
-        GROUP BY {path_id_col}
+        GROUP BY {path_col}
         """
         df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
         result = duckdb.query(query).df()
-        return result.set_index(path_id_col)
+        return result.set_index(path_col)
 
     def _build_matches(
-        self, config: Dict[str, Any], path_id_col: str, event_col: str
+        self, config: Dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
         """Builds pattern matching metric (0/1) for each path"""
         pattern = config["pattern"]
@@ -679,14 +679,14 @@ class MetricBuilder:
         # Lazy load dataframe with start_end events (needed for path_start/path_end in patterns)
         if self.df_with_start_end is None:
             self.df_with_start_end = self.eventstream.add_start_end_events(
-                path_id_col=path_id_col
+                path_col=path_col
             ).df
 
         # Build path strings for each path_id
         query = f"""
-        SELECT {path_id_col}, string_agg({event_col}, '->') as path
+        SELECT {path_col}, string_agg({event_col}, '->') as path
         FROM df_with_start_end
-        GROUP BY {path_id_col}
+        GROUP BY {path_col}
         """
         # df_with_start_end and paths are needed for DuckDB scripts execution
         df_with_start_end = self.df_with_start_end  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
@@ -698,15 +698,13 @@ class MetricBuilder:
             f"regexp_matches(path, {format_value_for_sql(p)})" for p in patterns
         )
 
-        query = f'select {path_id_col}, {patterns_chunk} as "{metric_name}" from paths'
+        query = f'select {path_col}, {patterns_chunk} as "{metric_name}" from paths'
         result = duckdb.sql(query).df()
-        return result.set_index(path_id_col)
+        return result.set_index(path_col)
 
-    def _build_belongs_to(
-        self, config: Dict[str, Any], path_id_col: str
-    ) -> pd.DataFrame:
+    def _build_in_segment(self, config: Dict[str, Any], path_col: str) -> pd.DataFrame:
         """
-        Builds belongs_to metric (0/1) for each path.
+        Builds in_segment metric (0/1) for each path.
 
         Determines if a path belongs to a segment based on different modes:
         - any: segment_value appears at least once
@@ -729,7 +727,7 @@ class MetricBuilder:
             segment_values = sorted(unique_values, key=lambda x: str(x))
 
         # Build metric names
-        metric_names = [f"belongs_to_{segment_name}_{v}_{mode}" for v in segment_values]
+        metric_names = [f"in_segment_{segment_name}_{v}_{mode}" for v in segment_values]
 
         # Build metrics for each segment value
         result_dfs = []
@@ -742,10 +740,10 @@ class MetricBuilder:
                 # Path belongs if segment_value appears at least once
                 query = f"""
                 SELECT
-                    {path_id_col},
+                    {path_col},
                     MAX(CASE WHEN {segment_name} = {sql_value} THEN 1 ELSE 0 END) AS belongs
                 FROM df
-                GROUP BY {path_id_col}
+                GROUP BY {path_col}
                 """
                 result = duckdb.query(query).df()
 
@@ -754,14 +752,14 @@ class MetricBuilder:
                 query = f"""
                 WITH path_segment_values AS (
                     SELECT
-                        {path_id_col},
+                        {path_col},
                         COUNT(DISTINCT {segment_name}) AS distinct_values,
                         MAX(CASE WHEN {segment_name} = {sql_value} THEN 1 ELSE 0 END) AS has_target
                     FROM df
-                    GROUP BY {path_id_col}
+                    GROUP BY {path_col}
                 )
                 SELECT
-                    {path_id_col},
+                    {path_col},
                     CASE WHEN distinct_values = 1 AND has_target = 1 THEN 1 ELSE 0 END AS belongs
                 FROM path_segment_values
                 """
@@ -773,14 +771,14 @@ class MetricBuilder:
                 query = f"""
                 WITH path_counts AS (
                     SELECT
-                        {path_id_col},
+                        {path_col},
                         COUNT(*) AS total_events,
                         SUM(CASE WHEN {segment_name} = {sql_value} THEN 1 ELSE 0 END) AS target_events
                     FROM df
-                    GROUP BY {path_id_col}
+                    GROUP BY {path_col}
                 )
                 SELECT
-                    {path_id_col},
+                    {path_col},
                     CASE WHEN CAST(target_events AS DOUBLE) / total_events >= {threshold} THEN 1 ELSE 0 END AS belongs
                 FROM path_counts
                 """
@@ -789,7 +787,7 @@ class MetricBuilder:
                 continue
 
             result_dfs.append(
-                result.set_index(path_id_col).rename(columns={"belongs": metric_name})
+                result.set_index(path_col).rename(columns={"belongs": metric_name})
             )
 
         if not result_dfs:

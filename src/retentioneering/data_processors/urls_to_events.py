@@ -11,7 +11,7 @@ from retentioneering.exceptions import (
     PreprocessingColumnNotFoundError,
 )
 
-PROCESSOR_NAME = "url_events"
+PROCESSOR_NAME = "urls_to_events"
 
 # Matches 2-letter BCP-47 locale prefixes commonly used in URL paths:
 # e.g. en, fr, de, zh-cn, fr-ca, zh-hant.
@@ -41,7 +41,7 @@ def _strip_locale(path: str) -> str:
 def _parse_url_parts(
     url: str,
     strip_host: bool = True,
-    strip_cgi: bool = True,
+    strip_query: bool = True,
     strip_locale: bool = True,
 ) -> Tuple[str, str, str, str]:
     """
@@ -53,8 +53,8 @@ def _parse_url_parts(
 
     Effective path computation:
       strip_host=True  → use urlparse().path (removes scheme + netloc)
-      strip_host=False, strip_cgi=True  → same path component, query removed
-      strip_host=False, strip_cgi=False → path + "?" + query if query exists
+      strip_host=False, strip_query=True  → same path component, query removed
+      strip_host=False, strip_query=False → path + "?" + query if query exists
     """
     raw = str(url)
 
@@ -68,14 +68,14 @@ def _parse_url_parts(
         return stripped or "/", "", "", ""
 
     # Build effective path
-    if strip_host or strip_cgi:
+    if strip_host or strip_query:
         # In both cases we want the path without the query string.
         # urlparse().path never contains the query, so this covers:
-        #   strip_host=True  (any strip_cgi)
-        #   strip_host=False, strip_cgi=True
+        #   strip_host=True  (any strip_query)
+        #   strip_host=False, strip_query=True
         path = parsed_path
     else:
-        # strip_host=False, strip_cgi=False: keep query in the path
+        # strip_host=False, strip_query=False: keep query in the path
         path = parsed_path + ("?" + query if query else "")
 
     # Normalize: lowercase, strip leading/trailing slashes
@@ -99,11 +99,11 @@ def _parse_url_parts(
 def _parse_effective_path(
     url: str,
     strip_host: bool = True,
-    strip_cgi: bool = True,
+    strip_query: bool = True,
     strip_locale: bool = True,
 ) -> str:
     """Convenience wrapper returning only the effective path."""
-    path, _, _, _ = _parse_url_parts(url, strip_host, strip_cgi, strip_locale)
+    path, _, _, _ = _parse_url_parts(url, strip_host, strip_query, strip_locale)
     return path
 
 
@@ -122,7 +122,7 @@ def _build_event_name(
       * Otherwise → (cut_path + "/" + slug_name, slug_name).
     """
     cut_path = cut_node["_norm_path"]
-    slug_default = (cut_node.get("custom_name") or "").strip() or "sub-page"
+    slug_default = (cut_node.get("name") or "").strip() or "sub-page"
 
     # Case A
     if effective_path == cut_path:
@@ -135,17 +135,17 @@ def _build_event_name(
 
     child_node = nodes_by_path.get(child_path)
 
-    if child_node is not None and child_node["is_cut"]:
+    if child_node is not None and child_node["aggregate_children"]:
         # Exception cut — recurse with child as new cut node
         return _build_event_name(effective_path, child_node, nodes_by_path)
 
-    slug_name = (child_node.get("custom_name") or "").strip() if child_node else ""
+    slug_name = (child_node.get("name") or "").strip() if child_node else ""
     if not slug_name:
         slug_name = slug_default
     return cut_path + "/" + slug_name, slug_name
 
 
-class UrlEvents(DataProcessor):
+class UrlsToEvents(DataProcessor):
     """
     Transforms raw URL events into structured event names based on a URL
     path tree configured by the user.  Optionally saves intermediate
@@ -154,14 +154,14 @@ class UrlEvents(DataProcessor):
     Args:
         column:       Column with the raw URL.
         nodes:        URL tree node list.  Each node must have a 'path' (str)
-                      and may have 'is_cut', 'is_deleted', 'custom_name'.
+                      and may have 'aggregate_children', 'exclude', 'name'.
         strip_host:   Extract only the pathname (strip scheme + host). Default True.
-        strip_cgi:    Remove query string and URL fragment.  Default True.
+        strip_query:    Remove query string and URL fragment.  Default True.
         strip_locale: Remove first path segment when it is a 2-letter BCP-47
                       locale tag (e.g. 'en', 'fr-ca').  Default True.
-        slug_enabled: When False, cut nodes are ignored.  Default True.
+        keep_full_paths: When True, aggregate_children nodes are ignored. Default False.
         host_col:     Column name to write the extracted hostname.
-        cgi_col:      Column name to write the extracted query string.
+        query_col:      Column name to write the extracted query string.
         locale_col:   Column name to write the extracted locale code.
         slug_col:     Column name to write the slug value used in the event
                       name (empty string when no slug was applied).
@@ -172,11 +172,11 @@ class UrlEvents(DataProcessor):
         column: str,
         nodes: List[dict],
         strip_host: bool = True,
-        strip_cgi: bool = True,
+        strip_query: bool = True,
         strip_locale: bool = True,
-        slug_enabled: bool = True,
+        keep_full_paths: bool = False,
         host_col: Optional[str] = None,
-        cgi_col: Optional[str] = None,
+        query_col: Optional[str] = None,
         locale_col: Optional[str] = None,
         slug_col: Optional[str] = None,
     ) -> None:
@@ -201,11 +201,11 @@ class UrlEvents(DataProcessor):
 
         self.column = column
         self._strip_host = strip_host
-        self._strip_cgi = strip_cgi
+        self._strip_query = strip_query
         self._strip_locale = strip_locale
-        self._slug_enabled = slug_enabled
+        self._keep_full_paths = keep_full_paths
         self._host_col = host_col or None
-        self._cgi_col = cgi_col or None
+        self._query_col = query_col or None
         self._locale_col = locale_col or None
         self._slug_col = slug_col or None
 
@@ -214,8 +214,8 @@ class UrlEvents(DataProcessor):
         for node in nodes:
             n = dict(node)
             n["_norm_path"] = _normalize_path(n["path"])
-            n["is_cut"] = bool(n.get("is_cut", False))
-            n["is_deleted"] = bool(n.get("is_deleted", False))
+            n["aggregate_children"] = bool(n.get("aggregate_children", False))
+            n["exclude"] = bool(n.get("exclude", False))
             processed.append(n)
 
         processed.sort(key=lambda n: len(n["_norm_path"]), reverse=True)
@@ -244,20 +244,20 @@ class UrlEvents(DataProcessor):
         """
         # Step 2: Deletion check (longest matching deleted prefix wins)
         for node in self._nodes:
-            if not node["is_deleted"]:
+            if not node["exclude"]:
                 continue
             p = node["_norm_path"]
             if effective_path == p or effective_path.startswith(p + "/"):
                 return None, None
 
-        # slug_enabled=False → skip cut-node logic entirely
-        if not self._slug_enabled:
+        # keep_full_paths=True → skip aggregation logic entirely
+        if self._keep_full_paths:
             return effective_path, None
 
-        # Step 3: Find the deepest cut node whose path is a prefix
+        # Step 3: Find the deepest aggregation node whose path is a prefix
         cut_node = None
         for node in self._nodes:
-            if not node["is_cut"]:
+            if not node["aggregate_children"]:
                 continue
             p = node["_norm_path"]
             if effective_path == p or effective_path.startswith(p + "/"):
@@ -296,7 +296,7 @@ class UrlEvents(DataProcessor):
             .astype(str)
             .apply(
                 lambda url: _parse_url_parts(
-                    url, self._strip_host, self._strip_cgi, self._strip_locale
+                    url, self._strip_host, self._strip_query, self._strip_locale
                 )
             )
         )
@@ -336,7 +336,7 @@ class UrlEvents(DataProcessor):
         # Write optional extraction columns and update schema
         extra_cols = [
             (self._host_col, hosts),
-            (self._cgi_col, queries),
+            (self._query_col, queries),
             (self._locale_col, locales),
             (self._slug_col, slugs.fillna("")),
         ]

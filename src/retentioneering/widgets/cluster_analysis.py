@@ -22,11 +22,11 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
     method = traitlets.Unicode("kmeans").tag(sync=True)
     scaler = traitlets.Unicode("minmax").tag(sync=True)
     n_clusters = traitlets.Unicode("").tag(sync=True)  # "" | "3" | "3-8" | "[3,4,5]"
-    nmf_k = traitlets.Unicode("").tag(sync=True)  # "" | "3" | "3,5,7"
+    nmf_components = traitlets.Unicode("").tag(sync=True)  # "" | "3" | "3,5,7"
     nmf_enabled = traitlets.Bool(False).tag(sync=True)
-    metrics_config = traitlets.Unicode("[]").tag(sync=True)
+    overview_metrics = traitlets.Unicode("[]").tag(sync=True)
     aggregation = traitlets.Unicode("mean").tag(sync=True)
-    path_id_col = traitlets.Unicode("").tag(sync=True)
+    path_col = traitlets.Unicode("").tag(sync=True)
     apply_trigger = traitlets.Unicode("").tag(sync=True)
 
     # ── catalogues ─────────────────────────────────────────────────────────
@@ -52,8 +52,8 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         method=_UNSET,
         scaler=_UNSET,
         n_clusters=_UNSET,
-        metrics_config=_UNSET,
-        path_id_col=_UNSET,
+        overview_metrics=_UNSET,
+        path_col=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
         **kwargs,
@@ -78,7 +78,7 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         self.path_cols = json.dumps(eventstream.schema.path_cols)
         self.segment_cols = json.dumps(eventstream.schema.segment_cols)
         try:
-            self.segment_levels = json.dumps(eventstream.get_all_segment_levels())
+            self.segment_levels = json.dumps(eventstream.get_segment_values())
         except Exception:
             self.segment_levels = "{}"
 
@@ -101,8 +101,8 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
             json.dumps(_nc) if isinstance(_nc, list) else (str(_nc) if _nc else "3-8")
         )
         self.nmf_enabled = False
-        self.nmf_k = ""
-        _mc = metrics_config if metrics_config is not _UNSET else None
+        self.nmf_components = ""
+        _mc = overview_metrics if overview_metrics is not _UNSET else None
         if _mc is None:
             try:
                 all_events = json.loads(self.event_list)
@@ -115,11 +115,11 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
                 ]
             except Exception:
                 _mc = []
-        self.metrics_config = (
+        self.overview_metrics = (
             json.dumps(_mc) if isinstance(_mc, list) else (_mc or "[]")
         )
         self.aggregation = "mean"
-        self.path_id_col = path_id_col if path_id_col is not _UNSET else ""
+        self.path_col = path_col if path_col is not _UNSET else ""
         self.height = height if height is not _UNSET else 520
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
@@ -147,26 +147,26 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
             if not features:
                 self.result = "{}"
                 return
-            metrics = json.loads(self.metrics_config) if self.metrics_config else []
+            metrics = json.loads(self.overview_metrics) if self.overview_metrics else []
             agg = self.aggregation or "mean"
             # Apply global aggregation to metrics that don't have their own agg
             metrics = [{**m, "agg": m.get("agg") or agg} for m in metrics]
             n_clusters = _parse_n_clusters(self.n_clusters)
-            nmf_k = (
-                _parse_n_clusters(self.nmf_k)
-                if self.nmf_enabled and self.nmf_k
+            nmf_components = (
+                _parse_n_clusters(self.nmf_components)
+                if self.nmf_enabled and self.nmf_components
                 else None
             )
-            pid = self.path_id_col or None
+            pid = self.path_col or None
 
             raw = self._eventstream.cluster_analysis_data(
                 features=features,
                 method=self.method,
                 scaler=self.scaler or None,
                 n_clusters=n_clusters,
-                nmf_k=nmf_k,
-                metrics_config=metrics,
-                path_id_col=pid,
+                nmf_components=nmf_components,
+                overview_metrics=metrics,
+                path_col=pid,
             )
 
             result: dict = {}
@@ -225,11 +225,11 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
             "method": self.method,
             "scaler": self.scaler,
             "n_clusters": self.n_clusters,
-            "nmf_k": self.nmf_k,
+            "nmf_components": self.nmf_components,
             "nmf_enabled": self.nmf_enabled,
-            "metrics_config": json.loads(self.metrics_config or "[]"),
+            "overview_metrics": json.loads(self.overview_metrics or "[]"),
             "aggregation": self.aggregation,
-            "path_id_col": self.path_id_col or "",
+            "path_col": self.path_col or "",
             "path_cols": json.loads(self.path_cols or "[]"),
             "segment_cols": json.loads(self.segment_cols or "[]"),
             "segment_levels": json.loads(self.segment_levels or "{}"),

@@ -51,7 +51,7 @@ class TestAddClusters:
         ]
 
         result = stream.add_clusters(
-            segment_name="cluster",
+            name="cluster",
             features=features,
             method="kmeans",
             n_clusters=2,
@@ -78,11 +78,11 @@ class TestAddClusters:
 
         features = [
             {"metric": "length"},
-            {"metric": "has", "metric_args": {"events": "purchase"}},
+            {"metric": "has_event", "metric_args": {"events": "purchase"}},
         ]
 
         result = stream.add_clusters(
-            segment_name="buyer_cluster",
+            name="buyer_cluster",
             features=features,
             method="kmeans",
             n_clusters=2,
@@ -103,11 +103,11 @@ class TestAddClusters:
         ]
 
         result = stream.add_clusters(
-            segment_name="view_cluster",
+            name="view_cluster",
             features=features,
             method="kmeans",
             n_clusters=2,
-            scaler="std",
+            scaler="standard",
         )
 
         assert "view_cluster" in result.schema.segment_cols
@@ -120,7 +120,7 @@ class TestAddClusters:
         features = [{"metric": "length"}]
 
         result = stream.add_clusters(
-            segment_name="cluster",
+            name="cluster",
             features=features,
             method="kmeans",
             n_clusters=2,
@@ -138,7 +138,7 @@ class TestAddClusters:
 
         with pytest.raises(PreprocessingConfigError, match="n_clusters is required"):
             stream.add_clusters(
-                segment_name="cluster",
+                name="cluster",
                 features=features,
                 method="kmeans",
                 scaler="minmax",
@@ -155,7 +155,7 @@ class TestAddClusters:
         ]
 
         result = stream.add_clusters(
-            segment_name="cluster",
+            name="cluster",
             features=features,
             method="hdbscan",
             min_cluster_size=2,
@@ -178,12 +178,12 @@ class TestAddClusters:
         features = [{"metric": "length"}, {"metric": "duration"}]
 
         result = stream.add_clusters(
-            segment_name="cluster",
+            name="cluster",
             features=features,
             method="hdbscan",
             min_cluster_size=2,
             cluster_selection_epsilon=0.5,
-            scaler="std",
+            scaler="standard",
         )
 
         assert "cluster" in result.schema.segment_cols
@@ -199,7 +199,7 @@ class TestAddClusters:
 
         with pytest.raises(PreprocessingConfigError, match="already exists"):
             stream.add_clusters(
-                segment_name="existing_segment",
+                name="existing_segment",
                 features=features,
                 method="kmeans",
                 n_clusters=2,
@@ -214,7 +214,7 @@ class TestAddClusters:
 
         with pytest.raises(PreprocessingConfigError, match="already reserved"):
             stream.add_clusters(
-                segment_name="user_id", features=features, method="kmeans", n_clusters=2
+                name="user_id", features=features, method="kmeans", n_clusters=2
             )
 
     def test_unknown_method(self) -> None:
@@ -226,7 +226,7 @@ class TestAddClusters:
 
         with pytest.raises(PreprocessingConfigError, match="Unknown clustering method"):
             stream.add_clusters(
-                segment_name="cluster",
+                name="cluster",
                 features=features,
                 method="unknown_method",
                 n_clusters=2,
@@ -240,7 +240,7 @@ class TestAddClusters:
         features = [{"metric": "length"}]
 
         result = stream.add_clusters(
-            segment_name="cluster",
+            name="cluster",
             features=features,
             method="kmeans",
             n_clusters=2,
@@ -262,13 +262,13 @@ class TestAddClusters:
         features = [
             {"metric": "length"},
             {"metric": "duration"},
-            {"metric": "has", "metric_args": {"events": "purchase"}},
-            {"metric": "has", "metric_args": {"events": "view"}},
+            {"metric": "has_event", "metric_args": {"events": "purchase"}},
+            {"metric": "has_event", "metric_args": {"events": "view"}},
             {"metric": "event_count", "metric_args": {"events": "view"}},
         ]
 
         result = stream.add_clusters(
-            segment_name="multi_cluster",
+            name="multi_cluster",
             features=features,
             method="kmeans",
             n_clusters=3,
@@ -288,11 +288,11 @@ class TestAddClusters:
         features = [{"metric": "length"}, {"metric": "duration"}]
 
         result = stream.add_clusters(
-            segment_name="cluster",
+            name="cluster",
             features=features,
             method="kmeans",
             n_clusters=2,
-            scaler="std",
+            scaler="standard",
         )
 
         assert "cluster" in result.schema.segment_cols
@@ -305,17 +305,17 @@ class TestAddClusters:
         features = [
             {"metric": "length"},
             {"metric": "duration"},
-            {"metric": "has", "metric_args": {"events": "purchase"}},
+            {"metric": "has_event", "metric_args": {"events": "purchase"}},
             {"metric": "event_count", "metric_args": {"events": "view"}},
         ]
 
         result = stream.add_clusters(
-            segment_name="nmf_cluster",
+            name="nmf_cluster",
             features=features,
             method="kmeans",
             n_clusters=2,
             scaler="minmax",
-            nmf_k=2,
+            nmf_components=2,
         )
 
         assert "nmf_cluster" in result.schema.segment_cols
@@ -341,16 +341,16 @@ class TestAddClusters:
         features = [
             {"metric": "length"},
             {"metric": "duration"},
-            {"metric": "has", "metric_args": {"events": "purchase"}},
+            {"metric": "has_event", "metric_args": {"events": "purchase"}},
         ]
 
         result = stream.add_clusters(
-            segment_name="nmf_hdb_cluster",
+            name="nmf_hdb_cluster",
             features=features,
             method="hdbscan",
             min_cluster_size=2,
             scaler="minmax",
-            nmf_k=2,
+            nmf_components=2,
         )
 
         assert "nmf_hdb_cluster" in result.schema.segment_cols
@@ -360,8 +360,8 @@ class TestAddClusters:
         for cluster in unique_clusters:
             assert cluster.startswith("cluster_") or cluster == "noise"
 
-    def test_custom_path_id_col(self) -> None:
-        """Test clustering with custom path_id_col"""
+    def test_custom_path_col(self) -> None:
+        """Test clustering with custom path_col"""
         df = pd.DataFrame(
             [
                 ["session_1", "login", "2020-01-01 00:00:00"],
@@ -380,11 +380,11 @@ class TestAddClusters:
         features = [{"metric": "length"}]
 
         result = stream.add_clusters(
-            segment_name="cluster",
+            name="cluster",
             features=features,
             method="kmeans",
             n_clusters=2,
-            path_id_col="session_id",
+            path_col="session_id",
         )
 
         assert "cluster" in result.schema.segment_cols

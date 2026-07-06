@@ -197,7 +197,7 @@ class CloudMixin(traitlets.HasTraits):
         """
         Validate and apply common cloud-state fields.
 
-        Validates diff (resets if segment column gone) and path_id_col
+        Validates diff (resets if segment column gone) and path_col
         (resets if column gone).  Checks the eventstream fingerprint and
         sets cloud_load_warning / _cloud_load_mismatch accordingly.
 
@@ -215,8 +215,8 @@ class CloudMixin(traitlets.HasTraits):
             _diff = None
             reset = True
 
-        # path_id_col — reset if column no longer exists
-        _pid = p.get("path_id_col") or ""
+        # path_col — reset if column no longer exists
+        _pid = p.get("path_col") or ""
         if _pid and _pid not in es.schema.path_cols:
             _pid = ""
             reset = True

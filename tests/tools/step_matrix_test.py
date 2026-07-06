@@ -34,7 +34,7 @@ class TestStepMatrix:
         )
         max_steps = 5
         res = stream.step_sankey_data(
-            max_steps=max_steps, diff=("country", "US", "UK"), path_id_col="session_id"
+            max_steps=max_steps, diff=("country", "US", "UK"), path_col="session_id"
         )[0][0]
 
         expected = pd.DataFrame(
@@ -59,7 +59,7 @@ class TestStepMatrix:
         stream = Eventstream(df, schema)
         max_steps = 5
         res = stream.step_sankey_data(
-            max_steps=max_steps, path_pattern=".*->path_end", path_id_col="session_id"
+            max_steps=max_steps, path_pattern=".*->path_end", path_col="session_id"
         )[0]
 
         expected = pd.DataFrame(
@@ -382,8 +382,26 @@ class TestStepMatrix:
                 max_steps=max_steps,
                 path_pattern=non_matching_pattern,
                 diff=("country", "US", "UK"),
-                path_id_col="session_id",
+                path_col="session_id",
             )
 
         assert exc_info.value.error_code == "PATTERN_NO_MATCH"
         assert non_matching_pattern in exc_info.value.message
+
+
+class TestStepMatrixDataAlias:
+    def test__step_matrix_data_matches_step_sankey_data(self):
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "B", "2020-01-01 00:01:00"],
+                ["user_2", "A", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df)
+        via_sankey = stream.step_sankey_data(max_steps=3)
+        via_matrix = stream.step_matrix_data(max_steps=3)
+        assert len(via_sankey) == len(via_matrix)
+        for a, b in zip(via_sankey, via_matrix):
+            pd.testing.assert_frame_equal(a, b)

@@ -33,7 +33,7 @@ function fmtCell(metric: string, v: number | null): string {
   if (v === null || v === undefined || !Number.isFinite(v as number)) return "—";
   const n = v as number;
   if (metric === "segment_share") return (n * 100).toFixed(1) + "%";
-  if (metric.startsWith("first_event_dt")) return new Date(n * 1000).toISOString().slice(0, 10);
+  if (metric.startsWith("first_event_time")) return new Date(n * 1000).toISOString().slice(0, 10);
   if (metric === "segment_size" || metric.endsWith("_count")) return n.toLocaleString(undefined, {maximumFractionDigits: 0});
   if (n >= 1000) return n.toLocaleString(undefined, {maximumFractionDigits: 0});
   if (Number.isInteger(n)) return n.toString();
@@ -116,7 +116,7 @@ function SilhouetteChart({ data }: { data: SilhouetteData }) {
   }, [best, totalW]);
 
   const paramLabel = (p: Record<string,any>) =>
-    Object.entries(p).map(([k, v]) => `${k.replace("n_clusters","k").replace("min_cluster_size","mcs").replace("cluster_selection_epsilon","ε").replace("nmf_k","nmf")}=${v}`).join(", ");
+    Object.entries(p).map(([k, v]) => `${k.replace("n_clusters","k").replace("min_cluster_size","mcs").replace("cluster_selection_epsilon","ε").replace("nmf_components","nmf")}=${v}`).join(", ");
 
   return (
     <div ref={scrollRef} style={{ overflowX: "auto", padding: "8px 0" }}>
@@ -617,10 +617,10 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [scaler,        setScalerState]    = React.useState<string>(() => (model.get("scaler") as string) || "minmax");
     const [nClusters,     setNClusters]      = React.useState<string>(() => (model.get("n_clusters") as string) || "");
     const [nmfEnabled,    setNmfEnabled]     = React.useState<boolean>(() => (model.get("nmf_enabled") as boolean) ?? false);
-    const [nmfK,          setNmfK]           = React.useState<string>(() => (model.get("nmf_k") as string) || "");
-    const [metricsConfig, setMetricsConfig]  = React.useState<any[]>(() => parseJson(model.get("metrics_config"), []));
+    const [nmfK,          setNmfK]           = React.useState<string>(() => (model.get("nmf_components") as string) || "");
+    const [metricsConfig, setMetricsConfig]  = React.useState<any[]>(() => parseJson(model.get("overview_metrics"), []));
     const [aggregation,   setAggregation]    = React.useState<string>(() => (model.get("aggregation") as string) || "mean");
-    const [pathIdCol,     setPathIdColState] = React.useState<string>(() => (model.get("path_id_col") as string) || "");
+    const [pathIdCol,     setPathIdColState] = React.useState<string>(() => (model.get("path_col") as string) || "");
     const [result,        setResult]         = React.useState<ClusterResult>(() => parseJson(model.get("result"), {}));
     const [isLoading,     setIsLoading]      = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
     const [error,         setError]          = React.useState<string>(() => (model.get("error") as string) || "");
@@ -649,10 +649,10 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         ["scaler",      () => setScalerState((model.get("scaler") as string) || "minmax")],
         ["n_clusters",     () => setNClusters((model.get("n_clusters") as string) || "")],
         ["nmf_enabled",    () => setNmfEnabled((model.get("nmf_enabled") as boolean) ?? false)],
-        ["nmf_k",          () => setNmfK((model.get("nmf_k") as string) || "")],
-        ["metrics_config", () => setMetricsConfig(parseJson(model.get("metrics_config"), []))],
+        ["nmf_components",          () => setNmfK((model.get("nmf_components") as string) || "")],
+        ["overview_metrics", () => setMetricsConfig(parseJson(model.get("overview_metrics"), []))],
         ["aggregation",    () => setAggregation((model.get("aggregation") as string) || "mean")],
-        ["path_id_col",    () => setPathIdColState((model.get("path_id_col") as string) || "")],
+        ["path_col",    () => setPathIdColState((model.get("path_col") as string) || "")],
       ];
       subs.forEach(([k, cb]) => model.on(`change:${k}`, cb));
       return () => subs.forEach(([k, cb]) => model.off(`change:${k}`, cb));
@@ -666,9 +666,9 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const setNC         = (n: string) => setNClusters(n);
     const setNmf        = (v: boolean) => { setNmfEnabled(v); model.set("nmf_enabled", v); model.save_changes(); };
     const setNmfKVal    = (v: string) => setNmfK(v);
-    const setMetrics    = (m: any[]) => { setMetricsConfig(m); model.set("metrics_config", JSON.stringify(m)); model.save_changes(); };
+    const setMetrics    = (m: any[]) => { setMetricsConfig(m); model.set("overview_metrics", JSON.stringify(m)); model.save_changes(); };
     const setAgg        = (a: string) => { setAggregation(a); model.set("aggregation", a); model.save_changes(); };
-    const setPathId     = (c: string) => { setPathIdColState(c); model.set("path_id_col", c); model.save_changes(); };
+    const setPathId     = (c: string) => { setPathIdColState(c); model.set("path_col", c); model.save_changes(); };
     const handleToggle  = () => { setSidebarOpen(p => { const n = !p; model.set("sidebar_open", n); model.save_changes(); return n; }); };
 
     const handleApply = () => {
@@ -677,10 +677,10 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       model.set("scaler",         scaler);
       model.set("n_clusters",     nClusters);
       model.set("nmf_enabled",    nmfEnabled);
-      model.set("nmf_k",          nmfK);
-      model.set("metrics_config", JSON.stringify(metricsConfig));
+      model.set("nmf_components",          nmfK);
+      model.set("overview_metrics", JSON.stringify(metricsConfig));
       model.set("aggregation",    aggregation);
-      model.set("path_id_col",    pathIdCol);
+      model.set("path_col",    pathIdCol);
       model.set("apply_trigger",  Date.now().toString());
       model.save_changes();
       setLastApplied({ features, method, scaler, nClusters, nmfEnabled, nmfK, pathIdCol });
@@ -692,8 +692,8 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       scaler:     (model.get("scaler") as string) || "standard",
       nClusters:  (model.get("n_clusters") as string) || "3-8",
       nmfEnabled: (model.get("nmf_enabled") as boolean) ?? false,
-      nmfK:       (model.get("nmf_k") as string) || "",
-      pathIdCol:  (model.get("path_id_col") as string) || "",
+      nmfK:       (model.get("nmf_components") as string) || "",
+      pathIdCol:  (model.get("path_col") as string) || "",
     }));
 
     const isDirty = JSON.stringify(features) !== JSON.stringify(lastApplied.features)

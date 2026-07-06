@@ -16,7 +16,7 @@
    preprocessors=[{
      "type": "add_segment",
      "name": "period",
-     "values": [
+     "rules": [
        ["{timestamp_col}", "<", "YYYY-MM-DD", "normal"],
        ["{timestamp_col}", ">", "YYYY-MM-DD", "normal"],
        ["anomaly"]
@@ -29,14 +29,14 @@
 3. Call `add_transition_graph` and/or `add_step_matrix` with `diff=["period","anomaly","normal"]`.
 4. Call `add_segment_overview(segment_col="period")` to compare all KPIs.
 
-**Values format:** each entry is `[column, op, value, label]`; the last entry `["anomaly"]` is the ELSE fallback.
+**Rules format:** each entry is `[column, op, value, label]`; the last entry `["anomaly"]` is the ELSE fallback.
 
 **Concrete example** — spike on Jan 20–22 2024, timestamp column is `timestamp`:
 ```json
 {
   "type": "add_segment",
   "name": "period",
-  "values": [
+  "rules": [
     ["timestamp", "<",  "2024-01-20", "normal"],
     ["timestamp", ">",  "2024-01-22", "normal"],
     ["anomaly"]
@@ -118,7 +118,7 @@ both anchor events. The `->.*->` matches any intermediate events.
 
 Confirm with the user, then call `update_base_stream` with one or more of:
 ```
-{"type": "collapse_events", "repetitive": true}        — removes A→A→A loops
+{"type": "collapse_events", "consecutive": true}       — removes A→A→A loops
 {"type": "filter_paths", "op": ">", "metric": "length", "value": 3}
-{"type": "filter_events", "column": "event", "values": ["noise_event"], "exclude": true}
+{"type": "filter_events", "drop": {"event": ["noise_event"]}}
 ```

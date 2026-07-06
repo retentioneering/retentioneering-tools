@@ -23,9 +23,15 @@ All widgets share the following parameters:
 
 | Parameter | Type | Description |
 |---|---|---|
-| `path_id_col` | `str \| None` | Override the path ID column from the schema. |
+| `path_col` | `str \| None` | Override the path ID column from the schema. |
 | `height` | `int` | Widget height in pixels. |
 | `sidebar_open` | `bool` | Whether the settings sidebar starts open. Default: `True`. |
+
+Each widget's parameters split into two groups. **Data parameters** change the
+computed result — they are exactly the arguments of the widget's headless
+`*_data()` twin (see [Headless mode](#headless-mode)). **Display parameters**
+(`height`, `sidebar_open`, ...) only affect how the widget is rendered. The
+per-widget documentation pages use the same two groups.
 
 ## Interactive configuration
 
@@ -56,10 +62,10 @@ stream.funnel(
 )
 ```
 
-Use the special value `<OUTER>` as `value2` to compare a segment against everyone else:
+Use the reserved value `<REST>` as `value2` to compare a segment against everyone else:
 
 ```python
-stream.transition_graph(diff=["country", "US", "<OUTER>"])
+stream.transition_graph(diff=["country", "US", "<REST>"])
 ```
 
 Diff mode can also be configured interactively in the widget sidebar.
@@ -74,7 +80,7 @@ Headless methods follow the naming pattern `<widget>_data()`:
 |---|---|
 | `stream.transition_graph()` | [`stream.transition_graph_data()`](/docs/widgets/transition-graph#headless-mode) |
 | `stream.step_sankey()` | [`stream.step_sankey_data()`](/docs/widgets/step-sankey#headless-mode) |
-| `stream.step_matrix()` | [`stream.step_sankey_data()`](/docs/widgets/step-matrix#headless-mode) |
+| `stream.step_matrix()` | [`stream.step_matrix_data()`](/docs/widgets/step-matrix#headless-mode) — alias of `step_sankey_data()`; both widgets share one computation |
 | `stream.funnel()` | [`stream.funnel_data()`](/docs/widgets/funnel#headless-mode) |
 | `stream.segment_overview()` | [`stream.segment_overview_data()`](/docs/widgets/segment-overview#headless-mode) |
 | `stream.cluster_analysis()` | [`stream.cluster_analysis_data()`](/docs/widgets/cluster-analysis#headless-mode) |

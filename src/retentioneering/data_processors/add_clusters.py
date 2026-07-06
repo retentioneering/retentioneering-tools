@@ -21,7 +21,7 @@ from retentioneering.metrics.metric_builder import MetricBuilder
 PROCESSOR_NAME = "add_clusters"
 
 T_ClusteringMethod = Literal["kmeans", "hdbscan"]
-T_Scaler = Literal["minmax", "std"] | None
+T_Scaler = Literal["minmax", "standard"] | None
 
 
 class AddClusters(DataProcessor):
@@ -31,38 +31,38 @@ class AddClusters(DataProcessor):
     Adds a new segment column containing cluster labels for each trajectory.
 
     Attributes:
-        segment_name: Name of the new segment column
+        name: Name of the new segment column
         features: List of metric configurations (MetricBuilder format)
         method: Clustering method ("kmeans" or "hdbscan")
-        scaler: Feature scaler method ("minmax", "std", or None)
+        scaler: Feature scaler method ("minmax", "standard", or None)
         method_params: Parameters for the clustering algorithm
         eventstream: Eventstream instance (needed for MetricBuilder)
-        path_id_col: Path ID column name (optional)
+        path_col: Path ID column name (optional)
         event_col: Event column name (optional)
     """
 
-    segment_name: str
+    name: str
     features: List[Dict[str, Any]]
     method: T_ClusteringMethod
     scaler: T_Scaler
     method_params: Dict[str, Any]
-    nmf_k: int | None
+    nmf_components: int | None
     eventstream: Any
-    path_id_col: str | None
+    path_col: str | None
     event_col: str | None
 
     def __init__(
         self,
         eventstream: Any,
-        segment_name: str,
+        name: str,
         features: List[Dict[str, Any]],
         method: T_ClusteringMethod = "kmeans",
         scaler: T_Scaler = "minmax",
         n_clusters: int | None = None,
         min_cluster_size: int | None = None,
         cluster_selection_epsilon: float | None = None,
-        nmf_k: int | None = None,
-        path_id_col: str | None = None,
+        nmf_components: int | None = None,
+        path_col: str | None = None,
         event_col: str | None = None,
     ) -> None:
         """
@@ -70,7 +70,7 @@ class AddClusters(DataProcessor):
 
         Args:
             eventstream: Eventstream instance for metric calculation
-            segment_name: Name of the new segment column with cluster labels
+            name: Name of the new segment column with cluster labels
             features: List of metric configurations for MetricBuilder.
                      Each config is a dict with 'metric' and optional 'metric_args'.
                      Example: [
@@ -79,21 +79,21 @@ class AddClusters(DataProcessor):
                          {"metric": "event_count", "metric_args": {"events": "purchase"}}
                      ]
             method: Clustering method - "kmeans" or "hdbscan"
-            scaler: Feature scaler - "minmax", "std", or None.
+            scaler: Feature scaler - "minmax", "standard", or None.
                     Default is "minmax".
             n_clusters: Number of clusters for k-means (required for kmeans)
             min_cluster_size: Minimum cluster size for HDBSCAN
             cluster_selection_epsilon: Cluster selection epsilon for HDBSCAN
-            path_id_col: Path ID column (if None, taken from schema)
+            path_col: Path ID column (if None, taken from schema)
             event_col: Event column (if None, taken from schema)
         """
         self.eventstream = eventstream
-        self.segment_name = segment_name
+        self.name = name
         self.features = features
         self.method = method
         self.scaler = scaler
-        self.nmf_k = nmf_k
-        self.path_id_col = path_id_col
+        self.nmf_components = nmf_components
+        self.path_col = path_col
         self.event_col = event_col
 
         # Validate method and collect method-specific parameters
@@ -133,23 +133,23 @@ class AddClusters(DataProcessor):
             Tuple of (new_df, new_schema) with added cluster segment
         """
         # Validate segment name doesn't exist
-        if self.segment_name in df.columns:
-            if self.segment_name in schema.segment_cols:
+        if self.name in df.columns:
+            if self.name in schema.segment_cols:
                 raise PreprocessingConfigError(
-                    PROCESSOR_NAME, f"Segment '{self.segment_name}' already exists."
+                    PROCESSOR_NAME, f"Segment '{self.name}' already exists."
                 )
             else:
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME,
-                    f"Name '{self.segment_name}' is already reserved in the eventstream.",
+                    f"Name '{self.name}' is already reserved in the eventstream.",
                 )
 
-        path_id_col = self.path_id_col or schema.path_col
+        path_col = self.path_col or schema.path_col
         event_col = self.event_col or schema.event_col  # noqa: F841 - reserved for future use
 
         # Build features using MetricBuilder
         metric_builder = MetricBuilder(self.eventstream)
-        metrics_df = metric_builder.build_metrics(self.features, path_id_col)
+        metrics_df = metric_builder.build_metrics(self.features, path_col)
 
         if metrics_df.empty:
             raise PreprocessingConfigError(
@@ -169,8 +169,8 @@ class AddClusters(DataProcessor):
         features_scaled = self._scale_features(features)
 
         # Apply NMF dimensionality reduction if requested
-        if self.nmf_k is not None:
-            nmf = NMF(n_components=self.nmf_k, random_state=42)
+        if self.nmf_components is not None:
+            nmf = NMF(n_components=self.nmf_components, random_state=42)
             features_scaled = nmf.fit_transform(features_scaled)
 
         # Perform clustering
@@ -178,7 +178,7 @@ class AddClusters(DataProcessor):
 
         # Create cluster labels Series indexed by path_id
         cluster_series = pd.Series(
-            cluster_labels, index=metrics_df.index, name=self.segment_name
+            cluster_labels, index=metrics_df.index, name=self.name
         )
 
         # Convert labels to string for categorical representation
@@ -189,12 +189,12 @@ class AddClusters(DataProcessor):
 
         # Map cluster labels to all events in the dataframe
         new_df = df.copy()
-        new_df[self.segment_name] = new_df[path_id_col].map(cluster_series)
-        new_df[self.segment_name] = new_df[self.segment_name].astype("category")
+        new_df[self.name] = new_df[path_col].map(cluster_series)
+        new_df[self.name] = new_df[self.name].astype("category")
 
         # Update schema
         new_schema = schema.copy()
-        new_schema.segment_cols.append(self.segment_name)
+        new_schema.segment_cols.append(self.name)
 
         return new_df, new_schema
 
@@ -213,7 +213,7 @@ class AddClusters(DataProcessor):
         elif self.scaler == "minmax":
             scaler = MinMaxScaler()
             return scaler.fit_transform(features)
-        elif self.scaler == "std":
+        elif self.scaler == "standard":
             scaler = StandardScaler()
             return scaler.fit_transform(features)
         else:

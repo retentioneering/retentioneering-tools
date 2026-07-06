@@ -52,7 +52,7 @@ class TestClusterAnalysis:
             method="kmeans",
             n_clusters=2,
             scaler="minmax",
-            metrics_config=[
+            overview_metrics=[
                 {"metric": "length", "agg": "mean"},
             ],
         )
@@ -106,7 +106,7 @@ class TestClusterAnalysis:
             method="hdbscan",
             min_cluster_size=2,
             scaler="minmax",
-            metrics_config=[
+            overview_metrics=[
                 {"metric": "length", "agg": "mean"},
             ],
         )
@@ -174,14 +174,14 @@ class TestClusterAnalysis:
             features=[
                 {"metric": "length"},
                 {"metric": "duration"},
-                {"metric": "has", "metric_args": {"events": "purchase"}},
+                {"metric": "has_event", "metric_args": {"events": "purchase"}},
                 {"metric": "event_count", "metric_args": {"events": "view"}},
             ],
             method="kmeans",
             n_clusters=2,
             scaler="minmax",
-            nmf_k=2,
-            metrics_config=[
+            nmf_components=2,
+            overview_metrics=[
                 {"metric": "length", "agg": "mean"},
             ],
         )
@@ -189,7 +189,7 @@ class TestClusterAnalysis:
         assert "overview_df" in result
         nmf = result["nmf"]
         assert nmf is not None
-        # H matrix shape: (nmf_k, n_features) = (2, 4)
+        # H matrix shape: (nmf_components, n_features) = (2, 4)
         assert len(nmf["H_matrix"]) == 2
         assert len(nmf["H_matrix"][0]) == 4
         assert len(nmf["features"]) == 4
@@ -198,7 +198,7 @@ class TestClusterAnalysis:
         assert len(nmf["W_cluster_means"]) == 2  # 2 clusters
         for name, means in nmf["W_cluster_means"].items():
             assert name.startswith("cluster_")
-            assert len(means) == 2  # nmf_k=2 components
+            assert len(means) == 2  # nmf_components=2 components
 
     def test_nmf_silhouette(self) -> None:
         """Test NMF + silhouette mode returns silhouette data but no H matrix"""
@@ -209,12 +209,12 @@ class TestClusterAnalysis:
             features=[
                 {"metric": "length"},
                 {"metric": "duration"},
-                {"metric": "has", "metric_args": {"events": "purchase"}},
+                {"metric": "has_event", "metric_args": {"events": "purchase"}},
             ],
             method="kmeans",
             n_clusters=[2, 3, 4],
             scaler="minmax",
-            nmf_k=2,
+            nmf_components=2,
         )
 
         assert "silhouette" in result
@@ -225,12 +225,12 @@ class TestClusterAnalysis:
         ]
         # NMF data returned for the best clustering
         assert result["nmf"] is not None
-        assert len(result["nmf"]["H_matrix"]) == 2  # nmf_k=2
+        assert len(result["nmf"]["H_matrix"]) == 2  # nmf_components=2
         assert "W_cluster_means" in result["nmf"]
         assert "overview_df" in result
 
     def test_nmf_k_search(self) -> None:
-        """Test nmf_k as list triggers search over nmf components"""
+        """Test nmf_components as list triggers search over nmf components"""
         df = get_df()
         stream = Eventstream(df)
 
@@ -238,24 +238,24 @@ class TestClusterAnalysis:
             features=[
                 {"metric": "length"},
                 {"metric": "duration"},
-                {"metric": "has", "metric_args": {"events": "purchase"}},
+                {"metric": "has_event", "metric_args": {"events": "purchase"}},
             ],
             method="kmeans",
             n_clusters=2,
             scaler="minmax",
-            nmf_k=[2, 3],
+            nmf_components=[2, 3],
         )
 
         assert "silhouette" in result
         sil = result["silhouette"]
         assert len(sil["params"]) == 2
         assert sil["params"] == [
-            {"n_clusters": 2, "nmf_k": 2},
-            {"n_clusters": 2, "nmf_k": 3},
+            {"n_clusters": 2, "nmf_components": 2},
+            {"n_clusters": 2, "nmf_components": 3},
         ]
 
     def test_nmf_k_grid_search(self) -> None:
-        """Test nmf_k list x n_clusters list grid search"""
+        """Test nmf_components list x n_clusters list grid search"""
         df = get_df()
         stream = Eventstream(df)
 
@@ -263,23 +263,23 @@ class TestClusterAnalysis:
             features=[
                 {"metric": "length"},
                 {"metric": "duration"},
-                {"metric": "has", "metric_args": {"events": "purchase"}},
+                {"metric": "has_event", "metric_args": {"events": "purchase"}},
             ],
             method="kmeans",
             n_clusters=[2, 3],
             scaler="minmax",
-            nmf_k=[2, 3],
+            nmf_components=[2, 3],
         )
 
         assert "silhouette" in result
         sil = result["silhouette"]
-        # 2 nmf_k * 2 n_clusters = 4
+        # 2 nmf_components * 2 n_clusters = 4
         assert len(sil["params"]) == 4
         assert sil["params"] == [
-            {"n_clusters": 2, "nmf_k": 2},
-            {"n_clusters": 3, "nmf_k": 2},
-            {"n_clusters": 2, "nmf_k": 3},
-            {"n_clusters": 3, "nmf_k": 3},
+            {"n_clusters": 2, "nmf_components": 2},
+            {"n_clusters": 3, "nmf_components": 2},
+            {"n_clusters": 2, "nmf_components": 3},
+            {"n_clusters": 3, "nmf_components": 3},
         ]
 
     def test_kmeans_missing_n_clusters(self) -> None:
@@ -296,11 +296,11 @@ class TestClusterAnalysis:
                     {"metric": "duration"},
                 ],
                 method="kmeans",
-                nmf_k=2,
+                nmf_components=2,
             )
 
     def test_kmeans_missing_n_clusters_nmf_k_search(self) -> None:
-        """Test nmf_k-only search with kmeans and no n_clusters raises a clean ValueError"""
+        """Test nmf_components-only search with kmeans and no n_clusters raises a clean ValueError"""
         df = get_df()
         stream = Eventstream(df)
 
@@ -313,11 +313,11 @@ class TestClusterAnalysis:
                     {"metric": "duration"},
                 ],
                 method="kmeans",
-                nmf_k=[2, 3],
+                nmf_components=[2, 3],
             )
 
-    def test_overview_empty_metrics_config(self) -> None:
-        """Test that overview works with empty metrics_config (only segment_size/share)"""
+    def test_overview_empty_overview_metrics(self) -> None:
+        """Test that overview works with empty overview_metrics (only segment_size/share)"""
         df = get_df()
         stream = Eventstream(df)
 
@@ -326,7 +326,7 @@ class TestClusterAnalysis:
             method="kmeans",
             n_clusters=2,
             scaler="minmax",
-            metrics_config=[],
+            overview_metrics=[],
         )
 
         overview_df = result["overview_df"]

@@ -1,6 +1,10 @@
 # Contributing to retentioneering
 
-Thanks for considering a contribution! This document covers everything you
+Thanks for considering a contribution! 
+
+We welcome all possible types of contributions, including, but not limited to bug reports, documentation improvements, examples, visualizations, analytical recipes, agent skills, integrations, performance improvements, API proposals, and new analytical capabilities.
+
+This document covers everything you
 need to run the project locally. For the *why* behind the architecture, see
 the [Architecture Decision Records](docs/adr/README.md); the working summary
 for both humans and coding agents lives in [AGENTS.md](AGENTS.md).
@@ -119,6 +123,50 @@ tests/              # pytest suite: eventstream, data processors, headless tools
 4. `master` is protected — PRs only. Merging does **not** publish a release;
    releases are cut by maintainers via `v*` tags
    ([ADR-0011](docs/adr/0011-versioning-and-release.md)).
+
+
+
+
+## Before submitting a contribution
+
+Please open an issue or discussion before starting substantial work. This helps prevent duplicated effort and ensures that the proposed change fits the project architecture and roadmap.
+
+For small fixes, documentation improvements, tests, and isolated bug fixes, pull requests may be submitted directly.
+
+## Contribution terms
+
+By submitting a contribution to this repository, you certify that:
+
+1. You have the right to submit the contribution.
+2. You created the contribution yourself, or you have the legal right to submit it.
+3. Your contribution does not knowingly include confidential information, proprietary code, or third-party material that cannot be licensed under Apache-2.0.
+4. You agree that your contribution may be distributed as part of Retentioneering Core under the Apache License, Version 2.0.
+
+All commits must include a Signed-off-by line in accordance with the Developer Certificate of Origin.
+
+Example:
+
+Signed-off-by: Your Name [your.email@example.com](mailto:your.email@example.com)
+
+## Copyright
+
+Contributors retain copyright in their original contributions unless they have entered into a separate written agreement with the Retentioneering rights holder.
+
+By submitting a contribution, you grant the project the rights necessary to distribute that contribution as part of Retentioneering Core under Apache-2.0.
+
+## Maintainers
+
+Contributors who demonstrate sustained technical judgment, constructive collaboration, and responsibility for project quality may be invited to become reviewers or maintainers.
+
+Maintainers participate in code review, release planning, architectural discussions, issue triage, and roadmap development. Maintainers may be asked to sign a separate contributor or maintainer agreement before receiving merge permissions.
+
+## Recognition
+
+Meaningful contributions are recognized in release notes, documentation, contributor records, and relevant project materials.
+
+We aim to make Retentioneering a place where contributors can build public technical reputation, gain ownership of meaningful domains, and participate in the evolution of the product analytics ecosystem.
+
+
 
 ## Questions
 

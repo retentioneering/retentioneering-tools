@@ -30,7 +30,7 @@ DEMOS_ROOT = REPO_ROOT / "docs" / "build" / "demos"
 
 # Matches: <DemoWidget cmd={`...`} path="..." height={N} />
 # cmd is a JS template literal so the Python call inside can freely use
-# double quotes without escaping (mirrors the hopscotch-fe DemoWidget syntax).
+# double quotes without escaping.
 _DEMO_RE = re.compile(
     r"<DemoWidget\s+cmd=\{`(?P<cmd>.*?)`\}\s+path=\"(?P<path>[^\"]+)\"",
     re.S,

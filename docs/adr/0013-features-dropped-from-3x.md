@@ -4,8 +4,8 @@ Status: Accepted (5.0 rewrite; recorded 2026-07)
 
 ## Context
 
-5.0 is a ground-up rewrite (imported from the private "hopscotch" project),
-not an incremental port. Carrying every 3.3.0 feature would have delayed the
+5.0 is a ground-up rewrite, not an incremental port. Carrying every 3.3.0
+feature would have delayed the
 release indefinitely; some features also depended on infrastructure that was
 removed (iframe/CDN widgets, the pydantic GUI-schema system).
 

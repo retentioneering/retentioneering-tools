@@ -302,6 +302,10 @@ _HTML_TEMPLATE_BARE = """<!DOCTYPE html>
   <script>window.__HS_DATA__ = {{DATA_JSON}};</script>
   <script>{{BUNDLE_JS}}</script>
   <script>
+    (function () {
+      var override = new URLSearchParams(location.search).get('sidebar_open');
+      if (override !== null) window.__HS_DATA__.sidebar_open = override === 'true';
+    })();
     RetentioneeringWidget.renderStatic(window.__HS_DATA__, document.getElementById('retentioneering-root'));
   </script>
 </body>

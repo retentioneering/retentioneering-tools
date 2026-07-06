@@ -208,7 +208,7 @@ class StepMatrixWidget(anywidget.AnyWidget):
         path: str,
         title: str = "Step Matrix",
         analysis: str | None = None,
-        sidebar_open: bool = True,
+        sidebar_open: bool | None = None,
     ) -> None:
         """
         Export the step matrix as a standalone interactive HTML file.
@@ -223,6 +223,7 @@ class StepMatrixWidget(anywidget.AnyWidget):
             Optional analysis text. Supports basic markdown and [event] links.
         sidebar_open:
             Whether the settings sidebar starts open in the exported file.
+            Defaults to the widget's current ``sidebar_open`` value.
         """
         data = {
             "widget_type": "step_matrix",
@@ -235,7 +236,9 @@ class StepMatrixWidget(anywidget.AnyWidget):
             "segment_levels": json.loads(self.segment_levels or "{}"),
             "event_list": json.loads(self.event_list or "[]"),
             "height": self.height,
-            "sidebar_open": sidebar_open,
+            "sidebar_open": sidebar_open
+            if sidebar_open is not None
+            else self.sidebar_open,
         }
         write_html(path, title, "Step Matrix", data, analysis)
 

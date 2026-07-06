@@ -207,7 +207,7 @@ class TransitionGraphWidget(anywidget.AnyWidget):
         path: str,
         title: str = "Transition Graph",
         analysis: str | None = None,
-        sidebar_open: bool = True,
+        sidebar_open: bool | None = None,
     ) -> None:
         """
         Export the current graph as a standalone interactive HTML file.
@@ -224,6 +224,7 @@ class TransitionGraphWidget(anywidget.AnyWidget):
             Supports basic markdown (bold, italic, bullet lists, tables, headings).
         sidebar_open:
             Whether the settings sidebar starts open in the exported file.
+            Defaults to the widget's current ``sidebar_open`` value.
         """
         data = {
             "widget_type": "transition_graph",
@@ -239,7 +240,9 @@ class TransitionGraphWidget(anywidget.AnyWidget):
             "path_cols": json.loads(self.path_cols or "[]"),
             "path_col": self.path_col or "",
             "height": self.height,
-            "sidebar_open": sidebar_open,
+            "sidebar_open": sidebar_open
+            if sidebar_open is not None
+            else self.sidebar_open,
         }
         write_html(path, title, "Transition Graph", data, analysis)
 

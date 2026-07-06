@@ -35,17 +35,21 @@ stream = Eventstream(df, schema={
 
 ## 3. Explore with a widget
 
-Open an interactive Transition Graph — no arguments needed. Configure everything in the sidebar.
+Open an interactive [Transition Graph](/docs/widgets/transition-graph) — no arguments needed. Configure everything in the sidebar.
 
 <DemoWidget cmd={`stream.transition_graph()`} path="/docs-demos/guide/quick-start/transition-graph.html" height={560} />
 
-Build a conversion funnel:
-
-<DemoWidget cmd={`stream.funnel(steps=["catalog", "add_to_cart", "cart", "purchase"])`} path="/docs-demos/guide/quick-start/funnel.html" height={480} />
-
 Compare two user segments side by side:
 
-<DemoWidget cmd={`stream.transition_graph(diff=["platform", "mobile", "desktop"])`} path="/docs-demos/guide/quick-start/transition-graph-diff.html" height={560} />
+<DemoWidget cmd={`stream.transition_graph(diff=["platform", "mobile", "desktop"])`} path="/docs-demos/guide/quick-start/transition-graph-diff.html" height={560}/>
+
+Explore user paths step by step around important events or drop-off points with [Step Sankey](/docs/widgets/step-sankey):
+
+<DemoWidget cmd={`stream.step_sankey(path_pattern=".*->purchase")`} path="/docs-demos/guide/quick-start/step-sankey.html" height={560} sidebarOpen={false}/>
+
+or its equivalent [Step Matrix](/docs/widgets/step-matrix):
+
+<DemoWidget cmd={`stream.step_matrix(path_pattern=".*->purchase")`} path="/docs-demos/guide/quick-start/step-matrix.html" height={560} sidebarOpen={false} />
 
 ## 4. Prepare your data
 

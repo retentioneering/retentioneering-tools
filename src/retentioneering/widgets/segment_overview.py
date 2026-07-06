@@ -142,7 +142,7 @@ class SegmentOverviewWidget(anywidget.AnyWidget):
         path: str,
         title: str = "Segment Overview",
         analysis: str | None = None,
-        sidebar_open: bool = True,
+        sidebar_open: bool | None = None,
     ) -> None:
         data = {
             "widget_type": "segment_overview",
@@ -155,7 +155,9 @@ class SegmentOverviewWidget(anywidget.AnyWidget):
             "path_cols": json.loads(self.path_cols or "[]"),
             "event_list": json.loads(self.event_list or "[]"),
             "height": self.height,
-            "sidebar_open": sidebar_open,
+            "sidebar_open": sidebar_open
+            if sidebar_open is not None
+            else self.sidebar_open,
         }
         write_html(path, title, "Segment Overview", data, analysis)
 

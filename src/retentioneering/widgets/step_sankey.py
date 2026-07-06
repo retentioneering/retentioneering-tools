@@ -213,7 +213,7 @@ class StepSankeyWidget(anywidget.AnyWidget):
         path: str,
         title: str = "Step Sankey",
         analysis: str | None = None,
-        sidebar_open: bool = True,
+        sidebar_open: bool | None = None,
     ) -> None:
         """
         Export the step sankey diagram as a standalone interactive HTML file.
@@ -228,6 +228,7 @@ class StepSankeyWidget(anywidget.AnyWidget):
             Optional analysis text. Supports basic markdown and [event] links.
         sidebar_open:
             Whether the settings sidebar starts open in the exported file.
+            Defaults to the widget's current ``sidebar_open`` value.
         """
         data = {
             "widget_type": "step_sankey",
@@ -241,7 +242,9 @@ class StepSankeyWidget(anywidget.AnyWidget):
             "step_window": self.step_window,
             "node_positions": json.loads(self.node_positions or "{}"),
             "height": self.height,
-            "sidebar_open": sidebar_open,
+            "sidebar_open": sidebar_open
+            if sidebar_open is not None
+            else self.sidebar_open,
         }
         write_html(path, title, "Step Sankey", data, analysis)
 

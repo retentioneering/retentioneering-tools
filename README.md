@@ -71,16 +71,13 @@ No data at hand? Use the bundled synthetic e-commerce dataset:
 
 ```python
 from retentioneering.datasets.ecom import load_ecom
-from retentioneering import Eventstream
 
-ecom = Eventstream(load_ecom(), schema={
-    "path_cols": ["user_id", "session_id"],
-    "segment_cols": ["platform", "acquisition_channel"],
-})
+ecom = load_ecom()
 
+# Build a funnel
 ecom.funnel(steps=["catalog", "add_to_cart", "purchase"])
 
-# Compare two segments in one picture (diff mode)
+# Compare two segments in one picture (diff mode) with transition graph
 ecom.transition_graph(diff=["platform", "mobile", "desktop"])
 ```
 
@@ -106,27 +103,23 @@ funnel = stream.funnel_data(steps=["catalog", "add_to_cart", "purchase"])  # dic
 
 ## What's inside
 
-- **Interactive widgets** for Jupyter — [Transition Graph](https://retentioneering.com/docs/widgets/transition-graph),
-  [Step Matrix](https://retentioneering.com/docs/widgets/step-matrix),
-  [Step Sankey](https://retentioneering.com/docs/widgets/step-sankey),
-  [Funnel](https://retentioneering.com/docs/widgets/funnel),
-  [Segment Overview](https://retentioneering.com/docs/widgets/segment-overview),
-  [Cluster Analysis](https://retentioneering.com/docs/widgets/cluster-analysis).
-  Every parameter is also editable live in the widget sidebar, and every
-  widget exports to a self-contained interactive HTML file.
-- **Diff mode** in every widget — overlay two segments (`["plan", "pro", "free"]`,
-  or a segment vs. everyone else via `"<REST>"`) to see *how* behavior
+- **Interactive widgets** for in-depth analysis of user behavior:
+  - [Transition Graph](https://retentioneering.com/docs/widgets/transition-graph),
+  - [Step Matrix](https://retentioneering.com/docs/widgets/step-matrix),
+  - [Step Sankey](https://retentioneering.com/docs/widgets/step-sankey),
+  - [Funnel](https://retentioneering.com/docs/widgets/funnel),
+  - [Segment Overview](https://retentioneering.com/docs/widgets/segment-overview),
+  - [Cluster Analysis](https://retentioneering.com/docs/widgets/cluster-analysis).
+- **Diff mode** in every widget — overlay two segments to see *how* behavior
   differs, not just that a metric moved.
 - **[Data processors](https://retentioneering.com/docs/data-processors)** —
-  chainable, SQL-powered preprocessing: filtering events and paths,
-  sessionization, collapsing noise, synthetic events (incl. churn markers),
-  segments, URL parsing, daily lifecycle states, sampling.
+  chainable methods for filtering events and paths,
+  sessionization, collapsing events, adding synthetic events (including churn markers),
+  segments, URL parsing, daily lifecycle states, sampling, etc.
 - **[Path metrics](https://retentioneering.com/docs/path-metrics)** — one
   registry of per-path metrics that feeds behavioral clustering, segment
-  comparison, path filtering, and your own ML feature pipelines
-  (`stream.get_metrics()`).
-- **[MCP server](https://retentioneering.com/docs/mcp)** —
-  `retentioneering.mcp.serve(stream)` exposes the eventstream to Claude or
+  comparison, path filtering, and your own ML feature pipelines.
+- **[MCP server](https://retentioneering.com/docs/mcp)** — exposes the eventstream to Claude or
   any MCP client: agents explore the data, build report tabs, and export a
   validated interactive HTML report where every number links to its source.
 
@@ -139,8 +132,6 @@ Please feel free to contact us at retentioneering@gmail.com if you have any ques
 regarding this repo.
 
 ## Apps are better with math, join us! :)
-
-
 
 ## License and commercial model
 

@@ -2,44 +2,42 @@
 [![Discord](https://img.shields.io/badge/server-on%20discord-blue)](https://discord.com/invite/hBnuQABEV2)
 [![Telegram](https://img.shields.io/badge/chat-on%20telegram-blue)](https://t.me/retentioneering_support)
 [![Python version](https://img.shields.io/pypi/pyversions/retentioneering)](https://pypi.org/project/retentioneering/)
-[![Pipi version](https://img.shields.io/pypi/v/retentioneering)](https://pypi.org/project/retentioneering/)
+[![PyPI version](https://img.shields.io/pypi/v/retentioneering)](https://pypi.org/project/retentioneering/)
 [![Downloads](https://pepy.tech/badge/retentioneering)](https://pepy.tech/project/retentioneering)
 [![Downloads](https://static.pepy.tech/badge/retentioneering/month)](https://pepy.tech/project/retentioneering)
 
 ## What is Retentioneering?
 
-Retentioneering is a Python library that makes analyzing clickstreams, user paths (trajectories), and event logs much easier, and yields much broader and deeper insights than funnel analysis.
+Retentioneering is a Python library for behavioral analytics on event data:
+clickstreams, product event logs, user paths. Where funnels tell you *what*
+happened, retentioneering shows *how* users actually behave — real paths to
+conversion, loops and dead ends, behavioral segments, and the differences in
+behavior between any two groups of users.
 
-You can use Retentioneering to explore user behavior, segment users, and form hypotheses about what drives users to desirable actions or to churning away from a product.
+It runs on your raw data (a pandas DataFrame or CSV is enough), and renders interactive
+widgets right in Jupyter — no SaaS, no data leaving your machine.
 
-Retentioneering uses clickstream data to build behavioral segments, highlighting the events and patterns in user behavior that impact your conversion rates, retention, and revenue. The Retentioneering library is created for data analysts, marketing analysts, product owners, managers, and anyone else whose job is to improve a product’s quality.
-
-[![A simplified scenario of user behavior exploration with Retentioneering.](https://raw.githubusercontent.com/retentioneering/pics/master/pics/rete20/intro_0.png)](https://github.com/retentioneering/retentioneering-tools)
-
-
-As a natural part of the [Jupyter](https://jupyter.org/) environment, Retentioneering extends the abilities of [pandas](https://pandas.pydata.org), [NetworkX](https://networkx.org/), [scikit-learn](https://scikit-learn.org) libraries to process sequential events data more efficiently. Retentioneering tools are interactive and tailored for analytical research, so you do not have to be a Python expert to use it. With just a few lines of code, you can wrangle data, explore customer journey maps, and make visualizations.
-
-### Retentioneering structure
-
-Retentioneering consists of two major parts: [the preprocessing module](https://doc.retentioneering.com/stable/doc/getting_started/quick_start.html#quick-start-preprocessing) and [the path analysis tools](https://doc.retentioneering.com/stable/doc/getting_started/quick_start.html#quick-start-rete-tools).
-
-The **preprocessing module** provides a wide range of hands-on methods specifically designed for processing clickstream data, which can be called either using code, or via the preprocessing GUI. With separate methods for grouping or filtering events, splitting a clickstream into sessions, and much more, the Retentioneering preprocessing module enables you to dramatically reduce the amount of code, and therefore potential errors. Plus, if you’re dealing with a branchy analysis, which often happens, the preprocessing methods will help you make the calculations structured and reproducible, and organize them as a calculation graph. This is especially helpful for working with a team.
-
-The **path analysis tools** bring behavior-driven segmentation of users to product analysis by providing a powerful set of techniques for performing in-depth analysis of customer journey maps. The tools feature informative and interactive visualizations that make it possible to quickly understand in very high resolution the complex structure of a clickstream.
+**Version 5.0 is a ground-up rewrite.** The pandas engine and CDN-loaded
+widgets of 3.x were replaced with a DuckDB-backed `Eventstream`, a new
+generation of open-source [anywidget](https://anywidget.dev)-based widgets,
+and an MCP server that lets LLM agents run analyses on your eventstream. See
+[CHANGELOG.md](CHANGELOG.md) for the full 3.3.0 → 5.0 delta; the legacy 3.x
+engine lives on the [`3.x` branch](https://github.com/retentioneering/retentioneering-tools/tree/3.x).
 
 ## Documentation
 
-Complete documentation is available [here](https://doc.retentioneering.com/stable/doc/index.html).
+Complete documentation is available at
+**[https://retentioneering.com/docs](https://retentioneering.com/docs/)**.
 
 ## Installation
 
-Retentioneering can be installed via pip using [PyPI](https://pypi.org/project/retentioneering/).
+Python 3.11+ is required.
 
 ```bash
 pip install retentioneering
 ```
 
-Or directly from Jupyter notebook or [google.colab](https://colab.research.google.com/).
+Or directly from a Jupyter (Lab, Notebook, Desktop) / [Google Colab](https://colab.research.google.com/) / VS Code:
 
 ```bash
 !pip install retentioneering
@@ -47,51 +45,93 @@ Or directly from Jupyter notebook or [google.colab](https://colab.research.googl
 
 ## Quick start
 
-We recommend starting your Retentioneering journey with the [Quick Start document](https://doc.retentioneering.com/stable/doc/getting_started/quick_start.html).
+All you need is a DataFrame with three columns: a path identifier, an event
+name, and a timestamp. (Different column names? Pass a
+[schema](https://retentioneering.com/docs/eventstream).)
 
+```python
+import pandas as pd
+from retentioneering import Eventstream
 
-## Step-by-step guides
+df = pd.read_csv("events.csv")   # columns: user_id, event, timestamp
+stream = Eventstream(df)
 
-- [Eventstream](https://doc.retentioneering.com/stable/doc/user_guides/eventstream.html)
+stream.transition_graph()        # interactive behavior graph, right in the notebook
+```
 
-### Preprocessing
+No data at hand? Use the bundled synthetic e-commerce dataset:
 
-- [Data processors](https://doc.retentioneering.com/stable/doc/user_guides/dataprocessors.html)
-- [Preprocessing graph](https://doc.retentioneering.com/stable/doc/user_guides/preprocessing.html)
-- [Preprocessing tutorial](https://colab.research.google.com/drive/1WwVI5oQF81xp9DJ6rP5HyM_UjuNPjUk0?usp=sharing)
+```python
+from retentioneering.datasets.ecom import load_ecom
+from retentioneering import Eventstream
 
-### Path analysis tools
+ecom = Eventstream(load_ecom(), schema={
+    "path_cols": ["user_id", "session_id"],
+    "segment_cols": ["platform", "acquisition_channel"],
+})
 
-- [Transition graph](https://doc.retentioneering.com/stable/doc/user_guides/transition_graph.html)
-- [Step matrix](https://doc.retentioneering.com/stable/doc/user_guides/step_matrix.html)
-- [Step Sankey](https://doc.retentioneering.com/stable/doc/user_guides/step_sankey.html)
-- [Clusters](https://doc.retentioneering.com/stable/doc/user_guides/clusters.html)
-- [Funnel](https://doc.retentioneering.com/stable/doc/user_guides/funnel.html)
-- [Cohorts](https://doc.retentioneering.com/stable/doc/user_guides/cohorts.html)
-- [Stattests](https://doc.retentioneering.com/stable/doc/user_guides/stattests.html)
+ecom.funnel(steps=["catalog", "add_to_cart", "purchase"])
 
-## Raw data type
-Raw data can be downloaded from Google Analytics BigQuery stream, or any other such streams. Just convert that data to the list of triples - user_id, event, and timestamp - and pass it to Retentioneering tools. The package also includes some datasets for a quick start.
+# Compare two segments in one picture (diff mode)
+ecom.transition_graph(diff=["platform", "mobile", "desktop"])
+```
 
-## Changelog
+Clean and shape the data by chaining data processors — every step returns a
+new `Eventstream`, the original is never modified:
 
-- [Version 3.3.0](https://doc.retentioneering.com/stable/doc/whatsnew/v3.3.0.html)
-- [Version 3.2.1](https://doc.retentioneering.com/stable/doc/whatsnew/v3.2.1.html)
-- [Version 3.2](https://doc.retentioneering.com/stable/doc/whatsnew/v3.2.0.html)
-- [Version 3.1](https://doc.retentioneering.com/stable/doc/whatsnew/v3.1.0.html)
-- [Version 3.0](https://doc.retentioneering.com/3.0/doc/whatsnew/v3.0.0.html)
-- [Version 2.0 (archive)](https://github.com/retentioneering/retentioneering-tools-2-archive)
+```python
+clean = (
+    stream
+    .filter_events(drop={"event": ["bot_ping"]})
+    .collapse_events(consecutive=True)
+    .split_sessions(timeout="30m")
+)
+clean.step_matrix(path_pattern=".*->add_to_cart->.*->purchase")
+```
+
+Need raw numbers instead of a widget? Every widget has a headless twin:
+
+```python
+tm = stream.transition_graph_data(edge_weight="proba_out")   # DataFrame
+funnel = stream.funnel_data(steps=["catalog", "add_to_cart", "purchase"])  # dict
+```
+
+## What's inside
+
+- **Interactive widgets** for Jupyter — [Transition Graph](https://retentioneering.com/docs/widgets/transition-graph),
+  [Step Matrix](https://retentioneering.com/docs/widgets/step-matrix),
+  [Step Sankey](https://retentioneering.com/docs/widgets/step-sankey),
+  [Funnel](https://retentioneering.com/docs/widgets/funnel),
+  [Segment Overview](https://retentioneering.com/docs/widgets/segment-overview),
+  [Cluster Analysis](https://retentioneering.com/docs/widgets/cluster-analysis).
+  Every parameter is also editable live in the widget sidebar, and every
+  widget exports to a self-contained interactive HTML file.
+- **Diff mode** in every widget — overlay two segments (`["plan", "pro", "free"]`,
+  or a segment vs. everyone else via `"<REST>"`) to see *how* behavior
+  differs, not just that a metric moved.
+- **[Data processors](https://retentioneering.com/docs/data-processors)** —
+  chainable, SQL-powered preprocessing: filtering events and paths,
+  sessionization, collapsing noise, synthetic events (incl. churn markers),
+  segments, URL parsing, daily lifecycle states, sampling.
+- **[Path metrics](https://retentioneering.com/docs/path-metrics)** — one
+  registry of per-path metrics that feeds behavioral clustering, segment
+  comparison, path filtering, and your own ML feature pipelines
+  (`stream.get_metrics()`).
+- **[MCP server](https://retentioneering.com/docs/mcp)** —
+  `retentioneering.mcp.serve(stream)` exposes the eventstream to Claude or
+  any MCP client: agents explore the data, build report tabs, and export a
+  validated interactive HTML report where every number links to its source.
 
 ## Contributing
 
-This is community-driven open source project in active development. Any contributions,
-new ideas, bug reports, bug fixes, documentation improvements are very welcome.
-
-Retentioneering now provides several opensource solutions for data-driven product
-analytics and web analytics. Please checkout [this repository](https://github.com/retentioneering/retentioneering-dom-observer) for JS library to track the mutations of the website elements.
+This is a community-driven open source project in active development. Any
+contributions — new ideas, bug reports, bug fixes, documentation
+improvements — are very welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)**
+for the local development setup.
 
 Apps are better with math! :)
-Retentioneering is a research laboratory, analytics methodology and opensource
-tools founded by [Maxim Godzi](https://www.linkedin.com/in/godsie/) in 2015.
-Please feel free to contact us at retentioneering@gmail.com if you have any
-questions regarding this repo.
+Retentioneering is a research laboratory, analytics methodology and
+opensource tools founded by
+[Maxim Godzi](https://www.linkedin.com/in/godsie/) in 2015. Please feel free
+to contact us at retentioneering@gmail.com if you have any questions
+regarding this repo.

@@ -37,7 +37,7 @@ dependencies = [
 [project.urls]
 "Homepage" = "https://github.com/retentioneering/retentioneering-tools"
 "Bug Tracker" = "https://github.com/retentioneering/retentioneering-tools/issues"
-"Documentation" = "https://doc.retentioneering.com/stable/doc/"
+"Documentation" = "https://retentioneering.com/docs/"
 
 [project.optional-dependencies]
 dev = [

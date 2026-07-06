@@ -1,6 +1,6 @@
 # Contributing to retentioneering
 
-Thanks for considering a contribution! 
+Thanks for considering a contribution!
 
 We welcome all possible types of contributions, including, but not limited to bug reports, documentation improvements, examples, visualizations, analytical recipes, agent skills, integrations, performance improvements, API proposals, and new analytical capabilities.
 

@@ -106,10 +106,10 @@ class CollapseEvents(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME, "'end_event' requires 'start_event'"
             )
-        if not g.get("default") and not g.get("cases"):
+        if not g.get("name") and not g.get("cases"):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                "each group must specify 'default' or at least one item in 'cases'",
+                "each group must specify 'name' or at least one item in 'cases'",
             )
 
     def apply(
@@ -293,12 +293,13 @@ class CollapseEvents(DataProcessor):
 
         cases: List[Dict[str, Any]] = group.get("cases", [])
         mode = detect_mode(group)
+        # `name` is the merged event's label; with `cases` it acts as the
+        # fallback for sessions no case matched. When only `cases` are given,
+        # fall back to the group's first event (or "session" in timeout mode).
         if mode == _MODE_TIMEOUT:
-            default = group.get("default", "session")
+            name = group.get("name", "session")
         else:
-            default = group.get(
-                "default", to_list(group.get("events") or ["session"])[0]
-            )
+            name = group.get("name", to_list(group.get("events") or ["session"])[0])
 
         session_ctes = build_session_ctes(
             group, path_col, event_col, ts_col, subindex_col
@@ -328,15 +329,15 @@ class CollapseEvents(DataProcessor):
 
         if cases:
             case_when_parts = [
-                f"WHEN {fp._ast_to_sql(case['condition'])} THEN '{case['new_name'].replace(chr(39), chr(39) * 2)}'"
+                f"WHEN {fp._ast_to_sql(case['condition'])} THEN '{case['name'].replace(chr(39), chr(39) * 2)}'"
                 for case in cases
             ]
-            default_escaped = default.replace("'", "''")
+            fallback_escaped = name.replace("'", "''")
             classify_expr = (
-                f"CASE {' '.join(case_when_parts)} ELSE '{default_escaped}' END"
+                f"CASE {' '.join(case_when_parts)} ELSE '{fallback_escaped}' END"
             )
         else:
-            classify_expr = f"'{default.replace(chr(39), chr(39) * 2)}'"
+            classify_expr = f"'{name.replace(chr(39), chr(39) * 2)}'"
 
         exclude_cols = {path_col, event_col, event_type_col, ts_col}
         agg_exprs = self._session_agg_exprs(df, self.agg, exclude_cols, ts_col)

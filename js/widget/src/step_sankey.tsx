@@ -10,7 +10,6 @@ import {
   DEFAULT_VALUE_TYPE,
 } from "@retentioneering/viz-core";
 import { JupyterDataProvider } from "./JupyterDataProvider";
-import { AuthGate, loadSession, clearSession, type AuthSession } from "./AuthGate";
 
 interface AnyWidgetModel {
   get(key: string): unknown;
@@ -84,7 +83,6 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [isLoading, setIsLoading]   = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
     const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
     const [stepWindow,  setStepWindow]  = React.useState<number>(() => (model.get("step_window") as number) || 3);
-    const [session, setSession] = React.useState<AuthSession | null>(() => loadSession());
     const [initialPositions, setInitPos] = React.useState<Record<string, StoredPosition>>(
       () => parseJson(model.get("node_positions"), {}),
     );
@@ -139,7 +137,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
           {/* Toggle rendered here — positioned relative to this wrapper, z-index above StepSankey */}
           <SidebarToggle onClick={handleToggleSidebar} />
 
-          <AuthGate session={session} onLogin={setSession} disabled={true} style={{ width: "100%", height: "100%" }}>
+          <div style={{ width: "100%", height: "100%" }}>
             <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
               <StepSankey
                 store={store}
@@ -157,7 +155,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                 theme="light"
               />
             </div>
-          </AuthGate>
+          </div>
 
           {isLoading && <ComputingSpinner opacity={0.55} />}
         </div>
@@ -178,8 +176,6 @@ export function render({ model, el, isStatic = false }: RenderContext) {
             onDiffChange={handleDiffChange}
             isLoading={isLoading}
             onResetFilters={() => store.resetFiltersToDefaults()}
-            authEmail={session?.user.email ?? null}
-            onLogout={() => { clearSession(); setSession(null); }}
             theme="light"
             stepWindow={stepWindow}
             maxSteps={maxSteps}

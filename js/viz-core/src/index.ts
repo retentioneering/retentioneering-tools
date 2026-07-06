@@ -19,9 +19,6 @@ export type { HeatmapType, TransitionViewMode, RawMatrixData } from "./stores/Tr
 export type { DataProvider, GraphLayoutResponse, GraphLayoutPosition } from "./types";
 
 // Auth
-export { loadSession, clearSession, refreshSession } from "./auth";
-export type { AuthUser, AuthSession } from "./auth";
-export { LoginForm } from "./auth";
 
 // Utils
 export { formatNumber, formatPopulation } from "./utils/format-number";

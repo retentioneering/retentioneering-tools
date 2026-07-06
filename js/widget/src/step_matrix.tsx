@@ -2,8 +2,6 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
-import { AuthGate, loadSession, clearSession, refreshSession, type AuthSession } from "./AuthGate";
-import { CloudSection, CloudModal, CloudErrorModal } from "./CloudSection";
 
 interface AnyWidgetModel {
   get(key: string): unknown;
@@ -893,13 +891,6 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [pathIdCol,    setPathIdCol]    = React.useState<string>(() => (model.get("path_col") as string) || "");
     const [pathPattern,  setPathPattern]  = React.useState<string>(() => (model.get("path_pattern") as string) || "");
     const [appliedPathPattern, setAppliedPathPattern] = React.useState<string>(() => (model.get("path_pattern") as string) || "");
-    const [session,      setSession]      = React.useState<AuthSession | null>(() => loadSession());
-    const [widgetId,     setWidgetId]     = React.useState<string>(() => (model.get("widget_id") as string) || "");
-    const [cloudStatus,  setCloudStatus]  = React.useState<string>(() => (model.get("cloud_status") as string) || "idle");
-    const cloudEnabled = (model.get("cloud_enabled") as boolean) ?? false;
-    const cloudManageUrl = (model.get("cloud_manage_url") as string) || "";
-    const [showCloudAuth, setShowCloudAuth] = React.useState(() => !!((model.get("widget_id") as string) || "") && !loadSession());
-    const [pendingAuthAction, setPendingAuthAction] = React.useState<(() => void) | null>(null);
 
     // ── display state ──────────────────────────────────────────────────────
     const [stepWindow,   setStepWindow]   = React.useState(3);
@@ -919,7 +910,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [localDiffSeg, setLocalDiffSeg] = React.useState(diffSeg ?? "");
     const [localDiffV1,  setLocalDiffV1]  = React.useState(diffV1  ?? "");
     const [localDiffV2,  setLocalDiffV2]  = React.useState(diffV2  ?? "");
-    // Sync local diff state when server diff changes (e.g. cloud load)
+    // Sync local diff state when server diff changes
     React.useEffect(() => {
       setLocalDiffSeg(diffSeg ?? "");
       setLocalDiffV1(diffV1 ?? "");
@@ -932,14 +923,6 @@ export function render({ model, el, isStatic = false }: RenderContext) {
 
     // ── subscriptions ──────────────────────────────────────────────────────
     React.useEffect(() => {
-      const syncSession = async () => {
-        let s = loadSession(); if (!s) s = await refreshSession();
-        if (s) { setSession(s); model.set("auth_token", s.access_token); if (widgetId) model.set("cloud_load_trigger", 1); model.save_changes(); }
-      };
-      syncSession();
-    }, []);
-
-    React.useEffect(() => {
       const subs: Array<[string, () => void]> = [
         ["result",       () => { setResult(parseJson(model.get("result"), { matrices: [], event_counts: {} })); }],
         ["is_loading",   () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
@@ -948,56 +931,12 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         ["path_col",  () => setPathIdCol((model.get("path_col") as string) || "")],
         ["path_pattern", () => { const v = (model.get("path_pattern") as string) || ""; setPathPattern(v); setAppliedPathPattern(v); }],
         ["diff",         () => { const d = parseJson<string[]>(model.get("diff") || "[]", []); setDiffSeg(d[0]??null); setDiffV1(d[1]??null); setDiffV2(d[2]??null); }],
-        ["cloud_status", () => {
-          const s = (model.get("cloud_status") as string) || "idle";
-          setCloudStatus(s);
-          if (s.startsWith("error:")) setCloudError(s.slice(6));
-        }],
-        ["widget_id",          () => setWidgetId((model.get("widget_id") as string) || "")],
-        ["cloud_name_exists",   () => setCloudNameExists((model.get("cloud_name_exists") as boolean) ?? false)],
-        ["cloud_load_warning",  () => setCloudWarning((model.get("cloud_load_warning") as string) || null)],
-        ["display_prefs", () => {
-          try {
-            const p = JSON.parse((model.get("display_prefs") as string) || "{}");
-            if (p.stepWindow !== undefined) setStepWindow(p.stepWindow);
-            if (p.heatmapType !== undefined) setHeatmapType(p.heatmapType);
-            if (p.valueThreshold !== undefined) setValueThreshold(p.valueThreshold);
-            // popRange: null sentinel means Infinity (JSON can't serialize Infinity)
-            if (Array.isArray(p.popRange)) setPopRange([
-              p.popRange[0] ?? 0,
-              p.popRange[1] === null ? Infinity : (p.popRange[1] ?? Infinity),
-            ]);
-            if (p.labelWidth !== undefined) setLabelWidth(p.labelWidth);
-            if (p.globalHeatmap !== undefined) setGlobalHeatmap(p.globalHeatmap);
-            if (Array.isArray(p.pinnedEvents)) setPinnedEvents(new Set(p.pinnedEvents));
-            if (Array.isArray(p.hiddenEvents)) setHiddenEvents(new Set(p.hiddenEvents));
-          } catch {}
-        }],
       ];
       subs.forEach(([k, cb]) => model.on(`change:${k}`, cb));
       return () => subs.forEach(([k, cb]) => model.off(`change:${k}`, cb));
     }, []);
 
     const setParam = (key: string, val: unknown) => { model.set(key, val); model.save_changes(); };
-
-    // Auto-save display prefs when any display state changes (only if widget has a cloud file)
-    const displayPrefsJson = React.useMemo(() => JSON.stringify({
-      stepWindow, heatmapType, valueThreshold, labelWidth, globalHeatmap,
-      popRange: [popRange[0], isFinite(popRange[1]) ? popRange[1] : null],
-      pinnedEvents: [...pinnedEvents].sort(),
-      hiddenEvents: [...hiddenEvents].sort(),
-    }), [stepWindow, heatmapType, valueThreshold, popRange, labelWidth, globalHeatmap, pinnedEvents, hiddenEvents]);
-
-    const autoSaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-    React.useEffect(() => {
-      if (!widgetId || !session) return;
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = setTimeout(() => {
-        model.set("display_prefs", displayPrefsJson);
-        model.save_changes();
-      }, 1500);
-      return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
-    }, [displayPrefsJson, widgetId, session]);
 
     // Expose external navigation API for static HTML report links
     React.useEffect(() => {
@@ -1080,27 +1019,11 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const localLevels = localDiffSeg ? (segLevels[localDiffSeg] ?? []) : [];
     const canApplyDiff = localDiffSeg && localDiffV1 && localDiffV2 && localDiffV1 !== localDiffV2;
 
-    const [cloudModalOpen, setCloudModalOpen] = React.useState(false);
-    const [cloudNameExists, setCloudNameExists] = React.useState(false);
-    const [cloudError, setCloudError] = React.useState<string | null>(null);
-    const [cloudWarning, setCloudWarning] = React.useState<string | null>(null);
-
-    const cloudSection = (
-      <CloudSection widgetId={widgetId} cloudStatus={cloudStatus} session={session} enabled={cloudEnabled}
-        onOpen={() => setCloudModalOpen(true)}
-        onAuthNeeded={action => { setPendingAuthAction(() => action); setShowCloudAuth(true); }} />
-    );
-
     return (
       <div style={{ display: "flex", flexDirection: "row", height, background: "#fff", borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", fontFamily: "system-ui,-apple-system,sans-serif", position: "relative" }}>
 
         {/* Main content */}
-        <AuthGate session={session}
-          onLogin={s => { setSession(s); setShowCloudAuth(false); model.set("auth_token", s.access_token); model.save_changes(); if (pendingAuthAction) { pendingAuthAction(); setPendingAuthAction(null); } else if (widgetId) { model.set("cloud_load_trigger", ((model.get("cloud_load_trigger") as number)||0)+1); model.save_changes(); } }}
-          onClose={() => setShowCloudAuth(false)} disabled={!showCloudAuth}
-          title="Unlock Cloud features"
-          description={<>Save and restore Step Matrix configurations.<br /><br />Cloud sync is invite-only. To request early access, message me on <a href="https://www.linkedin.com/in/vladimir-kukushkin" target="_blank" rel="noopener noreferrer" style={{ color: "#0a66c2" }}>LinkedIn</a>.</>}
-          style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, position: "relative" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, position: "relative" }}>
 
           {/* Sidebar toggle — top-right of canvas */}
           <button onClick={() => { const n = !sidebarOpen; setSidebarOpen(n); setParam("sidebar_open", n); }} title="Toggle settings"
@@ -1129,7 +1052,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                 diffSeg={diffSeg} diffV1={diffV1} diffV2={diffV2} />
             </div>
           )}
-        </AuthGate>
+        </div>
 
         {/* Sidebar */}
         {sidebarOpen && (
@@ -1137,9 +1060,6 @@ export function render({ model, el, isStatic = false }: RenderContext) {
             {/* Header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: `1px solid ${SC.border}` }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: SC.text }}>Settings</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {cloudSection}
-              </div>
             </div>
 
             {/* Scrollable content */}
@@ -1281,56 +1201,9 @@ export function render({ model, el, isStatic = false }: RenderContext) {
               </div>
 
             </div>
-
-            {/* Auth footer */}
-            {session && (
-              <div style={{ borderTop: `1px solid ${SC.border}`, padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexShrink: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                  <span style={{ color: "#22c55e", fontSize: 8, flexShrink: 0 }}>●</span>
-                  <span style={{ fontSize: 11, color: "#4b5563", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {session.user.email}
-                  </span>
-                </div>
-                <button onClick={() => { clearSession(); setSession(null); model.set("auth_token", ""); model.save_changes(); }}
-                  style={{ background: "transparent", border: "none", color: SC.muted, fontSize: 11, cursor: "pointer", padding: 0, flexShrink: 0 }}>
-                  Sign out
-                </button>
-              </div>
-            )}
           </div>
         )}
 
-        {cloudWarning && (
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 40, background: "#fffbeb", borderBottom: "1px solid #fde68a", padding: "6px 12px 6px 14px", display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#92400e" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" style={{ flexShrink: 0 }}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <span style={{ flex: 1 }}>{cloudWarning}</span>
-            <button onClick={() => setCloudWarning(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#d97706", padding: 2, lineHeight: 1, flexShrink: 0 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
-            </button>
-          </div>
-        )}
-        {cloudError && (
-          <CloudErrorModal message={cloudError} onClose={() => setCloudError(null)} />
-        )}
-        {cloudModalOpen && (
-          <CloudModal
-            widgetId={widgetId}
-            nameExists={cloudNameExists}
-            manageUrl={cloudManageUrl}
-            onCheckName={name => { model.set("cloud_name_check", name); model.save_changes(); }}
-            onSave={name => {
-              setParam("display_prefs", JSON.stringify({
-                stepWindow, heatmapType, valueThreshold, labelWidth, globalHeatmap,
-                // Infinity is not valid JSON — save as null sentinel
-                popRange: [popRange[0], isFinite(popRange[1]) ? popRange[1] : null],
-                pinnedEvents: [...pinnedEvents],
-                hiddenEvents: [...hiddenEvents],
-              }));
-              setParam("cloud_save_request", name);
-            }}
-            onLoad={() => { setParam("cloud_load_trigger", ((model.get("cloud_load_trigger") as number)||0)+1); }}
-            onClose={() => setCloudModalOpen(false)} />
-        )}
         <RetentioneeringSpinKeyframes />
       </div>
     );

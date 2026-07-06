@@ -101,8 +101,6 @@ export interface SettingsSidebarProps {
   onDiffChange: (seg: string | null, v1: string | null, v2: string | null) => void;
   isLoading?: boolean;
   onFitGraph?: () => void;
-  authEmail?: string | null;
-  onLogout?: () => void;
   extraFooter?: React.ReactNode;
   headerRight?: React.ReactNode;
   loadingText?: string;
@@ -121,7 +119,7 @@ export const SettingsSidebar = observer(function SettingsSidebar({
   pathCols, pathIdCol, onPathIdColChange,
   segmentLevels, diffSegment, diffValue1, diffValue2, onDiffChange,
   isLoading = false, onFitGraph,
-  authEmail, onLogout, extraFooter, headerRight, loadingText = "Computing…",
+  extraFooter, headerRight, loadingText = "Computing…",
   stepWindow, maxSteps, onStepWindowChange,
   isStatic = false,
 }: SettingsSidebarProps) {
@@ -359,37 +357,6 @@ export const SettingsSidebar = observer(function SettingsSidebar({
       {extraFooter && (
         <div style={{ borderTop: `1px solid ${C.border}`, padding: "10px 16px", flexShrink: 0 }}>
           {extraFooter}
-        </div>
-      )}
-
-      {/* Auth footer — pinned to the bottom */}
-      {authEmail && (
-        <div style={{
-          borderTop: `1px solid ${C.border}`,
-          padding: "10px 16px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          flexShrink: 0,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-            <span style={{ color: "#22c55e", fontSize: 8, flexShrink: 0 }}>●</span>
-            <span style={{
-              fontSize: 11, color: C.mutedLight,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {authEmail}
-            </span>
-          </div>
-          {onLogout && (
-            <button
-              onClick={onLogout}
-              style={{ background: "transparent", border: "none", color: C.muted, fontSize: 11, cursor: "pointer", padding: 0, flexShrink: 0 }}
-            >
-              Sign out
-            </button>
-          )}
         </div>
       )}
     </div>

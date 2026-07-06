@@ -1,7 +1,6 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
-import { AuthGate, loadSession, type AuthSession } from "./AuthGate";
 import { MetricRow, validateMetricCfg, InfoTip } from "./metric_config_row";
 
 interface AnyWidgetModel {
@@ -628,7 +627,6 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [sidebarOpen,   setSidebarOpen]    = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
     const [featuresOpen,  setFeaturesOpen]   = React.useState(false);
     const [metricsOpen,   setMetricsOpen]    = React.useState(false);
-    const [session,       setSession]        = React.useState(() => loadSession());
     const rootRef = React.useRef<HTMLDivElement>(null);
     const [activeTab,     setActiveTab]      = React.useState("Overview");
 
@@ -716,7 +714,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       <div ref={rootRef} style={{ position: "relative", display: "flex", flexDirection: "row", height, background: "#fff", borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", fontFamily: "system-ui,-apple-system,sans-serif" }}>
         <div style={{ flex: 1, position: "relative", overflow: "hidden", minWidth: 0, display: "flex", flexDirection: "column" }}>
           <SidebarToggle onClick={handleToggle} />
-          <AuthGate session={session} onLogin={setSession} disabled={true} style={{ width: "100%", height: "100%" }}>
+          <div style={{ width: "100%", height: "100%" }}>
             <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", overflow: "hidden" }}>
             {tabs.length > 1 && <Tabs tabs={tabs} active={tab} onChange={setActiveTab} />}
             <div style={{ flex: 1, overflow: "auto", padding: "8px 0" }}>
@@ -736,7 +734,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
               {tab === "W Cluster Means" && result.nmf         && <div style={{ padding: "0 16px" }}><NmfWMatrix nmf={result.nmf} /></div>}
             </div>
             </div>
-          </AuthGate>
+          </div>
           {isLoading && <ComputingSpinner label="Clustering…" />}
         </div>
         {sidebarOpen && (

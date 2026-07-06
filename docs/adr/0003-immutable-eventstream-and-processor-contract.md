@@ -7,7 +7,7 @@ Status: Accepted (5.0 rewrite; recorded 2026-07)
 3.x had a separate preprocessing-pipeline system (`data_processor` /
 `params_model` pydantic GUI schemas) with its own registration machinery.
 It was powerful for the visual pipeline builder but heavyweight for code-first
-users, and the builder itself was cut from 5.0 (ADR-0013).
+users, and the builder itself was cut from 5.0 (ADR-0012).
 
 ## Decision
 
@@ -35,4 +35,4 @@ users, and the builder itself was cut from 5.0 (ADR-0013).
   deep copy.
 - Adding a processor means: class in `data_processors/`, method + docstring
   on `Eventstream`, docs template, tests — the docstring is the documentation
-  source (ADR-0014).
+  source (ADR-0013).

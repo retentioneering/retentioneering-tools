@@ -18,7 +18,7 @@ JS, an opaque JS layer, and a bespoke comm protocol to maintain.
   React/MobX/Cytoscape components) and `js/widget` (the anywidget entry
   point). It is open source.
 - `make build` (and CI) builds `widget.js` (ESM, for live anywidget use) and
-  `widget-static.js` (IIFE, for static export — ADR-0011) into
+  `widget-static.js` (IIFE, for static export — ADR-0010) into
   `src/retentioneering/static/`. The bundles are **gitignored** but
   force-included into the wheel by hatchling; the release workflow verifies
   `widget.js` actually landed in the wheel.
@@ -35,7 +35,7 @@ JS, an opaque JS layer, and a bespoke comm protocol to maintain.
   need `make build` once to render widgets locally.
 - Widget rendering has no automated tests; `vite build` success is the only
   JS correctness signal, plus the generated docs demos exercising real
-  widget construction (ADR-0014).
+  widget construction (ADR-0013).
 - Renaming a traitlet is a cross-language change: Python widget class, JS
   `model.get/set` keys, static-export data dicts, and the MCP server's data
   dicts must move together.

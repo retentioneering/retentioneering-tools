@@ -9,7 +9,6 @@ We track **method calls and widget actions only**:
 - Eventstream creation — dataset shape (number of rows and columns)
 - Data processor calls — which processors are used (e.g. `filter_events`, `collapse_events`)
 - Widget and headless method calls — which visualizations are used
-- Widget interactions — cloud save/load actions, authentication screen shown
 
 Every event includes anonymous device metadata: OS, Python version, library version, and runtime environment (Jupyter, VS Code, Google Colab, or script).
 

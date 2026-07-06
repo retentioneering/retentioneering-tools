@@ -1204,7 +1204,6 @@ class Eventstream:
     @_tracked("widget_step_matrix")
     def step_matrix(
         self,
-        cloud_file_name: str | None = None,
         max_steps=None,
         diff=None,
         path_col=None,
@@ -1256,7 +1255,6 @@ class Eventstream:
 
         return StepMatrixWidget(
             eventstream=self,
-            cloud_file_name=cloud_file_name,
             max_steps=max_steps if max_steps is not None else _UNSET,
             diff=diff if diff is not None else _UNSET,
             path_col=path_col if path_col is not None else _UNSET,
@@ -1273,7 +1271,6 @@ class Eventstream:
         path_col=None,
         height=None,
         sidebar_open=None,
-        cloud_file_name: str | None = None,
     ):
         """
         Displays an interactive directed graph where nodes are unique events and edges represent transitions
@@ -1306,7 +1303,6 @@ class Eventstream:
 
         return TransitionGraphWidget(
             eventstream=self,
-            cloud_file_name=cloud_file_name,
             edge_weight=edge_weight if edge_weight is not None else _UNSET,
             diff=diff if diff is not None else _UNSET,
             path_col=path_col if path_col is not None else _UNSET,

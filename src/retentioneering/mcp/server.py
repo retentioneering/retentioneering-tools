@@ -395,7 +395,6 @@ def _build_server(
             "event_list": json.loads(widget.event_list or "[]"),
             "height": widget.height,
             "sidebar_open": False,
-            "display_prefs": "{}",
         }
         tab_id = f"tab-{len(_pending)}"
         _pending.append(

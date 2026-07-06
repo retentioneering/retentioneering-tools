@@ -1,7 +1,6 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
-import { AuthGate, loadSession, clearSession, type AuthSession } from "./AuthGate";
 
 interface AnyWidgetModel {
   get(key: string): unknown;
@@ -608,7 +607,6 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [isLoading,   setIsLoading]   = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
     const [heightProp,  setHeightProp]  = React.useState<number>(() => (model.get("height") as number) ?? 0);
     const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
-    const [session,     setSession]     = React.useState<AuthSession | null>(() => loadSession());
 
     const events    = parseJson<string[]>(model.get("event_list"), []);
     const pathCols  = parseJson<string[]>(model.get("path_cols"), []);
@@ -670,7 +668,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       <div style={{ display: "flex", flexDirection: "row", height: computedHeight, background: "#ffffff", borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", fontFamily: "system-ui,-apple-system,sans-serif" }}>
         <div style={{ flex: 1, position: "relative", overflow: "hidden", minWidth: 0, display: "flex", flexDirection: "column" }}>
           <SidebarToggle onClick={handleToggle} />
-          <AuthGate session={session} onLogin={setSession} disabled={true} style={{ width: "100%", height: "100%" }}>
+          <div style={{ width: "100%", height: "100%" }}>
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
               {funnelSteps.length === 0 && !isLoading && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "#9ca3af", fontSize: 13 }}>
@@ -686,7 +684,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                 </div>
               )}
             </div>
-          </AuthGate>
+          </div>
           {isLoading && <ComputingSpinner />}
         </div>
         {sidebarOpen && (

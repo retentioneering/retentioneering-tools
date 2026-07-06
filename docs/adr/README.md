@@ -20,12 +20,11 @@ here; load individual ADRs when a task touches the corresponding area.
 | [0006](0006-widget-headless-twins.md) | Widget / headless `*_data` twins | every widget has a headless twin; data params = twin's signature |
 | [0007](0007-single-path-metrics-registry.md) | Single Path Metrics registry | one metric registry feeds clustering, overview, and path filtering |
 | [0008](0008-naming-conventions.md) | 5.0 naming conventions | one concept — one name; industry priors; units in names |
-| [0009](0009-cloud-disabled-by-default.md) | Cloud save/load off by default | the public repo ships no backend and no credentials |
-| [0010](0010-mcp-server-as-agent-interface.md) | MCP server as first-class agent interface | LLM agents get compact summaries + a validated HTML report workflow |
-| [0011](0011-static-html-export.md) | Self-contained static HTML export | exported reports work with no Python kernel behind them |
-| [0012](0012-versioning-and-release.md) | Literal versioning, tag-driven release | pyproject version is the source of truth; only `v*` tags publish |
-| [0013](0013-features-dropped-from-3x.md) | Features deliberately dropped from 3.x | Preprocessing Graph, Cohorts, StatTests, Sequences — cut, may return |
-| [0014](0014-docstring-driven-docs.md) | Docstring-driven documentation | reference docs are rendered from docstrings; docstrings are the source of truth |
+| [0009](0009-mcp-server-as-agent-interface.md) | MCP server as first-class agent interface | LLM agents get compact summaries + a validated HTML report workflow |
+| [0010](0010-static-html-export.md) | Self-contained static HTML export | exported reports work with no Python kernel behind them |
+| [0011](0011-versioning-and-release.md) | Literal versioning, tag-driven release | pyproject version is the source of truth; only `v*` tags publish |
+| [0012](0012-features-dropped-from-3x.md) | Features deliberately dropped from 3.x | Preprocessing Graph, Cohorts, StatTests, Sequences — cut, may return |
+| [0013](0013-docstring-driven-docs.md) | Docstring-driven documentation | reference docs are rendered from docstrings; docstrings are the source of truth |
 
 ## Adding a new ADR
 

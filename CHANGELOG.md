@@ -92,10 +92,6 @@ Naming conventions across the new API:
   to Claude and other MCP clients over SSE, with tools for adding widgets,
   managing a session baseline, validating analysis text, and exporting a
   multi-widget static HTML report with clickable cross-references
-- **Cloud save/load** for the Transition Graph and Step Matrix widgets —
-  ships in this release but is disabled by default (no cloud icon shown),
-  since retentioneering doesn't yet run a backend for it. Credentials are
-  read from environment variables with no built-in default
 - `ipywidgets` is now a core dependency, so widgets work out of the box in
   plain JupyterLab
 

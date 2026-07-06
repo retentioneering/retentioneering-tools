@@ -1,4 +1,4 @@
-# ADR-0010: MCP server as a first-class agent interface
+# ADR-0009: MCP server as a first-class agent interface
 
 Status: Accepted (5.0; recorded 2026-07)
 
@@ -17,7 +17,7 @@ agent raw DataFrames wastes context and produces unverifiable analysis
   original stream is never mutated) → `add_transition_graph` /
   `add_step_matrix` / `add_segment_overview` (each returns a *compact
   summary* for reasoning and registers a tab) → `check_analysis(text)` →
-  `export_report()` producing a static HTML report (ADR-0011).
+  `export_report()` producing a static HTML report (ADR-0010).
 - Tool results are compact summaries (top-N edges, per-step tops, spread-
   sorted tables), never full matrices — the full interactive visualisation
   lives in the report.
@@ -32,7 +32,7 @@ agent raw DataFrames wastes context and produces unverifiable analysis
 
 - The Python API's docstrings and naming are agent-facing surfaces: MCP tool
   docs quote them, so docstring quality and enum completeness directly
-  affect agent behavior (see ADR-0008, ADR-0014).
+  affect agent behavior (see ADR-0008, ADR-0013).
 - Any Eventstream API rename must be propagated to `mcp/server.py`
   (`_apply_preprocessors`, tool docstrings, system instructions) and
   `mcp/playbook.md` in the same change.

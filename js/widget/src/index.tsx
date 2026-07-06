@@ -11,8 +11,6 @@ import {
   DEFAULT_VALUE_TYPE,
 } from "@retentioneering/viz-core";
 import { JupyterDataProvider } from "./JupyterDataProvider";
-import { AuthGate, loadSession, clearSession, refreshSession, type AuthSession } from "./AuthGate";
-import { CloudSection, CloudModal, CloudErrorModal } from "./CloudSection";
 
 interface AnyWidgetModel {
   get(key: string): unknown;
@@ -100,32 +98,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [isLoading, setIsLoading]     = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
     const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
     const fitRef = React.useRef<(() => void) | undefined>(undefined);
-    const [session, setSession]         = React.useState<AuthSession | null>(() => loadSession());
-    const [widgetId, setWidgetId] = React.useState<string>(() => (model.get("widget_id") as string) || "");
-    const [cloudStatus, setCloudStatus] = React.useState<string>(() => (model.get("cloud_status") as string) || "idle");
-    const cloudEnabled = (model.get("cloud_enabled") as boolean) ?? false;
-    const cloudManageUrl = (model.get("cloud_manage_url") as string) || "";
-    const [showCloudAuth, setShowCloudAuth] = React.useState(() => !!widgetId && !loadSession());
-    const [pendingAuthAction, setPendingAuthAction] = React.useState<(() => void) | null>(null);
-    const [cloudModalOpen, setCloudModalOpen] = React.useState(false);
-    const [cloudNameExists, setCloudNameExists] = React.useState(false);
-    const [cloudError, setCloudError] = React.useState<string | null>(null);
-    const [cloudWarning, setCloudWarning] = React.useState<string | null>(null);
 
-    // Sync session token to Python on init; refresh if expired; auto-load if object_name is set
-    React.useEffect(() => {
-      const syncSession = async () => {
-        let s = loadSession();
-        if (!s) s = await refreshSession();
-        if (s) {
-          setSession(s);
-          model.set("auth_token", s.access_token);
-          if (widgetId) model.set("cloud_load_trigger", 1);
-          model.save_changes();
-        }
-      };
-      syncSession();
-    }, []);
     // Sync event visibility (hidden/pinned) to Python whenever store changes
     React.useEffect(() => {
       const dispose = reaction(
@@ -161,14 +134,6 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         ["event_counts_g1",() => setCountsG1(parseCountsMap("event_counts_g1"))],
         ["event_counts_g2",() => setCountsG2(parseCountsMap("event_counts_g2"))],
         ["is_loading",     () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
-        ["cloud_status", () => {
-          const s = (model.get("cloud_status") as string) || "idle";
-          setCloudStatus(s);
-          if (s.startsWith("error:")) setCloudError(s.slice(6));
-        }],
-        ["widget_id",         () => setWidgetId((model.get("widget_id") as string) || "")],
-        ["cloud_name_exists",  () => setCloudNameExists((model.get("cloud_name_exists") as boolean) ?? false)],
-        ["cloud_load_warning", () => setCloudWarning((model.get("cloud_load_warning") as string) || null)],
         ["edge_weight",    () => setValuesType((model.get("edge_weight") as MatrixValueType) ?? DEFAULT_VALUE_TYPE)],
         ["height",         () => setHeight((model.get("height") as number) ?? 500)],
         ["sidebar_open",   () => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
@@ -213,13 +178,11 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       }, [],
     );
 
-    // graph area: flex: 1 — same as before AuthGate was introduced
     const graphArea = (
       <div style={{ flex: 1, position: "relative", overflow: "hidden", minWidth: 0 }}>
         <TransitionGraph
           store={store}
           dataProvider={null}
-          widgetId={widgetId}
           valuesType={valuesType}
           onValuesTypeChange={handleValuesChange}
           diffSegment={diffSegment}
@@ -234,54 +197,13 @@ export function render({ model, el, isStatic = false }: RenderContext) {
           fitRef={fitRef}
         />
         <SidebarToggle onClick={handleToggleSidebar} />
-        {cloudWarning && (
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 40, background: "#fffbeb", borderBottom: "1px solid #fde68a", padding: "6px 12px 6px 14px", display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#92400e" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" style={{ flexShrink: 0 }}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <span style={{ flex: 1 }}>{cloudWarning}</span>
-            <button onClick={() => setCloudWarning(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#d97706", padding: 2, lineHeight: 1, flexShrink: 0 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
-            </button>
-          </div>
-        )}
         {isLoading && <ComputingSpinner opacity={0.55} />}
-        {/* Cloud loading overlay */}
-        {cloudStatus === "loading" && !isLoading && <ComputingSpinner opacity={0.7} label="Loading…" />}
-        {/* No data overlay — shown when cloud_file_name set but no data loaded yet */}
-        {widgetId && !store.hasData && !isLoading && cloudStatus !== "loading" && (
-          <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 29 }}>
-            <span style={{ color: "#9ca3af", fontSize: 13 }}>No data</span>
-          </div>
-        )}
       </div>
     );
 
     return (
       <div style={{ display: "flex", flexDirection: "row", height, background: "#ffffff", borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", fontFamily: "system-ui,-apple-system,sans-serif", position: "relative" }}>
-        {/* AuthGate: only shown for cloud auth when user clicks Load */}
-        <AuthGate
-          title="Unlock Cloud features"
-          description={<>Save and restore widget configurations — including node positions — across sessions and machines.<br /><br />Cloud sync is invite-only for now. To request early access, message me on <a href="https://www.linkedin.com/in/vladimir-kukushkin" target="_blank" rel="noopener noreferrer" style={{ color: "#0a66c2" }}>LinkedIn</a>.</>}
-          session={session}
-          onLogin={(s) => {
-            setSession(s);
-            setShowCloudAuth(false);
-            model.set("auth_token", s.access_token);
-            model.save_changes();
-            if (pendingAuthAction) {
-              pendingAuthAction();
-              setPendingAuthAction(null);
-            } else if (widgetId) {
-              const cur = (model.get("cloud_load_trigger") as number) || 0;
-              model.set("cloud_load_trigger", cur + 1);
-              model.save_changes();
-            }
-          }}
-          disabled={!showCloudAuth}
-          onClose={() => setShowCloudAuth(false)}
-          style={{ flex: 1, position: "relative", overflow: "hidden", minWidth: 0 }}
-        >
-          {graphArea}
-        </AuthGate>
+        {graphArea}
 
         {sidebarOpen && (
           <SettingsSidebar
@@ -298,40 +220,10 @@ export function render({ model, el, isStatic = false }: RenderContext) {
             onDiffChange={handleDiffChange}
             isLoading={isLoading}
             onFitGraph={() => fitRef.current?.()}
-            authEmail={session?.user.email ?? null}
-            onLogout={() => { clearSession(); setSession(null); }}
             isStatic={isStatic}
-            headerRight={
-              <CloudSection
-                widgetId={widgetId}
-                cloudStatus={cloudStatus}
-                session={session}
-                enabled={cloudEnabled}
-                onOpen={() => setCloudModalOpen(true)}
-                onAuthNeeded={action => {
-                  setPendingAuthAction(() => action);
-                  setShowCloudAuth(true);
-                  model.set("cloud_auth_shown", ((model.get("cloud_auth_shown") as number) || 0) + 1);
-                  model.save_changes();
-                }}
-              />
-            }
           />
         )}
 
-        {cloudError && (
-          <CloudErrorModal message={cloudError} onClose={() => setCloudError(null)} />
-        )}
-        {cloudModalOpen && (
-          <CloudModal
-            widgetId={widgetId}
-            nameExists={cloudNameExists}
-            manageUrl={cloudManageUrl}
-            onCheckName={name => { model.set("cloud_name_check", name); model.save_changes(); }}
-            onSave={name => { model.set("cloud_save_request", name); model.save_changes(); }}
-            onLoad={() => { const cur = (model.get("cloud_load_trigger") as number) || 0; model.set("cloud_load_trigger", cur + 1); model.save_changes(); }}
-            onClose={() => setCloudModalOpen(false)} />
-        )}
         <RetentioneeringSpinKeyframes />
       </div>
     );

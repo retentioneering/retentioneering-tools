@@ -6,11 +6,6 @@ export default defineConfig({
   plugins: [react()],
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
-    // No cloud backend ships with this open-source distribution — these are
-    // empty by default. The cloud icon itself only renders when the Python
-    // side also opts in via RETENTIONEERING_CLOUD_ENABLED.
-    __SUPABASE_URL__:      JSON.stringify(process.env.RETENTIONEERING_CLOUD_SUPABASE_URL      ?? ""),
-    __SUPABASE_ANON_KEY__: JSON.stringify(process.env.RETENTIONEERING_CLOUD_SUPABASE_ANON_KEY ?? ""),
   },
   build: {
     lib: {

@@ -5,7 +5,6 @@ import anywidget
 import traitlets
 
 from retentioneering.widgets._esm import _get_esm
-from retentioneering.widgets.cloud_mixin import CloudMixin
 from retentioneering.widgets._utils import parse_diff as _parse_diff
 from retentioneering.widgets._html_export import write_html
 
@@ -13,7 +12,7 @@ _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
 
-class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
+class TransitionGraphWidget(anywidget.AnyWidget):
     _esm = _get_esm()
     _css = _STATIC / "widget.css"
 
@@ -49,7 +48,6 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
     def __init__(
         self,
         eventstream,
-        cloud_file_name: str | None = None,
         edge_weight=_UNSET,
         diff=_UNSET,
         path_col=_UNSET,
@@ -79,10 +77,7 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
         self.node_positions = "{}"
 
-        self._init_cloud(cloud_file_name)
-
-        if not self._cloud_file_name:
-            self._recompute()
+        self._recompute()
 
         self._initialized = True
         self.observe(self._on_params_change, names=["edge_weight", "diff", "path_col"])
@@ -93,23 +88,17 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
     # ── widget-specific observers ──────────────────────────────────────────────
 
     def _on_params_change(self, _change):
-        if not self._initialized or self._loading_from_cloud:
+        if not self._initialized:
             return
         self._recompute()
-        if self._guard_auto_save():
-            self._schedule_cloud_save()
 
     def _on_positions_change(self, _change):
-        if not self._initialized or self._loading_from_cloud:
+        if not self._initialized:
             return
-        if self._guard_auto_save():
-            self._schedule_cloud_save()
 
     def _on_event_visibility_change(self, _change):
-        if not self._initialized or self._loading_from_cloud:
+        if not self._initialized:
             return
-        if self._guard_auto_save():
-            self._schedule_cloud_save()
 
     def _on_compute_request(self, change):
         raw = change["new"]
@@ -127,42 +116,6 @@ class TransitionGraphWidget(CloudMixin, anywidget.AnyWidget):
             self.compute_response = json.dumps({"id": req_id, "result": result})
         except Exception as exc:
             self.compute_response = json.dumps({"id": req_id, "error": str(exc)})
-
-    # ── cloud state ────────────────────────────────────────────────────────────
-
-    def _current_state(self) -> dict:
-        return {
-            **self._base_state(),
-            "params": {
-                "edge_weight": self.edge_weight,
-                "diff": self.diff,
-                "path_col": self.path_col,
-            },
-            "display": {
-                "height": self.height,
-                "sidebar_open": self.sidebar_open,
-            },
-            "node_positions": json.loads(self.node_positions or "{}"),
-            "event_visibility": json.loads(self.event_visibility or "{}"),
-        }
-
-    def _apply_state(self, state: dict) -> None:
-        p = state.get("params", {})
-        d = state.get("display", {})
-
-        self.edge_weight = p.get("edge_weight", "proba_out")
-        self.height = d.get("height", 500)
-        self.sidebar_open = d.get("sidebar_open", True)
-        pos = state.get("node_positions", {})
-        self.node_positions = json.dumps(pos) if pos else "{}"
-        ev = state.get("event_visibility", {})
-        self.event_visibility = json.dumps(ev) if ev else "{}"
-
-        _diff, _pid, _mismatch = self._apply_base_state(state)
-        self.diff = json.dumps(list(_diff)) if _diff else ""
-        self.path_col = _pid
-
-        self._recompute()
 
     # ── dispatch ───────────────────────────────────────────────────────────────
 

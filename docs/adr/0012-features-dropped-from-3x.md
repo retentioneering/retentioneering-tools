@@ -1,4 +1,4 @@
-# ADR-0013: Features deliberately not carried over from 3.3.0
+# ADR-0012: Features deliberately not carried over from 3.3.0
 
 Status: Accepted (5.0 rewrite; recorded 2026-07)
 
@@ -20,13 +20,10 @@ Cut from 5.0, with the possibility of returning later:
 - Assorted 3.x Eventstream methods with no 5.0 equivalent (full list in
   `CHANGELOG.md` `[5.0.0]` → "Removed").
 
-The `3.x` branch preserves the old engine for reference and patches;
-`master` still reflects 3.3.0 until `v5-migration` lands.
+The `3.x` branch preserves the old engine for reference and patches
 
 ## Consequences
 
-- `README.md` still describes the 3.3.0 API until the migration branch
-  merges; `CHANGELOG.md` is the accurate account of the differences.
 - Requests for the removed tools should be answered with the roadmap
   position ("deliberately cut, may return"), not treated as regressions.
 - Any future reimplementation should follow the 5.0 architecture (headless

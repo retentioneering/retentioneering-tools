@@ -5,7 +5,6 @@ import anywidget
 import traitlets
 
 from retentioneering.widgets._esm import _get_esm
-from retentioneering.widgets.cloud_mixin import CloudMixin
 from retentioneering.widgets._utils import parse_diff as _parse_diff
 from retentioneering.widgets._html_export import write_html
 
@@ -13,7 +12,7 @@ _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
 
-class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
+class StepMatrixWidget(anywidget.AnyWidget):
     _esm = _get_esm()
     _css = _STATIC / "widget.css"
 
@@ -42,7 +41,6 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
     def __init__(
         self,
         eventstream,
-        cloud_file_name: str | None = None,
         max_steps=_UNSET,
         diff=_UNSET,
         path_col=_UNSET,
@@ -80,10 +78,7 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
         self.height = height if height is not _UNSET else 600
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
-        self._init_cloud(cloud_file_name)  # registers all cloud observers
-
-        if not self._cloud_file_name:
-            self._recompute()
+        self._recompute()
         self._initialized = True
 
         self.observe(
@@ -94,11 +89,9 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
     # ── widget-specific observer ───────────────────────────────────────────────
 
     def _on_params_change(self, _change):
-        if not self._initialized or self._loading_from_cloud:
+        if not self._initialized:
             return
         self._recompute()
-        if self._guard_auto_save():
-            self._schedule_cloud_save()
 
     # ── computation ────────────────────────────────────────────────────────────
 
@@ -244,53 +237,8 @@ class StepMatrixWidget(CloudMixin, anywidget.AnyWidget):
             "event_list": json.loads(self.event_list or "[]"),
             "height": self.height,
             "sidebar_open": sidebar_open,
-            "display_prefs": "{}",
         }
         write_html(path, title, "Step Matrix", data, analysis)
-
-    # ── cloud state ────────────────────────────────────────────────────────────
-
-    def _current_state(self) -> dict:
-        return {
-            **self._base_state(),
-            "params": {
-                "max_steps": self.max_steps,
-                "diff": self.diff,
-                "path_col": self.path_col,
-                "path_pattern": self.path_pattern,
-            },
-            "display": {
-                "height": self.height,
-                "sidebar_open": self.sidebar_open,
-                "display_prefs": self.display_prefs,
-            },
-        }
-
-    def _apply_state(self, state: dict) -> None:
-        p = state.get("params", {})
-        d = state.get("display", {})
-
-        self.max_steps = p.get("max_steps", 10)
-        self.path_pattern = p.get("path_pattern") or ""
-        self.height = d.get("height", 600)
-        self.sidebar_open = d.get("sidebar_open", True)
-
-        _diff, _pid, mismatch = self._apply_base_state(state)
-        self.diff = json.dumps(list(_diff)) if _diff else ""
-        self.path_col = _pid
-
-        prefs_raw = d.get("display_prefs", "{}")
-        if mismatch:
-            try:
-                prefs = json.loads(prefs_raw or "{}")
-                prefs["popRange"] = [0, None]
-                self.display_prefs = json.dumps(prefs)
-            except Exception:
-                self.display_prefs = "{}"
-        else:
-            self.display_prefs = prefs_raw
-
-        self._recompute()
 
 
 def _df_to_matrix(df) -> dict:

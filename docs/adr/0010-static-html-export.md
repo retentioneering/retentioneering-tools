@@ -1,4 +1,4 @@
-# ADR-0011: Self-contained static HTML export
+# ADR-0010: Self-contained static HTML export
 
 Status: Accepted (5.0; recorded 2026-07)
 
@@ -6,7 +6,7 @@ Status: Accepted (5.0; recorded 2026-07)
 
 Analysis results must be shareable with people who have no Jupyter kernel,
 no Python, and possibly no network: stakeholders opening a file from Slack,
-and MCP-generated reports (ADR-0010).
+and MCP-generated reports (ADR-0009).
 
 ## Decision
 
@@ -27,5 +27,5 @@ and MCP-generated reports (ADR-0010).
 - The static bundle and live bundle are built from one source tree, so
   widget features must degrade gracefully when there is no kernel
   (`isStatic` paths in JS).
-- Docs demo pages (ADR-0014) reuse exactly this mechanism, which keeps the
+- Docs demo pages (ADR-0013) reuse exactly this mechanism, which keeps the
   static path continuously exercised.

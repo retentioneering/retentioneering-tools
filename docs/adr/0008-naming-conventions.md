@@ -4,8 +4,7 @@ Status: Accepted (2026-07, pre-release naming review)
 
 ## Context
 
-The API was written by non-native English speakers and accreted names from
-different traditions. Before the 5.0 release (no compatibility burden yet) we
+Before the 5.0 release (no compatibility burden yet) we
 ran a full naming review optimizing for two audiences at once: humans coming
 from Amplitude/Mixpanel/pandas/sklearn, and LLM agents whose priors come from
 those same ecosystems. See `CHANGELOG.md` `[5.0.0]` → "Naming conventions"

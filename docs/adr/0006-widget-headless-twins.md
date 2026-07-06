@@ -30,7 +30,7 @@ ML features, MCP summaries).
 ## Consequences
 
 - Any new widget must ship with its `_data` twin and keep signatures in
-  lockstep; the docs pipeline (ADR-0014) renders both from docstrings and
+  lockstep; the docs pipeline (ADR-0013) renders both from docstrings and
   makes drift visible.
-- The MCP server (ADR-0010) builds on the same twins: it constructs widgets
+- The MCP server (ADR-0009) builds on the same twins: it constructs widgets
   for report tabs but summarizes from the same underlying data.

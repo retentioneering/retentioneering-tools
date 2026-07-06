@@ -19,7 +19,7 @@ and patches. `CHANGELOG.md`'s `[5.0.0]` entry documents the full delta vs. 3.3.0
 removed/added/renamed `Eventstream` methods and the 5.0 naming conventions. `docs/` (guide
 pages, generated reference, ADRs) describes the current API.
 
-**Known gaps vs. 3.3.0** (deliberately not carried over, may return later — ADR-0013): the
+**Known gaps vs. 3.3.0** (deliberately not carried over, may return later — ADR-0012): the
 interactive Preprocessing Graph (visual no-code pipeline builder), and the `Cohorts`, `StatTests`,
 `Sequences` tools.
 
@@ -95,17 +95,13 @@ Follow these rules for any new API.
 - `widgets/` — `anywidget.AnyWidget` subclasses pairing 1:1 with most tools (`TransitionGraphWidget`,
   `StepMatrixWidget`, etc.), rendered in Jupyter. Every widget has a headless `*_data` twin on
   `Eventstream`; a widget's *data parameters* are exactly the twin's signature.
-  `TransitionGraphWidget` and `StepMatrixWidget` additionally inherit `CloudMixin`
-  (`widgets/cloud_mixin.py`) for cloud save/load of widget display state; the other widgets wrap
-  their content in `AuthGate` with `disabled={true}` hardcoded on the JS side (dead code path,
-  not wired to CloudMixin).
 - `widgets/_esm.py` resolves the JS bundle: it only ever looks for
   `src/retentioneering/static/widget.js` and raises `FileNotFoundError` with instructions to
   run `make build` if it's missing. There is no runtime download/CDN fallback (ADR-0005) — the
   JS is built in CI and embedded directly into the wheel.
 - `widgets/_html_export.py` handles static HTML export using `widget-static.js` (an IIFE build,
   vs. `widget.js`'s ESM build for live anywidget use) — this one *is* shipped inside the wheel
-  unconditionally since exported HTML needs to work with no Python kernel behind it (ADR-0011).
+  unconditionally since exported HTML needs to work with no Python kernel behind it (ADR-0010).
 
 ### Path metrics (ADR-0007)
 
@@ -116,45 +112,32 @@ clustering (`features`), segment comparison (`metrics` / `overview_metrics`), an
 `filter_paths` conditions. Adding a metric also requires updating the JS metric editor and the
 Path Metrics docs page.
 
-### Cloud save/load is present but off by default (ADR-0009)
-
-`widgets/cloud.py` and `cloud_mixin.py` implement Supabase-backed cloud save/load, fully
-functional, but gated by env vars with empty/false defaults — this repo doesn't run a backend for
-it:
-- `RETENTIONEERING_CLOUD_ENABLED` (bool) — hides the cloud icon entirely on the JS side when unset.
-- `RETENTIONEERING_CLOUD_SUPABASE_URL` / `_ANON_KEY` — read at both build time (JS, via Vite
-  `define`) and runtime (Python, via `os.environ`); empty by default.
-- `RETENTIONEERING_CLOUD_MANAGE_URL` — "Manage saved widgets" link; hidden when unset.
-
-Don't hardcode real credentials here even for testing — the whole point of this design is that
-the public repo ships no bundled backend.
-
 ### JS: two workspace packages, one build target (ADR-0005)
 
 `js/` is an npm workspace (`js/viz-core`, `js/widget` — no root `package.json` deps beyond the
-workspace declaration). `@retentioneering/viz-core` holds shared React/MobX/Cytoscape components
-(including the cloud auth UI); `@retentioneering/widget` is the actual anywidget entry point,
+workspace declaration). `@retentioneering/viz-core` holds shared React/MobX/Cytoscape components;
+`@retentioneering/widget` is the actual anywidget entry point,
 importing from viz-core and building to **`src/retentioneering/static/`** (`widget.js` ESM +
 `widget-static.js` IIFE + `widget.css`). `widget.css` is a hand-maintained source file (just a
 `--retentioneering-yellow` CSS variable), **not build output** — nothing in the Vite config
 regenerates it, so it's tracked in git while `widget.js`/`widget-static.js` are gitignored.
 Python widget traitlets and JS `model.get/set` keys are one protocol: rename them together.
 
-### MCP server (ADR-0010)
+### MCP server (ADR-0009)
 
 `mcp/server.py` exposes the eventstream to LLM agents over SSE (`retentioneering.mcp.serve()`).
 `mcp/playbook.md` holds canonical analysis recipes surfaced via the `playbook()` tool. MCP
 preprocessor step types mirror `Eventstream` method names exactly — any API rename must be
 propagated to `_apply_preprocessors`, the tool docstrings, and the playbook in the same change.
 
-### Docs pipeline (ADR-0014)
+### Docs pipeline (ADR-0013)
 
 Reference pages are rendered from `Eventstream` docstrings (`docs/scripts/render_pages.py` +
 `docs/templates/*.jinja`); hand-written guides live in `docs/guide/`; widget demos are generated
 by executing the `<DemoWidget>` tags against the bundled ecom dataset. Docstrings are the single
 source of truth — change the docstring, re-render, done.
 
-### CI/CD (ADR-0012)
+### CI/CD (ADR-0011)
 
 - `.github/workflows/ci.yml` — on push/PR: `lint` job (pre-commit --all-files) + `test` job
   (matrix over Python 3.11-3.13, builds JS, runs pytest).
@@ -177,7 +160,7 @@ source of truth — change the docstring, re-render, done.
   (with `git config blame.ignoreRevsFile .git-blame-ignore-revs`) and GitHub's web blame skip
   past it to real authorship.
 
-### Versioning (ADR-0012)
+### Versioning (ADR-0011)
 
 No dynamic versioning — `pyproject.toml`'s `version = "..."` is the literal source of truth for
 what gets built and published; it is not derived from git tags. Bumping the git tag alone does

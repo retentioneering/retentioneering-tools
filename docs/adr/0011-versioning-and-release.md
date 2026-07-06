@@ -1,4 +1,4 @@
-# ADR-0012: Literal versioning and tag-driven releases
+# ADR-0011: Literal versioning and tag-driven releases
 
 Status: Accepted (recorded 2026-07)
 

@@ -7,7 +7,6 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
-import { AuthGate, loadSession, clearSession, type AuthSession } from "./AuthGate";
 import { MetricRow, validateMetricCfg } from "./metric_config_row";
 
 interface AnyWidgetModel {
@@ -580,7 +579,6 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [isLoading,  setIsLoading]      = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
     const [height,     setHeight]         = React.useState<number>(() => (model.get("height") as number) ?? 480);
     const [sidebarOpen, setSidebarOpen]   = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
-    const [session,    setSession]        = React.useState(() => loadSession());
 
     // Cell selection: max 2 per row. key = "metricIdx:segIdx"
     const [selected, setSelected] = React.useState<Set<string>>(new Set());
@@ -796,7 +794,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       <div ref={rootRef} style={{ position: "relative", display: "flex", flexDirection: "row", height, background: "#fff", borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", fontFamily: "system-ui,-apple-system,sans-serif" }}>
         <div style={{ flex: 1, position: "relative", overflow: "hidden", minWidth: 0, display: "flex", flexDirection: "column" }}>
           <SidebarToggle onClick={handleToggle} />
-          <AuthGate session={session} onLogin={setSession} disabled={true} style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
+          <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
             {!result && !isLoading && (
               <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: 13 }}>
                 {segCol ? "No data — computation may have failed" : "Select a segment column and click Apply"}
@@ -812,7 +810,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                 <HeatmapTable data={result} onCellClick={handleCellClick} onCellRightClick={isStatic ? () => {} : handleCellRightClick} selectedCells={selected} />
               </div>
             )}
-          </AuthGate>
+          </div>
 
           {(isLoading || distLoading) && <ComputingSpinner />}
         </div>

@@ -26,10 +26,6 @@ jobs:
         run: npm ci
 
       - name: Build JS
-        # RETENTIONEERING_CLOUD_SUPABASE_URL / _ANON_KEY are intentionally left
-        # unset here: no cloud backend ships with this distribution by default
-        # (see RETENTIONEERING_CLOUD_ENABLED). Set them as repo secrets only if
-        # you're building a fork/distribution that points at your own backend.
         run: |
           npm run build --prefix js/viz-core
           npm run build --prefix js/widget

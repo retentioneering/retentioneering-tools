@@ -5,9 +5,11 @@ Supports metrics:
 - length - number of steps (events)
 - duration - duration in seconds between first and last event
 - event_count - event count for specific event(s)
-  - events: event name (string or list of strings); list of events returns multiple metrics
+  - events: event name (string or list of strings); list of events returns multiple metrics;
+    omit (or pass None/[]) to count every event in the eventstream
 - has_event - event presence (0/1) for specific event(s)
-  - events: event name (string or list of strings); list of events returns multiple metrics
+  - events: event name (string or list of strings); list of events returns multiple metrics;
+    omit (or pass None/[]) to check every event in the eventstream
 - time_between - time in seconds between first occurrences of two events
   - start_event: event name
   - end_event: event name
@@ -81,6 +83,24 @@ def format_value_for_sql(value) -> str:
 
 # Special synthetic events that don't need to exist in the eventstream
 SYNTHETIC_EVENTS = {EventTypes().PATH_START.name, EventTypes().PATH_END.name}
+
+
+def _normalize_events(events: Any, metric_name: str) -> List[str] | None:
+    """
+    Normalizes the 'events' metric_args value for event_count/has_event.
+
+    Mirrors active_days' 'active_events': omitting the key, or passing None/[],
+    means "all events" (returns None, resolved to the full event list at build time).
+    """
+    if not events:
+        return None
+    if isinstance(events, str):
+        return [events]
+    if isinstance(events, list):
+        return events
+    raise InvalidMetricConfigError(
+        f"'{metric_name}' metric 'events' must be string or list"
+    )
 
 
 class MetricConfig:
@@ -175,52 +195,23 @@ class MetricConfig:
                 "original": config_dict,
             }
         elif metric == "has_event":
-            events = metric_args.get("events")
-            if not events:
-                raise InvalidMetricConfigError(
-                    "'has_event' metric requires 'events' in metric_args"
-                )
-
-            if isinstance(events, str):
-                event_names = [events]
-            elif isinstance(events, list):
-                if len(events) == 0:
-                    raise InvalidMetricConfigError(
-                        "'has_event' metric requires non-empty 'events' list"
-                    )
-                event_names = events
-            else:
-                raise InvalidMetricConfigError(
-                    "'has_event' metric 'events' must be string or list"
-                )
+            event_names = _normalize_events(metric_args.get("events"), "has_event")
             return {
                 "type": "has_event",
                 "event_names": event_names,
-                "metric_names": [f"has_event_{e}" for e in event_names],
+                "metric_names": [f"has_event_{e}" for e in event_names]
+                if event_names is not None
+                else None,
                 "original": config_dict,
             }
         elif metric == "event_count":
-            events = metric_args.get("events")
-            if not events:
-                raise InvalidMetricConfigError(
-                    "'event_count' metric requires 'events' in metric_args"
-                )
-
-            if isinstance(events, str):
-                events = [events]
-            elif isinstance(events, list):
-                if len(events) == 0:
-                    raise InvalidMetricConfigError(
-                        "'event_count' metric requires non-empty 'events' list"
-                    )
-            else:
-                raise InvalidMetricConfigError(
-                    "'event_count' metric 'events' must be string or list"
-                )
+            event_names = _normalize_events(metric_args.get("events"), "event_count")
             return {
                 "type": "event_count",
-                "event_names": events,
-                "metric_names": [f"event_count_{e}" for e in events],
+                "event_names": event_names,
+                "metric_names": [f"event_count_{e}" for e in event_names]
+                if event_names is not None
+                else None,
                 "original": config_dict,
             }
         elif metric == "time_between":
@@ -344,31 +335,16 @@ class MetricBuilder:
 
         metric_args = metric.get("metric_args", {})
 
-        if metric_name == "event_count":
-            event = metric_args.get("events")
-            if not event:
-                raise InvalidMetricConfigError(
-                    "'event_count' metric requires 'events' in metric_args"
-                )
-            events_to_check = [event] if isinstance(event, str) else event
-            for e in events_to_check:
-                if e not in available_events:
-                    raise InvalidMetricConfigError(
-                        f"Event '{e}' not found. Available events: {sorted(available_events)}"
-                    )
-
-        elif metric_name == "has_event":
+        if metric_name in ("event_count", "has_event"):
+            # Omitted/None/[] means "all events" (like active_days' active_events) - nothing to validate.
             events = metric_args.get("events")
-            if not events:
-                raise InvalidMetricConfigError(
-                    "'has_event' metric requires 'events' in metric_args"
-                )
-            events_to_check = [events] if isinstance(events, str) else events
-            for e in events_to_check:
-                if e not in available_events:
-                    raise InvalidMetricConfigError(
-                        f"Event '{e}' not found. Available events: {sorted(available_events)}"
-                    )
+            if events:
+                events_to_check = [events] if isinstance(events, str) else events
+                for e in events_to_check:
+                    if e not in available_events:
+                        raise InvalidMetricConfigError(
+                            f"Event '{e}' not found. Available events: {sorted(available_events)}"
+                        )
 
         elif metric_name == "time_between":
             start_event = metric_args.get("start_event")
@@ -526,6 +502,9 @@ class MetricBuilder:
     ) -> pd.DataFrame:
         """Builds event count metrics for one or more events"""
         event_names = config["event_names"]
+        if event_names is None:
+            # Wildcard: 'events' was omitted/None/[] - count every event in the stream.
+            event_names = sorted(self.df[event_col].unique().tolist())
 
         events_quoted = ", ".join([f"'{e}'" for e in event_names])
         query = f"""

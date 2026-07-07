@@ -13,8 +13,8 @@ Path metrics are scalar values computed per path (see [Key concepts](/docs/event
 | `length` | Total number of events in the path. | — |
 | `duration` | Time in seconds between the first and last event. | — |
 | `active_days` | Number of distinct calendar days with at least one event. Optionally restricted to specific events. | `active_events`: list[str] (optional) |
-| `event_count` | Number of times the specified event(s) occurred. | `events`: str or list[str] |
-| `has_event` | 1 if the specified event(s) occurred at least once, 0 otherwise. | `events`: str or list[str] |
+| `event_count` | Number of times the specified event(s) occurred. Omit `events` (or pass `None`/`[]`) to count every event. | `events`: str or list[str] (optional) |
+| `has_event` | 1 if the specified event(s) occurred at least once, 0 otherwise. Omit `events` (or pass `None`/`[]`) to check every event. | `events`: str or list[str] (optional) |
 | `time_between` | Time in seconds between the first occurrences of two events. Returns null if either event is missing. Use `path_start` or `path_end` as anchors. | `start_event`: str, `end_event`: str |
 | `first_event_time` | Unix timestamp of the first event in the path. | — |
 | `matches_pattern` | 1 if the path matches a sequence pattern, 0 otherwise. Events are separated by `->` and `.*` matches any sequence. Example: `login->.*->purchase`. | `pattern`: str |
@@ -31,7 +31,7 @@ Metrics appear in two different config formats depending on where they are used:
 | Key | Required | Description |
 |---|---|---|
 | `metric` | yes | Metric name from the table above. |
-| `metric_args` | depends | Additional arguments for the metric. Required for `event_count`, `has_event`, `time_between`, `matches_pattern`, and `in_segment`. |
+| `metric_args` | depends | Additional arguments for the metric. Required for `time_between`, `matches_pattern`, and `in_segment`; optional for `event_count`, `has_event`, and `active_days`. |
 | `agg` | yes (Segment Overview `metrics` and Cluster Analysis `overview_metrics` only) | Aggregation function. See aggregations below. |
 
 ```python

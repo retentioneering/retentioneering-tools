@@ -301,7 +301,7 @@ function FeaturesOverlay({ features, events, segmentCols, segmentLevels, onFeatu
 
   const [submitted, setSubmitted] = React.useState(false);
   const listRef = React.useRef<HTMLDivElement>(null);
-  const add    = () => onFeaturesChange([...features, { metric: "event_count", metric_args: { event: events } }]);
+  const add    = () => onFeaturesChange([...features, { metric: "event_count", metric_args: undefined }]);
   const update = (i: number, cfg: any) => onFeaturesChange(features.map((x, j) => j === i ? cfg : x));
   const remove = (i: number) => onFeaturesChange(features.filter((_, j) => j !== i));
   const errCount = features.filter(f => validateMetricCfg(f) !== null).length;
@@ -383,7 +383,7 @@ function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, onMetrics
 
   const [submitted, setSubmitted] = React.useState(false);
   const listRef = React.useRef<HTMLDivElement>(null);
-  const add    = () => onMetricsChange([...metrics, { metric: "event_count", agg: "mean", metric_args: { event: events } }]);
+  const add    = () => onMetricsChange([...metrics, { metric: "event_count", agg: "mean", metric_args: undefined }]);
   const update = (i: number, cfg: any) => onMetricsChange(metrics.map((m, j) => j === i ? cfg : m));
   const remove = (i: number) => onMetricsChange(metrics.filter((_, j) => j !== i));
   const errCount = metrics.filter(m => validateMetricCfg(m) !== null).length;

@@ -424,7 +424,7 @@ function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, onMetrics
 
   const [submitted, setSubmitted] = React.useState(false);
   const listRef = React.useRef<HTMLDivElement>(null);
-  const addMetric    = () => onMetricsChange([...metrics, { metric: "event_count", agg: "mean", metric_args: { event: events } }]);
+  const addMetric    = () => onMetricsChange([...metrics, { metric: "event_count", agg: "mean", metric_args: undefined }]);
   const updateMetric = (i: number, cfg: any) => onMetricsChange(metrics.map((m, j) => j === i ? cfg : m));
   const removeMetric = (i: number) => onMetricsChange(metrics.filter((_, j) => j !== i));
   const errCount = metrics.filter(m => validateMetricCfg(m) !== null).length;
@@ -577,6 +577,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       return r?.metrics ? r : null;
     });
     const [isLoading,  setIsLoading]      = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
+    const [error,      setError]          = React.useState<string>(() => (model.get("error") as string) || "");
     const [height,     setHeight]         = React.useState<number>(() => (model.get("height") as number) ?? 480);
     const [sidebarOpen, setSidebarOpen]   = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
 
@@ -598,6 +599,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       const subs: Array<[string, () => void]> = [
         ["result",     () => { const r = parseJson<any>(model.get("result"), null); setResult(r?.metrics ? r : null); }],
         ["is_loading", () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
+        ["error",      () => setError((model.get("error") as string) || "")],
         ["height",     () => setHeight((model.get("height") as number) ?? 480)],
         ["sidebar_open", () => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
         ["segment_col", () => setSegColState((model.get("segment_col") as string) || "")],
@@ -795,7 +797,12 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         <div style={{ flex: 1, position: "relative", overflow: "hidden", minWidth: 0, display: "flex", flexDirection: "column" }}>
           <SidebarToggle onClick={handleToggle} />
           <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
-            {!result && !isLoading && (
+            {error && !isLoading && (
+              <div style={{ margin: 16, padding: 12, background: "#fff1f2", border: "1px solid #fca5a5", borderRadius: 8, fontSize: 12, color: "#dc2626", fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                {error}
+              </div>
+            )}
+            {!result && !isLoading && !error && (
               <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af", fontSize: 13 }}>
                 {segCol ? "No data — computation may have failed" : "Select a segment column and click Apply"}
               </div>
@@ -884,7 +891,7 @@ function _metricArgs(metricName: string, _events: string[]): any {
   const m = _metricBaseName(metricName);
   if (m === "event_count") {
     const rest = metricName.replace(/^event_count_/, "").replace(/_[a-z\d]+$/, "");
-    return rest ? { event: rest } : undefined;
+    return rest ? { events: rest } : undefined;
   }
   if (m === "has_event") {
     const rest = metricName.replace(/^has_event_/, "").replace(/_[a-z\d]+$/, "");

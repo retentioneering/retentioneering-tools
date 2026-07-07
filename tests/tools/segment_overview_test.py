@@ -668,6 +668,34 @@ class TestSegmentOverview:
         assert result.loc["event_count_scroll_mean", "segment_1"] == 2.0
         assert result.loc["event_count_scroll_mean", "segment_2"] == 0.0
 
+    def test_event_count_all_events_wildcard(self) -> None:
+        """Omitting 'events' counts every event in the stream, like active_days' active_events"""
+        df = pd.DataFrame(
+            [
+                ["user_1", "click", "segment_1", "2020-01-01 00:00:00"],
+                ["user_1", "click", "segment_1", "2020-01-01 00:01:00"],
+                ["user_1", "scroll", "segment_1", "2020-01-01 00:02:00"],
+                ["user_2", "scroll", "segment_1", "2020-01-01 00:00:00"],
+                ["user_3", "click", "segment_2", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        result = stream.segment_overview_data(
+            segment_col="segment",
+            metrics=[{"metric": "event_count", "agg": "mean"}],
+        )
+
+        assert "event_count_click_mean" in result.index
+        assert "event_count_scroll_mean" in result.index
+        assert result.loc["event_count_click_mean", "segment_1"] == 1.0
+        assert result.loc["event_count_scroll_mean", "segment_1"] == 1.0
+        assert result.loc["event_count_click_mean", "segment_2"] == 1.0
+        assert result.loc["event_count_scroll_mean", "segment_2"] == 0.0
+
     def test_time_between_metric(self) -> None:
         """Test time_between metric with aggregation"""
         df = pd.DataFrame(

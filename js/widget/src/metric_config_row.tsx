@@ -14,9 +14,9 @@ const METRIC_TIPS: Record<string, string> = {
   active_days:    "Number of unique calendar days with at least one event.",
   in_segment:     "Path membership check for a segment value.\n• any: ≥1 event has the value\n• all: all events have the value\n• event_share: ≥ threshold share of events have the value\nIf multiple segment values are selected, a separate metric is created for each value.",
   duration:       "Time (seconds) between the first and last event.",
-  event_count:    "Number of times the selected event(s) occurred.",
+  event_count:    "Number of times the selected event(s) occurred.\nLeave events empty to count every event.",
   first_event_time: "Unix timestamp of the first event.",
-  has_event:            "1 if the selected event(s) occurred at least once, 0 otherwise.",
+  has_event:            "1 if the selected event(s) occurred at least once, 0 otherwise.\nLeave events empty to check every event.",
   length:         "Total number of events in the path.",
   matches_pattern:        "1 if the path matches the pattern, 0 otherwise.\nEvents separated by ->, .* matches any sequence.\nExample: login->.*->purchase",
   time_between:   "Time (seconds) between the first occurrences of two events.\nNull if either event is missing.",
@@ -215,14 +215,7 @@ export function SingleSelect({ value, options, placeholder, onChange }: {
 export function validateMetricCfg(cfg: any): string | null {
   const m = cfg?.metric;
   const a = cfg?.metric_args ?? {};
-  if (m === "event_count") {
-    const ev = a.event;
-    if (!ev || (Array.isArray(ev) ? ev.length === 0 : !ev)) return "Select at least one event";
-  }
-  if (m === "has_event") {
-    const ev = a.events;
-    if (!ev || (Array.isArray(ev) ? ev.length === 0 : !ev)) return "Select at least one event";
-  }
+  // event_count/has_event: leaving 'events' empty means "all events" (like active_days), no error.
   if (m === "time_between") {
     if (!a.start_event) return "Select From event";
     if (!a.end_event)   return "Select To event";
@@ -292,10 +285,14 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
       </div>
 
       {needsEvent && (() => {
-        const key = cfg.metric === "event_count" ? "event" : "events";
-        const raw = cfg.metric_args?.event ?? cfg.metric_args?.events;
+        const raw = cfg.metric_args?.events;
         const sel2: string[] = !raw ? [] : Array.isArray(raw) ? raw.map(String) : [String(raw)];
-        return <MultiSelect selected={sel2} options={events} onChange={vals => onChange({ ...cfg, metric_args: { [key]: vals } })} placeholder="Events…" />;
+        return (
+          <div>
+            <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Events (optional — leave empty for all events)</div>
+            <MultiSelect selected={sel2} options={events} onChange={vals => onChange({ ...cfg, metric_args: { events: vals.length ? vals : undefined } })} placeholder="Events…" />
+          </div>
+        );
       })()}
 
       {needsActiveDays && (() => {

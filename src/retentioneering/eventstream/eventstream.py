@@ -1131,6 +1131,7 @@ class Eventstream:
             path_pattern=path_pattern,
         )
 
+    @_tracked("headless_step_matrix")
     def step_matrix_data(
         self,
         max_steps: int = 10,

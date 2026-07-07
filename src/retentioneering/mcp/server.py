@@ -23,6 +23,7 @@ import pandas as pd
 from mcp.server.fastmcp import FastMCP
 
 from retentioneering._tracking import _caller_type as _tracking_caller_type
+from retentioneering._tracking import track as _track
 from retentioneering.eventstream.eventstream import Eventstream
 
 
@@ -60,6 +61,7 @@ def serve(
 
     Claude Desktop handles caching automatically.
     """
+    _track("mcp_serve", {"has_context": bool(context)})
     mcp = _build_server(stream, context or {}, port=port, notebook_dir=os.getcwd())
     thread = threading.Thread(
         target=lambda: mcp.run(transport="sse"),

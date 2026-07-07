@@ -127,6 +127,11 @@ def _no_track_requested() -> bool:
             return True
     except Exception:
         pass
+    try:
+        if json.loads(_CONFIG.read_text()).get("RETENTIONEERING_NO_TRACK"):
+            return True
+    except Exception:
+        pass
     return False
 
 
@@ -188,6 +193,7 @@ def tracked(event_name: str, condition=None, props_fn=None):
             finally:
                 _depth -= 1
 
+        wrapper._tracked_event = event_name  # noqa: SLF001 -- introspected by tests/tracking_test.py
         return wrapper
 
     return decorator

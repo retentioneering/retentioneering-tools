@@ -94,6 +94,17 @@ Naming conventions across the new API:
   multi-widget static HTML report with clickable cross-references
 - `ipywidgets` is now a core dependency, so widgets work out of the box in
   plain JupyterLab
+- `rename_segment_values(segment_col, mapping)` — rename values within an existing
+  segment column (e.g. cluster labels produced by `add_clusters`, or messy raw
+  segment data), analogous to `rename_events` but for segment columns
+- `cluster_analysis_data()` and the Cluster Analysis widget now report `best_params`
+  (`chosen_params` on the widget) — the concrete clustering parameters that produced
+  the current result (e.g. the winning `n_clusters` from a silhouette grid search),
+  so they can be passed straight to `add_clusters` to reproduce it
+- Cluster Analysis widget: "Save Clusters" sidebar action — write the current
+  clustering into the eventstream as a new segment column, optionally renaming
+  cluster labels first. Choose either a copy-pasteable `add_clusters(...)` code
+  snippet (`stream` stays untouched) or applying it in place immediately
 
 ### Fixed
 

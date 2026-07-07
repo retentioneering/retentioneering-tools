@@ -814,6 +814,39 @@ class Eventstream:
         new_df, new_schema = RenameEvents(mapping).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
+    @_tracked("dp_rename_segment_values")
+    def rename_segment_values(self, segment_col: str, mapping: dict) -> "Eventstream":
+        """
+        Rename values of a segment column using a mapping dict.
+
+        Values not present in `mapping` are left unchanged. Useful for cleaning up
+        raw segment data, or for giving a clustering result (e.g. from `add_clusters`)
+        human-readable names.
+
+        Parameters
+        ----------
+        segment_col : str
+            Name of the segment column. Must be listed in `schema.segment_cols`.
+        mapping : dict
+            Mapping of `{old_value: new_value}`.
+
+        Examples
+        --------
+            stream.add_clusters(
+                name="cluster", features=[{"metric": "length"}], n_clusters=3
+            ).rename_segment_values(
+                "cluster", {"cluster_0": "buyers", "cluster_1": "browsers"}
+            )
+        """
+        from retentioneering.data_processors.rename_segment_values import (
+            RenameSegmentValues,
+        )
+
+        new_df, new_schema = RenameSegmentValues(segment_col, mapping).apply(
+            self._df, self.schema
+        )
+        return Eventstream(new_df, asdict(new_schema), preprocess=False)
+
     @_tracked("dp_drop_events")
     def drop_events(self, names: list) -> "Eventstream":
         """
@@ -1552,11 +1585,16 @@ class Eventstream:
         path_col: str | None = None,
         event_col: str | None = None,
     ) -> dict:
-        """Run cluster analysis headlessly and return dict with overview_df / silhouette / nmf.
+        """Run cluster analysis headlessly and return dict with overview_df / silhouette / nmf / best_params.
 
         Pass lists for n_clusters / nmf_components / min_cluster_size to trigger
         grid search with silhouette scoring. n_clusters is required for the kmeans
         method (the default), including nmf_components-only searches.
+
+        `best_params` holds the concrete parameter values actually used to produce
+        `overview_df` (the winning combination when searching, or just the fixed
+        values passed in otherwise) — pass it straight to `add_clusters` to
+        materialize the same clustering as a segment column.
         """
         from retentioneering.tools.cluster_analysis import ClusterAnalysis
 

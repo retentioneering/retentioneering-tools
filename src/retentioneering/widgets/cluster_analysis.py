@@ -1,5 +1,6 @@
 import json
 import pathlib
+from dataclasses import asdict
 
 import anywidget
 import traitlets
@@ -39,11 +40,23 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
     result = traitlets.Unicode("{}").tag(sync=True)
     is_loading = traitlets.Bool(False).tag(sync=True)
     error = traitlets.Unicode("").tag(sync=True)
+    # Concrete params (e.g. the n_clusters that won the silhouette grid search)
+    # that produced `result` — pass straight to add_clusters to reproduce it.
+    chosen_params = traitlets.Unicode("{}").tag(sync=True)
 
     # ── display ────────────────────────────────────────────────────────────
     widget_id = traitlets.Unicode("").tag(sync=True)
     height = traitlets.Int(520).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
+
+    # ── save clusters to eventstream ─────────────────────────────────────────
+    save_segment_name = traitlets.Unicode("").tag(sync=True)
+    save_rename = traitlets.Unicode("{}").tag(sync=True)  # JSON {old_label: new_label}
+    save_mode = traitlets.Unicode("code").tag(sync=True)  # "code" | "inplace"
+    save_trigger = traitlets.Unicode("").tag(sync=True)
+    save_result = traitlets.Unicode("{}").tag(
+        sync=True
+    )  # JSON {ok, mode, code|segment_name, error}
 
     def __init__(
         self,
@@ -84,13 +97,8 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
 
         _feat = features if features is not _UNSET else None
         if _feat is None:
-            try:
-                all_events = json.loads(self.event_list)
-                _feat = [
-                    {"metric": "event_count", "metric_args": {"events": all_events}}
-                ]
-            except Exception:
-                _feat = []
+            # No 'events' -> wildcard (all events), same as leaving it empty in the UI.
+            _feat = [{"metric": "event_count"}]
         self.features = (
             json.dumps(_feat) if isinstance(_feat, list) else (_feat or "[]")
         )
@@ -104,17 +112,7 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         self.nmf_components = ""
         _mc = overview_metrics if overview_metrics is not _UNSET else None
         if _mc is None:
-            try:
-                all_events = json.loads(self.event_list)
-                _mc = [
-                    {
-                        "metric": "event_count",
-                        "metric_args": {"events": all_events},
-                        "agg": "mean",
-                    }
-                ]
-            except Exception:
-                _mc = []
+            _mc = [{"metric": "event_count", "agg": "mean"}]
         self.overview_metrics = (
             json.dumps(_mc) if isinstance(_mc, list) else (_mc or "[]")
         )
@@ -125,6 +123,7 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
 
         self._initialized = True
         self.observe(self._on_apply, names=["apply_trigger"])
+        self.observe(self._on_save, names=["save_trigger"])
 
         # Auto-compute when features were explicitly provided
         if features is not _UNSET:
@@ -136,6 +135,11 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         if not self._initialized:
             return
         self._recompute()
+
+    def _on_save(self, _change):
+        if not self._initialized:
+            return
+        self._save_clusters()
 
     # ── computation ────────────────────────────────────────────────────────
 
@@ -189,11 +193,101 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
                 result["nmf"] = raw["nmf"]
 
             self.result = json.dumps(result)
+            self.chosen_params = json.dumps(raw.get("best_params") or {})
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"
+            self.chosen_params = "{}"
         finally:
             self.is_loading = False
+
+    def _save_clusters(self):
+        """Materialize the clustering shown in `result` as a segment column.
+
+        `save_mode == "code"` only renders a copy-pasteable `add_clusters(...)` call
+        into `save_result["code"]` — the eventstream itself is left untouched, so the
+        user keeps full reproducibility (re-run with different params, or not apply
+        it at all).
+
+        `save_mode == "inplace"` actually mutates the shared `self._eventstream`
+        object (the same object the caller's `stream` variable points to) so the
+        change is visible without `stream = ...`. This is a deliberate exception to
+        the rest of the codebase's immutable-Eventstream convention (ADR-0003) and
+        is irreversible from the widget - if the user doesn't like the result they
+        must re-run the cell that built `stream` from scratch. Other widgets already
+        open on the same eventstream won't see the new column until re-created since
+        their catalogs are snapshotted at construction time.
+        """
+        try:
+            name = (self.save_segment_name or "").strip()
+            if not name:
+                raise ValueError("Segment column name is required.")
+
+            features = json.loads(self.features) if self.features else []
+            if not features:
+                raise ValueError("No features configured - nothing to cluster.")
+
+            rename = json.loads(self.save_rename) if self.save_rename else {}
+            params = json.loads(self.chosen_params) if self.chosen_params else {}
+
+            kwargs: dict = {
+                "name": name,
+                "features": features,
+                "method": self.method,
+                "scaler": self.scaler or None,
+                "path_col": self.path_col or None,
+            }
+            if self.method == "kmeans":
+                kwargs["n_clusters"] = params.get("n_clusters")
+            else:
+                kwargs["min_cluster_size"] = params.get("min_cluster_size")
+                kwargs["cluster_selection_epsilon"] = params.get(
+                    "cluster_selection_epsilon"
+                )
+            if params.get("nmf_components") is not None:
+                kwargs["nmf_components"] = params["nmf_components"]
+
+            if self.save_mode == "inplace":
+                self._apply_clusters_inplace(kwargs, rename)
+                self.save_result = json.dumps(
+                    {"ok": True, "mode": "inplace", "segment_name": name}
+                )
+            else:
+                code = _build_add_clusters_code(kwargs, rename)
+                self.save_result = json.dumps(
+                    {"ok": True, "mode": "code", "code": code}
+                )
+        except Exception as exc:
+            self.save_result = json.dumps({"ok": False, "error": str(exc)})
+
+    def _apply_clusters_inplace(self, kwargs: dict, rename: dict) -> None:
+        from retentioneering.data_processors.add_clusters import AddClusters
+        from retentioneering.data_processors.rename_segment_values import (
+            RenameSegmentValues,
+        )
+
+        new_df, new_schema = AddClusters(eventstream=self._eventstream, **kwargs).apply(
+            self._eventstream.df, self._eventstream.schema
+        )
+        if rename:
+            new_df, new_schema = RenameSegmentValues(kwargs["name"], rename).apply(
+                new_df, new_schema
+            )
+
+        es = self._eventstream
+        es._df = new_df
+        es._schema = asdict(new_schema)
+        # `schema`/`fingerprint` are cached_property - drop the stale cached values
+        # so the next access recomputes them from the new _df/_schema.
+        es.__dict__.pop("schema", None)
+        es.__dict__.pop("fingerprint", None)
+
+        # Refresh this widget's own catalogs so its sidebar reflects the new column.
+        self.segment_cols = json.dumps(es.schema.segment_cols)
+        try:
+            self.segment_levels = json.dumps(es.get_segment_values())
+        except Exception:
+            pass
 
     # ── HTML export ───────────────────────────────────────────────────────────
 
@@ -282,3 +376,28 @@ def _parse_n_clusters(raw: str):
         return int(s)
     except Exception:
         return None
+
+
+def _build_add_clusters_code(kwargs: dict, rename: dict) -> str:
+    """Renders an add_clusters(...) call (optionally chained with rename_segment_values)
+    reproducing the given kwargs, for the user to copy into a notebook cell."""
+    lines = [f"    name={kwargs['name']!r},", f"    features={kwargs['features']!r},"]
+    lines.append(f"    method={kwargs['method']!r},")
+    if kwargs.get("scaler") is not None:
+        lines.append(f"    scaler={kwargs['scaler']!r},")
+    for key in (
+        "n_clusters",
+        "min_cluster_size",
+        "cluster_selection_epsilon",
+        "nmf_components",
+    ):
+        if kwargs.get(key) is not None:
+            lines.append(f"    {key}={kwargs[key]!r},")
+    if kwargs.get("path_col"):
+        lines.append(f"    path_col={kwargs['path_col']!r},")
+
+    body = "\n".join(lines)
+    code = f"stream = stream.add_clusters(\n{body}\n)"
+    if rename:
+        code += f".rename_segment_values(\n    {kwargs['name']!r},\n    {rename!r},\n)"
+    return code

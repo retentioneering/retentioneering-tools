@@ -106,6 +106,7 @@ class ClusterAnalysis:
                     event_col,
                     overview_metrics or [],
                 )
+                result["best_params"] = best.get("params")
                 if best.get("nmf_data") is not None:
                     nmf_data = best["nmf_data"]
                     nmf_data["W_cluster_means"] = self._compute_w_cluster_means(
@@ -146,9 +147,20 @@ class ClusterAnalysis:
             overview_metrics or [],
         )
 
+        if method == "kmeans":
+            best_params: Dict[str, Any] = {"n_clusters": n_clusters}
+        else:
+            best_params = {
+                "min_cluster_size": min_cluster_size or 5,
+                "cluster_selection_epsilon": cluster_selection_epsilon or 0.0,
+            }
+        if nmf_components is not None:
+            best_params["nmf_components"] = nmf_components
+
         return {
             "overview_df": overview_df,
             "nmf": nmf_data,
+            "best_params": best_params,
         }
 
     # ------------------------------------------------------------------
@@ -222,6 +234,7 @@ class ClusterAnalysis:
         best_labels: np.ndarray | None = None
         best_nmf_data: Dict[str, Any] | None = None
         best_W: np.ndarray | None = None
+        best_params: Dict[str, Any] | None = None
 
         for nk in nmf_component_values:
             nmf_data: Dict[str, Any] | None = None
@@ -257,6 +270,7 @@ class ClusterAnalysis:
                         best_labels = labels
                         best_nmf_data = nmf_data
                         best_W = X if nk is not None else None
+                        best_params = dict(p)
 
             elif method == "hdbscan":
                 mcs_values = (
@@ -287,6 +301,7 @@ class ClusterAnalysis:
                             best_labels = labels
                             best_nmf_data = nmf_data
                             best_W = X if nk is not None else None
+                            best_params = dict(p)
 
         result: Dict[str, Any] = {"params": params, "silhouette": scores}
         if best_labels is not None:
@@ -294,6 +309,7 @@ class ClusterAnalysis:
                 "labels": best_labels,
                 "nmf_data": best_nmf_data,
                 "W": best_W,
+                "params": best_params,
             }
         return result
 

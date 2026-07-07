@@ -64,6 +64,9 @@ class TestClusterAnalysis:
         assert "length_mean" in overview_df.index
         assert len(overview_df.columns) <= 2
 
+        # best_params reports the exact (fixed) config used, for reproducing via add_clusters
+        assert result["best_params"] == {"n_clusters": 2}
+
     def test_kmeans_silhouette(self) -> None:
         """Test silhouette mode returns scores for each k"""
         df = get_df()
@@ -92,6 +95,13 @@ class TestClusterAnalysis:
         # Best clustering overview is returned
         assert "overview_df" in result
         assert "segment_size" in result["overview_df"].index
+
+        # best_params reports the winning n_clusters from the grid search,
+        # so callers can reproduce the exact same clustering via add_clusters.
+        assert "best_params" in result
+        assert result["best_params"]["n_clusters"] in [2, 3, 4, 5]
+        best_idx = sil["params"].index(result["best_params"])
+        assert sil["silhouette"][best_idx] == max(sil["silhouette"])
 
     def test_hdbscan_basic(self) -> None:
         """Test hdbscan clustering with overview"""

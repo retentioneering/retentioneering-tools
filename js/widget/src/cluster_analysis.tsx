@@ -48,44 +48,107 @@ interface ClusterResult { overview?: OverviewData; silhouette?: SilhouetteData; 
 
 // ── heatmap ────────────────────────────────────────────────────────────────
 
-function Heatmap({ data }: { data: OverviewData }) {
+const METRIC_COL_MIN_W = 40;
+const METRIC_COL_DEFAULT_W = 160;
+
+function EditableHeaderLabel({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState(value);
+  React.useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onClick={e => e.stopPropagation()}
+        onBlur={() => { setEditing(false); const v = draft.trim(); if (v && v !== value) onChange(v); }}
+        onKeyDown={e => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          if (e.key === "Escape") { setDraft(value); setEditing(false); }
+        }}
+        style={{ width: 88, fontSize: 11, fontWeight: 600, color: "#111827", border: "1px solid var(--retentioneering-yellow)", borderRadius: 4, padding: "1px 4px", outline: "none", textAlign: "right" }}
+      />
+    );
+  }
+  return (
+    <span onClick={e => { e.stopPropagation(); setEditing(true); }} title="Click to rename"
+      style={{ cursor: "pointer", borderBottom: "1px dashed #9ca3af" }}>
+      {value}
+    </span>
+  );
+}
+
+function Heatmap({ data, renameMap, onRename }: {
+  data: OverviewData; renameMap: Record<string, string>; onRename: (orig: string, next: string) => void;
+}) {
   const { metrics, segments, values } = data;
   const rowBounds = metrics.map((_, mi) => {
     const row = values[mi].filter(v => v !== null && Number.isFinite(v as number)) as number[];
     return { min: Math.min(...row), max: Math.max(...row) };
   });
+
+  // ── resizable metric-name column — drag the right edge to show/hide long names ──
+  const [labelWidth, setLabelWidth] = React.useState(METRIC_COL_DEFAULT_W);
+  const resizing  = React.useRef(false);
+  const startX    = React.useRef(0);
+  const startW    = React.useRef(0);
+  const handleRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const onMove = (e: MouseEvent) => { if (!resizing.current) return; setLabelWidth(Math.max(METRIC_COL_MIN_W, startW.current + e.clientX - startX.current)); };
+    const onUp   = () => { resizing.current = false; document.body.style.cursor = document.body.style.userSelect = ""; if (handleRef.current) handleRef.current.style.background = "transparent"; };
+    document.addEventListener("mousemove", onMove); document.addEventListener("mouseup", onUp);
+    return () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+  }, []);
+
   const th: React.CSSProperties = { padding: "5px 10px", fontSize: 11, fontWeight: 600, color: "#6b7280", background: "#f9fafb", borderBottom: "1px solid #e5e7eb", borderRight: "1px solid #e5e7eb", whiteSpace: "nowrap", position: "sticky", top: 0, zIndex: 2 };
-  const thL: React.CSSProperties = { ...th, textAlign: "left", position: "sticky", left: 0, zIndex: 3, minWidth: 160 };
+  const thL: React.CSSProperties = { ...th, textAlign: "left", position: "sticky", left: 0, zIndex: 3, width: labelWidth, minWidth: labelWidth, maxWidth: labelWidth, overflow: "hidden", textOverflow: "ellipsis" };
+  const tdL: React.CSSProperties = { padding: "5px 10px", fontSize: 11, color: "#374151", fontWeight: 500, background: "#fff", borderBottom: "1px solid #f3f4f6", borderRight: "1px solid #e5e7eb", position: "sticky", left: 0, zIndex: 1, width: labelWidth, minWidth: labelWidth, maxWidth: labelWidth, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" };
+
   return (
-    <div style={{ overflowX: "auto", overflowY: "auto", flex: 1 }}>
-      <table style={{ borderCollapse: "collapse", fontSize: 12, width: "max-content", minWidth: "100%" }}>
-        <thead>
-          <tr>
-            <th style={{ ...thL, background: "#f9fafb" }}>Metric</th>
-            {segments.map(s => <th key={s} style={{ ...th, textAlign: "right" }}>{s}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {metrics.map((metric, mi) => {
-            const { min, max } = rowBounds[mi];
-            return (
-              <tr key={metric}>
-                <td style={{ padding: "5px 10px", fontSize: 11, color: "#374151", fontWeight: 500, background: "#fff", borderBottom: "1px solid #f3f4f6", borderRight: "1px solid #e5e7eb", position: "sticky", left: 0, zIndex: 1 }}>
-                  {metric}
-                </td>
-                {segments.map((_, si) => {
-                  const v = values[mi][si];
-                  return (
-                    <td key={si} style={{ padding: "5px 10px", textAlign: "right", borderBottom: "1px solid #f3f4f6", borderRight: "1px solid #f3f4f6", background: v !== null ? cellColor(v, min, max) : "#f9fafb", color: "#111827" }}>
-                      {fmtCell(metric, v)}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div style={{ position: "relative", height: "100%", overflow: "hidden" }}>
+      <div ref={handleRef}
+        title="Drag to resize"
+        style={{ position: "absolute", left: labelWidth - 1, top: 0, bottom: 0, width: 3, cursor: "col-resize", zIndex: 20, background: "transparent", transition: "background 0.12s" }}
+        onMouseEnter={() => { if (handleRef.current) handleRef.current.style.background = "var(--retentioneering-yellow)"; }}
+        onMouseLeave={() => { if (!resizing.current && handleRef.current) handleRef.current.style.background = "transparent"; }}
+        onMouseDown={e => { e.preventDefault(); resizing.current = true; startX.current = e.clientX; startW.current = labelWidth; document.body.style.cursor = "col-resize"; document.body.style.userSelect = "none"; }}
+      />
+      <div style={{ position: "absolute", inset: 0, overflowX: "auto", overflowY: "auto" }}>
+        <table style={{ borderCollapse: "collapse", fontSize: 12, width: "max-content", minWidth: "100%" }}>
+          <thead>
+            <tr>
+              <th style={{ ...thL, background: "#f9fafb" }}>Metric</th>
+              {segments.map(s => (
+                <th key={s} style={{ ...th, textAlign: "right" }}>
+                  <EditableHeaderLabel value={renameMap[s] ?? s} onChange={v => onRename(s, v)} />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {metrics.map((metric, mi) => {
+              const { min, max } = rowBounds[mi];
+              return (
+                <tr key={metric}>
+                  <td title={metric} style={tdL}>
+                    {metric}
+                  </td>
+                  {segments.map((_, si) => {
+                    const v = values[mi][si];
+                    return (
+                      <td key={si} style={{ padding: "5px 10px", textAlign: "right", borderBottom: "1px solid #f3f4f6", borderRight: "1px solid #f3f4f6", background: v !== null ? cellColor(v, min, max) : "#f9fafb", color: "#111827" }}>
+                        {fmtCell(metric, v)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -431,6 +494,149 @@ function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, onMetrics
   );
 }
 
+interface SaveResult { ok?: boolean; mode?: string; code?: string; segment_name?: string; error?: string; }
+
+function SaveClustersOverlay({ segments, initialRename, onSave, onClose, saveResult }: {
+  segments: string[];
+  initialRename: Record<string, string>;
+  onSave: (name: string, rename: Record<string, string>, mode: "code" | "inplace") => void;
+  onClose: () => void;
+  saveResult: SaveResult | null;
+}) {
+  const clusterNames = segments.filter(s => s !== "noise");
+  const [name, setName] = React.useState("cluster");
+  const [renameMap, setRenameMap] = React.useState<Record<string, string>>(() =>
+    Object.fromEntries(clusterNames.map(s => [s, initialRename[s] ?? s]))
+  );
+  const [mode, setMode] = React.useState<"code" | "inplace">("code");
+  const [copied, setCopied] = React.useState(false);
+
+  React.useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", k);
+    return () => document.removeEventListener("keydown", k);
+  }, [onClose]);
+
+  const nameValid = name.trim().length > 0;
+
+  const handleSave = () => {
+    if (!nameValid) return;
+    const rename: Record<string, string> = {};
+    for (const orig of clusterNames) {
+      const v = (renameMap[orig] ?? "").trim();
+      if (v && v !== orig) rename[orig] = v;
+    }
+    onSave(name.trim(), rename, mode);
+  };
+
+  const copyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* clipboard unavailable — user can still select the textarea manually */ }
+  };
+
+  const optionStyle = (active: boolean): React.CSSProperties => ({
+    display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer", padding: 8,
+    border: `1px solid ${active ? "var(--retentioneering-yellow)" : "#e5e7eb"}`, borderRadius: 6,
+  });
+
+  return (
+    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", padding: 24, width: 480, maxWidth: "90%", maxHeight: "85%", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>Save Clusters to Eventstream</span>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#6b7280", padding: "0 4px" }}>×</button>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <SidebarFL>Segment column name</SidebarFL>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="cluster"
+            style={{ width: "100%", boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 8px", fontSize: 12, outline: "none" }} />
+        </div>
+
+        {clusterNames.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <SidebarFL>Rename clusters (optional)</SidebarFL>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {clusterNames.map(orig => (
+                <div key={orig} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 11, color: "#6b7280", width: 110, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orig}</span>
+                  <span style={{ color: "#9ca3af", fontSize: 11 }}>→</span>
+                  <input value={renameMap[orig] ?? orig} onChange={e => setRenameMap({ ...renameMap, [orig]: e.target.value })}
+                    style={{ flex: 1, minWidth: 0, boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 6, padding: "5px 8px", fontSize: 12, outline: "none" }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginBottom: 14 }}>
+          <SidebarFL>How to apply</SidebarFL>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <label style={optionStyle(mode === "code")}>
+              <input type="radio" checked={mode === "code"} onChange={() => setMode("code")} style={{ marginTop: 2 }} />
+              <span>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>Generate code (recommended)</div>
+                <div style={{ fontSize: 11, color: "#6b7280" }}>Get a code snippet to run in a new cell. The current `stream` stays untouched — you can retry with different settings.</div>
+              </span>
+            </label>
+            <label style={optionStyle(mode === "inplace")}>
+              <input type="radio" checked={mode === "inplace"} onChange={() => setMode("inplace")} style={{ marginTop: 2 }} />
+              <span>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>Apply directly to this stream</div>
+                <div style={{ fontSize: 11, color: "#6b7280" }}>Adds the column to `stream` immediately, no new cell needed. ⚠ Irreversible — the previous state of `stream` is lost; re-run the cells that built it to undo.</div>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {saveResult && saveResult.ok === false && (
+          <div style={{ marginBottom: 14, padding: 10, background: "#fff1f2", border: "1px solid #fca5a5", borderRadius: 6, fontSize: 11, color: "#dc2626", fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+            {saveResult.error}
+          </div>
+        )}
+
+        {saveResult && saveResult.ok && saveResult.mode === "code" && (
+          <div style={{ marginBottom: 14 }}>
+            <SidebarFL>Copy this into a new cell</SidebarFL>
+            <textarea readOnly value={saveResult.code} rows={8}
+              style={{ width: "100%", boxSizing: "border-box", fontFamily: "monospace", fontSize: 11, padding: 8, border: "1px solid #d1d5db", borderRadius: 6, resize: "vertical" }} />
+            <button onClick={() => copyCode(saveResult.code || "")}
+              style={{ marginTop: 6, padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 11, color: "#374151" }}>
+              {copied ? "Copied!" : "Copy code"}
+            </button>
+          </div>
+        )}
+
+        {saveResult && saveResult.ok && saveResult.mode === "inplace" && (
+          <div style={{ marginBottom: 14, padding: 10, background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 6, fontSize: 11, color: "#15803d" }}>
+            Saved as segment "{saveResult.segment_name}" — `stream` now has this column.
+          </div>
+        )}
+
+        <button onClick={handleSave} disabled={!nameValid}
+          style={{ width: "100%", padding: "8px 0", background: nameValid ? "var(--retentioneering-yellow)" : "#f3f4f6", border: "none", borderRadius: 6, cursor: nameValid ? "pointer" : "default", fontSize: 13, fontWeight: 600, color: nameValid ? "#1a1a1a" : "#9ca3af" }}>
+          {mode === "code" ? "Generate code" : "Apply to stream"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SaveClustersTriggerButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{ width: "100%", padding: "6px 10px", border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, color: "#374151", fontWeight: 500 }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+      </svg>
+      Save Clusters…
+    </button>
+  );
+}
+
 function NCInput({ value, onChange, placeholder, disabled }: { value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean }) {
   return (
     <input value={value} onChange={e => onChange(e.target.value)}
@@ -457,7 +663,7 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
   metricsConfig, events, pathIdCol, pathCols, isLoading, isStatic,
   onOpenFeatures, onOpenMetrics, onMethodChange, onScalerChange, onNClustersChange,
   onNmfToggle, onNmfKChange, onMetricsChange,
-  onPathIdColChange, onApply, isDirty, hasResult }: {
+  onPathIdColChange, onApply, isDirty, hasResult, onOpenSave }: {
   features: any[]; method: string; scaler: string; nClustersRaw: string;
   nmfEnabled: boolean; nmfKRaw: string;
   metricsConfig: any[]; events: string[];
@@ -467,7 +673,7 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
   onNmfToggle: (v: boolean) => void; onNmfKChange: (v: string) => void;
   onMetricsChange: (m: any[]) => void;
   onPathIdColChange: (c: string) => void; onApply: () => void; hasResult: boolean;
-  isDirty: boolean;
+  isDirty: boolean; onOpenSave: () => void;
 }) {
   const showApply = isDirty || !hasResult;
 
@@ -544,6 +750,12 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
             <MetricsTriggerButton count={metricsConfig.length} onClick={onOpenMetrics} disabled={isStatic} />
           </div>
         </SidebarSection>
+
+        {!isStatic && hasResult && (
+          <SidebarSection title="Save Clusters">
+            <SaveClustersTriggerButton onClick={onOpenSave} />
+          </SidebarSection>
+        )}
 
       </div>
 
@@ -628,6 +840,14 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [sidebarOpen,   setSidebarOpen]    = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
     const [featuresOpen,  setFeaturesOpen]   = React.useState(false);
     const [metricsOpen,   setMetricsOpen]    = React.useState(false);
+    const [saveOpen,      setSaveOpen]       = React.useState(false);
+    const [saveResult,    setSaveResult]     = React.useState<SaveResult | null>(() => {
+      const r = parseJson<SaveResult>(model.get("save_result"), {});
+      return r && Object.keys(r).length > 0 ? r : null;
+    });
+    // Cluster renames typed directly into the heatmap header — cleared on every new
+    // result since "cluster_0" may refer to a different cluster after re-clustering.
+    const [headerRename,  setHeaderRename]   = React.useState<Record<string, string>>({});
     const rootRef = React.useRef<HTMLDivElement>(null);
     const [activeTab,     setActiveTab]      = React.useState("Overview");
 
@@ -638,7 +858,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
 
     React.useEffect(() => {
       const subs: Array<[string, () => void]> = [
-        ["result",      () => setResult(parseJson(model.get("result"), {}))],
+        ["result",      () => { setResult(parseJson(model.get("result"), {})); setHeaderRename({}); }],
         ["is_loading",  () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
         ["error",       () => setError((model.get("error") as string) || "")],
         ["height",      () => setHeight((model.get("height") as number) ?? 520)],
@@ -652,6 +872,10 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         ["overview_metrics", () => setMetricsConfig(parseJson(model.get("overview_metrics"), []))],
         ["aggregation",    () => setAggregation((model.get("aggregation") as string) || "mean")],
         ["path_col",    () => setPathIdColState((model.get("path_col") as string) || "")],
+        ["save_result", () => {
+          const r = parseJson<SaveResult>(model.get("save_result"), {});
+          setSaveResult(r && Object.keys(r).length > 0 ? r : null);
+        }],
       ];
       subs.forEach(([k, cb]) => model.on(`change:${k}`, cb));
       return () => subs.forEach(([k, cb]) => model.off(`change:${k}`, cb));
@@ -669,6 +893,14 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const setAgg        = (a: string) => { setAggregation(a); model.set("aggregation", a); model.save_changes(); };
     const setPathId     = (c: string) => { setPathIdColState(c); model.set("path_col", c); model.save_changes(); };
     const handleToggle  = () => { setSidebarOpen(p => { const n = !p; model.set("sidebar_open", n); model.save_changes(); return n; }); };
+
+    const handleSaveClusters = (name: string, rename: Record<string, string>, mode: "code" | "inplace") => {
+      model.set("save_segment_name", name);
+      model.set("save_rename", JSON.stringify(rename));
+      model.set("save_mode", mode);
+      model.set("save_trigger", Date.now().toString());
+      model.save_changes();
+    };
 
     const handleApply = () => {
       model.set("features",       JSON.stringify(features));
@@ -730,7 +962,10 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                   Add features and click Apply to run clustering
                 </div>
               )}
-              {tab === "Overview"        && result.overview   && <Heatmap data={result.overview} />}
+              {tab === "Overview"        && result.overview   && (
+                <Heatmap data={result.overview} renameMap={headerRename}
+                  onRename={(orig, next) => setHeaderRename(prev => ({ ...prev, [orig]: next }))} />
+              )}
               {tab === "Silhouette"      && result.silhouette  && <div style={{ padding: "0 16px" }}><SilhouetteChart data={result.silhouette} /></div>}
               {tab === "H-matrix"        && result.nmf         && <div style={{ padding: "0 16px" }}><NmfHMatrix nmf={result.nmf} /></div>}
               {tab === "W Cluster Means" && result.nmf         && <div style={{ padding: "0 16px" }}><NmfWMatrix nmf={result.nmf} /></div>}
@@ -752,6 +987,17 @@ export function render({ model, el, isStatic = false }: RenderContext) {
             onNClustersChange={setNC} onNmfToggle={setNmf} onNmfKChange={setNmfKVal}
             onMetricsChange={setMetrics}
             onPathIdColChange={setPathId} onApply={handleApply} isDirty={isDirty} hasResult={hasResult}
+            onOpenSave={() => setSaveOpen(true)}
+          />
+        )}
+
+        {!isStatic && saveOpen && (
+          <SaveClustersOverlay
+            segments={result.overview?.segments ?? []}
+            initialRename={headerRename}
+            onSave={handleSaveClusters}
+            onClose={() => setSaveOpen(false)}
+            saveResult={saveResult}
           />
         )}
 

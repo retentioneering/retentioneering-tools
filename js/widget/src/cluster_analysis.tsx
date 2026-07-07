@@ -457,7 +457,7 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
   metricsConfig, events, pathIdCol, pathCols, isLoading, isStatic,
   onOpenFeatures, onOpenMetrics, onMethodChange, onScalerChange, onNClustersChange,
   onNmfToggle, onNmfKChange, onMetricsChange,
-  onPathIdColChange, onApply, isDirty }: {
+  onPathIdColChange, onApply, isDirty, hasResult }: {
   features: any[]; method: string; scaler: string; nClustersRaw: string;
   nmfEnabled: boolean; nmfKRaw: string;
   metricsConfig: any[]; events: string[];
@@ -466,9 +466,10 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
   onScalerChange: (s: string) => void; onNClustersChange: (n: string) => void;
   onNmfToggle: (v: boolean) => void; onNmfKChange: (v: string) => void;
   onMetricsChange: (m: any[]) => void;
-  onPathIdColChange: (c: string) => void; onApply: () => void;
+  onPathIdColChange: (c: string) => void; onApply: () => void; hasResult: boolean;
   isDirty: boolean;
 }) {
+  const showApply = isDirty || !hasResult;
 
   const sel: React.CSSProperties = { width: "100%", boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 6, color: "#111827", fontSize: 12, padding: "5px 24px 5px 8px", cursor: "pointer", outline: "none", appearance: "none", backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 6px center", background: "#f9fafb" };
 
@@ -546,8 +547,8 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
 
       </div>
 
-      {/* Apply — shown only when settings changed */}
-      {!isStatic && isDirty && features.length > 0 && (
+      {/* Apply — shown when settings changed, or nothing has been computed yet (e.g. defaults) */}
+      {!isStatic && showApply && features.length > 0 && (
         <div style={{ padding: "10px 12px", borderTop: "1px solid #e5e7eb", flexShrink: 0 }}>
           <button onClick={onApply} disabled={isLoading}
             style={{ width: "100%", padding: "8px 0", background: "var(--retentioneering-yellow)", border: "none", borderRadius: 6, cursor: "pointer", color: "#1a1a1a", fontSize: 12, fontWeight: 600 }}>
@@ -709,6 +710,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     if (result.nmf)         tabs.push("H-matrix");
     if (result.nmf?.W_cluster_means && Object.keys(result.nmf.W_cluster_means).length > 0) tabs.push("W Cluster Means");
     const tab = tabs.includes(activeTab) ? activeTab : (tabs[0] || "Overview");
+    const hasResult = !!(result.overview || result.silhouette || result.nmf);
 
     return (
       <div ref={rootRef} style={{ position: "relative", display: "flex", flexDirection: "row", height, background: "#fff", borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", fontFamily: "system-ui,-apple-system,sans-serif" }}>
@@ -749,7 +751,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
             onMethodChange={setMethod} onScalerChange={setScaler}
             onNClustersChange={setNC} onNmfToggle={setNmf} onNmfKChange={setNmfKVal}
             onMetricsChange={setMetrics}
-            onPathIdColChange={setPathId} onApply={handleApply} isDirty={isDirty}
+            onPathIdColChange={setPathId} onApply={handleApply} isDirty={isDirty} hasResult={hasResult}
           />
         )}
 

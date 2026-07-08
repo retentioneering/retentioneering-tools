@@ -1,7 +1,7 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
-import { MetricRow, validateMetricCfg, InfoTip } from "./metric_config_row";
+import { MetricRow, validateMetricCfg, InfoTip, AGG_OPTIONS } from "./metric_config_row";
 
 interface AnyWidgetModel {
   get(key: string): unknown;
@@ -39,6 +39,24 @@ function fmtCell(metric: string, v: number | null): string {
   return n.toFixed(3).replace(/\.?0+$/, "");
 }
 
+// event_count_purchase_mean / has_event_add_to_cart_median → "purchase · event_count · mean"
+// (the event name is the interesting part — leading it keeps it from getting lost
+// between the metric prefix and the aggregation suffix on a narrow column).
+function formatMetricLabel(metric: string): string {
+  for (const base of ["event_count", "has_event"]) {
+    if (!metric.startsWith(base + "_")) continue;
+    const rest = metric.slice(base.length + 1);
+    for (const agg of AGG_OPTIONS) {
+      const suffix = "_" + agg;
+      if (rest.endsWith(suffix) && rest.length > suffix.length) {
+        const eventName = rest.slice(0, rest.length - suffix.length);
+        return `${eventName} · ${base} · ${agg}`;
+      }
+    }
+  }
+  return metric;
+}
+
 // ── types ──────────────────────────────────────────────────────────────────
 
 interface OverviewData { metrics: string[]; segments: string[]; values: (number|null)[][]; }
@@ -50,6 +68,7 @@ interface ClusterResult { overview?: OverviewData; silhouette?: SilhouetteData; 
 
 const METRIC_COL_MIN_W = 40;
 const METRIC_COL_DEFAULT_W = 160;
+const VALUE_COL_MAX_W = 68;
 
 function EditableHeaderLabel({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [editing, setEditing] = React.useState(false);
@@ -68,12 +87,12 @@ function EditableHeaderLabel({ value, onChange }: { value: string; onChange: (v:
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           if (e.key === "Escape") { setDraft(value); setEditing(false); }
         }}
-        style={{ width: 88, fontSize: 11, fontWeight: 600, color: "#111827", border: "1px solid var(--retentioneering-yellow)", borderRadius: 4, padding: "1px 4px", outline: "none", textAlign: "right" }}
+        style={{ width: "100%", boxSizing: "border-box", fontSize: 11, fontWeight: 600, color: "#111827", border: "1px solid var(--retentioneering-yellow)", borderRadius: 4, padding: "1px 4px", outline: "none", textAlign: "right" }}
       />
     );
   }
   return (
-    <span onClick={e => { e.stopPropagation(); setEditing(true); }} title="Click to rename"
+    <span onClick={e => { e.stopPropagation(); setEditing(true); }} title={`${value} — click to rename`}
       style={{ cursor: "pointer", borderBottom: "1px dashed #9ca3af" }}>
       {value}
     </span>
@@ -103,8 +122,14 @@ function Heatmap({ data, renameMap, onRename }: {
   }, []);
 
   const th: React.CSSProperties = { padding: "5px 10px", fontSize: 11, fontWeight: 600, color: "#6b7280", background: "#f9fafb", borderBottom: "1px solid #e5e7eb", borderRight: "1px solid #e5e7eb", whiteSpace: "nowrap", position: "sticky", top: 0, zIndex: 2 };
-  const thL: React.CSSProperties = { ...th, textAlign: "left", position: "sticky", left: 0, zIndex: 3, width: labelWidth, minWidth: labelWidth, maxWidth: labelWidth, overflow: "hidden", textOverflow: "ellipsis" };
-  const tdL: React.CSSProperties = { padding: "5px 10px", fontSize: 11, color: "#374151", fontWeight: 500, background: "#fff", borderBottom: "1px solid #f3f4f6", borderRight: "1px solid #e5e7eb", position: "sticky", left: 0, zIndex: 1, width: labelWidth, minWidth: labelWidth, maxWidth: labelWidth, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" };
+  const thL: React.CSSProperties = { ...th, textAlign: "left", position: "sticky", left: 0, zIndex: 3, boxSizing: "border-box", width: labelWidth, minWidth: labelWidth, maxWidth: labelWidth, overflow: "hidden", textOverflow: "ellipsis" };
+  const tdL: React.CSSProperties = { padding: "5px 10px", fontSize: 11, color: "#374151", fontWeight: 500, background: "#fff", borderBottom: "1px solid #f3f4f6", borderRight: "1px solid #e5e7eb", position: "sticky", left: 0, zIndex: 1, boxSizing: "border-box", width: labelWidth, minWidth: labelWidth, maxWidth: labelWidth, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" };
+  // Value columns are capped so a long (renamed) cluster label can't blow up the
+  // whole table — better to truncate it (full name on hover) than widen every column.
+  // Width/minWidth/maxWidth must all agree (as with thL/tdL above) - max-width alone
+  // is only a hint to table auto-layout and gets ignored once content is wider than it.
+  const thV: React.CSSProperties = { ...th, padding: "5px 6px", textAlign: "right", boxSizing: "border-box", width: VALUE_COL_MAX_W, minWidth: VALUE_COL_MAX_W, maxWidth: VALUE_COL_MAX_W, overflow: "hidden", textOverflow: "ellipsis" };
+  const tdV: React.CSSProperties = { padding: "5px 6px", textAlign: "right", borderBottom: "1px solid #f3f4f6", borderRight: "1px solid #f3f4f6", boxSizing: "border-box", width: VALUE_COL_MAX_W, minWidth: VALUE_COL_MAX_W, maxWidth: VALUE_COL_MAX_W, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" };
 
   return (
     <div style={{ position: "relative", height: "100%", overflow: "hidden" }}>
@@ -116,12 +141,12 @@ function Heatmap({ data, renameMap, onRename }: {
         onMouseDown={e => { e.preventDefault(); resizing.current = true; startX.current = e.clientX; startW.current = labelWidth; document.body.style.cursor = "col-resize"; document.body.style.userSelect = "none"; }}
       />
       <div style={{ position: "absolute", inset: 0, overflowX: "auto", overflowY: "auto" }}>
-        <table style={{ borderCollapse: "collapse", fontSize: 12, width: "max-content", minWidth: "100%" }}>
+        <table style={{ borderCollapse: "collapse", tableLayout: "fixed", fontSize: 12, width: "auto" }}>
           <thead>
             <tr>
               <th style={{ ...thL, background: "#f9fafb" }}>Metric</th>
               {segments.map(s => (
-                <th key={s} style={{ ...th, textAlign: "right" }}>
+                <th key={s} style={thV}>
                   <EditableHeaderLabel value={renameMap[s] ?? s} onChange={v => onRename(s, v)} />
                 </th>
               ))}
@@ -132,13 +157,13 @@ function Heatmap({ data, renameMap, onRename }: {
               const { min, max } = rowBounds[mi];
               return (
                 <tr key={metric}>
-                  <td title={metric} style={tdL}>
-                    {metric}
+                  <td title={formatMetricLabel(metric)} style={tdL}>
+                    {formatMetricLabel(metric)}
                   </td>
                   {segments.map((_, si) => {
                     const v = values[mi][si];
                     return (
-                      <td key={si} style={{ padding: "5px 10px", textAlign: "right", borderBottom: "1px solid #f3f4f6", borderRight: "1px solid #f3f4f6", background: v !== null ? cellColor(v, min, max) : "#f9fafb", color: "#111827" }}>
+                      <td key={si} title={fmtCell(metric, v)} style={{ ...tdV, background: v !== null ? cellColor(v, min, max) : "#f9fafb", color: "#111827" }}>
                         {fmtCell(metric, v)}
                       </td>
                     );
@@ -494,12 +519,43 @@ function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, onMetrics
   );
 }
 
-interface SaveResult { ok?: boolean; mode?: string; code?: string; segment_name?: string; error?: string; }
+interface SaveResult { ok?: boolean; segment_name?: string; error?: string; }
 
-function SaveClustersOverlay({ segments, initialRename, onSave, onClose, saveResult }: {
+// ── client-side add_clusters(...) code preview ──────────────────────────────
+// Pure templating from state already available in the browser — kept in sync
+// with the form on every render instead of round-tripping through Python.
+
+function pyRepr(v: any): string {
+  if (v === null || v === undefined) return "None";
+  if (typeof v === "boolean") return v ? "True" : "False";
+  if (typeof v === "number") return String(v);
+  if (typeof v === "string") return `'${v.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+  if (Array.isArray(v)) return `[${v.map(pyRepr).join(", ")}]`;
+  if (typeof v === "object") return `{${Object.entries(v).map(([k, val]) => `${pyRepr(k)}: ${pyRepr(val)}`).join(", ")}}`;
+  return JSON.stringify(v);
+}
+
+function buildAddClustersCode(streamVarName: string, name: string, features: any[], method: string, scaler: string, params: Record<string, any>, pathCol: string, rename: Record<string, string>): string {
+  const lines = [`    name=${pyRepr(name)},`, `    features=${pyRepr(features)},`, `    method=${pyRepr(method)},`];
+  if (scaler) lines.push(`    scaler=${pyRepr(scaler)},`);
+  for (const key of ["n_clusters", "min_cluster_size", "cluster_selection_epsilon", "nmf_components"]) {
+    if (params[key] !== undefined && params[key] !== null) lines.push(`    ${key}=${pyRepr(params[key])},`);
+  }
+  if (pathCol) lines.push(`    path_col=${pyRepr(pathCol)},`);
+
+  let code = `${streamVarName}_new = ${streamVarName}.add_clusters(\n${lines.join("\n")}\n)`;
+  if (Object.keys(rename).length > 0) {
+    code += `.rename_segment_values(\n    ${pyRepr(name)},\n    ${pyRepr(rename)},\n)`;
+  }
+  return code;
+}
+
+function SaveClustersOverlay({ segments, initialRename, streamVarName, features, method, scaler, chosenParams, pathCol, onApplyInplace, onClose, saveResult }: {
   segments: string[];
   initialRename: Record<string, string>;
-  onSave: (name: string, rename: Record<string, string>, mode: "code" | "inplace") => void;
+  streamVarName: string;
+  features: any[]; method: string; scaler: string; chosenParams: Record<string, any>; pathCol: string;
+  onApplyInplace: (name: string, rename: Record<string, string>) => void;
   onClose: () => void;
   saveResult: SaveResult | null;
 }) {
@@ -508,7 +564,6 @@ function SaveClustersOverlay({ segments, initialRename, onSave, onClose, saveRes
   const [renameMap, setRenameMap] = React.useState<Record<string, string>>(() =>
     Object.fromEntries(clusterNames.map(s => [s, initialRename[s] ?? s]))
   );
-  const [mode, setMode] = React.useState<"code" | "inplace">("code");
   const [copied, setCopied] = React.useState(false);
 
   React.useEffect(() => {
@@ -519,15 +574,17 @@ function SaveClustersOverlay({ segments, initialRename, onSave, onClose, saveRes
 
   const nameValid = name.trim().length > 0;
 
-  const handleSave = () => {
-    if (!nameValid) return;
+  const computeRename = (): Record<string, string> => {
     const rename: Record<string, string> = {};
     for (const orig of clusterNames) {
       const v = (renameMap[orig] ?? "").trim();
       if (v && v !== orig) rename[orig] = v;
     }
-    onSave(name.trim(), rename, mode);
+    return rename;
   };
+
+  // Always current — recomputed every render straight from live form/widget state.
+  const currentCode = buildAddClustersCode(streamVarName, name.trim() || "cluster", features, method, scaler, chosenParams, pathCol, computeRename());
 
   const copyCode = async (code: string) => {
     try {
@@ -537,10 +594,8 @@ function SaveClustersOverlay({ segments, initialRename, onSave, onClose, saveRes
     } catch { /* clipboard unavailable — user can still select the textarea manually */ }
   };
 
-  const optionStyle = (active: boolean): React.CSSProperties => ({
-    display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer", padding: 8,
-    border: `1px solid ${active ? "var(--retentioneering-yellow)" : "#e5e7eb"}`, borderRadius: 6,
-  });
+  const handleCopyCode = () => { if (nameValid) copyCode(currentCode); };
+  const handleApplyInplace = () => { if (nameValid) onApplyInplace(name.trim(), computeRename()); };
 
   return (
     <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -573,53 +628,43 @@ function SaveClustersOverlay({ segments, initialRename, onSave, onClose, saveRes
           </div>
         )}
 
-        <div style={{ marginBottom: 14 }}>
-          <SidebarFL>How to apply</SidebarFL>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <label style={optionStyle(mode === "code")}>
-              <input type="radio" checked={mode === "code"} onChange={() => setMode("code")} style={{ marginTop: 2 }} />
-              <span>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>Generate code (recommended)</div>
-                <div style={{ fontSize: 11, color: "#6b7280" }}>Get a code snippet to run in a new cell. The current `stream` stays untouched — you can retry with different settings.</div>
-              </span>
-            </label>
-            <label style={optionStyle(mode === "inplace")}>
-              <input type="radio" checked={mode === "inplace"} onChange={() => setMode("inplace")} style={{ marginTop: 2 }} />
-              <span>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>Apply directly to this stream</div>
-                <div style={{ fontSize: 11, color: "#6b7280" }}>Adds the column to `stream` immediately, no new cell needed. ⚠ Irreversible — the previous state of `stream` is lost; re-run the cells that built it to undo.</div>
-              </span>
-            </label>
-          </div>
-        </div>
-
         {saveResult && saveResult.ok === false && (
           <div style={{ marginBottom: 14, padding: 10, background: "#fff1f2", border: "1px solid #fca5a5", borderRadius: 6, fontSize: 11, color: "#dc2626", fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
             {saveResult.error}
           </div>
         )}
 
-        {saveResult && saveResult.ok && saveResult.mode === "code" && (
-          <div style={{ marginBottom: 14 }}>
-            <SidebarFL>Copy this into a new cell</SidebarFL>
-            <textarea readOnly value={saveResult.code} rows={8}
-              style={{ width: "100%", boxSizing: "border-box", fontFamily: "monospace", fontSize: 11, padding: 8, border: "1px solid #d1d5db", borderRadius: 6, resize: "vertical" }} />
-            <button onClick={() => copyCode(saveResult.code || "")}
-              style={{ marginTop: 6, padding: "5px 10px", border: "1px solid #e5e7eb", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 11, color: "#374151" }}>
-              {copied ? "Copied!" : "Copy code"}
-            </button>
-          </div>
-        )}
-
-        {saveResult && saveResult.ok && saveResult.mode === "inplace" && (
+        {saveResult && saveResult.ok && (
           <div style={{ marginBottom: 14, padding: 10, background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 6, fontSize: 11, color: "#15803d" }}>
-            Saved as segment "{saveResult.segment_name}" — `stream` now has this column.
+            Saved as segment "{saveResult.segment_name}" — `{streamVarName}` now has this column.
           </div>
         )}
 
-        <button onClick={handleSave} disabled={!nameValid}
-          style={{ width: "100%", padding: "8px 0", background: nameValid ? "var(--retentioneering-yellow)" : "#f3f4f6", border: "none", borderRadius: 6, cursor: nameValid ? "pointer" : "default", fontSize: 13, fontWeight: 600, color: nameValid ? "#1a1a1a" : "#9ca3af" }}>
-          {mode === "code" ? "Generate code" : "Apply to stream"}
+        {nameValid && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
+              <SidebarFL>Code preview</SidebarFL>
+              <InfoTip text="Copy this into a new cell to get the same clustering without touching the current stream." />
+            </div>
+            <div style={{ position: "relative" }}>
+              <textarea readOnly value={currentCode} rows={8}
+                style={{ width: "100%", boxSizing: "border-box", fontFamily: "monospace", fontSize: 11, padding: "8px 34px 8px 8px", border: "1px solid #d1d5db", borderRadius: 6, resize: "vertical" }} />
+              <button onClick={handleCopyCode} title={copied ? "Copied!" : "Copy code"}
+                style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #e5e7eb", borderRadius: 5, background: "#fff", cursor: "pointer", color: copied ? "#15803d" : "#6b7280" }}>
+                {copied ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <button onClick={handleApplyInplace} disabled={!nameValid}
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 0", background: nameValid ? "var(--retentioneering-yellow)" : "#f3f4f6", border: "none", borderRadius: 6, cursor: nameValid ? "pointer" : "default", fontSize: 13, fontWeight: 600, color: nameValid ? "#1a1a1a" : "#9ca3af" }}>
+          Apply in-place
+          <span onClick={e => e.stopPropagation()}><InfoTip text={`Adds the column to \`${streamVarName}\` immediately.`} /></span>
         </button>
       </div>
     </div>
@@ -845,6 +890,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       const r = parseJson<SaveResult>(model.get("save_result"), {});
       return r && Object.keys(r).length > 0 ? r : null;
     });
+    const [chosenParams,  setChosenParams]   = React.useState<Record<string, any>>(() => parseJson(model.get("chosen_params"), {}));
     // Cluster renames typed directly into the heatmap header — cleared on every new
     // result since "cluster_0" may refer to a different cluster after re-clustering.
     const [headerRename,  setHeaderRename]   = React.useState<Record<string, string>>({});
@@ -855,6 +901,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const pathCols      = parseJson<string[]>(model.get("path_cols"),      []);
     const segmentCols   = parseJson<string[]>(model.get("segment_cols"),   []);
     const segmentLevels = parseJson<Record<string,string[]>>(model.get("segment_levels"), {});
+    const streamVarName = (model.get("stream_var_name") as string) || "stream";
 
     React.useEffect(() => {
       const subs: Array<[string, () => void]> = [
@@ -876,6 +923,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
           const r = parseJson<SaveResult>(model.get("save_result"), {});
           setSaveResult(r && Object.keys(r).length > 0 ? r : null);
         }],
+        ["chosen_params", () => setChosenParams(parseJson(model.get("chosen_params"), {}))],
       ];
       subs.forEach(([k, cb]) => model.on(`change:${k}`, cb));
       return () => subs.forEach(([k, cb]) => model.off(`change:${k}`, cb));
@@ -894,10 +942,9 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const setPathId     = (c: string) => { setPathIdColState(c); model.set("path_col", c); model.save_changes(); };
     const handleToggle  = () => { setSidebarOpen(p => { const n = !p; model.set("sidebar_open", n); model.save_changes(); return n; }); };
 
-    const handleSaveClusters = (name: string, rename: Record<string, string>, mode: "code" | "inplace") => {
+    const handleApplyInplace = (name: string, rename: Record<string, string>) => {
       model.set("save_segment_name", name);
       model.set("save_rename", JSON.stringify(rename));
-      model.set("save_mode", mode);
       model.set("save_trigger", Date.now().toString());
       model.save_changes();
     };
@@ -995,7 +1042,10 @@ export function render({ model, el, isStatic = false }: RenderContext) {
           <SaveClustersOverlay
             segments={result.overview?.segments ?? []}
             initialRename={headerRename}
-            onSave={handleSaveClusters}
+            streamVarName={streamVarName}
+            features={features} method={method} scaler={scaler}
+            chosenParams={chosenParams} pathCol={pathIdCol}
+            onApplyInplace={handleApplyInplace}
             onClose={() => setSaveOpen(false)}
             saveResult={saveResult}
           />

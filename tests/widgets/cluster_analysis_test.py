@@ -58,43 +58,7 @@ class TestClusterAnalysisWidgetSave:
         params = json.loads(widget.chosen_params)
         assert params["n_clusters"] in (2, 3)
 
-    def test__save_mode_code_does_not_mutate_eventstream(self) -> None:
-        stream = _make_stream()
-        widget = ClusterAnalysisWidget(
-            stream, features=[{"metric": "length"}], n_clusters=2
-        )
-
-        widget.save_segment_name = "cluster"
-        widget.save_mode = "code"
-        widget.save_trigger = "1"
-
-        result = json.loads(widget.save_result)
-        assert result["ok"] is True
-        assert result["mode"] == "code"
-        assert "stream = stream.add_clusters(" in result["code"]
-        assert "n_clusters=2" in result["code"]
-
-        # The eventstream itself must be untouched.
-        assert "cluster" not in stream.schema.segment_cols
-        assert "cluster" not in stream.df.columns
-
-    def test__save_mode_code_includes_rename_chain(self) -> None:
-        stream = _make_stream()
-        widget = ClusterAnalysisWidget(
-            stream, features=[{"metric": "length"}], n_clusters=2
-        )
-
-        widget.save_segment_name = "cluster"
-        widget.save_rename = json.dumps({"cluster_0": "short"})
-        widget.save_mode = "code"
-        widget.save_trigger = "1"
-
-        result = json.loads(widget.save_result)
-        assert result["ok"] is True
-        assert ".rename_segment_values(" in result["code"]
-        assert "cluster_0" in result["code"]
-
-    def test__save_mode_inplace_mutates_shared_eventstream(self) -> None:
+    def test__save_mutates_shared_eventstream(self) -> None:
         stream = _make_stream()
         widget = ClusterAnalysisWidget(
             stream, features=[{"metric": "length"}], n_clusters=2
@@ -102,12 +66,10 @@ class TestClusterAnalysisWidgetSave:
 
         widget.save_segment_name = "cluster"
         widget.save_rename = json.dumps({"cluster_0": "short", "cluster_1": "long"})
-        widget.save_mode = "inplace"
         widget.save_trigger = "1"
 
         result = json.loads(widget.save_result)
         assert result["ok"] is True
-        assert result["mode"] == "inplace"
         assert result["segment_name"] == "cluster"
 
         # `stream` is the exact same object passed to the widget - it must reflect
@@ -121,14 +83,13 @@ class TestClusterAnalysisWidgetSave:
         # The widget's own catalogs must be refreshed too.
         assert "cluster" in json.loads(widget.segment_cols)
 
-    def test__save_mode_inplace_without_rename(self) -> None:
+    def test__save_without_rename(self) -> None:
         stream = _make_stream()
         widget = ClusterAnalysisWidget(
             stream, features=[{"metric": "length"}], n_clusters=2
         )
 
         widget.save_segment_name = "cluster"
-        widget.save_mode = "inplace"
         widget.save_trigger = "1"
 
         result = json.loads(widget.save_result)
@@ -143,7 +104,6 @@ class TestClusterAnalysisWidgetSave:
             stream, features=[{"metric": "length"}], n_clusters=2
         )
 
-        widget.save_mode = "code"
         widget.save_trigger = "1"
 
         result = json.loads(widget.save_result)
@@ -156,7 +116,6 @@ class TestClusterAnalysisWidgetSave:
             stream, features=[{"metric": "length"}], n_clusters=2
         )
         widget.save_segment_name = "user_id"
-        widget.save_mode = "inplace"
         widget.save_trigger = "1"
 
         result = json.loads(widget.save_result)
@@ -174,3 +133,28 @@ class TestClusterAnalysisWidgetDefaults:
         assert json.loads(widget.overview_metrics) == [
             {"metric": "event_count", "agg": "mean"}
         ]
+
+
+class TestClusterAnalysisStreamVarName:
+    def test__infers_the_variable_name_used_at_the_call_site(self) -> None:
+        es = _make_stream()
+        widget = es.cluster_analysis(features=[{"metric": "length"}], n_clusters=2)
+
+        assert widget.stream_var_name == "es"
+
+    def test__falls_back_to_stream_when_not_bound_to_a_variable(self) -> None:
+        widget = _make_stream().cluster_analysis(
+            features=[{"metric": "length"}], n_clusters=2
+        )
+
+        assert widget.stream_var_name == "stream"
+
+    def test__direct_widget_construction_defaults_to_stream(self) -> None:
+        """ClusterAnalysisWidget(...) called directly (not via Eventstream.cluster_analysis)
+        has no caller frame to inspect, so it must fall back to the default."""
+        stream = _make_stream()
+        widget = ClusterAnalysisWidget(
+            stream, features=[{"metric": "length"}], n_clusters=2
+        )
+
+        assert widget.stream_var_name == "stream"

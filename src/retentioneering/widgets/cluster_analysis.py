@@ -48,15 +48,17 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
     widget_id = traitlets.Unicode("").tag(sync=True)
     height = traitlets.Int(520).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
+    # Name of the caller's eventstream variable (best-effort) - used by the JS
+    # side to render copy-pasteable code that refers to it by its real name.
+    stream_var_name = traitlets.Unicode("stream").tag(sync=True)
 
     # ── save clusters to eventstream ─────────────────────────────────────────
     save_segment_name = traitlets.Unicode("").tag(sync=True)
     save_rename = traitlets.Unicode("{}").tag(sync=True)  # JSON {old_label: new_label}
-    save_mode = traitlets.Unicode("code").tag(sync=True)  # "code" | "inplace"
     save_trigger = traitlets.Unicode("").tag(sync=True)
     save_result = traitlets.Unicode("{}").tag(
         sync=True
-    )  # JSON {ok, mode, code|segment_name, error}
+    )  # JSON {ok, segment_name, error}
 
     def __init__(
         self,
@@ -69,6 +71,7 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         path_col=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
+        stream_var_name=_UNSET,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -76,6 +79,9 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         self._initialized = False
         self.widget_id = ""
         self.widget_type = "cluster_analysis"
+        self.stream_var_name = (
+            stream_var_name if stream_var_name not in (_UNSET, None) else "stream"
+        )
 
         # Catalogues
         try:
@@ -204,19 +210,21 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
     def _save_clusters(self):
         """Materialize the clustering shown in `result` as a segment column.
 
-        `save_mode == "code"` only renders a copy-pasteable `add_clusters(...)` call
-        into `save_result["code"]` — the eventstream itself is left untouched, so the
-        user keeps full reproducibility (re-run with different params, or not apply
-        it at all).
+        Mutates the shared `self._eventstream` object (the same object the
+        caller's variable points to) so the change is visible without
+        reassignment. This is a deliberate exception to the rest of the
+        codebase's immutable-Eventstream convention (ADR-0003) and is
+        irreversible from the widget - if the user doesn't like the result
+        they must re-run the cell that built the eventstream from scratch.
+        Other widgets already open on the same eventstream won't see the new
+        column until re-created since their catalogs are snapshotted at
+        construction time.
 
-        `save_mode == "inplace"` actually mutates the shared `self._eventstream`
-        object (the same object the caller's `stream` variable points to) so the
-        change is visible without `stream = ...`. This is a deliberate exception to
-        the rest of the codebase's immutable-Eventstream convention (ADR-0003) and
-        is irreversible from the widget - if the user doesn't like the result they
-        must re-run the cell that built `stream` from scratch. Other widgets already
-        open on the same eventstream won't see the new column until re-created since
-        their catalogs are snapshotted at construction time.
+        The JS side offers a "Copy code" alternative that renders the
+        equivalent `add_clusters(...)` call without touching the eventstream
+        at all — that one is computed entirely client-side (see
+        `chosen_params` below) since it's pure templating, so it doesn't need
+        a round trip through this method.
         """
         try:
             name = (self.save_segment_name or "").strip()
@@ -247,16 +255,8 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
             if params.get("nmf_components") is not None:
                 kwargs["nmf_components"] = params["nmf_components"]
 
-            if self.save_mode == "inplace":
-                self._apply_clusters_inplace(kwargs, rename)
-                self.save_result = json.dumps(
-                    {"ok": True, "mode": "inplace", "segment_name": name}
-                )
-            else:
-                code = _build_add_clusters_code(kwargs, rename)
-                self.save_result = json.dumps(
-                    {"ok": True, "mode": "code", "code": code}
-                )
+            self._apply_clusters_inplace(kwargs, rename)
+            self.save_result = json.dumps({"ok": True, "segment_name": name})
         except Exception as exc:
             self.save_result = json.dumps({"ok": False, "error": str(exc)})
 
@@ -376,28 +376,3 @@ def _parse_n_clusters(raw: str):
         return int(s)
     except Exception:
         return None
-
-
-def _build_add_clusters_code(kwargs: dict, rename: dict) -> str:
-    """Renders an add_clusters(...) call (optionally chained with rename_segment_values)
-    reproducing the given kwargs, for the user to copy into a notebook cell."""
-    lines = [f"    name={kwargs['name']!r},", f"    features={kwargs['features']!r},"]
-    lines.append(f"    method={kwargs['method']!r},")
-    if kwargs.get("scaler") is not None:
-        lines.append(f"    scaler={kwargs['scaler']!r},")
-    for key in (
-        "n_clusters",
-        "min_cluster_size",
-        "cluster_selection_epsilon",
-        "nmf_components",
-    ):
-        if kwargs.get(key) is not None:
-            lines.append(f"    {key}={kwargs[key]!r},")
-    if kwargs.get("path_col"):
-        lines.append(f"    path_col={kwargs['path_col']!r},")
-
-    body = "\n".join(lines)
-    code = f"stream = stream.add_clusters(\n{body}\n)"
-    if rename:
-        code += f".rename_segment_values(\n    {kwargs['name']!r},\n    {rename!r},\n)"
-    return code

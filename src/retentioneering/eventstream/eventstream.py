@@ -1,3 +1,4 @@
+import inspect
 import json
 from dataclasses import asdict
 from functools import cached_property
@@ -16,6 +17,36 @@ def _to_datetime_auto(series: pd.Series) -> pd.Series:
         unit = "s" if n <= 10 else "ms" if n <= 13 else "us" if n <= 16 else "ns"
         return pd.to_datetime(series, unit=unit)
     return pd.to_datetime(series)
+
+
+def _infer_caller_var_name(
+    obj: object, default: str = "stream", max_depth: int = 8
+) -> str:
+    """Best-effort: the name of the variable the caller's frame holds `obj` under.
+
+    Used to generate copy-pasteable code (e.g. `add_clusters` snippets) that refers
+    to the eventstream by the name the user actually gave it, instead of a
+    hardcoded guess. Walks up the call stack (past the `@_tracked` wrapper and
+    similar decorators) looking for a local/global bound to `obj` by identity, and
+    falls back to `default` if none is found (e.g. `Eventstream(df).cluster_analysis()`,
+    where the call site never bound the object to a variable at all).
+    """
+    frame = inspect.currentframe()
+    try:
+        f = frame.f_back if frame else None
+        for _ in range(max_depth):
+            if f is None:
+                break
+            for scope in (f.f_locals, f.f_globals):
+                for name, value in scope.items():
+                    if name in ("self", "cls"):
+                        continue
+                    if value is obj:
+                        return name
+            f = f.f_back
+        return default
+    finally:
+        del frame
 
 
 try:
@@ -1559,6 +1590,7 @@ class Eventstream:
 
         return ClusterAnalysisWidget(
             eventstream=self,
+            stream_var_name=_infer_caller_var_name(self),
             features=features if features is not None else _UNSET,
             method=method if method is not None else _UNSET,
             scaler=scaler if scaler is not None else _UNSET,

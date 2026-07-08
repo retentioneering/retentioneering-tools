@@ -1,182 +1,25 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
-import { MetricRow, validateMetricCfg, InfoTip, AGG_OPTIONS } from "./metric_config_row";
+import { MetricRow, validateMetricCfg, InfoTip } from "./metric_config_row";
+import {
+  AnyWidgetModel, SegmentOverviewData, SegmentOverviewTable,
+  ContextMenu, DistributionModal, useDistributionSelection,
+} from "./segment_overview_table";
 
-interface AnyWidgetModel {
-  get(key: string): unknown;
-  set(key: string, value: unknown): void;
-  save_changes(): void;
-  on(event: string, cb: () => void): void;
-  off(event: string, cb: () => void): void;
-}
 interface RenderContext { model: AnyWidgetModel; el: HTMLElement; isStatic?: boolean; }
 
-// ── colour helpers ─────────────────────────────────────────────────────────
-
-function heatmapRgb(t: number): string {
-  if (t < 0.5) {
-    const u = t / 0.5;
-    return `rgb(${Math.round(59+u*(229-59))},${Math.round(130+u*(231-130))},${Math.round(246+u*(235-246))})`;
-  }
-  const u = (t - 0.5) / 0.5;
-  return `rgb(${Math.round(229+u*(239-229))},${Math.round(231-u*(231-68))},${Math.round(235-u*(235-68))})`;
-}
-
-function cellColor(v: number, min: number, max: number): string {
-  if (!Number.isFinite(v) || min === max) return "#f9fafb";
-  return heatmapRgb((v - min) / (max - min));
-}
-
-function fmtCell(metric: string, v: number | null): string {
-  if (v === null || v === undefined || !Number.isFinite(v as number)) return "—";
-  const n = v as number;
-  if (metric === "segment_share") return (n * 100).toFixed(1) + "%";
-  if (metric.startsWith("first_event_time")) return new Date(n * 1000).toISOString().slice(0, 10);
-  if (metric === "segment_size" || metric.endsWith("_count")) return n.toLocaleString(undefined, {maximumFractionDigits: 0});
-  if (n >= 1000) return n.toLocaleString(undefined, {maximumFractionDigits: 0});
-  if (Number.isInteger(n)) return n.toString();
-  return n.toFixed(3).replace(/\.?0+$/, "");
-}
-
-// event_count_purchase_mean / has_event_add_to_cart_median → "purchase · event_count · mean"
-// (the event name is the interesting part — leading it keeps it from getting lost
-// between the metric prefix and the aggregation suffix on a narrow column).
-function formatMetricLabel(metric: string): string {
-  for (const base of ["event_count", "has_event"]) {
-    if (!metric.startsWith(base + "_")) continue;
-    const rest = metric.slice(base.length + 1);
-    for (const agg of AGG_OPTIONS) {
-      const suffix = "_" + agg;
-      if (rest.endsWith(suffix) && rest.length > suffix.length) {
-        const eventName = rest.slice(0, rest.length - suffix.length);
-        return `${eventName} · ${base} · ${agg}`;
-      }
-    }
-  }
-  return metric;
-}
+// The cluster label column injected into the temp eventstream backing the
+// heatmap — mirrors `SEGMENT_COL` in tools/cluster_analysis.py. Cluster
+// Analysis has no user-selectable segment column (unlike Segment Overview),
+// so this is a fixed constant used only to shape the dist_request payload.
+const CLUSTER_SEGMENT_COL = "__cluster__";
 
 // ── types ──────────────────────────────────────────────────────────────────
 
-interface OverviewData { metrics: string[]; segments: string[]; values: (number|null)[][]; }
 interface SilhouetteData { params: Record<string,any>[]; silhouette: (number|null)[]; }
 interface NmfData { H_matrix: number[][]; features: string[]; W_cluster_means: Record<string,number[]>; }
-interface ClusterResult { overview?: OverviewData; silhouette?: SilhouetteData; nmf?: NmfData; }
-
-// ── heatmap ────────────────────────────────────────────────────────────────
-
-const METRIC_COL_MIN_W = 40;
-const METRIC_COL_DEFAULT_W = 160;
-const VALUE_COL_MAX_W = 68;
-
-function EditableHeaderLabel({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [editing, setEditing] = React.useState(false);
-  const [draft, setDraft] = React.useState(value);
-  React.useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
-
-  if (editing) {
-    return (
-      <input
-        autoFocus
-        value={draft}
-        onChange={e => setDraft(e.target.value)}
-        onClick={e => e.stopPropagation()}
-        onBlur={() => { setEditing(false); const v = draft.trim(); if (v && v !== value) onChange(v); }}
-        onKeyDown={e => {
-          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-          if (e.key === "Escape") { setDraft(value); setEditing(false); }
-        }}
-        style={{ width: "100%", boxSizing: "border-box", fontSize: 11, fontWeight: 600, color: "#111827", border: "1px solid var(--retentioneering-yellow)", borderRadius: 4, padding: "1px 4px", outline: "none", textAlign: "right" }}
-      />
-    );
-  }
-  return (
-    <span onClick={e => { e.stopPropagation(); setEditing(true); }} title={`${value} — click to rename`}
-      style={{ cursor: "pointer", borderBottom: "1px dashed #9ca3af" }}>
-      {value}
-    </span>
-  );
-}
-
-function Heatmap({ data, renameMap, onRename }: {
-  data: OverviewData; renameMap: Record<string, string>; onRename: (orig: string, next: string) => void;
-}) {
-  const { metrics, segments, values } = data;
-  const rowBounds = metrics.map((_, mi) => {
-    const row = values[mi].filter(v => v !== null && Number.isFinite(v as number)) as number[];
-    return { min: Math.min(...row), max: Math.max(...row) };
-  });
-
-  // ── resizable metric-name column — drag the right edge to show/hide long names ──
-  const [labelWidth, setLabelWidth] = React.useState(METRIC_COL_DEFAULT_W);
-  const resizing  = React.useRef(false);
-  const startX    = React.useRef(0);
-  const startW    = React.useRef(0);
-  const handleRef = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    const onMove = (e: MouseEvent) => { if (!resizing.current) return; setLabelWidth(Math.max(METRIC_COL_MIN_W, startW.current + e.clientX - startX.current)); };
-    const onUp   = () => { resizing.current = false; document.body.style.cursor = document.body.style.userSelect = ""; if (handleRef.current) handleRef.current.style.background = "transparent"; };
-    document.addEventListener("mousemove", onMove); document.addEventListener("mouseup", onUp);
-    return () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
-  }, []);
-
-  const th: React.CSSProperties = { padding: "5px 10px", fontSize: 11, fontWeight: 600, color: "#6b7280", background: "#f9fafb", borderBottom: "1px solid #e5e7eb", borderRight: "1px solid #e5e7eb", whiteSpace: "nowrap", position: "sticky", top: 0, zIndex: 2 };
-  const thL: React.CSSProperties = { ...th, textAlign: "left", position: "sticky", left: 0, zIndex: 3, boxSizing: "border-box", width: labelWidth, minWidth: labelWidth, maxWidth: labelWidth, overflow: "hidden", textOverflow: "ellipsis" };
-  const tdL: React.CSSProperties = { padding: "5px 10px", fontSize: 11, color: "#374151", fontWeight: 500, background: "#fff", borderBottom: "1px solid #f3f4f6", borderRight: "1px solid #e5e7eb", position: "sticky", left: 0, zIndex: 1, boxSizing: "border-box", width: labelWidth, minWidth: labelWidth, maxWidth: labelWidth, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" };
-  // Value columns are capped so a long (renamed) cluster label can't blow up the
-  // whole table — better to truncate it (full name on hover) than widen every column.
-  // Width/minWidth/maxWidth must all agree (as with thL/tdL above) - max-width alone
-  // is only a hint to table auto-layout and gets ignored once content is wider than it.
-  const thV: React.CSSProperties = { ...th, padding: "5px 6px", textAlign: "right", boxSizing: "border-box", width: VALUE_COL_MAX_W, minWidth: VALUE_COL_MAX_W, maxWidth: VALUE_COL_MAX_W, overflow: "hidden", textOverflow: "ellipsis" };
-  const tdV: React.CSSProperties = { padding: "5px 6px", textAlign: "right", borderBottom: "1px solid #f3f4f6", borderRight: "1px solid #f3f4f6", boxSizing: "border-box", width: VALUE_COL_MAX_W, minWidth: VALUE_COL_MAX_W, maxWidth: VALUE_COL_MAX_W, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" };
-
-  return (
-    <div style={{ position: "relative", height: "100%", overflow: "hidden" }}>
-      <div ref={handleRef}
-        title="Drag to resize"
-        style={{ position: "absolute", left: labelWidth - 1, top: 0, bottom: 0, width: 3, cursor: "col-resize", zIndex: 20, background: "transparent", transition: "background 0.12s" }}
-        onMouseEnter={() => { if (handleRef.current) handleRef.current.style.background = "var(--retentioneering-yellow)"; }}
-        onMouseLeave={() => { if (!resizing.current && handleRef.current) handleRef.current.style.background = "transparent"; }}
-        onMouseDown={e => { e.preventDefault(); resizing.current = true; startX.current = e.clientX; startW.current = labelWidth; document.body.style.cursor = "col-resize"; document.body.style.userSelect = "none"; }}
-      />
-      <div style={{ position: "absolute", inset: 0, overflowX: "auto", overflowY: "auto" }}>
-        <table style={{ borderCollapse: "collapse", tableLayout: "fixed", fontSize: 12, width: "auto" }}>
-          <thead>
-            <tr>
-              <th style={{ ...thL, background: "#f9fafb" }}>Metric</th>
-              {segments.map(s => (
-                <th key={s} style={thV}>
-                  <EditableHeaderLabel value={renameMap[s] ?? s} onChange={v => onRename(s, v)} />
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {metrics.map((metric, mi) => {
-              const { min, max } = rowBounds[mi];
-              return (
-                <tr key={metric}>
-                  <td title={formatMetricLabel(metric)} style={tdL}>
-                    {formatMetricLabel(metric)}
-                  </td>
-                  {segments.map((_, si) => {
-                    const v = values[mi][si];
-                    return (
-                      <td key={si} title={fmtCell(metric, v)} style={{ ...tdV, background: v !== null ? cellColor(v, min, max) : "#f9fafb", color: "#111827" }}>
-                        {fmtCell(metric, v)}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+interface ClusterResult { overview?: SegmentOverviewData; silhouette?: SilhouetteData; nmf?: NmfData; }
 
 // ── silhouette chart ───────────────────────────────────────────────────────
 
@@ -903,6 +746,15 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const segmentLevels = parseJson<Record<string,string[]>>(model.get("segment_levels"), {});
     const streamVarName = (model.get("stream_var_name") as string) || "stream";
 
+    const {
+      selected, ctxMenu, ctxMenuCanCompare, distModal, distLoading,
+      handleCellClick, handleCellRightClick, handleShowDist,
+      closeCtxMenu, closeDistModal,
+    } = useDistributionSelection({
+      model, result: result.overview ?? null, rootRef,
+      segmentCol: CLUSTER_SEGMENT_COL, pathIdCol, events,
+    });
+
     React.useEffect(() => {
       const subs: Array<[string, () => void]> = [
         ["result",      () => { setResult(parseJson(model.get("result"), {})); setHeaderRename({}); }],
@@ -1012,8 +864,16 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                 </div>
               )}
               {tab === "Overview"        && result.overview   && (
-                <Heatmap data={result.overview} renameMap={headerRename}
-                  onRename={(orig, next) => setHeaderRename(prev => ({ ...prev, [orig]: next }))} />
+                <SegmentOverviewTable
+                  data={result.overview}
+                  renameMap={headerRename}
+                  onRename={(orig, next) => setHeaderRename(prev => ({ ...prev, [orig]: next }))}
+                  onCellClick={handleCellClick}
+                  onCellRightClick={isStatic ? () => {} : handleCellRightClick}
+                  selectedCells={selected}
+                  resizableLabelColumn
+                  valueColumnMaxWidth={100}
+                />
               )}
               {tab === "Silhouette"      && result.silhouette  && <div style={{ padding: "0 16px" }}><SilhouetteChart data={result.silhouette} /></div>}
               {tab === "H-matrix"        && result.nmf         && <div style={{ padding: "0 16px" }}><NmfHMatrix nmf={result.nmf} /></div>}
@@ -1021,7 +881,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
             </div>
             </div>
           </div>
-          {isLoading && <ComputingSpinner label="Clustering…" />}
+          {(isLoading || distLoading) && <ComputingSpinner label={isLoading ? "Clustering…" : undefined} />}
         </div>
         {sidebarOpen && (
           <Sidebar
@@ -1067,6 +927,26 @@ export function render({ model, el, isStatic = false }: RenderContext) {
             metrics={metricsConfig} events={events} segmentCols={segmentCols} segmentLevels={segmentLevels}
             onMetricsChange={setMetrics}
             onClose={() => setMetricsOpen(false)}
+          />
+        )}
+
+        {/* Context menu — disabled in static mode (no backend for dist_request) */}
+        {!isStatic && ctxMenu && (
+          <ContextMenu
+            x={ctxMenu.x} y={ctxMenu.y}
+            canCompare={ctxMenuCanCompare}
+            onShowDist={handleShowDist}
+            onClose={closeCtxMenu}
+          />
+        )}
+
+        {!isStatic && distModal && (
+          <DistributionModal
+            result={distModal.result}
+            label1={distModal.label1}
+            label2={distModal.label2}
+            metricName={distModal.metric}
+            onClose={closeDistModal}
           />
         )}
 

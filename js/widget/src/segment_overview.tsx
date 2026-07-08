@@ -8,301 +8,12 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
 import { MetricRow, validateMetricCfg } from "./metric_config_row";
+import {
+  AnyWidgetModel, SegmentOverviewData, SegmentOverviewTable,
+  ContextMenu, DistributionModal, useDistributionSelection,
+} from "./segment_overview_table";
 
-interface AnyWidgetModel {
-  get(key: string): unknown;
-  set(key: string, value: unknown): void;
-  save_changes(): void;
-  on(event: string, cb: () => void): void;
-  off(event: string, cb: () => void): void;
-}
 interface RenderContext { model: AnyWidgetModel; el: HTMLElement; isStatic?: boolean; }
-
-// ── heatmap colour ─────────────────────────────────────────────────────────
-
-/** Blue–white–red diverging heatmap. t ∈ [0,1]. */
-function heatmapRgb(t: number): string {
-  if (t < 0.5) {
-    const u = t / 0.5;
-    return `rgb(${Math.round(59 + u * (229-59))}, ${Math.round(130 + u * (231-130))}, ${Math.round(246 + u * (235-246))})`;
-  } else {
-    const u = (t - 0.5) / 0.5;
-    return `rgb(${Math.round(229 + u * (239-229))}, ${Math.round(231 - u * (231-68))}, ${Math.round(235 - u * (235-68))})`;
-  }
-}
-
-function cellColor(value: number, min: number, max: number): string {
-  if (!Number.isFinite(value) || min === max) return "#f9fafb";
-  const t = (value - min) / (max - min);
-  return heatmapRgb(t);
-}
-
-// ── value formatting ────────────────────────────────────────────────────────
-
-function formatCell(metric: string, v: number): string {
-  if (!Number.isFinite(v)) return "—";
-  if (metric === "segment_share") return (v * 100).toFixed(1) + "%";
-  if (metric.startsWith("first_event_time")) return new Date(v * 1000).toISOString().slice(0, 10);
-  if (metric === "segment_size" || metric.endsWith("_size") || metric.endsWith("_count"))
-    return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  if (metric.includes("duration") || metric.includes("time"))
-    return formatTime(v);
-  if (v >= 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  if (Number.isInteger(v)) return v.toString();
-  return v.toFixed(3).replace(/\.?0+$/, "");
-}
-
-function formatTime(seconds: number): string {
-  if (seconds < 60)  return `${Math.round(seconds)}s`;
-  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
-  if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`;
-  return `${(seconds / 86400).toFixed(1)}d`;
-}
-
-// ── types ──────────────────────────────────────────────────────────────────
-
-interface SegmentOverviewData {
-  metrics:  string[];
-  segments: string[];
-  values:   number[][];          // values[metricIdx][segmentIdx]
-}
-
-interface DistributionData {
-  bins: number[];
-  counts: number[];
-  counts_normalized: number[];
-  kde: [number[], number[]] | null;
-  mean: number;
-  median: number;
-}
-
-interface DistributionResult {
-  distribution_1?: DistributionData;
-  distribution_2?: DistributionData;
-  distribution?:   DistributionData;
-  distance?: number;
-  log_scale?: boolean;
-}
-
-// ── mini histogram (SVG) ───────────────────────────────────────────────────
-
-function MiniHistogram({ dist, color, width = 260, height = 120 }: {
-  dist: DistributionData;
-  color: string;
-  width?: number;
-  height?: number;
-}) {
-  if (!dist.bins.length) return <div style={{ color: "#9ca3af", fontSize: 12 }}>No data</div>;
-
-  const PAD = { l: 28, r: 8, t: 8, b: 28 };
-  const W = width - PAD.l - PAD.r;
-  const H = height - PAD.t - PAD.b;
-  const maxCount = Math.max(...dist.counts_normalized, 0.001);
-  const nBins = dist.counts.length;
-
-  const bins  = dist.bins;
-  const xMin  = bins[0], xRange = bins[bins.length - 1] - bins[0];
-
-  const toX = (v: number) => PAD.l + (xRange > 0 ? ((v - xMin) / xRange) * W : W / 2);
-  const toY = (v: number) => PAD.t + H * (1 - v / maxCount);
-
-  const bars = dist.counts_normalized.map((c, i) => ({
-    x: toX(bins[i]),
-    w: toX(bins[i + 1]) - toX(bins[i]),
-    h: (c / maxCount) * H,
-    y: PAD.t + H - (c / maxCount) * H,
-  }));
-
-  // KDE path
-  let kdePath = "";
-  if (dist.kde) {
-    const [xs, ys] = dist.kde;
-    const maxY = Math.max(...ys, 0.001);
-    const pts = xs.map((x, i) => `${toX(x).toFixed(1)},${(PAD.t + H * (1 - ys[i] / maxY)).toFixed(1)}`);
-    kdePath = `M${pts[0]} ` + pts.slice(1).map(p => `L${p}`).join(" ");
-  }
-
-  // Axis labels
-  const xLabels = [xMin, xMin + xRange / 2, xMin + xRange].map((v, i) => ({
-    x: PAD.l + (i === 0 ? 0 : i === 1 ? W / 2 : W),
-    text: xRange > 1000 ? v.toExponential(1) : v.toFixed(xRange < 1 ? 2 : xRange < 10 ? 1 : 0),
-  }));
-
-  return (
-    <svg width={width} height={height} style={{ display: "block" }}>
-      {/* Bars */}
-      {bars.map((b, i) => (
-        <rect key={i} x={b.x + 0.5} y={b.y} width={Math.max(b.w - 1, 1)} height={b.h}
-          fill={color} opacity={0.7} />
-      ))}
-      {/* KDE */}
-      {kdePath && <path d={kdePath} fill="none" stroke={color} strokeWidth={1.5} opacity={0.9} />}
-      {/* Axes */}
-      <line x1={PAD.l} y1={PAD.t + H} x2={PAD.l + W} y2={PAD.t + H} stroke="#d1d5db" strokeWidth={1} />
-      <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={PAD.t + H} stroke="#d1d5db" strokeWidth={1} />
-      {xLabels.map((l, i) => (
-        <text key={i} x={l.x} y={PAD.t + H + 14} textAnchor="middle" fontSize={9} fill="#6b7280">{l.text}</text>
-      ))}
-      {/* Mean/median lines */}
-      {Number.isFinite(dist.mean) && (
-        <line x1={toX(dist.mean)} y1={PAD.t} x2={toX(dist.mean)} y2={PAD.t + H}
-          stroke={color} strokeWidth={1} strokeDasharray="3,2" opacity={0.8} />
-      )}
-    </svg>
-  );
-}
-
-// ── distribution modal ─────────────────────────────────────────────────────
-
-function DistributionModal({ result, label1, label2, metricName, onClose }: {
-  result: DistributionResult;
-  label1: string;
-  label2: string;
-  metricName: string;
-  onClose: () => void;
-}) {
-  const isPair = !!result.distribution_1;
-  const dist1  = isPair ? result.distribution_1! : result.distribution!;
-  const dist2  = isPair ? result.distribution_2 : undefined;
-
-  React.useEffect(() => {
-    const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", h);
-    return () => document.removeEventListener("keydown", h);
-  }, [onClose]);
-
-  return (
-    <div
-      style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}
-      onClick={e => e.target === e.currentTarget && onClose()}
-    >
-      <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", padding: 24, minWidth: 340, maxWidth: 680, width: "90%" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>{metricName}</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#6b7280", padding: "0 4px" }}>×</button>
-        </div>
-
-        {result.log_scale && (
-          <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 10, background: "#f9fafb", padding: "4px 8px", borderRadius: 4 }}>
-            Log₁₀ scale applied (highly skewed data)
-          </div>
-        )}
-
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", marginBottom: 6 }}>{label1}</div>
-            <MiniHistogram dist={dist1} color="#7c3aed" />
-            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
-              mean {Number.isFinite(dist1.mean) ? dist1.mean.toFixed(3) : "—"} · median {Number.isFinite(dist1.median) ? dist1.median.toFixed(3) : "—"}
-            </div>
-          </div>
-          {dist2 && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#06b6d4", marginBottom: 6 }}>{label2}</div>
-              <MiniHistogram dist={dist2} color="#06b6d4" />
-              <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
-                mean {Number.isFinite(dist2.mean) ? dist2.mean.toFixed(3) : "—"} · median {Number.isFinite(dist2.median) ? dist2.median.toFixed(3) : "—"}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {Number.isFinite(result.distance) && (
-          <div style={{ marginTop: 12, fontSize: 12, color: "#374151", background: "#f3f4f6", padding: "6px 10px", borderRadius: 6 }}>
-            Wasserstein distance: <strong>{result.distance!.toFixed(4)}</strong>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── heatmap table ──────────────────────────────────────────────────────────
-
-function HeatmapTable({ data, onCellClick, onCellRightClick, selectedCells }: {
-  data: SegmentOverviewData;
-  onCellClick: (metricIdx: number, segIdx: number, shift: boolean) => void;
-  onCellRightClick: (metricIdx: number, segIdx: number, x: number, y: number) => void;
-  selectedCells: Set<string>;
-}) {
-  const { metrics, segments, values } = data;
-
-  // Per-row bounds for colour scaling
-  const rowBounds = metrics.map((_, mi) => {
-    const row = values[mi].filter(Number.isFinite);
-    return { min: Math.min(...row), max: Math.max(...row) };
-  });
-
-  const th: React.CSSProperties = {
-    padding: "6px 10px", fontSize: 11, fontWeight: 600, color: "#6b7280",
-    background: "#f9fafb", borderBottom: "1px solid #e5e7eb",
-    borderRight: "1px solid #e5e7eb", whiteSpace: "nowrap",
-    position: "sticky", top: 0, zIndex: 2,
-  };
-  const thLeft: React.CSSProperties = {
-    ...th, textAlign: "left", position: "sticky", left: 0, zIndex: 3,
-    minWidth: 160, maxWidth: 220,
-  };
-
-  return (
-    <div style={{ overflowX: "auto", overflowY: "auto", flex: 1 }}>
-      <table style={{ borderCollapse: "collapse", fontSize: 12, width: "max-content", minWidth: "100%" }}>
-        <thead>
-          <tr>
-            <th style={{ ...thLeft, background: "#f9fafb" }}>Metric</th>
-            {segments.map(seg => (
-              <th key={seg} data-segment={seg} style={{ ...th, textAlign: "right" }}>{seg}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {metrics.map((metric, mi) => {
-            const { min, max } = rowBounds[mi];
-            return (
-              <tr key={metric} data-metric={metric}>
-                <td style={{
-                  padding: "5px 10px", fontSize: 11, color: "#374151", fontWeight: 500,
-                  background: "#fff", borderBottom: "1px solid #f3f4f6",
-                  borderRight: "1px solid #e5e7eb",
-                  position: "sticky", left: 0, zIndex: 1,
-                }}>
-                  {metric}
-                </td>
-                {segments.map((seg, si) => {
-                  const v   = values[mi][si];
-                  const key = `${mi}:${si}`;
-                  const sel = selectedCells.has(key);
-                  return (
-                    <td
-                      key={si}
-                      data-segment={seg}
-                      onClick={e => onCellClick(mi, si, e.shiftKey)}
-                      onContextMenu={e => { e.preventDefault(); onCellRightClick(mi, si, e.clientX, e.clientY); }}
-                      style={{
-                        padding: "5px 10px", textAlign: "right",
-                        borderBottom: "1px solid #f3f4f6",
-                        borderRight: "1px solid #f3f4f6",
-                        background: sel ? "rgba(124,58,237,0.18)" : cellColor(v, min, max),
-                        cursor: "context-menu",
-                        outline: sel ? "2px solid #7c3aed" : "none",
-                        outlineOffset: "-2px",
-                        fontWeight: sel ? 600 : 400,
-                        color: "#111827",
-                        userSelect: "none",
-                      }}
-                    >
-                      {formatCell(metric, v)}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 // ── sidebar ────────────────────────────────────────────────────────────────
 
@@ -326,53 +37,6 @@ function metricLabel(cfg: any): string {
   return parts.join(" ");
 }
 
-
-// ── context menu ──────────────────────────────────────────────────────────
-
-function ContextMenu({ x, y, canCompare, onShowDist, onClose }: {
-  x: number; y: number;
-  canCompare: boolean;
-  onShowDist: () => void;
-  onClose: () => void;
-}) {
-  const ref = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    };
-    const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("mousedown", h);
-    document.addEventListener("keydown", k);
-    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", k); };
-  }, [onClose]);
-
-  const label = canCompare ? "Compare distributions" : "Show distribution";
-
-  return (
-    <div ref={ref} style={{
-      position: "absolute", left: x, top: y, zIndex: 200,
-      background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8,
-      boxShadow: "0 4px 16px rgba(0,0,0,0.12)", minWidth: 180, overflow: "hidden",
-    }}>
-      <button
-        onClick={() => { onShowDist(); onClose(); }}
-        style={{
-          width: "100%", padding: "8px 14px", background: "none", border: "none",
-          textAlign: "left", fontSize: 12, color: "#111827", cursor: "pointer",
-          display: "flex", alignItems: "center", gap: 8,
-        }}
-        onMouseEnter={e => (e.currentTarget.style.background = "#f3f4f6")}
-        onMouseLeave={e => (e.currentTarget.style.background = "")}
-      >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="2" y="7" width="8" height="14"/><rect x="14" y="3" width="8" height="18"/>
-        </svg>
-        {label}
-      </button>
-    </div>
-  );
-}
 
 // MetricsModal is split: the trigger button stays in the sidebar,
 // the overlay is rendered at the App root level (position: absolute)
@@ -581,13 +245,8 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [height,     setHeight]         = React.useState<number>(() => (model.get("height") as number) ?? 480);
     const [sidebarOpen, setSidebarOpen]   = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
 
-    // Cell selection: max 2 per row. key = "metricIdx:segIdx"
-    const [selected, setSelected] = React.useState<Set<string>>(new Set());
-    // Modals and context menu — rendered at root level with position:absolute to work in VS Code
+    // Modals — rendered at root level with position:absolute to work in VS Code
     const [metricsOpen, setMetricsOpen] = React.useState(false);
-    const [distModal, setDistModal] = React.useState<{ result: DistributionResult; label1: string; label2: string; metric: string } | null>(null);
-    const [distLoading, setDistLoading] = React.useState(false);
-    const [ctxMenu, setCtxMenu] = React.useState<{ x: number; y: number; mi: number; si: number } | null>(null);
     const rootRef = React.useRef<HTMLDivElement>(null);
 
     const segCols   = parseJson<string[]>(model.get("segment_cols"), []);
@@ -638,96 +297,11 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       setSidebarOpen(p => { const n = !p; model.set("sidebar_open", n); model.save_changes(); return n; });
     };
 
-    // Left click: select/deselect (shift = add second cell in same row, max 2)
-    const handleCellClick = React.useCallback((mi: number, si: number, shift: boolean) => {
-      if (!result) return;
-      const key = `${mi}:${si}`;
-      setCtxMenu(null);
-      setSelected(prev => {
-        if (prev.has(key)) {
-          const next = new Set(prev); next.delete(key); return next;
-        }
-        const next = new Set<string>();
-        if (shift) {
-          // Add second cell in same row (keep only cells from same row)
-          const sameRow = [...prev].filter(k => k.startsWith(`${mi}:`));
-          if (sameRow.length < 2) sameRow.forEach(k => next.add(k));
-        }
-        next.add(key);
-        return next;
-      });
-    }, [result]);
-
-    // Right click: show context menu at position relative to widget root
-    const handleCellRightClick = React.useCallback((mi: number, si: number, clientX: number, clientY: number) => {
-      if (!result || !rootRef.current) return;
-      const rect = rootRef.current.getBoundingClientRect();
-      setCtxMenu({ x: clientX - rect.left, y: clientY - rect.top, mi, si });
-      // Also select the right-clicked cell if not already selected
-      const key = `${mi}:${si}`;
-      setSelected(prev => {
-        if (prev.has(key)) return prev;
-        // Keep existing selection in same row, add this cell
-        const sameRow = [...prev].filter(k => k.startsWith(`${mi}:`));
-        const next = new Set<string>();
-        if (sameRow.length < 2) sameRow.forEach(k => next.add(k));
-        next.add(key);
-        return next;
-      });
-    }, [result]);
-
-    // Show distribution for currently selected cells in the right-clicked row
-    const handleShowDist = React.useCallback(() => {
-      if (!result || !ctxMenu) return;
-      const { mi } = ctxMenu;
-      const metricName = result.metrics[mi];
-      const rowCells   = [...selected].filter(k => k.startsWith(`${mi}:`));
-
-      const metric = { metric: _metricBaseName(metricName), metric_args: _metricArgs(metricName, events) };
-      setDistLoading(true);
-
-      if (rowCells.length >= 2) {
-        const si1 = parseInt(rowCells[0].split(":")[1]);
-        const si2 = parseInt(rowCells[1].split(":")[1]);
-        model.set("dist_request", JSON.stringify({
-          segment_col: segCol, path_col: pathIdCol || null,
-          segment_value: [result.segments[si1], result.segments[si2]], metric,
-        }));
-      } else {
-        const si  = parseInt(rowCells[0].split(":")[1]);
-        model.set("dist_request", JSON.stringify({
-          segment_col: segCol, path_col: pathIdCol || null,
-          segment_value: result.segments[si], metric, complement: true,
-        }));
-      }
-      model.save_changes();
-    }, [result, ctxMenu, selected, segCol, pathIdCol, events]);
-
-    // Listen for distribution result
-    React.useEffect(() => {
-      const cb = () => {
-        const raw = model.get("dist_result") as string;
-        if (!raw || raw === "{}") return;
-        const r = parseJson<DistributionResult>(raw, {});
-        if (!r || (!r.distribution && !r.distribution_1)) return;
-
-        // Find selected cells to determine labels
-        const cells = [...selected];
-        const segs  = result ? cells.map(k => result.segments[parseInt(k.split(":")[1])]) : [];
-        const mi    = cells.length > 0 ? parseInt(cells[0].split(":")[0]) : 0;
-        const metricName = result ? result.metrics[mi] : "";
-
-        setDistModal({
-          result: r,
-          label1: segs[0] ?? "Segment",
-          label2: segs[1] ?? "Complement",
-          metric: metricName,
-        });
-        setDistLoading(false);
-      };
-      model.on("change:dist_result", cb);
-      return () => model.off("change:dist_result", cb);
-    }, [selected, result]);
+    const {
+      selected, ctxMenu, ctxMenuCanCompare, distModal, distLoading,
+      handleCellClick, handleCellRightClick, handleShowDist,
+      closeCtxMenu, closeDistModal,
+    } = useDistributionSelection({ model, result, rootRef, segmentCol: segCol, pathIdCol, events });
 
     // Expose external navigation API for static HTML report links
     React.useEffect(() => {
@@ -814,7 +388,14 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                     Click to select · Shift+click for pair · Right-click → Show distribution
                   </div>
                 )}
-                <HeatmapTable data={result} onCellClick={handleCellClick} onCellRightClick={isStatic ? () => {} : handleCellRightClick} selectedCells={selected} />
+                <SegmentOverviewTable
+                  data={result}
+                  onCellClick={handleCellClick}
+                  onCellRightClick={isStatic ? () => {} : handleCellRightClick}
+                  selectedCells={selected}
+                  resizableLabelColumn
+                  valueColumnMaxWidth={100}
+                />
               </div>
             )}
           </div>
@@ -841,9 +422,9 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         {!isStatic && ctxMenu && (
           <ContextMenu
             x={ctxMenu.x} y={ctxMenu.y}
-            canCompare={[...selected].filter(k => k.startsWith(`${ctxMenu.mi}:`)).length >= 2}
+            canCompare={ctxMenuCanCompare}
             onShowDist={handleShowDist}
-            onClose={() => setCtxMenu(null)}
+            onClose={closeCtxMenu}
           />
         )}
 
@@ -862,7 +443,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
             label1={distModal.label1}
             label2={distModal.label2}
             metricName={distModal.metric}
-            onClose={() => { setDistModal(null); setSelected(new Set()); }}
+            onClose={closeDistModal}
           />
         )}
 
@@ -874,28 +455,4 @@ export function render({ model, el, isStatic = false }: RenderContext) {
   const root = createRoot(el);
   root.render(<App />);
   return () => root.unmount();
-}
-
-// ── helpers ────────────────────────────────────────────────────────────────
-
-function _metricBaseName(metricName: string): string {
-  // "event_count_checkout_mean" → "event_count"
-  // "length_mean" → "length"
-  const known = ["event_count", "has_event", "time_between", "active_days", "in_segment", "matches_pattern", "first_event_time", "duration", "length"];
-  for (const k of known) if (metricName.startsWith(k)) return k;
-  return metricName.split("_")[0];
-}
-
-function _metricArgs(metricName: string, _events: string[]): any {
-  // Best-effort extraction — backend will validate
-  const m = _metricBaseName(metricName);
-  if (m === "event_count") {
-    const rest = metricName.replace(/^event_count_/, "").replace(/_[a-z\d]+$/, "");
-    return rest ? { events: rest } : undefined;
-  }
-  if (m === "has_event") {
-    const rest = metricName.replace(/^has_event_/, "").replace(/_[a-z\d]+$/, "");
-    return rest ? { events: rest } : undefined;
-  }
-  return undefined;
 }

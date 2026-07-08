@@ -1,9 +1,13 @@
 import json
 import pathlib
 from dataclasses import asdict
+from typing import TYPE_CHECKING
 
 import anywidget
 import traitlets
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
@@ -60,6 +64,10 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         sync=True
     )  # JSON {ok, segment_name, error}
 
+    # ── distribution request/result ───────────────────────────────────────
+    dist_request = traitlets.Unicode("").tag(sync=True)
+    dist_result = traitlets.Unicode("{}").tag(sync=True)
+
     def __init__(
         self,
         eventstream,
@@ -79,6 +87,10 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         self._initialized = False
         self.widget_id = ""
         self.widget_type = "cluster_analysis"
+        # Cluster labels (path id -> "cluster_0"/.../"noise") from the last
+        # successful Apply - cached so a distribution request can rebuild the
+        # exact clustering shown in the heatmap without re-running it.
+        self._cluster_labels: "pd.Series | None" = None
         self.stream_var_name = (
             stream_var_name if stream_var_name not in (_UNSET, None) else "stream"
         )
@@ -130,6 +142,7 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         self._initialized = True
         self.observe(self._on_apply, names=["apply_trigger"])
         self.observe(self._on_save, names=["save_trigger"])
+        self.observe(self._on_dist_request, names=["dist_request"])
 
         # Auto-compute when features were explicitly provided
         if features is not _UNSET:
@@ -147,6 +160,16 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
             return
         self._save_clusters()
 
+    def _on_dist_request(self, change):
+        raw = change["new"]
+        if not raw:
+            return
+        try:
+            req = json.loads(raw)
+        except Exception:
+            return
+        self._compute_distribution(req)
+
     # ── computation ────────────────────────────────────────────────────────
 
     def _recompute(self):
@@ -156,6 +179,7 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
             features = json.loads(self.features) if self.features else []
             if not features:
                 self.result = "{}"
+                self._cluster_labels = None
                 return
             metrics = json.loads(self.overview_metrics) if self.overview_metrics else []
             agg = self.aggregation or "mean"
@@ -200,10 +224,35 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
 
             self.result = json.dumps(result)
             self.chosen_params = json.dumps(raw.get("best_params") or {})
+            self._cluster_labels = raw.get("cluster_labels")
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"
             self.chosen_params = "{}"
+            self._cluster_labels = None
+        finally:
+            self.is_loading = False
+
+    def _compute_distribution(self, req: dict):
+        from retentioneering.tools.cluster_analysis import ClusterAnalysis
+
+        self.is_loading = True
+        try:
+            if self._cluster_labels is None:
+                raise ValueError("No clustering result to compare - click Apply first.")
+            result = ClusterAnalysis(self._eventstream).get_metric_distribution(
+                cluster_labels=self._cluster_labels,
+                metric=req["metric"],
+                segment_value=req["segment_value"],
+                complement=req.get("complement", False),
+                path_col=self.path_col or None,
+            )
+            self.dist_result = json.dumps(
+                result,
+                default=lambda x: None if (isinstance(x, float) and x != x) else x,
+            )
+        except Exception as exc:
+            self.dist_result = json.dumps({"error": str(exc)})
         finally:
             self.is_loading = False
 

@@ -99,13 +99,15 @@ class ClusterAnalysis:
 
             best = search_data.get("best")
             if best is not None:
-                result["overview_df"] = self._build_overview(
+                overview_df, cluster_labels = self._build_overview(
                     best["labels"],
                     metrics_df.index,
                     path_col,
                     event_col,
                     overview_metrics or [],
                 )
+                result["overview_df"] = overview_df
+                result["cluster_labels"] = cluster_labels
                 result["best_params"] = best.get("params")
                 if best.get("nmf_data") is not None:
                     nmf_data = best["nmf_data"]
@@ -139,7 +141,7 @@ class ClusterAnalysis:
                 features_scaled, cluster_labels
             )
 
-        overview_df = self._build_overview(
+        overview_df, cluster_series = self._build_overview(
             cluster_labels,
             metrics_df.index,
             path_col,
@@ -159,6 +161,7 @@ class ClusterAnalysis:
 
         return {
             "overview_df": overview_df,
+            "cluster_labels": cluster_series,
             "nmf": nmf_data,
             "best_params": best_params,
         }
@@ -331,27 +334,65 @@ class ClusterAnalysis:
         path_col: str,
         event_col: str,
         overview_metrics: List[Dict[str, Any]],
-    ) -> pd.DataFrame:
-        from retentioneering.eventstream.eventstream import Eventstream
-
+    ) -> tuple[pd.DataFrame, pd.Series]:
+        """Returns (overview_df, cluster_series) — cluster_series maps path id to
+        cluster label ("cluster_0", ..., "noise") and is cached by the widget so a
+        later distribution request can rebuild the same temp stream without
+        re-running clustering (see `get_metric_distribution`)."""
         cluster_series = pd.Series(cluster_labels, index=path_index)
         cluster_series = cluster_series.apply(
             lambda x: f"cluster_{x}" if x >= 0 else "noise"
         )
 
+        overview_df = self._temp_cluster_stream(
+            cluster_series, path_col
+        ).segment_overview_data(
+            segment_col=SEGMENT_COL,
+            metrics=overview_metrics,
+            path_col=path_col,
+            event_col=event_col,
+        )
+        return overview_df, cluster_series
+
+    def _temp_cluster_stream(
+        self, cluster_labels: pd.Series, path_col: str
+    ) -> "Eventstream":
+        """Build a throwaway eventstream with `cluster_labels` injected as the
+        `SEGMENT_COL` segment column — the same trick `_build_overview` uses to
+        feed the heatmap, reused here to answer distribution requests."""
+        from retentioneering.eventstream.eventstream import Eventstream
+
         df = self.eventstream.df.copy()
-        df[SEGMENT_COL] = df[path_col].map(cluster_series).astype("category")
+        df[SEGMENT_COL] = df[path_col].map(cluster_labels).astype("category")
 
         schema_dict = dict(self.eventstream._schema) if self.eventstream._schema else {}
         segment_cols = list(schema_dict.get("segment_cols", []))
         segment_cols.append(SEGMENT_COL)
         schema_dict["segment_cols"] = segment_cols
 
-        temp_stream = Eventstream(df, schema_dict, preprocess=False)
+        return Eventstream(df, schema_dict, preprocess=False)
 
-        return temp_stream.segment_overview_data(
+    def get_metric_distribution(
+        self,
+        cluster_labels: pd.Series,
+        metric: Dict[str, Any],
+        segment_value: str | List[str],
+        complement: bool = False,
+        path_col: str | None = None,
+    ) -> Dict[str, Any]:
+        """Distribution of `metric` across one or two clusters from the last Apply.
+
+        `cluster_labels` is the `cluster_labels` Series `fit()` returns (path id →
+        cluster name) — the widget caches it and passes it back in here rather than
+        re-running clustering. Delegates to `SegmentOverview.get_metric_distribution`
+        via a throwaway temp stream, exactly like the overview heatmap does.
+        """
+        path_col = path_col or self.eventstream.schema.path_col
+        temp_stream = self._temp_cluster_stream(cluster_labels, path_col)
+        return temp_stream.get_metric_distribution(
             segment_col=SEGMENT_COL,
-            metrics=overview_metrics,
+            segment_value=segment_value,
+            metric=metric,
+            complement=complement,
             path_col=path_col,
-            event_col=event_col,
         )

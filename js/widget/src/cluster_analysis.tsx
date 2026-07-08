@@ -961,7 +961,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       model.set("path_col",    pathIdCol);
       model.set("apply_trigger",  Date.now().toString());
       model.save_changes();
-      setLastApplied({ features, method, scaler, nClusters, nmfEnabled, nmfK, pathIdCol });
+      setLastApplied({ features, method, scaler, nClusters, nmfEnabled, nmfK, pathIdCol, metricsConfig });
     };
 
     const [lastApplied, setLastApplied] = React.useState(() => ({
@@ -972,6 +972,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       nmfEnabled: (model.get("nmf_enabled") as boolean) ?? false,
       nmfK:       (model.get("nmf_components") as string) || "",
       pathIdCol:  (model.get("path_col") as string) || "",
+      metricsConfig: parseJson<any[]>(model.get("overview_metrics"), []),
     }));
 
     const isDirty = JSON.stringify(features) !== JSON.stringify(lastApplied.features)
@@ -980,7 +981,8 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                  || nClusters  !== lastApplied.nClusters
                  || nmfEnabled !== lastApplied.nmfEnabled
                  || nmfK       !== lastApplied.nmfK
-                 || pathIdCol  !== lastApplied.pathIdCol;
+                 || pathIdCol  !== lastApplied.pathIdCol
+                 || JSON.stringify(metricsConfig) !== JSON.stringify(lastApplied.metricsConfig);
 
     // Available tabs based on result
     const tabs: string[] = [];

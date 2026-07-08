@@ -14,14 +14,7 @@
 
 Every widget and most data processors accept a `path_col` override, so the same eventstream can be analysed at user grain and at session grain without rebuilding it.
 
-**Segment** in retentioneering is defined by a *segment column*: the column names a segmentation (a dimension), and each of its values is one segment — the group of paths/events carrying that value. Note the difference from Amplitude-style tools, where "creating a segment" means defining a single group of users; here `add_segment` adds a whole segmentation column at once.
-
-Segments can be:
-
-- **Static** — one value per path for its entire lifetime: `country`, `acquisition_channel`, an A/B test arm.
-- **Dynamic** — the value changes along the path, because it is assigned per event row: `is_weekend`, or a `user_state` that evolves from `new` through `advanced` to `mature` as the user gains experience.
-
-Segment columns are declared in the [schema](#schema) (`segment_cols`) or created with `add_segment` / `add_clusters`, and drive segment-aware tools: diff mode, Segment Overview, and the `in_segment` path metric.
+**Segment** is a way to split paths into meaningful groups. A split is defined by a *segment column* that maps each event to a group: for example, a `country` column assigns one of the segment levels `US`, `DE`, `FR` to every event of a path. Segments can be static (acquisition channel, user age group, etc.) or dynamic — changing along the path, like weekend/weekday or an evolving user state (new/returning/loyal). Segment columns are declared in the [schema](#schema) (`segment_cols`) or created with the [Add Segment](/docs/data-processors/add-segment) data processor, and drive all segment-aware tools. See the [Segments](/docs/segments) page for the full story.
 
 ## Creating an Eventstream
 

@@ -1,6 +1,6 @@
 # ADR-0004: Schema model and grain-neutral "path"
 
-Status: Accepted (5.0 rewrite; terminology re-affirmed 2026-07; nesting invariant added 2026-07)
+Status: Accepted (5.0 rewrite; terminology re-affirmed 2026-07)
 
 ## Context
 

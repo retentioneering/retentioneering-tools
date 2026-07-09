@@ -9,7 +9,7 @@ import platform
 import sys
 import uuid
 
-_KEY = "phc_sev8i3cCtComzsYJJ7KLfYYMqUCSAS49bVep8mkyoKYn"
+_KEY = "phc_n4zuGDRCnuyao7DVCoURd6RsMBcsWcaWoTzRiF7eAndR"
 _HOST = "https://eu.i.posthog.com"
 _CONFIG = pathlib.Path.home() / ".retentioneering" / "config.json"
 

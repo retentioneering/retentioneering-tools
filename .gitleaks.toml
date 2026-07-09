@@ -9,5 +9,5 @@ regexes = [
   # PostHog project API key used for anonymous usage telemetry (_tracking.py).
   # PostHog project keys are meant to be embedded in client code, similar to
   # a Sentry DSN -- they only allow writing events to this specific project.
-  '''phc_sev8i3cCtComzsYJJ7KLfYYMqUCSAS49bVep8mkyoKYn''',
+  '''phc_n4zuGDRCnuyao7DVCoURd6RsMBcsWcaWoTzRiF7eAndR''',
 ]

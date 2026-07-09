@@ -2,6 +2,7 @@
 
 import contextvars
 import functools
+import inspect
 import json
 import os
 import pathlib
@@ -169,25 +170,74 @@ def identify(properties: dict | None = None) -> None:
         pass
 
 
+def _is_default(value, default) -> bool:
+    """Best-effort equality check that never raises (e.g. for DataFrame/array args,
+    where `value == default` yields an array and `bool(...)` is ambiguous)."""
+    if value is default:
+        return True
+    try:
+        return bool(value == default)
+    except Exception:
+        return False
+
+
+def _split_args(
+    sig: inspect.Signature, args: tuple, kwargs: dict
+) -> tuple[list[str], list[str]]:
+    """Names (never values — arg values may contain column names, queries, etc.) of
+    parameters that have a default, split into (default_args, non_default_args)."""
+    try:
+        bound = sig.bind(*args, **kwargs)
+    except TypeError:
+        return [], []
+    default_args: list[str] = []
+    non_default_args: list[str] = []
+    for name, param in sig.parameters.items():
+        if name in ("self", "cls") or param.default is inspect.Parameter.empty:
+            continue
+        if param.kind in (
+            inspect.Parameter.VAR_POSITIONAL,
+            inspect.Parameter.VAR_KEYWORD,
+        ):
+            continue
+        value = bound.arguments.get(name, param.default)
+        if _is_default(value, param.default):
+            default_args.append(name)
+        else:
+            non_default_args.append(name)
+    return default_args, non_default_args
+
+
 def tracked(event_name: str, condition=None, props_fn=None):
     """Decorator that tracks a method call only when not inside another tracked call.
 
     condition: optional callable(self) → bool; if False, skip tracking but still execute.
     props_fn:  optional callable(self) → dict; called after execution to collect properties.
                Tracking fires after the method succeeds so props_fn has access to the result.
+
+    Every call is also tagged with `default_args`/`non_default_args`: the names of
+    parameters split by whether they were passed with their default value (names
+    only, never the values themselves).
     """
 
     def decorator(func):
+        sig = inspect.signature(func)
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             global _depth
             skip = _depth > 0 or (condition is not None and not condition(args[0]))
             if skip:
                 return func(*args, **kwargs)
+            default_args, non_default_args = _split_args(sig, args, kwargs)
             _depth += 1
             try:
                 result = func(*args, **kwargs)
-                props = props_fn(args[0]) if props_fn else None
+                props = {
+                    **(props_fn(args[0]) if props_fn else {}),
+                    "default_args": default_args,
+                    "non_default_args": non_default_args,
+                }
                 track(event_name, props)
                 return result
             finally:

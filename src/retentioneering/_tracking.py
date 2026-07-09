@@ -10,6 +10,8 @@ import platform
 import sys
 import uuid
 
+from retentioneering.exceptions import RetentioneeringError
+
 _KEY = "phc_n4zuGDRCnuyao7DVCoURd6RsMBcsWcaWoTzRiF7eAndR"
 _HOST = "https://eu.i.posthog.com"
 _CONFIG = pathlib.Path.home() / ".retentioneering" / "config.json"
@@ -208,6 +210,20 @@ def _split_args(
     return default_args, non_default_args
 
 
+def _error_type_name(exc: Exception) -> str:
+    """The library's stable `error_code` for RetentioneeringError (survives class
+    renames/refactors), else the qualified exception class name — never str(exc),
+    which can echo back user data (e.g. a DuckDB error quoting SQL/column names)."""
+    if isinstance(exc, RetentioneeringError):
+        return exc.error_code
+    cls = type(exc)
+    return (
+        cls.__qualname__
+        if cls.__module__ == "builtins"
+        else f"{cls.__module__}.{cls.__qualname__}"
+    )
+
+
 def tracked(event_name: str, condition=None, props_fn=None):
     """Decorator that tracks a method call only when not inside another tracked call.
 
@@ -218,6 +234,10 @@ def tracked(event_name: str, condition=None, props_fn=None):
     Every call is also tagged with `default_args`/`non_default_args`: the names of
     parameters split by whether they were passed with their default value (names
     only, never the values themselves).
+
+    If the call raises, a `status: "error"` event (with `error_type`, the exception's
+    class name only — never its message) is tracked instead, and the exception is
+    re-raised unchanged; `props_fn` is skipped since there's no result to inspect.
     """
 
     def decorator(func):
@@ -230,13 +250,28 @@ def tracked(event_name: str, condition=None, props_fn=None):
             if skip:
                 return func(*args, **kwargs)
             default_args, non_default_args = _split_args(sig, args, kwargs)
+            base_props = {
+                "default_args": default_args,
+                "non_default_args": non_default_args,
+            }
             _depth += 1
             try:
-                result = func(*args, **kwargs)
+                try:
+                    result = func(*args, **kwargs)
+                except Exception as exc:
+                    track(
+                        event_name,
+                        {
+                            **base_props,
+                            "status": "error",
+                            "error_type": _error_type_name(exc),
+                        },
+                    )
+                    raise
                 props = {
                     **(props_fn(args[0]) if props_fn else {}),
-                    "default_args": default_args,
-                    "non_default_args": non_default_args,
+                    **base_props,
+                    "status": "success",
                 }
                 track(event_name, props)
                 return result

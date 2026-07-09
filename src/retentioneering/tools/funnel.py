@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 import duckdb
 
+from retentioneering.exceptions import InvalidParameterError
 from retentioneering.tools.types import T_Diff
 
 if False:
@@ -24,6 +25,10 @@ class Funnel:
         path_col: str | None = None,
     ) -> dict:
         path_col = path_col or self.eventstream.schema.path_col
+        if path_col not in self.eventstream.schema.path_cols:
+            raise InvalidParameterError(
+                "path_col", path_col, self.eventstream.schema.path_cols
+            )
         event_col = self.eventstream.schema.event_col
         index_col = self.eventstream.schema.index
 
@@ -39,6 +44,11 @@ class Funnel:
             # Chained CTEs: step_k holds, per path, the earliest occurrence of
             # steps[k-1] that comes strictly after the path's step_{k-1} match.
             # This correctly handles repeated events and duplicate step names.
+            #
+            # path_cols is validated (coarsest-first, strictly nested) at
+            # Eventstream construction time, and path_col is restricted to
+            # schema.path_cols above, so comparing index_col directly is
+            # correct at any accepted grain (see ADR-0004).
             ctes = []
             for step_num, step_event in enumerate(steps, start=1):
                 ev = _sql_str(step_event)

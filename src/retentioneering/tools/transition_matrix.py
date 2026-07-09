@@ -25,10 +25,19 @@ class TransitionMatrix:
         path_col: str | None = None,
     ) -> pd.DataFrame:
         path_col = path_col or self.eventstream.schema.path_col
+        if path_col not in self.eventstream.schema.path_cols:
+            raise InvalidParameterError(
+                "path_col", path_col, self.eventstream.schema.path_cols
+            )
         event_col = self.eventstream.schema.event_col
         timestamp_col = self.eventstream.schema.timestamp_col
         index_col = self.eventstream.schema.index
         subindex_col = self.eventstream.schema.subindex
+        # path_cols is validated (coarsest-first, strictly nested) at Eventstream
+        # construction time, and path_col is restricted to schema.path_cols
+        # above, so ordering by index_col is correct at any accepted grain
+        # (see ADR-0004).
+        order_by = f"{index_col}, {subindex_col}"
         time_values = ["time_median", "time_q95"]
 
         if self.eventstream.is_empty():
@@ -55,7 +64,7 @@ class TransitionMatrix:
                         {event_col},
                         lead({event_col}) over (
                             partition by {path_col}
-                            order by {index_col}, {subindex_col}
+                            order by {order_by}
                         ) as next_{event_col},
                         {path_col}
                     from df
@@ -90,7 +99,7 @@ class TransitionMatrix:
                         {event_col},
                         lead({event_col}) over (
                             partition by {path_col}
-                            order by {index_col}, {subindex_col}
+                            order by {order_by}
                         ) as next_{event_col},
                         {path_col}
                     from df
@@ -118,11 +127,11 @@ class TransitionMatrix:
                         {event_col},
                         lead({event_col}) over (
                             partition by {path_col}
-                            order by {index_col}, {subindex_col}
+                            order by {order_by}
                         ) as next_{event_col},
                         lead({timestamp_col}) over (
                             partition by {path_col}
-                            order by {index_col}, {subindex_col}
+                            order by {order_by}
                         ) as next_{timestamp_col},
                         date_diff('second', {timestamp_col}, next_{timestamp_col}) as timedelta
                     from df

@@ -49,6 +49,45 @@ def test_index_created(simple_df):
     assert u1_indices == [1, 2, 3]
 
 
+def test_path_cols_nesting_valid():
+    # path_cols must be ordered coarsest-first: every session belongs to
+    # exactly one user, so ["user_id", "session_id"] is valid.
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1", "u1", "u1", "u2"],
+            "session_id": ["s1", "s1", "s2", "s3"],
+            "event": ["a", "b", "c", "d"],
+            "timestamp": pd.to_datetime(
+                [
+                    "2024-01-01 10:00",
+                    "2024-01-01 10:01",
+                    "2024-01-01 10:02",
+                    "2024-01-01 10:03",
+                ]
+            ),
+        }
+    )
+    es = Eventstream(df, {"path_cols": ["user_id", "session_id"]})
+    assert not es.is_empty()
+
+
+def test_path_cols_nesting_violation_raises():
+    from retentioneering.exceptions import SchemaConfigError
+
+    # session_id claimed as the coarser (first) column, but user u1 spans two
+    # different session_id values -> session_id doesn't nest user_id.
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1", "u1"],
+            "session_id": ["s1", "s2"],
+            "event": ["a", "b"],
+            "timestamp": pd.to_datetime(["2024-01-01 10:00", "2024-01-01 10:01"]),
+        }
+    )
+    with pytest.raises(SchemaConfigError):
+        Eventstream(df, {"path_cols": ["session_id", "user_id"]})
+
+
 def test_add_start_end_events(simple_df):
     es = Eventstream(simple_df)
     with_se = es.add_start_end_events()

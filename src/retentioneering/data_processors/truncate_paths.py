@@ -59,12 +59,22 @@ class TruncatePaths(DataProcessor):
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
         path_col = self.path_col or schema.path_col
+        if path_col not in schema.path_cols:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"path_col '{path_col}' must be one of schema.path_cols: {schema.path_cols}.",
+            )
         event_col = self.event_col or schema.event_col
         timestamp_col = schema.timestamp_col
 
         start_literal = "'" + self.start_event.replace("'", "''") + "'"
         end_literal = "'" + self.end_event.replace("'", "''") + "'"
 
+        # path_cols is validated (coarsest-first, strictly nested) at Eventstream
+        # construction time, and path_col is restricted to schema.path_cols
+        # above, so comparing schema.index directly is correct at any accepted
+        # grain (see ADR-0004).
+        #
         # SQL query to find the first occurrence of the start and end events in
         # each path and keep only events between them (inclusive)
         query = f"""

@@ -94,6 +94,10 @@ class StepMatrix:
 
         df = self.eventstream.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
 
+        # path_cols is validated (coarsest-first, strictly nested) at Eventstream
+        # construction time, and fit() above restricts path_col to
+        # schema.path_cols, so ordering by index_col is correct at any accepted
+        # grain (see ADR-0004).
         query = f"""
             select step, {event_col}, count(*) as value
             from (
@@ -184,7 +188,11 @@ class StepMatrix:
         df = self.eventstream.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
 
         # Build path sequences prefixed/suffixed with path_start/path_end so
-        # that patterns including these markers match correctly.
+        # that patterns including these markers match correctly. path_cols is
+        # validated (coarsest-first, strictly nested) at Eventstream
+        # construction time, and fit() restricts path_col to schema.path_cols,
+        # so ordering by index_col is correct at any accepted grain (see
+        # ADR-0004).
         query = f"""
             SELECT {path_col}, list_aggregate(list({event_col}), 'string_agg', '->') AS path
             FROM (SELECT * FROM df ORDER BY {index_col}, {subindex_col})

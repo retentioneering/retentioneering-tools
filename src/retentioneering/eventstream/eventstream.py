@@ -8,6 +8,7 @@ import pandas as pd
 
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.eventstream.schema import EventstreamSchema
+from retentioneering.exceptions import SchemaConfigError
 from retentioneering.tools.types import T_TransitionMatrixValues, T_Diff
 
 
@@ -17,6 +18,27 @@ def _to_datetime_auto(series: pd.Series) -> pd.Series:
         unit = "s" if n <= 10 else "ms" if n <= 13 else "us" if n <= 16 else "ns"
         return pd.to_datetime(series, unit=unit)
     return pd.to_datetime(series)
+
+
+def _validate_path_cols_nesting(df: pd.DataFrame, path_cols: list) -> None:
+    """
+    path_cols must be ordered coarsest-first: every value of path_cols[i+1]
+    must belong to exactly one value of path_cols[i]. This is what makes it
+    safe for any tool to analyze at path_cols[i] and get the same relative
+    event order that `index` was computed against (schema.path_col ==
+    path_cols[0], the coarsest grain) — see ADR-0004.
+    """
+    for coarser, finer in zip(path_cols, path_cols[1:]):
+        counts = df.groupby(finer, observed=True)[coarser].nunique()
+        offenders = counts[counts > 1]
+        if not offenders.empty:
+            example = offenders.index[0]
+            raise SchemaConfigError(
+                f"path_cols must be ordered from coarsest to finest grain: "
+                f"'{finer}' must nest inside '{coarser}', but {finer}={example!r} "
+                f"spans {int(offenders.iloc[0])} different values of '{coarser}'. "
+                f"Reorder path_cols (coarsest first) or fix the data."
+            )
 
 
 def _infer_caller_var_name(
@@ -120,6 +142,9 @@ class Eventstream:
         for col in schema.path_cols:
             if df[col].dtype == "float64":
                 df[col] = df[col].astype("str")
+
+        if len(schema.path_cols) > 1:
+            _validate_path_cols_nesting(df, schema.path_cols)
 
         for col in schema.event_cols + schema.segment_cols:
             df[col] = df[col].astype("category")

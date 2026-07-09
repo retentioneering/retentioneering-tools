@@ -193,6 +193,54 @@ def test_truncate_paths_empty_params():
         stream.truncate_paths(start_event="A", end_event="")
 
 
+def test_truncate_paths_path_col_override_finer_grain_preserves_chronological_order():
+    """path_cols must be coarsest-first (validated at Eventstream
+    construction): user_id then session_id. Overriding to session_id (a
+    valid, finer declared path_col) must truncate within each session, not
+    merge boundaries across sessions of the same user."""
+    data = pd.DataFrame(
+        {
+            "user_id": ["U1", "U1", "U1", "U1"],
+            "session_id": ["S1", "S1", "S2", "S2"],
+            "event": ["A", "B", "C", "D"],
+            "timestamp": pd.to_datetime(
+                [
+                    "2024-01-01 10:00",
+                    "2024-01-01 10:01",
+                    "2024-01-01 10:02",
+                    "2024-01-01 10:03",
+                ]
+            ),
+        }
+    )
+    stream = Eventstream(data, {"path_cols": ["user_id", "session_id"]})
+
+    # A and B both happen in session S1 -> truncates to that range.
+    result = stream.truncate_paths(
+        start_event="A", end_event="B", path_col="session_id"
+    )
+    assert result.df["event"].tolist() == ["A", "B"]
+
+    # A is in S1, D is in S2 -> no single session has both boundaries.
+    result_cross_session = stream.truncate_paths(
+        start_event="A", end_event="D", path_col="session_id"
+    )
+    assert result_cross_session.df["event"].tolist() == []
+
+
+def test_truncate_paths_path_col_override_rejects_undeclared_column():
+    data = pd.DataFrame(
+        {
+            "user_id": ["U1", "U1"],
+            "event": ["A", "B"],
+            "timestamp": pd.to_datetime(["2024-01-01 10:00", "2024-01-01 10:01"]),
+        }
+    )
+    stream = Eventstream(data, {"path_cols": ["user_id"]})
+    with pytest.raises(PreprocessingConfigError):
+        stream.truncate_paths(start_event="A", end_event="B", path_col="not_a_path_col")
+
+
 def test_truncate_paths_custom_columns():
     """Test truncate_paths with custom path_col and event_col."""
     data = pd.DataFrame(

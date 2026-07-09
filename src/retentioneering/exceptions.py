@@ -26,6 +26,11 @@ class InvalidParameterError(RetentioneeringError):
         super().__init__(message, "INVALID_PARAMETER")
 
 
+class SchemaConfigError(RetentioneeringError):
+    def __init__(self, message: str):
+        super().__init__(message, "SCHEMA_CONFIG_ERROR")
+
+
 class PreprocessingConfigError(RetentioneeringError):
     def __init__(self, processor: str, message: str):
         super().__init__(f"[{processor}] {message}", "PREPROCESSING_CONFIG_ERROR")

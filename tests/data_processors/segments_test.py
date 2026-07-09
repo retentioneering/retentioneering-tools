@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.exceptions import PreprocessingConfigError
 
 
 def get_df():
@@ -162,6 +163,43 @@ class TestFilterEvents:
         segment_name_2 = segment_name + "_2"
         res2 = res.add_segment(name=segment_name_2, sql=query)
         assert all(res2.df[segment_name] == res2.df[segment_name_2])
+
+    def test__add_segment_funnel_events_path_col_override_finer_grain(self) -> None:
+        # path_cols must be coarsest-first (validated at Eventstream
+        # construction): user_id then session_id. Overriding to session_id (a
+        # valid, finer declared path_col) must evaluate the funnel within each
+        # session, not merge events across sessions of the same user.
+        df = pd.DataFrame(
+            [
+                ["U1", "S1", "A", "2024-01-01 10:00:00"],
+                ["U1", "S1", "B", "2024-01-01 10:01:00"],
+                ["U1", "S2", "C", "2024-01-01 10:02:00"],
+                ["U1", "S2", "D", "2024-01-01 10:03:00"],
+            ],
+            columns=["user_id", "session_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df, {"path_cols": ["user_id", "session_id"]})
+        res = stream.add_segment(
+            name="seg", funnel_events=["A", "D"], path_col="session_id"
+        )
+
+        seg_by_session = res.df.groupby("session_id", observed=True)["seg"].first()
+        assert seg_by_session["S1"] == "A"
+        assert seg_by_session["S2"] == "out_of_funnel"
+
+    def test__add_segment_funnel_events_rejects_undeclared_path_col(self) -> None:
+        df = pd.DataFrame(
+            [
+                ["U1", "A", "2024-01-01 10:00:00"],
+                ["U1", "B", "2024-01-01 10:01:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df, {"path_cols": ["user_id"]})
+        with pytest.raises(PreprocessingConfigError):
+            stream.add_segment(
+                name="seg", funnel_events=["A", "B"], path_col="not_a_path_col"
+            )
 
     def test__drop_segment(self):
         df = get_df()

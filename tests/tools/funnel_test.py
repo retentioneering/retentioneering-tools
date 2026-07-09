@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.exceptions import InvalidParameterError
 
 
 class TestFunnel:
@@ -32,6 +33,48 @@ class TestFunnel:
         assert result["steps"][2]["step"] == "C"
         assert result["steps"][2]["unique_paths"] == 1
         assert result["steps"][2]["conversion_rate"] == 0.25
+
+    def test_funnel_path_col_override_finer_grain_preserves_chronological_order(
+        self,
+    ) -> None:
+        # path_cols must be coarsest-first (validated at Eventstream
+        # construction): user_id then session_id. Overriding to session_id (a
+        # valid, finer declared path_col) must still compare event order
+        # within each session, not merge events across sessions.
+        df = pd.DataFrame(
+            [
+                ["U1", "S1", "A", "2024-01-01 10:00:00"],
+                ["U1", "S1", "B", "2024-01-01 10:01:00"],
+                ["U1", "S2", "C", "2024-01-01 10:02:00"],
+                ["U1", "S2", "D", "2024-01-01 10:03:00"],
+            ],
+            columns=["user_id", "session_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df, {"path_cols": ["user_id", "session_id"]})
+
+        # A->B both happen in session S1 -> should convert.
+        result_same_session = stream.funnel_data(
+            steps=["A", "B"], path_col="session_id"
+        )
+        assert result_same_session["steps"][1]["unique_paths"] == 1
+
+        # A is in S1, D is in S2 -> no single session reaches both.
+        result_cross_session = stream.funnel_data(
+            steps=["A", "D"], path_col="session_id"
+        )
+        assert result_cross_session["steps"][1]["unique_paths"] == 0
+
+    def test_funnel_path_col_override_rejects_undeclared_column(self) -> None:
+        df = pd.DataFrame(
+            [
+                ["U1", "A", "2024-01-01 10:00:00"],
+                ["U1", "B", "2024-01-01 10:01:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df, {"path_cols": ["user_id"]})
+        with pytest.raises(InvalidParameterError):
+            stream.funnel_data(steps=["A", "B"], path_col="not_a_path_col")
 
     def test_funnel_no_conversions(self) -> None:
         df = pd.DataFrame(

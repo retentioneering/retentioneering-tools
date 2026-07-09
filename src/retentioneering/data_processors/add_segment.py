@@ -77,6 +77,11 @@ def _build_funnel_segment_query(
     Per-row DuckDB query using PARTITION BY window functions — single pass,
     no JOIN needed.  Mirrors funnel.py: MAX(index) enforces sequential order.
 
+    path_cols is validated (coarsest-first, strictly nested) at Eventstream
+    construction time, and the caller restricts path_col to schema.path_cols,
+    so comparing index_col directly is correct at any accepted grain (see
+    ADR-0004).
+
     Segment values (named after the last event reached in sequence):
       funnel_events[k]  — path reached step k but not k+1
       'out_of_funnel'   — path never reached step 0
@@ -246,6 +251,11 @@ class AddSegment(DataProcessor):
 
         elif self.funnel_events is not None:
             pid_col = self.path_col or schema.path_col
+            if pid_col not in schema.path_cols:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    f"path_col '{pid_col}' must be one of schema.path_cols: {schema.path_cols}.",
+                )
             # Add row index so we can restore original order after DuckDB execution
             eventstream = df.copy()
             eventstream[_ROW_IDX_COL] = range(len(df))

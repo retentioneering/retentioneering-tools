@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 from retentioneering.eventstream.eventstream import Eventstream
-from retentioneering.exceptions import PatternNoMatchError
+from retentioneering.exceptions import InvalidParameterError, PatternNoMatchError
 
 
 class TestStepMatrix:
@@ -131,6 +131,53 @@ class TestStepMatrix:
         expected.columns.name = "step"
 
         pd.testing.assert_frame_equal(res, expected)
+
+    def test__path_col_override_finer_grain_preserves_chronological_order(self):
+        # path_cols must be coarsest-first (validated at Eventstream
+        # construction): user_id then session_id. Overriding to session_id (a
+        # valid, finer declared path_col) must still reflect real event order.
+        df = pd.DataFrame(
+            [
+                ["U1", "S1", "A", "2024-01-01 10:00:00"],
+                ["U1", "S1", "B", "2024-01-01 10:01:00"],
+                ["U1", "S2", "C", "2024-01-01 10:02:00"],
+                ["U1", "S2", "D", "2024-01-01 10:03:00"],
+            ],
+            columns=["user_id", "session_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df, {"path_cols": ["user_id", "session_id"]})
+        (res,) = stream.step_sankey_data(max_steps=4, path_col="session_id")
+
+        # session S1: path_start -> A -> B -> path_end
+        # session S2: path_start -> C -> D -> path_end
+        expected = pd.DataFrame(
+            [
+                [1.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.5, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.5, 0.0, 0.0],
+                [0.0, 0.5, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.5, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0, 1.0],
+            ],
+            index=["path_start", "A", "B", "C", "D", "path_end"],
+            columns=range(5),
+        )
+        expected.index.name = "event"
+        expected.columns.name = "step"
+
+        pd.testing.assert_frame_equal(res, expected)
+
+    def test__path_col_override_rejects_undeclared_column(self):
+        df = pd.DataFrame(
+            [
+                ["U1", "A", "2024-01-01 10:00:00"],
+                ["U1", "B", "2024-01-01 10:01:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df, {"path_cols": ["user_id"]})
+        with pytest.raises(InvalidParameterError):
+            stream.step_sankey_data(max_steps=4, path_col="not_a_path_col")
 
     def test__path_pattern_1(self, fx_read_csv):
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")

@@ -3,6 +3,8 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "main": "./dist/widget.js",
+  "module": "./dist/widget.js",
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build",

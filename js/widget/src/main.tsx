@@ -168,6 +168,16 @@ export function renderStatic(data: Record<string, unknown>, el: HTMLElement) {
   return dispatch({ host: staticHost(data), el, isStatic: true });
 }
 
+/**
+ * Generic entry point for any `WidgetHost` implementation (e.g. `restHost`
+ * against a platform backend) — the third transport alongside anywidget
+ * (`render`) and static export (`renderStatic`). Same `dispatch()`, just
+ * without assuming which host built it.
+ */
+export function renderWithHost(host: RenderContext["host"], el: HTMLElement, isStatic = false) {
+  return dispatch({ host, el, isStatic });
+}
+
 /** anywidget's ESM entry point — called with the live model by the anywidget runtime. */
 export function render(ctx: { model: AnyWidgetModel; el: HTMLElement; isStatic?: boolean }) {
   return dispatch({ host: anywidgetHost(ctx.model), el: ctx.el, isStatic: ctx.isStatic });

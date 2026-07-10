@@ -1,4 +1,4 @@
-# MCP Server
+# MCP Server (beta version)
 
 retentioneering ships a built-in [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that exposes your eventstream to any MCP-compatible AI agent. Once connected, the agent can analyse your behavioural data by calling [tools](#available-tools) — you simply ask questions in plain language.
 

@@ -172,6 +172,11 @@ _NOT_TRACKED_BY_DESIGN = {
     "get_segment_values",
     "get_metrics",
     "get_metric_distribution",
+    # Lineage inspection/reconstruction, not a processor/tool/widget "action" —
+    # recipe() just reads _lineage, from_recipe() replays existing tracked
+    # processor calls (each of which is tracked on its own).
+    "recipe",
+    "from_recipe",
 }
 
 

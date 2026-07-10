@@ -144,3 +144,72 @@ def test_from_csv(tmp_path):
     )
     es = Eventstream(str(csv))
     assert len(es.df) == 2
+
+
+# ── lineage / recipe / repr ──────────────────────────────────────────────────
+
+
+def test_fresh_eventstream_has_empty_lineage_and_repr(simple_df):
+    es = Eventstream(simple_df)
+    assert es.recipe() == []
+    assert repr(es).startswith("Eventstream: source ")
+    assert "source" in repr(es) and "rows" in repr(es)
+
+
+def test_lineage_records_one_op_per_processor_call(simple_df):
+    es = Eventstream(simple_df)
+    filtered = es.filter_events(keep={"event": ["home", "catalog", "cart"]})
+    segmented = filtered.add_segment("seg", rules=[["user_id", "=", "u1", "a"], ["b"]])
+
+    assert filtered.recipe() == [
+        {"type": "filter_events", "keep": {"event": ["home", "catalog", "cart"]}}
+    ]
+    assert segmented.recipe() == [
+        {"type": "filter_events", "keep": {"event": ["home", "catalog", "cart"]}},
+        {
+            "type": "add_segment",
+            "name": "seg",
+            "rules": [["user_id", "=", "u1", "a"], ["b"]],
+        },
+    ]
+    assert "filter_events" in repr(filtered)
+    assert "filter_events → add_segment" in repr(segmented)
+    # Original stream is untouched (immutability contract).
+    assert es.recipe() == []
+
+
+def test_filter_paths_lineage_overwrites_internal_filter_events_call(simple_df):
+    # filter_paths implements itself via a nested self.filter_events(...) call;
+    # the recorded lineage should show the outer op the caller made, not the
+    # inner implementation detail.
+    es = Eventstream(simple_df)
+    result = es.filter_paths({"op": ">", "metric": "length", "value": 1})
+    assert result.recipe() == [
+        {
+            "type": "filter_paths",
+            "condition": {"op": ">", "metric": "length", "value": 1},
+        }
+    ]
+
+
+def test_recipe_round_trips_via_from_recipe(simple_df):
+    es = Eventstream(simple_df)
+    derived = es.filter_events(drop={"event": ["cart"]}).add_segment(
+        "seg", rules=[["user_id", "=", "u1", "a"], ["b"]]
+    )
+
+    rebuilt = Eventstream.from_recipe(simple_df, derived.recipe())
+
+    assert rebuilt.fingerprint == derived.fingerprint
+    assert rebuilt.recipe() == derived.recipe()
+
+
+def test_recipe_is_json_serializable(simple_df):
+    import json
+
+    es = Eventstream(simple_df)
+    derived = es.split_sessions(timeout="30m").filter_events(
+        keep={"event": ["home", "catalog", "cart", "checkout"]}
+    )
+    # Should not raise, and should be a plain list of dicts.
+    assert json.loads(json.dumps(derived.recipe())) == derived.recipe()

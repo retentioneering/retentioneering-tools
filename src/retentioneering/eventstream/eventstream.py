@@ -9,6 +9,7 @@ from retentioneering import engine
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import SchemaConfigError
+from retentioneering.ops import op as _op
 from retentioneering.tools.types import T_TransitionMatrixValues, T_Diff
 
 
@@ -92,6 +93,7 @@ class Eventstream:
         self._df = df
         self._schema = schema
         self.preprocess = preprocess
+        self._lineage: list[dict] = []
         self._post_init()
 
     @cached_property
@@ -162,6 +164,70 @@ class Eventstream:
             df[schema.index] = df.groupby(schema.path_col).cumcount() + 1
 
         self._df = df
+
+    def __repr__(self) -> str:
+        chain = " → ".join(
+            ["source"] + [str(o.get("type", "?")) for o in self._lineage]
+        )
+        return f"Eventstream: {chain} · {self._row_count_label()} rows"
+
+    def _row_count_label(self) -> str:
+        """Human-readable row count (excluding synthetic path_start/path_end
+        rows), e.g. `120k`, `4.2M`, `57`. Cheap boolean-mask count, no copy —
+        mirrors `is_empty()`'s approach so `__repr__` stays safe to call on
+        large eventstreams."""
+        exclude = [EventTypes().PATH_START.type, EventTypes().PATH_END.type]
+        n = int((~self._df[self.schema.event_type].isin(exclude)).sum())
+        if n >= 1_000_000:
+            return f"{n / 1_000_000:.1f}M"
+        if n >= 1_000:
+            return f"{n / 1_000:.0f}k"
+        return str(n)
+
+    def recipe(self) -> list[dict]:
+        """Return this eventstream's lineage as a JSON-serializable list of op
+        dicts — the same `{"type": ..., **params}` shape `ops.py` defines and
+        MCP preprocessors use. Empty for a freshly constructed (source)
+        eventstream; one entry per processor call for a derived one.
+
+        Round-trips with `Eventstream.from_recipe`:
+        `Eventstream.from_recipe(df, s.recipe()).fingerprint == s.fingerprint`.
+
+        Examples
+        --------
+            stream.filter_paths(...).add_segment(...).recipe()
+            # [{"type": "filter_paths", "condition": {...}}, {"type": "add_segment", ...}]
+        """
+        return [dict(o) for o in self._lineage]
+
+    @classmethod
+    def from_recipe(
+        cls, df: "pd.DataFrame | str", recipe: list[dict], schema: dict | None = None
+    ) -> "Eventstream":
+        """Reconstruct an `Eventstream` from a base dataframe (or CSV path) and
+        a recipe — an op-dict list as returned by `recipe()` — by constructing
+        a fresh source `Eventstream` and replaying each op via
+        `ops.apply_ops`.
+
+        Parameters
+        ----------
+        df : pd.DataFrame or str
+            Base data, same as the `Eventstream` constructor's `df` argument.
+        recipe : list of dict
+            Ordered op list, e.g. from `some_stream.recipe()`.
+        schema : dict, optional
+            Schema for the base stream; defaults to the same default schema
+            the plain `Eventstream(df)` constructor would use.
+
+        Examples
+        --------
+            rebuilt = Eventstream.from_recipe(df, stream.recipe())
+            assert rebuilt.fingerprint == stream.fingerprint
+        """
+        from retentioneering.ops import apply_ops
+
+        base = cls(df, schema)
+        return apply_ops(base, recipe)
 
     def to_dataframe(self, exclude_start_end: bool = True) -> pd.DataFrame:
         df = self._df.copy()
@@ -241,6 +307,7 @@ class Eventstream:
         }
 
     @_tracked("dp_filter_events")
+    @_op
     def filter_events(
         self,
         keep: dict | None = None,
@@ -288,6 +355,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_add_clusters")
+    @_op
     def add_clusters(
         self,
         name: str,
@@ -367,6 +435,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_urls_to_events")
+    @_op
     def urls_to_events(
         self,
         column: str,
@@ -445,6 +514,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_filter_paths")
+    @_op
     def filter_paths(
         self,
         condition: dict | list,
@@ -537,6 +607,7 @@ class Eventstream:
         return builder.build_metrics(metrics, path_col)
 
     @_tracked("dp_add_events")
+    @_op
     def add_events(
         self, name: str, source_events=None, sql=None, churn=None
     ) -> "Eventstream":
@@ -581,6 +652,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_add_segment")
+    @_op
     def add_segment(
         self,
         name: str,
@@ -661,6 +733,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_collapse_events")
+    @_op
     def collapse_events(
         self,
         consecutive=None,
@@ -738,6 +811,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_to_daily_states")
+    @_op
     def to_daily_states(
         self,
         active_events=None,
@@ -798,6 +872,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_drop_segment")
+    @_op
     def drop_segment(self, name: str) -> "Eventstream":
         """
         Remove a segment column from the eventstream.
@@ -817,6 +892,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_edit_events")
+    @_op
     def edit_events(self, rename=None, delete=None) -> "Eventstream":
         """
         Rename and/or delete events in a single operation.
@@ -846,6 +922,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_rename_events")
+    @_op
     def rename_events(self, mapping: dict) -> "Eventstream":
         """
         Rename events using a mapping dict.
@@ -868,6 +945,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_rename_segment_values")
+    @_op
     def rename_segment_values(self, segment_col: str, mapping: dict) -> "Eventstream":
         """
         Rename values of a segment column using a mapping dict.
@@ -901,6 +979,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_drop_events")
+    @_op
     def drop_events(self, names: list) -> "Eventstream":
         """
         Remove events from the eventstream by name.
@@ -922,6 +1001,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_sample_paths")
+    @_op
     def sample_paths(
         self, n=None, frac=None, random_state=None, path_col=None
     ) -> "Eventstream":
@@ -956,6 +1036,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_split_sessions")
+    @_op
     def split_sessions(
         self,
         session_id_col="session_id",
@@ -1022,6 +1103,7 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     @_tracked("dp_truncate_paths")
+    @_op
     def truncate_paths(
         self, start_event: str, end_event: str, path_col=None, event_col=None
     ) -> "Eventstream":
@@ -1092,6 +1174,7 @@ class Eventstream:
         return s1, s2
 
     @_tracked("dp_add_start_end_events")
+    @_op
     def add_start_end_events(self, path_col: str | None = None) -> "Eventstream":
         """
         Prepend a `path_start` and append a `path_end` synthetic event to each path.

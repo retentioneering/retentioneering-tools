@@ -25,6 +25,7 @@ from mcp.server.fastmcp import FastMCP
 from retentioneering._tracking import _caller_type as _tracking_caller_type
 from retentioneering._tracking import track as _track
 from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.ops import apply_ops as _apply_ops
 
 
 def serve(
@@ -623,115 +624,19 @@ def _build_server(
 
 
 def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
-    """Apply an ordered list of preprocessing steps to an Eventstream."""
-    for step in preprocessors:
-        t = step.get("type", "")
-        if t == "collapse_events":
-            stream = stream.collapse_events(
-                consecutive=step.get("consecutive"),
-                event_groups=step.get("event_groups"),
-                group_col=step.get("group_col"),
-                session_id_col=step.get("session_id_col"),
-                session_type_col=step.get("session_type_col"),
-                agg=step.get("agg"),
-                path_col=step.get("path_col"),
-            )
-        elif t == "filter_paths":
-            condition = {k: v for k, v in step.items() if k not in ("type", "path_col")}
-            stream = stream.filter_paths(condition, path_col=step.get("path_col"))
-        elif t == "filter_events":
-            stream = stream.filter_events(
-                keep=step.get("keep"),
-                drop=step.get("drop"),
-                sql=step.get("sql"),
-            )
-        elif t == "truncate_paths":
-            stream = stream.truncate_paths(
-                start_event=step["start_event"],
-                end_event=step["end_event"],
-                path_col=step.get("path_col"),
-            )
-        elif t == "rename_events":
-            stream = stream.rename_events(mapping=step["mapping"])
-        elif t == "edit_events":
-            stream = stream.edit_events(
-                rename=step.get("rename"),
-                delete=step.get("delete"),
-            )
-        elif t == "drop_events":
-            stream = stream.drop_events(names=step["names"])
-        elif t == "add_events":
-            stream = stream.add_events(
-                name=step["name"],
-                source_events=step.get("source_events"),
-                sql=step.get("sql"),
-                churn=step.get("churn"),
-            )
-        elif t == "to_daily_states":
-            stream = stream.to_daily_states(
-                active_events=step.get("active_events"),
-                max_dormant_days=step.get("max_dormant_days", 30),
-            )
-        elif t == "add_segment":
-            stream = stream.add_segment(
-                name=step["name"],
-                rules=step.get("rules"),
-                sql=step.get("sql"),
-                funnel_events=step.get("funnel_events"),
-                path_col=step.get("path_col"),
-            )
-        elif t == "drop_segment":
-            stream = stream.drop_segment(name=step["name"])
-        elif t == "add_clusters":
-            stream = stream.add_clusters(
-                name=step["name"],
-                features=step["features"],
-                method=step.get("method", "kmeans"),
-                scaler=step.get("scaler"),
-                n_clusters=step.get("n_clusters"),
-                min_cluster_size=step.get("min_cluster_size"),
-                cluster_selection_epsilon=step.get("cluster_selection_epsilon"),
-                nmf_components=step.get("nmf_components"),
-                path_col=step.get("path_col"),
-            )
-        elif t == "urls_to_events":
-            stream = stream.urls_to_events(
-                column=step["column"],
-                nodes=step["nodes"],
-                strip_host=step.get("strip_host", True),
-                strip_query=step.get("strip_query", True),
-                strip_locale=step.get("strip_locale", True),
-                keep_full_paths=step.get("keep_full_paths", False),
-                host_col=step.get("host_col"),
-                query_col=step.get("query_col"),
-                locale_col=step.get("locale_col"),
-                slug_col=step.get("slug_col"),
-            )
-        elif t == "sample_paths":
-            stream = stream.sample_paths(
-                n=step.get("n"),
-                frac=step.get("frac"),
-                random_state=step.get("random_state"),
-            )
-        elif t == "split_sessions":
-            stream = stream.split_sessions(
-                session_id_col=step.get("session_id_col", "session_id"),
-                session_index_col=step.get("session_index_col", "session_index"),
-                separator=step.get("separator"),
-                start_event=step.get("start_event"),
-                end_event=step.get("end_event"),
-                timeout=step.get("timeout"),
-                path_col=step.get("path_col"),
-            )
-        else:
-            raise ValueError(
-                f"Unknown preprocessor type: {t!r}. "
-                "Supported: collapse_events, filter_paths, filter_events, "
-                "truncate_paths, rename_events, edit_events, drop_events, "
-                "add_events, to_daily_states, add_segment, drop_segment, "
-                "add_clusters, urls_to_events, sample_paths, split_sessions."
-            )
-    return stream
+    """Apply an ordered list of preprocessing steps to an Eventstream.
+
+    Thin wrapper over `ops.apply_ops` — each step is a `{"type": "<name>",
+    ...args}` dict dispatched to the same-named `Eventstream` method. This
+    used to be its own if/elif dispatch (see git history); that dispatch is
+    now the library's official, shared op model in `ops.py` (also used by
+    `Eventstream._lineage`/`recipe()`/`from_recipe()`), so MCP no longer
+    duplicates it. `filter_paths`'s flattened-condition step shape
+    (`{"type": "filter_paths", "op": ">", ...}` instead of a nested
+    `condition` key) is preserved for backward compatibility by
+    `ops._adapt_params`.
+    """
+    return _apply_ops(stream, preprocessors)
 
 
 def _transition_graph_summary(

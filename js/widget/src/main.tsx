@@ -10,6 +10,8 @@
  */
 import { anywidgetHost, type AnyWidgetModel } from "./AnywidgetHost";
 import { staticHost } from "./StaticHost";
+export { restHost } from "./RestHost";
+export { reactiveHost } from "./ReactiveHost";
 import type { RenderContext } from "./widget-utils";
 import { render as renderTransitionGraph }  from "./index";
 import { render as renderStepSankey }       from "./step_sankey";

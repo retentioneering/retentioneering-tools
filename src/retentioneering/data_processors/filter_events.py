@@ -38,6 +38,11 @@ def _validate_column_filter(arg_name: str, value: Dict) -> None:
                 PROCESSOR_NAME,
                 f"Values for column '{column}' in '{arg_name}' must be a list.",
             )
+        if not values:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"Values for column '{column}' in '{arg_name}' must not be empty.",
+            )
 
 
 class FilterEvents(DataProcessor):

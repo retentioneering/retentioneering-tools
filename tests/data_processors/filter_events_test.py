@@ -136,6 +136,15 @@ class TestFilterEvents:
         with pytest.raises(Exception):
             stream.filter_events(keep={"event": ["A"]}, drop={"event": ["B"]})
 
+    def test__empty_values_list_raises(self) -> None:
+        stream = Eventstream(get_df(), {"custom_cols": ["country"]})
+
+        with pytest.raises(Exception):
+            stream.filter_events(keep={"event": []})
+
+        with pytest.raises(Exception):
+            stream.filter_events(drop={"event": []})
+
     def test__func_events(self) -> None:
         df = get_df()
         schema = {"custom_cols": ["country"]}

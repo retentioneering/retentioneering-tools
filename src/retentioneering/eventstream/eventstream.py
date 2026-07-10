@@ -1073,6 +1073,11 @@ class Eventstream:
             if v2 == "<REST>":
                 all_vals = set(self.get_segment_values().get(segment_col, []))
                 v2_vals = list(all_vals - {v1})
+                if not v2_vals:
+                    raise DiffConfigError(
+                        f"'{segment_col}' has no other values besides '{v1}'; "
+                        "'<REST>' requires at least one complementary value."
+                    )
             else:
                 v2_vals = [v2]
             s2 = self.filter_events(keep={segment_col: v2_vals})

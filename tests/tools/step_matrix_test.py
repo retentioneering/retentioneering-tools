@@ -107,6 +107,27 @@ class TestStepMatrix:
         pd.testing.assert_frame_equal(sms2[0], expected_g2)
         pd.testing.assert_frame_equal(diff_sms[0], expected_g2 - expected_g1)
 
+    def test__diff_with_rest_and_no_complement_raises(self) -> None:
+        """diff value2="<REST>" must raise a clear error, not a raw DuckDB exception,
+        when the chosen segment value has no complementary values."""
+        from retentioneering.exceptions import DiffConfigError
+
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "session_1", "US"],
+                ["user_1", "B", "2020-01-01 00:01:00", "session_1", "US"],
+            ],
+            columns=["user_id", "event", "timestamp", "session_id", "country"],
+        )
+        stream = Eventstream(
+            df, {"path_cols": ["session_id"], "segment_cols": ["country"]}
+        )
+
+        with pytest.raises(DiffConfigError):
+            stream.step_sankey_data(
+                max_steps=3, diff=("country", "US", "<REST>"), path_col="session_id"
+            )
+
     def test__path_end_session_id(self, fx_read_csv):
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         schema = {"path_cols": ["user_id", "session_id"]}

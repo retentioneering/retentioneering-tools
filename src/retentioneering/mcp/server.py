@@ -630,6 +630,11 @@ def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
             stream = stream.collapse_events(
                 consecutive=step.get("consecutive"),
                 event_groups=step.get("event_groups"),
+                group_col=step.get("group_col"),
+                session_id_col=step.get("session_id_col"),
+                session_type_col=step.get("session_type_col"),
+                agg=step.get("agg"),
+                path_col=step.get("path_col"),
             )
         elif t == "filter_paths":
             condition = {k: v for k, v in step.items() if k not in ("type", "path_col")}
@@ -682,7 +687,11 @@ def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
                 name=step["name"],
                 features=step["features"],
                 method=step.get("method", "kmeans"),
+                scaler=step.get("scaler"),
                 n_clusters=step.get("n_clusters"),
+                min_cluster_size=step.get("min_cluster_size"),
+                cluster_selection_epsilon=step.get("cluster_selection_epsilon"),
+                nmf_components=step.get("nmf_components"),
                 path_col=step.get("path_col"),
             )
         elif t == "urls_to_events":
@@ -691,6 +700,12 @@ def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
                 nodes=step["nodes"],
                 strip_host=step.get("strip_host", True),
                 strip_query=step.get("strip_query", True),
+                strip_locale=step.get("strip_locale", True),
+                keep_full_paths=step.get("keep_full_paths", False),
+                host_col=step.get("host_col"),
+                query_col=step.get("query_col"),
+                locale_col=step.get("locale_col"),
+                slug_col=step.get("slug_col"),
             )
         elif t == "sample_paths":
             stream = stream.sample_paths(
@@ -700,9 +715,13 @@ def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
             )
         elif t == "split_sessions":
             stream = stream.split_sessions(
-                timeout=step.get("timeout"),
                 session_id_col=step.get("session_id_col", "session_id"),
                 session_index_col=step.get("session_index_col", "session_index"),
+                separator=step.get("separator"),
+                start_event=step.get("start_event"),
+                end_event=step.get("end_event"),
+                timeout=step.get("timeout"),
+                path_col=step.get("path_col"),
             )
         else:
             raise ValueError(

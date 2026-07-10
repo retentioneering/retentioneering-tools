@@ -23,6 +23,9 @@ export interface StepSankeyProps {
   diffValue1?: string | null;
   diffValue2?: string | null;
   theme?: "dark" | "light" | "auto";
+  // persistence: horizontal scroll position (px)
+  initialScrollX?: number;
+  onScrollXChange?: (x: number) => void;
 }
 
 // Inline helper: checks if a diff breakdown has group values
@@ -44,6 +47,8 @@ export const StepSankey = observer(({
   diffSegment = null,
   diffValue1 = null,
   diffValue2 = null,
+  initialScrollX,
+  onScrollXChange,
 }: StepSankeyProps) => {
   const isDiff = !!diffSegment;
 
@@ -154,6 +159,20 @@ export const StepSankey = observer(({
 
   // Ref for scrolling to center
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Last known horizontal scroll — restored on data changes and persisted
+  // through onScrollXChange (debounced).
+  const scrollXRef = React.useRef<number>(initialScrollX ?? 0);
+  const scrollSaveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onScrollXChangeRef = React.useRef(onScrollXChange);
+  onScrollXChangeRef.current = onScrollXChange;
+  const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    scrollXRef.current = (e.target as HTMLDivElement).scrollLeft;
+    if (scrollSaveTimeoutRef.current) clearTimeout(scrollSaveTimeoutRef.current);
+    scrollSaveTimeoutRef.current = setTimeout(() => {
+      onScrollXChangeRef.current?.(scrollXRef.current);
+    }, 300);
+  }, []);
 
   // Global mouse X position for fisheye effect across all columns
   const [mouseX, setMouseX] = React.useState<number | null>(null);
@@ -312,12 +331,12 @@ export const StepSankey = observer(({
     };
   }, [matrixColumns]);
 
-  // Keep default horizontal position anchored to the left edge on load.
+  // On load, restore the saved horizontal position (left edge by default).
   React.useEffect(() => {
     if (!scrollContainerRef.current || matrixColumns.length === 0) return;
 
     scrollContainerRef.current.scrollTo({
-      left: 0,
+      left: scrollXRef.current,
       behavior: "auto",
     });
   }, [matrixColumns]);
@@ -348,6 +367,7 @@ export const StepSankey = observer(({
   return (
     <div
       ref={scrollContainerRef}
+      onScroll={handleScroll}
       style={{
         position: "relative",
         display: "flex",

@@ -78,7 +78,7 @@ export class StepMatrixStore {
   private shouldResetOnData = false;
 
   // True once the user has manually moved the Event Count slider
-  private _populationCustomized = false;
+  populationCustomized = false;
 
   collapseHidden = false;
 
@@ -501,11 +501,11 @@ export class StepMatrixStore {
 
     // If reset was requested (e.g. value type changed or diff mode toggled), reset population filter now
     // that we have correct bounds from API
-    if (this.shouldResetOnData || !this._populationCustomized) {
+    if (this.shouldResetOnData || !this.populationCustomized) {
       this.filters.population = { ...this.populationBounds };
       this.shouldResetOnData = false;
     }
-    // If _populationCustomized, keep the user's current filter range intact
+    // If populationCustomized, keep the user's current filter range intact
   };
 
   setActiveMatrixIndex = (index: number) => {
@@ -517,7 +517,7 @@ export class StepMatrixStore {
   // Rest of the actions remain same
   setPopulationRange = (min: number, max: number) => {
     this.filters.population = { min, max };
-    this._populationCustomized = true;
+    this.populationCustomized = true;
   };
 
   setMatrixValueRange = (min: number, max: number) => {
@@ -598,7 +598,7 @@ export class StepMatrixStore {
       reverse: false,
     };
     this.collapseHidden = false;
-    this._populationCustomized = false;
+    this.populationCustomized = false;
   };
 
   // Helpers

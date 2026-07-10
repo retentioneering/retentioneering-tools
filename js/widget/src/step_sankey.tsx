@@ -1,5 +1,6 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
+import { reaction } from "mobx";
 import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
 import {
   StepSankey,
@@ -60,6 +61,13 @@ export function render({ model, el, isStatic = false }: RenderContext) {
   }
   syncResultToStore();
 
+  // Restore the Event count filter. setPopulationRange marks the filter as
+  // user-customized, so applyEventCounts won't overwrite it on later syncs.
+  {
+    const f = parseJson<number[]>(model.get("event_count_filter") || "", []);
+    if (f.length === 2) store.setPopulationRange(f[0], f[1]);
+  }
+
   function App() {
     const [maxSteps, setMaxSteps]         = React.useState<number>(() => (model.get("max_steps") as number) ?? 10);
     const [pathPattern, setPathPattern]   = React.useState<string>(() => (model.get("path_pattern") as string) || "");
@@ -88,6 +96,28 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     );
 
     React.useEffect(() => { syncResultToStore(); }, []);
+
+    // Sync the Event count filter to Python. Only a user-customized filter is
+    // persisted; "" means "follow the data bounds" (the default behaviour).
+    React.useEffect(() => {
+      const dispose = reaction(
+        () => ({
+          min: store.filters.population.min,
+          max: store.filters.population.max,
+          customized: store.populationCustomized,
+        }),
+        ({ min, max, customized }) => {
+          model.set("event_count_filter", customized ? JSON.stringify([min, max]) : "");
+          model.save_changes();
+        },
+        { fireImmediately: false, delay: 150 }
+      );
+      return dispose;
+    }, []);
+
+    const handleScrollXChange = React.useCallback((x: number) => {
+      model.set("scroll_x", x); model.save_changes();
+    }, []);
 
     React.useEffect(() => {
       const subs: Array<[string, () => void]> = [
@@ -153,6 +183,8 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                 diffValue1={diffValue1}
                 diffValue2={diffValue2}
                 theme="light"
+                initialScrollX={(model.get("scroll_x") as number) || 0}
+                onScrollXChange={handleScrollXChange}
               />
             </div>
           </div>

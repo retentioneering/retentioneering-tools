@@ -564,6 +564,8 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
   isDirty: boolean; onOpenSave: () => void;
 }) {
   const showApply = isDirty || !hasResult;
+  // NMF without a component count silently computes nothing — block Apply instead.
+  const nmfMissing = nmfEnabled && !nmfKRaw.trim();
 
   const sel: React.CSSProperties = { width: "100%", boxSizing: "border-box", border: "1px solid #d1d5db", borderRadius: 6, color: "#111827", fontSize: 12, padding: "5px 24px 5px 8px", cursor: "pointer", outline: "none", appearance: "none", backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 6px center", background: "#f9fafb" };
 
@@ -622,8 +624,15 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
               </label>
             </div>
             {nmfEnabled && (
-              <NCInput value={nmfKRaw} onChange={onNmfKChange}
-                placeholder="e.g. 3-7 or 3,5,7" disabled={isStatic} />
+              <>
+                <NCInput value={nmfKRaw} onChange={onNmfKChange}
+                  placeholder="e.g. 3-7 or 3,5,7" disabled={isStatic} />
+                {nmfMissing && (
+                  <div style={{ fontSize: 10, color: "#dc2626", marginTop: 3 }}>
+                    NMF is enabled — set the number of components first
+                  </div>
+                )}
+              </>
             )}
           </div>
         </SidebarSection>
@@ -650,8 +659,9 @@ function Sidebar({ features, method, scaler, nClustersRaw, nmfEnabled, nmfKRaw,
       {/* Apply — shown when settings changed, or nothing has been computed yet (e.g. defaults) */}
       {!isStatic && showApply && features.length > 0 && (
         <div style={{ padding: "10px 12px", borderTop: "1px solid #e5e7eb", flexShrink: 0 }}>
-          <button onClick={onApply} disabled={isLoading}
-            style={{ width: "100%", padding: "8px 0", background: "var(--retentioneering-yellow)", border: "none", borderRadius: 6, cursor: "pointer", color: "#1a1a1a", fontSize: 12, fontWeight: 600 }}>
+          <button onClick={onApply} disabled={isLoading || nmfMissing}
+            title={nmfMissing ? "Set the number of NMF components or disable NMF" : undefined}
+            style={{ width: "100%", padding: "8px 0", background: nmfMissing ? "#e5e7eb" : "var(--retentioneering-yellow)", border: "none", borderRadius: 6, cursor: nmfMissing ? "default" : "pointer", color: nmfMissing ? "#9ca3af" : "#1a1a1a", fontSize: 12, fontWeight: 600 }}>
             Apply
           </button>
         </div>
@@ -736,9 +746,11 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [chosenParams,  setChosenParams]   = React.useState<Record<string, any>>(() => parseJson(model.get("chosen_params"), {}));
     // Cluster renames typed directly into the heatmap header — cleared on every new
     // result since "cluster_0" may refer to a different cluster after re-clustering.
-    const [headerRename,  setHeaderRename]   = React.useState<Record<string, string>>({});
+    const [headerRename,  setHeaderRename]   = React.useState<Record<string, string>>(
+      () => parseJson(model.get("cluster_renames"), {}),
+    );
     const rootRef = React.useRef<HTMLDivElement>(null);
-    const [activeTab,     setActiveTab]      = React.useState("Overview");
+    const [activeTab,     setActiveTab]      = React.useState<string>(() => (model.get("active_tab") as string) || "Overview");
 
     const events        = parseJson<string[]>(model.get("event_list"),     []);
     const pathCols      = parseJson<string[]>(model.get("path_cols"),      []);
@@ -757,7 +769,11 @@ export function render({ model, el, isStatic = false }: RenderContext) {
 
     React.useEffect(() => {
       const subs: Array<[string, () => void]> = [
-        ["result",      () => { setResult(parseJson(model.get("result"), {})); setHeaderRename({}); }],
+        ["result",      () => {
+          setResult(parseJson(model.get("result"), {}));
+          setHeaderRename({});
+          model.set("cluster_renames", "{}"); model.save_changes();
+        }],
         ["is_loading",  () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
         ["error",       () => setError((model.get("error") as string) || "")],
         ["height",      () => setHeight((model.get("height") as number) ?? 520)],
@@ -851,7 +867,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
           <SidebarToggle onClick={handleToggle} />
           <div style={{ width: "100%", height: "100%" }}>
             <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", overflow: "hidden" }}>
-            {tabs.length > 1 && <Tabs tabs={tabs} active={tab} onChange={setActiveTab} />}
+            {tabs.length > 1 && <Tabs tabs={tabs} active={tab} onChange={t => { setActiveTab(t); model.set("active_tab", t); model.save_changes(); }} />}
             <div style={{ flex: 1, overflow: "auto", padding: "8px 0" }}>
               {error && !isLoading && (
                 <div style={{ margin: 16, padding: 12, background: "#fff1f2", border: "1px solid #fca5a5", borderRadius: 8, fontSize: 12, color: "#dc2626", fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
@@ -867,7 +883,11 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                 <SegmentOverviewTable
                   data={result.overview}
                   renameMap={headerRename}
-                  onRename={(orig, next) => setHeaderRename(prev => ({ ...prev, [orig]: next }))}
+                  onRename={(orig, next) => {
+                    const map = { ...headerRename, [orig]: next };
+                    setHeaderRename(map);
+                    model.set("cluster_renames", JSON.stringify(map)); model.save_changes();
+                  }}
                   onCellClick={handleCellClick}
                   onCellRightClick={isStatic ? () => {} : handleCellRightClick}
                   selectedCells={selected}

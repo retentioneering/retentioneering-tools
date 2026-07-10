@@ -1253,6 +1253,7 @@ class Eventstream:
         step_window=None,
         height=None,
         sidebar_open=None,
+        state_file=None,
     ):
         """
         Displays a step-by-step Sankey diagram showing which events users experience
@@ -1282,6 +1283,9 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
+        state_file : str, optional
+            JSON file the widget state is bound to; see
+            [Saving widget state](/docs/widgets#saving-widget-state).
 
         Examples
         --------
@@ -1299,6 +1303,7 @@ class Eventstream:
             step_window=step_window if step_window is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            state_file=state_file,
         )
 
     @_tracked("widget_step_matrix")
@@ -1310,6 +1315,7 @@ class Eventstream:
         path_pattern=None,
         height=None,
         sidebar_open=None,
+        state_file=None,
     ):
         """
         Displays a heatmap table of step-by-step transition probabilities. Each cell
@@ -1344,6 +1350,9 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
+        state_file : str, optional
+            JSON file the widget state is bound to; see
+            [Saving widget state](/docs/widgets#saving-widget-state).
 
         Examples
         --------
@@ -1361,6 +1370,7 @@ class Eventstream:
             path_pattern=path_pattern if path_pattern is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            state_file=state_file,
         )
 
     @_tracked("widget_transition_graph")
@@ -1371,6 +1381,7 @@ class Eventstream:
         path_col=None,
         height=None,
         sidebar_open=None,
+        state_file=None,
     ):
         """
         Displays an interactive directed graph where nodes are unique events and edges represent transitions
@@ -1390,11 +1401,15 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
+        state_file : str, optional
+            JSON file the widget state is bound to; see
+            [Saving widget state](/docs/widgets#saving-widget-state).
 
         Examples
         --------
             stream.transition_graph()
             stream.transition_graph(edge_weight="count", diff=("plan", "pro", "free"))
+            stream.transition_graph(state_file="checkout_graph.json")
         """
         from retentioneering.widgets.transition_graph import (
             TransitionGraphWidget,
@@ -1408,6 +1423,7 @@ class Eventstream:
             path_col=path_col if path_col is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            state_file=state_file,
         )
 
     @_tracked("widget_funnel")
@@ -1418,6 +1434,7 @@ class Eventstream:
         path_col: str | None = None,
         height: int | None = None,
         sidebar_open: bool | None = None,
+        state_file: str | None = None,
     ):
         """
         Interactive conversion funnel for Jupyter notebooks.
@@ -1440,6 +1457,9 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
+        state_file : str, optional
+            JSON file the widget state is bound to; see
+            [Saving widget state](/docs/widgets#saving-widget-state).
 
         Examples
         --------
@@ -1455,6 +1475,7 @@ class Eventstream:
             path_col=path_col if path_col is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            state_file=state_file,
         )
 
     @_tracked("headless_funnel")
@@ -1485,6 +1506,7 @@ class Eventstream:
         path_col: str | None = None,
         height: int | None = None,
         sidebar_open: bool | None = None,
+        state_file: str | None = None,
     ):
         """
         Interactive segment comparison heatmap for Jupyter notebooks.
@@ -1513,6 +1535,9 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
+        state_file : str, optional
+            JSON file the widget state is bound to; see
+            [Saving widget state](/docs/widgets#saving-widget-state).
 
         Examples
         --------
@@ -1536,6 +1561,7 @@ class Eventstream:
             path_col=path_col if path_col is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            state_file=state_file,
         )
 
     @_tracked("headless_segment_overview")
@@ -1571,6 +1597,7 @@ class Eventstream:
         path_col: str | None = None,
         height: int | None = None,
         sidebar_open: bool | None = None,
+        state_file: str | None = None,
     ):
         """
         Interactive clustering widget for Jupyter notebooks.
@@ -1605,6 +1632,9 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
+        state_file : str, optional
+            JSON file the widget state is bound to; see
+            [Saving widget state](/docs/widgets#saving-widget-state).
 
         Examples
         --------
@@ -1631,6 +1661,7 @@ class Eventstream:
             path_col=path_col if path_col is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            state_file=state_file,
         )
 
     @_tracked("headless_cluster_analysis")

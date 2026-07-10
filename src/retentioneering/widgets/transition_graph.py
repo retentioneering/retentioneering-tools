@@ -5,6 +5,7 @@ import anywidget
 import traitlets
 
 from retentioneering.widgets._esm import _get_esm
+from retentioneering.widgets._state_file import StateFileMixin
 from retentioneering.widgets._utils import parse_diff as _parse_diff
 from retentioneering.widgets._html_export import write_html
 
@@ -12,7 +13,7 @@ _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
 
-class TransitionGraphWidget(anywidget.AnyWidget):
+class TransitionGraphWidget(StateFileMixin, anywidget.AnyWidget):
     _esm = _get_esm()
     _css = _STATIC / "widget.css"
 
@@ -40,10 +41,29 @@ class TransitionGraphWidget(anywidget.AnyWidget):
     sidebar_open = traitlets.Bool(True).tag(sync=True)
     node_positions = traitlets.Unicode("{}").tag(sync=True)
     event_visibility = traitlets.Unicode("{}").tag(sync=True)
+    # "" | "[min, max]" — edge weight filter, normalized to 0..1
+    edge_filter = traitlets.Unicode("").tag(sync=True)
+    # "" | "[min, max]" — event count (population) filter, absolute counts
+    event_count_filter = traitlets.Unicode("").tag(sync=True)
+    # "" | '{"zoom": z, "pan": {"x": x, "y": y}}' — canvas zoom/pan
+    viewport = traitlets.Unicode("").tag(sync=True)
 
     # ── generic compute protocol ───────────────────────────────────────────────
     compute_request = traitlets.Unicode("").tag(sync=True)
     compute_response = traitlets.Unicode("").tag(sync=True)
+
+    _persist_names = (
+        "edge_weight",
+        "diff",
+        "path_col",
+        "height",
+        "sidebar_open",
+        "node_positions",
+        "event_visibility",
+        "edge_filter",
+        "event_count_filter",
+        "viewport",
+    )
 
     def __init__(
         self,
@@ -53,11 +73,13 @@ class TransitionGraphWidget(anywidget.AnyWidget):
         path_col=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
+        state_file=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self._eventstream = eventstream
         self._initialized = False
+        self._load_state_file(state_file)
 
         try:
             self.segment_levels = json.dumps(eventstream.get_segment_values())
@@ -77,6 +99,20 @@ class TransitionGraphWidget(anywidget.AnyWidget):
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
         self.node_positions = "{}"
 
+        self._apply_saved_state(
+            exclude={
+                name
+                for name, arg in (
+                    ("edge_weight", edge_weight),
+                    ("diff", diff),
+                    ("path_col", path_col),
+                    ("height", height),
+                    ("sidebar_open", sidebar_open),
+                )
+                if arg is not _UNSET
+            }
+        )
+
         self._recompute()
 
         self._initialized = True
@@ -84,6 +120,7 @@ class TransitionGraphWidget(anywidget.AnyWidget):
         self.observe(self._on_positions_change, names=["node_positions"])
         self.observe(self._on_event_visibility_change, names=["event_visibility"])
         self.observe(self._on_compute_request, names=["compute_request"])
+        self._start_state_autosave()
 
     # ── widget-specific observers ──────────────────────────────────────────────
 
@@ -236,6 +273,11 @@ class TransitionGraphWidget(anywidget.AnyWidget):
             "event_counts_g2": json.loads(self.event_counts_g2 or "{}"),
             "node_positions": json.loads(self.node_positions or "{}"),
             "event_visibility": json.loads(self.event_visibility or "{}"),
+            "edge_filter": json.loads(self.edge_filter) if self.edge_filter else None,
+            "event_count_filter": json.loads(self.event_count_filter)
+            if self.event_count_filter
+            else None,
+            "viewport": json.loads(self.viewport) if self.viewport else None,
             "segment_levels": json.loads(self.segment_levels or "{}"),
             "path_cols": json.loads(self.path_cols or "[]"),
             "path_col": self.path_col or "",

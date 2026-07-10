@@ -58,11 +58,6 @@ type ColorPickerState =
       nodeId: string;
     };
 
-interface StoredPosition {
-  x: number;
-  y: number;
-}
-
 const NODE_BASE_MIN_SIZE = 24;
 const NODE_BASE_MAX_SIZE = 40;
 const NODE_FOCUS_DIMMED_SIZE = 18;
@@ -245,6 +240,7 @@ function recalculateSelfLoopDirections(cy: Core, nodeIds?: Set<string>): void {
 }
 
 export interface StoredPosition { x: number; y: number; }
+export interface StoredViewport { zoom: number; pan: { x: number; y: number }; }
 
 export interface TransitionGraphProps {
   store: TransitionMatrixStore;
@@ -265,6 +261,12 @@ export interface TransitionGraphProps {
   initialPositions?: Record<string, StoredPosition>;
   // called on every drag-end; parent can persist to Python / file
   onPositionsChange?: (positions: Record<string, StoredPosition>) => void;
+  // persistence: edge weight filter [min, max], normalized to 0..1
+  initialEdgeFilter?: [number, number] | null;
+  onEdgeFilterChange?: (filter: [number, number]) => void;
+  // persistence: canvas zoom/pan
+  initialViewport?: StoredViewport | null;
+  onViewportChange?: (viewport: StoredViewport) => void;
   // ref that receives a fit() function — call to fit the graph to the canvas
   fitRef?: React.MutableRefObject<(() => void) | undefined>;
 }
@@ -286,6 +288,10 @@ export const TransitionGraph = observer(function TransitionGraph({
   eventCountsG2,
   initialPositions,
   onPositionsChange,
+  initialEdgeFilter,
+  onEdgeFilterChange,
+  initialViewport,
+  onViewportChange,
   fitRef,
 }: TransitionGraphProps) {
   // internal state for uncontrolled valuesType
@@ -305,10 +311,15 @@ export const TransitionGraph = observer(function TransitionGraph({
   const { data: graphLayoutData, isLoading: isGraphLayoutLoading } =
     useGraphLayout(dataProvider);
 
-  const [edgeThreshold, setEdgeThreshold] = React.useState("0,1");
+  const [edgeThreshold, setEdgeThreshold] = React.useState(() =>
+    initialEdgeFilter && initialEdgeFilter.length === 2
+      ? `${initialEdgeFilter[0]},${initialEdgeFilter[1]}`
+      : "0,1",
+  );
   const handleEdgeThresholdChange = React.useCallback((value: [number, number]) => {
     setEdgeThreshold(`${value[0].toFixed(3)},${value[1].toFixed(3)}`);
-  }, []);
+    onEdgeFilterChange?.([value[0], value[1]]);
+  }, [onEdgeFilterChange]);
 
   const requestedValueType = currentValuesType;
   const isDark =
@@ -335,6 +346,13 @@ export const TransitionGraph = observer(function TransitionGraph({
   const containerRef = React.useRef<HTMLDivElement>(null);
   const cyRef = React.useRef<Core | null>(null);
   const positionsRef = React.useRef<Record<string, StoredPosition>>({});
+  // Last known zoom/pan — restored on cy recreation (recompute) and persisted
+  // through onViewportChange. Kept in refs so the graph-creation effect doesn't
+  // depend on the callback identity.
+  const viewportRef = React.useRef<StoredViewport | null>(initialViewport ?? null);
+  const viewportSaveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onViewportChangeRef = React.useRef(onViewportChange);
+  onViewportChangeRef.current = onViewportChange;
   const focusProgressRef = React.useRef(0);
   const focusAnimationFrameRef = React.useRef<number | null>(null);
   const resizeRafRef = React.useRef<number | null>(null);
@@ -969,6 +987,15 @@ export const TransitionGraph = observer(function TransitionGraph({
     // Expose cy on the container's root element so focusNode() can find it
     if (container?.parentElement) (container.parentElement as any).__cy = cy;
 
+    // Track zoom/pan (user or programmatic) for persistence and recreation
+    cy.on("viewport", () => {
+      viewportRef.current = { zoom: cy.zoom(), pan: { ...cy.pan() } };
+      if (viewportSaveTimeoutRef.current) clearTimeout(viewportSaveTimeoutRef.current);
+      viewportSaveTimeoutRef.current = setTimeout(() => {
+        if (viewportRef.current) onViewportChangeRef.current?.(viewportRef.current);
+      }, 300);
+    });
+
     // Initial edge threshold is applied by a dedicated effect below.
 
     // Apply layout if no saved positions
@@ -1042,8 +1069,13 @@ export const TransitionGraph = observer(function TransitionGraph({
         persistPositions();
       }
 
-      // Fit to canvas after browser has laid out the container
-      requestAnimationFrame(() => cy.fit(undefined, 12));
+      // Restore the saved viewport if there is one; otherwise fit to canvas
+      // after the browser has laid out the container.
+      const savedViewport = viewportRef.current;
+      requestAnimationFrame(() => {
+        if (savedViewport) cy.viewport({ zoom: savedViewport.zoom, pan: { ...savedViewport.pan } });
+        else cy.fit(undefined, 12);
+      });
     }
 
     // Event handlers

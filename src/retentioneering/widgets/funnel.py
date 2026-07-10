@@ -8,11 +8,12 @@ _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
 from retentioneering.widgets._esm import _get_esm  # noqa: E402
+from retentioneering.widgets._state_file import StateFileMixin  # noqa: E402
 from retentioneering.widgets._utils import parse_diff as _parse_diff  # noqa: E402
 from retentioneering.widgets._html_export import write_html  # noqa: E402
 
 
-class FunnelWidget(anywidget.AnyWidget):
+class FunnelWidget(StateFileMixin, anywidget.AnyWidget):
     _esm = _get_esm()
     _css = _STATIC / "widget.css"
 
@@ -38,6 +39,8 @@ class FunnelWidget(anywidget.AnyWidget):
     height = traitlets.Int(420).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
 
+    _persist_names = ("steps", "diff", "path_col", "height", "sidebar_open")
+
     def __init__(
         self,
         eventstream,
@@ -46,11 +49,13 @@ class FunnelWidget(anywidget.AnyWidget):
         path_col=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
+        state_file=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self._eventstream = eventstream
         self._initialized = False
+        self._load_state_file(state_file)
 
         try:
             all_events = sorted(
@@ -80,9 +85,24 @@ class FunnelWidget(anywidget.AnyWidget):
         self.height = height if height is not _UNSET else 420
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
+        self._apply_saved_state(
+            exclude={
+                name
+                for name, arg in (
+                    ("steps", steps),
+                    ("diff", diff),
+                    ("path_col", path_col),
+                    ("height", height),
+                    ("sidebar_open", sidebar_open),
+                )
+                if arg is not _UNSET
+            }
+        )
+
         self._recompute()
         self._initialized = True
         self.observe(self._on_params_change, names=["steps", "diff", "path_col"])
+        self._start_state_autosave()
 
     def _on_params_change(self, _change):
         if not self._initialized:

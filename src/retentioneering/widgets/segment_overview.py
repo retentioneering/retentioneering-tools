@@ -9,9 +9,10 @@ _UNSET = object()
 
 from retentioneering.widgets._esm import _get_esm  # noqa: E402
 from retentioneering.widgets._html_export import write_html  # noqa: E402
+from retentioneering.widgets._state_file import StateFileMixin  # noqa: E402
 
 
-class SegmentOverviewWidget(anywidget.AnyWidget):
+class SegmentOverviewWidget(StateFileMixin, anywidget.AnyWidget):
     _esm = _get_esm()
     _css = _STATIC / "widget.css"
 
@@ -43,6 +44,8 @@ class SegmentOverviewWidget(anywidget.AnyWidget):
     height = traitlets.Int(480).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
 
+    _persist_names = ("segment_col", "metrics", "path_col", "height", "sidebar_open")
+
     def __init__(
         self,
         eventstream,
@@ -51,6 +54,7 @@ class SegmentOverviewWidget(anywidget.AnyWidget):
         path_col=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
+        state_file=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -58,6 +62,7 @@ class SegmentOverviewWidget(anywidget.AnyWidget):
         self._initialized = False
         self.widget_id = ""
         self.widget_type = "segment_overview"
+        self._load_state_file(state_file)
 
         # Catalogues
         try:
@@ -84,12 +89,27 @@ class SegmentOverviewWidget(anywidget.AnyWidget):
         self.height = height if height is not _UNSET else 480
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
+        self._apply_saved_state(
+            exclude={
+                name
+                for name, arg in (
+                    ("segment_col", segment_col),
+                    ("metrics", metrics),
+                    ("path_col", path_col),
+                    ("height", height),
+                    ("sidebar_open", sidebar_open),
+                )
+                if arg is not _UNSET
+            }
+        )
+
         if self.segment_col:
             self._recompute()
 
         self._initialized = True
         self.observe(self._on_apply, names=["apply_trigger"])
         self.observe(self._on_dist_request, names=["dist_request"])
+        self._start_state_autosave()
 
     # ── observers ─────────────────────────────────────────────────────────
 

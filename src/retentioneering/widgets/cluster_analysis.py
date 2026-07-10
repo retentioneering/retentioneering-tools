@@ -14,9 +14,10 @@ _UNSET = object()
 
 from retentioneering.widgets._esm import _get_esm  # noqa: E402
 from retentioneering.widgets._html_export import write_html  # noqa: E402
+from retentioneering.widgets._state_file import StateFileMixin  # noqa: E402
 
 
-class ClusterAnalysisWidget(anywidget.AnyWidget):
+class ClusterAnalysisWidget(StateFileMixin, anywidget.AnyWidget):
     _esm = _get_esm()
     _css = _STATIC / "widget.css"
 
@@ -52,6 +53,11 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
     widget_id = traitlets.Unicode("").tag(sync=True)
     height = traitlets.Int(520).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
+    # "" | tab name ("Overview", "Silhouette", ...) — active result tab
+    active_tab = traitlets.Unicode("").tag(sync=True)
+    # '{}' | '{"cluster_0": "power users", ...}' — display renames typed into
+    # the heatmap header (cleared on re-clustering)
+    cluster_renames = traitlets.Unicode("{}").tag(sync=True)
     # Name of the caller's eventstream variable (best-effort) - used by the JS
     # side to render copy-pasteable code that refers to it by its real name.
     stream_var_name = traitlets.Unicode("stream").tag(sync=True)
@@ -68,6 +74,22 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
     dist_request = traitlets.Unicode("").tag(sync=True)
     dist_result = traitlets.Unicode("{}").tag(sync=True)
 
+    _persist_names = (
+        "features",
+        "method",
+        "scaler",
+        "n_clusters",
+        "nmf_components",
+        "nmf_enabled",
+        "overview_metrics",
+        "aggregation",
+        "path_col",
+        "height",
+        "sidebar_open",
+        "active_tab",
+        "cluster_renames",
+    )
+
     def __init__(
         self,
         eventstream,
@@ -80,6 +102,7 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         height=_UNSET,
         sidebar_open=_UNSET,
         stream_var_name=_UNSET,
+        state_file=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -87,6 +110,7 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         self._initialized = False
         self.widget_id = ""
         self.widget_type = "cluster_analysis"
+        self._load_state_file(state_file)
         # Cluster labels (path id -> "cluster_0"/.../"noise") from the last
         # successful Apply - cached so a distribution request can rebuild the
         # exact clustering shown in the heatmap without re-running it.
@@ -139,13 +163,32 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
         self.height = height if height is not _UNSET else 520
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
+        self._apply_saved_state(
+            exclude={
+                name
+                for name, arg in (
+                    ("features", features),
+                    ("method", method),
+                    ("scaler", scaler),
+                    ("n_clusters", n_clusters),
+                    ("overview_metrics", overview_metrics),
+                    ("path_col", path_col),
+                    ("height", height),
+                    ("sidebar_open", sidebar_open),
+                )
+                if arg is not _UNSET
+            }
+        )
+
         self._initialized = True
         self.observe(self._on_apply, names=["apply_trigger"])
         self.observe(self._on_save, names=["save_trigger"])
         self.observe(self._on_dist_request, names=["dist_request"])
+        self._start_state_autosave()
 
-        # Auto-compute when features were explicitly provided
-        if features is not _UNSET:
+        # Auto-compute when features were explicitly provided or restored
+        # from a state file.
+        if features is not _UNSET or self._saved_state:
             self._recompute()
 
     # ── observers ──────────────────────────────────────────────────────────
@@ -382,6 +425,8 @@ class ClusterAnalysisWidget(anywidget.AnyWidget):
             "sidebar_open": sidebar_open
             if sidebar_open is not None
             else self.sidebar_open,
+            "active_tab": self.active_tab or "",
+            "cluster_renames": json.loads(self.cluster_renames or "{}"),
         }
         write_html(path, title, "Cluster Analysis", data, analysis)
 

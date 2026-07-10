@@ -8,11 +8,12 @@ _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
 from retentioneering.widgets._esm import _get_esm  # noqa: E402
+from retentioneering.widgets._state_file import StateFileMixin  # noqa: E402
 from retentioneering.widgets._utils import parse_diff as _parse_diff  # noqa: E402
 from retentioneering.widgets._html_export import write_html  # noqa: E402
 
 
-class StepSankeyWidget(anywidget.AnyWidget):
+class StepSankeyWidget(StateFileMixin, anywidget.AnyWidget):
     _esm = _get_esm()  # dev: local file; installed: CDN URL
     _css = _STATIC / "widget.css"
 
@@ -44,12 +45,29 @@ class StepSankeyWidget(anywidget.AnyWidget):
 
     # ── persistent state ──────────────────────────────────────────────────────
     node_positions = traitlets.Unicode("{}").tag(sync=True)
+    # "" | "[min, max]" — event count filter, absolute counts
+    event_count_filter = traitlets.Unicode("").tag(sync=True)
+    # horizontal scroll position, px
+    scroll_x = traitlets.Float(0.0).tag(sync=True)
 
     # ── compute protocol ──────────────────────────────────────────────────────
     compute_request = traitlets.Unicode("").tag(sync=True)
     compute_response = traitlets.Unicode("").tag(sync=True)
 
     # ─────────────────────────────────────────────────────────────────────────
+
+    _persist_names = (
+        "max_steps",
+        "diff",
+        "path_col",
+        "path_pattern",
+        "step_window",
+        "height",
+        "sidebar_open",
+        "node_positions",
+        "event_count_filter",
+        "scroll_x",
+    )
 
     def __init__(
         self,
@@ -61,12 +79,14 @@ class StepSankeyWidget(anywidget.AnyWidget):
         height=_UNSET,
         sidebar_open=_UNSET,
         step_window=_UNSET,
+        state_file=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self._eventstream = eventstream
         self._initialized = False
         self.widget_id = ""
+        self._load_state_file(state_file)
 
         # Catalogues
         try:
@@ -85,6 +105,22 @@ class StepSankeyWidget(anywidget.AnyWidget):
         self.step_window = step_window if step_window is not _UNSET else 3
         self.node_positions = "{}"
 
+        self._apply_saved_state(
+            exclude={
+                name
+                for name, arg in (
+                    ("max_steps", max_steps),
+                    ("diff", diff),
+                    ("path_col", path_col),
+                    ("path_pattern", path_pattern),
+                    ("step_window", step_window),
+                    ("height", height),
+                    ("sidebar_open", sidebar_open),
+                )
+                if arg is not _UNSET
+            }
+        )
+
         self._recompute()
 
         self._initialized = True
@@ -95,6 +131,7 @@ class StepSankeyWidget(anywidget.AnyWidget):
         self.observe(self._on_positions_change, names=["node_positions"])
 
         self.observe(self._on_compute_request, names=["compute_request"])
+        self._start_state_autosave()
 
     # ── observers ─────────────────────────────────────────────────────────────
 
@@ -241,6 +278,10 @@ class StepSankeyWidget(anywidget.AnyWidget):
             "segment_levels": json.loads(self.segment_levels or "{}"),
             "step_window": self.step_window,
             "node_positions": json.loads(self.node_positions or "{}"),
+            "event_count_filter": json.loads(self.event_count_filter)
+            if self.event_count_filter
+            else None,
+            "scroll_x": self.scroll_x,
             "height": self.height,
             "sidebar_open": sidebar_open
             if sidebar_open is not None

@@ -26,6 +26,7 @@ All widgets share the following parameters:
 | `path_col` | `str \| None` | Override the path ID column from the schema. |
 | `height` | `int` | Widget height in pixels. |
 | `sidebar_open` | `bool` | Whether the settings sidebar starts open. Default: `True`. |
+| `state_file` | `str \| None` | JSON file the widget state is bound to. See [Saving widget state](#saving-widget-state). |
 
 Each widget's parameters split into two groups. **Data parameters** change the
 computed result — they are exactly the arguments of the widget's headless
@@ -48,6 +49,17 @@ stream.funnel()
 ```
 
 Arguments are a convenient way to reproduce a specific configuration without clicking through the UI. They are also useful when sharing notebooks — a reader can see the configuration at a glance without opening the widget.
+
+## Saving widget state
+
+Every widget accepts a `state_file` parameter — a path to a JSON file the
+widget state is bound to, e.g. `stream.transition_graph(state_file="checkout.json")`.
+The file is loaded if it exists and created otherwise, and every subsequent
+change is auto-saved to it. It captures the full widget configuration — data
+and display parameters plus extras like node layout, filters, sorting, scroll
+position, and zoom (results are recomputed, not saved) — so re-running the
+cell restores the widget exactly as you left it. Explicitly passed arguments
+override the loaded state.
 
 ## Diff mode
 

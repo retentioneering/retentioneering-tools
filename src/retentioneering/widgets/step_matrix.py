@@ -5,6 +5,7 @@ import anywidget
 import traitlets
 
 from retentioneering.widgets._esm import _get_esm
+from retentioneering.widgets._state_file import StateFileMixin
 from retentioneering.widgets._utils import parse_diff as _parse_diff
 from retentioneering.widgets._html_export import write_html
 
@@ -12,7 +13,7 @@ _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
 
-class StepMatrixWidget(anywidget.AnyWidget):
+class StepMatrixWidget(StateFileMixin, anywidget.AnyWidget):
     _esm = _get_esm()
     _css = _STATIC / "widget.css"
 
@@ -34,9 +35,36 @@ class StepMatrixWidget(anywidget.AnyWidget):
     is_loading = traitlets.Bool(False).tag(sync=True)
     error = traitlets.Unicode("").tag(sync=True)
 
-    # ── display ────────────────────────────────────────────────────────────────
+    # ── display / persistent ───────────────────────────────────────────────────
     height = traitlets.Int(600).tag(sync=True)
     sidebar_open = traitlets.Bool(True).tag(sync=True)
+    # number of step columns shown on each side of the anchor
+    step_window = traitlets.Int(3).tag(sync=True)
+    # '{}' | '{"<event>": {"isHidden": bool, "isPinned": bool}}'
+    event_visibility = traitlets.Unicode("{}").tag(sync=True)
+    # "" | "[min, max]" — event count filter, absolute counts
+    event_count_filter = traitlets.Unicode("").tag(sync=True)
+    # "" | "<threshold>" — matrix value filter (hide rows with max |value| below it)
+    matrix_value_filter = traitlets.Unicode("").tag(sync=True)
+    # "" | '{"order": [...], "lex_dir": "asc"|"desc"|null}' — row order
+    sort_state = traitlets.Unicode("").tag(sync=True)
+    # horizontal scroll position, px
+    scroll_x = traitlets.Float(0.0).tag(sync=True)
+
+    _persist_names = (
+        "max_steps",
+        "diff",
+        "path_col",
+        "path_pattern",
+        "height",
+        "sidebar_open",
+        "step_window",
+        "event_visibility",
+        "event_count_filter",
+        "matrix_value_filter",
+        "sort_state",
+        "scroll_x",
+    )
 
     def __init__(
         self,
@@ -47,12 +75,14 @@ class StepMatrixWidget(anywidget.AnyWidget):
         path_pattern=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
+        state_file=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self._eventstream = eventstream
         self._initialized = False
         self.widget_type = "step_matrix"
+        self._load_state_file(state_file)
 
         try:
             all_events = sorted(
@@ -78,6 +108,21 @@ class StepMatrixWidget(anywidget.AnyWidget):
         self.height = height if height is not _UNSET else 600
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
+        self._apply_saved_state(
+            exclude={
+                name
+                for name, arg in (
+                    ("max_steps", max_steps),
+                    ("diff", diff),
+                    ("path_col", path_col),
+                    ("path_pattern", path_pattern),
+                    ("height", height),
+                    ("sidebar_open", sidebar_open),
+                )
+                if arg is not _UNSET
+            }
+        )
+
         self._recompute()
         self._initialized = True
 
@@ -85,6 +130,7 @@ class StepMatrixWidget(anywidget.AnyWidget):
             self._on_params_change,
             names=["max_steps", "diff", "path_col", "path_pattern"],
         )
+        self._start_state_autosave()
 
     # ── widget-specific observer ───────────────────────────────────────────────
 
@@ -239,6 +285,16 @@ class StepMatrixWidget(anywidget.AnyWidget):
             "sidebar_open": sidebar_open
             if sidebar_open is not None
             else self.sidebar_open,
+            "step_window": self.step_window,
+            "event_visibility": json.loads(self.event_visibility or "{}"),
+            "event_count_filter": json.loads(self.event_count_filter)
+            if self.event_count_filter
+            else None,
+            "matrix_value_filter": json.loads(self.matrix_value_filter)
+            if self.matrix_value_filter
+            else None,
+            "sort_state": json.loads(self.sort_state) if self.sort_state else None,
+            "scroll_x": self.scroll_x,
         }
         write_html(path, title, "Step Matrix", data, analysis)
 

@@ -58,7 +58,7 @@ export class TransitionMatrixStore {
   private shouldResetOnData = false;
   // True once the user has moved the Event Count slider manually.
   // When false, applyEventCounts freely syncs the filter to real bounds.
-  private _populationCustomized = false;
+  populationCustomized = false;
 
   markFiltersForReset = () => { this.shouldResetOnData = true; };
 
@@ -307,18 +307,18 @@ export class TransitionMatrixStore {
     if (this.shouldResetOnData) {
       this.filters.population = { ...this.populationBounds };
       this.shouldResetOnData = false;
-      this._populationCustomized = false;
+      this.populationCustomized = false;
       return;
     }
     // Sync to real counts only when the user hasn't touched the slider yet.
-    if (!this._populationCustomized) {
+    if (!this.populationCustomized) {
       this.filters.population = { ...this.populationBounds };
     }
   };
 
   setPopulationRange = (min: number, max: number) => {
     this.filters.population = { min, max };
-    this._populationCustomized = true;
+    this.populationCustomized = true;
   };
   setMatrixValueRange = (min: number, max: number) => { this.filters.matrixValue = { ...this.filters.matrixValue, min, max }; };
   toggleMatrixValueReverse = () => { this.filters.matrixValue.reverse = !this.filters.matrixValue.reverse; };
@@ -354,7 +354,7 @@ export class TransitionMatrixStore {
     this.filters.population = { ...this.populationBounds };
     this.filters.matrixValue = { min: this.matrixValueBounds.min, max: this.matrixValueBounds.max, reverse: false };
     this.collapseHidden = false;
-    this._populationCustomized = false;
+    this.populationCustomized = false;
     this._heatmapTypeSetByUser = false;
     this.heatmapType = this.matrixType === "proba_out" ? "row-wise" : this.matrixType === "proba_in" ? "column-wise" : "overall";
   };

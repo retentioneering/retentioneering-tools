@@ -8,6 +8,7 @@ import {
   SettingsSidebar,
   type MatrixValueType,
   type StoredPosition,
+  type StoredViewport,
   DEFAULT_VALUE_TYPE,
 } from "@retentioneering/viz-core";
 import { JupyterDataProvider } from "./JupyterDataProvider";
@@ -83,6 +84,13 @@ export function render({ model, el, isStatic = false }: RenderContext) {
   syncResultToStore();
   syncEventCounts();
 
+  // Restore the Event count filter. setPopulationRange marks the filter as
+  // user-customized, so applyEventCounts won't overwrite it on later syncs.
+  {
+    const f = parseJson<number[]>(model.get("event_count_filter") || "", []);
+    if (f.length === 2) store.setPopulationRange(f[0], f[1]);
+  }
+
   function App() {
     const [valuesType, setValuesType] = React.useState<MatrixValueType>(
       () => (model.get("edge_weight") as MatrixValueType) ?? DEFAULT_VALUE_TYPE,
@@ -114,6 +122,24 @@ export function render({ model, el, isStatic = false }: RenderContext) {
           model.save_changes();
         },
         { fireImmediately: false, delay: 100 }
+      );
+      return dispose;
+    }, []);
+
+    // Sync the Event count filter to Python. Only a user-customized filter is
+    // persisted; "" means "follow the data bounds" (the default behaviour).
+    React.useEffect(() => {
+      const dispose = reaction(
+        () => ({
+          min: store.filters.population.min,
+          max: store.filters.population.max,
+          customized: store.populationCustomized,
+        }),
+        ({ min, max, customized }) => {
+          model.set("event_count_filter", customized ? JSON.stringify([min, max]) : "");
+          model.save_changes();
+        },
+        { fireImmediately: false, delay: 150 }
       );
       return dispose;
     }, []);
@@ -177,6 +203,20 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         model.set("node_positions", JSON.stringify(positions)); model.save_changes();
       }, [],
     );
+    const initialEdgeFilter = React.useMemo<[number, number] | null>(() => {
+      const f = parseJson<number[]>(model.get("edge_filter") || "", []);
+      return f.length === 2 ? [f[0], f[1]] : null;
+    }, []);
+    const handleEdgeFilterChange = React.useCallback((filter: [number, number]) => {
+      model.set("edge_filter", JSON.stringify(filter)); model.save_changes();
+    }, []);
+    const initialViewport = React.useMemo<StoredViewport | null>(
+      () => parseJson<StoredViewport | null>(model.get("viewport") || "", null),
+      [],
+    );
+    const handleViewportChange = React.useCallback((viewport: StoredViewport) => {
+      model.set("viewport", JSON.stringify(viewport)); model.save_changes();
+    }, []);
 
     const graphArea = (
       <div style={{ flex: 1, position: "relative", overflow: "hidden", minWidth: 0 }}>
@@ -194,6 +234,10 @@ export function render({ model, el, isStatic = false }: RenderContext) {
           eventCountsG2={Object.keys(eventCountsG2).length > 0 ? eventCountsG2 : undefined}
           initialPositions={initialPositions}
           onPositionsChange={handlePositionsChange}
+          initialEdgeFilter={initialEdgeFilter}
+          onEdgeFilterChange={handleEdgeFilterChange}
+          initialViewport={initialViewport}
+          onViewportChange={handleViewportChange}
           fitRef={fitRef}
         />
         <SidebarToggle onClick={handleToggleSidebar} />

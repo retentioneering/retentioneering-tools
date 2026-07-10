@@ -5,6 +5,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Added
+
+- All widgets accept a `state_file` argument binding the full widget state
+  (data and display parameters, plus widget-specific extras: the transition
+  graph's node layout, event visibility, filters, and zoom; the step matrix's
+  event visibility/pins, filters, row order, step window, and horizontal
+  scroll; the step sankey's event count filter and horizontal scroll; the
+  cluster analysis' cluster renames and active tab) to a JSON file: if the
+  file exists the state is loaded from it, otherwise it is created, and every
+  subsequent change is auto-saved. Explicitly passed arguments override the
+  loaded state.
+- The transition graph keeps its zoom/pan across recomputes (changing edge
+  weight, diff, or path column no longer resets the viewport); step matrix
+  and step sankey likewise keep their horizontal scroll and row order.
+
+### Fixed
+
+- Cluster analysis: Apply is disabled while NMF is enabled but the number of
+  components is empty (previously such an Apply silently ran without NMF).
+
 ## [5.0.0]
 
 Complete rewrite of the library's core engine, compared to 3.3.0. The

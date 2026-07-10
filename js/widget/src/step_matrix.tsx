@@ -400,7 +400,9 @@ function sortByDirection(block: MatrixBlock, direction: "left" | "right", anchor
   return anchorEv ? [anchorEv, ...order] : order;
 }
 
-function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hiddenEvents, filteredOut, pinnedEvents, onToggleHidden, onTogglePin, heatmapType, globalHeatmap, eventCounts, eventCountsG1, eventCountsG2, pathPattern, diffSeg, diffV1, diffV2 }: {
+interface SortState { order: string[]; lex_dir: "asc" | "desc" | null; }
+
+function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hiddenEvents, filteredOut, pinnedEvents, onToggleHidden, onTogglePin, heatmapType, globalHeatmap, eventCounts, eventCountsG1, eventCountsG2, pathPattern, diffSeg, diffV1, diffV2, initialSortState, onSortChange, initialScrollX, onScrollXChange }: {
   blocks: MatrixBlock[]; stepWindow: number; isDiff: boolean; labelWidth: number;
   onLabelResize: (w: number) => void;
   hiddenEvents: Set<string>; filteredOut?: Set<string>; pinnedEvents: Set<string>;
@@ -410,6 +412,10 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
   eventCountsG1?: Record<string, number>; eventCountsG2?: Record<string, number>;
   pathPattern?: string;
   diffSeg?: string | null; diffV1?: string | null; diffV2?: string | null;
+  initialSortState?: SortState | null;
+  onSortChange?: (order: string[], lexDir: "asc" | "desc" | null) => void;
+  initialScrollX?: number;
+  onScrollXChange?: (x: number) => void;
 }) {
   // ── Go To ─────────────────────────────────────────────────────────────────
   const [goToOpen,  setGoToOpen]  = React.useState(false);
@@ -486,6 +492,17 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
   const blockHasNeg = React.useMemo(() => blocks.map(b => b.columns.some(c => c < 0)), [blocks]);
   const blockHasPos = React.useMemo(() => blocks.map(b => b.columns.some(c => c > 0)), [blocks]);
 
+  // Custom row order (drag / sort buttons / lexicographic sort)
+  const [customOrder, setCustomOrder] = React.useState<string[]>(initialSortState?.order ?? []);
+  const [lexSortDir, setLexSortDir] = React.useState<"asc" | "desc" | null>(initialSortState?.lex_dir ?? null);
+  // Reconcile with the data: keep the current order, append events new to it
+  React.useEffect(() => {
+    const evs = blocks[0]?.events ?? [];
+    setCustomOrder(prev => prev.length > 0
+      ? [...prev.filter(e => evs.includes(e)), ...evs.filter(e => !prev.includes(e))]
+      : evs);
+  }, [blocks]);
+
   const handleSort = React.useCallback((bi: number, direction: "left" | "right") => {
     const block = blocks[bi]; if (!block) return;
     // Use original (non-diff) values to find anchor: in diff mode block.values are differences,
@@ -500,8 +517,10 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
         if (v > best) { best = v; anchorEv = src.events[ri]; }
       }
     }
-    setCustomOrder(sortByDirection(block, direction, anchorEv));
-  }, [blocks]);
+    const order = sortByDirection(block, direction, anchorEv);
+    setCustomOrder(order);
+    onSortChange?.(order, lexSortDir);
+  }, [blocks, onSortChange, lexSortDir]);
 
 
   const { blockEvMin, blockEvMax } = React.useMemo(() => {
@@ -552,19 +571,14 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
 
   const blockEvents = blocks[0]?.events ?? [];
 
-  // Custom drag order
-  const [customOrder, setCustomOrder] = React.useState<string[]>([]);
-  React.useEffect(() => { setCustomOrder(blocks[0]?.events ?? []); }, [blocks]);
-
-  const [lexSortDir, setLexSortDir] = React.useState<"asc" | "desc" | null>(null);
   const handleLexSort = React.useCallback(() => {
     const nextDir = lexSortDir === "asc" ? "desc" : "asc";
     setLexSortDir(nextDir);
-    setCustomOrder(prev => {
-      const evs = prev.length > 0 ? [...prev] : [...(blocks[0]?.events ?? [])];
-      return evs.sort((a, b) => nextDir === "asc" ? a.localeCompare(b) : b.localeCompare(a));
-    });
-  }, [lexSortDir, blocks]);
+    const evs = customOrder.length > 0 ? [...customOrder] : [...(blocks[0]?.events ?? [])];
+    evs.sort((a, b) => nextDir === "asc" ? a.localeCompare(b) : b.localeCompare(a));
+    setCustomOrder(evs);
+    onSortChange?.(evs, nextDir);
+  }, [lexSortDir, customOrder, blocks, onSortChange]);
   const orderedEvents = customOrder.length > 0 ? customOrder.filter(e => blockEvents.includes(e)) : blockEvents;
 
   const visibleEvents = orderedEvents.filter(e => !hiddenEvents.has(e) && !(filteredOut?.has(e)));
@@ -604,22 +618,39 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
     onDrop: (e) => {
       e.preventDefault();
       if (!draggedEv || draggedEv === ev) { setDraggedEv(null); setDragOverEv(null); return; }
-      setCustomOrder(prev => {
-        const next = [...prev];
-        const fi = next.indexOf(draggedEv);
-        if (fi < 0) return prev;
+      const next = [...customOrder];
+      const fi = next.indexOf(draggedEv);
+      if (fi >= 0) {
         next.splice(fi, 1);
         const ti = next.indexOf(ev);
-        if (ti < 0) return prev;
-        next.splice(dragOverPos === "above" ? ti : ti + 1, 0, draggedEv);
-        return next;
-      });
+        if (ti >= 0) {
+          next.splice(dragOverPos === "above" ? ti : ti + 1, 0, draggedEv);
+          setCustomOrder(next);
+          onSortChange?.(next, lexSortDir);
+        }
+      }
       setDraggedEv(null); setDragOverEv(null);
     },
     onDragEnd: () => { setDraggedEv(null); setDragOverEv(null); },
   });
 
   const [collapseHidden, setCollapseHidden] = React.useState(true);
+
+  // Horizontal scroll persistence: restore once when data first renders,
+  // save (debounced) on every scroll.
+  const scrollXRef = React.useRef(initialScrollX ?? 0);
+  const scrollRestoredRef = React.useRef(false);
+  const scrollSaveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => {
+    if (scrollRestoredRef.current || !scrollRef.current || blocks.length === 0) return;
+    scrollRef.current.scrollLeft = scrollXRef.current;
+    scrollRestoredRef.current = true;
+  }, [blocks]);
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    scrollXRef.current = (e.target as HTMLDivElement).scrollLeft;
+    if (scrollSaveTimer.current) clearTimeout(scrollSaveTimer.current);
+    scrollSaveTimer.current = setTimeout(() => onScrollXChange?.(scrollXRef.current), 300);
+  };
 
   const showLeftEdge  = !!pathPattern && !pathPattern.startsWith("path_start");
   const showRightEdge = !pathPattern || !pathPattern.includes("path_end");
@@ -638,7 +669,7 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
         onMouseLeave={() => { if (!resizing.current && handleRef.current) handleRef.current.style.background = "transparent"; }}
         onMouseDown={e => { e.preventDefault(); resizing.current = true; startX.current = e.clientX; startW.current = labelWidth; document.body.style.cursor = "col-resize"; document.body.style.userSelect = "none"; }}
       />
-      <div ref={scrollRef} style={{ overflowX: "auto", overflowY: "auto", position: "absolute", inset: 0 }}>
+      <div ref={scrollRef} onScroll={handleScroll} style={{ overflowX: "auto", overflowY: "auto", position: "absolute", inset: 0 }}>
         <table style={{ borderCollapse: "collapse", fontSize: 11, whiteSpace: "nowrap" }}>
           <thead>
             <tr>
@@ -899,14 +930,27 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [appliedPathPattern, setAppliedPathPattern] = React.useState<string>(() => (model.get("path_pattern") as string) || "");
 
     // ── display state ──────────────────────────────────────────────────────
-    const [stepWindow,   setStepWindow]   = React.useState(3);
-    const [hiddenEvents, setHiddenEvents] = React.useState<Set<string>>(new Set());
-    const [pinnedEvents,  setPinnedEvents]  = React.useState<Set<string>>(new Set());
+    const [stepWindow,   setStepWindow]   = React.useState<number>(() => (model.get("step_window") as number) || 3);
+    const [hiddenEvents, setHiddenEvents] = React.useState<Set<string>>(() => {
+      const vis = parseJson<Record<string, { isHidden?: boolean }>>(model.get("event_visibility") || "{}", {});
+      return new Set(Object.keys(vis).filter(ev => vis[ev]?.isHidden));
+    });
+    const [pinnedEvents,  setPinnedEvents]  = React.useState<Set<string>>(() => {
+      const vis = parseJson<Record<string, { isPinned?: boolean }>>(model.get("event_visibility") || "{}", {});
+      return new Set(Object.keys(vis).filter(ev => vis[ev]?.isPinned));
+    });
     const [labelWidth,   setLabelWidth]   = React.useState(200);
     const [heatmapType,    setHeatmapType]    = React.useState<"overall"|"row"|"col">("overall");
     const [globalHeatmap,  setGlobalHeatmap]  = React.useState(true);
-    const [popRange,     setPopRange]     = React.useState<[number, number]>([0, Infinity]);
-    const [valueThreshold, setValueThreshold] = React.useState(0.01);
+    const [popRange,     setPopRange]     = React.useState<[number, number]>(() => {
+      const f = parseJson<number[]>(model.get("event_count_filter") || "", []);
+      return f.length === 2 ? [f[0], f[1]] : [0, Infinity];
+    });
+    const [valueThreshold, setValueThreshold] = React.useState<number>(() => {
+      const raw = (model.get("matrix_value_filter") as string) || "";
+      const v = raw ? parseFloat(raw) : NaN;
+      return isNaN(v) ? 0.01 : v;
+    });
 
     // ── diff state ─────────────────────────────────────────────────────────
     const initDiff = parseJson<string[]>(model.get("diff") || "[]", []);
@@ -934,6 +978,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
         ["is_loading",   () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
         ["height",       () => setHeight((model.get("height") as number) ?? 600)],
         ["sidebar_open", () => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
+        ["step_window",  () => setStepWindow((model.get("step_window") as number) || 3)],
         ["path_col",  () => setPathIdCol((model.get("path_col") as string) || "")],
         ["path_pattern", () => { const v = (model.get("path_pattern") as string) || ""; setPathPattern(v); setAppliedPathPattern(v); }],
         ["diff",         () => { const d = parseJson<string[]>(model.get("diff") || "[]", []); setDiffSeg(d[0]??null); setDiffV1(d[1]??null); setDiffV2(d[2]??null); }],
@@ -943,6 +988,12 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     }, []);
 
     const setParam = (key: string, val: unknown) => { model.set(key, val); model.save_changes(); };
+    // Debounced variant for slider-driven params that change many times per drag
+    const paramTimers = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+    const setParamDebounced = (key: string, val: unknown, delay = 250) => {
+      clearTimeout(paramTimers.current[key]);
+      paramTimers.current[key] = setTimeout(() => { model.set(key, val); model.save_changes(); }, delay);
+    };
 
     // Expose external navigation API for static HTML report links
     React.useEffect(() => {
@@ -983,8 +1034,19 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     };
     const resetDiff = () => { setLocalDiffSeg(""); setLocalDiffV1(""); setLocalDiffV2(""); setDiffSeg(null); setDiffV1(null); setDiffV2(null); setParam("diff", ""); };
 
-    const toggleHidden = (ev: string) => setHiddenEvents(prev => { const s = new Set(prev); if (s.has(ev)) s.delete(ev); else s.add(ev); return s; });
-    const togglePin = (ev: string) => setPinnedEvents(prev => { const s = new Set(prev); if (s.has(ev)) s.delete(ev); else s.add(ev); return s; });
+    const persistVisibility = (hidden: Set<string>, pinned: Set<string>) => {
+      const vis: Record<string, { isHidden: boolean; isPinned: boolean }> = {};
+      new Set([...hidden, ...pinned]).forEach(ev => { vis[ev] = { isHidden: hidden.has(ev), isPinned: pinned.has(ev) }; });
+      setParam("event_visibility", JSON.stringify(vis));
+    };
+    const toggleHidden = (ev: string) => {
+      const s = new Set(hiddenEvents); if (s.has(ev)) s.delete(ev); else s.add(ev);
+      setHiddenEvents(s); persistVisibility(s, pinnedEvents);
+    };
+    const togglePin = (ev: string) => {
+      const s = new Set(pinnedEvents); if (s.has(ev)) s.delete(ev); else s.add(ev);
+      setPinnedEvents(s); persistVisibility(hiddenEvents, s);
+    };
 
     const matrices = result.matrices ?? [];
     const eventCounts = result.event_counts ?? {};
@@ -1055,7 +1117,12 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                 eventCountsG1={result.event_counts_g1}
                 eventCountsG2={result.event_counts_g2}
                 pathPattern={pathPattern}
-                diffSeg={diffSeg} diffV1={diffV1} diffV2={diffV2} />
+                diffSeg={diffSeg} diffV1={diffV1} diffV2={diffV2}
+
+                initialSortState={parseJson<SortState | null>(model.get("sort_state") || "", null)}
+                onSortChange={(order, lexDir) => setParam("sort_state", JSON.stringify({ order, lex_dir: lexDir }))}
+                initialScrollX={(model.get("scroll_x") as number) || 0}
+                onScrollXChange={x => setParam("scroll_x", x)} />
             </div>
           )}
         </div>
@@ -1152,9 +1219,9 @@ export function render({ model, el, isStatic = false }: RenderContext) {
               <div style={{ marginBottom: 20 }}>
                 <FLabel tip="Steps visible on each side of the anchor column.">Step window</FLabel>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ flex: 1 }}><SingleSlider min={1} max={20} value={stepWindow} onChange={setStepWindow} integer /></div>
+                  <div style={{ flex: 1 }}><SingleSlider min={1} max={20} value={stepWindow} onChange={w => { setStepWindow(w); setParamDebounced("step_window", w); }} integer /></div>
                   <input type="number" min={1} max={20} value={stepWindow}
-                    onChange={e => setStepWindow(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
+                    onChange={e => { const w = Math.max(1, Math.min(20, parseInt(e.target.value) || 1)); setStepWindow(w); setParamDebounced("step_window", w); }}
                     style={{ width: 52, border: `1px solid ${SC.borderLight}`, borderRadius: 6, padding: "5px 8px", fontSize: 13, textAlign: "center", outline: "none", background: SC.bg, color: SC.text, boxShadow: "inset 0 1px 2px rgba(0,0,0,0.04)" }} />
                 </div>
               </div>
@@ -1164,7 +1231,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                 <RangeSlider
                   min={popMin} max={popMax}
                   value={[Math.max(popMin, popRange[0] <= 0 ? popMin : popRange[0]), Math.min(popMax, !isFinite(popRange[1]) ? popMax : popRange[1])]}
-                  onChange={setPopRange}
+                  onChange={v => { setPopRange(v); setParamDebounced("event_count_filter", JSON.stringify(v)); }}
                   scale="log"
                   formatValue={v => fmtCount(Math.round(v))} />
               </div>
@@ -1178,7 +1245,11 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                   <span style={{ fontSize: 12, color: SC.muted }}>≥ {valueThreshold > 0 ? valueThreshold.toFixed(3) : "—"}</span>
                 </div>
                 <SingleSlider min={0.001} max={1} value={valueThreshold > 0 ? valueThreshold : 0.001}
-                  onChange={v => setValueThreshold(v <= 0.001 ? 0 : parseFloat(v.toPrecision(3)))} scale="log" />
+                  onChange={v => {
+                    const t = v <= 0.001 ? 0 : parseFloat(v.toPrecision(3));
+                    setValueThreshold(t);
+                    setParamDebounced("matrix_value_filter", String(t));
+                  }} scale="log" />
               </div>
 
               <div style={{ height: 1, background: SC.border, margin: "0 0 20px" }} />

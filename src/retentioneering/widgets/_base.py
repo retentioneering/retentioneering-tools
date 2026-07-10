@@ -48,6 +48,12 @@ _STATIC = pathlib.Path(__file__).parent.parent / "static"
 #: value for e.g. ``path_col``/``diff``).
 _UNSET = object()
 
+#: Traits `sync=True`-tagged by anywidget/ipywidgets' own base classes
+#: (`layout`, `tabbable`, `tooltip`, `viewport`, ...) — framework DOM-widget
+#: plumbing, not our state, and some hold non-JSON-serializable objects
+#: (e.g. `layout` is a `Layout` instance). Excluded from `sync_state()`.
+_FRAMEWORK_SYNC_TRAIT_NAMES = frozenset(anywidget.AnyWidget.class_traits(sync=True))
+
 
 class RetentioneeringWidget(StateFileMixin, anywidget.AnyWidget):
     """Common base for the six widget classes in this package.
@@ -96,6 +102,28 @@ class RetentioneeringWidget(StateFileMixin, anywidget.AnyWidget):
             self.compute_response = json.dumps({"id": req_id, "result": result})
         except Exception as exc:
             self.compute_response = json.dumps({"id": req_id, "error": str(exc)})
+
+    def sync_state(self) -> dict[str, Any]:
+        """Every ``sync=True`` traitlet's current value, by name.
+
+        This is what anywidget/ipywidgets sends to JS for free when a widget
+        is first displayed in Jupyter (the comm-open handshake syncs every
+        tagged trait). A platform backend constructing a fresh widget
+        instance per HTTP request has no such handshake, so without this a
+        REST client only ever sees whichever one tool's return value it
+        asked for — missing traits set once at construction (e.g.
+        ``event_counts``, ``segment_levels``) and never touched by
+        ``compute_tools`` handlers, which are deliberately side-effect-free
+        (see ``dispatch_compute``). Call this once after constructing a
+        widget to seed a REST-backed ``WidgetHost`` with the same state a
+        live Jupyter session would have.
+        """
+        return {
+            name: getattr(self, name)
+            for name in self.traits(sync=True)
+            if not name.startswith("_")  # anywidget internals, e.g. `_esm`/`_css`
+            and name not in _FRAMEWORK_SYNC_TRAIT_NAMES  # `layout`, `tooltip`, ...
+        }
 
     def dispatch_compute(self, tool: str, params: dict) -> Any:
         """Look up ``tool`` in ``compute_tools`` and invoke it.

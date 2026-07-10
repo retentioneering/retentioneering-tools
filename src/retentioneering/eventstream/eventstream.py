@@ -575,7 +575,14 @@ class Eventstream:
 
         # Build metrics
         metrics = self.get_metrics(metric_configs, path_col=path_col).reset_index()
-        where_condition = dp._get_where_condition(condition)
+
+        # Events available for resolving the "all events" wildcard (omitted/None/[]
+        # 'events' on has_event/event_count) to the actual per-event column names
+        # MetricBuilder produced above.
+        available_events = sorted(self.df[self.schema.event_col].unique().tolist())
+        where_condition = dp._get_where_condition(
+            condition, available_events=available_events
+        )
         path_col_q = engine.quote_ident(path_col)
         query = f"SELECT {path_col_q} FROM metrics WHERE {where_condition}"
         path_ids = engine.run(query, metrics=metrics)[path_col].tolist()

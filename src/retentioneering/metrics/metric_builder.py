@@ -107,8 +107,22 @@ def _normalize_events(events: Any, metric_name: str) -> List[str] | None:
 class MetricConfig:
     """Parser and validator for metric configurations"""
 
-    def __init__(self, config_items: List[Dict[str, Any]]):
+    def __init__(
+        self,
+        config_items: List[Dict[str, Any]],
+        available_events: Set[str] | List[str] | None = None,
+    ):
+        """
+        Args:
+            config_items: Metric configuration dicts.
+            available_events: All event names present in the eventstream. When given,
+                omitted/None/[] 'events' (has_event/event_count) is eagerly resolved to
+                every available event, so 'metric_names'/'cols' reflect the real columns
+                MetricBuilder will produce instead of staying None. Callers that only
+                need the parsed shape (not the resolved column names) may omit this.
+        """
         self.config_items = config_items
+        self.available_events = available_events
         self.parsed_configs = self._parse_configs()
 
     def get_enriched_configs(self) -> List[Dict[str, Any]]:
@@ -197,6 +211,8 @@ class MetricConfig:
             }
         elif metric == "has_event":
             event_names = _normalize_events(metric_args.get("events"), "has_event")
+            if event_names is None and self.available_events is not None:
+                event_names = sorted(self.available_events)
             return {
                 "type": "has_event",
                 "event_names": event_names,
@@ -207,6 +223,8 @@ class MetricConfig:
             }
         elif metric == "event_count":
             event_names = _normalize_events(metric_args.get("events"), "event_count")
+            if event_names is None and self.available_events is not None:
+                event_names = sorted(self.available_events)
             return {
                 "type": "event_count",
                 "event_names": event_names,
@@ -452,9 +470,9 @@ class MetricBuilder:
         path_col = path_col or self.schema.path_col
         event_col = self.schema.event_col
 
-        metric_config = MetricConfig(config)
-
         available_events = set(self.df[event_col].unique().tolist())
+        metric_config = MetricConfig(config, available_events=available_events)
+
         for parsed in metric_config.parsed_configs:
             self.validate_metric_config(
                 parsed["original"], available_events=available_events

@@ -696,6 +696,50 @@ class TestSegmentOverview:
         assert result.loc["event_count_click_mean", "segment_2"] == 1.0
         assert result.loc["event_count_scroll_mean", "segment_2"] == 0.0
 
+    def test_event_count_all_events_wildcard_honors_non_default_agg(self) -> None:
+        """Omitting 'events' must still honor a non-'mean' 'agg' (e.g. 'median').
+
+        Regression test: MetricConfig.get_enriched_configs() used to report an empty
+        'cols' list for the wildcard (since the resolved column names weren't known
+        without the eventstream's available events), so the 'agg' requested for the
+        wildcard metric was silently dropped and every wildcard column fell back to
+        the 'mean' default below regardless of what was requested.
+        """
+        df = pd.DataFrame(
+            [
+                ["user_1", "click", "segment_1", "2020-01-01 00:00:00"],
+                ["user_1", "click", "segment_1", "2020-01-01 00:01:00"],
+                ["user_1", "click", "segment_1", "2020-01-01 00:02:00"],
+                ["user_2", "click", "segment_1", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        explicit = stream.segment_overview_data(
+            segment_col="segment",
+            metrics=[
+                {
+                    "metric": "event_count",
+                    "metric_args": {"events": "click"},
+                    "agg": "median",
+                }
+            ],
+        )
+        wildcard = stream.segment_overview_data(
+            segment_col="segment",
+            metrics=[{"metric": "event_count", "agg": "median"}],
+        )
+
+        assert "event_count_click_median" in wildcard.index
+        assert "event_count_click_mean" not in wildcard.index
+        assert (
+            wildcard.loc["event_count_click_median", "segment_1"]
+            == explicit.loc["event_count_click_median", "segment_1"]
+        )
+
     def test_time_between_metric(self) -> None:
         """Test time_between metric with aggregation"""
         df = pd.DataFrame(

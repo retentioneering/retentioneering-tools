@@ -419,6 +419,99 @@ class TestFilterPathsAST:
         expected = stream.filter_events(keep={"user_id": ["user_2"]})
         assert res.equals(expected)
 
+    def test__event_count_no_events_arg_counts_all_events(self) -> None:
+        """Omitting 'events' (or passing None/[]) means 'all events' for event_count -
+        the per-path total across every event in the stream, i.e. the sum of every
+        per-event column MetricBuilder builds for the wildcard."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "B", "2020-01-01 00:01:00"],
+                ["user_2", "A", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df)
+
+        condition = {"op": ">", "metric": "event_count", "value": 1}
+        res = stream.filter_paths(condition=condition)
+
+        expected = stream.filter_events(keep={"user_id": ["user_1"]})
+        assert res.equals(expected)
+
+    def test__event_count_bare_metric_no_metric_args_key_at_all(self) -> None:
+        """Same wildcard behavior when 'metric_args' is omitted entirely (not just its
+        'events' key) - this is the exact shape from the reported bug repro."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "B", "2020-01-01 00:01:00"],
+                ["user_2", "A", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df)
+
+        res = stream.filter_paths({"metric": "event_count", "op": ">", "value": 1})
+
+        expected = stream.filter_events(keep={"user_id": ["user_1"]})
+        assert res.equals(expected)
+
+    def test__event_count_with_list_of_events_sums_counts(self) -> None:
+        """event_count with an explicit list of events sums the per-event counts
+        instead of silently comparing only the first event's column."""
+        stream = build_stream()
+
+        condition = {
+            "op": ">",
+            "metric": "event_count",
+            "value": 1,
+            "metric_args": {"events": ["purchase", "cancellation"]},
+        }
+        res = stream.filter_paths(condition=condition)
+
+        expected = stream.filter_events(keep={"user_id": ["user_2", "user_3"]})
+        assert res.equals(expected)
+
+    def test__has_event_no_events_arg_true_requires_all_events_present(self) -> None:
+        """Omitting 'events' for has_event means 'all events' - like the explicit-list
+        case, '= True' requires every event in the stream to be present on the path."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "B", "2020-01-01 00:01:00"],
+                ["user_2", "A", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df)
+
+        condition = {"op": "=", "metric": "has_event", "value": True}
+        res = stream.filter_paths(condition=condition)
+
+        expected = stream.filter_events(keep={"user_id": ["user_1"]})
+        assert res.equals(expected)
+
+    def test__active_days_no_active_events_arg_counts_all_days(self) -> None:
+        """Omitting 'active_events' for active_days means 'all events' contribute to
+        the day count - this already worked (active_days is always a single aggregate
+        column), but is covered here alongside its event_count/has_event siblings."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "B", "2020-01-02 00:00:00"],
+                ["user_2", "A", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df)
+
+        condition = {"op": ">", "metric": "active_days", "value": 1}
+        res = stream.filter_paths(condition=condition)
+
+        expected = stream.filter_events(keep={"user_id": ["user_1"]})
+        assert res.equals(expected)
+
     def test__in_segment_none_segment_value_raises(self) -> None:
         """in_segment with segment_value=None cannot be used in condition"""
         stream = build_stream()

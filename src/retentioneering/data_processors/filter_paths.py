@@ -34,7 +34,9 @@ class FilterPaths(DataProcessor):
 
     @staticmethod
     def _build_metric_names(
-        metric: str, metric_args: Dict[str, Any] | None
+        metric: str,
+        metric_args: Dict[str, Any] | None,
+        available_events: List[str] | None = None,
     ) -> List[str]:
         """
         Builds full metric name(s) from metric type and arguments.
@@ -50,21 +52,38 @@ class FilterPaths(DataProcessor):
               -> ["time_from_login_to_purchase"]
             - metric="active_days", metric_args={"active_events": ["login", "purchase"]}
               -> ["active_days"]
+
+        For has_event/event_count, omitting 'events' (or passing None/[]) means "all
+        events", mirroring MetricBuilder's wildcard behavior - in that case
+        'available_events' (every event name in the eventstream) is used to build one
+        metric name per event, e.g. metric="event_count", metric_args=None,
+        available_events=["view", "purchase"] -> ["event_count_view", "event_count_purchase"].
         """
-        if not metric_args:
-            return [metric]
+        metric_args = metric_args or {}
 
         if metric == "has_event":
-            events = metric_args.get("events")
+            events = metric_args.get("events") or available_events
+            if not events:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    "'has_event' metric has no 'events' in metric_args and no "
+                    "available events to resolve the 'all events' wildcard",
+                )
             if isinstance(events, list):
                 return [f"has_event_{event}" for event in events]
             return [f"has_event_{events}"]
 
         elif metric == "event_count":
-            event = metric_args.get("events")
-            if isinstance(event, list):
-                return [f"event_count_{e}" for e in event]
-            return [f"event_count_{event}"]
+            events = metric_args.get("events") or available_events
+            if not events:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    "'event_count' metric has no 'events' in metric_args and no "
+                    "available events to resolve the 'all events' wildcard",
+                )
+            if isinstance(events, list):
+                return [f"event_count_{e}" for e in events]
+            return [f"event_count_{events}"]
 
         elif metric == "time_between":
             start_event = metric_args.get("start_event")
@@ -167,7 +186,9 @@ class FilterPaths(DataProcessor):
             PROCESSOR_NAME, f"Unsupported literal type in condition: {type(value)}"
         )
 
-    def _ast_to_sql(self, node: Dict[str, Any]) -> str:
+    def _ast_to_sql(
+        self, node: Dict[str, Any], available_events: List[str] | None = None
+    ) -> str:
         op = node.get("op")
         if op == "==":  # Python-style equality is accepted as an alias for "="
             op = "="
@@ -178,14 +199,18 @@ class FilterPaths(DataProcessor):
                     PROCESSOR_NAME, f"Logical operator '{op}' requires args"
                 )
             joiner = " AND " if op.upper() == "AND" else " OR "
-            return "(" + joiner.join(self._ast_to_sql(a) for a in args) + ")"
+            return (
+                "("
+                + joiner.join(self._ast_to_sql(a, available_events) for a in args)
+                + ")"
+            )
         elif op.upper() == "NOT":
             args = node.get("args", [])
             if len(args) != 1:
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME, "'NOT' operator requires exactly one arg"
                 )
-            return "(NOT " + self._ast_to_sql(args[0]) + ")"
+            return "(NOT " + self._ast_to_sql(args[0], available_events) + ")"
         elif op.upper() == "IN":
             metric = node.get("metric")
             if not metric:
@@ -194,7 +219,9 @@ class FilterPaths(DataProcessor):
                 )
 
             metric_args = node.get("metric_args")
-            metric_names = self._build_metric_names(metric, metric_args)
+            metric_names = self._build_metric_names(
+                metric, metric_args, available_events
+            )
 
             # Check if we have multiple metrics (list case for has)
             if len(metric_names) > 1:
@@ -237,7 +264,7 @@ class FilterPaths(DataProcessor):
             )
 
         metric_args = node.get("metric_args")
-        metric_names = self._build_metric_names(metric, metric_args)
+        metric_names = self._build_metric_names(metric, metric_args, available_events)
         value = node.get("value")
 
         if value is None:
@@ -291,6 +318,20 @@ class FilterPaths(DataProcessor):
                     f"Operator '{op}' not supported for has metric with list of events",
                 )
 
+        # Special handling for event_count with multiple events (explicit list, or
+        # the 'all events' wildcard resolved via available_events): compare the SUM
+        # of the per-event counts against the value, e.g. total occurrences of any
+        # of the given events.
+        if metric == "event_count" and len(metric_names) > 1:
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    "event_count metric with multiple events only supports numeric values",
+                )
+            sum_sql = " + ".join(self._quote_ident(name) for name in metric_names)
+            right_sql = self._literal_sql(value)
+            return f"(({sum_sql}) {op} {right_sql})"
+
         # Single metric case
         metric_name = metric_names[0]
         left_sql = self._quote_ident(metric_name)
@@ -310,5 +351,7 @@ class FilterPaths(DataProcessor):
     def _get_metric_configs(self, node: Dict[str, Any]) -> List[Dict[str, Any]]:
         return self._extract_metric_configs(node)
 
-    def _get_where_condition(self, node: Dict[str, Any]) -> str:
-        return self._ast_to_sql(node)
+    def _get_where_condition(
+        self, node: Dict[str, Any], available_events: List[str] | None = None
+    ) -> str:
+        return self._ast_to_sql(node, available_events)

@@ -112,8 +112,14 @@ class SegmentOverview:
         temp_schema["path_cols"] = [composite_col]
         temp_stream = Eventstream(df, temp_schema, preprocess=False)
 
-        # Use MetricConfig to get enriched configs with column names
-        metric_cfg = MetricConfig(metrics)
+        # Use MetricConfig to get enriched configs with column names. Pass the
+        # available events so that has_event/event_count with omitted 'events'
+        # (the "all events" wildcard) resolves to its real per-event column names
+        # instead of an empty 'cols' list - otherwise those columns silently fall
+        # back to the default "mean" aggregation below regardless of the
+        # requested 'agg'.
+        available_events = set(df[event_col].unique().tolist())
+        metric_cfg = MetricConfig(metrics, available_events=available_events)
         enriched_config = metric_cfg.get_enriched_configs()
 
         # Build column-to-agg mapping

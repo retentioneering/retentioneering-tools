@@ -30,9 +30,17 @@ export function reactiveHost(
       host.set(key, value);
       const reaction = reactions[key];
       if (!reaction) return;
+      // Python's `_recompute()` brackets every widget's computation with
+      // `is_loading = True`/`False` (see e.g. segment_overview.py) — a
+      // live anywidget kernel does this synchronously, but our compute()
+      // call is a real network round-trip, so the widget's own spinner
+      // (every widget's `is_loading` `onChange` listener) needs this
+      // explicitly toggled here, or it never shows for a REST-backed host.
+      host.set("is_loading", true);
       Promise.resolve(host.compute(reaction.tool, reaction.params(host, value)))
         .then((result) => host.set(reaction.resultKey ?? "result", JSON.stringify(result)))
-        .catch((err) => console.error(`reactiveHost: compute("${reaction.tool}") failed`, err));
+        .catch((err) => console.error(`reactiveHost: compute("${reaction.tool}") failed`, err))
+        .finally(() => host.set("is_loading", false));
     },
   };
 }

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "demo:rest-host": "esbuild demo/rest-host-demo.ts --bundle --platform=node --format=esm --jsx=automatic --packages=external --outfile=demo/.rest-host-demo.out.mjs && node demo/.rest-host-demo.out.mjs"
   },
   "dependencies": {
     "@retentioneering/viz-core": "*",
@@ -17,6 +18,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.4.1",
+    "esbuild": "^0.25.0",
     "typescript": "^5.7.3",
     "vite": "^6.3.5"
   }

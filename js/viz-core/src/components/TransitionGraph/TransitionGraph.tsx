@@ -5,7 +5,7 @@ import type { Core, ElementDefinition } from "cytoscape";
 import fcose from "cytoscape-fcose";
 import { observer } from "mobx-react-lite";
 import { TransitionMatrixStore } from "../../stores/TransitionMatrixStore";
-import { DataProvider } from "../../types";
+import { WidgetHost } from "../../WidgetHost";
 import { useEdgeColors } from "./hooks/useEdgeColors";
 import { useNodeColors } from "./hooks/useNodeColors";
 import { useNodePositions } from "./hooks/useNodePositions";
@@ -244,7 +244,8 @@ export interface StoredViewport { zoom: number; pan: { x: number; y: number }; }
 
 export interface TransitionGraphProps {
   store: TransitionMatrixStore;
-  dataProvider: DataProvider | null;
+  /** WidgetHost the graph uses for the (optional) backend "graph_layout" auto-layout compute. */
+  host: WidgetHost | null;
   widgetId?: string;
   valuesType?: MatrixValueType;
   onValuesTypeChange?: (v: MatrixValueType) => void;
@@ -273,7 +274,7 @@ export interface TransitionGraphProps {
 
 export const TransitionGraph = observer(function TransitionGraph({
   store,
-  dataProvider,
+  host,
   widgetId,
   valuesType: valuesTypeProp,
   onValuesTypeChange,
@@ -309,7 +310,7 @@ export const TransitionGraph = observer(function TransitionGraph({
     hasSavedPositions,
   } = useNodePositions(effectiveWidgetId);
   const { data: graphLayoutData, isLoading: isGraphLayoutLoading } =
-    useGraphLayout(dataProvider);
+    useGraphLayout(host);
 
   const [edgeThreshold, setEdgeThreshold] = React.useState(() =>
     initialEdgeFilter && initialEdgeFilter.length === 2

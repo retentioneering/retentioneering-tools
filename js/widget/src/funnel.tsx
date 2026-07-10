@@ -1,15 +1,6 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
-import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
-
-interface AnyWidgetModel {
-  get(key: string): unknown;
-  set(key: string, value: unknown): void;
-  save_changes(): void;
-  on(event: string, cb: () => void): void;
-  off(event: string, cb: () => void): void;
-}
-interface RenderContext { model: AnyWidgetModel; el: HTMLElement; isStatic?: boolean; }
+import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext } from "./widget-utils";
 
 // ── constants ──────────────────────────────────────────────────────────────
 
@@ -601,54 +592,48 @@ function SidebarToggle({ onClick }: { onClick: () => void }) {
 
 // ── main render ────────────────────────────────────────────────────────────
 
-export function render({ model, el, isStatic = false }: RenderContext) {
+export function render({ host, el, isStatic = false }: RenderContext) {
   function App() {
-    const [steps,       setStepsState]  = React.useState<string[]>(() => parseJson(model.get("steps"), []));
-    const [diffSeg,     setDiffSeg]     = React.useState<string | null>(() => { const d = parseJson<string[]>(model.get("diff") || "[]", []); return d[0] ?? null; });
-    const [diffV1,      setDiffV1]      = React.useState<string | null>(() => { const d = parseJson<string[]>(model.get("diff") || "[]", []); return d[1] ?? null; });
-    const [diffV2,      setDiffV2]      = React.useState<string | null>(() => { const d = parseJson<string[]>(model.get("diff") || "[]", []); return d[2] ?? null; });
-    const [pathIdCol,   setPathIdCol]   = React.useState<string>(() => (model.get("path_col") as string) || "");
-    const [result,      setResult]      = React.useState<{ steps: FunnelStep[] }>(() => parseJson(model.get("result"), { steps: [] }));
-    const [isLoading,   setIsLoading]   = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
-    const [heightProp,  setHeightProp]  = React.useState<number>(() => (model.get("height") as number) ?? 0);
-    const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
+    const [steps,       setStepsState]  = React.useState<string[]>(() => parseJson(host.get("steps"), []));
+    const [diffSeg,     setDiffSeg]     = React.useState<string | null>(() => { const d = parseJson<string[]>(host.get("diff") || "[]", []); return d[0] ?? null; });
+    const [diffV1,      setDiffV1]      = React.useState<string | null>(() => { const d = parseJson<string[]>(host.get("diff") || "[]", []); return d[1] ?? null; });
+    const [diffV2,      setDiffV2]      = React.useState<string | null>(() => { const d = parseJson<string[]>(host.get("diff") || "[]", []); return d[2] ?? null; });
+    const [pathIdCol,   setPathIdCol]   = React.useState<string>(() => (host.get("path_col") as string) || "");
+    const [result,      setResult]      = React.useState<{ steps: FunnelStep[] }>(() => parseJson(host.get("result"), { steps: [] }));
+    const [isLoading,   setIsLoading]   = React.useState<boolean>(() => (host.get("is_loading") as boolean) ?? false);
+    const [heightProp,  setHeightProp]  = React.useState<number>(() => (host.get("height") as number) ?? 0);
+    const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(() => (host.get("sidebar_open") as boolean) ?? true);
 
-    const events    = parseJson<string[]>(model.get("event_list"), []);
-    const pathCols  = parseJson<string[]>(model.get("path_cols"), []);
-    const segLevels = parseJson<Record<string, string[]>>(model.get("segment_levels"), {});
+    const events    = parseJson<string[]>(host.get("event_list"), []);
+    const pathCols  = parseJson<string[]>(host.get("path_cols"), []);
+    const segLevels = parseJson<Record<string, string[]>>(host.get("segment_levels"), {});
 
-    React.useEffect(() => {
-      const subs: Array<[string, () => void]> = [
-        ["result",     () => setResult(parseJson(model.get("result"), { steps: [] }))],
-        ["is_loading", () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
-        ["height",     () => setHeightProp((model.get("height") as number) ?? 0)],
-        ["sidebar_open", () => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
-        ["steps",      () => setStepsState(parseJson(model.get("steps"), []))],
-        ["diff",       () => { const d = parseJson<string[]>(model.get("diff") || "[]", []); setDiffSeg(d[0] ?? null); setDiffV1(d[1] ?? null); setDiffV2(d[2] ?? null); }],
-        ["path_col", () => setPathIdCol((model.get("path_col") as string) || "")],
-      ];
-      subs.forEach(([k, cb]) => model.on(`change:${k}`, cb));
-      return () => subs.forEach(([k, cb]) => model.off(`change:${k}`, cb));
-    }, []);
+    useHostSubscriptions(host, [
+      ["result",     () => setResult(parseJson(host.get("result"), { steps: [] }))],
+      ["is_loading", () => setIsLoading((host.get("is_loading") as boolean) ?? false)],
+      ["height",     () => setHeightProp((host.get("height") as number) ?? 0)],
+      ["sidebar_open", () => setSidebarOpen((host.get("sidebar_open") as boolean) ?? true)],
+      ["steps",      () => setStepsState(parseJson(host.get("steps"), []))],
+      ["diff",       () => { const d = parseJson<string[]>(host.get("diff") || "[]", []); setDiffSeg(d[0] ?? null); setDiffV1(d[1] ?? null); setDiffV2(d[2] ?? null); }],
+      ["path_col", () => setPathIdCol((host.get("path_col") as string) || "")],
+    ]);
 
     const setSteps = React.useCallback((s: string[]) => {
       setStepsState(s);
-      model.set("steps", JSON.stringify(s));
-      model.save_changes();
+      host.set("steps", JSON.stringify(s));
     }, []);
 
     const handleDiff = React.useCallback((seg: string | null, v1: string | null, v2: string | null) => {
       setDiffSeg(seg); setDiffV1(v1); setDiffV2(v2);
-      model.set("diff", seg && v1 && v2 ? JSON.stringify([seg, v1, v2]) : "");
-      model.save_changes();
+      host.set("diff", seg && v1 && v2 ? JSON.stringify([seg, v1, v2]) : "");
     }, []);
 
     const handlePathId = React.useCallback((c: string) => {
-      setPathIdCol(c); model.set("path_col", c); model.save_changes();
+      setPathIdCol(c); host.set("path_col", c);
     }, []);
 
     const handleToggle = React.useCallback(() => {
-      setSidebarOpen(p => { const n = !p; model.set("sidebar_open", n); model.save_changes(); return n; });
+      setSidebarOpen(p => { const n = !p; host.set("sidebar_open", n); return n; });
     }, []);
 
     const funnelSteps = result.steps ?? [];

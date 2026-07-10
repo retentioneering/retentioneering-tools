@@ -1,13 +1,11 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
-import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
+import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext } from "./widget-utils";
 import { MetricRow, validateMetricCfg, InfoTip } from "./metric_config_row";
 import {
-  AnyWidgetModel, SegmentOverviewData, SegmentOverviewTable,
+  SegmentOverviewData, SegmentOverviewTable,
   ContextMenu, DistributionModal, useDistributionSelection,
 } from "./segment_overview_table";
-
-interface RenderContext { model: AnyWidgetModel; el: HTMLElement; isStatic?: boolean; }
 
 // The cluster label column injected into the temp eventstream backing the
 // heatmap — mirrors `SEGMENT_COL` in tools/cluster_analysis.py. Cluster
@@ -720,127 +718,125 @@ function Tabs({ tabs, active, onChange }: { tabs: string[]; active: string; onCh
 
 // ── main render ────────────────────────────────────────────────────────────
 
-export function render({ model, el, isStatic = false }: RenderContext) {
+export function render({ host, el, isStatic = false }: RenderContext) {
   function App() {
-    const [features,      setFeaturesState]  = React.useState<any[]>(() => parseJson(model.get("features"), []));
-    const [method,        setMethodState]    = React.useState<string>(() => (model.get("method") as string) || "kmeans");
-    const [scaler,        setScalerState]    = React.useState<string>(() => (model.get("scaler") as string) || "minmax");
-    const [nClusters,     setNClusters]      = React.useState<string>(() => (model.get("n_clusters") as string) || "");
-    const [nmfEnabled,    setNmfEnabled]     = React.useState<boolean>(() => (model.get("nmf_enabled") as boolean) ?? false);
-    const [nmfK,          setNmfK]           = React.useState<string>(() => (model.get("nmf_components") as string) || "");
-    const [metricsConfig, setMetricsConfig]  = React.useState<any[]>(() => parseJson(model.get("overview_metrics"), []));
-    const [aggregation,   setAggregation]    = React.useState<string>(() => (model.get("aggregation") as string) || "mean");
-    const [pathIdCol,     setPathIdColState] = React.useState<string>(() => (model.get("path_col") as string) || "");
-    const [result,        setResult]         = React.useState<ClusterResult>(() => parseJson(model.get("result"), {}));
-    const [isLoading,     setIsLoading]      = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
-    const [error,         setError]          = React.useState<string>(() => (model.get("error") as string) || "");
-    const [height,        setHeight]         = React.useState<number>(() => (model.get("height") as number) ?? 520);
-    const [sidebarOpen,   setSidebarOpen]    = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
+    const [features,      setFeaturesState]  = React.useState<any[]>(() => parseJson(host.get("features"), []));
+    const [method,        setMethodState]    = React.useState<string>(() => (host.get("method") as string) || "kmeans");
+    const [scaler,        setScalerState]    = React.useState<string>(() => (host.get("scaler") as string) || "minmax");
+    const [nClusters,     setNClusters]      = React.useState<string>(() => (host.get("n_clusters") as string) || "");
+    const [nmfEnabled,    setNmfEnabled]     = React.useState<boolean>(() => (host.get("nmf_enabled") as boolean) ?? false);
+    const [nmfK,          setNmfK]           = React.useState<string>(() => (host.get("nmf_components") as string) || "");
+    const [metricsConfig, setMetricsConfig]  = React.useState<any[]>(() => parseJson(host.get("overview_metrics"), []));
+    const [aggregation,   setAggregation]    = React.useState<string>(() => (host.get("aggregation") as string) || "mean");
+    const [pathIdCol,     setPathIdColState] = React.useState<string>(() => (host.get("path_col") as string) || "");
+    const [result,        setResult]         = React.useState<ClusterResult>(() => parseJson(host.get("result"), {}));
+    const [isLoading,     setIsLoading]      = React.useState<boolean>(() => (host.get("is_loading") as boolean) ?? false);
+    const [error,         setError]          = React.useState<string>(() => (host.get("error") as string) || "");
+    const [height,        setHeight]         = React.useState<number>(() => (host.get("height") as number) ?? 520);
+    const [sidebarOpen,   setSidebarOpen]    = React.useState<boolean>(() => (host.get("sidebar_open") as boolean) ?? true);
     const [featuresOpen,  setFeaturesOpen]   = React.useState(false);
     const [metricsOpen,   setMetricsOpen]    = React.useState(false);
     const [saveOpen,      setSaveOpen]       = React.useState(false);
     const [saveResult,    setSaveResult]     = React.useState<SaveResult | null>(() => {
-      const r = parseJson<SaveResult>(model.get("save_result"), {});
+      const r = parseJson<SaveResult>(host.get("save_result"), {});
       return r && Object.keys(r).length > 0 ? r : null;
     });
-    const [chosenParams,  setChosenParams]   = React.useState<Record<string, any>>(() => parseJson(model.get("chosen_params"), {}));
+    const [chosenParams,  setChosenParams]   = React.useState<Record<string, any>>(() => parseJson(host.get("chosen_params"), {}));
     // Cluster renames typed directly into the heatmap header — cleared on every new
     // result since "cluster_0" may refer to a different cluster after re-clustering.
     const [headerRename,  setHeaderRename]   = React.useState<Record<string, string>>(
-      () => parseJson(model.get("cluster_renames"), {}),
+      () => parseJson(host.get("cluster_renames"), {}),
     );
     const rootRef = React.useRef<HTMLDivElement>(null);
-    const [activeTab,     setActiveTab]      = React.useState<string>(() => (model.get("active_tab") as string) || "Overview");
+    const [activeTab,     setActiveTab]      = React.useState<string>(() => (host.get("active_tab") as string) || "Overview");
 
-    const events        = parseJson<string[]>(model.get("event_list"),     []);
-    const pathCols      = parseJson<string[]>(model.get("path_cols"),      []);
-    const segmentCols   = parseJson<string[]>(model.get("segment_cols"),   []);
-    const segmentLevels = parseJson<Record<string,string[]>>(model.get("segment_levels"), {});
-    const streamVarName = (model.get("stream_var_name") as string) || "stream";
+    const events        = parseJson<string[]>(host.get("event_list"),     []);
+    const pathCols      = parseJson<string[]>(host.get("path_cols"),      []);
+    const segmentCols   = parseJson<string[]>(host.get("segment_cols"),   []);
+    const segmentLevels = parseJson<Record<string,string[]>>(host.get("segment_levels"), {});
+    const streamVarName = (host.get("stream_var_name") as string) || "stream";
 
     const {
       selected, ctxMenu, ctxMenuCanCompare, distModal, distLoading,
       handleCellClick, handleCellRightClick, handleShowDist,
       closeCtxMenu, closeDistModal,
     } = useDistributionSelection({
-      model, result: result.overview ?? null, rootRef,
+      host, result: result.overview ?? null, rootRef,
       segmentCol: CLUSTER_SEGMENT_COL, pathIdCol, events,
     });
 
-    React.useEffect(() => {
-      const subs: Array<[string, () => void]> = [
-        ["result",      () => {
-          setResult(parseJson(model.get("result"), {}));
-          setHeaderRename({});
-          model.set("cluster_renames", "{}"); model.save_changes();
-        }],
-        ["is_loading",  () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
-        ["error",       () => setError((model.get("error") as string) || "")],
-        ["height",      () => setHeight((model.get("height") as number) ?? 520)],
-        ["sidebar_open",() => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
-        ["features",    () => setFeaturesState(parseJson(model.get("features"), []))],
-        ["method",      () => setMethodState((model.get("method") as string) || "kmeans")],
-        ["scaler",      () => setScalerState((model.get("scaler") as string) || "minmax")],
-        ["n_clusters",     () => setNClusters((model.get("n_clusters") as string) || "")],
-        ["nmf_enabled",    () => setNmfEnabled((model.get("nmf_enabled") as boolean) ?? false)],
-        ["nmf_components",          () => setNmfK((model.get("nmf_components") as string) || "")],
-        ["overview_metrics", () => setMetricsConfig(parseJson(model.get("overview_metrics"), []))],
-        ["aggregation",    () => setAggregation((model.get("aggregation") as string) || "mean")],
-        ["path_col",    () => setPathIdColState((model.get("path_col") as string) || "")],
-        ["save_result", () => {
-          const r = parseJson<SaveResult>(model.get("save_result"), {});
-          setSaveResult(r && Object.keys(r).length > 0 ? r : null);
-        }],
-        ["chosen_params", () => setChosenParams(parseJson(model.get("chosen_params"), {}))],
-      ];
-      subs.forEach(([k, cb]) => model.on(`change:${k}`, cb));
-      return () => subs.forEach(([k, cb]) => model.off(`change:${k}`, cb));
-    }, []);
+    useHostSubscriptions(host, [
+      ["result",      () => {
+        setResult(parseJson(host.get("result"), {}));
+        setHeaderRename({});
+        host.set("cluster_renames", "{}");
+      }],
+      ["is_loading",  () => setIsLoading((host.get("is_loading") as boolean) ?? false)],
+      ["error",       () => setError((host.get("error") as string) || "")],
+      ["height",      () => setHeight((host.get("height") as number) ?? 520)],
+      ["sidebar_open",() => setSidebarOpen((host.get("sidebar_open") as boolean) ?? true)],
+      ["features",    () => setFeaturesState(parseJson(host.get("features"), []))],
+      ["method",      () => setMethodState((host.get("method") as string) || "kmeans")],
+      ["scaler",      () => setScalerState((host.get("scaler") as string) || "minmax")],
+      ["n_clusters",     () => setNClusters((host.get("n_clusters") as string) || "")],
+      ["nmf_enabled",    () => setNmfEnabled((host.get("nmf_enabled") as boolean) ?? false)],
+      ["nmf_components",          () => setNmfK((host.get("nmf_components") as string) || "")],
+      ["overview_metrics", () => setMetricsConfig(parseJson(host.get("overview_metrics"), []))],
+      ["aggregation",    () => setAggregation((host.get("aggregation") as string) || "mean")],
+      ["path_col",    () => setPathIdColState((host.get("path_col") as string) || "")],
+      ["save_result", () => {
+        const r = parseJson<SaveResult>(host.get("save_result"), {});
+        setSaveResult(r && Object.keys(r).length > 0 ? r : null);
+      }],
+      ["chosen_params", () => setChosenParams(parseJson(host.get("chosen_params"), {}))],
+    ]);
 
-    const setFeatures   = (f: any[]) => { setFeaturesState(f); model.set("features", JSON.stringify(f)); model.save_changes(); };
-    const setMethod     = (m: string) => { setMethodState(m); model.set("method", m); model.save_changes(); };
-    const setScaler     = (s: string) => { setScalerState(s); model.set("scaler", s); model.save_changes(); };
-    // Text fields: only update local React state, no model.set() on keystroke.
+    const setFeatures   = (f: any[]) => { setFeaturesState(f); host.set("features", JSON.stringify(f)); };
+    const setMethod     = (m: string) => { setMethodState(m); host.set("method", m); };
+    const setScaler     = (s: string) => { setScalerState(s); host.set("scaler", s); };
+    // Text fields: only update local React state, no host.set() on keystroke.
     // handleApply syncs everything to Python when the user clicks Apply.
     const setNC         = (n: string) => setNClusters(n);
-    const setNmf        = (v: boolean) => { setNmfEnabled(v); model.set("nmf_enabled", v); model.save_changes(); };
+    const setNmf        = (v: boolean) => { setNmfEnabled(v); host.set("nmf_enabled", v); };
     const setNmfKVal    = (v: string) => setNmfK(v);
-    const setMetrics    = (m: any[]) => { setMetricsConfig(m); model.set("overview_metrics", JSON.stringify(m)); model.save_changes(); };
-    const setAgg        = (a: string) => { setAggregation(a); model.set("aggregation", a); model.save_changes(); };
-    const setPathId     = (c: string) => { setPathIdColState(c); model.set("path_col", c); model.save_changes(); };
-    const handleToggle  = () => { setSidebarOpen(p => { const n = !p; model.set("sidebar_open", n); model.save_changes(); return n; }); };
+    const setMetrics    = (m: any[]) => { setMetricsConfig(m); host.set("overview_metrics", JSON.stringify(m)); };
+    const setAgg        = (a: string) => { setAggregation(a); host.set("aggregation", a); };
+    const setPathId     = (c: string) => { setPathIdColState(c); host.set("path_col", c); };
+    const handleToggle  = () => { setSidebarOpen(p => { const n = !p; host.set("sidebar_open", n); return n; }); };
 
     const handleApplyInplace = (name: string, rename: Record<string, string>) => {
-      model.set("save_segment_name", name);
-      model.set("save_rename", JSON.stringify(rename));
-      model.set("save_trigger", Date.now().toString());
-      model.save_changes();
+      host.setMany({
+        save_segment_name: name,
+        save_rename: JSON.stringify(rename),
+        save_trigger: Date.now().toString(),
+      });
     };
 
     const handleApply = () => {
-      model.set("features",       JSON.stringify(features));
-      model.set("method",         method);
-      model.set("scaler",         scaler);
-      model.set("n_clusters",     nClusters);
-      model.set("nmf_enabled",    nmfEnabled);
-      model.set("nmf_components",          nmfK);
-      model.set("overview_metrics", JSON.stringify(metricsConfig));
-      model.set("aggregation",    aggregation);
-      model.set("path_col",    pathIdCol);
-      model.set("apply_trigger",  Date.now().toString());
-      model.save_changes();
+      host.setMany({
+        features: JSON.stringify(features),
+        method,
+        scaler,
+        n_clusters: nClusters,
+        nmf_enabled: nmfEnabled,
+        nmf_components: nmfK,
+        overview_metrics: JSON.stringify(metricsConfig),
+        aggregation,
+        path_col: pathIdCol,
+        apply_trigger: Date.now().toString(),
+      });
       setLastApplied({ features, method, scaler, nClusters, nmfEnabled, nmfK, pathIdCol, metricsConfig });
     };
 
     const [lastApplied, setLastApplied] = React.useState(() => ({
-      features:   parseJson<any[]>(model.get("features"), []),
-      method:     (model.get("method") as string) || "kmeans",
-      scaler:     (model.get("scaler") as string) || "standard",
-      nClusters:  (model.get("n_clusters") as string) || "3-8",
-      nmfEnabled: (model.get("nmf_enabled") as boolean) ?? false,
-      nmfK:       (model.get("nmf_components") as string) || "",
-      pathIdCol:  (model.get("path_col") as string) || "",
-      metricsConfig: parseJson<any[]>(model.get("overview_metrics"), []),
+      features:   parseJson<any[]>(host.get("features"), []),
+      method:     (host.get("method") as string) || "kmeans",
+      scaler:     (host.get("scaler") as string) || "standard",
+      nClusters:  (host.get("n_clusters") as string) || "3-8",
+      nmfEnabled: (host.get("nmf_enabled") as boolean) ?? false,
+      nmfK:       (host.get("nmf_components") as string) || "",
+      pathIdCol:  (host.get("path_col") as string) || "",
+      metricsConfig: parseJson<any[]>(host.get("overview_metrics"), []),
     }));
 
     const isDirty = JSON.stringify(features) !== JSON.stringify(lastApplied.features)
@@ -867,7 +863,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
           <SidebarToggle onClick={handleToggle} />
           <div style={{ width: "100%", height: "100%" }}>
             <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", overflow: "hidden" }}>
-            {tabs.length > 1 && <Tabs tabs={tabs} active={tab} onChange={t => { setActiveTab(t); model.set("active_tab", t); model.save_changes(); }} />}
+            {tabs.length > 1 && <Tabs tabs={tabs} active={tab} onChange={t => { setActiveTab(t); host.set("active_tab", t); }} />}
             <div style={{ flex: 1, overflow: "auto", padding: "8px 0" }}>
               {error && !isLoading && (
                 <div style={{ margin: 16, padding: 12, background: "#fff1f2", border: "1px solid #fca5a5", borderRadius: 8, fontSize: 12, color: "#dc2626", fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
@@ -886,7 +882,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                   onRename={(orig, next) => {
                     const map = { ...headerRename, [orig]: next };
                     setHeaderRename(map);
-                    model.set("cluster_renames", JSON.stringify(map)); model.save_changes();
+                    host.set("cluster_renames", JSON.stringify(map));
                   }}
                   onCellClick={handleCellClick}
                   onCellRightClick={isStatic ? () => {} : handleCellRightClick}

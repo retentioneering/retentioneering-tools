@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
-import { DataProvider, GraphLayoutResponse } from "../../../types";
+import { GraphLayoutResponse } from "../../../types";
+import { WidgetHost } from "../../../WidgetHost";
 
-export function useGraphLayout(dataProvider: DataProvider | null) {
+export function useGraphLayout(host: WidgetHost | null) {
   const [data, setData] = useState<GraphLayoutResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!dataProvider) return;
+    if (!host) return;
     setIsLoading(true);
-    dataProvider
+    host
       .compute<GraphLayoutResponse>("graph_layout", {
         sample_size: 1000,
         walk_length: 20,
@@ -21,7 +22,7 @@ export function useGraphLayout(dataProvider: DataProvider | null) {
       .then(setData)
       .catch(() => setData(null))
       .finally(() => setIsLoading(false));
-  // Run only on mount (dataProvider reference is stable per widget instance)
+  // Run only on mount (host reference is stable per widget instance)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -2,6 +2,7 @@
  * Shared utilities for all widget components.
  */
 import * as React from "react";
+import type { WidgetHost } from "@retentioneering/viz-core";
 
 // ── JSON helpers ──────────────────────────────────────────────────────────────
 
@@ -9,22 +10,23 @@ export function parseJson<T>(raw: unknown, fallback: T): T {
   try { return JSON.parse(raw as string) as T; } catch { return fallback; }
 }
 
-// ── Model subscription hook ───────────────────────────────────────────────────
-
-interface AnyWidgetModel {
-  get(key: string): unknown;
-  on(event: string, cb: () => void): void;
-  off(event: string, cb: () => void): void;
+/** Shape every widget entry file's `render()` receives — see main.tsx. */
+export interface RenderContext {
+  host: WidgetHost;
+  el: HTMLElement;
+  isStatic?: boolean;
 }
 
-/** Subscribe to a list of model traitlet changes. Cleans up on unmount. */
-export function useModelSubscriptions(
-  model: AnyWidgetModel,
+// ── Host subscription hook ────────────────────────────────────────────────────
+
+/** Subscribe to a list of host param changes. Cleans up on unmount. */
+export function useHostSubscriptions(
+  host: WidgetHost,
   subs: Array<[string, () => void]>,
 ): void {
   React.useEffect(() => {
-    subs.forEach(([k, cb]) => model.on(`change:${k}`, cb));
-    return () => subs.forEach(([k, cb]) => model.off(`change:${k}`, cb));
+    const disposers = subs.map(([key, cb]) => host.onChange(key, cb));
+    return () => disposers.forEach((dispose) => dispose());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

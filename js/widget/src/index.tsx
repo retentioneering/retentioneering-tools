@@ -1,6 +1,6 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
-import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
+import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext } from "./widget-utils";
 import { reaction } from "mobx";
 import {
   TransitionGraph,
@@ -11,21 +11,6 @@ import {
   type StoredViewport,
   DEFAULT_VALUE_TYPE,
 } from "@retentioneering/viz-core";
-import { JupyterDataProvider } from "./JupyterDataProvider";
-
-interface AnyWidgetModel {
-  get(key: string): unknown;
-  set(key: string, value: unknown): void;
-  save_changes(): void;
-  on(event: string, cb: () => void): void;
-  off(event: string, cb: () => void): void;
-}
-
-interface RenderContext {
-  model: AnyWidgetModel;
-  el: HTMLElement;
-  isStatic?: boolean;
-}
 
 function SidebarToggle({ onClick }: { onClick: () => void }) {
   return (
@@ -43,12 +28,11 @@ function SidebarToggle({ onClick }: { onClick: () => void }) {
   );
 }
 
-export function render({ model, el, isStatic = false }: RenderContext) {
-  const store    = new TransitionMatrixStore();
-  const provider = new JupyterDataProvider(model);
+export function render({ host, el, isStatic = false }: RenderContext) {
+  const store = new TransitionMatrixStore();
 
   function applyEventVisibility() {
-    const raw = model.get("event_visibility") as string;
+    const raw = host.get("event_visibility") as string;
     if (!raw || raw === "{}") return;
     try {
       const vis = JSON.parse(raw) as Record<string, { isHidden: boolean; isPinned: boolean }>;
@@ -60,7 +44,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
   }
 
   function syncResultToStore() {
-    const raw = model.get("result") as string;
+    const raw = host.get("result") as string;
     if (!raw || raw === "{}") return;
     try {
       const d = JSON.parse(raw);
@@ -72,13 +56,13 @@ export function render({ model, el, isStatic = false }: RenderContext) {
   }
 
   function syncEventCounts() {
-    const raw = model.get("event_counts") as string;
+    const raw = host.get("event_counts") as string;
     if (!raw || raw === "{}") return;
     try { store.applyEventCounts(JSON.parse(raw)); } catch {}
   }
 
   function parseCountsMap(key: string): Record<string, number> {
-    try { return JSON.parse((model.get(key) as string) || "{}"); } catch { return {}; }
+    try { return JSON.parse((host.get(key) as string) || "{}"); } catch { return {}; }
   }
 
   syncResultToStore();
@@ -87,24 +71,24 @@ export function render({ model, el, isStatic = false }: RenderContext) {
   // Restore the Event count filter. setPopulationRange marks the filter as
   // user-customized, so applyEventCounts won't overwrite it on later syncs.
   {
-    const f = parseJson<number[]>(model.get("event_count_filter") || "", []);
+    const f = parseJson<number[]>(host.get("event_count_filter") || "", []);
     if (f.length === 2) store.setPopulationRange(f[0], f[1]);
   }
 
   function App() {
     const [valuesType, setValuesType] = React.useState<MatrixValueType>(
-      () => (model.get("edge_weight") as MatrixValueType) ?? DEFAULT_VALUE_TYPE,
+      () => (host.get("edge_weight") as MatrixValueType) ?? DEFAULT_VALUE_TYPE,
     );
-    const initDiff = parseJson<string[]>(model.get("diff") || "[]", []);
+    const initDiff = parseJson<string[]>(host.get("diff") || "[]", []);
     const [diffSegment, setDiffSegment] = React.useState<string | null>(initDiff[0] ?? null);
     const [diffValue1,  setDiffValue1]  = React.useState<string | null>(initDiff[1] ?? null);
     const [diffValue2,  setDiffValue2]  = React.useState<string | null>(initDiff[2] ?? null);
-    const [pathCols, setPathCols]       = React.useState<string[]>(() => parseJson(model.get("path_cols"), []));
-    const [pathIdCol, setPathIdCol]     = React.useState<string>(() => (model.get("path_col") as string) || "");
-    const [segmentLevels, setSegLvls]   = React.useState<Record<string, string[]>>(() => parseJson(model.get("segment_levels"), {}));
-    const [height, setHeight]           = React.useState<number>(() => (model.get("height") as number) ?? 500);
-    const [isLoading, setIsLoading]     = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
-    const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
+    const [pathCols, setPathCols]       = React.useState<string[]>(() => parseJson(host.get("path_cols"), []));
+    const [pathIdCol, setPathIdCol]     = React.useState<string>(() => (host.get("path_col") as string) || "");
+    const [segmentLevels, setSegLvls]   = React.useState<Record<string, string[]>>(() => parseJson(host.get("segment_levels"), {}));
+    const [height, setHeight]           = React.useState<number>(() => (host.get("height") as number) ?? 500);
+    const [isLoading, setIsLoading]     = React.useState<boolean>(() => (host.get("is_loading") as boolean) ?? false);
+    const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(() => (host.get("sidebar_open") as boolean) ?? true);
     const fitRef = React.useRef<(() => void) | undefined>(undefined);
 
     // Sync event visibility (hidden/pinned) to Python whenever store changes
@@ -118,8 +102,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
           store.events.forEach((e, id) => {
             if (e.isHidden || e.isPinned) vis[id] = { isHidden: e.isHidden, isPinned: e.isPinned };
           });
-          model.set("event_visibility", JSON.stringify(vis));
-          model.save_changes();
+          host.set("event_visibility", JSON.stringify(vis));
         },
         { fireImmediately: false, delay: 100 }
       );
@@ -136,8 +119,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
           customized: store.populationCustomized,
         }),
         ({ min, max, customized }) => {
-          model.set("event_count_filter", customized ? JSON.stringify([min, max]) : "");
-          model.save_changes();
+          host.set("event_count_filter", customized ? JSON.stringify([min, max]) : "");
         },
         { fireImmediately: false, delay: 150 }
       );
@@ -148,81 +130,76 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     const [eventCountsG1, setCountsG1]   = React.useState<Record<string, number>>(() => parseCountsMap("event_counts_g1"));
     const [eventCountsG2, setCountsG2]   = React.useState<Record<string, number>>(() => parseCountsMap("event_counts_g2"));
     const [initialPositions, setInitPos] = React.useState<Record<string, StoredPosition>>(
-      () => parseJson(model.get("node_positions"), {}),
+      () => parseJson(host.get("node_positions"), {}),
     );
 
     React.useEffect(() => { syncResultToStore(); syncEventCounts(); }, []);
 
-    React.useEffect(() => {
-      const subs: Array<[string, () => void]> = [
-        ["result",         () => { syncResultToStore(); syncEventCounts(); }],
-        ["event_counts",   () => { syncEventCounts(); setEventCounts(parseCountsMap("event_counts")); }],
-        ["event_counts_g1",() => setCountsG1(parseCountsMap("event_counts_g1"))],
-        ["event_counts_g2",() => setCountsG2(parseCountsMap("event_counts_g2"))],
-        ["is_loading",     () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
-        ["edge_weight",    () => setValuesType((model.get("edge_weight") as MatrixValueType) ?? DEFAULT_VALUE_TYPE)],
-        ["height",         () => setHeight((model.get("height") as number) ?? 500)],
-        ["sidebar_open",   () => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
-        ["path_cols",      () => setPathCols(parseJson(model.get("path_cols"), []))],
-        ["path_col",    () => setPathIdCol((model.get("path_col") as string) || "")],
-        ["segment_levels", () => setSegLvls(parseJson(model.get("segment_levels"), {}))],
-        ["node_positions", () => {
-          const p = parseJson<Record<string, StoredPosition>>(model.get("node_positions"), {});
-          if (Object.keys(p).length > 0) setInitPos(p);
-        }],
-        ["diff", () => {
-          const d = parseJson<string[]>(model.get("diff") || "[]", []);
-          setDiffSegment(d[0] ?? null); setDiffValue1(d[1] ?? null); setDiffValue2(d[2] ?? null);
-        }],
-      ];
-      subs.forEach(([key, cb]) => model.on(`change:${key}`, cb));
-      return () => subs.forEach(([key, cb]) => model.off(`change:${key}`, cb));
-    }, []);
+    useHostSubscriptions(host, [
+      ["result",         () => { syncResultToStore(); syncEventCounts(); }],
+      ["event_counts",   () => { syncEventCounts(); setEventCounts(parseCountsMap("event_counts")); }],
+      ["event_counts_g1",() => setCountsG1(parseCountsMap("event_counts_g1"))],
+      ["event_counts_g2",() => setCountsG2(parseCountsMap("event_counts_g2"))],
+      ["is_loading",     () => setIsLoading((host.get("is_loading") as boolean) ?? false)],
+      ["edge_weight",    () => setValuesType((host.get("edge_weight") as MatrixValueType) ?? DEFAULT_VALUE_TYPE)],
+      ["height",         () => setHeight((host.get("height") as number) ?? 500)],
+      ["sidebar_open",   () => setSidebarOpen((host.get("sidebar_open") as boolean) ?? true)],
+      ["path_cols",      () => setPathCols(parseJson(host.get("path_cols"), []))],
+      ["path_col",    () => setPathIdCol((host.get("path_col") as string) || "")],
+      ["segment_levels", () => setSegLvls(parseJson(host.get("segment_levels"), {}))],
+      ["node_positions", () => {
+        const p = parseJson<Record<string, StoredPosition>>(host.get("node_positions"), {});
+        if (Object.keys(p).length > 0) setInitPos(p);
+      }],
+      ["diff", () => {
+        const d = parseJson<string[]>(host.get("diff") || "[]", []);
+        setDiffSegment(d[0] ?? null); setDiffValue1(d[1] ?? null); setDiffValue2(d[2] ?? null);
+      }],
+    ]);
 
     const handleValuesChange = React.useCallback((v: MatrixValueType) => {
-      setValuesType(v); model.set("edge_weight", v); model.save_changes();
+      setValuesType(v); host.set("edge_weight", v);
     }, []);
     const handlePathIdColChange = React.useCallback((col: string) => {
-      setPathIdCol(col); model.set("path_col", col); model.save_changes();
+      setPathIdCol(col); host.set("path_col", col);
     }, []);
     const handleDiffChange = React.useCallback(
       (seg: string | null, v1: string | null, v2: string | null) => {
         setDiffSegment(seg); setDiffValue1(v1); setDiffValue2(v2);
         // Use != null (not truthy) so segment values like false/0 are handled correctly
-        model.set("diff", seg != null && v1 != null && v2 != null && seg !== "" && v1 !== "" && v2 !== ""
+        host.set("diff", seg != null && v1 != null && v2 != null && seg !== "" && v1 !== "" && v2 !== ""
           ? JSON.stringify([seg, v1, v2])
           : "");
-        model.save_changes();
       }, [],
     );
     const handleToggleSidebar = React.useCallback(() => {
-      setSidebarOpen((prev) => { const next = !prev; model.set("sidebar_open", next); model.save_changes(); return next; });
+      setSidebarOpen((prev) => { const next = !prev; host.set("sidebar_open", next); return next; });
     }, []);
     const handlePositionsChange = React.useCallback(
       (positions: Record<string, StoredPosition>) => {
-        model.set("node_positions", JSON.stringify(positions)); model.save_changes();
+        host.set("node_positions", JSON.stringify(positions));
       }, [],
     );
     const initialEdgeFilter = React.useMemo<[number, number] | null>(() => {
-      const f = parseJson<number[]>(model.get("edge_filter") || "", []);
+      const f = parseJson<number[]>(host.get("edge_filter") || "", []);
       return f.length === 2 ? [f[0], f[1]] : null;
     }, []);
     const handleEdgeFilterChange = React.useCallback((filter: [number, number]) => {
-      model.set("edge_filter", JSON.stringify(filter)); model.save_changes();
+      host.set("edge_filter", JSON.stringify(filter));
     }, []);
     const initialViewport = React.useMemo<StoredViewport | null>(
-      () => parseJson<StoredViewport | null>(model.get("viewport") || "", null),
+      () => parseJson<StoredViewport | null>(host.get("viewport") || "", null),
       [],
     );
     const handleViewportChange = React.useCallback((viewport: StoredViewport) => {
-      model.set("viewport", JSON.stringify(viewport)); model.save_changes();
+      host.set("viewport", JSON.stringify(viewport));
     }, []);
 
     const graphArea = (
       <div style={{ flex: 1, position: "relative", overflow: "hidden", minWidth: 0 }}>
         <TransitionGraph
           store={store}
-          dataProvider={null}
+          host={isStatic ? null : host}
           valuesType={valuesType}
           onValuesTypeChange={handleValuesChange}
           diffSegment={diffSegment}

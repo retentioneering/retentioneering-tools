@@ -6,14 +6,12 @@
  */
 import * as React from "react";
 import { createRoot } from "react-dom/client";
-import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
+import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext } from "./widget-utils";
 import { MetricRow, validateMetricCfg } from "./metric_config_row";
 import {
-  AnyWidgetModel, SegmentOverviewData, SegmentOverviewTable,
+  SegmentOverviewData, SegmentOverviewTable,
   ContextMenu, DistributionModal, useDistributionSelection,
 } from "./segment_overview_table";
-
-interface RenderContext { model: AnyWidgetModel; el: HTMLElement; isStatic?: boolean; }
 
 // ── sidebar ────────────────────────────────────────────────────────────────
 
@@ -231,53 +229,49 @@ function SidebarToggle({ onClick }: { onClick: () => void }) {
 
 // ── main render ────────────────────────────────────────────────────────────
 
-export function render({ model, el, isStatic = false }: RenderContext) {
+export function render({ host, el, isStatic = false }: RenderContext) {
   function App() {
-    const [segCol,     setSegColState]    = React.useState<string>(() => (model.get("segment_col") as string) || "");
-    const [pathIdCol,  setPathIdColState] = React.useState<string>(() => (model.get("path_col") as string) || "");
-    const [metrics,    setMetricsState]   = React.useState<any[]>(() => parseJson(model.get("metrics"), []));
+    const [segCol,     setSegColState]    = React.useState<string>(() => (host.get("segment_col") as string) || "");
+    const [pathIdCol,  setPathIdColState] = React.useState<string>(() => (host.get("path_col") as string) || "");
+    const [metrics,    setMetricsState]   = React.useState<any[]>(() => parseJson(host.get("metrics"), []));
     const [result,     setResult]         = React.useState<SegmentOverviewData | null>(() => {
-      const r = parseJson<any>(model.get("result"), null);
+      const r = parseJson<any>(host.get("result"), null);
       return r?.metrics ? r : null;
     });
-    const [isLoading,  setIsLoading]      = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
-    const [error,      setError]          = React.useState<string>(() => (model.get("error") as string) || "");
-    const [height,     setHeight]         = React.useState<number>(() => (model.get("height") as number) ?? 480);
-    const [sidebarOpen, setSidebarOpen]   = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
+    const [isLoading,  setIsLoading]      = React.useState<boolean>(() => (host.get("is_loading") as boolean) ?? false);
+    const [error,      setError]          = React.useState<string>(() => (host.get("error") as string) || "");
+    const [height,     setHeight]         = React.useState<number>(() => (host.get("height") as number) ?? 480);
+    const [sidebarOpen, setSidebarOpen]   = React.useState<boolean>(() => (host.get("sidebar_open") as boolean) ?? true);
 
     // Modals — rendered at root level with position:absolute to work in VS Code
     const [metricsOpen, setMetricsOpen] = React.useState(false);
     const rootRef = React.useRef<HTMLDivElement>(null);
 
-    const segCols   = parseJson<string[]>(model.get("segment_cols"), []);
-    const pathCols  = parseJson<string[]>(model.get("path_cols"),    []);
-    const events    = parseJson<string[]>(model.get("event_list"),   []);
-    const segLevels = parseJson<Record<string,string[]>>(model.get("segment_levels"), {});
+    const segCols   = parseJson<string[]>(host.get("segment_cols"), []);
+    const pathCols  = parseJson<string[]>(host.get("path_cols"),    []);
+    const events    = parseJson<string[]>(host.get("event_list"),   []);
+    const segLevels = parseJson<Record<string,string[]>>(host.get("segment_levels"), {});
 
-    React.useEffect(() => {
-      const subs: Array<[string, () => void]> = [
-        ["result",     () => { const r = parseJson<any>(model.get("result"), null); setResult(r?.metrics ? r : null); }],
-        ["is_loading", () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
-        ["error",      () => setError((model.get("error") as string) || "")],
-        ["height",     () => setHeight((model.get("height") as number) ?? 480)],
-        ["sidebar_open", () => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
-        ["segment_col", () => setSegColState((model.get("segment_col") as string) || "")],
-        ["path_col", () => setPathIdColState((model.get("path_col") as string) || "")],
-        ["metrics", () => setMetricsState(parseJson(model.get("metrics"), []))],
-      ];
-      subs.forEach(([k, cb]) => model.on(`change:${k}`, cb));
-      return () => subs.forEach(([k, cb]) => model.off(`change:${k}`, cb));
-    }, []);
+    useHostSubscriptions(host, [
+      ["result",     () => { const r = parseJson<any>(host.get("result"), null); setResult(r?.metrics ? r : null); }],
+      ["is_loading", () => setIsLoading((host.get("is_loading") as boolean) ?? false)],
+      ["error",      () => setError((host.get("error") as string) || "")],
+      ["height",     () => setHeight((host.get("height") as number) ?? 480)],
+      ["sidebar_open", () => setSidebarOpen((host.get("sidebar_open") as boolean) ?? true)],
+      ["segment_col", () => setSegColState((host.get("segment_col") as string) || "")],
+      ["path_col", () => setPathIdColState((host.get("path_col") as string) || "")],
+      ["metrics", () => setMetricsState(parseJson(host.get("metrics"), []))],
+    ]);
 
-    const setSegCol = (c: string) => { setSegColState(c); model.set("segment_col", c); model.save_changes(); };
-    const setPathId = (c: string) => { setPathIdColState(c); model.set("path_col", c); model.save_changes(); };
-    const setMetrics = (m: any[]) => { setMetricsState(m); model.set("metrics", JSON.stringify(m)); model.save_changes(); };
+    const setSegCol = (c: string) => { setSegColState(c); host.set("segment_col", c); };
+    const setPathId = (c: string) => { setPathIdColState(c); host.set("path_col", c); };
+    const setMetrics = (m: any[]) => { setMetricsState(m); host.set("metrics", JSON.stringify(m)); };
 
     // Track the last *applied* state to show Apply only when something changed
     const [lastApplied, setLastApplied] = React.useState(() => ({
-      segCol:    (model.get("segment_col") as string) || "",
-      pathIdCol: (model.get("path_col") as string) || "",
-      metrics:   parseJson<any[]>(model.get("metrics"), []),
+      segCol:    (host.get("segment_col") as string) || "",
+      pathIdCol: (host.get("path_col") as string) || "",
+      metrics:   parseJson<any[]>(host.get("metrics"), []),
     }));
 
     const isDirty = segCol !== lastApplied.segCol ||
@@ -285,23 +279,24 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                     JSON.stringify(metrics) !== JSON.stringify(lastApplied.metrics);
 
     const handleApply = () => {
-      model.set("segment_col", segCol);
-      model.set("path_col", pathIdCol);
-      model.set("metrics", JSON.stringify(metrics));
-      model.set("apply_trigger", (Date.now()).toString());
-      model.save_changes();
+      host.setMany({
+        segment_col: segCol,
+        path_col: pathIdCol,
+        metrics: JSON.stringify(metrics),
+        apply_trigger: Date.now().toString(),
+      });
       setLastApplied({ segCol, pathIdCol, metrics });
     };
 
     const handleToggle = () => {
-      setSidebarOpen(p => { const n = !p; model.set("sidebar_open", n); model.save_changes(); return n; });
+      setSidebarOpen(p => { const n = !p; host.set("sidebar_open", n); return n; });
     };
 
     const {
       selected, ctxMenu, ctxMenuCanCompare, distModal, distLoading,
       handleCellClick, handleCellRightClick, handleShowDist,
       closeCtxMenu, closeDistModal,
-    } = useDistributionSelection({ model, result, rootRef, segmentCol: segCol, pathIdCol, events });
+    } = useDistributionSelection({ host, result, rootRef, segmentCol: segCol, pathIdCol, events });
 
     // Expose external navigation API for static HTML report links
     React.useEffect(() => {

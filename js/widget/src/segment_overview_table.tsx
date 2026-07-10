@@ -7,16 +7,9 @@
  * render.
  */
 import * as React from "react";
+import type { WidgetHost } from "@retentioneering/viz-core";
 import { parseJson } from "./widget-utils";
 import { AGG_OPTIONS } from "./metric_config_row";
-
-export interface AnyWidgetModel {
-  get(key: string): unknown;
-  set(key: string, value: unknown): void;
-  save_changes(): void;
-  on(event: string, cb: () => void): void;
-  off(event: string, cb: () => void): void;
-}
 
 // ── heatmap colour ─────────────────────────────────────────────────────────
 
@@ -487,7 +480,7 @@ export function metricArgsFromName(metricName: string, _events: string[]): any {
 // ── shared selection / context-menu / distribution-request state machine ───
 
 export interface DistributionSelectionOptions {
-  model: AnyWidgetModel;
+  host: WidgetHost;
   result: SegmentOverviewData | null;
   rootRef: React.RefObject<HTMLElement | null>;
   segmentCol: string;
@@ -495,7 +488,7 @@ export interface DistributionSelectionOptions {
   events: string[];
 }
 
-export function useDistributionSelection({ model, result, rootRef, segmentCol, pathIdCol, events }: DistributionSelectionOptions) {
+export function useDistributionSelection({ host, result, rootRef, segmentCol, pathIdCol, events }: DistributionSelectionOptions) {
   // Cell selection: max 2 per row. key = "metricIdx:segIdx"
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [distModal, setDistModal] = React.useState<{ result: DistributionResult; label1: string; label2: string; metric: string } | null>(null);
@@ -550,24 +543,23 @@ export function useDistributionSelection({ model, result, rootRef, segmentCol, p
     if (rowCells.length >= 2) {
       const si1 = parseInt(rowCells[0].split(":")[1]);
       const si2 = parseInt(rowCells[1].split(":")[1]);
-      model.set("dist_request", JSON.stringify({
+      host.set("dist_request", JSON.stringify({
         segment_col: segmentCol, path_col: pathIdCol || null,
         segment_value: [result.segments[si1], result.segments[si2]], metric,
       }));
     } else {
       const si  = parseInt(rowCells[0].split(":")[1]);
-      model.set("dist_request", JSON.stringify({
+      host.set("dist_request", JSON.stringify({
         segment_col: segmentCol, path_col: pathIdCol || null,
         segment_value: result.segments[si], metric, complement: true,
       }));
     }
-    model.save_changes();
-  }, [result, ctxMenu, selected, segmentCol, pathIdCol, events, model]);
+  }, [result, ctxMenu, selected, segmentCol, pathIdCol, events, host]);
 
   // Listen for distribution result
   React.useEffect(() => {
     const cb = () => {
-      const raw = model.get("dist_result") as string;
+      const raw = host.get("dist_result") as string;
       if (!raw || raw === "{}") return;
       const r = parseJson<DistributionResult>(raw, {});
       if (!r || (!r.distribution && !r.distribution_1)) { setDistLoading(false); return; }
@@ -585,9 +577,8 @@ export function useDistributionSelection({ model, result, rootRef, segmentCol, p
       });
       setDistLoading(false);
     };
-    model.on("change:dist_result", cb);
-    return () => model.off("change:dist_result", cb);
-  }, [selected, result, model]);
+    return host.onChange("dist_result", cb);
+  }, [selected, result, host]);
 
   const closeCtxMenu   = React.useCallback(() => setCtxMenu(null), []);
   const closeDistModal = React.useCallback(() => { setDistModal(null); setSelected(new Set()); }, []);

@@ -83,6 +83,30 @@ class TestFilterPathsAST:
         with pytest.raises((PreprocessingConfigError, InvalidMetricConfigError)):
             _ = stream.filter_paths(condition=condition)
 
+    def test__condition_with_typo_event_raises_instead_of_matching_all(self) -> None:
+        """A typoed event name must fail loudly, not silently build an
+        all-zero has_event column that makes `== False` match every path."""
+        stream = build_stream()
+        condition = {
+            "op": "=",
+            "metric": "has_event",
+            "value": False,
+            "metric_args": {"events": "purchse"},  # typo of "purchase"
+        }
+        with pytest.raises(InvalidMetricConfigError, match="purchse"):
+            _ = stream.filter_paths(condition=condition)
+
+    def test__condition_with_typo_event_in_event_count_raises(self) -> None:
+        stream = build_stream()
+        condition = {
+            "op": ">",
+            "metric": "event_count",
+            "value": 0,
+            "metric_args": {"events": "purchse"},  # typo of "purchase"
+        }
+        with pytest.raises(InvalidMetricConfigError, match="purchse"):
+            _ = stream.filter_paths(condition=condition)
+
     def test__condition_no_matches_raises_empty_result_error(self) -> None:
         stream = build_stream()
         condition = {

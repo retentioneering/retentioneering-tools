@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.exceptions import InvalidMetricConfigError
 
 
 def get_df():
@@ -342,3 +343,20 @@ class TestClusterAnalysis:
         overview_df = result["overview_df"]
         assert "segment_size" in overview_df.index
         assert "segment_share" in overview_df.index
+
+    def test_typo_event_in_feature_raises(self) -> None:
+        """A typoed event name in a feature must fail loudly instead of
+        silently changing the clustering model with an all-zero column."""
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(InvalidMetricConfigError, match="purchse"):
+            stream.cluster_analysis_data(
+                features=[
+                    {"metric": "length"},
+                    {"metric": "has_event", "metric_args": {"events": "purchse"}},
+                ],
+                method="kmeans",
+                n_clusters=2,
+                scaler="minmax",
+            )

@@ -904,6 +904,26 @@ class TestSegmentOverview:
         assert result.loc["segment_size", "control__1"] == 1
         assert result.loc["segment_size", "test__1"] == 1
 
+    def test_typo_event_in_metric_raises(self) -> None:
+        """A typoed event name in a metric must fail loudly instead of
+        silently producing an all-zero/all-NaN column."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "segment_1", "2020-01-01 00:00:00"],
+                ["user_2", "A", "segment_2", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        with pytest.raises(InvalidMetricConfigError, match="AA"):
+            stream.segment_overview_data(
+                segment_col="segment",
+                metrics=[{"metric": "has_event", "metric_args": {"events": "AA"}}],
+            )
+
 
 class TestMetricDistribution:
     """Tests for metric_distribution method"""

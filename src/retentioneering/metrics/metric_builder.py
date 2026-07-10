@@ -442,11 +442,23 @@ class MetricBuilder:
 
         Returns:
             DataFrame with path_id as index and metrics as columns
+
+        Raises:
+            InvalidMetricConfigError: If any metric configuration references an
+                event or segment value that doesn't exist, so typos fail loudly
+                instead of silently producing all-zero metrics.
         """
         path_col = path_col or self.schema.path_col
         event_col = self.schema.event_col
 
         metric_config = MetricConfig(config)
+
+        available_events = set(self.df[event_col].unique().tolist())
+        for parsed in metric_config.parsed_configs:
+            self.validate_metric_config(
+                parsed["original"], available_events=available_events
+            )
+
         path_ids = self.df[path_col].unique()
 
         metric_dfs: List[pd.DataFrame] = []

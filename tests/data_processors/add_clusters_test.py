@@ -2,7 +2,10 @@ import pandas as pd
 import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
-from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.exceptions import (
+    InvalidMetricConfigError,
+    PreprocessingConfigError,
+)
 
 
 def get_df():
@@ -359,6 +362,26 @@ class TestAddClusters:
         unique_clusters = result.df["nmf_hdb_cluster"].unique()
         for cluster in unique_clusters:
             assert cluster.startswith("cluster_") or cluster == "noise"
+
+    def test_typo_event_in_feature_raises(self) -> None:
+        """A typoed event name in a feature must fail loudly instead of
+        silently feeding an all-zero column into the clustering model."""
+        df = get_df()
+        stream = Eventstream(df)
+
+        features = [
+            {"metric": "length"},
+            {"metric": "has_event", "metric_args": {"events": "purchse"}},  # typo
+        ]
+
+        with pytest.raises(InvalidMetricConfigError, match="purchse"):
+            stream.add_clusters(
+                name="cluster",
+                features=features,
+                method="kmeans",
+                n_clusters=2,
+                scaler="minmax",
+            )
 
     def test_custom_path_col(self) -> None:
         """Test clustering with custom path_col"""

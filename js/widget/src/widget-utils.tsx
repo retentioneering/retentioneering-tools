@@ -7,6 +7,13 @@ import type { WidgetHost } from "@retentioneering/viz-core";
 // ── JSON helpers ──────────────────────────────────────────────────────────────
 
 export function parseJson<T>(raw: unknown, fallback: T): T {
+  // JSON.parse(null) doesn't throw — it happily parses the literal `null`
+  // and returns JS `null`, silently bypassing the fallback below. Every
+  // anywidget traitlet always has a real string default (e.g. "{}"), so
+  // `model.get()` never surfaces this; a host backed by a plain data dict
+  // (staticHost/restHost) can return `null`/`undefined` for an absent key,
+  // which is exactly when this bites.
+  if (raw === null || raw === undefined) return fallback;
   try { return JSON.parse(raw as string) as T; } catch { return fallback; }
 }
 

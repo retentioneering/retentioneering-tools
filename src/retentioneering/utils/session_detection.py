@@ -13,6 +13,9 @@ The last CTE is always `with_session_id`, which exposes:
 
 from typing import Any, Dict, List
 
+from retentioneering import engine
+from retentioneering.engine import dialect
+
 _MODE_EVENTS = "events"
 _MODE_SEPARATOR = "separator"
 _MODE_START_END = "start_end"
@@ -76,9 +79,11 @@ def _timeout_or_clause(group: Dict[str, Any], path_col: str, ts_col: str) -> str
     timeout = group.get("timeout")
     if timeout is None:
         return ""
+    path_col_q = engine.quote_ident(path_col)
+    ts_col_q = engine.quote_ident(ts_col)
     return (
-        f" OR EPOCH({ts_col} - LAG({ts_col}) OVER "
-        f"(PARTITION BY {path_col} ORDER BY _rn)) > {timeout}"
+        f" OR {dialect.epoch(f'{ts_col_q} - LAG({ts_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn)')}"
+        f" > {timeout}"
     )
 
 
@@ -87,9 +92,14 @@ def _ctes_events(group, path_col, event_col, ts_col, subindex_col):
     skip = to_list(group.get("skip", []))
     timeout_or = _timeout_or_clause(group, path_col, ts_col)
 
-    tag_expr = f"CASE WHEN {event_col} IN ({sql_list(events)}) THEN 'group'"
+    path_col_q = engine.quote_ident(path_col)
+    event_col_q = engine.quote_ident(event_col)
+    ts_col_q = engine.quote_ident(ts_col)
+    subindex_col_q = engine.quote_ident(subindex_col)
+
+    tag_expr = f"CASE WHEN {event_col_q} IN ({sql_list(events)}) THEN 'group'"
     if skip:
-        tag_expr += f" WHEN {event_col} IN ({sql_list(skip)}) THEN 'skip'"
+        tag_expr += f" WHEN {event_col_q} IN ({sql_list(skip)}) THEN 'skip'"
     tag_expr += " ELSE 'other' END"
 
     return f"""
@@ -97,18 +107,18 @@ tagged AS (
     SELECT *,
         {tag_expr} AS _tag,
         ROW_NUMBER() OVER (
-            PARTITION BY {path_col} ORDER BY {ts_col}, {subindex_col}
+            PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
         ) AS _rn
     FROM df
 ),
 positions AS (
     SELECT *,
         MAX(CASE WHEN _tag = 'group' THEN _rn END) OVER (
-            PARTITION BY {path_col} ORDER BY _rn
+            PARTITION BY {path_col_q} ORDER BY _rn
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) AS _last_group_rn,
         MAX(CASE WHEN _tag = 'other' THEN _rn END) OVER (
-            PARTITION BY {path_col} ORDER BY _rn
+            PARTITION BY {path_col_q} ORDER BY _rn
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) AS _last_other_rn
     FROM tagged
@@ -125,7 +135,7 @@ session_starts AS (
     SELECT *,
         CASE WHEN _in_session = 1
                   AND (
-                      COALESCE(LAG(_in_session) OVER (PARTITION BY {path_col} ORDER BY _rn), 0) = 0
+                      COALESCE(LAG(_in_session) OVER (PARTITION BY {path_col_q} ORDER BY _rn), 0) = 0
                       {timeout_or}
                   )
              THEN 1 ELSE 0 END AS _is_new_session
@@ -134,7 +144,7 @@ session_starts AS (
 with_session_id AS (
     SELECT *,
         SUM(_is_new_session) OVER (
-            PARTITION BY {path_col} ORDER BY _rn
+            PARTITION BY {path_col_q} ORDER BY _rn
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) AS _session_counter
     FROM session_starts
@@ -145,19 +155,24 @@ def _ctes_separator(group, path_col, event_col, ts_col, subindex_col):
     separators = to_list(group["separator"])
     timeout_or = _timeout_or_clause(group, path_col, ts_col)
 
+    path_col_q = engine.quote_ident(path_col)
+    event_col_q = engine.quote_ident(event_col)
+    ts_col_q = engine.quote_ident(ts_col)
+    subindex_col_q = engine.quote_ident(subindex_col)
+
     return f"""
 tagged AS (
     SELECT *,
-        CASE WHEN {event_col} IN ({sql_list(separators)}) THEN 1 ELSE 0 END AS _is_sep,
+        CASE WHEN {event_col_q} IN ({sql_list(separators)}) THEN 1 ELSE 0 END AS _is_sep,
         ROW_NUMBER() OVER (
-            PARTITION BY {path_col} ORDER BY {ts_col}, {subindex_col}
+            PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
         ) AS _rn
     FROM df
 ),
 sep_lookahead AS (
     SELECT *,
         MIN(CASE WHEN _is_sep = 1 THEN _rn END) OVER (
-            PARTITION BY {path_col} ORDER BY _rn
+            PARTITION BY {path_col_q} ORDER BY _rn
             ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING
         ) AS _next_sep_rn
     FROM tagged
@@ -171,8 +186,8 @@ session_starts AS (
     SELECT *,
         CASE WHEN _in_session = 1
                   AND (
-                      COALESCE(LAG(_in_session) OVER (PARTITION BY {path_col} ORDER BY _rn), 0) = 0
-                      OR LAG(_is_sep) OVER (PARTITION BY {path_col} ORDER BY _rn) = 1
+                      COALESCE(LAG(_in_session) OVER (PARTITION BY {path_col_q} ORDER BY _rn), 0) = 0
+                      OR LAG(_is_sep) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = 1
                       {timeout_or}
                   )
              THEN 1 ELSE 0 END AS _is_new_session
@@ -181,7 +196,7 @@ session_starts AS (
 with_session_id AS (
     SELECT *,
         SUM(_is_new_session) OVER (
-            PARTITION BY {path_col} ORDER BY _rn
+            PARTITION BY {path_col_q} ORDER BY _rn
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) AS _session_counter
     FROM session_starts
@@ -197,21 +212,26 @@ def _ctes_separator_start(group, path_col, event_col, ts_col, subindex_col):
     separators = to_list(group["separator"])
     timeout_or = _timeout_or_clause(group, path_col, ts_col)
 
+    path_col_q = engine.quote_ident(path_col)
+    event_col_q = engine.quote_ident(event_col)
+    ts_col_q = engine.quote_ident(ts_col)
+    subindex_col_q = engine.quote_ident(subindex_col)
+
     return f"""
 tagged AS (
     SELECT *,
-        CASE WHEN {event_col} IN ({sql_list(separators)}) THEN 1 ELSE 0 END AS _is_sep,
+        CASE WHEN {event_col_q} IN ({sql_list(separators)}) THEN 1 ELSE 0 END AS _is_sep,
         ROW_NUMBER() OVER (
-            PARTITION BY {path_col} ORDER BY {ts_col},
-            CASE WHEN {event_col} IN ({sql_list(separators)}) THEN 0 ELSE 1 END,
-            {subindex_col}
+            PARTITION BY {path_col_q} ORDER BY {ts_col_q},
+            CASE WHEN {event_col_q} IN ({sql_list(separators)}) THEN 0 ELSE 1 END,
+            {subindex_col_q}
         ) AS _rn
     FROM df
 ),
 sep_count AS (
     SELECT *,
         SUM(_is_sep) OVER (
-            PARTITION BY {path_col} ORDER BY _rn
+            PARTITION BY {path_col_q} ORDER BY _rn
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) AS _sep_count
     FROM tagged
@@ -225,8 +245,8 @@ session_starts AS (
     SELECT *,
         CASE WHEN _in_session = 1
                   AND (
-                      COALESCE(LAG(_in_session) OVER (PARTITION BY {path_col} ORDER BY _rn), 0) = 0
-                      OR LAG(_is_sep) OVER (PARTITION BY {path_col} ORDER BY _rn) = 1
+                      COALESCE(LAG(_in_session) OVER (PARTITION BY {path_col_q} ORDER BY _rn), 0) = 0
+                      OR LAG(_is_sep) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = 1
                       {timeout_or}
                   )
              THEN 1 ELSE 0 END AS _is_new_session
@@ -235,7 +255,7 @@ session_starts AS (
 with_session_id AS (
     SELECT *,
         SUM(_is_new_session) OVER (
-            PARTITION BY {path_col} ORDER BY _rn
+            PARTITION BY {path_col_q} ORDER BY _rn
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) AS _session_counter
     FROM session_starts
@@ -247,25 +267,30 @@ def _ctes_start_end(group, path_col, event_col, ts_col, subindex_col):
     ends = to_list(group["end_event"])
     timeout_or = _timeout_or_clause(group, path_col, ts_col)
 
+    path_col_q = engine.quote_ident(path_col)
+    event_col_q = engine.quote_ident(event_col)
+    ts_col_q = engine.quote_ident(ts_col)
+    subindex_col_q = engine.quote_ident(subindex_col)
+
     return f"""
 tagged AS (
     SELECT *,
-        CASE WHEN {event_col} IN ({sql_list(starts)}) THEN 'start'
-             WHEN {event_col} IN ({sql_list(ends)}) THEN 'end'
+        CASE WHEN {event_col_q} IN ({sql_list(starts)}) THEN 'start'
+             WHEN {event_col_q} IN ({sql_list(ends)}) THEN 'end'
              ELSE 'inner' END AS _tag,
         ROW_NUMBER() OVER (
-            PARTITION BY {path_col} ORDER BY {ts_col}, {subindex_col}
+            PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
         ) AS _rn
     FROM df
 ),
 positions AS (
     SELECT *,
         MAX(CASE WHEN _tag = 'start' THEN _rn END) OVER (
-            PARTITION BY {path_col} ORDER BY _rn
+            PARTITION BY {path_col_q} ORDER BY _rn
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) AS _last_start_rn,
         MAX(CASE WHEN _tag = 'end' THEN _rn END) OVER (
-            PARTITION BY {path_col} ORDER BY _rn
+            PARTITION BY {path_col_q} ORDER BY _rn
             ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
         ) AS _last_end_rn
     FROM tagged
@@ -281,8 +306,8 @@ session_starts AS (
     SELECT *,
         CASE WHEN _in_session = 1
                   AND (
-                      COALESCE(LAG(_in_session) OVER (PARTITION BY {path_col} ORDER BY _rn), 0) = 0
-                      OR LAG(_tag) OVER (PARTITION BY {path_col} ORDER BY _rn) = 'end'
+                      COALESCE(LAG(_in_session) OVER (PARTITION BY {path_col_q} ORDER BY _rn), 0) = 0
+                      OR LAG(_tag) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = 'end'
                       {timeout_or}
                   )
              THEN 1 ELSE 0 END AS _is_new_session
@@ -291,7 +316,7 @@ session_starts AS (
 with_session_id AS (
     SELECT *,
         SUM(_is_new_session) OVER (
-            PARTITION BY {path_col} ORDER BY _rn
+            PARTITION BY {path_col_q} ORDER BY _rn
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) AS _session_counter
     FROM session_starts
@@ -303,18 +328,22 @@ def _ctes_timeout(timeout, path_col, ts_col, subindex_col):
     Pure timeout mode: every event is in-session; a new session starts when the
     gap to the previous event exceeds `timeout` seconds (or at the start of a path).
     """
+    path_col_q = engine.quote_ident(path_col)
+    ts_col_q = engine.quote_ident(ts_col)
+    subindex_col_q = engine.quote_ident(subindex_col)
+
     return f"""
 tagged AS (
     SELECT *,
         ROW_NUMBER() OVER (
-            PARTITION BY {path_col} ORDER BY {ts_col}, {subindex_col}
+            PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
         ) AS _rn
     FROM df
 ),
 with_gap AS (
     SELECT *,
-        CASE WHEN LAG({ts_col}) OVER (PARTITION BY {path_col} ORDER BY _rn) IS NULL
-                  OR EPOCH({ts_col} - LAG({ts_col}) OVER (PARTITION BY {path_col} ORDER BY _rn)) > {timeout}
+        CASE WHEN LAG({ts_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) IS NULL
+                  OR {dialect.epoch(f"{ts_col_q} - LAG({ts_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn)")} > {timeout}
              THEN 1 ELSE 0 END AS _is_new_session
     FROM tagged
 ),
@@ -322,7 +351,7 @@ with_session_id AS (
     SELECT *,
         1 AS _in_session,
         SUM(_is_new_session) OVER (
-            PARTITION BY {path_col} ORDER BY _rn
+            PARTITION BY {path_col_q} ORDER BY _rn
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) AS _session_counter
     FROM with_gap

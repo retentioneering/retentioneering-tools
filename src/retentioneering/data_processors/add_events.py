@@ -1,8 +1,9 @@
 from typing import List, Tuple
 
-import duckdb
 import pandas as pd
 
+from retentioneering import engine
+from retentioneering.engine import dialect
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.eventstream.schema import EventstreamSchema
@@ -127,8 +128,7 @@ class AddEvents(DataProcessor):
 
     def _get_by_sql(self, df: pd.DataFrame, schema: EventstreamSchema) -> pd.DataFrame:
         columns_old = set(df.columns)
-        eventstream = df  # noqa: F841  — referenced by user SQL as "eventstream"
-        result = duckdb.sql(self.sql).df()
+        result = engine.run(self.sql, eventstream=df)
         if set(result.columns) != columns_old:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
@@ -143,6 +143,10 @@ class AddEvents(DataProcessor):
         ts_col = schema.timestamp_col
         subindex_col = schema.subindex
         event_col = schema.event_col
+        path_col_q = engine.quote_ident(path_col)
+        ts_col_q = engine.quote_ident(ts_col)
+        subindex_col_q = engine.quote_ident(subindex_col)
+        event_col_q = engine.quote_ident(event_col)
 
         inactivity_days = self.churn["inactivity_days"]
         active_events = self.churn.get("active_events")
@@ -157,20 +161,20 @@ class AddEvents(DataProcessor):
             if not active_events:
                 return df.iloc[0:0]
             quoted = ", ".join(f"'{e}'" for e in active_events)
-            active_filter = f"WHERE {event_col} IN ({quoted})"
+            active_filter = f"WHERE {event_col_q} IN ({quoted})"
 
         query = f"""
             WITH windowed AS (
                 SELECT *,
-                    LEAD({ts_col}) OVER (
-                        PARTITION BY {path_col} ORDER BY {ts_col}, {subindex_col}
+                    LEAD({ts_col_q}) OVER (
+                        PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
                     ) AS _hop_next_ts,
-                    (SELECT MAX({ts_col}) FROM df) AS _hop_dataset_end
+                    (SELECT MAX({ts_col_q}) FROM df) AS _hop_dataset_end
                 FROM df
                 {active_filter}
             )
             SELECT * EXCLUDE (_hop_next_ts, _hop_dataset_end) FROM windowed
-            WHERE epoch(COALESCE(_hop_next_ts, _hop_dataset_end)) - epoch({ts_col})
+            WHERE {dialect.epoch("COALESCE(_hop_next_ts, _hop_dataset_end)")} - {dialect.epoch(ts_col_q)}
                   > {threshold_seconds}
         """
-        return duckdb.sql(query).df()
+        return engine.run(query, df=df)

@@ -30,9 +30,10 @@ Supports metrics:
 
 from typing import Any, Dict, List, Set
 
-import duckdb
 import pandas as pd
 
+from retentioneering import engine
+from retentioneering.engine import dialect
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import InvalidMetricConfigError
 from retentioneering.utils.sequences import generate_patterns_with_optional_gaps
@@ -519,18 +520,19 @@ class MetricBuilder:
             event_names = sorted(self.df[event_col].unique().tolist())
 
         events_quoted = ", ".join([f"'{e}'" for e in event_names])
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
         query = f"""
         SELECT
-            {path_col},
-            {event_col},
+            {path_col_q},
+            {event_col_q},
             count(*) as count
         FROM df
-        WHERE {event_col} IN ({events_quoted})
-        GROUP BY {path_col}, {event_col}
+        WHERE {event_col_q} IN ({events_quoted})
+        GROUP BY {path_col_q}, {event_col_q}
         """
 
-        df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
-        result = duckdb.query(query).df()
+        result = engine.run(query, df=self.df)
 
         if result.empty:
             return pd.DataFrame(columns=[f"event_count_{e}" for e in event_names])
@@ -572,24 +574,26 @@ class MetricBuilder:
                 path_col=path_col
             ).df
 
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
+        timestamp_col_q = engine.quote_ident(timestamp_col)
         query = f"""
         WITH first_events AS (
             SELECT
-                {path_col},
-                MIN(CASE WHEN {event_col} = '{start_event}' THEN {timestamp_col} END) as time_from,
-                MIN(CASE WHEN {event_col} = '{end_event}' THEN {timestamp_col} END) as time_to
+                {path_col_q},
+                MIN(CASE WHEN {event_col_q} = '{start_event}' THEN {timestamp_col_q} END) as time_from,
+                MIN(CASE WHEN {event_col_q} = '{end_event}' THEN {timestamp_col_q} END) as time_to
             FROM df_with_start_end
-            GROUP BY {path_col}
+            GROUP BY {path_col_q}
         )
         SELECT
-            {path_col},
-            EPOCH(time_to - time_from) as time_diff_seconds
+            {path_col_q},
+            {dialect.epoch("time_to - time_from")} as time_diff_seconds
         FROM first_events
         WHERE time_from IS NOT NULL AND time_to IS NOT NULL
         """
 
-        df_with_start_end = self.df_with_start_end  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
-        result = duckdb.query(query).df()
+        result = engine.run(query, df_with_start_end=self.df_with_start_end)
 
         metric_name = f"time_from_{start_event}_to_{end_event}"
         if len(result) > 0:
@@ -602,25 +606,26 @@ class MetricBuilder:
 
     def _build_length(self, path_col: str) -> pd.DataFrame:
         """Number of steps (events) per path"""
+        path_col_q = engine.quote_ident(path_col)
         query = f"""
-        SELECT {path_col}, COUNT(*) AS length
+        SELECT {path_col_q}, COUNT(*) AS length
         FROM df
-        GROUP BY {path_col}
+        GROUP BY {path_col_q}
         """
-        df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
-        result = duckdb.query(query).df()
+        result = engine.run(query, df=self.df)
         return result.set_index(path_col)
 
     def _build_duration(self, path_col: str) -> pd.DataFrame:
         """Duration in seconds between first and last event per path"""
         timestamp_col = self.schema.timestamp_col
+        path_col_q = engine.quote_ident(path_col)
+        timestamp_col_q = engine.quote_ident(timestamp_col)
         query = f"""
-        SELECT {path_col}, EPOCH(MAX({timestamp_col}) - MIN({timestamp_col})) AS duration
+        SELECT {path_col_q}, {dialect.epoch(f"MAX({timestamp_col_q}) - MIN({timestamp_col_q})")} AS duration
         FROM df
-        GROUP BY {path_col}
+        GROUP BY {path_col_q}
         """
-        df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
-        result = duckdb.query(query).df()
+        result = engine.run(query, df=self.df)
         result["duration"] = result["duration"].astype(float)
         return result.set_index(path_col)
 
@@ -628,13 +633,14 @@ class MetricBuilder:
         """Unix timestamp (seconds) of first event per path.
         Stored as float so mean/median/percentile aggregations work correctly."""
         timestamp_col = self.schema.timestamp_col
+        path_col_q = engine.quote_ident(path_col)
+        timestamp_col_q = engine.quote_ident(timestamp_col)
         query = f"""
-        SELECT {path_col}, EPOCH(MIN({timestamp_col})) AS first_event_time
+        SELECT {path_col_q}, {dialect.epoch(f"MIN({timestamp_col_q})")} AS first_event_time
         FROM df
-        GROUP BY {path_col}
+        GROUP BY {path_col_q}
         """
-        df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
-        result = duckdb.query(query).df()
+        result = engine.run(query, df=self.df)
         result["first_event_time"] = result["first_event_time"].astype(float)
         return result.set_index(path_col)
 
@@ -643,21 +649,23 @@ class MetricBuilder:
         active_events: optional list of events to count; if None, all events count."""
         timestamp_col = self.schema.timestamp_col
         event_col = self.schema.event_col
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
+        timestamp_col_q = engine.quote_ident(timestamp_col)
         if active_events:
             ev_list = (
                 active_events if isinstance(active_events, list) else [active_events]
             )
             quoted = ", ".join(f"'{e}'" for e in ev_list)
-            count_expr = f"COUNT(DISTINCT CASE WHEN {event_col} IN ({quoted}) THEN CAST({timestamp_col} AS DATE) END)"
+            count_expr = f"COUNT(DISTINCT CASE WHEN {event_col_q} IN ({quoted}) THEN CAST({timestamp_col_q} AS DATE) END)"
         else:
-            count_expr = f"COUNT(DISTINCT CAST({timestamp_col} AS DATE))"
+            count_expr = f"COUNT(DISTINCT CAST({timestamp_col_q} AS DATE))"
         query = f"""
-        SELECT {path_col}, {count_expr} AS active_days
+        SELECT {path_col_q}, {count_expr} AS active_days
         FROM df
-        GROUP BY {path_col}
+        GROUP BY {path_col_q}
         """
-        df = self.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
-        result = duckdb.query(query).df()
+        result = engine.run(query, df=self.df)
         return result.set_index(path_col)
 
     def _build_matches(
@@ -674,23 +682,24 @@ class MetricBuilder:
             ).df
 
         # Build path strings for each path_id
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
         query = f"""
-        SELECT {path_col}, string_agg({event_col}, '->') as path
+        SELECT {path_col_q}, {dialect.path_agg(event_col_q)} as path
         FROM df_with_start_end
-        GROUP BY {path_col}
+        GROUP BY {path_col_q}
         """
-        # df_with_start_end and paths are needed for DuckDB scripts execution
-        df_with_start_end = self.df_with_start_end  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
-        paths = duckdb.query(query).df()  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
+        paths = engine.run(query, df_with_start_end=self.df_with_start_end)
 
         # Generate patterns with optional gaps
         patterns = generate_patterns_with_optional_gaps(pattern)
         patterns_chunk = " OR ".join(
-            f"regexp_matches(path, {format_value_for_sql(p)})" for p in patterns
+            dialect.regexp_match("path", format_value_for_sql(p)) for p in patterns
         )
 
-        query = f'select {path_col}, {patterns_chunk} as "{metric_name}" from paths'
-        result = duckdb.sql(query).df()
+        metric_name_q = engine.quote_ident(metric_name)
+        query = f"select {path_col_q}, {patterns_chunk} as {metric_name_q} from paths"
+        result = engine.run(query, paths=paths)
         return result.set_index(path_col)
 
     def _build_in_segment(self, config: Dict[str, Any], path_col: str) -> pd.DataFrame:
@@ -722,6 +731,8 @@ class MetricBuilder:
 
         # Build metrics for each segment value
         result_dfs = []
+        path_col_q = engine.quote_ident(path_col)
+        segment_name_q = engine.quote_ident(segment_name)
 
         for segment_value, metric_name in zip(segment_values, metric_names):
             # Format value for SQL comparison
@@ -731,30 +742,30 @@ class MetricBuilder:
                 # Path belongs if segment_value appears at least once
                 query = f"""
                 SELECT
-                    {path_col},
-                    MAX(CASE WHEN {segment_name} = {sql_value} THEN 1 ELSE 0 END) AS belongs
+                    {path_col_q},
+                    MAX(CASE WHEN {segment_name_q} = {sql_value} THEN 1 ELSE 0 END) AS belongs
                 FROM df
-                GROUP BY {path_col}
+                GROUP BY {path_col_q}
                 """
-                result = duckdb.query(query).df()
+                result = engine.run(query, df=df)
 
             elif mode == "all":
                 # Path belongs if segment_value is the only value in the segment column
                 query = f"""
                 WITH path_segment_values AS (
                     SELECT
-                        {path_col},
-                        COUNT(DISTINCT {segment_name}) AS distinct_values,
-                        MAX(CASE WHEN {segment_name} = {sql_value} THEN 1 ELSE 0 END) AS has_target
+                        {path_col_q},
+                        COUNT(DISTINCT {segment_name_q}) AS distinct_values,
+                        MAX(CASE WHEN {segment_name_q} = {sql_value} THEN 1 ELSE 0 END) AS has_target
                     FROM df
-                    GROUP BY {path_col}
+                    GROUP BY {path_col_q}
                 )
                 SELECT
-                    {path_col},
+                    {path_col_q},
                     CASE WHEN distinct_values = 1 AND has_target = 1 THEN 1 ELSE 0 END AS belongs
                 FROM path_segment_values
                 """
-                result = duckdb.query(query).df()
+                result = engine.run(query, df=df)
 
             elif mode == "event_share":
                 # Path belongs if segment_value appears in at least N% of events
@@ -762,18 +773,18 @@ class MetricBuilder:
                 query = f"""
                 WITH path_counts AS (
                     SELECT
-                        {path_col},
+                        {path_col_q},
                         COUNT(*) AS total_events,
-                        SUM(CASE WHEN {segment_name} = {sql_value} THEN 1 ELSE 0 END) AS target_events
+                        SUM(CASE WHEN {segment_name_q} = {sql_value} THEN 1 ELSE 0 END) AS target_events
                     FROM df
-                    GROUP BY {path_col}
+                    GROUP BY {path_col_q}
                 )
                 SELECT
-                    {path_col},
+                    {path_col_q},
                     CASE WHEN CAST(target_events AS DOUBLE) / total_events >= {threshold} THEN 1 ELSE 0 END AS belongs
                 FROM path_counts
                 """
-                result = duckdb.query(query).df()
+                result = engine.run(query, df=df)
             else:
                 continue
 

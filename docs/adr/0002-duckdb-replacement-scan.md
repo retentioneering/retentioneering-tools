@@ -1,6 +1,19 @@
 # ADR-0002: DuckDB replacement scan idiom and the `FROM eventstream` SQL contract
 
-Status: Accepted (5.0 rewrite; recorded 2026-07)
+Status: Superseded by L1 (see `engine.py`) (recorded 2026-07)
+
+> **Superseded.** The replacement-scan idiom described below is no longer the
+> live convention for new code. `src/retentioneering/engine/` (`engine.run()` /
+> `engine.quote_ident()`, plus DuckDB-specific SQL fragments in
+> `engine/dialect.py`) now centralizes query execution: call sites pass pandas
+> frames to `engine.run()` as explicit keyword arguments instead of relying on
+> DuckDB inspecting the caller's stack frame for a same-named local variable.
+> The `eventstream` alias contract for user-facing `sql=` arguments
+> (`filter_events`, `add_events`, `add_segment`) is unchanged — it is still the
+> fixed table name those processors register the frame under when calling
+> `engine.run()`. The historical context below (why the old idiom existed, and
+> why "unused" variables were once load-bearing) is kept for reference; it no
+> longer describes how current call sites are written.
 
 ## Context
 

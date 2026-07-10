@@ -1,9 +1,9 @@
-import json
-import duckdb
 import pandas as pd
 from dataclasses import dataclass
 from typing import Any, Dict, List, Set, Tuple
 
+from retentioneering import engine
+from retentioneering.engine import dialect
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.data_processors.filter_paths import FilterPaths
 from retentioneering.eventstream.schema import EventstreamSchema
@@ -147,26 +147,28 @@ class CollapseEvents(DataProcessor):
         ts_col: str,
     ) -> List[str]:
         agg_exprs = []
+        ts_col_q = engine.quote_ident(ts_col)
         for c in df.columns:
             if c in exclude_cols:
                 continue
+            c_q = engine.quote_ident(c)
             agg_name = agg_config.get(c, "first")
             if agg_name == "first":
-                agg_exprs.append(f"ARG_MIN({c}, {ts_col}) AS {c}")
+                agg_exprs.append(f"ARG_MIN({c_q}, {ts_col_q}) AS {c_q}")
             elif agg_name == "last":
-                agg_exprs.append(f"ARG_MAX({c}, {ts_col}) AS {c}")
+                agg_exprs.append(f"ARG_MAX({c_q}, {ts_col_q}) AS {c_q}")
             elif agg_name == "min":
-                agg_exprs.append(f"MIN({c}) AS {c}")
+                agg_exprs.append(f"MIN({c_q}) AS {c_q}")
             elif agg_name == "max":
-                agg_exprs.append(f"MAX({c}) AS {c}")
+                agg_exprs.append(f"MAX({c_q}) AS {c_q}")
             elif agg_name == "mean":
-                agg_exprs.append(f"AVG({c}) AS {c}")
+                agg_exprs.append(f"AVG({c_q}) AS {c_q}")
             elif agg_name == "mode":
-                agg_exprs.append(f"MODE({c}) AS {c}")
+                agg_exprs.append(f"MODE({c_q}) AS {c_q}")
             elif agg_name == "any":
-                agg_exprs.append(f"ANY_VALUE({c}) AS {c}")
+                agg_exprs.append(f"ANY_VALUE({c_q}) AS {c_q}")
             else:
-                agg_exprs.append(f"ARG_MIN({c}, {ts_col}) AS {c}")
+                agg_exprs.append(f"ARG_MIN({c_q}, {ts_col_q}) AS {c_q}")
         return agg_exprs
 
     @staticmethod
@@ -175,13 +177,15 @@ class CollapseEvents(DataProcessor):
     ) -> List[Tuple[str, str]]:
         metric = mc["metric"]
         args = mc.get("metric_args") or {}
+        event_col_q = engine.quote_ident(event_col)
+        ts_col_q = engine.quote_ident(ts_col)
 
         if metric == "has_event":
             events = to_list(args.get("events", []))
             return [
                 (
                     f"has_event_{e}",
-                    f"MAX(CASE WHEN {event_col} = '{e}' THEN 1 ELSE 0 END)",
+                    f"MAX(CASE WHEN {event_col_q} = '{e}' THEN 1 ELSE 0 END)",
                 )
                 for e in events
             ]
@@ -190,25 +194,24 @@ class CollapseEvents(DataProcessor):
             return [
                 (
                     f"event_count_{e}",
-                    f"COUNT(CASE WHEN {event_col} = '{e}' THEN 1 ELSE NULL END)",
+                    f"COUNT(CASE WHEN {event_col_q} = '{e}' THEN 1 ELSE NULL END)",
                 )
                 for e in events
             ]
         elif metric == "duration":
-            return [("duration", f"EPOCH(MAX({ts_col}) - MIN({ts_col}))")]
+            return [("duration", dialect.epoch(f"MAX({ts_col_q}) - MIN({ts_col_q})"))]
         elif metric == "length":
             return [("length", "COUNT(*)")]
         elif metric == "time_between":
             ef = args.get("start_event", "")
             et = args.get("end_event", "")
-            agg_sql = (
-                f"EPOCH("
-                f"MIN(CASE WHEN {event_col} = '{et}' THEN {ts_col} END) - "
-                f"MIN(CASE WHEN {event_col} = '{ef}' THEN {ts_col} END))"
+            agg_sql = dialect.epoch(
+                f"MIN(CASE WHEN {event_col_q} = '{et}' THEN {ts_col_q} END) - "
+                f"MIN(CASE WHEN {event_col_q} = '{ef}' THEN {ts_col_q} END)"
             )
             return [(f"time_from_{ef}_to_{et}", agg_sql)]
         elif metric == "active_days":
-            return [("active_days", f"COUNT(DISTINCT CAST({ts_col} AS DATE))")]
+            return [("active_days", f"COUNT(DISTINCT CAST({ts_col_q} AS DATE))")]
         else:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
@@ -229,25 +232,31 @@ class CollapseEvents(DataProcessor):
         agg_exprs = self._session_agg_exprs(df, self.agg, exclude, timestamp_col)
         agg_chunk = (", ".join(agg_exprs)) if agg_exprs else ""
 
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
+        timestamp_col_q = engine.quote_ident(timestamp_col)
+        event_type_col_q = engine.quote_ident(schema.event_type)
+        subindex_col_q = engine.quote_ident(schema.subindex)
+
         # LAG/SUM below must be ordered by a unique key: (timestamp, subindex) can
         # tie (subindex is the same for all raw events), and DuckDB's default RANGE
         # window frame lumps tied peer rows into one group, silently merging
         # distinct consecutive events that share a timestamp. A precomputed
         # ROW_NUMBER (_rn) plus an explicit ROWS frame makes grouping deterministic.
         if self.consecutive is True:
-            is_start_condition = f"LAG({event_col}) OVER (PARTITION BY {path_col} ORDER BY _rn) = {event_col}"
+            is_start_condition = f"LAG({event_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = {event_col_q}"
         else:
             events_list = ", ".join(f"'{event}'" for event in self.consecutive)
             is_start_condition = (
-                f"LAG({event_col}) OVER (PARTITION BY {path_col} ORDER BY _rn) = {event_col}"
-                f" AND {event_col} IN ({events_list})"
+                f"LAG({event_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = {event_col_q}"
+                f" AND {event_col_q} IN ({events_list})"
             )
 
         query = f"""
         WITH ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_col} ORDER BY {timestamp_col}, {schema.subindex}
+                    PARTITION BY {path_col_q} ORDER BY {timestamp_col_q}, {subindex_col_q}
                 ) AS _rn
             FROM df
         ),
@@ -260,21 +269,21 @@ class CollapseEvents(DataProcessor):
         event_groups AS (
             SELECT *,
                 SUM(is_start) OVER (
-                    PARTITION BY {path_col} ORDER BY _rn
+                    PARTITION BY {path_col_q} ORDER BY _rn
                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                 ) AS grp
             FROM event_group_starts
         )
         SELECT
-            {path_col},
-            ANY_VALUE({event_col}) AS {event_col},
-            CASE WHEN COUNT(*) > 1 THEN '{collapsed_event_type}' ELSE ARG_MIN({schema.event_type}, {timestamp_col}) END AS {schema.event_type},
+            {path_col_q},
+            ANY_VALUE({event_col_q}) AS {event_col_q},
+            CASE WHEN COUNT(*) > 1 THEN '{collapsed_event_type}' ELSE ARG_MIN({event_type_col_q}, {timestamp_col_q}) END AS {event_type_col_q},
             {agg_chunk}
         FROM event_groups
-        GROUP BY {path_col}, grp
-        ORDER BY {path_col}, MIN(_rn)
+        GROUP BY {path_col_q}, grp
+        ORDER BY {path_col_q}, MIN(_rn)
         """
-        res = duckdb.query(query).df()
+        res = engine.run(query, df=df)
         res = res[schema.cols]
         return res
 
@@ -290,6 +299,12 @@ class CollapseEvents(DataProcessor):
         subindex_col = schema.subindex
         event_type_col = schema.event_type
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
+
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
+        ts_col_q = engine.quote_ident(ts_col)
+        subindex_col_q = engine.quote_ident(subindex_col)
+        event_type_col_q = engine.quote_ident(event_type_col)
 
         cases: List[Dict[str, Any]] = group.get("cases", [])
         mode = detect_mode(group)
@@ -321,7 +336,9 @@ class CollapseEvents(DataProcessor):
             for col_name, agg_sql in self._metric_agg_sql(mc, event_col, ts_col):
                 if col_name not in metric_col_names:
                     metric_col_names.append(col_name)
-                    metric_agg_parts.append(f'{agg_sql} AS "{col_name}"')
+                    metric_agg_parts.append(
+                        f"{agg_sql} AS {engine.quote_ident(col_name)}"
+                    )
 
         metric_agg_chunk = (
             (", " + ", ".join(metric_agg_parts)) if metric_agg_parts else ""
@@ -344,25 +361,27 @@ class CollapseEvents(DataProcessor):
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         collapsed_select = ", ".join(
-            f"{classify_expr} AS {event_col}" if c == event_col else c
+            f"{classify_expr} AS {event_col_q}"
+            if c == event_col
+            else engine.quote_ident(c)
             for c in schema.cols
         )
-        cols_list = json.dumps(schema.cols)[1:-1]
+        cols_list = ", ".join(engine.quote_ident(c) for c in schema.cols)
 
         query = f"""
         WITH
         {session_ctes},
         session_raw AS (
             SELECT
-                {path_col},
+                {path_col_q},
                 _session_counter,
-                MIN({ts_col}) AS {ts_col},
-                '{collapsed_event_type}' AS {event_type_col}
+                MIN({ts_col_q}) AS {ts_col_q},
+                '{collapsed_event_type}' AS {event_type_col_q}
                 {metric_agg_chunk}
                 {agg_chunk}
             FROM with_session_id
             WHERE _in_session = 1
-            GROUP BY {path_col}, _session_counter
+            GROUP BY {path_col_q}, _session_counter
         ),
         collapsed AS (
             SELECT {collapsed_select}
@@ -376,10 +395,10 @@ class CollapseEvents(DataProcessor):
         SELECT {cols_list} FROM collapsed
         UNION ALL
         SELECT {cols_list} FROM uncollapsed
-        ORDER BY {path_col}, {ts_col}, {subindex_col}
+        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}
         """
 
-        return duckdb.query(query).df()
+        return engine.run(query, df=df)
 
     def _collapse_by_col(
         self,
@@ -414,51 +433,59 @@ class CollapseEvents(DataProcessor):
         }
         agg_exprs = self._session_agg_exprs(df, self.agg, explicit_cols, ts_col)
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
-        group_col_select = f", {col}" if col in schema.cols else ""
-        cols_list = json.dumps(schema.cols)[1:-1]
+
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
+        ts_col_q = engine.quote_ident(ts_col)
+        subindex_col_q = engine.quote_ident(subindex_col)
+        event_type_col_q = engine.quote_ident(event_type_col)
+        col_q = engine.quote_ident(col)
+
+        group_col_select = f", {col_q}" if col in schema.cols else ""
+        cols_list = ", ".join(engine.quote_ident(c) for c in schema.cols)
 
         query = f"""
         WITH
         ordered AS (
             SELECT *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY {path_col} ORDER BY {ts_col}, {subindex_col}
+                    PARTITION BY {path_col_q} ORDER BY {ts_col_q}, {subindex_col_q}
                 ) AS _rn
             FROM df
         ),
         group_starts AS (
             SELECT *,
-                CASE WHEN {col} IS DISTINCT FROM
-                          LAG({col}) OVER (PARTITION BY {path_col} ORDER BY _rn)
+                CASE WHEN {col_q} IS DISTINCT FROM
+                          LAG({col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn)
                      THEN 1 ELSE 0 END AS _is_new_group
             FROM ordered
         ),
         with_group AS (
             SELECT *,
                 SUM(_is_new_group) OVER (
-                    PARTITION BY {path_col} ORDER BY _rn
+                    PARTITION BY {path_col_q} ORDER BY _rn
                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                 ) AS _grp
             FROM group_starts
         ),
         collapsed AS (
             SELECT
-                {path_col},
-                MIN({ts_col}) AS {ts_col},
-                MIN({subindex_col}) AS {subindex_col},
-                CAST({col} AS VARCHAR) AS {event_col},
-                '{collapsed_event_type}' AS {event_type_col}
+                {path_col_q},
+                MIN({ts_col_q}) AS {ts_col_q},
+                MIN({subindex_col_q}) AS {subindex_col_q},
+                CAST({col_q} AS VARCHAR) AS {event_col_q},
+                '{collapsed_event_type}' AS {event_type_col_q}
                 {group_col_select}
                 {agg_chunk}
             FROM with_group
-            GROUP BY {path_col}, _grp, {col}
+            GROUP BY {path_col_q}, _grp, {col_q}
         )
         SELECT {cols_list}
         FROM collapsed
-        ORDER BY {path_col}, {ts_col}, {subindex_col}
+        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}
         """
 
-        result = duckdb.query(query).df()
+        result = engine.run(query, df=df)
 
         for c in schema.event_cols + schema.segment_cols:
             if c in result.columns:
@@ -502,37 +529,47 @@ class CollapseEvents(DataProcessor):
         }
         agg_exprs = self._session_agg_exprs(df, self.agg, explicit_cols, ts_col)
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
-        cols_list = json.dumps(schema.cols)[1:-1]
+
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
+        ts_col_q = engine.quote_ident(ts_col)
+        subindex_col_q = engine.quote_ident(subindex_col)
+        event_type_col_q = engine.quote_ident(event_type_col)
+        session_id_col_q = engine.quote_ident(session_id_col)
+        session_type_col_q = engine.quote_ident(session_type_col)
+        cols_list = ", ".join(engine.quote_ident(c) for c in schema.cols)
 
         # session_id_col and session_type_col may be in schema.cols (custom_cols),
         # so include them explicitly to satisfy the final SELECT.
         extra_session_cols = ""
         if session_id_col in schema.cols:
-            extra_session_cols += f", ANY_VALUE({session_id_col}) AS {session_id_col}"
+            extra_session_cols += (
+                f", ANY_VALUE({session_id_col_q}) AS {session_id_col_q}"
+            )
         if session_type_col in schema.cols:
             extra_session_cols += (
-                f", ANY_VALUE({session_type_col}) AS {session_type_col}"
+                f", ANY_VALUE({session_type_col_q}) AS {session_type_col_q}"
             )
 
         query = f"""
         WITH collapsed AS (
             SELECT
-                {path_col},
-                MIN({ts_col}) AS {ts_col},
-                MIN({subindex_col}) AS {subindex_col},
-                CAST(ANY_VALUE({session_type_col}) AS VARCHAR) AS {event_col},
-                '{collapsed_event_type}' AS {event_type_col}
+                {path_col_q},
+                MIN({ts_col_q}) AS {ts_col_q},
+                MIN({subindex_col_q}) AS {subindex_col_q},
+                CAST(ANY_VALUE({session_type_col_q}) AS VARCHAR) AS {event_col_q},
+                '{collapsed_event_type}' AS {event_type_col_q}
                 {extra_session_cols}
                 {agg_chunk}
             FROM df
-            GROUP BY {path_col}, {session_id_col}
+            GROUP BY {path_col_q}, {session_id_col_q}
         )
         SELECT {cols_list}
         FROM collapsed
-        ORDER BY {path_col}, {ts_col}, {subindex_col}
+        ORDER BY {path_col_q}, {ts_col_q}, {subindex_col_q}
         """
 
-        result = duckdb.query(query).df()
+        result = engine.run(query, df=df)
 
         for c in schema.event_cols + schema.segment_cols:
             if c in result.columns:

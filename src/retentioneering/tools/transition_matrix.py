@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, get_args
 
-import duckdb
 import pandas as pd
 
+from retentioneering import engine
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import InvalidParameterError, EmptyEventstreamError
 from .types import T_Diff, T_TransitionMatrixValues
@@ -33,11 +33,16 @@ class TransitionMatrix:
         timestamp_col = self.eventstream.schema.timestamp_col
         index_col = self.eventstream.schema.index
         subindex_col = self.eventstream.schema.subindex
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
+        timestamp_col_q = engine.quote_ident(timestamp_col)
+        index_col_q = engine.quote_ident(index_col)
+        subindex_col_q = engine.quote_ident(subindex_col)
         # path_cols is validated (coarsest-first, strictly nested) at Eventstream
         # construction time, and path_col is restricted to schema.path_cols
         # above, so ordering by index_col is correct at any accepted grain
         # (see ADR-0004).
-        order_by = f"{index_col}, {subindex_col}"
+        order_by = f"{index_col_q}, {subindex_col_q}"
         time_values = ["time_median", "time_q95"]
 
         if self.eventstream.is_empty():
@@ -58,22 +63,21 @@ class TransitionMatrix:
                 "proba_in",
             ]:
                 query = f"""
-                select {event_col}, next_{event_col}, count(*) as cnt
+                select {event_col_q}, next_{event_col}, count(*) as cnt
                 from (
                     select
-                        {event_col},
-                        lead({event_col}) over (
-                            partition by {path_col}
+                        {event_col_q},
+                        lead({event_col_q}) over (
+                            partition by {path_col_q}
                             order by {order_by}
                         ) as next_{event_col},
-                        {path_col}
+                        {path_col_q}
                     from df
                 ) where next_{event_col} is not null
-                group by {event_col}, next_{event_col}
+                group by {event_col_q}, next_{event_col}
                 """
                 tm_abs = (
-                    duckdb.query(query)
-                    .df()
+                    engine.run(query, df=df)
                     .pivot(index=event_col, columns=f"next_{event_col}", values="cnt")
                     .fillna(0)
                 )
@@ -93,22 +97,21 @@ class TransitionMatrix:
 
             elif values == "unique_paths":
                 query = f"""
-                select {event_col}, next_{event_col}, count(distinct {path_col}) as cnt
+                select {event_col_q}, next_{event_col}, count(distinct {path_col_q}) as cnt
                 from (
                     select
-                        {event_col},
-                        lead({event_col}) over (
-                            partition by {path_col}
+                        {event_col_q},
+                        lead({event_col_q}) over (
+                            partition by {path_col_q}
                             order by {order_by}
                         ) as next_{event_col},
-                        {path_col}
+                        {path_col_q}
                     from df
                 ) where next_{event_col} is not null
-                group by {event_col}, next_{event_col}
+                group by {event_col_q}, next_{event_col}
                 """
                 tm = (
-                    duckdb.query(query)
-                    .df()
+                    engine.run(query, df=df)
                     .pivot(index=event_col, columns=f"next_{event_col}", values="cnt")
                     .fillna(0)
                     .astype(int)
@@ -121,24 +124,24 @@ class TransitionMatrix:
                     agg_func = "quantile_cont(timedelta, 0.95)"
 
                 query = f"""
-                select {event_col}, next_{event_col}, {agg_func} as timedelta
+                select {event_col_q}, next_{event_col}, {agg_func} as timedelta
                 from (
                     select
-                        {event_col},
-                        lead({event_col}) over (
-                            partition by {path_col}
+                        {event_col_q},
+                        lead({event_col_q}) over (
+                            partition by {path_col_q}
                             order by {order_by}
                         ) as next_{event_col},
-                        lead({timestamp_col}) over (
-                            partition by {path_col}
+                        lead({timestamp_col_q}) over (
+                            partition by {path_col_q}
                             order by {order_by}
                         ) as next_{timestamp_col},
-                        date_diff('second', {timestamp_col}, next_{timestamp_col}) as timedelta
+                        date_diff('second', {timestamp_col_q}, next_{timestamp_col}) as timedelta
                     from df
                 ) where next_{event_col} is not null
-                group by {event_col}, next_{event_col}
+                group by {event_col_q}, next_{event_col}
                 """
-                timedeltas = duckdb.query(query).df()
+                timedeltas = engine.run(query, df=df)
                 timedeltas = timedeltas.set_index([event_col, f"next_{event_col}"])[
                     "timedelta"
                 ]

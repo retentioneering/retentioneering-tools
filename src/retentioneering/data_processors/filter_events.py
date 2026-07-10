@@ -1,8 +1,8 @@
 from typing import Callable, Dict, Tuple
 
-import duckdb
 import pandas as pd
 
+from retentioneering import engine
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import (
@@ -109,7 +109,7 @@ class FilterEvents(DataProcessor):
             conditions = []
             for column, values in column_filter.items():
                 values_str = ", ".join(_sql_literal(v) for v in values)
-                conditions.append(f"{column} in ({values_str})")
+                conditions.append(f"{engine.quote_ident(column)} in ({values_str})")
 
             if self.keep is not None:
                 # keep: a row must match every entry (AND)
@@ -119,17 +119,22 @@ class FilterEvents(DataProcessor):
                 # the exact complement of keep
                 where = "not (" + " or ".join(conditions) + ")"
 
+            order_by = (
+                f"{engine.quote_ident(schema.path_col)}, "
+                f"{engine.quote_ident(schema.index)}, "
+                f"{engine.quote_ident(schema.subindex)}"
+            )
             query = f"""
                 select * from df
                 where {where}
-                order by {schema.path_col}, {schema.index}, {schema.subindex}
+                order by {order_by}
             """
-            df = duckdb.sql(query).df()
+            df = engine.run(query, df=df)
 
         elif self.sql is not None:
             columns_old = df.columns
-            eventstream = df  # noqa: F841 -- exposed to user SQL as `eventstream` (DuckDB replacement scan)
-            df = duckdb.sql(self.sql).df()
+            eventstream = df
+            df = engine.run(self.sql, eventstream=eventstream)
 
             if set(df.columns) != set(columns_old):
                 raise PreprocessingConfigError(
@@ -137,8 +142,13 @@ class FilterEvents(DataProcessor):
                     "The SQL query must return the same columns as the eventstream.",
                 )
 
-            query = f"select * from df order by {schema.path_col}, {schema.index}, {schema.subindex}"
-            df = duckdb.sql(query).df()
+            order_by = (
+                f"{engine.quote_ident(schema.path_col)}, "
+                f"{engine.quote_ident(schema.index)}, "
+                f"{engine.quote_ident(schema.subindex)}"
+            )
+            query = f"select * from df order by {order_by}"
+            df = engine.run(query, df=df)
 
         else:
             raise PreprocessingConfigError(

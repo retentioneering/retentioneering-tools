@@ -1,8 +1,8 @@
 from typing import Callable, Collection, Tuple
 
-import duckdb
 import pandas as pd
 
+from retentioneering import engine
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
@@ -105,15 +105,16 @@ def _build_funnel_segment_query(
             END AS funnel
         FROM eventstream
     """
-    w = f"PARTITION BY {path_col}"
+    path_col_q = engine.quote_ident(path_col)
+    event_col_q = engine.quote_ident(event_col)
+    index_col_q = engine.quote_ident(index_col)
+    w = f"PARTITION BY {path_col_q}"
 
     def _sum(ev: str) -> str:
-        return (
-            f"SUM(CASE WHEN {event_col} = {_sql_str(ev)} THEN 1 ELSE 0 END) OVER ({w})"
-        )
+        return f"SUM(CASE WHEN {event_col_q} = {_sql_str(ev)} THEN 1 ELSE 0 END) OVER ({w})"
 
     def _max(ev: str) -> str:
-        return f"MAX(CASE WHEN {event_col} = {_sql_str(ev)} THEN {index_col} ELSE 0 END) OVER ({w})"
+        return f"MAX(CASE WHEN {event_col_q} = {_sql_str(ev)} THEN {index_col_q} ELSE 0 END) OVER ({w})"
 
     def _reached_k(k: int) -> str:
         has = " AND ".join(f"{_sum(funnel_events[i])} > 0" for i in range(k + 1))
@@ -202,17 +203,16 @@ class AddSegment(DataProcessor):
             cases = "CASE"
             for item in self.rules[:-1]:
                 column, op, value, segment_value = item
+                column_q = engine.quote_ident(column)
                 if isinstance(value, str) and op.lower() != "in":
                     value = _sql_str(value)
-                cases += (
-                    f"\nWHEN {column} {op} {value} THEN {_sql_str(str(segment_value))}"
-                )
+                cases += f"\nWHEN {column_q} {op} {value} THEN {_sql_str(str(segment_value))}"
             else_segment_value = self.rules[-1][0]
             cases += f"\nELSE {_sql_str(str(else_segment_value))}"
-            cases += f"\nEND AS {self.name}"
+            cases += f"\nEND AS {engine.quote_ident(self.name)}"
 
             sql = f"SELECT {cases} FROM df"
-            result = duckdb.sql(sql).df()
+            result = engine.run(sql, df=df)
             values = result[result.columns[0]].tolist()
 
         elif self.sql is not None:
@@ -227,7 +227,7 @@ class AddSegment(DataProcessor):
             eventstream[_ROW_IDX_COL] = range(len(df))
 
             tracking_sql = _inject_row_idx(self.sql)
-            result = duckdb.sql(tracking_sql).df()
+            result = engine.run(tracking_sql, eventstream=eventstream)
 
             if len(result.columns) != 2:
                 raise PreprocessingConfigError(
@@ -266,7 +266,7 @@ class AddSegment(DataProcessor):
                 self.funnel_events,
                 "__funnel_level__",
             )
-            result = duckdb.sql(query).df()
+            result = engine.run(query, eventstream=eventstream)
             result = result.sort_values(_ROW_IDX_COL).reset_index(drop=True)
             values = result["__funnel_level__"].tolist()
 

@@ -217,23 +217,28 @@ class StepSankeyWidget(StateFileMixin, anywidget.AnyWidget):
                 m["group2"] = None
 
         try:
+            from retentioneering import engine
+
             path_col = path_col or self._eventstream.schema.path_col
             event_col = self._eventstream.schema.event_col
-            df = self._eventstream._df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
-            import duckdb
+            df = self._eventstream._df
+            path_col_q = engine.quote_ident(path_col)
+            event_col_q = engine.quote_ident(event_col)
 
             counts = (
-                duckdb.sql(
-                    f"SELECT {event_col}, COUNT(DISTINCT {path_col}) AS cnt "
-                    f"FROM df GROUP BY {event_col}"
+                engine.run(
+                    f"SELECT {event_col_q}, COUNT(DISTINCT {path_col_q}) AS cnt "
+                    f"FROM df GROUP BY {event_col_q}",
+                    df=df,
                 )
-                .df()
                 .set_index(event_col)["cnt"]
                 .to_dict()
             )
             event_counts = {str(k): int(v) for k, v in counts.items()}
             total_paths = int(
-                duckdb.sql(f"SELECT COUNT(DISTINCT {path_col}) FROM df").fetchone()[0]
+                engine.run(f"SELECT COUNT(DISTINCT {path_col_q}) FROM df", df=df).iat[
+                    0, 0
+                ]
             )
             for synthetic in ("path_start", "path_end"):
                 if synthetic not in event_counts:

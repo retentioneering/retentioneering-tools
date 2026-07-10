@@ -182,22 +182,24 @@ class StepMatrixWidget(StateFileMixin, anywidget.AnyWidget):
                 m["group2"] = None
 
         try:
+            from retentioneering import engine
+
             pid = path_col or self._eventstream.schema.path_col
             ec = self._eventstream.schema.event_col
-            import duckdb
-
-            df = self._eventstream._df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
+            df = self._eventstream._df
+            pid_q = engine.quote_ident(pid)
+            ec_q = engine.quote_ident(ec)
             event_counts = (
-                duckdb.sql(
-                    f"SELECT {ec}, COUNT(DISTINCT {pid}) AS cnt FROM df GROUP BY {ec}"
+                engine.run(
+                    f"SELECT {ec_q}, COUNT(DISTINCT {pid_q}) AS cnt FROM df GROUP BY {ec_q}",
+                    df=df,
                 )
-                .df()
                 .set_index(ec)["cnt"]
                 .to_dict()
             )
             event_counts = {str(k): int(v) for k, v in event_counts.items()}
             total_paths = int(
-                duckdb.sql(f"SELECT COUNT(DISTINCT {pid}) FROM df").fetchone()[0]
+                engine.run(f"SELECT COUNT(DISTINCT {pid_q}) FROM df", df=df).iat[0, 0]
             )
             for s in ("path_start", "path_end"):
                 if s not in event_counts:
@@ -209,26 +211,28 @@ class StepMatrixWidget(StateFileMixin, anywidget.AnyWidget):
         event_counts_g2: dict = {}
         if diff is not None:
             try:
-                import duckdb as _duckdb
+                from retentioneering import engine
 
                 _pid = path_col or self._eventstream.schema.path_col
                 _ec = self._eventstream.schema.event_col
+                _pid_q = engine.quote_ident(_pid)
+                _ec_q = engine.quote_ident(_ec)
                 _s1, _s2 = self._eventstream._split_two(diff, path_col=path_col)
                 for _stream, _target in [(_s1, "g1"), (_s2, "g2")]:
-                    _d = _stream._df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL strings below
+                    _d = _stream._df
                     _c = (
-                        _duckdb.sql(
-                            f"SELECT {_ec}, COUNT(DISTINCT {_pid}) AS cnt FROM _d GROUP BY {_ec}"
+                        engine.run(
+                            f"SELECT {_ec_q}, COUNT(DISTINCT {_pid_q}) AS cnt FROM _d GROUP BY {_ec_q}",
+                            _d=_d,
                         )
-                        .df()
                         .set_index(_ec)["cnt"]
                         .to_dict()
                     )
                     _c = {str(k): int(v) for k, v in _c.items()}
                     _tot = int(
-                        _duckdb.sql(
-                            f"SELECT COUNT(DISTINCT {_pid}) FROM _d"
-                        ).fetchone()[0]
+                        engine.run(
+                            f"SELECT COUNT(DISTINCT {_pid_q}) FROM _d", _d=_d
+                        ).iat[0, 0]
                     )
                     for _s in ("path_start", "path_end"):
                         if _s not in _c:

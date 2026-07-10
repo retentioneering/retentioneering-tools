@@ -3,9 +3,10 @@ from dataclasses import dataclass
 from functools import reduce
 from typing import TYPE_CHECKING, Tuple
 
-import duckdb
 import pandas as pd
 
+from retentioneering import engine
+from retentioneering.engine import dialect
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import EmptyEventstreamError, InvalidParameterError
 from .types import T_Diff
@@ -92,32 +93,32 @@ class StepMatrix:
         path_start = EventTypes().PATH_START.name
         path_end = EventTypes().PATH_END.name
 
-        df = self.eventstream.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
+        df = self.eventstream.df
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
+        index_col_q = engine.quote_ident(index_col)
+        subindex_col_q = engine.quote_ident(subindex_col)
 
         # path_cols is validated (coarsest-first, strictly nested) at Eventstream
         # construction time, and fit() above restricts path_col to
         # schema.path_cols, so ordering by index_col is correct at any accepted
         # grain (see ADR-0004).
         query = f"""
-            select step, {event_col}, count(*) as value
+            select step, {event_col_q}, count(*) as value
             from (
-                select {path_col}, {event_col},
+                select {path_col_q}, {event_col_q},
                     row_number() over (
-                        partition by {path_col}
-                        order by {index_col}, {subindex_col}
+                        partition by {path_col_q}
+                        order by {index_col_q}, {subindex_col_q}
                     ) as step
                 from df
             )
             where step <= {max_steps}
-            group by step, {event_col}
-            order by step, {event_col}
+            group by step, {event_col_q}
+            order by step, {event_col_q}
         """
-        sm = (
-            duckdb.sql(query)
-            .df()
-            .pivot_table(
-                index=event_col, columns="step", values="value", observed=False
-            )
+        sm = engine.run(query, df=df).pivot_table(
+            index=event_col, columns="step", values="value", observed=False
         )
 
         sm = sm.reindex(columns=range(max_steps + 1)).fillna(0)
@@ -185,7 +186,11 @@ class StepMatrix:
         event_col = self.eventstream.schema.event_col
         index_col = self.eventstream.schema.index
         subindex_col = self.eventstream.schema.subindex
-        df = self.eventstream.df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
+        df = self.eventstream.df
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
+        index_col_q = engine.quote_ident(index_col)
+        subindex_col_q = engine.quote_ident(subindex_col)
 
         # Build path sequences prefixed/suffixed with path_start/path_end so
         # that patterns including these markers match correctly. path_cols is
@@ -194,11 +199,11 @@ class StepMatrix:
         # so ordering by index_col is correct at any accepted grain (see
         # ADR-0004).
         query = f"""
-            SELECT {path_col}, list_aggregate(list({event_col}), 'string_agg', '->') AS path
-            FROM (SELECT * FROM df ORDER BY {index_col}, {subindex_col})
-            GROUP BY {path_col}
+            SELECT {path_col_q}, {dialect.path_agg_ordered(event_col_q)} AS path
+            FROM (SELECT * FROM df ORDER BY {index_col_q}, {subindex_col_q})
+            GROUP BY {path_col_q}
         """
-        paths = duckdb.sql(query).df().set_index(path_col)["path"]
+        paths = engine.run(query, df=df).set_index(path_col)["path"]
         paths_with_se = path_start + "->" + paths + "->" + path_end
 
         matching_ids = paths_with_se[
@@ -243,20 +248,24 @@ class StepMatrix:
         if diff is None:
             sms = []
             df = stream.df
+            path_col_q = engine.quote_ident(path_col)
+            event_col_q = engine.quote_ident(event_col)
+            index_col_q = engine.quote_ident(index_col)
+            subindex_col_q = engine.quote_ident(subindex_col)
             query = f"""
                 SELECT *, row_number() OVER (
-                    PARTITION BY {path_col} ORDER BY {index_col}, {subindex_col}
+                    PARTITION BY {path_col_q} ORDER BY {index_col_q}, {subindex_col_q}
                 ) AS step
                 FROM df
             """
-            df = duckdb.sql(query).df()
+            df = engine.run(query, df=df)
 
             query = f"""
-                SELECT {path_col}, list_aggregate(list({event_col}), 'string_agg', '->') AS path
-                FROM (SELECT * FROM df ORDER BY {path_col}, {index_col}, {subindex_col})
-                GROUP BY {path_col}
+                SELECT {path_col_q}, {dialect.path_agg_ordered(event_col_q)} AS path
+                FROM (SELECT * FROM df ORDER BY {path_col_q}, {index_col_q}, {subindex_col_q})
+                GROUP BY {path_col_q}
             """
-            paths = duckdb.sql(query).df().set_index(path_col)["path"]
+            paths = engine.run(query, df=df).set_index(path_col)["path"]
 
             current_pattern = []
             for i, pattern_part in enumerate(path_pattern.split("->.*->")):

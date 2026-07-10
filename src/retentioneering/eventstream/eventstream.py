@@ -3,9 +3,9 @@ import json
 from dataclasses import asdict
 from functools import cached_property
 
-import duckdb
 import pandas as pd
 
+from retentioneering import engine
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import SchemaConfigError
@@ -200,12 +200,10 @@ class Eventstream:
         return pd.DataFrame.equals(df1, df2)
 
     def get_event_counts(self, event_col: str | None = None) -> dict[str, int]:
-        import duckdb
-
         event_col = event_col or self.schema.event_col
-        df = self._df  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
-        query = f"SELECT {event_col}, COUNT(*) AS cnt FROM df GROUP BY {event_col}"
-        return duckdb.sql(query).df().set_index(event_col)["cnt"].to_dict()
+        event_col_q = engine.quote_ident(event_col)
+        query = f"SELECT {event_col_q}, COUNT(*) AS cnt FROM df GROUP BY {event_col_q}"
+        return engine.run(query, df=self._df).set_index(event_col)["cnt"].to_dict()
 
     @cached_property
     def fingerprint(self) -> str:
@@ -506,12 +504,11 @@ class Eventstream:
         metric_configs = dp._get_metric_configs(condition)
 
         # Build metrics
-        metrics = self.get_metrics(  # noqa: F841 -- referenced by name via DuckDB replacement scan in the SQL string
-            metric_configs, path_col=path_col
-        ).reset_index()
+        metrics = self.get_metrics(metric_configs, path_col=path_col).reset_index()
         where_condition = dp._get_where_condition(condition)
-        query = f"SELECT {path_col} FROM metrics WHERE {where_condition}"
-        path_ids = duckdb.sql(query).df()[path_col].tolist()
+        path_col_q = engine.quote_ident(path_col)
+        query = f"SELECT {path_col_q} FROM metrics WHERE {where_condition}"
+        path_ids = engine.run(query, metrics=metrics)[path_col].tolist()
 
         if len(path_ids) == 0:
             raise EmptyEventstreamError("no paths match the filter_paths condition")

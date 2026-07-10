@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
-import duckdb
-
+from retentioneering import engine
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.tools.types import T_Diff
 
@@ -36,8 +35,11 @@ class Funnel:
             if not steps:
                 return {"steps": []}
 
-            df = self.eventstream.df  # noqa: F841 -- referenced by name via DuckDB replacement scan below
+            df = self.eventstream.df
             total_paths = int(df[path_col].nunique())
+            path_col_q = engine.quote_ident(path_col)
+            event_col_q = engine.quote_ident(event_col)
+            index_col_q = engine.quote_ident(index_col)
 
             # Sequential funnel semantics: a path reaches step k iff there
             # exist event indices i1 < i2 < ... < ik with event(i_j) = steps[j].
@@ -55,21 +57,21 @@ class Funnel:
                 if step_num == 1:
                     ctes.append(
                         f"step_1 AS ("
-                        f"SELECT {path_col} AS path_id, MIN({index_col}) AS idx "
+                        f"SELECT {path_col_q} AS path_id, MIN({index_col_q}) AS idx "
                         f"FROM df "
-                        f"WHERE {event_col} = {ev} "
-                        f"GROUP BY {path_col}"
+                        f"WHERE {event_col_q} = {ev} "
+                        f"GROUP BY {path_col_q}"
                         f")"
                     )
                 else:
                     prev = f"step_{step_num - 1}"
                     ctes.append(
                         f"step_{step_num} AS ("
-                        f"SELECT df.{path_col} AS path_id, MIN(df.{index_col}) AS idx "
+                        f"SELECT df.{path_col_q} AS path_id, MIN(df.{index_col_q}) AS idx "
                         f"FROM df "
-                        f"JOIN {prev} ON df.{path_col} = {prev}.path_id "
-                        f"WHERE df.{event_col} = {ev} AND df.{index_col} > {prev}.idx "
-                        f"GROUP BY df.{path_col}"
+                        f"JOIN {prev} ON df.{path_col_q} = {prev}.path_id "
+                        f"WHERE df.{event_col_q} = {ev} AND df.{index_col_q} > {prev}.idx "
+                        f"GROUP BY df.{path_col_q}"
                         f")"
                     )
             counts = ", ".join(
@@ -77,7 +79,7 @@ class Funnel:
                 for i in range(1, len(steps) + 1)
             )
             query = f"WITH {', '.join(ctes)} SELECT {counts}"
-            row = duckdb.query(query).df().iloc[0]
+            row = engine.run(query, df=df).iloc[0]
 
             funnel_data = []
             for step_num, step_event in enumerate(steps, start=1):

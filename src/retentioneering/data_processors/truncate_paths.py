@@ -1,8 +1,8 @@
 from typing import Tuple
 
-import duckdb
 import pandas as pd
 
+from retentioneering import engine
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
@@ -69,6 +69,11 @@ class TruncatePaths(DataProcessor):
 
         start_literal = "'" + self.start_event.replace("'", "''") + "'"
         end_literal = "'" + self.end_event.replace("'", "''") + "'"
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
+        timestamp_col_q = engine.quote_ident(timestamp_col)
+        index_col_q = engine.quote_ident(schema.index)
+        subindex_col_q = engine.quote_ident(schema.subindex)
 
         # path_cols is validated (coarsest-first, strictly nested) at Eventstream
         # construction time, and path_col is restricted to schema.path_cols
@@ -80,38 +85,38 @@ class TruncatePaths(DataProcessor):
         query = f"""
         WITH start_bounds AS (
             SELECT
-                {path_col},
-                MIN(CASE WHEN {event_col} = {start_literal} THEN {schema.index} END) AS start_idx
+                {path_col_q},
+                MIN(CASE WHEN {event_col_q} = {start_literal} THEN {index_col_q} END) AS start_idx
             FROM df
-            GROUP BY {path_col}
+            GROUP BY {path_col_q}
         ),
         end_bounds AS (
             SELECT
-                df.{path_col},
-                MIN(CASE WHEN df.{event_col} = {end_literal} THEN df.{schema.index} END) AS end_idx
+                df.{path_col_q},
+                MIN(CASE WHEN df.{event_col_q} = {end_literal} THEN df.{index_col_q} END) AS end_idx
             FROM df
-            INNER JOIN start_bounds sb ON df.{path_col} = sb.{path_col}
-            WHERE df.{schema.index} > sb.start_idx OR (df.{schema.index} = sb.start_idx AND {start_literal} = {end_literal})
-            GROUP BY df.{path_col}
+            INNER JOIN start_bounds sb ON df.{path_col_q} = sb.{path_col_q}
+            WHERE df.{index_col_q} > sb.start_idx OR (df.{index_col_q} = sb.start_idx AND {start_literal} = {end_literal})
+            GROUP BY df.{path_col_q}
         ),
         path_bounds AS (
             SELECT
-                sb.{path_col},
+                sb.{path_col_q},
                 sb.start_idx,
                 eb.end_idx
             FROM start_bounds sb
-            INNER JOIN end_bounds eb ON sb.{path_col} = eb.{path_col}
+            INNER JOIN end_bounds eb ON sb.{path_col_q} = eb.{path_col_q}
         )
         SELECT df.*
         FROM df
         INNER JOIN path_bounds pb
-            ON df.{path_col} = pb.{path_col}
+            ON df.{path_col_q} = pb.{path_col_q}
         WHERE
-            df.{schema.index} BETWEEN pb.start_idx AND pb.end_idx
-        ORDER BY df.{path_col}, df.{timestamp_col}, df.{schema.subindex}
+            df.{index_col_q} BETWEEN pb.start_idx AND pb.end_idx
+        ORDER BY df.{path_col_q}, df.{timestamp_col_q}, df.{subindex_col_q}
         """
 
-        result = duckdb.query(query).df()
+        result = engine.run(query, df=df)
 
         # Restore categorical dtypes and remove unused categories
         for col in schema.event_cols + schema.segment_cols:

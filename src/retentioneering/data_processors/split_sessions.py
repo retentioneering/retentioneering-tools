@@ -1,8 +1,8 @@
-import duckdb
 import pandas as pd
 from dataclasses import dataclass
 from typing import Any, List, Tuple
 
+from retentioneering import engine
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
@@ -110,11 +110,18 @@ class SplitSessions(DataProcessor):
             group, path_col, event_col, ts_col, subindex_col, separator_starts=True
         )
 
-        cols_with_prefix = ", ".join(f"w.{c}" for c in schema.cols)
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
+        ts_col_q = engine.quote_ident(ts_col)
+        subindex_col_q = engine.quote_ident(subindex_col)
+        session_id_col_q = engine.quote_ident(self.session_id_col)
+        session_index_col_q = engine.quote_ident(self.session_index_col)
+
+        cols_with_prefix = ", ".join(f"w.{engine.quote_ident(c)}" for c in schema.cols)
         if self.separator:
             where_clause = "WHERE w._is_sep = 0"
         elif self.start_event:
-            where_clause = f"WHERE {event_col} NOT IN ({sql_list(self.start_event + self.end_event)})"
+            where_clause = f"WHERE {event_col_q} NOT IN ({sql_list(self.start_event + self.end_event)})"
         else:
             where_clause = ""
 
@@ -123,16 +130,16 @@ class SplitSessions(DataProcessor):
         {session_ctes}
         SELECT
             {cols_with_prefix},
-            CASE WHEN w._in_session = 1 THEN CAST(w._session_counter AS INTEGER) END AS {self.session_index_col},
+            CASE WHEN w._in_session = 1 THEN CAST(w._session_counter AS INTEGER) END AS {session_index_col_q},
             CASE WHEN w._in_session = 1
-                 THEN CONCAT(CAST(w.{path_col} AS VARCHAR), '_', CAST(w._session_counter AS VARCHAR))
-            END AS {self.session_id_col}
+                 THEN CONCAT(CAST(w.{path_col_q} AS VARCHAR), '_', CAST(w._session_counter AS VARCHAR))
+            END AS {session_id_col_q}
         FROM with_session_id w
         {where_clause}
-        ORDER BY w.{path_col}, w.{ts_col}, w.{subindex_col}
+        ORDER BY w.{path_col_q}, w.{ts_col_q}, w.{subindex_col_q}
         """
 
-        result = duckdb.query(query).df()
+        result = engine.run(query, df=df)
 
         new_schema = schema.copy()
         new_schema.custom_cols = schema.custom_cols + [self.session_index_col]

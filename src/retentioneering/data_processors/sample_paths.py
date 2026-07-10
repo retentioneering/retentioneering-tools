@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import Tuple
 
-import duckdb
 import pandas as pd
 
+from retentioneering import engine
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
@@ -57,6 +57,8 @@ class SamplePaths(DataProcessor):
         if self.frac == 1.0:
             return df, schema
 
+        path_col_q = engine.quote_ident(path_col)
+
         query_template = """
             {set_threads}
              with sampled_paths as (
@@ -79,13 +81,13 @@ class SamplePaths(DataProcessor):
             sample_chunk = f"{self.n} rows"
 
         query = query_template.format(
-            path_col=path_col,
+            path_col=path_col_q,
             sample_chunk=sample_chunk,
             seed_chunk=seed_chunk,
             set_threads=set_threads,
         )
 
-        df = duckdb.query(query).df()
+        df = engine.run(query, df=df)
 
         for col in schema.event_cols + schema.segment_cols:
             df[col] = df[col].astype("category")

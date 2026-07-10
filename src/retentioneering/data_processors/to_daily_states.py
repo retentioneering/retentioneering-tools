@@ -1,10 +1,9 @@
-import json
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
-import duckdb
 import pandas as pd
 
+from retentioneering import engine
 from retentioneering.data_processors.collapse_events import _session_agg_exprs
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.event_type import EventTypes
@@ -90,12 +89,19 @@ class ToDailyStates(DataProcessor):
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
         max_dormant_days = self.max_dormant_days
 
+        path_col_q = engine.quote_ident(path_col)
+        event_col_q = engine.quote_ident(event_col)
+        timestamp_col_q = engine.quote_ident(timestamp_col)
+        event_type_col_q = engine.quote_ident(event_type_col)
+        index_col_q = engine.quote_ident(schema.index)
+        subindex_col_q = engine.quote_ident(schema.subindex)
+
         if self.active_events:
             quoted = ", ".join(
                 "'" + e.replace("'", "''") + "'" for e in self.active_events
             )
             is_active_today = (
-                f"(SUM(CASE WHEN {event_col} IN ({quoted}) THEN 1 ELSE 0 END) > 0)"
+                f"(SUM(CASE WHEN {event_col_q} IN ({quoted}) THEN 1 ELSE 0 END) > 0)"
             )
         else:
             is_active_today = "TRUE"
@@ -105,16 +111,18 @@ class ToDailyStates(DataProcessor):
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
 
         other_path_cols = [c for c in schema.path_cols if c != path_col]
-        other_path_cols_chunk = ", ".join([f"NULL AS {c}" for c in other_path_cols])
+        other_path_cols_chunk = ", ".join(
+            [f"NULL AS {engine.quote_ident(c)}" for c in other_path_cols]
+        )
         if other_path_cols_chunk:
             other_path_cols_chunk = f", {other_path_cols_chunk}"
 
         special_cols = schema.segment_cols + schema.custom_cols
         special_cols_chunk = ", ".join(
             [
-                f"COALESCE({c}, LAST_VALUE({c} IGNORE NULLS) OVER "
-                f"(PARTITION BY {path_col} ORDER BY {timestamp_col} "
-                f"ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)) AS {c}"
+                f"COALESCE({engine.quote_ident(c)}, LAST_VALUE({engine.quote_ident(c)} IGNORE NULLS) OVER "
+                f"(PARTITION BY {path_col_q} ORDER BY {timestamp_col_q} "
+                f"ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)) AS {engine.quote_ident(c)}"
                 for c in special_cols
             ]
         )
@@ -131,10 +139,11 @@ class ToDailyStates(DataProcessor):
             + other_path_cols
             + special_cols
         )
+        exclude_cols_sql = ", ".join(engine.quote_ident(c) for c in exclude_cols)
 
         query = f"""
         WITH base AS (
-            SELECT *, CAST({timestamp_col} AS DATE) AS day
+            SELECT *, CAST({timestamp_col_q} AS DATE) AS day
             FROM df
         ),
         dataset_end AS (
@@ -142,50 +151,50 @@ class ToDailyStates(DataProcessor):
         ),
         per_date AS (
             SELECT
-                {path_col},
+                {path_col_q},
                 day,
                 {is_active_today} AS active_today
                 {agg_chunk}
             FROM base
-            GROUP BY {path_col}, day
+            GROUP BY {path_col_q}, day
         ),
         path_bounds AS (
             SELECT
-                b.{path_col},
+                b.{path_col_q},
                 MIN(b.day) AS start_day,
                 LEAST(MAX(b.day) + INTERVAL {max_dormant_days} DAY, ANY_VALUE(de.dataset_end)) AS end_day
             FROM base b
             CROSS JOIN dataset_end de
-            GROUP BY b.{path_col}
+            GROUP BY b.{path_col_q}
         ),
         cal AS (
-            SELECT pb.{path_col}, day
+            SELECT pb.{path_col_q}, day
             FROM path_bounds AS pb,
             LATERAL (SELECT * FROM range(start_day, end_day + INTERVAL 1 DAY, INTERVAL 1 DAY)) AS r(day)
         ),
         states AS (
             SELECT
-                cal.{path_col},
-                cal.day AS {timestamp_col},
-                p.* EXCLUDE ({path_col}, day, {timestamp_col}, active_today),
+                cal.{path_col_q},
+                cal.day AS {timestamp_col_q},
+                p.* EXCLUDE ({path_col_q}, day, {timestamp_col_q}, active_today),
                 COALESCE(p.active_today, FALSE) AS active_today,
                 (SELECT MAX(d2.day) FROM per_date d2
-                 WHERE d2.{path_col} = cal.{path_col}
+                 WHERE d2.{path_col_q} = cal.{path_col_q}
                    AND d2.day < cal.day AND d2.active_today) AS last_active,
                 EXISTS(SELECT 1 FROM per_date d3
-                       WHERE d3.{path_col} = cal.{path_col}
+                       WHERE d3.{path_col_q} = cal.{path_col_q}
                          AND d3.day < cal.day
                          AND d3.day >= cal.day - INTERVAL 7 DAY
                          AND d3.active_today) AS had_week,
                 EXISTS(SELECT 1 FROM per_date d4
-                       WHERE d4.{path_col} = cal.{path_col}
+                       WHERE d4.{path_col_q} = cal.{path_col_q}
                          AND d4.day < cal.day
                          AND d4.day >= cal.day - INTERVAL 30 DAY
                          AND d4.active_today) AS had_month
             FROM cal
-            LEFT JOIN per_date p USING ({path_col}, day)
+            LEFT JOIN per_date p USING ({path_col_q}, day)
         )
-        SELECT * EXCLUDE ({json.dumps(exclude_cols)[1:-1]})
+        SELECT * EXCLUDE ({exclude_cols_sql})
             {other_path_cols_chunk},
             CASE
                 WHEN active_today THEN
@@ -201,18 +210,18 @@ class ToDailyStates(DataProcessor):
                         WHEN had_month THEN 'at_risk_mau'
                         ELSE                'dormant'
                     END
-            END AS {event_col},
-            '{collapsed_event_type}' AS {event_type_col},
-            1 AS {schema.subindex},
+            END AS {event_col_q},
+            '{collapsed_event_type}' AS {event_type_col_q},
+            1 AS {subindex_col_q},
             ROW_NUMBER() OVER (
-                PARTITION BY {path_col}
-                ORDER BY {timestamp_col}, {schema.subindex}
-            ) AS {schema.index}
+                PARTITION BY {path_col_q}
+                ORDER BY {timestamp_col_q}, {subindex_col_q}
+            ) AS {index_col_q}
             {(", " + special_cols_chunk) if special_cols_chunk else ""}
         FROM states
-        ORDER BY {path_col}, {timestamp_col}, {schema.subindex}
+        ORDER BY {path_col_q}, {timestamp_col_q}, {subindex_col_q}
         """
-        res = duckdb.query(query).df()
+        res = engine.run(query, df=df)
 
         for col in schema.event_cols + schema.segment_cols:
             if col in res.columns:

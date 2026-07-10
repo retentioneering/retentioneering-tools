@@ -7,8 +7,9 @@ import in `CLAUDE.md`; Claude-specific instructions, if any, go in
 
 Deep context lives in the **Architecture Decision Records** — see
 [docs/adr/README.md](docs/adr/README.md) for the index. Load the ADRs
-relevant to your task; the highest-stakes one is ADR-0002 (DuckDB
-replacement scan — why "unused" variables must never be deleted).
+relevant to your task; ADR-0002 (DuckDB replacement scan, now superseded by
+`engine.py` — see below) documents why some historical code still carries
+`# noqa: F841` comments on variables that look unused.
 
 ## Project background
 
@@ -67,18 +68,24 @@ Nearly every data processor and tool is exposed as an `Eventstream` method (`add
 `tools/`, and `widgets/` respectively, then wired onto the class. Processors are immutable:
 every method returns a **new** `Eventstream`.
 
-**Load-bearing DuckDB quirk (ADR-0002)**: many methods build a SQL string like
-`f"SELECT ... FROM df"` and then do `df = self.df` (or `self._df`, `df_with_start_end`, etc.)
-as a *separate* statement right before calling `duckdb.sql(query)`/`duckdb.query(query)`.
-This isn't dead code — DuckDB's "replacement scan" resolves an unqualified table name in a SQL
-string by looking up a same-named Python variable in the caller's scope. Static analysis
-(ruff's F841) can't see this, so these lines carry
-`# noqa: F841 -- referenced by name via DuckDB replacement scan ...`.
-**Never delete a variable assignment just because it looks unused — check for a matching
-`FROM <name>` in a nearby SQL string first.** The same pattern extends to user-supplied SQL:
-some data processors accept a `sql=` kwarg where the *caller's* query is expected to reference
-the data as `FROM eventstream` (see `filter_events`, `add_events` docstrings/tests) — the
-processor exposes its dataframe under that specific variable name for exactly this reason.
+**Unified query engine (L1, supersedes ADR-0002)**: all DuckDB execution goes through
+`src/retentioneering/engine/` — `engine.run(sql, **tables)` registers each pandas frame
+on a private connection under the keyword name it's passed as, then executes and
+materializes the query (`engine.run("SELECT ... FROM df", df=self.df)`). New code must use
+`engine.run()`, not `duckdb.sql()`/`duckdb.query()` directly — a grep for those two calls
+outside `engine/` should always come back empty. `engine.quote_ident()` quotes a column/event
+identifier before it's interpolated into SQL text (values still go through each file's own
+value-escaping helper, e.g. `format_value_for_sql`). DuckDB-specific SQL fragments (`EPOCH()`,
+path-string aggregation, regex matching) are centralized in `engine/dialect.py` rather than
+inlined ad hoc, so a future non-DuckDB backend only has to change that one module.
+Historically (see ADR-0002, now superseded), call sites relied on DuckDB's "replacement scan" —
+resolving an unqualified `FROM df` by inspecting the caller's stack frame for a same-named
+Python variable — which required `# noqa: F841` comments on variables that looked unused to
+static analysis. You may still see that pattern in code that hasn't been migrated yet; don't
+delete such a variable assignment without checking for a matching `FROM <name>` in a nearby SQL
+string first. The `sql=` kwarg some data processors accept (`filter_events`, `add_events`,
+`add_segment`) still exposes the caller's frame under the fixed name `eventstream` — that
+contract is unchanged, it's just registered via `engine.run(sql, eventstream=df)` now.
 
 ### Naming conventions (ADR-0008)
 

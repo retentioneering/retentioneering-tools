@@ -10,7 +10,11 @@ import type { WidgetHost } from "@retentioneering/viz-core";
  * against a real (if toy) server. See demo/rest-host-demo.ts for a working
  * example against a local Node http server.
  */
-export function restHost(baseUrl: string, initialData: Record<string, unknown> = {}): WidgetHost {
+export function restHost(
+  baseUrl: string,
+  initialData: Record<string, unknown> = {},
+  getHeaders?: () => Record<string, string> | Promise<Record<string, string>>,
+): WidgetHost {
   const store = new Map<string, unknown>(Object.entries(initialData));
   const listeners = new Map<string, Set<() => void>>();
 
@@ -42,15 +46,22 @@ export function restHost(baseUrl: string, initialData: Record<string, unknown> =
     },
 
     async compute<T = unknown>(tool: string, params: Record<string, unknown>): Promise<T> {
+      const extraHeaders = getHeaders ? await getHeaders() : {};
       const res = await fetch(`${baseUrl}/compute`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...extraHeaders },
         body: JSON.stringify({ tool, params }),
       });
       if (!res.ok) {
         throw new Error(`restHost.compute(${tool}) failed: ${res.status} ${res.statusText}`);
       }
-      return (await res.json()) as T;
+      const body = await res.json();
+      // anywidgetHost/staticHost both resolve compute() to the tool's bare
+      // result (see AnywidgetHost.ts) — unwrap a `{result: ...}` envelope
+      // (what apps/api's /compute endpoint returns) to match that contract;
+      // fall back to the raw body for a backend that returns the result
+      // directly with no envelope.
+      return (body && typeof body === "object" && "result" in body ? body.result : body) as T;
     },
   };
 }

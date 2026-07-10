@@ -1,7 +1,7 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { reaction } from "mobx";
-import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
+import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext } from "./widget-utils";
 import {
   StepSankey,
   StepMatrixStore,
@@ -10,21 +10,6 @@ import {
   type StoredPosition,
   DEFAULT_VALUE_TYPE,
 } from "@retentioneering/viz-core";
-import { JupyterDataProvider } from "./JupyterDataProvider";
-
-interface AnyWidgetModel {
-  get(key: string): unknown;
-  set(key: string, value: unknown): void;
-  save_changes(): void;
-  on(event: string, cb: () => void): void;
-  off(event: string, cb: () => void): void;
-}
-
-interface RenderContext {
-  model: AnyWidgetModel;
-  el: HTMLElement;
-  isStatic?: boolean;
-}
 
 function SidebarToggle({ onClick }: { onClick: () => void }) {
   return (
@@ -46,12 +31,11 @@ function SidebarToggle({ onClick }: { onClick: () => void }) {
   );
 }
 
-export function render({ model, el, isStatic = false }: RenderContext) {
-  const store    = new StepMatrixStore();
-  const provider = new JupyterDataProvider(model);
+export function render({ host, el, isStatic = false }: RenderContext) {
+  const store = new StepMatrixStore();
 
   function syncResultToStore() {
-    const raw = model.get("result") as string;
+    const raw = host.get("result") as string;
     if (!raw || raw === "{}") return;
     try {
       const d = parseJson<{ matrices?: unknown[]; event_counts?: Record<string, number> }>(raw, {});
@@ -64,35 +48,35 @@ export function render({ model, el, isStatic = false }: RenderContext) {
   // Restore the Event count filter. setPopulationRange marks the filter as
   // user-customized, so applyEventCounts won't overwrite it on later syncs.
   {
-    const f = parseJson<number[]>(model.get("event_count_filter") || "", []);
+    const f = parseJson<number[]>(host.get("event_count_filter") || "", []);
     if (f.length === 2) store.setPopulationRange(f[0], f[1]);
   }
 
   function App() {
-    const [maxSteps, setMaxSteps]         = React.useState<number>(() => (model.get("max_steps") as number) ?? 10);
-    const [pathPattern, setPathPattern]   = React.useState<string>(() => (model.get("path_pattern") as string) || "");
-    // Initialize diff from model immediately so isDiff is correct on first render
+    const [maxSteps, setMaxSteps]         = React.useState<number>(() => (host.get("max_steps") as number) ?? 10);
+    const [pathPattern, setPathPattern]   = React.useState<string>(() => (host.get("path_pattern") as string) || "");
+    // Initialize diff from host immediately so isDiff is correct on first render
     const [diffSegment, setDiffSegment] = React.useState<string | null>(() => {
-      const d = parseJson<string[]>(model.get("diff") || "[]", []);
+      const d = parseJson<string[]>(host.get("diff") || "[]", []);
       return d[0] ?? null;
     });
     const [diffValue1,  setDiffValue1]  = React.useState<string | null>(() => {
-      const d = parseJson<string[]>(model.get("diff") || "[]", []);
+      const d = parseJson<string[]>(host.get("diff") || "[]", []);
       return d[1] ?? null;
     });
     const [diffValue2,  setDiffValue2]  = React.useState<string | null>(() => {
-      const d = parseJson<string[]>(model.get("diff") || "[]", []);
+      const d = parseJson<string[]>(host.get("diff") || "[]", []);
       return d[2] ?? null;
     });
-    const [pathCols, setPathCols]     = React.useState<string[]>(() => parseJson(model.get("path_cols"), []));
-    const [pathIdCol, setPathIdCol]   = React.useState<string>(() => (model.get("path_col") as string) || "");
-    const [segmentLevels, setSegLvls] = React.useState<Record<string, string[]>>(() => parseJson(model.get("segment_levels"), {}));
-    const [height, setHeight]         = React.useState<number>(() => (model.get("height") as number) ?? 500);
-    const [isLoading, setIsLoading]   = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
-    const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
-    const [stepWindow,  setStepWindow]  = React.useState<number>(() => (model.get("step_window") as number) || 3);
+    const [pathCols, setPathCols]     = React.useState<string[]>(() => parseJson(host.get("path_cols"), []));
+    const [pathIdCol, setPathIdCol]   = React.useState<string>(() => (host.get("path_col") as string) || "");
+    const [segmentLevels, setSegLvls] = React.useState<Record<string, string[]>>(() => parseJson(host.get("segment_levels"), {}));
+    const [height, setHeight]         = React.useState<number>(() => (host.get("height") as number) ?? 500);
+    const [isLoading, setIsLoading]   = React.useState<boolean>(() => (host.get("is_loading") as boolean) ?? false);
+    const [sidebarOpen, setSidebarOpen] = React.useState<boolean>(() => (host.get("sidebar_open") as boolean) ?? true);
+    const [stepWindow,  setStepWindow]  = React.useState<number>(() => (host.get("step_window") as number) || 3);
     const [initialPositions, setInitPos] = React.useState<Record<string, StoredPosition>>(
-      () => parseJson(model.get("node_positions"), {}),
+      () => parseJson(host.get("node_positions"), {}),
     );
 
     React.useEffect(() => { syncResultToStore(); }, []);
@@ -107,8 +91,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
           customized: store.populationCustomized,
         }),
         ({ min, max, customized }) => {
-          model.set("event_count_filter", customized ? JSON.stringify([min, max]) : "");
-          model.save_changes();
+          host.set("event_count_filter", customized ? JSON.stringify([min, max]) : "");
         },
         { fireImmediately: false, delay: 150 }
       );
@@ -116,48 +99,43 @@ export function render({ model, el, isStatic = false }: RenderContext) {
     }, []);
 
     const handleScrollXChange = React.useCallback((x: number) => {
-      model.set("scroll_x", x); model.save_changes();
+      host.set("scroll_x", x);
     }, []);
 
-    React.useEffect(() => {
-      const subs: Array<[string, () => void]> = [
-        ["result",         () => syncResultToStore()],
-        ["is_loading",     () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
-        ["max_steps",      () => setMaxSteps((model.get("max_steps") as number) ?? 10)],
-        ["path_pattern",   () => setPathPattern((model.get("path_pattern") as string) || "")],
-        ["height",         () => setHeight((model.get("height") as number) ?? 500)],
-        ["sidebar_open",   () => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
-        ["step_window",    () => setStepWindow((model.get("step_window") as number) || 3)],
-        ["path_cols",      () => setPathCols(parseJson(model.get("path_cols"), []))],
-        ["path_col",    () => setPathIdCol((model.get("path_col") as string) || "")],
-        ["segment_levels", () => setSegLvls(parseJson(model.get("segment_levels"), {}))],
-        ["node_positions", () => {
-          const p = parseJson<Record<string, StoredPosition>>(model.get("node_positions"), {});
-          if (Object.keys(p).length > 0) setInitPos(p);
-        }],
-        ["diff", () => {
-          const d = parseJson<string[]>(model.get("diff") || "[]", []);
-          setDiffSegment(d[0] ?? null); setDiffValue1(d[1] ?? null); setDiffValue2(d[2] ?? null);
-        }],
-      ];
-      subs.forEach(([key, cb]) => model.on(`change:${key}`, cb));
-      return () => subs.forEach(([key, cb]) => model.off(`change:${key}`, cb));
-    }, []);
+    useHostSubscriptions(host, [
+      ["result",         () => syncResultToStore()],
+      ["is_loading",     () => setIsLoading((host.get("is_loading") as boolean) ?? false)],
+      ["max_steps",      () => setMaxSteps((host.get("max_steps") as number) ?? 10)],
+      ["path_pattern",   () => setPathPattern((host.get("path_pattern") as string) || "")],
+      ["height",         () => setHeight((host.get("height") as number) ?? 500)],
+      ["sidebar_open",   () => setSidebarOpen((host.get("sidebar_open") as boolean) ?? true)],
+      ["step_window",    () => setStepWindow((host.get("step_window") as number) || 3)],
+      ["path_cols",      () => setPathCols(parseJson(host.get("path_cols"), []))],
+      ["path_col",    () => setPathIdCol((host.get("path_col") as string) || "")],
+      ["segment_levels", () => setSegLvls(parseJson(host.get("segment_levels"), {}))],
+      ["node_positions", () => {
+        const p = parseJson<Record<string, StoredPosition>>(host.get("node_positions"), {});
+        if (Object.keys(p).length > 0) setInitPos(p);
+      }],
+      ["diff", () => {
+        const d = parseJson<string[]>(host.get("diff") || "[]", []);
+        setDiffSegment(d[0] ?? null); setDiffValue1(d[1] ?? null); setDiffValue2(d[2] ?? null);
+      }],
+    ]);
 
     const handleDiffChange = React.useCallback((seg: string | null, v1: string | null, v2: string | null) => {
       setDiffSegment(seg); setDiffValue1(v1); setDiffValue2(v2);
-        model.set("diff", seg != null && v1 != null && v2 != null && seg !== "" && v1 !== "" && v2 !== ""
-          ? JSON.stringify([seg, v1, v2])
-          : "");
-      model.save_changes();
+      host.set("diff", seg != null && v1 != null && v2 != null && seg !== "" && v1 !== "" && v2 !== ""
+        ? JSON.stringify([seg, v1, v2])
+        : "");
     }, []);
 
     const handlePathIdColChange = React.useCallback((col: string) => {
-      setPathIdCol(col); model.set("path_col", col); model.save_changes();
+      setPathIdCol(col); host.set("path_col", col);
     }, []);
 
     const handleToggleSidebar = React.useCallback(() => {
-      setSidebarOpen((prev) => { const next = !prev; model.set("sidebar_open", next); model.save_changes(); return next; });
+      setSidebarOpen((prev) => { const next = !prev; host.set("sidebar_open", next); return next; });
     }, []);
 
     return (
@@ -176,14 +154,13 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                 pathPattern={pathPattern}
                 onPatternChange={isStatic ? undefined : (p) => {
                   setPathPattern(p);
-                  model.set("path_pattern", p);
-                  model.save_changes();
+                  host.set("path_pattern", p);
                 }}
                 diffSegment={diffSegment}
                 diffValue1={diffValue1}
                 diffValue2={diffValue2}
                 theme="light"
-                initialScrollX={(model.get("scroll_x") as number) || 0}
+                initialScrollX={(host.get("scroll_x") as number) || 0}
                 onScrollXChange={handleScrollXChange}
               />
             </div>
@@ -213,8 +190,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
             maxSteps={maxSteps}
             onStepWindowChange={(w) => {
               setStepWindow(w);
-              model.set("step_window", w);
-              model.save_changes();
+              host.set("step_window", w);
             }}
             isStatic={isStatic}
           />

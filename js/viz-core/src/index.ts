@@ -16,7 +16,8 @@ export { TransitionMatrixStore } from "./stores/TransitionMatrixStore";
 export type { HeatmapType, TransitionViewMode, RawMatrixData } from "./stores/TransitionMatrixStore";
 
 // Types
-export type { DataProvider, GraphLayoutResponse, GraphLayoutPosition } from "./types";
+export type { GraphLayoutResponse, GraphLayoutPosition } from "./types";
+export type { WidgetHost, DataProvider } from "./WidgetHost";
 
 // Auth
 

@@ -1,16 +1,7 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
-import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
-
-interface AnyWidgetModel {
-  get(key: string): unknown;
-  set(key: string, value: unknown): void;
-  save_changes(): void;
-  on(event: string, cb: () => void): void;
-  off(event: string, cb: () => void): void;
-}
-interface RenderContext { model: AnyWidgetModel; el: HTMLElement; isStatic?: boolean; }
+import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext } from "./widget-utils";
 
 // ── types ──────────────────────────────────────────────────────────────────
 
@@ -919,41 +910,41 @@ function SingleSlider({ min, max, value, onChange, scale = "linear", integer = f
 
 // ── App ────────────────────────────────────────────────────────────────────
 
-export function render({ model, el, isStatic = false }: RenderContext) {
+export function render({ host, el, isStatic = false }: RenderContext) {
   function App() {
-    const [result,       setResult]       = React.useState<MatrixResult>(() => parseJson(model.get("result"), { matrices: [], event_counts: {} }));
-    const [isLoading,    setIsLoading]    = React.useState<boolean>(() => (model.get("is_loading") as boolean) ?? false);
-    const [height,       setHeight]       = React.useState<number>(() => (model.get("height") as number) ?? 600);
-    const [sidebarOpen,  setSidebarOpen]  = React.useState<boolean>(() => (model.get("sidebar_open") as boolean) ?? true);
-    const [pathIdCol,    setPathIdCol]    = React.useState<string>(() => (model.get("path_col") as string) || "");
-    const [pathPattern,  setPathPattern]  = React.useState<string>(() => (model.get("path_pattern") as string) || "");
-    const [appliedPathPattern, setAppliedPathPattern] = React.useState<string>(() => (model.get("path_pattern") as string) || "");
+    const [result,       setResult]       = React.useState<MatrixResult>(() => parseJson(host.get("result"), { matrices: [], event_counts: {} }));
+    const [isLoading,    setIsLoading]    = React.useState<boolean>(() => (host.get("is_loading") as boolean) ?? false);
+    const [height,       setHeight]       = React.useState<number>(() => (host.get("height") as number) ?? 600);
+    const [sidebarOpen,  setSidebarOpen]  = React.useState<boolean>(() => (host.get("sidebar_open") as boolean) ?? true);
+    const [pathIdCol,    setPathIdCol]    = React.useState<string>(() => (host.get("path_col") as string) || "");
+    const [pathPattern,  setPathPattern]  = React.useState<string>(() => (host.get("path_pattern") as string) || "");
+    const [appliedPathPattern, setAppliedPathPattern] = React.useState<string>(() => (host.get("path_pattern") as string) || "");
 
     // ── display state ──────────────────────────────────────────────────────
-    const [stepWindow,   setStepWindow]   = React.useState<number>(() => (model.get("step_window") as number) || 3);
+    const [stepWindow,   setStepWindow]   = React.useState<number>(() => (host.get("step_window") as number) || 3);
     const [hiddenEvents, setHiddenEvents] = React.useState<Set<string>>(() => {
-      const vis = parseJson<Record<string, { isHidden?: boolean }>>(model.get("event_visibility") || "{}", {});
+      const vis = parseJson<Record<string, { isHidden?: boolean }>>(host.get("event_visibility") || "{}", {});
       return new Set(Object.keys(vis).filter(ev => vis[ev]?.isHidden));
     });
     const [pinnedEvents,  setPinnedEvents]  = React.useState<Set<string>>(() => {
-      const vis = parseJson<Record<string, { isPinned?: boolean }>>(model.get("event_visibility") || "{}", {});
+      const vis = parseJson<Record<string, { isPinned?: boolean }>>(host.get("event_visibility") || "{}", {});
       return new Set(Object.keys(vis).filter(ev => vis[ev]?.isPinned));
     });
     const [labelWidth,   setLabelWidth]   = React.useState(200);
     const [heatmapType,    setHeatmapType]    = React.useState<"overall"|"row"|"col">("overall");
     const [globalHeatmap,  setGlobalHeatmap]  = React.useState(true);
     const [popRange,     setPopRange]     = React.useState<[number, number]>(() => {
-      const f = parseJson<number[]>(model.get("event_count_filter") || "", []);
+      const f = parseJson<number[]>(host.get("event_count_filter") || "", []);
       return f.length === 2 ? [f[0], f[1]] : [0, Infinity];
     });
     const [valueThreshold, setValueThreshold] = React.useState<number>(() => {
-      const raw = (model.get("matrix_value_filter") as string) || "";
+      const raw = (host.get("matrix_value_filter") as string) || "";
       const v = raw ? parseFloat(raw) : NaN;
       return isNaN(v) ? 0.01 : v;
     });
 
     // ── diff state ─────────────────────────────────────────────────────────
-    const initDiff = parseJson<string[]>(model.get("diff") || "[]", []);
+    const initDiff = parseJson<string[]>(host.get("diff") || "[]", []);
     const [diffSeg, setDiffSeg] = React.useState<string | null>(initDiff[0] ?? null);
     const [diffV1,  setDiffV1]  = React.useState<string | null>(initDiff[1] ?? null);
     const [diffV2,  setDiffV2]  = React.useState<string | null>(initDiff[2] ?? null);
@@ -967,32 +958,28 @@ export function render({ model, el, isStatic = false }: RenderContext) {
       setLocalDiffV2(diffV2 ?? "");
     }, [diffSeg, diffV1, diffV2]);
 
-    const pathCols  = parseJson<string[]>(model.get("path_cols"), []);
-    const segLevels = parseJson<Record<string, string[]>>(model.get("segment_levels"), {});
+    const pathCols  = parseJson<string[]>(host.get("path_cols"), []);
+    const segLevels = parseJson<Record<string, string[]>>(host.get("segment_levels"), {});
     const segCols = Object.keys(segLevels);
 
     // ── subscriptions ──────────────────────────────────────────────────────
-    React.useEffect(() => {
-      const subs: Array<[string, () => void]> = [
-        ["result",       () => { setResult(parseJson(model.get("result"), { matrices: [], event_counts: {} })); }],
-        ["is_loading",   () => setIsLoading((model.get("is_loading") as boolean) ?? false)],
-        ["height",       () => setHeight((model.get("height") as number) ?? 600)],
-        ["sidebar_open", () => setSidebarOpen((model.get("sidebar_open") as boolean) ?? true)],
-        ["step_window",  () => setStepWindow((model.get("step_window") as number) || 3)],
-        ["path_col",  () => setPathIdCol((model.get("path_col") as string) || "")],
-        ["path_pattern", () => { const v = (model.get("path_pattern") as string) || ""; setPathPattern(v); setAppliedPathPattern(v); }],
-        ["diff",         () => { const d = parseJson<string[]>(model.get("diff") || "[]", []); setDiffSeg(d[0]??null); setDiffV1(d[1]??null); setDiffV2(d[2]??null); }],
-      ];
-      subs.forEach(([k, cb]) => model.on(`change:${k}`, cb));
-      return () => subs.forEach(([k, cb]) => model.off(`change:${k}`, cb));
-    }, []);
+    useHostSubscriptions(host, [
+      ["result",       () => { setResult(parseJson(host.get("result"), { matrices: [], event_counts: {} })); }],
+      ["is_loading",   () => setIsLoading((host.get("is_loading") as boolean) ?? false)],
+      ["height",       () => setHeight((host.get("height") as number) ?? 600)],
+      ["sidebar_open", () => setSidebarOpen((host.get("sidebar_open") as boolean) ?? true)],
+      ["step_window",  () => setStepWindow((host.get("step_window") as number) || 3)],
+      ["path_col",  () => setPathIdCol((host.get("path_col") as string) || "")],
+      ["path_pattern", () => { const v = (host.get("path_pattern") as string) || ""; setPathPattern(v); setAppliedPathPattern(v); }],
+      ["diff",         () => { const d = parseJson<string[]>(host.get("diff") || "[]", []); setDiffSeg(d[0]??null); setDiffV1(d[1]??null); setDiffV2(d[2]??null); }],
+    ]);
 
-    const setParam = (key: string, val: unknown) => { model.set(key, val); model.save_changes(); };
+    const setParam = (key: string, val: unknown) => { host.set(key, val); };
     // Debounced variant for slider-driven params that change many times per drag
     const paramTimers = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const setParamDebounced = (key: string, val: unknown, delay = 250) => {
       clearTimeout(paramTimers.current[key]);
-      paramTimers.current[key] = setTimeout(() => { model.set(key, val); model.save_changes(); }, delay);
+      paramTimers.current[key] = setTimeout(() => { host.set(key, val); }, delay);
     };
 
     // Expose external navigation API for static HTML report links
@@ -1119,9 +1106,9 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                 pathPattern={pathPattern}
                 diffSeg={diffSeg} diffV1={diffV1} diffV2={diffV2}
 
-                initialSortState={parseJson<SortState | null>(model.get("sort_state") || "", null)}
+                initialSortState={parseJson<SortState | null>(host.get("sort_state") || "", null)}
                 onSortChange={(order, lexDir) => setParam("sort_state", JSON.stringify({ order, lex_dir: lexDir }))}
-                initialScrollX={(model.get("scroll_x") as number) || 0}
+                initialScrollX={(host.get("scroll_x") as number) || 0}
                 onScrollXChange={x => setParam("scroll_x", x)} />
             </div>
           )}

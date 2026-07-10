@@ -1,21 +1,22 @@
 /**
  * Single anywidget entry-point for all Retentioneering widgets.
  * The Python side sets `widget_type` traitlet to choose which component to render.
+ *
+ * This file is one of only two places in the whole JS workspace that build a
+ * `WidgetHost` from something host-specific (the other is AnywidgetHost.ts
+ * itself): `render()` wraps the live anywidget model via `anywidgetHost()`;
+ * `renderStatic()` wraps the exported data blob via `staticHost()`. Every
+ * per-widget render function below only ever sees the resulting `WidgetHost`.
  */
+import { anywidgetHost, type AnyWidgetModel } from "./AnywidgetHost";
+import { staticHost } from "./StaticHost";
+import type { RenderContext } from "./widget-utils";
 import { render as renderTransitionGraph }  from "./index";
 import { render as renderStepSankey }       from "./step_sankey";
 import { render as renderStepMatrix }       from "./step_matrix";
 import { render as renderFunnel }           from "./funnel";
 import { render as renderSegmentOverview }  from "./segment_overview";
 import { render as renderClusterAnalysis }  from "./cluster_analysis";
-
-interface AnyWidgetModel {
-  get(key: string): unknown;
-  set(key: string, value: unknown): void;
-  save_changes(): void;
-  on(event: string, cb: () => void): void;
-  off(event: string, cb: () => void): void;
-}
 
 /** Focus a node or animate an edge in a transition graph after renderStatic.
  *  eventRef can be:
@@ -151,32 +152,23 @@ export function scrollToEvent(eventRef: string, el: HTMLElement) {
   }
 }
 
-export function renderStatic(data: Record<string, unknown>, el: HTMLElement) {
-  const noop = () => {};
-  const model: AnyWidgetModel = {
-    get: (key: string) => {
-      const v = data[key];
-      // anywidget traitlets always return JSON strings for objects/arrays,
-      // not parsed JS values — serialise so widget code can JSON.parse() them
-      if (v !== null && v !== undefined && typeof v === "object") {
-        return JSON.stringify(v);
-      }
-      return v ?? null;
-    },
-    set: noop,
-    save_changes: noop,
-    on: noop,
-    off: noop,
-  };
-  render({ model, el, isStatic: true });
-}
-
-export function render(ctx: { model: AnyWidgetModel; el: HTMLElement; isStatic?: boolean }) {
-  const type = (ctx.model.get("widget_type") as string) ?? "transition_graph";
+/** Dispatch by `widget_type` to the right per-widget renderer. Shared by both render() and renderStatic(). */
+function dispatch(ctx: RenderContext) {
+  const type = (ctx.host.get("widget_type") as string) ?? "transition_graph";
   if (type === "step_sankey")       return renderStepSankey(ctx);
   if (type === "step_matrix")       return renderStepMatrix(ctx);
   if (type === "funnel")            return renderFunnel(ctx);
   if (type === "segment_overview")  return renderSegmentOverview(ctx);
   if (type === "cluster_analysis")  return renderClusterAnalysis(ctx);
   return renderTransitionGraph(ctx);
+}
+
+/** Static-HTML-export entry point (ADR-0010) — no kernel, no live model. */
+export function renderStatic(data: Record<string, unknown>, el: HTMLElement) {
+  return dispatch({ host: staticHost(data), el, isStatic: true });
+}
+
+/** anywidget's ESM entry point — called with the live model by the anywidget runtime. */
+export function render(ctx: { model: AnyWidgetModel; el: HTMLElement; isStatic?: boolean }) {
+  return dispatch({ host: anywidgetHost(ctx.model), el: ctx.el, isStatic: ctx.isStatic });
 }

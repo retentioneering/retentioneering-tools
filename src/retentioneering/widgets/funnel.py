@@ -1,22 +1,13 @@
 import json
-import pathlib
 
-import anywidget
 import traitlets
 
-_STATIC = pathlib.Path(__file__).parent.parent / "static"
-_UNSET = object()
-
-from retentioneering.widgets._esm import _get_esm  # noqa: E402
-from retentioneering.widgets._state_file import StateFileMixin  # noqa: E402
-from retentioneering.widgets._utils import parse_diff as _parse_diff  # noqa: E402
-from retentioneering.widgets._html_export import write_html  # noqa: E402
+from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
+from retentioneering.widgets._utils import parse_diff as _parse_diff
+from retentioneering.widgets._html_export import write_html
 
 
-class FunnelWidget(StateFileMixin, anywidget.AnyWidget):
-    _esm = _get_esm()
-    _css = _STATIC / "widget.css"
-
+class FunnelWidget(RetentioneeringWidget):
     widget_type = traitlets.Unicode("funnel").tag(sync=True)
 
     # ── recompute triggers ────────────────────────────────────────────────────
@@ -29,10 +20,8 @@ class FunnelWidget(StateFileMixin, anywidget.AnyWidget):
     path_cols = traitlets.Unicode("[]").tag(sync=True)
     segment_levels = traitlets.Unicode("{}").tag(sync=True)
 
-    # ── result ────────────────────────────────────────────────────────────────
+    # ── result (is_loading/error are inherited from RetentioneeringWidget) ─────
     result = traitlets.Unicode("{}").tag(sync=True)
-    is_loading = traitlets.Bool(False).tag(sync=True)
-    error = traitlets.Unicode("").tag(sync=True)
 
     # ── display ───────────────────────────────────────────────────────────────
     widget_id = traitlets.Unicode("").tag(sync=True)
@@ -109,6 +98,23 @@ class FunnelWidget(StateFileMixin, anywidget.AnyWidget):
             return
         self._recompute()
 
+    # ── dispatch ───────────────────────────────────────────────────────────────
+
+    def _tool_funnel_data(self, params: dict):
+        steps = params.get("steps")
+        if steps is None:
+            steps = json.loads(self.steps) if self.steps else []
+        return self._compute_raw(
+            steps=steps,
+            diff=_parse_diff(params.get("diff")),
+            path_col=params.get("path_col") or self.path_col or None,
+        )
+
+    #: See RetentioneeringWidget.compute_tools.
+    compute_tools = {"funnel_data": _tool_funnel_data}
+
+    # ── computation ────────────────────────────────────────────────────────────
+
     def _recompute(self):
         self.is_loading = True
         self.error = ""
@@ -116,30 +122,37 @@ class FunnelWidget(StateFileMixin, anywidget.AnyWidget):
             steps = json.loads(self.steps) if self.steps else []
             diff = _parse_diff(self.diff)
             pid = self.path_col or None
-            result = self._eventstream.funnel_data(steps=steps, diff=diff, path_col=pid)
-            if diff and len(diff) == 3:
-                result["group1_label"] = str(diff[1])
-                result["group2_label"] = str(diff[2])
-                steps_list = result.get("steps", [])
-                if steps_list:
-                    r1 = steps_list[0].get("funnel1_conversion_rate") or 0
-                    r2 = steps_list[0].get("funnel2_conversion_rate") or 0
-                    up1 = steps_list[0].get("funnel1_unique_paths", 0)
-                    up2 = steps_list[0].get("funnel2_unique_paths", 0)
-                    result["group1_total"] = round(up1 / r1) if r1 > 0 else up1
-                    result["group2_total"] = round(up2 / r2) if r2 > 0 else up2
-            else:
-                steps_list = result.get("steps", [])
-                if steps_list:
-                    r = steps_list[0].get("conversion_rate") or 0
-                    up = steps_list[0].get("unique_paths", 0)
-                    result["total_paths"] = round(up / r) if r > 0 else up
-            self.result = json.dumps(result)
+            self.result = json.dumps(
+                self._compute_raw(steps=steps, diff=diff, path_col=pid)
+            )
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"
         finally:
             self.is_loading = False
+
+    def _compute_raw(self, steps, diff=None, path_col=None) -> dict:
+        result = self._eventstream.funnel_data(
+            steps=steps, diff=diff, path_col=path_col
+        )
+        if diff and len(diff) == 3:
+            result["group1_label"] = str(diff[1])
+            result["group2_label"] = str(diff[2])
+            steps_list = result.get("steps", [])
+            if steps_list:
+                r1 = steps_list[0].get("funnel1_conversion_rate") or 0
+                r2 = steps_list[0].get("funnel2_conversion_rate") or 0
+                up1 = steps_list[0].get("funnel1_unique_paths", 0)
+                up2 = steps_list[0].get("funnel2_unique_paths", 0)
+                result["group1_total"] = round(up1 / r1) if r1 > 0 else up1
+                result["group2_total"] = round(up2 / r2) if r2 > 0 else up2
+        else:
+            steps_list = result.get("steps", [])
+            if steps_list:
+                r = steps_list[0].get("conversion_rate") or 0
+                up = steps_list[0].get("unique_paths", 0)
+                result["total_paths"] = round(up / r) if r > 0 else up
+        return result
 
     # ── HTML export ───────────────────────────────────────────────────────────
 

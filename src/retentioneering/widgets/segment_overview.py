@@ -1,21 +1,12 @@
 import json
-import pathlib
 
-import anywidget
 import traitlets
 
-_STATIC = pathlib.Path(__file__).parent.parent / "static"
-_UNSET = object()
-
-from retentioneering.widgets._esm import _get_esm  # noqa: E402
-from retentioneering.widgets._html_export import write_html  # noqa: E402
-from retentioneering.widgets._state_file import StateFileMixin  # noqa: E402
+from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
+from retentioneering.widgets._html_export import write_html
 
 
-class SegmentOverviewWidget(StateFileMixin, anywidget.AnyWidget):
-    _esm = _get_esm()
-    _css = _STATIC / "widget.css"
-
+class SegmentOverviewWidget(RetentioneeringWidget):
     widget_type = traitlets.Unicode("segment_overview").tag(sync=True)
 
     # ── config traitlets ───────────────────────────────────────────────────
@@ -30,10 +21,8 @@ class SegmentOverviewWidget(StateFileMixin, anywidget.AnyWidget):
     path_cols = traitlets.Unicode("[]").tag(sync=True)
     event_list = traitlets.Unicode("[]").tag(sync=True)
 
-    # ── result ────────────────────────────────────────────────────────────
+    # ── result (is_loading/error are inherited from RetentioneeringWidget) ─
     result = traitlets.Unicode("{}").tag(sync=True)
-    is_loading = traitlets.Bool(False).tag(sync=True)
-    error = traitlets.Unicode("").tag(sync=True)
 
     # ── distribution request/result ───────────────────────────────────────
     dist_request = traitlets.Unicode("").tag(sync=True)
@@ -128,6 +117,33 @@ class SegmentOverviewWidget(StateFileMixin, anywidget.AnyWidget):
             return
         self._compute_distribution(req)
 
+    # ── dispatch ─────────────────────────────────────────────────────────────
+
+    def _tool_segment_overview_data(self, params: dict):
+        metrics = params.get("metrics")
+        if metrics is None:
+            metrics = json.loads(self.metrics) if self.metrics else []
+        return self._compute_raw(
+            segment_col=params.get("segment_col") or self.segment_col,
+            metrics=metrics,
+            path_col=params.get("path_col") or self.path_col or None,
+        )
+
+    def _tool_get_metric_distribution(self, params: dict):
+        return self._eventstream.get_metric_distribution(
+            segment_col=params["segment_col"],
+            segment_value=params["segment_value"],
+            metric=params["metric"],
+            complement=params.get("complement", False),
+            path_col=params.get("path_col"),
+        )
+
+    #: See RetentioneeringWidget.compute_tools.
+    compute_tools = {
+        "segment_overview_data": _tool_segment_overview_data,
+        "get_metric_distribution": _tool_get_metric_distribution,
+    }
+
     # ── computation ───────────────────────────────────────────────────────
 
     def _recompute(self):
@@ -135,25 +151,30 @@ class SegmentOverviewWidget(StateFileMixin, anywidget.AnyWidget):
         self.error = ""
         try:
             metrics = json.loads(self.metrics) if self.metrics else []
-            df = self._eventstream.segment_overview_data(
-                segment_col=self.segment_col,
-                metrics=metrics,
-                path_col=self.path_col or None,
-            )
             self.result = json.dumps(
-                {
-                    "metrics": df.index.tolist(),
-                    "segments": df.columns.tolist(),
-                    "values": [
-                        [_safe(v) for v in df.loc[m].tolist()] for m in df.index
-                    ],
-                }
+                self._compute_raw(
+                    segment_col=self.segment_col,
+                    metrics=metrics,
+                    path_col=self.path_col or None,
+                )
             )
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"
         finally:
             self.is_loading = False
+
+    def _compute_raw(self, segment_col, metrics, path_col=None) -> dict:
+        df = self._eventstream.segment_overview_data(
+            segment_col=segment_col,
+            metrics=metrics,
+            path_col=path_col,
+        )
+        return {
+            "metrics": df.index.tolist(),
+            "segments": df.columns.tolist(),
+            "values": [[_safe(v) for v in df.loc[m].tolist()] for m in df.index],
+        }
 
     # ── HTML export ───────────────────────────────────────────────────────────
 

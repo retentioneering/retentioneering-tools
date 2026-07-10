@@ -1,22 +1,13 @@
 import json
-import pathlib
 
-import anywidget
 import traitlets
 
-from retentioneering.widgets._esm import _get_esm
-from retentioneering.widgets._state_file import StateFileMixin
+from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import parse_diff as _parse_diff
 from retentioneering.widgets._html_export import write_html
 
-_STATIC = pathlib.Path(__file__).parent.parent / "static"
-_UNSET = object()
 
-
-class TransitionGraphWidget(StateFileMixin, anywidget.AnyWidget):
-    _esm = _get_esm()
-    _css = _STATIC / "widget.css"
-
+class TransitionGraphWidget(RetentioneeringWidget):
     widget_type = traitlets.Unicode("transition_graph").tag(sync=True)
 
     # ── recompute triggers ─────────────────────────────────────────────────────
@@ -31,10 +22,8 @@ class TransitionGraphWidget(StateFileMixin, anywidget.AnyWidget):
     event_counts_g2 = traitlets.Unicode("{}").tag(sync=True)
     segment_levels = traitlets.Unicode("{}").tag(sync=True)
 
-    # ── result ─────────────────────────────────────────────────────────────────
+    # ── result (is_loading/error are inherited from RetentioneeringWidget) ─────
     result = traitlets.Unicode("{}").tag(sync=True)
-    is_loading = traitlets.Bool(False).tag(sync=True)
-    error = traitlets.Unicode("").tag(sync=True)
 
     # ── display / persistent ───────────────────────────────────────────────────
     height = traitlets.Int(500).tag(sync=True)
@@ -47,10 +36,6 @@ class TransitionGraphWidget(StateFileMixin, anywidget.AnyWidget):
     event_count_filter = traitlets.Unicode("").tag(sync=True)
     # "" | '{"zoom": z, "pan": {"x": x, "y": y}}' — canvas zoom/pan
     viewport = traitlets.Unicode("").tag(sync=True)
-
-    # ── generic compute protocol ───────────────────────────────────────────────
-    compute_request = traitlets.Unicode("").tag(sync=True)
-    compute_response = traitlets.Unicode("").tag(sync=True)
 
     _persist_names = (
         "edge_weight",
@@ -119,7 +104,6 @@ class TransitionGraphWidget(StateFileMixin, anywidget.AnyWidget):
         self.observe(self._on_params_change, names=["edge_weight", "diff", "path_col"])
         self.observe(self._on_positions_change, names=["node_positions"])
         self.observe(self._on_event_visibility_change, names=["event_visibility"])
-        self.observe(self._on_compute_request, names=["compute_request"])
         self._start_state_autosave()
 
     # ── widget-specific observers ──────────────────────────────────────────────
@@ -137,35 +121,25 @@ class TransitionGraphWidget(StateFileMixin, anywidget.AnyWidget):
         if not self._initialized:
             return
 
-    def _on_compute_request(self, change):
-        raw = change["new"]
-        if not raw:
-            return
-        try:
-            req = json.loads(raw)
-        except Exception:
-            return
-        req_id = req.get("id", "")
-        tool = req.get("tool", "")
-        params = req.get("params", {})
-        try:
-            result = self._dispatch(tool, params)
-            self.compute_response = json.dumps({"id": req_id, "result": result})
-        except Exception as exc:
-            self.compute_response = json.dumps({"id": req_id, "error": str(exc)})
-
     # ── dispatch ───────────────────────────────────────────────────────────────
 
-    def _dispatch(self, tool: str, params: dict):
-        if tool == "transition_graph_data":
-            return self._compute_tm_raw(
-                edge_weight=params.get("edge_weight", self.edge_weight),
-                path_col=params.get("path_col") or self.path_col or None,
-                diff=_parse_diff(params.get("diff")),
-            )
-        if tool == "graph_layout":
-            return self._compute_graph_layout(params)
-        raise ValueError(f"Unknown tool: {tool!r}")
+    def _tool_transition_graph_data(self, params: dict):
+        return self._compute_tm_raw(
+            edge_weight=params.get("edge_weight", self.edge_weight),
+            path_col=params.get("path_col") or self.path_col or None,
+            diff=_parse_diff(params.get("diff")),
+        )
+
+    def _tool_graph_layout(self, params: dict):
+        return self._compute_graph_layout(params)
+
+    #: See RetentioneeringWidget.compute_tools — a platform backend can call
+    #: these directly via ``dispatch_compute`` (or by looking this table up
+    #: on the class) instead of hand-rolling a tool -> Eventstream-method map.
+    compute_tools = {
+        "transition_graph_data": _tool_transition_graph_data,
+        "graph_layout": _tool_graph_layout,
+    }
 
     # ── computations ───────────────────────────────────────────────────────────
 

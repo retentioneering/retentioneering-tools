@@ -1,22 +1,13 @@
 import json
-import pathlib
 
-import anywidget
 import traitlets
 
-_STATIC = pathlib.Path(__file__).parent.parent / "static"
-_UNSET = object()
-
-from retentioneering.widgets._esm import _get_esm  # noqa: E402
-from retentioneering.widgets._state_file import StateFileMixin  # noqa: E402
-from retentioneering.widgets._utils import parse_diff as _parse_diff  # noqa: E402
-from retentioneering.widgets._html_export import write_html  # noqa: E402
+from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
+from retentioneering.widgets._utils import parse_diff as _parse_diff
+from retentioneering.widgets._html_export import write_html
 
 
-class StepSankeyWidget(StateFileMixin, anywidget.AnyWidget):
-    _esm = _get_esm()  # dev: local file; installed: CDN URL
-    _css = _STATIC / "widget.css"
-
+class StepSankeyWidget(RetentioneeringWidget):
     widget_type = traitlets.Unicode("step_sankey").tag(sync=True)
 
     # ── recompute triggers ────────────────────────────────────────────────────
@@ -31,10 +22,8 @@ class StepSankeyWidget(StateFileMixin, anywidget.AnyWidget):
     path_cols = traitlets.Unicode("[]").tag(sync=True)
     segment_levels = traitlets.Unicode("{}").tag(sync=True)
 
-    # ── result ────────────────────────────────────────────────────────────────
+    # ── result (is_loading/error are inherited from RetentioneeringWidget) ─────
     result = traitlets.Unicode("{}").tag(sync=True)
-    is_loading = traitlets.Bool(False).tag(sync=True)
-    error = traitlets.Unicode("").tag(sync=True)
 
     # ── display ───────────────────────────────────────────────────────────────
     widget_id = traitlets.Unicode("").tag(sync=True)
@@ -49,12 +38,6 @@ class StepSankeyWidget(StateFileMixin, anywidget.AnyWidget):
     event_count_filter = traitlets.Unicode("").tag(sync=True)
     # horizontal scroll position, px
     scroll_x = traitlets.Float(0.0).tag(sync=True)
-
-    # ── compute protocol ──────────────────────────────────────────────────────
-    compute_request = traitlets.Unicode("").tag(sync=True)
-    compute_response = traitlets.Unicode("").tag(sync=True)
-
-    # ─────────────────────────────────────────────────────────────────────────
 
     _persist_names = (
         "max_steps",
@@ -129,8 +112,6 @@ class StepSankeyWidget(StateFileMixin, anywidget.AnyWidget):
             names=["max_steps", "diff", "path_col", "path_pattern"],
         )
         self.observe(self._on_positions_change, names=["node_positions"])
-
-        self.observe(self._on_compute_request, names=["compute_request"])
         self._start_state_autosave()
 
     # ── observers ─────────────────────────────────────────────────────────────
@@ -144,34 +125,18 @@ class StepSankeyWidget(StateFileMixin, anywidget.AnyWidget):
         if not self._initialized:
             return
 
-    def _on_compute_request(self, change):
-        raw = change["new"]
-        if not raw:
-            return
-        try:
-            req = json.loads(raw)
-        except Exception:
-            return
-        req_id = req.get("id", "")
-        tool = req.get("tool", "")
-        params = req.get("params", {})
-        try:
-            result = self._dispatch(tool, params)
-            self.compute_response = json.dumps({"id": req_id, "result": result})
-        except Exception as exc:
-            self.compute_response = json.dumps({"id": req_id, "error": str(exc)})
-
     # ── dispatch ──────────────────────────────────────────────────────────────
 
-    def _dispatch(self, tool: str, params: dict):
-        if tool == "step_sankey_data":
-            return self._compute_raw(
-                max_steps=params.get("max_steps", self.max_steps),
-                path_col=params.get("path_col") or self.path_col or None,
-                diff=_parse_diff(params.get("diff")),
-                path_pattern=params.get("path_pattern") or self.path_pattern or None,
-            )
-        raise ValueError(f"Unknown tool: {tool!r}")
+    def _tool_step_sankey_data(self, params: dict):
+        return self._compute_raw(
+            max_steps=params.get("max_steps", self.max_steps),
+            path_col=params.get("path_col") or self.path_col or None,
+            diff=_parse_diff(params.get("diff")),
+            path_pattern=params.get("path_pattern") or self.path_pattern or None,
+        )
+
+    #: See RetentioneeringWidget.compute_tools.
+    compute_tools = {"step_sankey_data": _tool_step_sankey_data}
 
     # ── computations ──────────────────────────────────────────────────────────
 

@@ -1,22 +1,13 @@
 import json
-import pathlib
 
-import anywidget
 import traitlets
 
-from retentioneering.widgets._esm import _get_esm
-from retentioneering.widgets._state_file import StateFileMixin
+from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import parse_diff as _parse_diff
 from retentioneering.widgets._html_export import write_html
 
-_STATIC = pathlib.Path(__file__).parent.parent / "static"
-_UNSET = object()
 
-
-class StepMatrixWidget(StateFileMixin, anywidget.AnyWidget):
-    _esm = _get_esm()
-    _css = _STATIC / "widget.css"
-
+class StepMatrixWidget(RetentioneeringWidget):
     widget_type = traitlets.Unicode("step_matrix").tag(sync=True)
 
     # ── recompute triggers ─────────────────────────────────────────────────────
@@ -30,10 +21,8 @@ class StepMatrixWidget(StateFileMixin, anywidget.AnyWidget):
     path_cols = traitlets.Unicode("[]").tag(sync=True)
     segment_levels = traitlets.Unicode("{}").tag(sync=True)
 
-    # ── result ─────────────────────────────────────────────────────────────────
+    # ── result (is_loading/error are inherited from RetentioneeringWidget) ─────
     result = traitlets.Unicode("{}").tag(sync=True)
-    is_loading = traitlets.Bool(False).tag(sync=True)
-    error = traitlets.Unicode("").tag(sync=True)
 
     # ── display / persistent ───────────────────────────────────────────────────
     height = traitlets.Int(600).tag(sync=True)
@@ -138,6 +127,22 @@ class StepMatrixWidget(StateFileMixin, anywidget.AnyWidget):
         if not self._initialized:
             return
         self._recompute()
+
+    # ── dispatch ───────────────────────────────────────────────────────────────
+
+    def _tool_step_matrix_data(self, params: dict):
+        return self._compute_raw(
+            max_steps=params.get("max_steps", self.max_steps),
+            path_col=params.get("path_col") or self.path_col or None,
+            diff=_parse_diff(params.get("diff")),
+            path_pattern=params.get("path_pattern") or self.path_pattern or None,
+        )
+
+    #: See RetentioneeringWidget.compute_tools. Tool name mirrors this
+    #: widget's own `*_data` twin, ``step_matrix_data`` — a documented alias
+    #: of ``step_sankey_data`` per ADR-0006 — even though it's serviced by
+    #: the same `_compute_raw` that calls `step_sankey_data` under the hood.
+    compute_tools = {"step_matrix_data": _tool_step_matrix_data}
 
     # ── computation ────────────────────────────────────────────────────────────
 

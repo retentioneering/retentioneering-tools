@@ -1,26 +1,17 @@
 import json
-import pathlib
 from dataclasses import asdict
 from typing import TYPE_CHECKING
 
-import anywidget
 import traitlets
 
 if TYPE_CHECKING:
     import pandas as pd
 
-_STATIC = pathlib.Path(__file__).parent.parent / "static"
-_UNSET = object()
-
-from retentioneering.widgets._esm import _get_esm  # noqa: E402
-from retentioneering.widgets._html_export import write_html  # noqa: E402
-from retentioneering.widgets._state_file import StateFileMixin  # noqa: E402
+from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
+from retentioneering.widgets._html_export import write_html
 
 
-class ClusterAnalysisWidget(StateFileMixin, anywidget.AnyWidget):
-    _esm = _get_esm()
-    _css = _STATIC / "widget.css"
-
+class ClusterAnalysisWidget(RetentioneeringWidget):
     widget_type = traitlets.Unicode("cluster_analysis").tag(sync=True)
 
     # ── config ─────────────────────────────────────────────────────────────
@@ -41,10 +32,8 @@ class ClusterAnalysisWidget(StateFileMixin, anywidget.AnyWidget):
     segment_cols = traitlets.Unicode("[]").tag(sync=True)
     segment_levels = traitlets.Unicode("{}").tag(sync=True)
 
-    # ── result ─────────────────────────────────────────────────────────────
+    # ── result (is_loading/error are inherited from RetentioneeringWidget) ─
     result = traitlets.Unicode("{}").tag(sync=True)
-    is_loading = traitlets.Bool(False).tag(sync=True)
-    error = traitlets.Unicode("").tag(sync=True)
     # Concrete params (e.g. the n_clusters that won the silhouette grid search)
     # that produced `result` — pass straight to add_clusters to reproduce it.
     chosen_params = traitlets.Unicode("{}").tag(sync=True)
@@ -213,6 +202,48 @@ class ClusterAnalysisWidget(StateFileMixin, anywidget.AnyWidget):
             return
         self._compute_distribution(req)
 
+    # ── dispatch ───────────────────────────────────────────────────────────
+
+    def _tool_cluster_analysis_data(self, params: dict):
+        features = params.get("features")
+        if features is None:
+            features = json.loads(self.features) if self.features else []
+        overview_metrics = params.get("overview_metrics")
+        if overview_metrics is None:
+            overview_metrics = (
+                json.loads(self.overview_metrics) if self.overview_metrics else []
+            )
+        n_clusters_raw = params.get("n_clusters", self.n_clusters)
+        nmf_raw = params.get(
+            "nmf_components", self.nmf_components if self.nmf_enabled else ""
+        )
+        return self._compute_raw(
+            features=features,
+            method=params.get("method", self.method),
+            scaler=params.get("scaler", self.scaler) or None,
+            n_clusters=_parse_n_clusters(_as_n_clusters_str(n_clusters_raw)),
+            nmf_components=(
+                _parse_n_clusters(_as_n_clusters_str(nmf_raw)) if nmf_raw else None
+            ),
+            overview_metrics=overview_metrics,
+            aggregation=params.get("aggregation", self.aggregation or "mean"),
+            path_col=params.get("path_col") or self.path_col or None,
+        )["result"]
+
+    def _tool_get_metric_distribution(self, params: dict):
+        return self._compute_distribution_raw(
+            metric=params["metric"],
+            segment_value=params["segment_value"],
+            complement=params.get("complement", False),
+            path_col=params.get("path_col") or self.path_col or None,
+        )
+
+    #: See RetentioneeringWidget.compute_tools.
+    compute_tools = {
+        "cluster_analysis_data": _tool_cluster_analysis_data,
+        "get_metric_distribution": _tool_get_metric_distribution,
+    }
+
     # ── computation ────────────────────────────────────────────────────────
 
     def _recompute(self):
@@ -225,49 +256,27 @@ class ClusterAnalysisWidget(StateFileMixin, anywidget.AnyWidget):
                 self._cluster_labels = None
                 return
             metrics = json.loads(self.overview_metrics) if self.overview_metrics else []
-            agg = self.aggregation or "mean"
-            # Apply global aggregation to metrics that don't have their own agg
-            metrics = [{**m, "agg": m.get("agg") or agg} for m in metrics]
             n_clusters = _parse_n_clusters(self.n_clusters)
             nmf_components = (
                 _parse_n_clusters(self.nmf_components)
                 if self.nmf_enabled and self.nmf_components
                 else None
             )
-            pid = self.path_col or None
 
-            raw = self._eventstream.cluster_analysis_data(
+            computed = self._compute_raw(
                 features=features,
                 method=self.method,
                 scaler=self.scaler or None,
                 n_clusters=n_clusters,
                 nmf_components=nmf_components,
                 overview_metrics=metrics,
-                path_col=pid,
+                aggregation=self.aggregation or "mean",
+                path_col=self.path_col or None,
             )
 
-            result: dict = {}
-            if "overview_df" in raw and raw["overview_df"] is not None:
-                df = raw["overview_df"]
-                result["overview"] = {
-                    "metrics": df.index.tolist(),
-                    "segments": df.columns.tolist(),
-                    "values": [
-                        [_safe(v) for v in df.loc[m].tolist()] for m in df.index
-                    ],
-                }
-            if "silhouette" in raw:
-                sil = raw["silhouette"]
-                result["silhouette"] = {
-                    "params": sil["params"],
-                    "silhouette": [_safe(s) for s in sil["silhouette"]],
-                }
-            if "nmf" in raw and raw["nmf"] is not None:
-                result["nmf"] = raw["nmf"]
-
-            self.result = json.dumps(result)
-            self.chosen_params = json.dumps(raw.get("best_params") or {})
-            self._cluster_labels = raw.get("cluster_labels")
+            self.result = json.dumps(computed["result"])
+            self.chosen_params = json.dumps(computed["best_params"])
+            self._cluster_labels = computed["cluster_labels"]
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"
@@ -276,15 +285,72 @@ class ClusterAnalysisWidget(StateFileMixin, anywidget.AnyWidget):
         finally:
             self.is_loading = False
 
-    def _compute_distribution(self, req: dict):
+    def _compute_raw(
+        self,
+        features,
+        method,
+        scaler,
+        n_clusters,
+        nmf_components,
+        overview_metrics,
+        aggregation="mean",
+        path_col=None,
+    ) -> dict:
+        # Apply global aggregation to metrics that don't have their own agg.
+        metrics = [{**m, "agg": m.get("agg") or aggregation} for m in overview_metrics]
+
+        raw = self._eventstream.cluster_analysis_data(
+            features=features,
+            method=method,
+            scaler=scaler,
+            n_clusters=n_clusters,
+            nmf_components=nmf_components,
+            overview_metrics=metrics,
+            path_col=path_col,
+        )
+
+        result: dict = {}
+        if "overview_df" in raw and raw["overview_df"] is not None:
+            df = raw["overview_df"]
+            result["overview"] = {
+                "metrics": df.index.tolist(),
+                "segments": df.columns.tolist(),
+                "values": [[_safe(v) for v in df.loc[m].tolist()] for m in df.index],
+            }
+        if "silhouette" in raw:
+            sil = raw["silhouette"]
+            result["silhouette"] = {
+                "params": sil["params"],
+                "silhouette": [_safe(s) for s in sil["silhouette"]],
+            }
+        if "nmf" in raw and raw["nmf"] is not None:
+            result["nmf"] = raw["nmf"]
+
+        return {
+            "result": result,
+            "best_params": raw.get("best_params") or {},
+            "cluster_labels": raw.get("cluster_labels"),
+        }
+
+    def _compute_distribution_raw(
+        self, metric, segment_value, complement=False, path_col=None
+    ) -> dict:
         from retentioneering.tools.cluster_analysis import ClusterAnalysis
 
+        if self._cluster_labels is None:
+            raise ValueError("No clustering result to compare - click Apply first.")
+        return ClusterAnalysis(self._eventstream).get_metric_distribution(
+            cluster_labels=self._cluster_labels,
+            metric=metric,
+            segment_value=segment_value,
+            complement=complement,
+            path_col=path_col,
+        )
+
+    def _compute_distribution(self, req: dict):
         self.is_loading = True
         try:
-            if self._cluster_labels is None:
-                raise ValueError("No clustering result to compare - click Apply first.")
-            result = ClusterAnalysis(self._eventstream).get_metric_distribution(
-                cluster_labels=self._cluster_labels,
+            result = self._compute_distribution_raw(
                 metric=req["metric"],
                 segment_value=req["segment_value"],
                 complement=req.get("complement", False),
@@ -448,6 +514,17 @@ def _safe(v):
     except Exception:
         return None
     return v
+
+
+def _as_n_clusters_str(value) -> str:
+    """Normalize a compute_request n_clusters/nmf_components param (which may
+    arrive as an int, a list, or already a string) into the string format
+    `_parse_n_clusters` expects — the same normalization the constructor
+    already applies to the `n_clusters`/`nmf_components` traitlets.
+    """
+    if isinstance(value, list):
+        return json.dumps(value)
+    return str(value) if value else ""
 
 
 def _parse_n_clusters(raw: str):

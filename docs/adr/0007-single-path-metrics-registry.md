@@ -34,3 +34,10 @@ ML. 3.x had these scattered per-tool.
   page in the same change.
 - Metric names are a public string-enum API: renames are breaking changes
   and ripple into JS and MCP docstrings (see ADR-0008 for the naming rules).
+- Each metric's shape (which `metric_args` keys it takes, required/optional,
+  valid modes/ranges) is declared once, in `metrics/metric_schema.py`'s
+  `METRIC_SCHEMAS` registry — `MetricConfig._parse_dict_config` and
+  `MetricBuilder.validate_metric_config` are both thin dispatchers into it,
+  rather than two independently hand-maintained if/elif chains. This is
+  Python-only: the JS metric editor and the Path Metrics doc page above are
+  still hand-synced against this registry, not generated from it.

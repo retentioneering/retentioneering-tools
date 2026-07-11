@@ -15,6 +15,7 @@ from typing import Any, Dict, List
 
 from retentioneering import engine
 from retentioneering.engine import dialect
+from retentioneering.utils.sql_quoting import quote_list as sql_list
 
 _MODE_EVENTS = "events"
 _MODE_SEPARATOR = "separator"
@@ -24,10 +25,6 @@ _MODE_TIMEOUT = "timeout"
 
 def to_list(value: str | List[str]) -> List[str]:
     return [value] if isinstance(value, str) else list(value)
-
-
-def sql_list(values: List[str]) -> str:
-    return ", ".join("'" + str(v).replace("'", "''") + "'" for v in values)
 
 
 def detect_mode(group: Dict[str, Any]) -> str:

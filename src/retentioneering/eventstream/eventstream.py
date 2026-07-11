@@ -595,6 +595,7 @@ class Eventstream:
             raise EmptyEventstreamError("no events remain after filter_paths")
         return result_stream
 
+    @_tracked("get_metrics")
     def get_metrics(self, metrics: list, path_col: str | None = None) -> pd.DataFrame:
         """
         Compute per-path metric values.
@@ -1791,6 +1792,7 @@ class Eventstream:
             event_col=event_col,
         )
 
+    @_tracked("get_metric_distribution")
     def get_metric_distribution(
         self,
         segment_col: str,

@@ -3,14 +3,10 @@ from dataclasses import dataclass
 from retentioneering import engine
 from retentioneering.exceptions import InvalidParameterError
 from retentioneering.tools.types import T_Diff
+from retentioneering.utils.sql_quoting import quote_literal
 
 if False:
     from retentioneering.eventstream.eventstream import Eventstream  # noqa: F401
-
-
-def _sql_str(value: str) -> str:
-    """Escape a string value for safe embedding in a DuckDB SQL literal."""
-    return "'" + value.replace("'", "''") + "'"
 
 
 @dataclass
@@ -53,7 +49,7 @@ class Funnel:
             # correct at any accepted grain (see ADR-0004).
             ctes = []
             for step_num, step_event in enumerate(steps, start=1):
-                ev = _sql_str(step_event)
+                ev = quote_literal(step_event)
                 if step_num == 1:
                     ctes.append(
                         f"step_1 AS ("

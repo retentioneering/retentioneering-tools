@@ -81,7 +81,7 @@ def quote_ident(identifier: str) -> str:
     so column/event names that collide with reserved words or contain spaces
     or other special characters can be safely interpolated into SQL text as
     identifiers (as opposed to string literals — see each call site's value
-    escaping helper for that, e.g. ``format_value_for_sql``).
+    escaping helper for that, e.g. ``utils.sql_quoting.quote_literal``).
 
     Quoting an identifier does not change the (unquoted) name DuckDB reports
     back for it on the resulting DataFrame, so this is always safe to apply

@@ -49,7 +49,7 @@ def regexp_match(expr: str, pattern_sql: str) -> str:
     """
     DuckDB regexp_matches(`expr`, `pattern_sql`). `pattern_sql` must already
     be a quoted SQL string literal (e.g. via a value-escaping helper such as
-    ``format_value_for_sql``) — this function only wraps the DuckDB-specific
-    function name, it does not escape its arguments.
+    ``utils.sql_quoting.quote_literal``) — this function only wraps the
+    DuckDB-specific function name, it does not escape its arguments.
     """
     return f"regexp_matches({expr}, {pattern_sql})"

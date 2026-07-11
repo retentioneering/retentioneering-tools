@@ -28,7 +28,9 @@ writes DuckDB SQL against the stream (see ADR-0002 for the contract).
   round-trip (DuckDB returns ordered categoricals; we normalize back to
   unordered and drop unused categories).
 - SQL strings are built with f-strings, so every user-supplied value must go
-  through the escaping helpers (`_sql_literal`, `format_value_for_sql`,
-  quoting of identifiers). This is a standing review point.
+  through the escaping helpers in `utils/sql_quoting.py` (`quote_literal`,
+  `quote_list`, `quote_ident` — the single home for this logic; several
+  per-module duplicates existed before consolidation and are gone now).
+  This is still a standing review point, not an automated check.
 - The replacement-scan idiom (ADR-0002) becomes load-bearing and looks like
   dead code to linters.

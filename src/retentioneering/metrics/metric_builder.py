@@ -42,32 +42,11 @@ from retentioneering.metrics.metric_schema import (
     validate_metric_args,
 )
 from retentioneering.utils.sequences import generate_patterns_with_optional_gaps
+from retentioneering.utils.sql_quoting import quote_list, quote_literal
 
 
 # Valid metric names — derived from the schema registry, not hand-maintained.
 VALID_METRICS = set(METRIC_SCHEMAS)
-
-
-def format_value_for_sql(value) -> str:
-    """
-    Format a Python value for use in SQL query.
-
-    Handles strings, numbers, booleans, and None.
-    """
-    if value is None:
-        return "NULL"
-    elif isinstance(value, bool):
-        return "TRUE" if value else "FALSE"
-    elif isinstance(value, str):
-        # Escape single quotes in strings
-        escaped = value.replace("'", "''")
-        return f"'{escaped}'"
-    elif isinstance(value, (int, float)):
-        return str(value)
-    else:
-        # Fallback: convert to string
-        escaped = str(value).replace("'", "''")
-        return f"'{escaped}'"
 
 
 class MetricConfig:
@@ -297,9 +276,9 @@ class MetricBuilder:
             # Wildcard: 'events' was omitted/None/[] - count every event in the stream.
             event_names = sorted(self.df[event_col].unique().tolist())
 
-        events_quoted = ", ".join([f"'{e}'" for e in event_names])
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
+        events_quoted = quote_list(event_names)
         query = f"""
         SELECT
             {path_col_q},
@@ -359,8 +338,8 @@ class MetricBuilder:
         WITH first_events AS (
             SELECT
                 {path_col_q},
-                MIN(CASE WHEN {event_col_q} = '{start_event}' THEN {timestamp_col_q} END) as time_from,
-                MIN(CASE WHEN {event_col_q} = '{end_event}' THEN {timestamp_col_q} END) as time_to
+                MIN(CASE WHEN {event_col_q} = {quote_literal(start_event)} THEN {timestamp_col_q} END) as time_from,
+                MIN(CASE WHEN {event_col_q} = {quote_literal(end_event)} THEN {timestamp_col_q} END) as time_to
             FROM df_with_start_end
             GROUP BY {path_col_q}
         )
@@ -434,7 +413,7 @@ class MetricBuilder:
             ev_list = (
                 active_events if isinstance(active_events, list) else [active_events]
             )
-            quoted = ", ".join(f"'{e}'" for e in ev_list)
+            quoted = quote_list(ev_list)
             count_expr = f"COUNT(DISTINCT CASE WHEN {event_col_q} IN ({quoted}) THEN CAST({timestamp_col_q} AS DATE) END)"
         else:
             count_expr = f"COUNT(DISTINCT CAST({timestamp_col_q} AS DATE))"
@@ -472,7 +451,7 @@ class MetricBuilder:
         # Generate patterns with optional gaps
         patterns = generate_patterns_with_optional_gaps(pattern)
         patterns_chunk = " OR ".join(
-            dialect.regexp_match("path", format_value_for_sql(p)) for p in patterns
+            dialect.regexp_match("path", quote_literal(p)) for p in patterns
         )
 
         metric_name_q = engine.quote_ident(metric_name)
@@ -514,7 +493,7 @@ class MetricBuilder:
 
         for segment_value, metric_name in zip(segment_values, metric_names):
             # Format value for SQL comparison
-            sql_value = format_value_for_sql(segment_value)
+            sql_value = quote_literal(segment_value)
 
             if mode == "any":
                 # Path belongs if segment_value appears at least once

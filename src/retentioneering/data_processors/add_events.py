@@ -8,6 +8,7 @@ from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.utils.sql_quoting import quote_list
 
 PROCESSOR_NAME = "add_events"
 
@@ -160,7 +161,7 @@ class AddEvents(DataProcessor):
         if active_events is not None:
             if not active_events:
                 return df.iloc[0:0]
-            quoted = ", ".join(f"'{e}'" for e in active_events)
+            quoted = quote_list(active_events)
             active_filter = f"WHERE {event_col_q} IN ({quoted})"
 
         query = f"""

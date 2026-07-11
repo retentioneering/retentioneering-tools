@@ -13,9 +13,11 @@ from retentioneering.utils.session_detection import (
     build_session_ctes,
     detect_mode,
     parse_timeout,
+    sql_list,
     to_list,
     _MODE_TIMEOUT,
 )
+from retentioneering.utils.sql_quoting import quote_literal
 
 PROCESSOR_NAME = "collapse_events"
 
@@ -185,7 +187,7 @@ class CollapseEvents(DataProcessor):
             return [
                 (
                     f"has_event_{e}",
-                    f"MAX(CASE WHEN {event_col_q} = '{e}' THEN 1 ELSE 0 END)",
+                    f"MAX(CASE WHEN {event_col_q} = {quote_literal(e)} THEN 1 ELSE 0 END)",
                 )
                 for e in events
             ]
@@ -194,7 +196,7 @@ class CollapseEvents(DataProcessor):
             return [
                 (
                     f"event_count_{e}",
-                    f"COUNT(CASE WHEN {event_col_q} = '{e}' THEN 1 ELSE NULL END)",
+                    f"COUNT(CASE WHEN {event_col_q} = {quote_literal(e)} THEN 1 ELSE NULL END)",
                 )
                 for e in events
             ]
@@ -206,8 +208,8 @@ class CollapseEvents(DataProcessor):
             ef = args.get("start_event", "")
             et = args.get("end_event", "")
             agg_sql = dialect.epoch(
-                f"MIN(CASE WHEN {event_col_q} = '{et}' THEN {ts_col_q} END) - "
-                f"MIN(CASE WHEN {event_col_q} = '{ef}' THEN {ts_col_q} END)"
+                f"MIN(CASE WHEN {event_col_q} = {quote_literal(et)} THEN {ts_col_q} END) - "
+                f"MIN(CASE WHEN {event_col_q} = {quote_literal(ef)} THEN {ts_col_q} END)"
             )
             return [(f"time_from_{ef}_to_{et}", agg_sql)]
         elif metric == "active_days":
@@ -246,7 +248,7 @@ class CollapseEvents(DataProcessor):
         if self.consecutive is True:
             is_start_condition = f"LAG({event_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = {event_col_q}"
         else:
-            events_list = ", ".join(f"'{event}'" for event in self.consecutive)
+            events_list = sql_list(self.consecutive)
             is_start_condition = (
                 f"LAG({event_col_q}) OVER (PARTITION BY {path_col_q} ORDER BY _rn) = {event_col_q}"
                 f" AND {event_col_q} IN ({events_list})"

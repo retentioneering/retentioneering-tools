@@ -25,7 +25,7 @@ from functools import wraps
 
 from mcp.server.fastmcp import FastMCP
 
-from retentioneering._tracking import _caller_type as _tracking_caller_type
+from retentioneering._tracking import caller_context as _tracking_caller_context
 from retentioneering._tracking import track as _track
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.mcp._agent_logic import (
@@ -116,11 +116,8 @@ def _build_server(
         def decorator(fn):
             @wraps(fn)
             def wrapper(*args, **kwargs):
-                token = _tracking_caller_type.set("mcp")
-                try:
+                with _tracking_caller_context("mcp"):
                     return fn(*args, **kwargs)
-                finally:
-                    _tracking_caller_type.reset(token)
 
             return mcp.tool()(wrapper)
 

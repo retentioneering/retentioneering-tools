@@ -1,5 +1,6 @@
 """PostHog analytics tracking for retentioneering."""
 
+import contextlib
 import contextvars
 import functools
 import inspect
@@ -12,9 +13,22 @@ import uuid
 
 from retentioneering.exceptions import RetentioneeringError
 
-_KEY = "phc_n4zuGDRCnuyao7DVCoURd6RsMBcsWcaWoTzRiF7eAndR"
+_DEFAULT_KEY = "phc_n4zuGDRCnuyao7DVCoURd6RsMBcsWcaWoTzRiF7eAndR"
 _HOST = "https://eu.i.posthog.com"
 _CONFIG = pathlib.Path.home() / ".retentioneering" / "config.json"
+
+
+def _resolve_posthog_key() -> str:
+    """The OSS library's PostHog project key, unless overridden by
+    `RETENTIONEERING_POSTHOG_KEY` — for embedders (e.g. the hosted platform
+    backend) that want their server-side library calls routed to their own
+    PostHog project instead. Pair with caller_context("platform") below so
+    those events are also distinguishable from OSS end-user traffic.
+    """
+    return os.environ.get("RETENTIONEERING_POSTHOG_KEY") or _DEFAULT_KEY
+
+
+_KEY = _resolve_posthog_key()
 
 try:
     from posthog import Posthog
@@ -140,10 +154,24 @@ def _no_track_requested() -> bool:
 
 # ── caller context ─────────────────────────────────────────────────────────────
 
-# Set to "mcp" inside MCP tool calls; defaults to "user" everywhere else.
+# "mcp" inside MCP tool calls, "platform" inside the hosted platform backend
+# (via caller_context() below); defaults to "user" everywhere else.
 _caller_type: contextvars.ContextVar[str] = contextvars.ContextVar(
     "retentioneering_caller_type", default="user"
 )
+
+
+@contextlib.contextmanager
+def caller_context(caller_type: str):
+    """Tag every `track()` call made inside this block with `caller_type` instead
+    of the default "user" (e.g. "mcp", "platform"). Restores the previous value on
+    exit, so nested contexts compose correctly.
+    """
+    token = _caller_type.set(caller_type)
+    try:
+        yield
+    finally:
+        _caller_type.reset(token)
 
 
 # ── public API ─────────────────────────────────────────────────────────────────

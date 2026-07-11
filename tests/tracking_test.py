@@ -65,6 +65,76 @@ def test_track_respects_no_track_in_config_file(monkeypatch, tmp_path):
     fake_ph.capture.assert_not_called()
 
 
+# ── caller_context / caller_type attribution ────────────────────────────────────
+
+
+def test_track_tags_events_with_default_caller_type(monkeypatch, tmp_path):
+    fake_ph = MagicMock()
+    monkeypatch.setattr(_tracking, "_ph", fake_ph)
+    monkeypatch.delenv("RETENTIONEERING_NO_TRACK", raising=False)
+    monkeypatch.setattr(_tracking, "_CONFIG", tmp_path / "config.json")
+
+    _tracking.track("some_event")
+
+    assert fake_ph.capture.call_args.kwargs["properties"]["caller_type"] == "user"
+
+
+def test_caller_context_tags_events_and_restores_on_exit(monkeypatch, tmp_path):
+    fake_ph = MagicMock()
+    monkeypatch.setattr(_tracking, "_ph", fake_ph)
+    monkeypatch.delenv("RETENTIONEERING_NO_TRACK", raising=False)
+    monkeypatch.setattr(_tracking, "_CONFIG", tmp_path / "config.json")
+
+    with _tracking.caller_context("platform"):
+        _tracking.track("inside")
+    _tracking.track("outside")
+
+    inside_props = fake_ph.capture.call_args_list[0].kwargs["properties"]
+    outside_props = fake_ph.capture.call_args_list[1].kwargs["properties"]
+    assert inside_props["caller_type"] == "platform"
+    assert outside_props["caller_type"] == "user"
+
+
+def test_caller_context_restores_on_exception(monkeypatch, tmp_path):
+    fake_ph = MagicMock()
+    monkeypatch.setattr(_tracking, "_ph", fake_ph)
+    monkeypatch.delenv("RETENTIONEERING_NO_TRACK", raising=False)
+    monkeypatch.setattr(_tracking, "_CONFIG", tmp_path / "config.json")
+
+    try:
+        with _tracking.caller_context("mcp"):
+            raise RuntimeError("boom")
+    except RuntimeError:
+        pass
+
+    _tracking.track("after")
+    assert fake_ph.capture.call_args.kwargs["properties"]["caller_type"] == "user"
+
+
+def test_caller_context_nests():
+    with _tracking.caller_context("mcp"):
+        assert _tracking._caller_type.get() == "mcp"
+        with _tracking.caller_context("platform"):
+            assert _tracking._caller_type.get() == "platform"
+        assert _tracking._caller_type.get() == "mcp"
+    assert _tracking._caller_type.get() == "user"
+
+
+# ── PostHog project key override ────────────────────────────────────────────────
+
+
+def test_resolve_posthog_key_defaults_to_oss_key(monkeypatch):
+    monkeypatch.delenv("RETENTIONEERING_POSTHOG_KEY", raising=False)
+
+    assert _tracking._resolve_posthog_key() == _tracking._DEFAULT_KEY
+
+
+def test_resolve_posthog_key_honors_env_override(monkeypatch):
+    monkeypatch.setenv("RETENTIONEERING_POSTHOG_KEY", "phc_platform_project_key")
+
+    assert _tracking._resolve_posthog_key() == "phc_platform_project_key"
+
+
 # ── @tracked: success/error status, changed args, opt-out ──────────────────────
 
 

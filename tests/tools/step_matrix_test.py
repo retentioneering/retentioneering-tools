@@ -473,6 +473,43 @@ class TestStepMatrix:
 
         pd.testing.assert_frame_equal(res[0], expected)
 
+    def test__path_pattern_9_redundant_wildcard_centers_anchor(self, fx_read_csv):
+        """Regression test: wrapping the anchor in a redundant leading/trailing
+        '.*' must still center it at column 0, not column -1."""
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+        max_steps = 2
+
+        with pytest.warns(UserWarning, match="redundant"):
+            res = stream.step_sankey_data(max_steps=max_steps, path_pattern=".*->B->.*")
+
+        assert res[0].loc["B", 0] == 1.0
+        assert res[0].loc["B", -1] == 0.0
+
+    def test__path_pattern_10_redundant_wildcard_matches_bare_pattern(
+        self, fx_read_csv
+    ):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+        max_steps = 2
+
+        with pytest.warns(UserWarning, match="redundant"):
+            wrapped = stream.step_sankey_data(
+                max_steps=max_steps, path_pattern=".*->B->.*"
+            )
+        bare = stream.step_sankey_data(max_steps=max_steps, path_pattern="B")
+
+        pd.testing.assert_frame_equal(wrapped[0], bare[0])
+
+    def test__path_pattern_no_warning_without_redundant_wildcard(
+        self, fx_read_csv, recwarn
+    ):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+        stream.step_sankey_data(max_steps=2, path_pattern="path_start->.*->C")
+
+        assert len(recwarn) == 0
+
     def test__path_pattern_empty_raises_error(self, fx_read_csv):
         """Test that PatternNoMatchError is raised when path_pattern matches no paths (regular case)"""
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")

@@ -1,4 +1,5 @@
 import re
+import warnings
 from dataclasses import dataclass
 from functools import reduce
 from typing import TYPE_CHECKING, Tuple
@@ -48,6 +49,7 @@ class StepMatrix:
                 sms, sms1, sms2 = self._process_diff_matrix(max_steps, diff, path_col)
                 return tuple(sms), tuple(sms1), tuple(sms2)
         else:
+            path_pattern = self._normalize_path_pattern(path_pattern)
             if diff is None:
                 sms = self._process_pattern_matrix(
                     max_steps, None, path_pattern, path_col
@@ -58,6 +60,36 @@ class StepMatrix:
                     max_steps, diff, path_pattern, path_col
                 )
                 return tuple(sms), tuple(sms1), tuple(sms2)
+
+    @staticmethod
+    def _normalize_path_pattern(path_pattern: str) -> str:
+        """Strip a redundant leading ".*->" and/or trailing "->.*".
+
+        A pattern already matches anywhere in the path by default (a bare
+        "X" and ".*->X->.*" select the same paths), so boundary wildcards
+        add nothing -- except a trailing ".*" also throws off
+        `_find_center_position`'s anchor bookkeeping, shifting the anchor's
+        own column off of 0. Trimming both forms up front keeps every
+        pattern on the bare-literal path, which centers correctly.
+        """
+        normalized = path_pattern
+        stripped_leading = normalized.startswith(".*->")
+        if stripped_leading:
+            normalized = normalized[len(".*->") :]
+        stripped_trailing = normalized.endswith("->.*")
+        if stripped_trailing:
+            normalized = normalized[: -len("->.*")]
+
+        if (stripped_leading or stripped_trailing) and normalized:
+            warnings.warn(
+                f"path_pattern {path_pattern!r} has a redundant leading/trailing "
+                f"'.*' -- a pattern already matches anywhere in the path by "
+                f"default. Using {normalized!r} instead.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return normalized
+        return path_pattern
 
     @staticmethod
     def _align_matrices(sms1, sms2):

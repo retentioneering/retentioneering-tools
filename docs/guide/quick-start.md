@@ -45,11 +45,11 @@ Compare two user segments side by side:
 
 Explore user paths step by step around important events or drop-off points with [Step Sankey](/docs/widgets/step-sankey):
 
-<DemoWidget cmd={`stream.step_sankey(path_pattern=".*->purchase")`} path="/docs-demos/guide/quick-start/step-sankey.html" height={560} sidebarOpen={false}/>
+<DemoWidget cmd={`stream.step_sankey(path_pattern="purchase")`} path="/docs-demos/guide/quick-start/step-sankey.html" height={560} sidebarOpen={false}/>
 
 or its equivalent [Step Matrix](/docs/widgets/step-matrix):
 
-<DemoWidget cmd={`stream.step_matrix(path_pattern=".*->purchase")`} path="/docs-demos/guide/quick-start/step-matrix.html" height={560} sidebarOpen={false} />
+<DemoWidget cmd={`stream.step_matrix(path_pattern="purchase")`} path="/docs-demos/guide/quick-start/step-matrix.html" height={560} sidebarOpen={false} />
 
 ## 4. Prepare your data
 

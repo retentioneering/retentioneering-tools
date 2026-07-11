@@ -73,6 +73,7 @@ class StepMatrixWidget(StateFileMixin, anywidget.AnyWidget):
         diff=_UNSET,
         path_col=_UNSET,
         path_pattern=_UNSET,
+        step_window=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
         state_file=None,
@@ -105,6 +106,7 @@ class StepMatrixWidget(StateFileMixin, anywidget.AnyWidget):
         self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
         self.path_col = path_col if path_col is not _UNSET else ""
         self.path_pattern = path_pattern if path_pattern is not _UNSET else ""
+        self.step_window = step_window if step_window is not _UNSET else 3
         self.height = height if height is not _UNSET else 600
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
@@ -116,6 +118,7 @@ class StepMatrixWidget(StateFileMixin, anywidget.AnyWidget):
                     ("diff", diff),
                     ("path_col", path_col),
                     ("path_pattern", path_pattern),
+                    ("step_window", step_window),
                     ("height", height),
                     ("sidebar_open", sidebar_open),
                 )

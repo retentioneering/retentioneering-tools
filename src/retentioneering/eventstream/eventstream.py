@@ -1199,9 +1199,10 @@ class Eventstream:
         path_pattern : str, optional
             Restrict/split paths using a `"->"`-separated sequence of anchor
             events, where `.*` matches any run of events, e.g.
-            `".*->add_to_cart->.*->purchase"`. Without a pattern, computes over
+            `"add_to_cart->.*->purchase"`. Without a pattern, computes over
             the whole path from `path_start` to `path_end`. Each anchor event in
-            the pattern produces its own matrix block.
+            the pattern produces its own matrix block. To see the
+            neighborhood around a single event: `path_pattern="add_to_cart"`.
 
         Returns
         -------
@@ -1213,7 +1214,7 @@ class Eventstream:
         Examples
         --------
             stream.step_sankey_data(max_steps=10)
-            stream.step_sankey_data(path_pattern=".*->purchase")
+            stream.step_sankey_data(path_pattern="purchase")
             combined, g1, g2 = stream.step_sankey_data(diff=("plan", "pro", "free"))
         """
         from retentioneering.tools.step_matrix import StepMatrix
@@ -1289,7 +1290,7 @@ class Eventstream:
 
         Examples
         --------
-            stream.step_sankey(max_steps=15, path_pattern=".*->purchase->.*")
+            stream.step_sankey(max_steps=15, path_pattern="add_to_cart->.*->purchase")
             stream.step_sankey(diff=("country", "US", "<REST>"))
         """
         from retentioneering.widgets.step_sankey import StepSankeyWidget, _UNSET
@@ -1313,6 +1314,7 @@ class Eventstream:
         diff=None,
         path_col=None,
         path_pattern=None,
+        step_window=None,
         height=None,
         sidebar_open=None,
         state_file=None,
@@ -1341,11 +1343,14 @@ class Eventstream:
         path_pattern : str, optional
             Restrict/split paths using a `"->"`-separated sequence of anchor
             events, where `.*` matches any run of events, e.g.
-            `".*->add_to_cart->.*->purchase"`. Without a pattern, shows the
+            `"add_to_cart->.*->purchase"`. Without a pattern, shows the
             whole path from `path_start` to `path_end`. Multiple anchors render
             one matrix block per anchor, side by side. A pattern that doesn't
             start at `path_start` or end at `path_end` shows a serrated edge,
-            signalling paths continue beyond the visible range.
+            signalling paths continue beyond the visible range. To see the
+            neighborhood around a single event: `path_pattern="add_to_cart"`.
+        step_window : int, default 3
+            Number of step columns shown around each anchor.
         height : int, default 600
             Widget height in pixels.
         sidebar_open : bool, default True
@@ -1356,8 +1361,8 @@ class Eventstream:
 
         Examples
         --------
-            stream.step_matrix(path_pattern=".*->purchase")
-            stream.step_matrix(path_pattern=".*->add_to_cart->.*->purchase")
+            stream.step_matrix(path_pattern="purchase")
+            stream.step_matrix(path_pattern="add_to_cart->.*->purchase")
             stream.step_matrix(diff=("is_new_user", False, True))
         """
         from retentioneering.widgets.step_matrix import StepMatrixWidget, _UNSET
@@ -1368,6 +1373,7 @@ class Eventstream:
             diff=diff if diff is not None else _UNSET,
             path_col=path_col if path_col is not None else _UNSET,
             path_pattern=path_pattern if path_pattern is not None else _UNSET,
+            step_window=step_window if step_window is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
             state_file=state_file,

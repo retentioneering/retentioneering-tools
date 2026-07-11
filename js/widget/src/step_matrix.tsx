@@ -400,6 +400,33 @@ function sortByDirection(block: MatrixBlock, direction: "left" | "right", anchor
   return anchorEv ? [anchorEv, ...order] : order;
 }
 
+// The event with the highest value at column 0 (the anchor's own column) —
+// used to pin the anchor row when auto-sorting. In diff mode block.values are
+// differences, so the centering event has value 0 there; group1 always has
+// the real frequencies.
+function findAnchorEvent(block: MatrixBlock): string | null {
+  const src = block.group1 ?? block;
+  const col0ci = src.columns.indexOf(0);
+  if (col0ci < 0) return null;
+  let best = -Infinity, anchorEv: string | null = null;
+  for (let ri = 0; ri < src.events.length; ri++) {
+    const v = src.values[ri]?.[col0ci] ?? 0;
+    if (v > best) { best = v; anchorEv = src.events[ri]; }
+  }
+  return anchorEv;
+}
+
+// Default row order: sort the first block by its right (forward-looking)
+// neighborhood, since that's the direction with something to show for a
+// path_start-anchored or mid-path anchor. A block with no right neighborhood
+// at all (e.g. a `path_pattern` ending at `path_end`, like ".*->path_end")
+// has nothing there to sort by, so fall back to its left neighborhood.
+function computeDefaultOrder(block: MatrixBlock | undefined): string[] {
+  if (!block) return [];
+  const direction: "left" | "right" = block.columns.some(c => c > 0) ? "right" : "left";
+  return sortByDirection(block, direction, findAnchorEvent(block));
+}
+
 interface SortState { order: string[]; lex_dir: "asc" | "desc" | null; }
 
 function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hiddenEvents, filteredOut, pinnedEvents, onToggleHidden, onTogglePin, heatmapType, globalHeatmap, eventCounts, eventCountsG1, eventCountsG2, pathPattern, diffSeg, diffV1, diffV2, initialSortState, onSortChange, initialScrollX, onScrollXChange }: {
@@ -495,29 +522,19 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
   // Custom row order (drag / sort buttons / lexicographic sort)
   const [customOrder, setCustomOrder] = React.useState<string[]>(initialSortState?.order ?? []);
   const [lexSortDir, setLexSortDir] = React.useState<"asc" | "desc" | null>(initialSortState?.lex_dir ?? null);
-  // Reconcile with the data: keep the current order, append events new to it
+  // Reconcile with the data: keep the current order, append events new to it.
+  // The very first time (no saved/custom order yet), default to sorting the
+  // first block by its right neighborhood (or left, if it has none).
   React.useEffect(() => {
     const evs = blocks[0]?.events ?? [];
     setCustomOrder(prev => prev.length > 0
       ? [...prev.filter(e => evs.includes(e)), ...evs.filter(e => !prev.includes(e))]
-      : evs);
+      : computeDefaultOrder(blocks[0]));
   }, [blocks]);
 
   const handleSort = React.useCallback((bi: number, direction: "left" | "right") => {
     const block = blocks[bi]; if (!block) return;
-    // Use original (non-diff) values to find anchor: in diff mode block.values are differences,
-    // so the centering event has value 0 there; group1 always has the real frequencies.
-    const src = block.group1 ?? block;
-    const col0ci = src.columns.indexOf(0);
-    let anchorEv: string | null = null;
-    if (col0ci >= 0) {
-      let best = -Infinity;
-      for (let ri = 0; ri < src.events.length; ri++) {
-        const v = src.values[ri]?.[col0ci] ?? 0;
-        if (v > best) { best = v; anchorEv = src.events[ri]; }
-      }
-    }
-    const order = sortByDirection(block, direction, anchorEv);
+    const order = sortByDirection(block, direction, findAnchorEvent(block));
     setCustomOrder(order);
     onSortChange?.(order, lexSortDir);
   }, [blocks, onSortChange, lexSortDir]);

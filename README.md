@@ -91,7 +91,7 @@ clean = (
     .collapse_events(consecutive=True)
     .split_sessions(timeout="30m")
 )
-clean.step_matrix(path_pattern=".*->add_to_cart->.*->purchase")
+clean.step_matrix(path_pattern="add_to_cart->.*->purchase")
 ```
 
 Need raw numbers instead of a widget? Every widget has a headless twin:

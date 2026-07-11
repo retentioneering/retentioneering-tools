@@ -132,10 +132,13 @@ Python widget traitlets and JS `model.get/set` keys are one protocol: rename the
 
 ### MCP server (ADR-0009)
 
-`mcp/server.py` exposes the eventstream to LLM agents over SSE (`retentioneering.mcp.serve()`).
-`mcp/playbook.md` holds canonical analysis recipes surfaced via the `playbook()` tool. MCP
-preprocessor step types mirror `Eventstream` method names exactly — any API rename must be
-propagated to `_apply_preprocessors`, the tool docstrings, and the playbook in the same change.
+`mcp/server.py` is transport wiring only (FastMCP/SSE, `retentioneering.mcp.serve()`) — the
+report-building logic lives in `mcp/_agent_logic.py` (`_apply_preprocessors`, summary builders),
+per-session state in `mcp/_report_session.py`'s `ReportSession`, and the system prompt in
+`mcp/_prompts.py`. `mcp/playbook.md` holds canonical analysis recipes surfaced via the
+`playbook()` tool. MCP preprocessor step types mirror `Eventstream` method names exactly — any
+API rename must be propagated to `_apply_preprocessors`, the tool docstrings, and the playbook
+in the same change.
 
 ### Docs pipeline (ADR-0013)
 

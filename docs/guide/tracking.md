@@ -48,22 +48,3 @@ os.environ["RETENTIONEERING_NO_TRACK"] = "1"
 ### Google Colab
 
 Add a secret named `RETENTIONEERING_NO_TRACK` with value `1` in Colab → Settings → Secrets, then enable notebook access for it. The secret persists across all Colab sessions automatically.
-
-## For embedders: routing events to your own project
-
-If you embed retentioneering in your own service (for example, a hosted backend that calls the library on behalf of your users), you may want those server-side calls attributed separately from ordinary library usage, so they don't get mixed into the OSS library's own product-analytics data.
-
-Set `RETENTIONEERING_POSTHOG_KEY` to your own PostHog project key before the library is imported, and tag your call sites with `retentioneering._tracking.caller_context(...)`:
-
-```python
-import os
-
-os.environ["RETENTIONEERING_POSTHOG_KEY"] = "phc_your_own_project_key"
-
-from retentioneering._tracking import caller_context
-
-with caller_context("platform"):
-    ...  # library calls made here are tagged caller_type="platform"
-```
-
-Every event still carries the same properties described above — only the destination project and the `caller_type` value change.

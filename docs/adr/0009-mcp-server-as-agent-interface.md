@@ -34,5 +34,12 @@ agent raw DataFrames wastes context and produces unverifiable analysis
   docs quote them, so docstring quality and enum completeness directly
   affect agent behavior (see ADR-0008, ADR-0013).
 - Any Eventstream API rename must be propagated to `mcp/server.py`
-  (`_apply_preprocessors`, tool docstrings, system instructions) and
-  `mcp/playbook.md` in the same change.
+  (tool docstrings, system instructions), `mcp/_agent_logic.py`
+  (`_apply_preprocessors`), and `mcp/playbook.md` in the same change.
+- `mcp/server.py` is transport/protocol wiring only (FastMCP/SSE, `@mcp.tool()`
+  registration). The report-building logic lives in `mcp/_agent_logic.py`
+  (`_apply_preprocessors`, summary builders, `_find_unlinked_numbers`),
+  per-session state in `mcp/_report_session.py`'s `ReportSession` (active
+  stream, pending tabs — what used to be closure variables rebound by hand),
+  and the system prompt/playbook text in `mcp/_prompts.py`. `server.py`'s
+  tool functions are thin wrappers delegating into these.

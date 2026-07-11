@@ -56,7 +56,31 @@ class ReportSession:
         )
         return tab_id
 
+    def package(self, title: str, analysis: str | None) -> dict:
+        """Pure packaging of the pending tabs into a report payload — no file
+        I/O. This is what a non-notebook caller (e.g. the platform's chat
+        assistant, which renders tabs inline instead of writing an HTML file)
+        should call: `mcp.tools.export_report` uses this, not `export()`.
+
+        Clears `pending_tabs` after packaging, same as `export()` used to do
+        only after a successful write — here there's nothing that can fail,
+        so tabs are cleared unconditionally once packaged.
+        """
+        widgets = list(self.pending_tabs)
+        self.pending_tabs.clear()
+        return {
+            "title": title,
+            "analysis": analysis,
+            "tabs": widgets,
+        }
+
     def export(self, title: str, analysis: str | None, path: str | None) -> dict:
+        """Notebook flow only: package the pending tabs, then render them into
+        a static, self-contained HTML file via `write_report_html`. Platform
+        callers should use `package()` directly — they have no local
+        filesystem destination to write to; rendering happens client-side
+        from the same tab data via `staticHost`/`renderStatic` instead.
+        """
         from retentioneering.widgets._html_export import write_report_html
 
         if path is None:
@@ -66,6 +90,10 @@ class ReportSession:
             path = tmp.name
             tmp.close()
 
+        # Package first — but data_sources_html/write_report_html need the
+        # tabs and base_preprocessors as they were *before* the tabs are
+        # cleared, so capture those here rather than relying on package()'s
+        # returned copy after it has already cleared self.pending_tabs.
         widgets = list(self.pending_tabs)
         data_sources_html = _build_data_note(list(self.base_preprocessors), widgets)
         write_report_html(

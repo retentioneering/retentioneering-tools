@@ -37,9 +37,35 @@ agent raw DataFrames wastes context and produces unverifiable analysis
   (tool docstrings, system instructions), `mcp/_agent_logic.py`
   (`_apply_preprocessors`), and `mcp/playbook.md` in the same change.
 - `mcp/server.py` is transport/protocol wiring only (FastMCP/SSE, `@mcp.tool()`
-  registration). The report-building logic lives in `mcp/_agent_logic.py`
-  (`_apply_preprocessors`, summary builders, `_find_unlinked_numbers`),
+  registration). Every tool body lives in `mcp/tools.py` as a plain
+  `(session, **params) -> dict` function — `server.py`'s `@mcp.tool()`
+  closures are one-line adapters (`json.dumps(tools.foo(session, ...))`).
+  These functions only touch `session`'s public protocol (`active_stream`,
+  `update_base_stream()`, `reset_base_stream()`, `add_tab()`, `pending_tabs`,
+  `context_events`, `package()`), so they work unchanged against any
+  `ReportSession`-shaped object — this is what lets the platform's chat
+  assistant reuse them directly via `client.beta.messages.tool_runner`,
+  against a `PlatformAgentSession` subclass that overrides only
+  `update_base_stream`/`reset_base_stream` to fork/reset a persisted DAG node
+  instead of replaying an in-memory stream.
+- The numeric/text logic behind those tools (`_apply_preprocessors`, summary
+  builders, `_find_unlinked_numbers`) lives in `mcp/_agent_logic.py`;
   per-session state in `mcp/_report_session.py`'s `ReportSession` (active
-  stream, pending tabs — what used to be closure variables rebound by hand),
-  and the system prompt/playbook text in `mcp/_prompts.py`. `server.py`'s
-  tool functions are thin wrappers delegating into these.
+  stream, pending tabs — what used to be closure variables rebound by hand);
+  the system prompt/playbook text in `mcp/_prompts.py`.
+- `ReportSession.export(title, analysis, path)` (notebook-only: packages tabs
+  *and* writes a static HTML file) is split from `ReportSession.package(title,
+  analysis)` (pure — returns `{title, analysis, tabs}`, no file I/O).
+  `tools.export_report()` calls `package()`; `server.py`'s own `export_report`
+  tool wrapper calls `export()` (to keep writing the notebook's HTML file).
+  A non-notebook caller — the platform, which renders tabs inline via
+  `staticHost`/`renderStatic` instead of a static export — has no destination
+  to write a file to, so it only ever needs `package()`.
+- `mcp/_prompts.py::_static_instructions()` (public alias:
+  `retentioneering.mcp.static_instructions`) holds the transport- and
+  stream-independent portion of the system prompt (workflow, analysis-link
+  syntax, canonical patterns) — safe to reuse as a prompt-caching prefix.
+  `_system_instructions()` (notebook-only) prepends a small per-stream stats
+  header that is *not* cacheable, which is why the platform skips it
+  entirely and relies on the agent's own first workflow step (`describe()`)
+  to learn the current data shape instead.

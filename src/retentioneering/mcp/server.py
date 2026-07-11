@@ -7,9 +7,12 @@ Usage in a Jupyter notebook:
     serve(stream, context={"description": "...", "events": {...}})
 
 Transport/protocol wiring only (FastMCP/SSE, `@mcp.tool()` registration,
-tracking-context tagging) — the report-building logic lives in
-`_agent_logic.py`, per-session state in `_report_session.py`
-(`ReportSession`), and the system prompt/playbook text in `_prompts.py`.
+tracking-context tagging). Every tool is a one-line adapter over a function
+in `mcp/tools.py` (the actual report-building logic — plain, transport-
+independent `(session, **params) -> dict` functions, reusable outside FastMCP,
+e.g. by the platform's Anthropic-SDK tool runner). Per-session state lives in
+`mcp/_report_session.py` (`ReportSession`), and the system prompt/playbook
+text in `mcp/_prompts.py`.
 `_apply_preprocessors`/`_find_unlinked_numbers` are re-exported below since
 `tests/mcp/server_test.py` imports them from here; their canonical home is
 `_agent_logic.py`.
@@ -17,7 +20,6 @@ tracking-context tagging) — the report-building logic lives in
 
 from __future__ import annotations
 
-import inspect
 import json
 import os
 import threading
@@ -28,20 +30,12 @@ from mcp.server.fastmcp import FastMCP
 from retentioneering._tracking import caller_context as _tracking_caller_context
 from retentioneering._tracking import track as _track
 from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.mcp import tools
 from retentioneering.mcp._agent_logic import (
     _apply_preprocessors,
     _find_unlinked_numbers,
-    _segment_overview_summary,
-    _step_matrix_summary,
-    _transition_graph_summary,
 )
-from retentioneering.mcp._prompts import (
-    _PLAYBOOK,
-    _STATIC_TOOL_DOCS,
-    _playbook_index,
-    _system_instructions,
-    _tool_docs_index,
-)
+from retentioneering.mcp._prompts import _system_instructions
 from retentioneering.mcp._report_session import ReportSession
 
 __all__ = ["serve", "_apply_preprocessors", "_find_unlinked_numbers"]
@@ -152,13 +146,8 @@ def _build_server(
         -------
         JSON with updated stream stats: n_paths, n_events_total, events list.
         """
-        try:
-            new_stream = session.update_base_stream(preprocessors)
-        except Exception as exc:
-            return json.dumps({"error": str(exc)})
         return json.dumps(
-            {"status": "base stream updated", **ReportSession.stream_stats(new_stream)},
-            ensure_ascii=False,
+            tools.update_base_stream(session, preprocessors), ensure_ascii=False
         )
 
     @_tool()
@@ -170,14 +159,7 @@ def _build_server(
 
         Returns updated stream stats.
         """
-        new_stream = session.reset_base_stream()
-        return json.dumps(
-            {
-                "status": "base stream reset to original",
-                **ReportSession.stream_stats(new_stream),
-            },
-            ensure_ascii=False,
-        )
+        return json.dumps(tools.reset_base_stream(session), ensure_ascii=False)
 
     @_tool()
     def playbook(scenario: str = "") -> str:
@@ -188,9 +170,7 @@ def _build_server(
 
         Pass "" (empty) to list all available scenarios.
         """
-        return json.dumps(
-            _PLAYBOOK.get(scenario.strip(), _playbook_index()), ensure_ascii=False
-        )
+        return json.dumps(tools.playbook(scenario), ensure_ascii=False)
 
     @_tool()
     def describe_tool(tool: str = "") -> str:
@@ -210,49 +190,13 @@ def _build_server(
         Reference topics:
           report_links   (anchor link syntax for analysis text)
         """
-        t = tool.strip()
-        if not t:
-            return json.dumps(_tool_docs_index(), ensure_ascii=False)
-        if t in _STATIC_TOOL_DOCS:
-            return json.dumps(
-                {"topic": t, "docs": _STATIC_TOOL_DOCS[t]}, ensure_ascii=False
-            )
-        method = getattr(Eventstream, t, None)
-        doc = inspect.getdoc(method) if method and callable(method) else None
-        if doc:
-            return json.dumps({"preprocessor": t, "docs": doc}, ensure_ascii=False)
-        return json.dumps(
-            {"error": f"Unknown tool {t!r}.", **_tool_docs_index()}, ensure_ascii=False
-        )
+        return json.dumps(tools.describe_tool(tool), ensure_ascii=False)
 
     @_tool()
     def describe() -> str:
         """Return schema, event list, unique path counts and available segments.
         Reflects the current active stream (after any update_base_stream calls)."""
-        cur = session.active_stream
-        s = cur.schema
-        ec, pc = s.event_col, s.path_col
-        df = cur.df
-        ts_col = s.timestamp_col
-        result = {
-            "n_paths": int(df[pc].nunique()),
-            "n_events_total": len(df),
-            "event_col": ec,
-            "path_col": pc,
-            "path_cols": s.path_cols,
-            "segment_cols": s.segment_cols,
-            "timestamp_col": ts_col,
-            "date_range": {
-                "min": str(df[ts_col].min())[:10],
-                "max": str(df[ts_col].max())[:10],
-            },
-            "events": sorted(df[ec].astype(str).unique().tolist()),
-        }
-        if context.get("events"):
-            result["event_descriptions"] = context["events"]
-        if context.get("segments"):
-            result["segment_descriptions"] = context["segments"]
-        return json.dumps(result, ensure_ascii=False)
+        return json.dumps(tools.describe(session, context), ensure_ascii=False)
 
     @_tool()
     def add_transition_graph(
@@ -264,7 +208,7 @@ def _build_server(
     ) -> str:
         """
         Compute a transition graph and register it as a tab in the pending report.
-        Returns the transition matrix so you can analyse it before writing the report.
+        Returns the transition matrix so you can analyse it before calling export_report().
 
         Call this (possibly multiple times with different parameters) before
         calling export_report().
@@ -293,37 +237,10 @@ def _build_server(
             Use sparingly — prefer update_base_stream when the same preprocessing
             applies to multiple visualisations.
         """
-        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
-        widget = src.transition_graph(
-            edge_weight=edge_weight, diff=diff, path_col=path_col or None
+        result = tools.add_transition_graph(
+            session, label, edge_weight, diff, path_col, local_preprocessors
         )
-        if widget.error:
-            return json.dumps({"error": widget.error, "label": label})
-        data = {
-            "widget_type": "transition_graph",
-            "result": json.loads(widget.result or "{}"),
-            "edge_weight": widget.edge_weight,
-            "diff": json.loads(widget.diff) if widget.diff else None,
-            "event_counts": json.loads(widget.event_counts or "{}"),
-            "event_counts_g1": json.loads(widget.event_counts_g1 or "{}"),
-            "event_counts_g2": json.loads(widget.event_counts_g2 or "{}"),
-            "node_positions": {},
-            "event_visibility": {},
-            "segment_levels": json.loads(widget.segment_levels or "{}"),
-            "path_cols": json.loads(widget.path_cols or "[]"),
-            "path_col": widget.path_col or "",
-            "height": widget.height,
-            "sidebar_open": False,
-        }
-        tab_id = session.add_tab(label, data, local_preprocessors or [])
-
-        result_raw = json.loads(widget.result or "{}")
-        summary = _transition_graph_summary(
-            result_raw, session.context_events, edge_weight
-        )
-        summary["tab_id"] = tab_id
-        summary["label"] = label
-        return json.dumps(summary, ensure_ascii=False)
+        return json.dumps(result, ensure_ascii=False)
 
     @_tool()
     def add_step_matrix(
@@ -336,7 +253,7 @@ def _build_server(
     ) -> str:
         """
         Compute a step matrix and register it as a tab in the pending report.
-        Returns the matrix data so you can analyse it before writing the report.
+        Returns the matrix data so you can analyse it before calling export_report().
 
         Call this (possibly multiple times) before calling export_report().
 
@@ -359,35 +276,10 @@ def _build_server(
 
         local_preprocessors: same as in add_transition_graph.
         """
-        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
-        widget = src.step_matrix(
-            max_steps=max_steps,
-            diff=diff,
-            path_col=path_col or None,
-            path_pattern=path_pattern or None,
+        result = tools.add_step_matrix(
+            session, label, max_steps, diff, path_pattern, path_col, local_preprocessors
         )
-        if widget.error:
-            return json.dumps({"error": widget.error, "label": label})
-        data = {
-            "widget_type": "step_matrix",
-            "result": json.loads(widget.result or "{}"),
-            "max_steps": widget.max_steps,
-            "diff": json.loads(widget.diff) if widget.diff else None,
-            "path_col": widget.path_col or "",
-            "path_pattern": widget.path_pattern or "",
-            "path_cols": json.loads(widget.path_cols or "[]"),
-            "segment_levels": json.loads(widget.segment_levels or "{}"),
-            "event_list": json.loads(widget.event_list or "[]"),
-            "height": widget.height,
-            "sidebar_open": False,
-        }
-        tab_id = session.add_tab(label, data, local_preprocessors or [])
-
-        result_raw = json.loads(widget.result or "{}")
-        summary = _step_matrix_summary(result_raw, session.context_events)
-        summary["tab_id"] = tab_id
-        summary["label"] = label
-        return json.dumps(summary, ensure_ascii=False)
+        return json.dumps(result, ensure_ascii=False)
 
     @_tool()
     def add_segment_overview(
@@ -399,7 +291,7 @@ def _build_server(
     ) -> str:
         """
         Compute a segment overview and register it as a tab in the pending report.
-        Returns the overview table so you can analyse it before writing the report.
+        Returns the overview table so you can analyse it before calling export_report().
 
         Call this (possibly multiple times with different segment columns) before
         calling export_report().
@@ -456,34 +348,10 @@ def _build_server(
 
         local_preprocessors: same as in add_transition_graph.
         """
-        src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
-        widget = src.segment_overview(
-            segment_col=segment_col,
-            metrics=metrics or [],
-            path_col=path_col or None,
+        result = tools.add_segment_overview(
+            session, label, segment_col, metrics, path_col, local_preprocessors
         )
-        if widget.error:
-            return json.dumps({"error": widget.error, "label": label})
-        data = {
-            "widget_type": "segment_overview",
-            "result": json.loads(widget.result or "{}"),
-            "segment_col": widget.segment_col or "",
-            "path_col": widget.path_col or "",
-            "metrics": json.loads(widget.metrics or "[]"),
-            "segment_cols": json.loads(widget.segment_cols or "[]"),
-            "segment_levels": json.loads(widget.segment_levels or "{}"),
-            "path_cols": json.loads(widget.path_cols or "[]"),
-            "event_list": json.loads(widget.event_list or "[]"),
-            "height": widget.height,
-            "sidebar_open": False,
-        }
-        tab_id = session.add_tab(label, data, local_preprocessors or [])
-
-        result_raw = json.loads(widget.result or "{}")
-        summary = _segment_overview_summary(result_raw, session.context_events)
-        summary["tab_id"] = tab_id
-        summary["label"] = label
-        return json.dumps(summary, ensure_ascii=False)
+        return json.dumps(result, ensure_ascii=False)
 
     @_tool()
     def check_analysis(analysis: str) -> str:
@@ -506,28 +374,7 @@ def _build_server(
         {"status": "ok"}  — ready to export.
         {"status": "needs_fixes", "issues": [...]}  — lines to fix before exporting.
         """
-        issues = _find_unlinked_numbers(analysis)
-        if not issues:
-            return json.dumps(
-                {
-                    "status": "ok",
-                    "message": "All numbers have links. Proceed with export_report.",
-                },
-                ensure_ascii=False,
-            )
-        return json.dumps(
-            {
-                "status": "needs_fixes",
-                "count": len(issues),
-                "issues": issues,
-                "instruction": (
-                    "Add a [tab_label:element] anchor link to each listed line. "
-                    "For transitions use edge links [tab:src->tgt]. "
-                    "Then call check_analysis again until status is 'ok'."
-                ),
-            },
-            ensure_ascii=False,
-        )
+        return json.dumps(tools.check_analysis(analysis), ensure_ascii=False)
 
     @_tool()
     def export_report(

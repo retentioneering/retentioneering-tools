@@ -29,15 +29,23 @@ ML. 3.x had these scattered per-tool.
 ## Consequences
 
 - A new metric added to the registry becomes available to clustering,
-  overview, and filtering at once — and must be added to the JS metric
-  editor (`js/widget/src/metric_config_row.tsx`) and the Path Metrics doc
-  page in the same change.
+  overview, and filtering at once — and must be added to the Path Metrics
+  doc page in the same change.
 - Metric names are a public string-enum API: renames are breaking changes
   and ripple into JS and MCP docstrings (see ADR-0008 for the naming rules).
 - Each metric's shape (which `metric_args` keys it takes, required/optional,
   valid modes/ranges) is declared once, in `metrics/metric_schema.py`'s
   `METRIC_SCHEMAS` registry — `MetricConfig._parse_dict_config` and
   `MetricBuilder.validate_metric_config` are both thin dispatchers into it,
-  rather than two independently hand-maintained if/elif chains. This is
-  Python-only: the JS metric editor and the Path Metrics doc page above are
-  still hand-synced against this registry, not generated from it.
+  rather than two independently hand-maintained if/elif chains.
+- The JS metric editor's dropdown (`js/widget/src/metric_config_row.tsx`)
+  imports its metric name list from `js/widget/src/generated/
+  metric_names.generated.ts`, generated from `METRIC_SCHEMAS` by
+  `scripts/export_metric_schema.py` (`make export-metric-schema`;
+  `tests/metrics/js_export_test.py` fails CI if it's stale) — adding a
+  metric no longer requires a manual JS edit to make it selectable. Each
+  metric's argument-editing UI (which fields to show, e.g. `in_segment`'s
+  mode/threshold vs `matches_pattern`'s plain text input) and its tooltip
+  text are still hand-written per metric, since they're bespoke UI, not
+  data mechanically derivable from the schema; likewise the Path Metrics
+  doc page above is still hand-synced.

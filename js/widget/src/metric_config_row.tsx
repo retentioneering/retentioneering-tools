@@ -1,9 +1,11 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 
+import { METRIC_NAMES } from "./generated/metric_names.generated";
+
 // ── constants ──────────────────────────────────────────────────────────────
 
-export const METRIC_NAMES = ["active_days","duration","event_count","first_event_time","has_event","in_segment","length","matches_pattern","time_between"];
+export { METRIC_NAMES };
 export const AGG_OPTIONS  = ["mean","median","q5","q25","q75","q95","complement_distance"];
 export const AGG_LABELS: Record<string, string> = {
   mean: "Mean", median: "Median", q5: "Q5", q25: "Q25", q75: "Q75", q95: "Q95",

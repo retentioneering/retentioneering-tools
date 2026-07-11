@@ -1,4 +1,4 @@
-.PHONY: install build build-viz build-widget test watch clean release test-release rc-release
+.PHONY: install build build-viz build-widget export-metric-schema test watch clean release test-release rc-release
 
 install:
 	uv sync
@@ -9,8 +9,13 @@ build: build-viz build-widget
 build-viz:
 	cd js/viz-core && npm run build
 
-build-widget:
+# Regenerate before building so js/widget/src/generated/metric_names.generated.ts
+# can't go stale between a metric_schema.py change and the next build.
+build-widget: export-metric-schema
 	cd js/widget && npm run build
+
+export-metric-schema:
+	uv run python scripts/export_metric_schema.py
 
 watch:
 	cd js/widget && npm run dev

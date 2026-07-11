@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Set, Tuple
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.utils.sql_quoting import quote_ident, quote_literal
 
 PROCESSOR_NAME = "filter_paths"
 
@@ -146,26 +147,19 @@ class FilterPaths(DataProcessor):
 
     @staticmethod
     def _quote_ident(ident: str) -> str:
-        # Simple identifier quoting for DuckDB
         if not isinstance(ident, str):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME, "Identifier must be a string"
             )
-        escaped = ident.replace('"', '""')
-        return f'"{escaped}"'
+        return quote_ident(ident)
 
     @staticmethod
     def _literal_sql(value: Any) -> str:
-        if isinstance(value, bool):
-            return "TRUE" if value else "FALSE"
-        if isinstance(value, (int, float)):
-            return str(value)
-        if isinstance(value, str):
-            escaped = value.replace("'", "''")
-            return f"'{escaped}'"
-        raise PreprocessingConfigError(
-            PROCESSOR_NAME, f"Unsupported literal type in condition: {type(value)}"
-        )
+        if not isinstance(value, (bool, int, float, str)):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, f"Unsupported literal type in condition: {type(value)}"
+            )
+        return quote_literal(value)
 
     def _ast_to_sql(self, node: Dict[str, Any]) -> str:
         op = node.get("op")

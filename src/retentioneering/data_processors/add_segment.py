@@ -6,6 +6,7 @@ import pandas as pd
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.utils.sql_quoting import quote_literal
 
 PROCESSOR_NAME = "add_segment"
 
@@ -62,10 +63,6 @@ def _inject_row_idx(sql: str) -> str:
     )
 
 
-def _sql_str(value: str) -> str:
-    return "'" + value.replace("'", "''") + "'"
-
-
 def _build_funnel_segment_query(
     path_col: str,
     event_col: str,
@@ -108,12 +105,10 @@ def _build_funnel_segment_query(
     w = f"PARTITION BY {path_col}"
 
     def _sum(ev: str) -> str:
-        return (
-            f"SUM(CASE WHEN {event_col} = {_sql_str(ev)} THEN 1 ELSE 0 END) OVER ({w})"
-        )
+        return f"SUM(CASE WHEN {event_col} = {quote_literal(ev)} THEN 1 ELSE 0 END) OVER ({w})"
 
     def _max(ev: str) -> str:
-        return f"MAX(CASE WHEN {event_col} = {_sql_str(ev)} THEN {index_col} ELSE 0 END) OVER ({w})"
+        return f"MAX(CASE WHEN {event_col} = {quote_literal(ev)} THEN {index_col} ELSE 0 END) OVER ({w})"
 
     def _reached_k(k: int) -> str:
         has = " AND ".join(f"{_sum(funnel_events[i])} > 0" for i in range(k + 1))
@@ -123,7 +118,7 @@ def _build_funnel_segment_query(
         return f"{has} AND {order}" if order else has
 
     whens = "\n        ".join(
-        f"WHEN {_reached_k(k)} THEN {_sql_str(funnel_events[k])}"
+        f"WHEN {_reached_k(k)} THEN {quote_literal(funnel_events[k])}"
         for k in range(len(funnel_events) - 1, -1, -1)
     )
     return (
@@ -203,12 +198,10 @@ class AddSegment(DataProcessor):
             for item in self.rules[:-1]:
                 column, op, value, segment_value = item
                 if isinstance(value, str) and op.lower() != "in":
-                    value = _sql_str(value)
-                cases += (
-                    f"\nWHEN {column} {op} {value} THEN {_sql_str(str(segment_value))}"
-                )
+                    value = quote_literal(value)
+                cases += f"\nWHEN {column} {op} {value} THEN {quote_literal(str(segment_value))}"
             else_segment_value = self.rules[-1][0]
-            cases += f"\nELSE {_sql_str(str(else_segment_value))}"
+            cases += f"\nELSE {quote_literal(str(else_segment_value))}"
             cases += f"\nEND AS {self.name}"
 
             sql = f"SELECT {cases} FROM df"

@@ -13,9 +13,11 @@ from retentioneering.utils.session_detection import (
     build_session_ctes,
     detect_mode,
     parse_timeout,
+    sql_list,
     to_list,
     _MODE_TIMEOUT,
 )
+from retentioneering.utils.sql_quoting import quote_literal
 
 PROCESSOR_NAME = "collapse_events"
 
@@ -181,7 +183,7 @@ class CollapseEvents(DataProcessor):
             return [
                 (
                     f"has_event_{e}",
-                    f"MAX(CASE WHEN {event_col} = '{e}' THEN 1 ELSE 0 END)",
+                    f"MAX(CASE WHEN {event_col} = {quote_literal(e)} THEN 1 ELSE 0 END)",
                 )
                 for e in events
             ]
@@ -190,7 +192,7 @@ class CollapseEvents(DataProcessor):
             return [
                 (
                     f"event_count_{e}",
-                    f"COUNT(CASE WHEN {event_col} = '{e}' THEN 1 ELSE NULL END)",
+                    f"COUNT(CASE WHEN {event_col} = {quote_literal(e)} THEN 1 ELSE NULL END)",
                 )
                 for e in events
             ]
@@ -203,8 +205,8 @@ class CollapseEvents(DataProcessor):
             et = args.get("end_event", "")
             agg_sql = (
                 f"EPOCH("
-                f"MIN(CASE WHEN {event_col} = '{et}' THEN {ts_col} END) - "
-                f"MIN(CASE WHEN {event_col} = '{ef}' THEN {ts_col} END))"
+                f"MIN(CASE WHEN {event_col} = {quote_literal(et)} THEN {ts_col} END) - "
+                f"MIN(CASE WHEN {event_col} = {quote_literal(ef)} THEN {ts_col} END))"
             )
             return [(f"time_from_{ef}_to_{et}", agg_sql)]
         elif metric == "active_days":
@@ -237,7 +239,7 @@ class CollapseEvents(DataProcessor):
         if self.consecutive is True:
             is_start_condition = f"LAG({event_col}) OVER (PARTITION BY {path_col} ORDER BY _rn) = {event_col}"
         else:
-            events_list = ", ".join(f"'{event}'" for event in self.consecutive)
+            events_list = sql_list(self.consecutive)
             is_start_condition = (
                 f"LAG({event_col}) OVER (PARTITION BY {path_col} ORDER BY _rn) = {event_col}"
                 f" AND {event_col} IN ({events_list})"

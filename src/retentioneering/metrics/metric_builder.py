@@ -36,6 +36,7 @@ import pandas as pd
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import InvalidMetricConfigError
 from retentioneering.utils.sequences import generate_patterns_with_optional_gaps
+from retentioneering.utils.sql_quoting import quote_list, quote_literal
 
 
 # Valid metric names
@@ -57,28 +58,6 @@ IN_SEGMENT_MODES = {
     "all",  # segment_value is the only value in the segment column
     "event_share",  # segment_value appears in at least N% of events
 }
-
-
-def format_value_for_sql(value) -> str:
-    """
-    Format a Python value for use in SQL query.
-
-    Handles strings, numbers, booleans, and None.
-    """
-    if value is None:
-        return "NULL"
-    elif isinstance(value, bool):
-        return "TRUE" if value else "FALSE"
-    elif isinstance(value, str):
-        # Escape single quotes in strings
-        escaped = value.replace("'", "''")
-        return f"'{escaped}'"
-    elif isinstance(value, (int, float)):
-        return str(value)
-    else:
-        # Fallback: convert to string
-        escaped = str(value).replace("'", "''")
-        return f"'{escaped}'"
 
 
 # Special synthetic events that don't need to exist in the eventstream
@@ -518,7 +497,7 @@ class MetricBuilder:
             # Wildcard: 'events' was omitted/None/[] - count every event in the stream.
             event_names = sorted(self.df[event_col].unique().tolist())
 
-        events_quoted = ", ".join([f"'{e}'" for e in event_names])
+        events_quoted = quote_list(event_names)
         query = f"""
         SELECT
             {path_col},
@@ -576,8 +555,8 @@ class MetricBuilder:
         WITH first_events AS (
             SELECT
                 {path_col},
-                MIN(CASE WHEN {event_col} = '{start_event}' THEN {timestamp_col} END) as time_from,
-                MIN(CASE WHEN {event_col} = '{end_event}' THEN {timestamp_col} END) as time_to
+                MIN(CASE WHEN {event_col} = {quote_literal(start_event)} THEN {timestamp_col} END) as time_from,
+                MIN(CASE WHEN {event_col} = {quote_literal(end_event)} THEN {timestamp_col} END) as time_to
             FROM df_with_start_end
             GROUP BY {path_col}
         )
@@ -647,7 +626,7 @@ class MetricBuilder:
             ev_list = (
                 active_events if isinstance(active_events, list) else [active_events]
             )
-            quoted = ", ".join(f"'{e}'" for e in ev_list)
+            quoted = quote_list(ev_list)
             count_expr = f"COUNT(DISTINCT CASE WHEN {event_col} IN ({quoted}) THEN CAST({timestamp_col} AS DATE) END)"
         else:
             count_expr = f"COUNT(DISTINCT CAST({timestamp_col} AS DATE))"
@@ -686,7 +665,7 @@ class MetricBuilder:
         # Generate patterns with optional gaps
         patterns = generate_patterns_with_optional_gaps(pattern)
         patterns_chunk = " OR ".join(
-            f"regexp_matches(path, {format_value_for_sql(p)})" for p in patterns
+            f"regexp_matches(path, {quote_literal(p)})" for p in patterns
         )
 
         query = f'select {path_col}, {patterns_chunk} as "{metric_name}" from paths'
@@ -725,7 +704,7 @@ class MetricBuilder:
 
         for segment_value, metric_name in zip(segment_values, metric_names):
             # Format value for SQL comparison
-            sql_value = format_value_for_sql(segment_value)
+            sql_value = quote_literal(segment_value)
 
             if mode == "any":
                 # Path belongs if segment_value appears at least once

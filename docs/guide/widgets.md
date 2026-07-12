@@ -91,7 +91,7 @@ Diff mode changes what each widget's headless `*_data()` twin returns (see [Head
 
 - `transition_graph_data()` returns `(diff, group1, group2)` instead of a single matrix — three DataFrames, where `diff = group1 - group2`.
 - `step_sankey_data()` / `step_matrix_data()` return `(combined, group1, group2)` instead of a single DataFrame — three DataFrames, where `combined = group1 - group2`. With `path_pattern` (multiple anchor blocks), each of the three is instead a tuple with one DataFrame per block, and `combined_blocks[i] = group1_blocks[i] - group2_blocks[i]`.
-- `funnel_data()` keeps the same `{"steps": [...]}` shape, but each step dict gets `funnel1_unique_paths`, `funnel1_conversion_rate`, `funnel2_unique_paths`, `funnel2_conversion_rate`, `delta_unique_paths`, and `delta_conversion_rate` instead of the plain `unique_paths`/`conversion_rate` keys (`delta_* = funnel1_* - funnel2_*`).
+- `funnel_data()` keeps the same `{"steps": [...]}` shape, but each step dict gets `funnel1_unique_paths`, `funnel1_conversion_rate`, `funnel1_step_conversion_rate`, `funnel2_unique_paths`, `funnel2_conversion_rate`, `funnel2_step_conversion_rate`, `delta_unique_paths`, `delta_conversion_rate`, and `delta_step_conversion_rate` instead of the plain `unique_paths`/`conversion_rate`/`step_conversion_rate` keys (`delta_* = funnel1_* - funnel2_*`).
 
 ## Headless mode
 

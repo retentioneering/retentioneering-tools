@@ -27,12 +27,48 @@ class TestFunnel:
         assert result["steps"][0]["step"] == "A"
         assert result["steps"][0]["unique_paths"] == 3
         assert result["steps"][0]["conversion_rate"] == 0.75
+        assert result["steps"][0]["step_conversion_rate"] == 0.75
         assert result["steps"][1]["step"] == "B"
         assert result["steps"][1]["unique_paths"] == 2
         assert result["steps"][1]["conversion_rate"] == 0.5
+        assert result["steps"][1]["step_conversion_rate"] == pytest.approx(2 / 3)
         assert result["steps"][2]["step"] == "C"
         assert result["steps"][2]["unique_paths"] == 1
         assert result["steps"][2]["conversion_rate"] == 0.25
+        assert result["steps"][2]["step_conversion_rate"] == 0.5
+
+    def test_funnel_step_conversion_rate_diverges_from_conversion_rate(self) -> None:
+        # Regression for the review finding: conversion_rate (share of ALL
+        # paths in the eventstream) and step_conversion_rate (share of the
+        # PREVIOUS step's paths) must be independently correct and can differ
+        # sharply. 100 total paths; only 5 ever reach "basket", but 4 of
+        # those 5 go on to "shipping" — a strong 80% step-to-step conversion
+        # that a naive read of conversion_rate (4/100 = 4%) would understate.
+        rows = [
+            ["other_user_%d" % i, "browse", "2020-01-01 00:00:00"] for i in range(95)
+        ]
+        rows += [
+            ["basket_user_1", "basket", "2020-01-01 00:00:00"],
+            ["basket_user_1", "shipping", "2020-01-01 00:01:00"],
+            ["basket_user_2", "basket", "2020-01-01 00:00:00"],
+            ["basket_user_2", "shipping", "2020-01-01 00:01:00"],
+            ["basket_user_3", "basket", "2020-01-01 00:00:00"],
+            ["basket_user_3", "shipping", "2020-01-01 00:01:00"],
+            ["basket_user_4", "basket", "2020-01-01 00:00:00"],
+            ["basket_user_4", "shipping", "2020-01-01 00:01:00"],
+            ["basket_user_5", "basket", "2020-01-01 00:00:00"],
+        ]
+        df = pd.DataFrame(rows, columns=["user_id", "event", "timestamp"])
+
+        stream = Eventstream(df, {"event_cols": ["event"]})
+        result = stream.funnel_data(steps=["basket", "shipping"])
+
+        assert result["steps"][0]["unique_paths"] == 5
+        assert result["steps"][0]["conversion_rate"] == pytest.approx(0.05)
+        assert result["steps"][0]["step_conversion_rate"] == pytest.approx(0.05)
+        assert result["steps"][1]["unique_paths"] == 4
+        assert result["steps"][1]["conversion_rate"] == pytest.approx(0.04)
+        assert result["steps"][1]["step_conversion_rate"] == pytest.approx(0.8)
 
     def test_funnel_path_col_override_finer_grain_preserves_chronological_order(
         self,
@@ -92,6 +128,12 @@ class TestFunnel:
         assert result["steps"][0]["unique_paths"] == 2
         assert result["steps"][1]["unique_paths"] == 0
         assert result["steps"][2]["unique_paths"] == 0
+        # step 2's previous step (step 1) has a non-zero count, so its
+        # step_conversion_rate is a real ratio (0/2 = 0.0)...
+        assert result["steps"][1]["step_conversion_rate"] == 0.0
+        # ...but step 3's previous step (step 2) has zero paths, which must
+        # not raise a ZeroDivisionError and must report 0.0.
+        assert result["steps"][2]["step_conversion_rate"] == 0.0
 
     def test_funnel_single_step(self) -> None:
         df = pd.DataFrame(
@@ -175,6 +217,17 @@ class TestFunnel:
         assert result["steps"][2]["funnel1_unique_paths"] == 0
         assert result["steps"][2]["funnel2_unique_paths"] == 1
         assert result["steps"][2]["delta_unique_paths"] == -1
+
+        # step_conversion_rate: segment_1 loses everyone after B (0/1 == 0.0),
+        # segment_2's lone survivor of B goes on to C (1/1 == 1.0) — a
+        # divergence that delta_conversion_rate (share-of-total) understates.
+        assert result["steps"][0]["funnel1_step_conversion_rate"] == 1.0
+        assert result["steps"][0]["funnel2_step_conversion_rate"] == 1.0
+        assert result["steps"][1]["funnel1_step_conversion_rate"] == 0.5
+        assert result["steps"][1]["funnel2_step_conversion_rate"] == 0.5
+        assert result["steps"][2]["funnel1_step_conversion_rate"] == 0.0
+        assert result["steps"][2]["funnel2_step_conversion_rate"] == 1.0
+        assert result["steps"][2]["delta_step_conversion_rate"] == -1.0
 
     def test_funnel_with_diff_rest(self) -> None:
         """diff value2="<REST>" must pool every other segment value, not just one."""

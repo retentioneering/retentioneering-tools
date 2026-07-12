@@ -61,12 +61,16 @@ interface FunnelStep {
   step: string;
   unique_paths?: number;
   conversion_rate?: number;
+  step_conversion_rate?: number;
   funnel1_unique_paths?: number;
   funnel1_conversion_rate?: number;
+  funnel1_step_conversion_rate?: number;
   funnel2_unique_paths?: number;
   funnel2_conversion_rate?: number;
+  funnel2_step_conversion_rate?: number;
   delta_unique_paths?: number;
   delta_conversion_rate?: number;
+  delta_step_conversion_rate?: number;
 }
 
 // ── bar chart ──────────────────────────────────────────────────────────────
@@ -214,13 +218,33 @@ function FunnelTable({ steps, hasDiff, label1, label2, result }: {
     const r2 = s.funnel2_conversion_rate ?? 0;
     return r1 === 0 ? 0 : ((r1 - r2) / r1) * 100;
   };
+  const pctStepDelta = (s: FunnelStep) => {
+    const r1 = s.funnel1_step_conversion_rate ?? 0;
+    const r2 = s.funnel2_step_conversion_rate ?? 0;
+    return r1 === 0 ? 0 : ((r1 - r2) / r1) * 100;
+  };
   const absMaxDelta = hasDiff
     ? Math.max(0.001, ...steps.map(s => Math.abs(pctDelta(s))))
+    : 0;
+  const absMaxStepDelta = hasDiff
+    ? Math.max(0.001, ...steps.map(s => Math.abs(pctStepDelta(s))))
     : 0;
 
   const th: React.CSSProperties = { padding: "6px 10px", fontSize: 11, fontWeight: 600, color: "#6b7280", textAlign: "right", borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" };
   const td: React.CSSProperties = { padding: "5px 10px", fontSize: 12, textAlign: "right", color: "#111827", borderBottom: "1px solid #f3f4f6" };
   const tdl: React.CSSProperties = { ...td, textAlign: "left", fontWeight: 500 };
+
+  const renderDeltaCell = (relPct: number, ppVal: number, absMax: number) => {
+    const sign = relPct >= 0 ? "+" : "";
+    return (
+      <td style={{ ...td, background: heatmapColor(relPct, absMax), fontWeight: 600, color: "#111827" }}>
+        {sign}{relPct.toFixed(1)}%{" "}
+        <span style={{ fontWeight: 400, fontSize: 10, color: "#374151", opacity: 0.75 }}>
+          ({ppVal >= 0 ? "+" : ""}{ppVal.toFixed(1)} pp)
+        </span>
+      </td>
+    );
+  };
 
   return (
     <div style={{ overflowX: "auto", marginTop: 8 }}>
@@ -232,14 +256,18 @@ function FunnelTable({ steps, hasDiff, label1, label2, result }: {
               <>
                 <th style={th}>Paths <Dot color={DIFF_A} /></th>
                 <th style={th}>Paths <Dot color={DIFF_B} /></th>
-                <th style={th}>Conv. <Dot color={DIFF_A} /></th>
-                <th style={th}>Conv. <Dot color={DIFF_B} /></th>
-                <th style={th}>Δ % (pp)</th>
+                <th style={th}>Overall <Dot color={DIFF_A} /></th>
+                <th style={th}>Overall <Dot color={DIFF_B} /></th>
+                <th style={th}>Step % <Dot color={DIFF_A} /></th>
+                <th style={th}>Step % <Dot color={DIFF_B} /></th>
+                <th style={th}>Δ Overall (pp)</th>
+                <th style={th}>Δ Step (pp)</th>
               </>
             ) : (
               <>
                 <th style={th}>Unique Paths</th>
-                <th style={th}>Conversion %</th>
+                <th style={th}>Overall %</th>
+                <th style={th}>Step %</th>
               </>
             )}
           </tr>
@@ -251,13 +279,13 @@ function FunnelTable({ steps, hasDiff, label1, label2, result }: {
               <td style={{ ...tdl, color: "#6b7280", fontStyle: "italic" }}>total paths</td>
               <td style={{ ...td, color: "#6b7280" }}>{(result?.group1_total ?? 0).toLocaleString()}</td>
               <td style={{ ...td, color: "#6b7280" }}>{(result?.group2_total ?? 0).toLocaleString()}</td>
-              <td colSpan={3} />
+              <td colSpan={6} />
             </tr>
           ) : (
             <tr style={{ background: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
               <td style={{ ...tdl, color: "#6b7280", fontStyle: "italic" }}>total paths</td>
               <td style={{ ...td, color: "#6b7280" }}>{(result?.total_paths ?? 0).toLocaleString()}</td>
-              <td />
+              <td colSpan={2} />
             </tr>
           )}
           {steps.map((s, i) => (
@@ -269,24 +297,16 @@ function FunnelTable({ steps, hasDiff, label1, label2, result }: {
                   <td style={td}>{(s.funnel2_unique_paths ?? 0).toLocaleString()}</td>
                   <td style={td}>{((s.funnel1_conversion_rate ?? 0) * 100).toFixed(1)}%</td>
                   <td style={td}>{((s.funnel2_conversion_rate ?? 0) * 100).toFixed(1)}%</td>
-                  {(() => {
-                    const relPct = pctDelta(s);
-                    const ppVal  = (s.delta_conversion_rate ?? 0) * 100;
-                    const sign   = relPct >= 0 ? "+" : "";
-                    return (
-                      <td style={{ ...td, background: heatmapColor(relPct, absMaxDelta), fontWeight: 600, color: "#111827" }}>
-                        {sign}{relPct.toFixed(1)}%{" "}
-                        <span style={{ fontWeight: 400, fontSize: 10, color: "#374151", opacity: 0.75 }}>
-                          ({ppVal >= 0 ? "+" : ""}{ppVal.toFixed(1)} pp)
-                        </span>
-                      </td>
-                    );
-                  })()}
+                  <td style={td}>{((s.funnel1_step_conversion_rate ?? 0) * 100).toFixed(1)}%</td>
+                  <td style={td}>{((s.funnel2_step_conversion_rate ?? 0) * 100).toFixed(1)}%</td>
+                  {renderDeltaCell(pctDelta(s), (s.delta_conversion_rate ?? 0) * 100, absMaxDelta)}
+                  {renderDeltaCell(pctStepDelta(s), (s.delta_step_conversion_rate ?? 0) * 100, absMaxStepDelta)}
                 </>
               ) : (
                 <>
                   <td style={td}>{(s.unique_paths ?? 0).toLocaleString()}</td>
                   <td style={td}>{((s.conversion_rate ?? 0) * 100).toFixed(1)}%</td>
+                  <td style={td}>{((s.step_conversion_rate ?? 0) * 100).toFixed(1)}%</td>
                 </>
               )}
             </tr>

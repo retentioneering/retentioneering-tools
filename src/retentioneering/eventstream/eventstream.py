@@ -1632,8 +1632,20 @@ class Eventstream:
 
         Returns
         -------
-        dict with key "steps", each item containing step name, unique_paths,
-        conversion_rate (and diff fields when diff is provided).
+        dict with key "steps", a list of per-step dicts with:
+
+        - `step` — event name.
+        - `unique_paths` — number of paths reaching this step.
+        - `conversion_rate` — `unique_paths` as a share of **all paths in the
+          eventstream**, including paths that never entered the funnel.
+        - `step_conversion_rate` — `unique_paths` as a share of the
+          **previous step's** `unique_paths`, i.e. the step-to-step
+          conversion. Equals `conversion_rate` for the first step, since
+          there is no previous step to divide by.
+
+        When `diff` is given, each of the four keys above is split into
+        `funnel1_*` / `funnel2_*` (one per segment) and `delta_*`
+        (`funnel1_* - funnel2_*`) instead.
         """
         from retentioneering.tools.funnel import Funnel
 

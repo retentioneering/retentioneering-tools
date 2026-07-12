@@ -80,17 +80,24 @@ class Funnel:
             row = duckdb.query(query).df().iloc[0]
 
             funnel_data = []
+            prev_count = None
             for step_num, step_event in enumerate(steps, start=1):
                 count = int(row[f"count_{step_num}"])
+                conversion_rate = count / total_paths if total_paths > 0 else 0.0
+                step_conversion_rate = (
+                    conversion_rate
+                    if prev_count is None
+                    else (count / prev_count if prev_count > 0 else 0.0)
+                )
                 funnel_data.append(
                     {
                         "step": step_event,
                         "unique_paths": count,
-                        "conversion_rate": count / total_paths
-                        if total_paths > 0
-                        else 0.0,
+                        "conversion_rate": conversion_rate,
+                        "step_conversion_rate": step_conversion_rate,
                     }
                 )
+                prev_count = count
 
             return {"steps": funnel_data}
 
@@ -107,11 +114,15 @@ class Funnel:
                         "step": step,
                         "funnel1_unique_paths": s1["unique_paths"],
                         "funnel1_conversion_rate": s1["conversion_rate"],
+                        "funnel1_step_conversion_rate": s1["step_conversion_rate"],
                         "funnel2_unique_paths": s2["unique_paths"],
                         "funnel2_conversion_rate": s2["conversion_rate"],
+                        "funnel2_step_conversion_rate": s2["step_conversion_rate"],
                         "delta_unique_paths": s1["unique_paths"] - s2["unique_paths"],
                         "delta_conversion_rate": s1["conversion_rate"]
                         - s2["conversion_rate"],
+                        "delta_step_conversion_rate": s1["step_conversion_rate"]
+                        - s2["step_conversion_rate"],
                     }
                 )
             return {"steps": combined}

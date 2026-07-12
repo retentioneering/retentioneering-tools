@@ -376,7 +376,8 @@ class Eventstream:
         event_col=None,
     ) -> "Eventstream":
         """
-        Cluster paths using ML and add a new segment column with integer cluster labels.
+        Cluster paths using ML and add a new segment column with `cluster_0`, `cluster_1`,
+        etc. cluster labels.
 
         Per-path metrics are computed from `features`, optionally scaled, then passed to
         the chosen clustering algorithm. The resulting cluster label is broadcast to every

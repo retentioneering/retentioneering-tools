@@ -47,6 +47,25 @@ Each row in your DataFrame represents a single event. At minimum, you need a pat
 | user_1 | add_to_cart | 2024-01-01 10:02:00 |
 | user_1 | purchase | 2024-01-01 10:05:00 |
 
+## Inspecting your data
+
+`stream.describe()` is a quick sanity check on what got loaded: dataset shape, schema, date range, event frequency, and path length/duration statistics.
+
+```python
+stream.describe()
+```
+
+Returns a dict:
+
+| Key | Contents |
+|---|---|
+| `schema` | `event_col`, `path_col`, `path_cols`, `segment_cols`, `timestamp_col` |
+| `shape` | `n_events`, `n_paths`, `n_unique_events` |
+| `date_range` | `min`, `max`, `span` |
+| `event_frequency` | `DataFrame` of `event`/`count`/`share`, sorted descending |
+| `path_stats` | dict keyed by each entry of `path_cols`, each a `DataFrame` (`DataFrame.describe()` shape: count/mean/std/min/percentiles/max) with `length`/`duration` columns |
+| `segments` | `DataFrame` of `segment_col`/`value`/`count`/`share`, one row per segment value across all segment columns |
+
 ## Parameters
 
 | Parameter | Type | Default | Description |

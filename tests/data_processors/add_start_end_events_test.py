@@ -164,3 +164,29 @@ class TestAddStartEndEvents:
         expected = Eventstream(expected, expected_schema)
 
         assert res.equals(expected)
+
+    def test__grain_switch_does_not_strand_stale_markers(self) -> None:
+        """Regression test: calling add_start_end_events at a finer grain
+        (session_id) and then again at a coarser grain (user_id) must not
+        leave the session-level path_start/path_end markers stranded in the
+        middle of the user-level path -- only one path_start and one
+        path_end per user should remain, at the user's true boundaries."""
+        df = pd.DataFrame(
+            [
+                ["U1", "S1", "A", "2020-01-01 00:00:00"],
+                ["U1", "S1", "B", "2020-01-01 00:01:00"],
+                ["U1", "S2", "C", "2020-01-01 01:00:00"],
+                ["U1", "S2", "D", "2020-01-01 01:01:00"],
+            ],
+            columns=["user_id", "session_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df, {"path_cols": ["user_id", "session_id"]})
+
+        res = stream.add_start_end_events(path_col="session_id").add_start_end_events(
+            path_col="user_id"
+        )
+        res_df = res.df
+
+        assert (res_df["event_type"] == "path_start").sum() == 1
+        assert (res_df["event_type"] == "path_end").sum() == 1
+        assert list(res_df["event"]) == ["path_start", "A", "B", "C", "D", "path_end"]

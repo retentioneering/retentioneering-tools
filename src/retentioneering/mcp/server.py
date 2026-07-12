@@ -857,7 +857,7 @@ def _step_matrix_summary(
         result["context_event_rows"] = ctx_rows
     note = f"Top {top_per_step} events per step shown."
     if is_diff:
-        note += " Values are differences (g2 − g1)."
+        note += " Values are differences (g1 − g2)."
     result["note"] = note + " Full matrix in tab."
     return result
 

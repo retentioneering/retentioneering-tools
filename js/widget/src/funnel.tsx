@@ -14,8 +14,8 @@ interface RenderContext { model: AnyWidgetModel; el: HTMLElement; isStatic?: boo
 // ── constants ──────────────────────────────────────────────────────────────
 
 const STEP_COLORS = ["#8b5cf6","#10b981","#0ea5e9","#84cc16","#f59e0b","#ef4444","#ec4899"];
-const DIFF_A = "#7c3aed";
-const DIFF_B = "#06b6d4";
+const DIFF_A = "#ef4444";
+const DIFF_B = "#3b82f6";
 
 /** Diff-mode sentinel meaning "every other value of this segment column". */
 const REST_VALUE = "<REST>";
@@ -78,9 +78,9 @@ function FunnelChart({ steps, hasDiff, label1, label2, chartH }: {
   label2: string;
   chartH: number;
 }) {
-  const BAR_GROUP = hasDiff ? 56 : 48;
+  const BAR_GROUP = hasDiff ? 74 : 48;
   const BAR_W     = hasDiff ? 20 : 34;
-  const GAP       = hasDiff ? 6  : 0;
+  const GAP       = hasDiff ? 10 : 0;
   const LABEL_H   = 52;
   const AXIS_W    = 36;
   const PLOT_H    = chartH - LABEL_H - 24;
@@ -179,7 +179,7 @@ function FunnelChart({ steps, hasDiff, label1, label2, chartH }: {
       </svg>
 
       {hasDiff && (
-        <div style={{ display: "flex", gap: 16, paddingLeft: AXIS_W, paddingBottom: 4, fontSize: 11 }}>
+        <div style={{ display: "flex", gap: 16, paddingLeft: AXIS_W, paddingBottom: 4, fontSize: 11, color: "#111827" }}>
           <span>
             <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: DIFF_A, marginRight: 4 }} />
             {label1}
@@ -212,7 +212,7 @@ function FunnelTable({ steps, hasDiff, label1, label2, result }: {
   const pctDelta = (s: FunnelStep) => {
     const r1 = s.funnel1_conversion_rate ?? 0;
     const r2 = s.funnel2_conversion_rate ?? 0;
-    return r1 === 0 ? 0 : ((r2 - r1) / r1) * 100;
+    return r1 === 0 ? 0 : ((r1 - r2) / r1) * 100;
   };
   const absMaxDelta = hasDiff
     ? Math.max(0.001, ...steps.map(s => Math.abs(pctDelta(s))))
@@ -551,14 +551,14 @@ function Sidebar({ steps, events, segLevels, pathCols, pathIdCol,
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
-                <span style={{ color: "rgb(124,58,237)", fontSize: 13, flexShrink: 0 }}>●</span>
+                <span style={{ color: "rgb(239,68,68)", fontSize: 13, flexShrink: 0 }}>●</span>
                 <select value={localV1} onChange={e => setLocalV1(e.target.value)} style={{ ...sel, flex: 1, minWidth: 0, width: "auto" }} disabled={isLoading || isStatic}>
                   {localLevels.map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localV2}>{String(v)}</option>)}
                 </select>
               </div>
               <span style={{ color: "#6b7280", fontSize: 11, flexShrink: 0 }}>vs</span>
               <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
-                <span style={{ color: "rgb(6,182,212)", fontSize: 13, flexShrink: 0 }}>●</span>
+                <span style={{ color: "rgb(59,130,246)", fontSize: 13, flexShrink: 0 }}>●</span>
                 <select value={localV2} onChange={e => setLocalV2(e.target.value)} style={{ ...sel, flex: 1, minWidth: 0, width: "auto" }} disabled={isLoading || isStatic}>
                   {localLevels.map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localV1}>{String(v)}</option>)}
                   <option value={REST_VALUE}>{REST_LABEL}</option>

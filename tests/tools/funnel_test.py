@@ -174,7 +174,7 @@ class TestFunnel:
         assert result["steps"][1]["funnel2_unique_paths"] == 1
         assert result["steps"][2]["funnel1_unique_paths"] == 0
         assert result["steps"][2]["funnel2_unique_paths"] == 1
-        assert result["steps"][2]["delta_unique_paths"] == 1
+        assert result["steps"][2]["delta_unique_paths"] == -1
 
     def test_funnel_with_diff_rest(self) -> None:
         """diff value2="<REST>" must pool every other segment value, not just one."""

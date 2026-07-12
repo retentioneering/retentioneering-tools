@@ -26,11 +26,11 @@ export function DiffBreakdownTooltip({ title, subtitle, segmentName, value1Label
       {title && <div style={{ marginBottom: subtitle ? 2 : 8, fontWeight: 600, color: text }}>{title}</div>}
       {subtitle && <div style={{ marginBottom: 8, fontSize: 11, color: muted }}>{subtitle}</div>}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <Row label={`${segmentName}: ${value2Label}`} value={formatExactNumber(group2Value)} labelColor="#ef4444" text={text} />
-        <Row label={`${segmentName}: ${value1Label}`} value={formatExactNumber(group1Value)} labelColor="#3b82f6" text={text} />
+        <Row label={`${segmentName}: ${value1Label}`} value={formatExactNumber(group1Value)} labelColor="#ef4444" text={text} />
+        <Row label={`${segmentName}: ${value2Label}`} value={formatExactNumber(group2Value)} labelColor="#3b82f6" text={text} />
         <div style={{ borderTop: `1px solid ${border}`, margin: "2px 0" }} />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-          <span style={{ fontWeight: 500, color: text }}>diff ({value2Label} − {value1Label})</span>
+          <span style={{ fontWeight: 500, color: text }}>diff ({value1Label} − {value2Label})</span>
           <span style={{ fontFamily: "monospace", fontWeight: 600, color: diffColor }}>{formatSignedExactNumber(resolved)}</span>
         </div>
       </div>

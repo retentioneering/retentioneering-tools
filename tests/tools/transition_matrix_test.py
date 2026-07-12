@@ -240,10 +240,10 @@ class TestTransitionMatrix:
 
         expected = pd.DataFrame(
             [
-                [0, 0, -2, 0, 0],
+                [0, 0, 2, 0, 0],
                 [0, 0, 0, 0, 0],
-                [0, 1, -4, -1, -2],
-                [0, -1, 0, 1, 0],
+                [0, -1, 4, 1, 2],
+                [0, 1, 0, -1, 0],
                 [0, 0, 0, 0, 0],
             ],
             columns=["path_start", "A", "B", "C", "path_end"],
@@ -263,10 +263,10 @@ class TestTransitionMatrix:
 
         expected = pd.DataFrame(
             [
-                [0, 0, 1, 0, 0],
+                [0, 0, -1, 0, 0],
                 [0, 0, 0, 0, 0],
-                [0, 1, 0, -1, 0],
-                [0, -1, -1, 1, 1],
+                [0, -1, 0, 1, 0],
+                [0, 1, 1, -1, -1],
                 [0, 0, 0, 0, 0],
             ],
             columns=["path_start", "A", "B", "C", "path_end"],
@@ -330,7 +330,7 @@ class TestTransitionMatrix:
 
         pd.testing.assert_frame_equal(g1, expected_g1)
         pd.testing.assert_frame_equal(g2, expected_g2)
-        pd.testing.assert_frame_equal(diff, expected_g2 - expected_g1)
+        pd.testing.assert_frame_equal(diff, expected_g1 - expected_g2)
 
     def test__unique_paths(self, fx_read_csv):
         df = fx_read_csv("tools/transition_matrix_input.csv", sep="\t")

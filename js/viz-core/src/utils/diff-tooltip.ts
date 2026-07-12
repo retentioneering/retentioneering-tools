@@ -27,5 +27,5 @@ export function resolveDiffValue(vs: DiffBreakdownValues): number | null {
   if (d !== null) return d;
   const g1 = norm(vs.group1Value);
   const g2 = norm(vs.group2Value);
-  return g1 === null || g2 === null ? null : g2 - g1;
+  return g1 === null || g2 === null ? null : g1 - g2;
 }

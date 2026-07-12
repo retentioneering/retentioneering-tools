@@ -109,9 +109,9 @@ class Funnel:
                         "funnel1_conversion_rate": s1["conversion_rate"],
                         "funnel2_unique_paths": s2["unique_paths"],
                         "funnel2_conversion_rate": s2["conversion_rate"],
-                        "delta_unique_paths": s2["unique_paths"] - s1["unique_paths"],
-                        "delta_conversion_rate": s2["conversion_rate"]
-                        - s1["conversion_rate"],
+                        "delta_unique_paths": s1["unique_paths"] - s2["unique_paths"],
+                        "delta_conversion_rate": s1["conversion_rate"]
+                        - s2["conversion_rate"],
                     }
                 )
             return {"steps": combined}

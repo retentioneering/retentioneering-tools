@@ -40,9 +40,9 @@ class TestStepMatrix:
         expected = pd.DataFrame(
             [
                 [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 1 / 2, -1 / 2.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 1 / 2, -1 / 2],
-                [0.0, 0.0, 0.0, -1 / 2, 0.0, 1 / 2],
+                [0.0, 0.0, 0.0, -1 / 2, 1 / 2.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, -1 / 2, 1 / 2],
+                [0.0, 0.0, 0.0, 1 / 2, 0.0, -1 / 2],
                 [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             ],
             index=["path_start", "A", "B", "C", "path_end"],
@@ -105,7 +105,7 @@ class TestStepMatrix:
 
         pd.testing.assert_frame_equal(sms1[0], expected_g1)
         pd.testing.assert_frame_equal(sms2[0], expected_g2)
-        pd.testing.assert_frame_equal(diff_sms[0], expected_g2 - expected_g1)
+        pd.testing.assert_frame_equal(diff_sms[0], expected_g1 - expected_g2)
 
     def test__diff_with_rest_and_no_complement_raises(self) -> None:
         """diff value2="<REST>" must raise a clear error, not a raw DuckDB exception,

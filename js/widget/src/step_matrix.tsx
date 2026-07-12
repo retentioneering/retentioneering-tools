@@ -323,9 +323,9 @@ function EventRow({ ev, blocks, allColIndices, blockEvMin, blockEvMax, blockHasB
             onClick={e => e.stopPropagation()}>
             {isDiff && eventCountG1 !== undefined && eventCountG2 !== undefined ? (
               <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
-                <span style={{ fontSize: 10, color: "#3b82f6" }}>{fmtCount(eventCountG1)}</span>
+                <span style={{ fontSize: 10, color: "#ef4444" }}>{fmtCount(eventCountG1)}</span>
                 <span style={{ fontSize: 9, color: "#9ca3af" }}>/</span>
-                <span style={{ fontSize: 10, color: "#ef4444" }}>{fmtCount(eventCountG2)}</span>
+                <span style={{ fontSize: 10, color: "#3b82f6" }}>{fmtCount(eventCountG2)}</span>
               </span>
             ) : (
               <span style={{ fontSize: 10, color: "#9ca3af", fontVariantNumeric: "tabular-nums", width: 28, textAlign: "right", flexShrink: 0, visibility: eventCount !== undefined ? "visible" : "hidden" }}>
@@ -834,16 +834,16 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
           {isDiff ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-                <span style={{ color: "#ef4444" }}>{diffSeg ?? "segment"}: {String(diffV2 ?? "group 2")}</span>
-                <span style={{ fontFamily: "monospace", color: "#111827" }}>{cellTip.g2 !== null ? cellTip.g2.toFixed(4) : "—"}</span>
+                <span style={{ color: "#ef4444" }}>{diffSeg ?? "segment"}: {String(diffV1 ?? "group 1")}</span>
+                <span style={{ fontFamily: "monospace", color: "#111827" }}>{cellTip.g1 !== null ? cellTip.g1.toFixed(4) : "—"}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-                <span style={{ color: "#3b82f6" }}>{diffSeg ?? "segment"}: {String(diffV1 ?? "group 1")}</span>
-                <span style={{ fontFamily: "monospace", color: "#111827" }}>{cellTip.g1 !== null ? cellTip.g1.toFixed(4) : "—"}</span>
+                <span style={{ color: "#3b82f6" }}>{diffSeg ?? "segment"}: {String(diffV2 ?? "group 2")}</span>
+                <span style={{ fontFamily: "monospace", color: "#111827" }}>{cellTip.g2 !== null ? cellTip.g2.toFixed(4) : "—"}</span>
               </div>
               <div style={{ borderTop: "1px solid #e5e7eb", margin: "2px 0" }} />
               <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-                <span style={{ fontWeight: 500, color: "#111827" }}>diff ({String(diffV2 ?? "g2")} − {String(diffV1 ?? "g1")})</span>
+                <span style={{ fontWeight: 500, color: "#111827" }}>diff ({String(diffV1 ?? "g1")} − {String(diffV2 ?? "g2")})</span>
                 <span style={{ fontFamily: "monospace", fontWeight: 600,
                   color: cellTip.v === 0 ? "#111827" : cellTip.v > 0 ? "#ef4444" : "#3b82f6" }}>
                   {cellTip.v >= 0 ? "+" : ""}{cellTip.v.toFixed(4)}
@@ -1189,7 +1189,7 @@ export function render({ model, el, isStatic = false }: RenderContext) {
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <FLabel tip="Compare two groups. Red = more in group 2, blue = more in group 1.">Diff by Segment</FLabel>
+                <FLabel tip="Compare two groups. Red = more in group 1, blue = more in group 2.">Diff by Segment</FLabel>
                 <select value={localDiffSeg} onChange={e => {
                   const col = e.target.value;
                   setLocalDiffSeg(col);
@@ -1205,14 +1205,14 @@ export function render({ model, el, isStatic = false }: RenderContext) {
                   <>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0 }}>
-                        <span style={{ color: "rgb(59,130,246)", fontSize: 13, flexShrink: 0 }}>●</span>
+                        <span style={{ color: "rgb(239,68,68)", fontSize: 13, flexShrink: 0 }}>●</span>
                         <select value={localDiffV1} onChange={e => setLocalDiffV1(e.target.value)} style={{ ...sidebarSel, flex: 1, minWidth: 0, width: "auto" }} disabled={isLoading || isStatic}>
                           {(segLevels[localDiffSeg] ?? []).map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localDiffV2}>{String(v)}</option>)}
                         </select>
                       </div>
                       <span style={{ color: SC.muted, fontSize: 11, flexShrink: 0 }}>vs</span>
                       <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0 }}>
-                        <span style={{ color: "rgb(239,68,68)", fontSize: 13, flexShrink: 0 }}>●</span>
+                        <span style={{ color: "rgb(59,130,246)", fontSize: 13, flexShrink: 0 }}>●</span>
                         <select value={localDiffV2} onChange={e => setLocalDiffV2(e.target.value)} style={{ ...sidebarSel, flex: 1, minWidth: 0, width: "auto" }} disabled={isLoading || isStatic}>
                           {(segLevels[localDiffSeg] ?? []).map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localDiffV1}>{String(v)}</option>)}
                           <option value={REST_VALUE}>{REST_LABEL}</option>

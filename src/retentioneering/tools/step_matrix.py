@@ -114,7 +114,7 @@ class StepMatrix:
         sms1 = StepMatrix(stream1).fit(max_steps=max_steps, path_col=path_col)
         sms2 = StepMatrix(stream2).fit(max_steps=max_steps, path_col=path_col)
         sms1, sms2 = self._align_matrices(list(sms1), list(sms2))
-        sms = [sms2[i] - sms1[i] for i in range(len(sms1))]
+        sms = [sms1[i] - sms2[i] for i in range(len(sms1))]
         return sms, sms1, sms2
 
     def _regular(self, max_steps: int, path_col: str) -> pd.DataFrame:

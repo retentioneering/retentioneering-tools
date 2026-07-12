@@ -7,6 +7,7 @@ import traitlets
 from retentioneering.widgets._esm import _get_esm
 from retentioneering.widgets._state_file import StateFileMixin
 from retentioneering.widgets._utils import parse_diff as _parse_diff
+from retentioneering.widgets._utils import step_matrix_blocks as _step_matrix_blocks
 from retentioneering.widgets._html_export import write_html
 
 _STATIC = pathlib.Path(__file__).parent.parent / "static"
@@ -170,6 +171,7 @@ class StepMatrixWidget(StateFileMixin, anywidget.AnyWidget):
             path_col=path_col,
             path_pattern=path_pattern,
         )
+        raw = _step_matrix_blocks(raw, diff, path_pattern)
         if diff is not None:
             diff_sms, sms1, sms2 = raw
             matrices = [_df_to_matrix(sm) for sm in diff_sms]

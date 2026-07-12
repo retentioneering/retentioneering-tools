@@ -9,7 +9,7 @@ class TestStepMatrix:
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         stream = Eventstream(df)
         max_steps = 5
-        res = stream.step_sankey_data(max_steps=max_steps)[0]
+        res = stream.step_sankey_data(max_steps=max_steps)
 
         expected = pd.DataFrame(
             [
@@ -35,7 +35,7 @@ class TestStepMatrix:
         max_steps = 5
         res = stream.step_sankey_data(
             max_steps=max_steps, diff=("country", "US", "UK"), path_col="session_id"
-        )[0][0]
+        )[0]
 
         expected = pd.DataFrame(
             [
@@ -103,9 +103,9 @@ class TestStepMatrix:
             columns=columns,
         )
 
-        pd.testing.assert_frame_equal(sms1[0], expected_g1)
-        pd.testing.assert_frame_equal(sms2[0], expected_g2)
-        pd.testing.assert_frame_equal(diff_sms[0], expected_g1 - expected_g2)
+        pd.testing.assert_frame_equal(sms1, expected_g1)
+        pd.testing.assert_frame_equal(sms2, expected_g2)
+        pd.testing.assert_frame_equal(diff_sms, expected_g1 - expected_g2)
 
     def test__diff_with_rest_and_no_complement_raises(self) -> None:
         """diff value2="<REST>" must raise a clear error, not a raw DuckDB exception,
@@ -192,7 +192,7 @@ class TestStepMatrix:
             columns=["user_id", "session_id", "event", "timestamp"],
         )
         stream = Eventstream(df, {"path_cols": ["user_id", "session_id"]})
-        (res,) = stream.step_sankey_data(max_steps=4, path_col="session_id")
+        res = stream.step_sankey_data(max_steps=4, path_col="session_id")
 
         # session S1: path_start -> A -> B -> path_end
         # session S2: path_start -> C -> D -> path_end
@@ -595,6 +595,70 @@ class TestStepMatrix:
             stream.step_matrix_data(max_steps=2, path_pattern="typo_event")
 
 
+class TestStepMatrixDataReturnShape:
+    """Without path_pattern there is always exactly one block, so the public
+    step_sankey_data/step_matrix_data collapse to the same shape as
+    transition_graph_data: a bare DataFrame (or a flat diff triple) instead of
+    a tuple of one-element tuples. With path_pattern, the block count depends
+    on the pattern, so the tuple-of-blocks form is kept."""
+
+    def test__no_pattern_no_diff_returns_bare_dataframe(self, fx_read_csv):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+
+        res = stream.step_sankey_data(max_steps=3)
+
+        assert isinstance(res, pd.DataFrame)
+
+    def test__no_pattern_diff_returns_flat_triple(self, fx_read_csv):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(
+            df, {"path_cols": ["session_id"], "segment_cols": ["country"]}
+        )
+
+        combined, group1, group2 = stream.step_sankey_data(
+            max_steps=3, diff=("country", "US", "UK"), path_col="session_id"
+        )
+
+        assert isinstance(combined, pd.DataFrame)
+        assert isinstance(group1, pd.DataFrame)
+        assert isinstance(group2, pd.DataFrame)
+        pd.testing.assert_frame_equal(combined, group1 - group2)
+
+    def test__with_pattern_no_diff_still_returns_tuple(self, fx_read_csv):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+
+        res = stream.step_sankey_data(max_steps=3, path_pattern="B")
+
+        assert isinstance(res, tuple)
+        assert isinstance(res[0], pd.DataFrame)
+
+    def test__with_pattern_diff_still_returns_nested_tuples(self, fx_read_csv):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(
+            df, {"path_cols": ["session_id"], "segment_cols": ["country"]}
+        )
+
+        combined, group1, group2 = stream.step_sankey_data(
+            max_steps=3,
+            diff=("country", "US", "UK"),
+            path_col="session_id",
+            path_pattern="B",
+        )
+
+        assert isinstance(combined, tuple) and isinstance(combined[0], pd.DataFrame)
+        assert isinstance(group1, tuple) and isinstance(group1[0], pd.DataFrame)
+        assert isinstance(group2, tuple) and isinstance(group2[0], pd.DataFrame)
+
+    def test__step_matrix_data_alias_matches_shape(self, fx_read_csv):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+
+        assert isinstance(stream.step_matrix_data(max_steps=3), pd.DataFrame)
+        assert isinstance(stream.step_matrix_data(max_steps=3, path_pattern="B"), tuple)
+
+
 class TestStepMatrixDataAlias:
     def test__step_matrix_data_matches_step_sankey_data(self):
         df = pd.DataFrame(
@@ -608,6 +672,4 @@ class TestStepMatrixDataAlias:
         stream = Eventstream(df)
         via_sankey = stream.step_sankey_data(max_steps=3)
         via_matrix = stream.step_matrix_data(max_steps=3)
-        assert len(via_sankey) == len(via_matrix)
-        for a, b in zip(via_sankey, via_matrix):
-            pd.testing.assert_frame_equal(a, b)
+        pd.testing.assert_frame_equal(via_sankey, via_matrix)

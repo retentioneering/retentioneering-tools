@@ -1281,25 +1281,35 @@ class Eventstream:
 
         Returns
         -------
-        tuple of pd.DataFrame
-            One matrix per anchor block. In diff mode, returns
-            `(combined_blocks, group1_blocks, group2_blocks)`, each itself a
-            tuple of per-block DataFrames.
+        pd.DataFrame or tuple of pd.DataFrame
+            Without `path_pattern`: a single DataFrame (or, in diff mode,
+            `(combined, group1, group2)` — three DataFrames). With
+            `path_pattern`: one DataFrame per anchor block, as a tuple (or,
+            in diff mode, `(combined_blocks, group1_blocks, group2_blocks)`,
+            each itself a tuple of per-block DataFrames) — a pattern with
+            several anchor events produces several blocks.
 
         Examples
         --------
-            stream.step_sankey_data(max_steps=10)
-            stream.step_sankey_data(path_pattern="purchase")
+            df = stream.step_sankey_data(max_steps=10)
             combined, g1, g2 = stream.step_sankey_data(diff=("plan", "pro", "free"))
+            blocks = stream.step_sankey_data(path_pattern="add_to_cart->.*->purchase")
         """
         from retentioneering.tools.step_matrix import StepMatrix
 
-        return StepMatrix(self).fit(
+        result = StepMatrix(self).fit(
             max_steps=max_steps,
             diff=diff,
             path_col=path_col,
             path_pattern=path_pattern,
         )
+        if path_pattern is not None:
+            return result
+        if diff is None:
+            (sm,) = result
+            return sm
+        combined, group1, group2 = result
+        return combined[0], group1[0], group2[0]
 
     @_tracked("headless_step_matrix")
     def step_matrix_data(
@@ -1335,10 +1345,13 @@ class Eventstream:
 
         Returns
         -------
-        tuple of pd.DataFrame
-            One matrix per anchor block. In diff mode, returns
-            `(combined_blocks, group1_blocks, group2_blocks)`, each itself a
-            tuple of per-block DataFrames.
+        pd.DataFrame or tuple of pd.DataFrame
+            Without `path_pattern`: a single DataFrame (or, in diff mode,
+            `(combined, group1, group2)` — three DataFrames). With
+            `path_pattern`: one DataFrame per anchor block, as a tuple (or,
+            in diff mode, `(combined_blocks, group1_blocks, group2_blocks)`,
+            each itself a tuple of per-block DataFrames) — a pattern with
+            several anchor events produces several blocks.
 
         See Also
         --------

@@ -10,6 +10,7 @@ _UNSET = object()
 from retentioneering.widgets._esm import _get_esm  # noqa: E402
 from retentioneering.widgets._state_file import StateFileMixin  # noqa: E402
 from retentioneering.widgets._utils import parse_diff as _parse_diff  # noqa: E402
+from retentioneering.widgets._utils import step_matrix_blocks as _step_matrix_blocks  # noqa: E402
 from retentioneering.widgets._html_export import write_html  # noqa: E402
 
 
@@ -201,6 +202,7 @@ class StepSankeyWidget(StateFileMixin, anywidget.AnyWidget):
             path_col=path_col,
             path_pattern=path_pattern,
         )
+        raw = _step_matrix_blocks(raw, diff, path_pattern)
 
         if diff is not None:
             diff_sms, sms1, sms2 = raw

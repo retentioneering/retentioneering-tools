@@ -42,6 +42,13 @@ def test_schema_custom_cols(simple_df):
     assert es.schema.event_col == "action"
 
 
+def test_schema_unknown_key_raises_with_suggestion(simple_df):
+    from retentioneering.exceptions import SchemaConfigError
+
+    with pytest.raises(SchemaConfigError, match="timestamp_col"):
+        Eventstream(simple_df, {"timestamp": "timestamp"})
+
+
 def test_index_created(simple_df):
     es = Eventstream(simple_df)
     assert "index" in es.df.columns

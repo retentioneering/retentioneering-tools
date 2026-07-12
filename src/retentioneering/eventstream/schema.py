@@ -1,5 +1,8 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
+from difflib import get_close_matches
 from typing import List
+
+from retentioneering.exceptions import SchemaConfigError
 
 
 @dataclass
@@ -58,6 +61,20 @@ class EventstreamSchema:
             + self.custom_cols
             + [self.event_type, self.index, self.subindex]
         )
+
+    @classmethod
+    def from_dict(cls, schema_dict: dict | None) -> "EventstreamSchema":
+        schema_dict = schema_dict or {}
+        valid_keys = [f.name for f in fields(cls)]
+        unknown_keys = [k for k in schema_dict if k not in valid_keys]
+        if unknown_keys:
+            key = unknown_keys[0]
+            suggestions = get_close_matches(key, valid_keys, n=1)
+            hint = f" Did you mean '{suggestions[0]}'?" if suggestions else ""
+            raise SchemaConfigError(
+                f"Unknown schema key '{key}'.{hint} Valid keys: {sorted(valid_keys)}"
+            )
+        return cls(**schema_dict)
 
     def copy(self) -> "EventstreamSchema":
         return EventstreamSchema(

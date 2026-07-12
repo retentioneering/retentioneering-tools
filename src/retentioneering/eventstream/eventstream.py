@@ -96,7 +96,7 @@ class Eventstream:
 
     @cached_property
     def schema(self) -> EventstreamSchema:
-        return EventstreamSchema(**(self._schema or {}))
+        return EventstreamSchema.from_dict(self._schema)
 
     @property
     def df(self) -> pd.DataFrame:

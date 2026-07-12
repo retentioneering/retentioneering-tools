@@ -1211,10 +1211,12 @@ class Eventstream:
               - `"time_median"` / `"time_q95"` — median / 95th-percentile time between the two events (in seconds).
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
-        diff : tuple, optional
-            `(segment_col, value1, value2)` to compare two segment values, or
-            `(path_ids1, path_ids2)` to compare two explicit path-id groups.
-            `value2` may be `<REST>`, meaning "every other value of `segment_col`".
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` to
+            compare two segment values, or `(path_ids1, path_ids2)` to compare two
+            explicit path-id groups. `value2` may be `<REST>`, meaning "every other
+            value of `segment_col`".
 
         Returns
         -------
@@ -1250,10 +1252,11 @@ class Eventstream:
         max_steps : int, default 10
             Number of path steps to compute (on each side of an anchor, when
             `path_pattern` is given).
-        diff : tuple, optional
-            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `<REST>`. See `transition_graph_data` for the shared diff
-            semantics.
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`. See
+            `transition_graph_data` for the shared diff semantics.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         path_pattern : str, optional
@@ -1294,9 +1297,41 @@ class Eventstream:
         path_col: str | None = None,
         path_pattern: str | None = None,
     ):
-        """Alias for `step_sankey_data` — Step Matrix and Step Sankey render the
+        """
+        Alias for `step_sankey_data` — Step Matrix and Step Sankey render the
         same underlying per-step data, so both widgets share one headless method.
-        See `step_sankey_data` for the full parameter reference."""
+
+        Parameters
+        ----------
+        max_steps : int, default 10
+            Number of path steps to compute (on each side of an anchor, when
+            `path_pattern` is given).
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`. See
+            `transition_graph_data` for the shared diff semantics.
+        path_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        path_pattern : str, optional
+            Restrict/split paths using a `"->"`-separated sequence of anchor
+            events, where `.*` matches any run of events, e.g.
+            `"add_to_cart->.*->purchase"`. Without a pattern, computes over
+            the whole path from `path_start` to `path_end`. Each anchor event in
+            the pattern produces its own matrix block. To see the
+            neighborhood around a single event: `path_pattern="add_to_cart"`.
+
+        Returns
+        -------
+        tuple of pd.DataFrame
+            One matrix per anchor block. In diff mode, returns
+            `(combined_blocks, group1_blocks, group2_blocks)`, each itself a
+            tuple of per-block DataFrames.
+
+        See Also
+        --------
+        step_sankey_data : Same computation; this method is a plain alias.
+        """
         return self.step_sankey_data(
             max_steps=max_steps,
             diff=diff,
@@ -1333,9 +1368,10 @@ class Eventstream:
             Number of path steps to compute.
         step_window : int, default 3
             Number of step columns shown around each anchor.
-        diff : tuple, optional
-            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `<REST>`.
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         path_pattern : str, optional
@@ -1395,9 +1431,10 @@ class Eventstream:
         ----------
         max_steps : int, default 10
             Number of path steps to compute on each side of the anchor.
-        diff : tuple, optional
-            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `<REST>`.
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         path_pattern : str, optional
@@ -1458,9 +1495,11 @@ class Eventstream:
         ----------
         edge_weight : {"proba_out", "proba_in", "count", "unique_paths", "share_of_total", "avg_per_path", "time_median", "time_q95"}, default "proba_out"
             Value shown on edges. See the [Edge Weights](/docs/widgets/transition-graph#edge-weights) section for more details.
-        diff : tuple, optional
-            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `<REST>`, meaning "every other value of `segment_col`".
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`, meaning "every other
+            value of `segment_col`".
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         height : int, default 500
@@ -1514,9 +1553,10 @@ class Eventstream:
         ----------
         steps : list of str, optional
             Ordered event names defining the funnel steps.
-        diff : tuple, optional
-            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `<REST>`.
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         height : int, default 420
@@ -1551,7 +1591,19 @@ class Eventstream:
         diff=None,
         path_col: str | None = None,
     ) -> dict:
-        """Compute funnel conversion metrics and return a dict (headless).
+        """
+        Compute funnel conversion metrics and return a dict (headless).
+
+        Parameters
+        ----------
+        steps : list of str, optional
+            Ordered event names defining the funnel steps.
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`.
+        path_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
 
         Returns
         -------
@@ -1638,10 +1690,29 @@ class Eventstream:
         path_col: str | None = None,
         event_col: str | None = None,
     ) -> "pd.DataFrame":
-        """Compute aggregated metrics across segment values (headless).
+        """
+        Compute aggregated metrics across segment values (headless).
 
-        Returns a DataFrame with metrics as rows and segment values as columns.
-        Always includes segment_size and segment_share as first two rows.
+        Parameters
+        ----------
+        segment_col : str
+            Segment column to split by; must be one of `schema.segment_cols`.
+        metrics : list of dict, optional
+            Metric configurations, each with a `"metric"` key, optional
+            `"metric_args"`, and an `"agg"` key (`"mean"`, `"median"`, `"q5"`,
+            `"q25"`, `"q75"`, `"q95"`, or `"complement_distance"`) controlling how
+            per-path values roll up across a segment. See the Path Metrics
+            documentation page for the metric reference.
+        path_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        event_col : str, optional
+            Event name column override; defaults to `schema.event_col`.
+
+        Returns
+        -------
+        pd.DataFrame
+            Metrics as rows and segment values as columns. Always includes
+            segment_size and segment_share as the first two rows.
         """
         from retentioneering.tools.segment_overview import SegmentOverview
 
@@ -1744,7 +1815,8 @@ class Eventstream:
         path_col: str | None = None,
         event_col: str | None = None,
     ) -> dict:
-        """Run cluster analysis headlessly and return dict with overview_df / silhouette / nmf / best_params.
+        """
+        Run cluster analysis headlessly and return dict with overview_df / silhouette / nmf / best_params.
 
         Pass lists for n_clusters / nmf_components / min_cluster_size to trigger
         grid search with silhouette scoring. n_clusters is required for the kmeans
@@ -1754,6 +1826,43 @@ class Eventstream:
         `overview_df` (the winning combination when searching, or just the fixed
         values passed in otherwise) — pass it straight to `add_clusters` to
         materialize the same clustering as a segment column.
+
+        Parameters
+        ----------
+        features : list of dict, optional
+            Metric configurations used as clustering features (see the Path
+            Metrics documentation page); defaults to per-event counts for every
+            event in the eventstream.
+        method : {"kmeans", "hdbscan"}, default "kmeans"
+            Clustering algorithm.
+        scaler : {"minmax", "standard"}, optional
+            Feature scaler applied before clustering; default `"minmax"`.
+        n_clusters : int, list of int, or str, optional
+            Number of clusters. A single int fixes the cluster count; a list of
+            ints or a range string (e.g. `"3-8"`) runs a silhouette-scored grid
+            search over that range and picks the best. Defaults to `"3-8"`.
+        min_cluster_size : int or list of int, optional
+            Minimum cluster size for the `"hdbscan"` method; defaults to `5`.
+            A list triggers a silhouette-scored grid search over the given
+            values.
+        cluster_selection_epsilon : float or list of float, optional
+            Cluster selection epsilon for the `"hdbscan"` method; defaults to
+            `0.0`. A list triggers a silhouette-scored grid search over the
+            given values.
+        nmf_components : int or list of int, optional
+            Number of components for an optional NMF (non-negative matrix
+            factorization) step applied to the scaled features before
+            clustering; if omitted, NMF is skipped. A list triggers a
+            silhouette-scored grid search over the given values.
+        overview_metrics : list of dict, optional
+            Metrics shown in the overview heatmap after clustering (independent
+            of `features`); defaults to per-event counts for every event.
+            Both `features` and `overview_metrics` accept metric configs from the
+            same Path Metrics registry.
+        path_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        event_col : str, optional
+            Event name column override; defaults to `schema.event_col`.
         """
         from retentioneering.tools.cluster_analysis import ClusterAnalysis
 

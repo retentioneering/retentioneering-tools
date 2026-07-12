@@ -2,6 +2,7 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes } from "./widget-utils";
+import { resolveDiffLabels } from "@retentioneering/viz-core";
 
 interface AnyWidgetModel {
   get(key: string): unknown;
@@ -472,6 +473,11 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
     return [...seen];
   }, [blocks]);
 
+  const diffLabels = React.useMemo(
+    () => resolveDiffLabels(diffSeg, diffV1, diffV2),
+    [diffSeg, diffV1, diffV2],
+  );
+
   const openGoTo = (e: React.MouseEvent<HTMLButtonElement>) => {
     setGoToRect((e.currentTarget.closest("th") as HTMLElement).getBoundingClientRect());
     setGoToOpen(v => !v);
@@ -837,16 +843,16 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
           {isDiff ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-                <span style={{ color: "#ef4444" }}>{diffSeg ?? "segment"}: {String(diffV1 ?? "group 1")}</span>
+                <span style={{ color: "#ef4444" }}>{diffLabels.segmentName ? `${diffLabels.segmentName}: ${diffLabels.value1Label}` : diffLabels.value1Label}</span>
                 <span style={{ fontFamily: "monospace", color: "#111827" }}>{cellTip.g1 !== null ? cellTip.g1.toFixed(4) : "—"}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-                <span style={{ color: "#3b82f6" }}>{diffSeg ?? "segment"}: {String(diffV2 ?? "group 2")}</span>
+                <span style={{ color: "#3b82f6" }}>{diffLabels.segmentName ? `${diffLabels.segmentName}: ${diffLabels.value2Label}` : diffLabels.value2Label}</span>
                 <span style={{ fontFamily: "monospace", color: "#111827" }}>{cellTip.g2 !== null ? cellTip.g2.toFixed(4) : "—"}</span>
               </div>
               <div style={{ borderTop: "1px solid #e5e7eb", margin: "2px 0" }} />
               <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-                <span style={{ fontWeight: 500, color: "#111827" }}>diff ({String(diffV1 ?? "g1")} − {String(diffV2 ?? "g2")})</span>
+                <span style={{ fontWeight: 500, color: "#111827" }}>diff ({diffLabels.value1Label} − {diffLabels.value2Label})</span>
                 <span style={{ fontFamily: "monospace", fontWeight: 600,
                   color: cellTip.v === 0 ? "#111827" : cellTip.v > 0 ? "#ef4444" : "#3b82f6" }}>
                   {cellTip.v >= 0 ? "+" : ""}{cellTip.v.toFixed(4)}

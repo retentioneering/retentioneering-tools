@@ -66,3 +66,28 @@ class TestStepMatrixWidgetDiff:
             "path_start": 1,
             "path_end": 1,
         }
+
+    def test__path_ids_diff_activates_diff_mode(self) -> None:
+        """diff=(path_ids1, path_ids2) must activate diff mode in the widget,
+        not just in the headless step_matrix_data/step_sankey_data methods."""
+        stream = _make_stream()
+        widget = StepMatrixWidget(
+            stream, diff=(["user_1", "user_2"], ["user_3", "user_4", "user_5"])
+        )
+
+        assert widget.error == ""
+        result = json.loads(widget.result)
+
+        assert result["event_counts_g1"] == {
+            "A": 1,
+            "B": 1,
+            "path_start": 2,
+            "path_end": 2,
+        }
+        assert result["event_counts_g2"] == {
+            "C": 1,
+            "D": 1,
+            "E": 1,
+            "path_start": 3,
+            "path_end": 3,
+        }

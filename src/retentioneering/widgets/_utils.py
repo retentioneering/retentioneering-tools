@@ -6,12 +6,13 @@ import json
 
 
 def parse_diff(raw) -> list | None:
-    """Parse a diff traitlet value (JSON string or list) into [seg, v1, v2] or None."""
+    """Parse a diff traitlet value (JSON string or list) into [seg, v1, v2] or
+    [path_ids1, path_ids2], or None."""
     if not raw:
         return None
     try:
         parsed = json.loads(raw) if isinstance(raw, str) else list(raw)
-        if isinstance(parsed, list) and len(parsed) == 3:
+        if isinstance(parsed, list) and len(parsed) in (2, 3):
             return parsed
     except Exception:
         pass

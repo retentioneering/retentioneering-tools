@@ -117,9 +117,13 @@ class FunnelWidget(StateFileMixin, anywidget.AnyWidget):
             diff = _parse_diff(self.diff)
             pid = self.path_col or None
             result = self._eventstream.funnel_data(steps=steps, diff=diff, path_col=pid)
-            if diff and len(diff) == 3:
-                result["group1_label"] = str(diff[1])
-                result["group2_label"] = str(diff[2])
+            if diff:
+                if len(diff) == 3:
+                    result["group1_label"] = str(diff[1])
+                    result["group2_label"] = str(diff[2])
+                else:
+                    result["group1_label"] = "Group 1"
+                    result["group2_label"] = "Group 2"
                 steps_list = result.get("steps", [])
                 if steps_list:
                     r1 = steps_list[0].get("funnel1_conversion_rate") or 0

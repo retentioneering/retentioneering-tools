@@ -1078,8 +1078,10 @@ class Eventstream:
         For each path, the first occurrence of `start_event` and the first occurrence
         of `end_event` that comes after it are found. Events outside this window are
         dropped. Paths that do not contain both anchors in the correct order are
-        removed entirely. The reserved names `path_start` / `path_end` are valid
-        anchors, e.g. `end_event="path_end"` keeps everything after `start_event`.
+        removed entirely.
+
+        Use `start_event="path_start"` / `end_event="path_end"` to refer to the actual
+        first and last events of the path.
 
         Parameters
         ----------
@@ -1095,6 +1097,7 @@ class Eventstream:
         Examples
         --------
             stream.truncate_paths(start_event="registration", end_event="purchase")
+            stream.truncate_paths(start_event="registration", end_event="path_end")
         """
         from retentioneering.data_processors.truncate_paths import TruncatePaths
 

@@ -140,8 +140,12 @@ class Eventstream:
         df[schema.timestamp_col] = _to_datetime_auto(df[schema.timestamp_col])
 
         for col in schema.path_cols:
-            if df[col].dtype == "float64":
-                df[col] = df[col].astype("str")
+            if df[col].isna().any():
+                raise SchemaConfigError(
+                    f"path_cols column '{col}' contains missing values (None/NaN). "
+                    f"Every event must belong to a path; drop or fill the missing "
+                    f"values in '{col}' before creating the Eventstream."
+                )
 
         if len(schema.path_cols) > 1:
             _validate_path_cols_nesting(df, schema.path_cols)

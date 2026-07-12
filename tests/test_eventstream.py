@@ -88,6 +88,34 @@ def test_path_cols_nesting_violation_raises():
         Eventstream(df, {"path_cols": ["session_id", "user_id"]})
 
 
+def test_path_col_none_raises():
+    from retentioneering.exceptions import SchemaConfigError
+
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1", None],
+            "event": ["a", "b"],
+            "timestamp": pd.to_datetime(["2024-01-01 10:00", "2024-01-01 10:01"]),
+        }
+    )
+    with pytest.raises(SchemaConfigError):
+        Eventstream(df)
+
+
+def test_path_col_preserves_numeric_dtype():
+    df = pd.DataFrame(
+        {
+            "user_id": [1, 1, 2],
+            "event": ["a", "b", "c"],
+            "timestamp": pd.to_datetime(
+                ["2024-01-01 10:00", "2024-01-01 10:01", "2024-01-01 10:02"]
+            ),
+        }
+    )
+    es = Eventstream(df)
+    assert es.df["user_id"].dtype == "int64"
+
+
 def test_add_start_end_events(simple_df):
     es = Eventstream(simple_df)
     with_se = es.add_start_end_events()

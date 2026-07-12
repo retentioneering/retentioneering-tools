@@ -376,7 +376,9 @@ function EventRow({ ev, blocks, allColIndices, blockEvMin, blockEvMax, blockHasB
 
 // Retentioneering-style sort: for each column in order, pick the remaining row with max value.
 // anchorEv (if provided) is pinned to the top; the rest are sorted normally.
-function sortByDirection(block: MatrixBlock, direction: "left" | "right", anchorEv: string | null): string[] {
+// In diff mode, values are signed (value1 - value2), so ranking uses their magnitude
+// instead of raw value — otherwise events where group2 >> group1 would never surface.
+function sortByDirection(block: MatrixBlock, direction: "left" | "right", anchorEv: string | null, isDiff: boolean): string[] {
   const colIndices = block.columns
     .map((c, i) => ({ c, i }))
     .filter(({ c }) => direction === "left" ? c < 0 : c > 0)
@@ -391,7 +393,8 @@ function sortByDirection(block: MatrixBlock, direction: "left" | "right", anchor
     let maxVal = -Infinity, maxEv: string | null = null;
     for (const ev of remaining) {
       const ri = block.events.indexOf(ev);
-      const v = block.values[ri]?.[ci] ?? 0;
+      const raw = block.values[ri]?.[ci] ?? 0;
+      const v = isDiff ? Math.abs(raw) : raw;
       if (maxEv === null || v > maxVal) { maxVal = v; maxEv = ev; }
     }
     if (maxEv !== null) { order.push(maxEv); remaining.delete(maxEv); }
@@ -421,10 +424,10 @@ function findAnchorEvent(block: MatrixBlock): string | null {
 // path_start-anchored or mid-path anchor. A block with no right neighborhood
 // at all (e.g. a `path_pattern` ending at `path_end`, like ".*->path_end")
 // has nothing there to sort by, so fall back to its left neighborhood.
-function computeDefaultOrder(block: MatrixBlock | undefined): string[] {
+function computeDefaultOrder(block: MatrixBlock | undefined, isDiff: boolean): string[] {
   if (!block) return [];
   const direction: "left" | "right" = block.columns.some(c => c > 0) ? "right" : "left";
-  return sortByDirection(block, direction, findAnchorEvent(block));
+  return sortByDirection(block, direction, findAnchorEvent(block), isDiff);
 }
 
 interface SortState { order: string[]; lex_dir: "asc" | "desc" | null; }
@@ -529,15 +532,15 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
     const evs = blocks[0]?.events ?? [];
     setCustomOrder(prev => prev.length > 0
       ? [...prev.filter(e => evs.includes(e)), ...evs.filter(e => !prev.includes(e))]
-      : computeDefaultOrder(blocks[0]));
-  }, [blocks]);
+      : computeDefaultOrder(blocks[0], isDiff));
+  }, [blocks, isDiff]);
 
   const handleSort = React.useCallback((bi: number, direction: "left" | "right") => {
     const block = blocks[bi]; if (!block) return;
-    const order = sortByDirection(block, direction, findAnchorEvent(block));
+    const order = sortByDirection(block, direction, findAnchorEvent(block), isDiff);
     setCustomOrder(order);
     onSortChange?.(order, lexSortDir);
-  }, [blocks, onSortChange, lexSortDir]);
+  }, [blocks, onSortChange, lexSortDir, isDiff]);
 
 
   const { blockEvMin, blockEvMax } = React.useMemo(() => {

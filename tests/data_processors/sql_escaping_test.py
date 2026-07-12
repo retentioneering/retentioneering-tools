@@ -132,10 +132,15 @@ class TestSplitSessionsEscaping:
 
 class TestMatchesPatternEscaping:
     def test__pattern_with_apostrophe_no_matches(self) -> None:
+        """A real event containing an apostrophe must be safely escaped in the
+        SQL query and correctly report no match when it doesn't precede the
+        target event (as opposed to a nonexistent/typoed event, which now
+        raises InvalidMetricConfigError instead - see metric_builder_test.py)."""
         stream = make_stream(
             [
-                ["user_1", "promo_view", "2020-01-01 00:00:00"],
-                ["user_1", "purchase", "2020-01-01 00:01:00"],
+                ["user_1", "o'brien_page", "2020-01-01 00:00:00"],
+                ["user_1", "logout", "2020-01-01 00:01:00"],
+                ["user_2", "purchase", "2020-01-01 00:00:00"],
             ]
         )
 
@@ -143,7 +148,7 @@ class TestMatchesPatternEscaping:
             [
                 {
                     "metric": "matches_pattern",
-                    "metric_args": {"pattern": "o'brien->purchase"},
+                    "metric_args": {"pattern": "o'brien_page->purchase"},
                 }
             ]
         )

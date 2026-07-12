@@ -445,10 +445,18 @@ def _build_server(
                   — number of events per path
               {"metric": "duration"}
                   — duration in seconds (first to last event)
-              {"metric": "event_count", "metric_args": {"events": "purchase"}}
-                  — how many times the event occurred; events can also be a list
-              {"metric": "has_event", "metric_args": {"events": "purchase"}}
+              {"metric": "event_count", "metric_args": {"event": "purchase"}}
+                  — how many times the event occurred (single event only)
+              {"metric": "has_event", "metric_args": {"event": "purchase"}}
                   — 0/1 whether the path contains the event (conversion rate)
+              {"metric": "event_count_bulk", "metric_args": {"events": ["view", "purchase"]}}
+                  — one event_count column per event; omit "events" for every event
+              {"metric": "has_event_bulk", "metric_args": {"events": ["view", "purchase"]}}
+                  — one has_event column per event; omit "events" for every event
+              {"metric": "has_all_events", "metric_args": {"events": ["view", "purchase"]}}
+                  — 0/1 whether ALL of the listed events occurred (AND)
+              {"metric": "has_any_event", "metric_args": {"events": ["view", "purchase"]}}
+                  — 0/1 whether ANY of the listed events occurred (OR)
               {"metric": "time_between",
                "metric_args": {"start_event": "add_to_cart", "end_event": "purchase"}}
                   — seconds between first occurrences of two events
@@ -459,7 +467,7 @@ def _build_server(
             Examples:
               Conversion rate to purchase by platform:
                 metrics=[
-                  {"metric": "has_event",  "metric_args": {"events": "purchase"}, "agg": "mean"},
+                  {"metric": "has_event",  "metric_args": {"event": "purchase"}, "agg": "mean"},
                   {"metric": "length"},
                   {"metric": "duration", "agg": "median"},
                 ]

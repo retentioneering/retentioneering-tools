@@ -177,22 +177,44 @@ class CollapseEvents(DataProcessor):
         args = mc.get("metric_args") or {}
 
         if metric == "has_event":
-            events = to_list(args.get("events", []))
+            event = args.get("event")
             return [
                 (
-                    f"has_event_{e}",
-                    f"MAX(CASE WHEN {event_col} = '{e}' THEN 1 ELSE 0 END)",
+                    f"has_event_{event}",
+                    f"MAX(CASE WHEN {event_col} = '{event}' THEN 1 ELSE 0 END)",
                 )
-                for e in events
             ]
         elif metric == "event_count":
-            events = to_list(args.get("events", []))
+            event = args.get("event")
             return [
                 (
-                    f"event_count_{e}",
-                    f"COUNT(CASE WHEN {event_col} = '{e}' THEN 1 ELSE NULL END)",
+                    f"event_count_{event}",
+                    f"COUNT(CASE WHEN {event_col} = '{event}' THEN 1 ELSE NULL END)",
                 )
+            ]
+        elif metric == "has_all_events":
+            events = to_list(args.get("events", []))
+            conds = " AND ".join(
+                f"MAX(CASE WHEN {event_col} = '{e}' THEN 1 ELSE 0 END) = 1"
                 for e in events
+            )
+            return [
+                (
+                    f"has_all_events_{'_and_'.join(events)}",
+                    f"CASE WHEN ({conds}) THEN 1 ELSE 0 END",
+                )
+            ]
+        elif metric == "has_any_event":
+            events = to_list(args.get("events", []))
+            conds = " OR ".join(
+                f"MAX(CASE WHEN {event_col} = '{e}' THEN 1 ELSE 0 END) = 1"
+                for e in events
+            )
+            return [
+                (
+                    f"has_any_event_{'_or_'.join(events)}",
+                    f"CASE WHEN ({conds}) THEN 1 ELSE 0 END",
+                )
             ]
         elif metric == "duration":
             return [("duration", f"EPOCH(MAX({ts_col}) - MIN({ts_col}))")]
@@ -213,7 +235,10 @@ class CollapseEvents(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 f"Metric '{metric}' is not supported in event_groups cases. "
-                f"Supported metrics: has_event, event_count, duration, length, time_between, active_days.",
+                f"Supported metrics: has_event, event_count, has_all_events, has_any_event, "
+                f"duration, length, time_between, active_days. "
+                f"(has_event_bulk/event_count_bulk are never supported here - they produce "
+                f"multiple columns.)",
             )
 
     def _collapse_consecutive(

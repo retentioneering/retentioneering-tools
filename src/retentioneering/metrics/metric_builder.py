@@ -4,20 +4,29 @@ MetricBuilder - module for building metrics for each path in the eventstream
 Supports metrics:
 - length - number of steps (events)
 - duration - duration in seconds between first and last event
-- event_count - event count for specific event(s)
-  - events: event name (string or list of strings); list of events returns multiple metrics;
-    omit (or pass None/[]) to count every event in the eventstream
-- has_event - event presence (0/1) for specific event(s)
-  - events: event name (string or list of strings); list of events returns multiple metrics;
-    omit (or pass None/[]) to check every event in the eventstream
+- event_count - event count for a single event (one number per path)
+  - event: event name (string, required)
+- has_event - event presence (0/1) for a single event (one number per path)
+  - event: event name (string, required)
+- event_count_bulk - event count for one or more events, expanded into one column per event
+  - events: list of event names, or omit/None for every event in the eventstream
+    (an explicit empty list is invalid - only omitting/None means "all events")
+- has_event_bulk - event presence (0/1) for one or more events, expanded into one column per event
+  - events: list of event names, or omit/None for every event in the eventstream
+    (an explicit empty list is invalid - only omitting/None means "all events")
+- has_all_events - whether ALL of the given events occurred at least once (0/1, AND semantics)
+  - events: non-empty list of event names
+- has_any_event - whether ANY of the given events occurred at least once (0/1, OR semantics)
+  - events: non-empty list of event names
 - time_between - time in seconds between first occurrences of two events
   - start_event: event name
   - end_event: event name
 - first_event_time - timestamp of first event
 - active_days - number of unique days with at least one event
   - active_events: event name (string or list of strings)
-- matches_pattern - whether path matches a regex pattern (0/1)
-  - pattern: string pattern like "login->.*->purchase"
+- matches_pattern - whether path matches a token pattern (0/1)
+  - pattern: string pattern like "login->.*->purchase" (literal events matched as whole
+    tokens, not substrings; ".*" matches any run of whole events)
 - in_segment - binary metric showing if a path belongs to a segment value (0/1)
   - segment_name: segment column name
   - segment_value: segment value (string, list of strings, or None for all values)
@@ -28,6 +37,7 @@ Supports metrics:
       - threshold: percentage of events (e.g., 0.1 for 10%)
 """
 
+import re
 from typing import Any, Dict, List, Set
 
 import duckdb
@@ -44,6 +54,10 @@ VALID_METRICS = {
     "duration",
     "event_count",
     "has_event",
+    "event_count_bulk",
+    "has_event_bulk",
+    "has_all_events",
+    "has_any_event",
     "time_between",
     "first_event_time",
     "active_days",
@@ -85,22 +99,61 @@ def format_value_for_sql(value) -> str:
 SYNTHETIC_EVENTS = {EventTypes().PATH_START.name, EventTypes().PATH_END.name}
 
 
-def _normalize_events(events: Any, metric_name: str) -> List[str] | None:
-    """
-    Normalizes the 'events' metric_args value for event_count/has_event.
+def _pattern_variant_to_regex(pattern_variant: str) -> str:
+    """Converts one gap-expanded matches_pattern variant (still '->'-joined, with
+    literal '.*' tokens for enabled gaps) into a regex that matches whole tokens
+    only, not substrings. Every literal token is re.escape()'d; '.*' gap tokens
+    are left as raw regex (that part already works correctly - it's only the
+    literal tokens that need escaping/anchoring). The whole regex is wrapped in a
+    leading/trailing '->' to align with the same padding added to the built path
+    string, giving token-boundary anchoring without needing lookaround (DuckDB's
+    regexp_matches uses RE2, which doesn't support it)."""
+    tokens = pattern_variant.split("->")
+    parts = [".*" if tok == ".*" else re.escape(tok) for tok in tokens]
+    return "->" + "->".join(parts) + "->"
 
-    Mirrors active_days' 'active_events': omitting the key, or passing None/[],
-    means "all events" (returns None, resolved to the full event list at build time).
+
+def _normalize_single_event(event: Any, metric_name: str) -> str:
+    """Normalizes the 'event' metric_args value for has_event/event_count: a single
+    event name is required - no list, no wildcard. Use '{metric_name}_bulk' for a
+    list of events, or 'has_all_events'/'has_any_event' for AND/OR conditions."""
+    if not event or not isinstance(event, str):
+        raise InvalidMetricConfigError(
+            f"'{metric_name}' metric requires a single 'event' (string) in metric_args"
+        )
+    return event
+
+
+def _normalize_events_bulk(events: Any, metric_name: str) -> List[str] | None:
+    """Normalizes the 'events' metric_args value for has_event_bulk/event_count_bulk.
+
+    Omitting the key, or passing None, means "all events" (returns None, resolved to
+    the full event list at build time). An explicit empty list is rejected - it is
+    not a valid spelling of the wildcard and is almost always a caller-side bug.
     """
-    if not events:
+    if events is None:
         return None
-    if isinstance(events, str):
-        return [events]
     if isinstance(events, list):
+        if len(events) == 0:
+            raise InvalidMetricConfigError(
+                f"'{metric_name}' metric 'events' must not be an empty list. "
+                f"Omit 'events' (or pass None) to select every event."
+            )
         return events
     raise InvalidMetricConfigError(
-        f"'{metric_name}' metric 'events' must be string or list"
+        f"'{metric_name}' metric 'events' must be a list, or omitted/None"
     )
+
+
+def _normalize_events_required(events: Any, metric_name: str) -> List[str]:
+    """Normalizes the 'events' metric_args value for has_all_events/has_any_event:
+    a non-empty list is required - there's no wildcard, since AND/OR over "every
+    event in the stream" isn't a meaningful condition."""
+    if not isinstance(events, list) or len(events) == 0:
+        raise InvalidMetricConfigError(
+            f"'{metric_name}' metric requires a non-empty 'events' list in metric_args"
+        )
+    return events
 
 
 class MetricConfig:
@@ -195,23 +248,52 @@ class MetricConfig:
                 "original": config_dict,
             }
         elif metric == "has_event":
-            event_names = _normalize_events(metric_args.get("events"), "has_event")
+            event = _normalize_single_event(metric_args.get("event"), "has_event")
             return {
                 "type": "has_event",
+                "event_names": [event],
+                "metric_names": [f"has_event_{event}"],
+                "original": config_dict,
+            }
+        elif metric == "event_count":
+            event = _normalize_single_event(metric_args.get("event"), "event_count")
+            return {
+                "type": "event_count",
+                "event_names": [event],
+                "metric_names": [f"event_count_{event}"],
+                "original": config_dict,
+            }
+        elif metric == "has_event_bulk":
+            event_names = _normalize_events_bulk(
+                metric_args.get("events"), "has_event_bulk"
+            )
+            return {
+                "type": "has_event_bulk",
                 "event_names": event_names,
-                "metric_names": [f"has_event_{e}" for e in event_names]
+                "metric_names": [f"has_event_bulk_{e}" for e in event_names]
                 if event_names is not None
                 else None,
                 "original": config_dict,
             }
-        elif metric == "event_count":
-            event_names = _normalize_events(metric_args.get("events"), "event_count")
+        elif metric == "event_count_bulk":
+            event_names = _normalize_events_bulk(
+                metric_args.get("events"), "event_count_bulk"
+            )
             return {
-                "type": "event_count",
+                "type": "event_count_bulk",
                 "event_names": event_names,
-                "metric_names": [f"event_count_{e}" for e in event_names]
+                "metric_names": [f"event_count_bulk_{e}" for e in event_names]
                 if event_names is not None
                 else None,
+                "original": config_dict,
+            }
+        elif metric in ("has_all_events", "has_any_event"):
+            events = _normalize_events_required(metric_args.get("events"), metric)
+            joiner = "_and_" if metric == "has_all_events" else "_or_"
+            return {
+                "type": metric,
+                "events": events,
+                "metric_names": [f"{metric}_{joiner.join(events)}"],
                 "original": config_dict,
             }
         elif metric == "time_between":
@@ -336,15 +418,43 @@ class MetricBuilder:
         metric_args = metric.get("metric_args", {})
 
         if metric_name in ("event_count", "has_event"):
-            # Omitted/None/[] means "all events" (like active_days' active_events) - nothing to validate.
+            event = metric_args.get("event")
+            if not event or not isinstance(event, str):
+                raise InvalidMetricConfigError(
+                    f"'{metric_name}' metric requires a single 'event' (string) in metric_args"
+                )
+            if event not in available_events:
+                raise InvalidMetricConfigError(
+                    f"Event '{event}' not found. Available events: {sorted(available_events)}"
+                )
+
+        elif metric_name in ("event_count_bulk", "has_event_bulk"):
+            # Omitted/None means "all events" (like active_days' active_events) - nothing to validate.
+            # An explicit empty list is invalid (see _normalize_events_bulk).
             events = metric_args.get("events")
-            if events:
-                events_to_check = [events] if isinstance(events, str) else events
-                for e in events_to_check:
+            if events is not None:
+                if not isinstance(events, list) or len(events) == 0:
+                    raise InvalidMetricConfigError(
+                        f"'{metric_name}' metric 'events' must be a non-empty list, "
+                        f"or omitted/None for all events"
+                    )
+                for e in events:
                     if e not in available_events:
                         raise InvalidMetricConfigError(
                             f"Event '{e}' not found. Available events: {sorted(available_events)}"
                         )
+
+        elif metric_name in ("has_all_events", "has_any_event"):
+            events = metric_args.get("events")
+            if not isinstance(events, list) or len(events) == 0:
+                raise InvalidMetricConfigError(
+                    f"'{metric_name}' metric requires a non-empty 'events' list in metric_args"
+                )
+            for e in events:
+                if e not in available_events:
+                    raise InvalidMetricConfigError(
+                        f"Event '{e}' not found. Available events: {sorted(available_events)}"
+                    )
 
         elif metric_name == "time_between":
             start_event = metric_args.get("start_event")
@@ -372,6 +482,14 @@ class MetricBuilder:
                 raise InvalidMetricConfigError(
                     "'matches_pattern' metric requires 'pattern' in metric_args"
                 )
+            for tok in pattern.split("->"):
+                if tok == ".*" or tok in SYNTHETIC_EVENTS:
+                    continue
+                if tok not in available_events:
+                    raise InvalidMetricConfigError(
+                        f"Event '{tok}' in pattern '{pattern}' not found. "
+                        f"Available events: {sorted(available_events)}"
+                    )
 
         elif metric_name == "in_segment":
             segment_name = metric_args.get("segment_name")
@@ -492,6 +610,12 @@ class MetricBuilder:
             return self._build_event_count(config, path_col, event_col)
         elif config["type"] == "has_event":
             return self._build_has(config, path_col, event_col)
+        elif config["type"] == "event_count_bulk":
+            return self._build_event_count_bulk(config, path_col, event_col)
+        elif config["type"] == "has_event_bulk":
+            return self._build_has_bulk(config, path_col, event_col)
+        elif config["type"] in ("has_all_events", "has_any_event"):
+            return self._build_has_all_or_any(config, path_col, event_col)
         elif config["type"] == "time_from_to":
             return self._build_time_from_to(config, path_col, event_col)
         elif config["type"] == "matches_pattern":
@@ -509,15 +633,26 @@ class MetricBuilder:
         else:
             raise InvalidMetricConfigError(f"Unknown metric type: '{config['type']}'")
 
-    def _build_event_count(
-        self, config: Dict[str, Any], path_col: str, event_col: str
-    ) -> pd.DataFrame:
-        """Builds event count metrics for one or more events"""
+    def _resolve_event_names(self, config: Dict[str, Any], event_col: str) -> List[str]:
+        """Resolves a possibly-wildcard (None) 'event_names' config entry to an
+        explicit, sorted list of event names."""
         event_names = config["event_names"]
         if event_names is None:
-            # Wildcard: 'events' was omitted/None/[] - count every event in the stream.
+            # Wildcard: 'events' was omitted/None - count every event in the stream.
             event_names = sorted(self.df[event_col].unique().tolist())
+        return event_names
 
+    def _build_count_pivot(
+        self,
+        event_names: List[str],
+        path_col: str,
+        event_col: str,
+        col_prefix: str,
+    ) -> pd.DataFrame:
+        """Shared primitive: per-path count of each event in event_names, pivoted
+        into one column per event named '{col_prefix}{event}'. Used directly by
+        event_count/event_count_bulk, and as the basis for has_event/has_event_bulk
+        (via >0) and has_all_events/has_any_event (via row-wise all()/any())."""
         events_quoted = ", ".join([f"'{e}'" for e in event_names])
         query = f"""
         SELECT
@@ -533,7 +668,7 @@ class MetricBuilder:
         result = duckdb.query(query).df()
 
         if result.empty:
-            return pd.DataFrame(columns=[f"event_count_{e}" for e in event_names])
+            return pd.DataFrame(columns=[f"{col_prefix}{e}" for e in event_names])
 
         # Pivot: path_id as index, events as columns
         metrics_df = (
@@ -541,22 +676,61 @@ class MetricBuilder:
             .unstack(fill_value=0)
             .reindex(columns=event_names, fill_value=0)
         )
-        metrics_df.columns = [f"event_count_{e}" for e in metrics_df.columns]
+        metrics_df.columns = [f"{col_prefix}{c}" for c in metrics_df.columns]
 
         return metrics_df
+
+    def _build_event_count(
+        self, config: Dict[str, Any], path_col: str, event_col: str
+    ) -> pd.DataFrame:
+        """Builds the event count metric for a single event"""
+        event_names = self._resolve_event_names(config, event_col)
+        return self._build_count_pivot(event_names, path_col, event_col, "event_count_")
 
     def _build_has(
         self, config: Dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
-        """Builds event presence metrics (0/1) for one or more events"""
+        """Builds the event presence metric (0/1) for a single event"""
+        counts = self._build_event_count(config, path_col, event_col)
+        has = (counts > 0).astype(int)
+        has.columns = [c.replace("event_count_", "has_event_", 1) for c in has.columns]
+        return has
 
-        metrics_df = self._build_event_count(config, path_col, event_col)
-        metrics_df = (metrics_df > 0).astype(int)
-        metrics_df.columns = [
-            col.replace("event_count_", "has_event_") for col in metrics_df.columns
+    def _build_event_count_bulk(
+        self, config: Dict[str, Any], path_col: str, event_col: str
+    ) -> pd.DataFrame:
+        """Builds event count metrics for one or more events, one column per event"""
+        event_names = self._resolve_event_names(config, event_col)
+        return self._build_count_pivot(
+            event_names, path_col, event_col, "event_count_bulk_"
+        )
+
+    def _build_has_bulk(
+        self, config: Dict[str, Any], path_col: str, event_col: str
+    ) -> pd.DataFrame:
+        """Builds event presence metrics (0/1) for one or more events, one column per event"""
+        counts = self._build_event_count_bulk(config, path_col, event_col)
+        has = (counts > 0).astype(int)
+        has.columns = [
+            c.replace("event_count_bulk_", "has_event_bulk_", 1) for c in has.columns
         ]
+        return has
 
-        return metrics_df
+    def _build_has_all_or_any(
+        self, config: Dict[str, Any], path_col: str, event_col: str
+    ) -> pd.DataFrame:
+        """Builds has_all_events (AND) / has_any_event (OR) - a single 0/1 column
+        per path. Reuses the count pivot with a throwaway internal prefix, then
+        reduces row-wise; the per-event columns never surface downstream."""
+        events = config["events"]
+        metric_name = config["metric_names"][0]
+        counts = self._build_count_pivot(events, path_col, event_col, "__evt__")
+        present = counts > 0
+        if config["type"] == "has_all_events":
+            reduced = present.all(axis=1)
+        else:
+            reduced = present.any(axis=1)
+        return reduced.astype(int).to_frame(metric_name)
 
     def _build_time_from_to(
         self, config: Dict[str, Any], path_col: str, event_col: str
@@ -663,7 +837,15 @@ class MetricBuilder:
     def _build_matches(
         self, config: Dict[str, Any], path_col: str, event_col: str
     ) -> pd.DataFrame:
-        """Builds pattern matching metric (0/1) for each path"""
+        """Builds pattern matching metric (0/1) for each path.
+
+        Matches whole tokens, not substrings: both the path and every literal
+        segment of the pattern are '->'-delimited token sequences, and each
+        literal token is re.escape()'d before being compiled into the regex.
+        DuckDB's regexp_matches uses RE2, which has no lookaround support, so
+        token-boundary anchoring is done by padding both the path and the regex
+        with a leading/trailing '->' delimiter (see _pattern_variant_to_regex).
+        """
         pattern = config["pattern"]
         metric_name = config["metric_names"][0]
 
@@ -673,9 +855,10 @@ class MetricBuilder:
                 path_col=path_col
             ).df
 
-        # Build path strings for each path_id
+        # Build path strings for each path_id, padded with a leading/trailing '->'
+        # so every event (including the first/last) is flanked by the delimiter.
         query = f"""
-        SELECT {path_col}, string_agg({event_col}, '->') as path
+        SELECT {path_col}, '->' || string_agg({event_col}, '->') || '->' as path
         FROM df_with_start_end
         GROUP BY {path_col}
         """
@@ -686,7 +869,8 @@ class MetricBuilder:
         # Generate patterns with optional gaps
         patterns = generate_patterns_with_optional_gaps(pattern)
         patterns_chunk = " OR ".join(
-            f"regexp_matches(path, {format_value_for_sql(p)})" for p in patterns
+            f"regexp_matches(path, {format_value_for_sql(_pattern_variant_to_regex(p))})"
+            for p in patterns
         )
 
         query = f'select {path_col}, {patterns_chunk} as "{metric_name}" from paths'

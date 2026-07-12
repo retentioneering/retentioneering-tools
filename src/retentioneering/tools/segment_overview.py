@@ -311,7 +311,9 @@ class SegmentOverview:
             raise InvalidMetricConfigError(
                 f"metric_distribution requires exactly one metric, but the configuration "
                 f"produced {len(metric_cols)} metrics: {metric_cols}. "
-                f"For metrics like 'event_count' or 'has', specify a single event instead of a list."
+                f"For metrics like 'event_count_bulk'/'has_event_bulk', specify "
+                f"metric_args={{'events': [...]}} with exactly one event, or use the "
+                f"non-bulk 'event_count'/'has_event' metric."
             )
         metric_col = metric_cols[0]
 

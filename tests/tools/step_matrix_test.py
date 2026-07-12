@@ -515,8 +515,9 @@ class TestStepMatrix:
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         stream = Eventstream(df)
         max_steps = 2
-        # Use a pattern that will match no paths
-        non_matching_pattern = "path_start->X->Y->Z->path_end"
+        # A pattern of real events (A/B/C) that never occurs adjacently in the
+        # fixture - legitimately zero matches, as opposed to a typo.
+        non_matching_pattern = "path_start->A->A->A->path_end"
 
         with pytest.raises(PatternNoMatchError) as exc_info:
             stream.step_sankey_data(
@@ -533,8 +534,9 @@ class TestStepMatrix:
             df, {"path_cols": ["session_id"], "segment_cols": ["country"]}
         )
         max_steps = 2
-        # Use a pattern that will match no paths
-        non_matching_pattern = "path_start->X->Y->Z->path_end"
+        # A pattern of real events (A/B/C) that never occurs adjacently in the
+        # fixture - legitimately zero matches, as opposed to a typo.
+        non_matching_pattern = "path_start->A->A->A->path_end"
 
         with pytest.raises(PatternNoMatchError) as exc_info:
             stream.step_sankey_data(
@@ -546,6 +548,26 @@ class TestStepMatrix:
 
         assert exc_info.value.error_code == "PATTERN_NO_MATCH"
         assert non_matching_pattern in exc_info.value.message
+
+    def test__path_pattern_typo_raises_invalid_parameter_error(self, fx_read_csv):
+        """A typoed event in path_pattern must fail loudly with a specific
+        'unknown event' error, not the generic PatternNoMatchError."""
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+
+        with pytest.raises(InvalidParameterError) as exc_info:
+            stream.step_sankey_data(max_steps=2, path_pattern="path_start->X->path_end")
+
+        assert "X" in exc_info.value.message
+
+    def test__path_pattern_typo_raises_for_step_matrix_too(self, fx_read_csv):
+        """step_matrix shares the same path_pattern validation as step_sankey
+        (both delegate to StepMatrix.fit())."""
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+
+        with pytest.raises(InvalidParameterError):
+            stream.step_matrix_data(max_steps=2, path_pattern="typo_event")
 
 
 class TestStepMatrixDataAlias:

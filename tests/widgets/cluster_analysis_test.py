@@ -125,13 +125,14 @@ class TestClusterAnalysisWidgetSave:
 class TestClusterAnalysisWidgetDefaults:
     def test__default_features_and_metrics_use_the_all_events_wildcard(self) -> None:
         """Defaults must not enumerate every event - it's unreadable in generated
-        code and unnecessary now that event_count/has_event support the wildcard."""
+        code and unnecessary now that event_count_bulk/has_event_bulk support the
+        wildcard (event_count/has_event are strict single-event, no wildcard)."""
         stream = _make_stream()
         widget = ClusterAnalysisWidget(stream)
 
-        assert json.loads(widget.features) == [{"metric": "event_count"}]
+        assert json.loads(widget.features) == [{"metric": "event_count_bulk"}]
         assert json.loads(widget.overview_metrics) == [
-            {"metric": "event_count", "agg": "mean"}
+            {"metric": "event_count_bulk", "agg": "mean"}
         ]
 
 

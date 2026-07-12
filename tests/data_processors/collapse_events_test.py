@@ -621,7 +621,7 @@ class TestCollapseEventsGroupsCases:
                                 "op": ">",
                                 "metric": "has_event",
                                 "value": 0,
-                                "metric_args": {"events": "purchase"},
+                                "metric_args": {"event": "purchase"},
                             },
                             "name": "purchase_session",
                         }
@@ -636,7 +636,7 @@ class TestCollapseEventsGroupsCases:
         assert "no_purchase_session" in result_events
 
     def test_cases_event_count_metric(self):
-        """Cases with 'event_count' metric (documented 'events' key) name sessions by threshold."""
+        """Cases with 'event_count' metric (documented 'event' key) name sessions by threshold."""
         stream = make_stream(
             [
                 # session 1: two 'click' events -> exceeds threshold
@@ -659,7 +659,7 @@ class TestCollapseEventsGroupsCases:
                                 "op": ">",
                                 "metric": "event_count",
                                 "value": 1,
-                                "metric_args": {"events": "click"},
+                                "metric_args": {"event": "click"},
                             },
                             "name": "active_session",
                         }
@@ -690,7 +690,7 @@ class TestCollapseEventsGroupsCases:
                                 "op": ">",
                                 "metric": "has_event",
                                 "value": 0,
-                                "metric_args": {"events": "purchase"},
+                                "metric_args": {"event": "purchase"},
                             },
                             "name": "purchase_session",
                         }
@@ -702,6 +702,107 @@ class TestCollapseEventsGroupsCases:
 
         assert "other_session" in events(res)
         assert "purchase_session" not in events(res)
+
+    def test_cases_has_all_events_metric(self):
+        """Cases with 'has_all_events' (AND semantics) name sessions containing
+        every listed event."""
+        stream = make_stream(
+            [
+                # session 1: has both A and B -> matches
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "B", "2020-01-01 00:01:00"],
+                ["user_1", "sep", "2020-01-01 00:02:00"],
+                # session 2: only A -> doesn't match
+                ["user_1", "A", "2020-01-01 00:03:00"],
+                ["user_1", "sep", "2020-01-01 00:04:00"],
+            ]
+        )
+        res = stream.collapse_events(
+            event_groups=[
+                {
+                    "separator": "sep",
+                    "cases": [
+                        {
+                            "condition": {
+                                "op": "=",
+                                "metric": "has_all_events",
+                                "value": True,
+                                "metric_args": {"events": ["A", "B"]},
+                            },
+                            "name": "both_session",
+                        }
+                    ],
+                    "name": "partial_session",
+                }
+            ]
+        )
+
+        assert events(res) == ["both_session", "partial_session"]
+
+    def test_cases_has_any_event_metric(self):
+        """Cases with 'has_any_event' (OR semantics) name sessions containing
+        at least one of the listed events."""
+        stream = make_stream(
+            [
+                # session 1: has A -> matches
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "sep", "2020-01-01 00:01:00"],
+                # session 2: has neither A nor B -> doesn't match
+                ["user_1", "C", "2020-01-01 00:02:00"],
+                ["user_1", "sep", "2020-01-01 00:03:00"],
+            ]
+        )
+        res = stream.collapse_events(
+            event_groups=[
+                {
+                    "separator": "sep",
+                    "cases": [
+                        {
+                            "condition": {
+                                "op": "=",
+                                "metric": "has_any_event",
+                                "value": True,
+                                "metric_args": {"events": ["A", "B"]},
+                            },
+                            "name": "matched_session",
+                        }
+                    ],
+                    "name": "unmatched_session",
+                }
+            ]
+        )
+
+        assert events(res) == ["matched_session", "unmatched_session"]
+
+    def test_cases_bulk_metric_forbidden_in_condition(self):
+        """has_event_bulk/event_count_bulk cannot appear in case conditions -
+        they produce multiple columns, not a single comparable value."""
+        stream = make_stream(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00"],
+                ["user_1", "sep", "2020-01-01 00:01:00"],
+            ]
+        )
+        with pytest.raises(PreprocessingConfigError):
+            stream.collapse_events(
+                event_groups=[
+                    {
+                        "separator": "sep",
+                        "cases": [
+                            {
+                                "condition": {
+                                    "op": "=",
+                                    "metric": "has_event_bulk",
+                                    "value": True,
+                                    "metric_args": {"events": ["A", "B"]},
+                                },
+                                "name": "matched_session",
+                            }
+                        ],
+                        "name": "unmatched_session",
+                    }
+                ]
+            )
 
 
 # ---------------------------------------------------------------------------

@@ -90,7 +90,7 @@ stream = stream.add_clusters(
     features=[
         {"metric": "length"},
         {"metric": "active_days"},
-        {"metric": "has_event", "metric_args": {"events": "purchase"}},
+        {"metric": "has_event", "metric_args": {"event": "purchase"}},
     ],
 )
 ```
@@ -116,7 +116,7 @@ features = stream.get_metrics([
     {"metric": "length"},
     {"metric": "duration"},
     {"metric": "active_days"},
-    {"metric": "event_count", "metric_args": {"events": "search"}},
+    {"metric": "event_count", "metric_args": {"event": "search"}},
     {"metric": "matches_pattern", "metric_args": {"pattern": "login->.*->purchase"}},
 ])
 ```

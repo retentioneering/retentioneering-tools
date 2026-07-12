@@ -93,7 +93,11 @@ function nmfHeatmapColor(value: number, min: number, max: number): string {
 }
 
 function fmtFeature(name: string): string {
-  return name.startsWith("event_count_") ? `#${name.slice("event_count_".length)}` : name;
+  // Check the bulk prefix before the plain one - "event_count_bulk_x" also
+  // starts with "event_count_", so the more specific prefix must win.
+  if (name.startsWith("event_count_bulk_")) return `#${name.slice("event_count_bulk_".length)}`;
+  if (name.startsWith("event_count_")) return `#${name.slice("event_count_".length)}`;
+  return name;
 }
 
 // ── NMF H-matrix (Component × Feature) — vertical headers, resizable header height ──
@@ -232,7 +236,7 @@ function FeaturesOverlay({ features, events, segmentCols, segmentLevels, onFeatu
 
   const [submitted, setSubmitted] = React.useState(false);
   const listRef = React.useRef<HTMLDivElement>(null);
-  const add    = () => onFeaturesChange([...features, { metric: "event_count", metric_args: undefined }]);
+  const add    = () => onFeaturesChange([...features, { metric: "event_count_bulk", metric_args: undefined }]);
   const update = (i: number, cfg: any) => onFeaturesChange(features.map((x, j) => j === i ? cfg : x));
   const remove = (i: number) => onFeaturesChange(features.filter((_, j) => j !== i));
   const errCount = features.filter(f => validateMetricCfg(f) !== null).length;
@@ -314,7 +318,7 @@ function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, onMetrics
 
   const [submitted, setSubmitted] = React.useState(false);
   const listRef = React.useRef<HTMLDivElement>(null);
-  const add    = () => onMetricsChange([...metrics, { metric: "event_count", agg: "mean", metric_args: undefined }]);
+  const add    = () => onMetricsChange([...metrics, { metric: "event_count_bulk", agg: "mean", metric_args: undefined }]);
   const update = (i: number, cfg: any) => onMetricsChange(metrics.map((m, j) => j === i ? cfg : m));
   const remove = (i: number) => onMetricsChange(metrics.filter((_, j) => j !== i));
   const errCount = metrics.filter(m => validateMetricCfg(m) !== null).length;

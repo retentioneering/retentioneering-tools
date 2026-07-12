@@ -50,6 +50,9 @@ class StepMatrix:
                 return tuple(sms), tuple(sms1), tuple(sms2)
         else:
             path_pattern = self._normalize_path_pattern(path_pattern)
+            event_col = self.eventstream.schema.event_col
+            available_events = set(self.eventstream.df[event_col].unique().tolist())
+            self._validate_path_pattern_tokens(path_pattern, available_events)
             if diff is None:
                 sms = self._process_pattern_matrix(
                     max_steps, None, path_pattern, path_col
@@ -90,6 +93,21 @@ class StepMatrix:
             )
             return normalized
         return path_pattern
+
+    @staticmethod
+    def _validate_path_pattern_tokens(path_pattern: str, available_events: set) -> None:
+        """Guards against typos in path_pattern: a mistyped event name would
+        otherwise silently produce zero matches (surfaced only as the generic
+        PatternNoMatchError, indistinguishable from a legitimately-empty result)."""
+        path_start = EventTypes().PATH_START.name
+        path_end = EventTypes().PATH_END.name
+        for tok in path_pattern.split("->"):
+            if tok in ("", ".*", path_start, path_end):
+                continue
+            if tok not in available_events:
+                raise InvalidParameterError(
+                    "path_pattern", tok, sorted(available_events)
+                )
 
     @staticmethod
     def _align_matrices(sms1, sms2):

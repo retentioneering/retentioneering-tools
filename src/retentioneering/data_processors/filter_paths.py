@@ -38,33 +38,65 @@ class FilterPaths(DataProcessor):
     ) -> List[str]:
         """
         Builds full metric name(s) from metric type and arguments.
-        Returns a list of metric names (usually just one, but can be multiple for has/event_count with list).
+        Returns a list of metric names (always exactly one, except for in_segment
+        with a list segment_value).
 
         Examples:
             - metric="length", metric_args=None -> ["length"]
-            - metric="has_event", metric_args={"events": "purchase"} -> ["has_event_purchase"]
-            - metric="has_event", metric_args={"events": ["logout", "cancellation"]} -> ["has_event_logout", "has_event_cancellation"]
-            - metric="event_count", metric_args={"events": "purchase"} -> ["event_count_purchase"]
-            - metric="event_count", metric_args={"events": ["view", "purchase"]} -> ["event_count_view", "event_count_purchase"]
+            - metric="has_event", metric_args={"event": "purchase"} -> ["has_event_purchase"]
+            - metric="event_count", metric_args={"event": "purchase"} -> ["event_count_purchase"]
+            - metric="has_all_events", metric_args={"events": ["logout", "cancellation"]}
+              -> ["has_all_events_logout_and_cancellation"]
+            - metric="has_any_event", metric_args={"events": ["logout", "cancellation"]}
+              -> ["has_any_event_logout_or_cancellation"]
             - metric="time_between", metric_args={"start_event": "login", "end_event": "purchase"}
               -> ["time_from_login_to_purchase"]
             - metric="active_days", metric_args={"active_events": ["login", "purchase"]}
               -> ["active_days"]
         """
-        if not metric_args:
-            return [metric]
+        metric_args = metric_args or {}
 
         if metric == "has_event":
-            events = metric_args.get("events")
-            if isinstance(events, list):
-                return [f"has_event_{event}" for event in events]
-            return [f"has_event_{events}"]
+            event = metric_args.get("event")
+            if not event:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    "'has_event' metric requires 'event' in metric_args",
+                )
+            return [f"has_event_{event}"]
 
         elif metric == "event_count":
-            event = metric_args.get("events")
-            if isinstance(event, list):
-                return [f"event_count_{e}" for e in event]
+            event = metric_args.get("event")
+            if not event:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    "'event_count' metric requires 'event' in metric_args",
+                )
             return [f"event_count_{event}"]
+
+        elif metric in ("has_event_bulk", "event_count_bulk"):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"'{metric}' produces one column per event and cannot be used in a "
+                f"filter_paths/collapse_events condition. Use "
+                f"'{metric.replace('_bulk', '')}' for a single event, or "
+                f"'has_all_events'/'has_any_event' for a multi-event condition.",
+            )
+
+        elif metric in ("has_all_events", "has_any_event"):
+            events = metric_args.get("events")
+            if not isinstance(events, list) or len(events) == 0:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME,
+                    f"'{metric}' metric requires a non-empty 'events' list in metric_args",
+                )
+            # NOTE: keep this naming formula in sync with
+            # metrics/metric_builder.py's MetricConfig._parse_dict_config.
+            joiner = "_and_" if metric == "has_all_events" else "_or_"
+            return [f"{metric}_{joiner.join(events)}"]
+
+        elif not metric_args:
+            return [metric]
 
         elif metric == "time_between":
             start_event = metric_args.get("start_event")
@@ -100,8 +132,23 @@ class FilterPaths(DataProcessor):
                 PROCESSOR_NAME, f"Unknown metric type: {metric}"
             )
 
-    @staticmethod
-    def _extract_metric_configs(node: Dict[str, Any]) -> List[Dict[str, Any]]:
+    # Metrics that produce multiple columns and can never appear in a single
+    # comparison/IN leaf condition, regardless of operator.
+    _FORBIDDEN_IN_CONDITIONS = {"has_event_bulk", "event_count_bulk"}
+
+    @classmethod
+    def _check_not_forbidden_in_condition(cls, metric: str) -> None:
+        if metric in cls._FORBIDDEN_IN_CONDITIONS:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"'{metric}' produces multiple columns and cannot appear in a "
+                f"filter_paths/collapse_events condition. Use the singular "
+                f"'{metric.replace('_bulk', '')}', or "
+                f"'has_all_events'/'has_any_event'.",
+            )
+
+    @classmethod
+    def _extract_metric_configs(cls, node: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Extracts all unique metric configurations from the AST.
         Returns a list of dicts with 'metric' and 'metric_args' fields.
@@ -120,6 +167,7 @@ class FilterPaths(DataProcessor):
             elif op.upper() == "IN":
                 metric = n.get("metric")
                 if metric:
+                    cls._check_not_forbidden_in_condition(metric)
                     metric_args = n.get("metric_args")
                     # Create unique key for deduplication
                     key = (metric, str(sorted((metric_args or {}).items())))
@@ -132,6 +180,7 @@ class FilterPaths(DataProcessor):
                 # comparison node
                 metric = n.get("metric")
                 if metric:
+                    cls._check_not_forbidden_in_condition(metric)
                     metric_args = n.get("metric_args")
                     # Create unique key for deduplication
                     key = (metric, str(sorted((metric_args or {}).items())))
@@ -249,49 +298,11 @@ class FilterPaths(DataProcessor):
                 PROCESSOR_NAME, "Comparison nodes must have primitive 'value'"
             )
 
-        # Special handling for has metric with multiple events (list)
-        if metric == "has_event" and len(metric_names) > 1:
-            # For has with list of events:
-            # - If checking "= true": ALL events must be present (AND)
-            # - If checking "= false": at least one event must be absent (OR)
-            # - Other operators don't make sense for lists
-            if op == "=":
-                if isinstance(value, bool):
-                    joiner = " AND " if value else " OR "
-                    right_sql = "1" if value else "0"
-                    conditions = [
-                        f"{self._quote_ident(name)} {op} {right_sql}"
-                        for name in metric_names
-                    ]
-                    return "(" + joiner.join(conditions) + ")"
-                else:
-                    raise PreprocessingConfigError(
-                        PROCESSOR_NAME,
-                        "has metric with list of events only supports boolean values",
-                    )
-            elif op == "!=":
-                if isinstance(value, bool):
-                    # != true means at least one should be false (OR)
-                    # != false means all should be true (AND)
-                    joiner = " OR " if value else " AND "
-                    right_sql = "1" if value else "0"
-                    conditions = [
-                        f"{self._quote_ident(name)} {op} {right_sql}"
-                        for name in metric_names
-                    ]
-                    return "(" + joiner.join(conditions) + ")"
-                else:
-                    raise PreprocessingConfigError(
-                        PROCESSOR_NAME,
-                        "has metric with list of events only supports boolean values",
-                    )
-            else:
-                raise PreprocessingConfigError(
-                    PROCESSOR_NAME,
-                    f"Operator '{op}' not supported for has metric with list of events",
-                )
-
-        # Single metric case
+        # Single metric case. has_event/event_count are now strict single-event and
+        # has_all_events/has_any_event are single-column, so metric_names always has
+        # exactly one entry for those. in_segment with a list segment_value can still
+        # yield more than one name here; using only metric_names[0] in that case is a
+        # pre-existing, unrelated quirk (out of scope for this change).
         metric_name = metric_names[0]
         left_sql = self._quote_ident(metric_name)
 

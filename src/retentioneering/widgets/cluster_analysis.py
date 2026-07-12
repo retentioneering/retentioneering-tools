@@ -140,7 +140,7 @@ class ClusterAnalysisWidget(StateFileMixin, anywidget.AnyWidget):
         _feat = features if features is not _UNSET else None
         if _feat is None:
             # No 'events' -> wildcard (all events), same as leaving it empty in the UI.
-            _feat = [{"metric": "event_count"}]
+            _feat = [{"metric": "event_count_bulk"}]
         self.features = (
             json.dumps(_feat) if isinstance(_feat, list) else (_feat or "[]")
         )
@@ -154,7 +154,7 @@ class ClusterAnalysisWidget(StateFileMixin, anywidget.AnyWidget):
         self.nmf_components = ""
         _mc = overview_metrics if overview_metrics is not _UNSET else None
         if _mc is None:
-            _mc = [{"metric": "event_count", "agg": "mean"}]
+            _mc = [{"metric": "event_count_bulk", "agg": "mean"}]
         self.overview_metrics = (
             json.dumps(_mc) if isinstance(_mc, list) else (_mc or "[]")
         )

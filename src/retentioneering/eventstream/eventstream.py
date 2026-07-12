@@ -362,9 +362,11 @@ class Eventstream:
             Metric configurations used as clustering features. Each dict has a
             `"metric"` key (str) and an optional `"metric_args"` key (dict).
             Available metrics: `"length"`, `"duration"`, `"event_count"`,
-            `"has_event"`, `"time_between"`, `"first_event_time"`, `"active_days"`,
-            `"matches_pattern"`, `"in_segment"`. See the Path Metrics documentation
-            page for the full metric reference.
+            `"has_event"`, `"event_count_bulk"`, `"has_event_bulk"`,
+            `"has_all_events"`, `"has_any_event"`, `"time_between"`,
+            `"first_event_time"`, `"active_days"`, `"matches_pattern"`,
+            `"in_segment"`. See the Path Metrics documentation page for the full
+            metric reference.
         method : str, default `"kmeans"`
             Clustering algorithm. One of `"kmeans"` or `"hdbscan"`.
         scaler : str or None, default `None`
@@ -388,7 +390,7 @@ class Eventstream:
                 name="cluster",
                 features=[
                     {"metric": "length"},
-                    {"metric": "event_count", "metric_args": {"events": "purchase"}},
+                    {"metric": "event_count", "metric_args": {"event": "purchase"}},
                 ],
                 method="kmeans",
                 n_clusters=4,
@@ -519,6 +521,11 @@ class Eventstream:
             child nodes.
             A plain list of nodes is shorthand for AND:
             `[cond1, cond2]` ≡ `{"op": "and", "args": [cond1, cond2]}`.
+            `has_event`/`event_count` take a single `event` (string) — for a
+            multi-event AND/OR condition use `has_all_events`/`has_any_event` with
+            an `events` list instead. `has_event_bulk`/`event_count_bulk` (which
+            expand into one column per event, for `segment_overview`/`add_clusters`)
+            cannot be used here since a condition needs exactly one value per path.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         event_col : str, optional
@@ -527,7 +534,11 @@ class Eventstream:
         Examples
         --------
             # Keep paths that contain at least one purchase
-            stream.filter_paths({"op": ">", "metric": "event_count", "value": 0, "metric_args": {"events": "purchase"}})
+            stream.filter_paths({"op": ">", "metric": "event_count", "value": 0, "metric_args": {"event": "purchase"}})
+
+            # Keep paths that contain a promo_view or a discount_applied event
+            stream.filter_paths({"op": "=", "metric": "has_any_event", "value": True,
+                                  "metric_args": {"events": ["promo_view", "discount_applied"]}})
 
             # Keep paths longer than 3 events that match a funnel pattern
             # (a top-level list means AND)
@@ -1598,7 +1609,7 @@ class Eventstream:
                 segment_col="plan",
                 metrics=[
                     {"metric": "length", "agg": "mean"},
-                    {"metric": "event_count", "metric_args": {"events": "purchase"}, "agg": "mean"},
+                    {"metric": "event_count", "metric_args": {"event": "purchase"}, "agg": "mean"},
                 ],
             )
         """

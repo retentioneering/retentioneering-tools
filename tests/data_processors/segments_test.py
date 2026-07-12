@@ -272,12 +272,12 @@ class TestFilterEvents:
         with pytest.raises(Exception):
             stream.drop_segment("event")
 
-    def test__get_segment_values(self):
+    def test__get_segment_levels(self):
         df = get_df()
         df["sex"] = ["female", "female", "female", "male", "female", "female"]
         schema = {"segment_cols": ["country", "sex"]}
         stream = Eventstream(df, schema)
-        res = stream.get_segment_values()
+        res = stream.get_segment_levels()
 
         expected = {"country": ["UK", "US"], "sex": ["female", "male"]}
         assert res == expected

@@ -133,7 +133,7 @@ class ClusterAnalysisWidget(StateFileMixin, anywidget.AnyWidget):
         self.path_cols = json.dumps(eventstream.schema.path_cols)
         self.segment_cols = json.dumps(eventstream.schema.segment_cols)
         try:
-            self.segment_levels = json.dumps(eventstream.get_segment_values())
+            self.segment_levels = json.dumps(eventstream.get_segment_levels())
         except Exception:
             self.segment_levels = "{}"
 
@@ -354,15 +354,15 @@ class ClusterAnalysisWidget(StateFileMixin, anywidget.AnyWidget):
 
     def _apply_clusters_inplace(self, kwargs: dict, rename: dict) -> None:
         from retentioneering.data_processors.add_clusters import AddClusters
-        from retentioneering.data_processors.rename_segment_values import (
-            RenameSegmentValues,
+        from retentioneering.data_processors.rename_segment_levels import (
+            RenameSegmentLevels,
         )
 
         new_df, new_schema = AddClusters(eventstream=self._eventstream, **kwargs).apply(
             self._eventstream.df, self._eventstream.schema
         )
         if rename:
-            new_df, new_schema = RenameSegmentValues(kwargs["name"], rename).apply(
+            new_df, new_schema = RenameSegmentLevels(kwargs["name"], rename).apply(
                 new_df, new_schema
             )
 
@@ -377,7 +377,7 @@ class ClusterAnalysisWidget(StateFileMixin, anywidget.AnyWidget):
         # Refresh this widget's own catalogs so its sidebar reflects the new column.
         self.segment_cols = json.dumps(es.schema.segment_cols)
         try:
-            self.segment_levels = json.dumps(es.get_segment_values())
+            self.segment_levels = json.dumps(es.get_segment_levels())
         except Exception:
             pass
 

@@ -82,7 +82,7 @@ class TransitionGraphWidget(StateFileMixin, anywidget.AnyWidget):
         self._load_state_file(state_file)
 
         try:
-            self.segment_levels = json.dumps(eventstream.get_segment_values())
+            self.segment_levels = json.dumps(eventstream.get_segment_levels())
         except Exception:
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)

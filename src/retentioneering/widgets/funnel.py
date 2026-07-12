@@ -68,7 +68,7 @@ class FunnelWidget(StateFileMixin, anywidget.AnyWidget):
         except Exception:
             self.event_list = "[]"
         try:
-            self.segment_levels = json.dumps(eventstream.get_segment_values())
+            self.segment_levels = json.dumps(eventstream.get_segment_levels())
         except Exception:
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)

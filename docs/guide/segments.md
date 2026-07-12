@@ -16,7 +16,7 @@ Columns already present in your data become segments by listing them in the sche
 stream.add_segment("returned")
 ```
 
-New segment columns are derived with [Add Segment](/docs/data-processors/add-segment) and [Add Clusters](/docs/data-processors/add-clusters), and removed with [Drop Segment](/docs/data-processors/drop-segment).
+New segment columns are derived with [Add Segment](/docs/data-processors/add-segment) and [Add Clusters](/docs/data-processors/add-clusters), have their levels renamed with [Rename Segment Levels](/docs/data-processors/rename-segment-levels), and are removed with [Drop Segment](/docs/data-processors/drop-segment).
 
 ## Static and dynamic segments
 

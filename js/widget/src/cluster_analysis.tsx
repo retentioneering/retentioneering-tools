@@ -392,7 +392,7 @@ function buildAddClustersCode(streamVarName: string, name: string, features: any
 
   let code = `${streamVarName}_new = ${streamVarName}.add_clusters(\n${lines.join("\n")}\n)`;
   if (Object.keys(rename).length > 0) {
-    code += `.rename_segment_values(\n    ${pyRepr(name)},\n    ${pyRepr(rename)},\n)`;
+    code += `.rename_segment_levels(\n    ${pyRepr(name)},\n    ${pyRepr(rename)},\n)`;
   }
   return code;
 }

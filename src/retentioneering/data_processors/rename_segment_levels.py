@@ -6,10 +6,10 @@ from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
 
-PROCESSOR_NAME = "rename_segment_values"
+PROCESSOR_NAME = "rename_segment_levels"
 
 
-class RenameSegmentValues(DataProcessor):
+class RenameSegmentLevels(DataProcessor):
     segment_col: str
     mapping: Dict[str, str]
 
@@ -45,8 +45,8 @@ class RenameSegmentValues(DataProcessor):
         if unknown:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                f"Unknown values in 'mapping' for segment '{self.segment_col}': "
-                f"{sorted(unknown)}. Available values: {sorted(existing)}.",
+                f"Unknown levels in 'mapping' for segment '{self.segment_col}': "
+                f"{sorted(unknown)}. Available levels: {sorted(existing)}.",
             )
 
         df = df.copy()

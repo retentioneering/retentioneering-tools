@@ -67,7 +67,7 @@ Renamed or changed signature (same concept, different call shape):
   — `func` is now one of four alternative filtering modes
 - `add_start_end_events()` → `add_start_end_events(path_col=None)`
 - `split_sessions(timeout, delimiter_events, delimiter_col, session_col, mark_truncated)`
-  → `split_sessions(session_id_col, session_index_col, separator, start_event, end_event, timeout, path_col, event_col)`
+  → `split_sessions(session_col, session_index_col, separator, start_event, end_event, timeout, path_col, event_col)`
   — `timeout` now takes a duration string with an explicit unit (`"30m"`) or
   a `pandas.Timedelta`; bare numbers are rejected
 - `truncate_paths(drop_before, drop_after, occurrence_before, occurrence_after, shift_before, shift_after)`
@@ -88,7 +88,7 @@ computation still happens internally inside `transition_graph_data()`),
 
 Added, no equivalent in 3.3.0:
 `schema`/`df` properties, `is_empty()`, `equals()`, `get_event_counts()`,
-`fingerprint`, `get_segment_values()`, `urls_to_events()`, `filter_paths()`
+`fingerprint`, `get_segment_levels()`, `urls_to_events()`, `filter_paths()`
 (condition-tree based), `get_metrics()`, `add_events()`, `add_segment()`,
 `add_clusters()` (a new one-shot processor, unrelated to 3.3.0's `clusters()`),
 `to_daily_states()`, `drop_segment()`, `edit_events()`, `drop_events()`,
@@ -120,7 +120,7 @@ Naming conventions across the new API:
   multi-widget static HTML report with clickable cross-references
 - `ipywidgets` is now a core dependency, so widgets work out of the box in
   plain JupyterLab
-- `rename_segment_values(segment_col, mapping)` — rename values within an existing
+- `rename_segment_levels(segment_col, mapping)` — rename levels within an existing
   segment column (e.g. cluster labels produced by `add_clusters`, or messy raw
   segment data), analogous to `rename_events` but for segment columns
 - `cluster_analysis_data()` and the Cluster Analysis widget now report `best_params`

@@ -169,7 +169,7 @@ _NOT_TRACKED_BY_DESIGN = {
     "is_empty",
     "equals",
     "get_event_counts",
-    "get_segment_values",
+    "get_segment_levels",
     "get_metrics",
     "get_metric_distribution",
 }

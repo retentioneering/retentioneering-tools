@@ -264,7 +264,7 @@ class Eventstream:
         )
         return hashlib.md5(payload.encode()).hexdigest()
 
-    def get_segment_values(self) -> dict[str, list[str]]:
+    def get_segment_levels(self) -> dict[str, list[str]]:
         return {
             col: self._df[col].cat.categories.tolist()
             for col in self.schema.segment_cols
@@ -971,35 +971,37 @@ class Eventstream:
         new_df, new_schema = RenameEvents(mapping).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
-    @_tracked("dp_rename_segment_values")
-    def rename_segment_values(self, segment_col: str, mapping: dict) -> "Eventstream":
+    @_tracked("dp_rename_segment_levels")
+    def rename_segment_levels(self, segment_col: str, mapping: dict) -> "Eventstream":
         """
-        Rename values of a segment column using a mapping dict.
+        Rename levels of a segment column using a mapping dict.
 
-        Values not present in `mapping` are left unchanged. Useful for cleaning up
+        Levels not present in `mapping` are left unchanged. Useful for cleaning up
         raw segment data, or for giving a clustering result (e.g. from `add_clusters`)
-        human-readable names.
+        human-readable names. Renaming a level to match another existing level merges
+        the two.
 
         Parameters
         ----------
         segment_col : str
             Name of the segment column. Must be listed in `schema.segment_cols`.
         mapping : dict
-            Mapping of `{old_value: new_value}`.
+            Mapping of `{old_level: new_level}`. Keys must be levels already present
+            in `segment_col` (see `get_segment_levels`).
 
         Examples
         --------
             stream.add_clusters(
                 name="cluster", features=[{"metric": "length"}], n_clusters=3
-            ).rename_segment_values(
+            ).rename_segment_levels(
                 "cluster", {"cluster_0": "buyers", "cluster_1": "browsers"}
             )
         """
-        from retentioneering.data_processors.rename_segment_values import (
-            RenameSegmentValues,
+        from retentioneering.data_processors.rename_segment_levels import (
+            RenameSegmentLevels,
         )
 
-        new_df, new_schema = RenameSegmentValues(segment_col, mapping).apply(
+        new_df, new_schema = RenameSegmentLevels(segment_col, mapping).apply(
             self._df, self.schema
         )
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
@@ -1175,7 +1177,7 @@ class Eventstream:
                 raise DiffConfigError(f"'{segment_col}' is not a segment column")
             s1 = self.filter_events(keep={segment_col: [v1]})
             if v2 == "<REST>":
-                all_vals = set(self.get_segment_values().get(segment_col, []))
+                all_vals = set(self.get_segment_levels().get(segment_col, []))
                 v2_vals = list(all_vals - {v1})
                 if not v2_vals:
                     raise DiffConfigError(

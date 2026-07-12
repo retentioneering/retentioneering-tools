@@ -47,3 +47,4 @@ Each processor returns a new `Eventstream`, so the original is never modified.
 - [`add_segment`](/docs/data-processors/add-segment) — add a new categorical segment column to the eventstream.
 - [`drop_segment`](/docs/data-processors/drop-segment) — remove a segment column from the eventstream.
 - [`add_clusters`](/docs/data-processors/add-clusters) — cluster paths using ML and add a new segment column with integer cluster labels.
+- [`rename_segment_levels`](/docs/data-processors/rename-segment-levels) — rename levels within an existing segment column.

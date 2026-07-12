@@ -8,7 +8,7 @@ from retentioneering.data_processors.edit_events import EditEvents
 from retentioneering.data_processors.filter_events import FilterEvents
 from retentioneering.data_processors.filter_paths import FilterPaths
 from retentioneering.data_processors.rename_events import RenameEvents
-from retentioneering.data_processors.rename_segment_values import RenameSegmentValues
+from retentioneering.data_processors.rename_segment_levels import RenameSegmentLevels
 from retentioneering.data_processors.sample_paths import SamplePaths
 from retentioneering.data_processors.split_sessions import SplitSessions
 from retentioneering.data_processors.truncate_paths import TruncatePaths
@@ -26,7 +26,7 @@ __all__ = [
     "FilterEvents",
     "FilterPaths",
     "RenameEvents",
-    "RenameSegmentValues",
+    "RenameSegmentLevels",
     "SamplePaths",
     "SplitSessions",
     "TruncatePaths",

@@ -415,5 +415,5 @@ class StepMatrix:
                 )
 
             new_sms1, new_sms2 = self._align_matrices(list(sms1), list(sms2))
-            sms = [new_sms2[i] - new_sms1[i] for i in range(len(new_sms1))]
+            sms = [new_sms1[i] - new_sms2[i] for i in range(len(new_sms1))]
             return sms, new_sms1, new_sms2

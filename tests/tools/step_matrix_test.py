@@ -128,6 +128,31 @@ class TestStepMatrix:
                 max_steps=3, diff=("country", "US", "<REST>"), path_col="session_id"
             )
 
+    def test__diff_with_path_pattern_uses_group1_minus_group2(self) -> None:
+        """Regression guard: the combined diff matrix must be group1 - group2
+        whether or not path_pattern is set. _process_pattern_matrix previously
+        computed group2 - group1 here, an inverted sign relative to the
+        no-pattern path (_process_diff_matrix)."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "US"],
+                ["user_1", "B", "2020-01-01 00:01:00", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "US"],
+                ["user_2", "B", "2020-01-01 00:01:00", "US"],
+                ["user_3", "A", "2020-01-01 00:00:00", "UK"],
+            ],
+            columns=["user_id", "event", "timestamp", "country"],
+        )
+        stream = Eventstream(df, {"segment_cols": ["country"]})
+
+        diff_sms, sms1, sms2 = stream.step_sankey_data(
+            max_steps=3, diff=("country", "US", "UK"), path_pattern="A"
+        )
+
+        assert len(diff_sms) > 0
+        for i in range(len(diff_sms)):
+            pd.testing.assert_frame_equal(diff_sms[i], sms1[i] - sms2[i])
+
     def test__path_end_session_id(self, fx_read_csv):
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         schema = {"path_cols": ["user_id", "session_id"]}

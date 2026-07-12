@@ -16,7 +16,7 @@ Columns already present in your data become segments by listing them in the sche
 
 Segment values are stored per event row. This gives two kinds of segments:
 
-- **Static** — the value is constant for the whole path: `country`, `acquisition_channel`, an A/B test arm, a cluster label, the last funnel step reached. A static segment answers "*which paths* behave differently?"
+- **Static** — the value is constant for the whole path: `country`, `acquisition_channel`, an A/B test arm, a cluster label, the deepest funnel step reached in order. A static segment answers "*which paths* behave differently?"
 - **Dynamic** — the value changes along the path, because it is assigned per event: `weekend` / `weekday` depending on each event's timestamp, `inside` / `outside` an incident window, a user state that evolves from `new` through `returning` to `loyal`. A dynamic segment answers "*which parts of a path* behave differently?"
 
 The row-level modes of `add_segment` (`rules`, `sql`, `func`) can produce either kind — a static segment is simply one whose value happens to be constant within each path. The `funnel_events` mode and `add_clusters` always produce static, per-path segments.
@@ -47,7 +47,9 @@ stream.add_segment(
 # func — any Python function over the raw DataFrame
 stream.add_segment("power_user", func=lambda df: df["user_id"].map(power_users_lookup))
 
-# funnel_events — the last funnel step each path reached
+# funnel_events — the deepest funnel step each path completed in order;
+# skipping or reordering a step keeps it out of that step's group (out_of_funnel
+# if even the first step was never completed in order)
 stream.add_segment("funnel", funnel_events=["add_to_cart", "checkout_start", "purchase"])
 ```
 

@@ -676,9 +676,14 @@ class Eventstream:
             order must match the eventstream.
             Example: `"SELECT CASE WHEN platform = 'mobile' THEN 'mobile' ELSE 'web' END FROM eventstream"`.
         funnel_events : list of str, optional
-            Ordered list of at least 2 event names defining a funnel. Each path is
-            assigned the name of the last funnel step reached in sequence, or
-            `out_of_funnel` if the first step was never reached.
+            Ordered list of at least 2 event names defining a strict, ordered
+            ("closed") funnel. A path is assigned `funnel_events[k]` only if it
+            contains every event `funnel_events[0]` through `funnel_events[k]`
+            *and* their last occurrences appear in that same order — reaching a
+            later step without having completed the earlier ones in order does
+            not count towards it. A path is assigned the highest such `k`; if it
+            never completes even `funnel_events[0]`, it is labeled
+            `out_of_funnel`.
             Segment values (in ascending funnel order): `out_of_funnel`, then each
             event name from `funnel_events[0]` to `funnel_events[-1]`.
         path_col : str, optional
@@ -697,12 +702,15 @@ class Eventstream:
                 ],
             )
 
-            # funnel_events mode — assign the last funnel step reached per path
+            # funnel_events mode — assign the deepest funnel step reached in order
             stream.add_segment(
                 "funnel",
                 funnel_events=["add_to_cart", "checkout_start", "purchase"],
             )
             # Resulting segment values: out_of_funnel | add_to_cart | checkout_start | purchase
+            # A path with only "checkout_start" (no "add_to_cart") is out_of_funnel — the
+            # funnel is strictly ordered, so skipping or reordering an earlier step keeps
+            # a path from being credited for a later one it did reach.
 
             # sql mode — one computed column, same row order as the eventstream
             stream.add_segment(

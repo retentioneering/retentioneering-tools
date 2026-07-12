@@ -187,6 +187,31 @@ class TestFilterEvents:
         assert seg_by_session["S1"] == "A"
         assert seg_by_session["S2"] == "out_of_funnel"
 
+    def test__add_segment_funnel_events_is_strictly_ordered(self) -> None:
+        # funnel_events is a closed/strictly-ordered funnel: a step only counts
+        # if every earlier step also happened, in order. Reaching a later step
+        # without the earlier ones (in order) does NOT credit the path for it.
+        df = pd.DataFrame(
+            [
+                # P1: basket then shipping, in order -> deepest step is "shipping"
+                ["P1", "basket", "2024-01-01 10:00:00"],
+                ["P1", "shipping", "2024-01-01 10:01:00"],
+                # P2: shipping only, never basket -> out_of_funnel
+                ["P2", "shipping", "2024-01-01 10:00:00"],
+                # P3: shipping then basket, out of order -> credited only for "basket"
+                ["P3", "shipping", "2024-01-01 10:00:00"],
+                ["P3", "basket", "2024-01-01 10:01:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df, {"path_cols": ["user_id"]})
+        res = stream.add_segment(name="seg", funnel_events=["basket", "shipping"])
+
+        seg_by_path = res.df.groupby("user_id", observed=True)["seg"].first()
+        assert seg_by_path["P1"] == "shipping"
+        assert seg_by_path["P2"] == "out_of_funnel"
+        assert seg_by_path["P3"] == "basket"
+
     def test__add_segment_funnel_events_rejects_undeclared_path_col(self) -> None:
         df = pd.DataFrame(
             [

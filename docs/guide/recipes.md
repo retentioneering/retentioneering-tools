@@ -32,7 +32,7 @@ First, look *between* the levels: trim each path to the window between two funne
 stream.truncate_paths(start_event="add_to_cart", end_event="checkout_start").transition_graph()
 ```
 
-Second, follow the users who never made it. The `funnel_events` mode of [Add Segment](/docs/data-processors/add-segment) labels each path with the last funnel step it reached, so drop-offs at each level become comparable groups:
+Second, follow the users who never made it. The `funnel_events` mode of [Add Segment](/docs/data-processors/add-segment) labels each path with the deepest funnel step it completed *in order* — reaching a step out of sequence, or skipping an earlier one, doesn't count — so drop-offs at each level become comparable groups:
 
 ```python
 labelled = stream.add_segment("funnel", funnel_events=["add_to_cart", "checkout_start", "purchase"])

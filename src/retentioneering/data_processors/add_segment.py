@@ -82,9 +82,10 @@ def _build_funnel_segment_query(
     so comparing index_col directly is correct at any accepted grain (see
     ADR-0004).
 
-    Segment values (named after the last event reached in sequence):
-      funnel_events[k]  — path reached step k but not k+1
-      'out_of_funnel'   — path never reached step 0
+    Segment values (named after the deepest step completed in order):
+      funnel_events[k]  — path completed steps 0..k in order, but not step k+1
+                          in order (missing, or out of sequence)
+      'out_of_funnel'   — path never completed step 0 in order
 
     Reads from the 'eventstream' variable in caller scope (same as sql= mode).
     Row order is restored via _ROW_IDX_COL.

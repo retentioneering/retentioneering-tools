@@ -65,10 +65,12 @@ Use `timestamp_col` from `describe()` as the column name.
    ```
    For a 3-step funnel use `["A", "B", "C"]`.
 
-   Segment levels are named after the **last event reached** in sequence:
-   - `out_of_funnel` — never reached A
-   - `A` — reached A but not B
-   - `B` — completed the funnel
+   This is a strict, ordered funnel — a step only counts if every earlier step also
+   occurred first, in order. Segment levels are named after the **deepest step
+   completed in order**:
+   - `out_of_funnel` — never completed A (or only reached B before A)
+   - `A` — completed A, but B either never happened or happened before A
+   - `B` — completed the funnel, A before B
 
 2. Call `add_transition_graph` and/or `add_step_matrix` with `diff=["funnel","A","B"]`.
    For a 3-step funnel, choose which drop-off to analyse:

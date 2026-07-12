@@ -25,11 +25,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   weight, diff, or path column no longer resets the viewport); step matrix
   and step sankey likewise keep their horizontal scroll and row order.
 
-### Fixed
-
-- Cluster analysis: Apply is disabled while NMF is enabled but the number of
-  components is empty (previously such an Apply silently ran without NMF).
-
 ## [5.0.0]
 
 Complete rewrite of the library's core engine, compared to 3.3.0. The

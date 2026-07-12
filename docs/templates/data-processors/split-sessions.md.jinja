@@ -1,1 +1,65 @@
 {% extends "_data_processor_base.md.jinja" %}
+
+{% block extra %}
+## Examples
+
+Toy paths showing exactly what happens to the eventstream for each
+session-boundary mode. Exactly one of `separator`, `start_event` + `end_event`,
+or `timeout` must be given; `timeout` may additionally be combined with either
+of the other two to also break a session on an inactivity gap.
+
+### timeout
+
+Every event belongs to a session; a new session starts whenever the gap to
+the previous event exceeds `timeout`. Unlike the other two modes, no rows are
+ever dropped from the output.
+
+Before: `A` at `00:00:00`, `B` at `00:00:30`, `C` at `01:00:00`
+
+```python
+stream.split_sessions(timeout="1m")
+```
+
+After — `A` and `B` are within a minute of each other and share a session; the
+hour-long gap before `C` starts a new one:
+
+`session_id` = `user_1_1, user_1_1, user_1_2`
+
+`timeout` can combine with `separator` or `start_event` + `end_event` to also
+break a session early on an inactivity gap, without changing which events get
+dropped.
+
+### separator
+
+A session is every event up to the next `separator` event, exclusive on both
+ends — the separator marks the **start** of the following session and is
+dropped from the output. Events before the first separator aren't part of any
+session and pass through unchanged, with `session_id`/`session_index` left
+empty.
+
+Before: `sep → event_1 → event_2 → sep → event_3`
+
+```python
+stream.split_sessions(separator="sep")
+```
+
+After — two sessions; the `sep` events themselves are removed:
+
+`event_1 → event_2 → event_3`, with `session_id` = `user_1_1, user_1_1, user_1_2`
+
+### start_event + end_event
+
+A session is every event strictly between a `start_event` and the next
+`end_event` — both boundary events are dropped from the output.
+
+Before: `start → event_1 → event_2 → end`
+
+```python
+stream.split_sessions(start_event="start", end_event="end")
+```
+
+After:
+
+`event_1 → event_2`, with `session_id` = `user_1_1, user_1_1`
+
+{% endblock %}

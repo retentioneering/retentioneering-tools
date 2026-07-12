@@ -724,7 +724,7 @@ class Eventstream:
         consecutive=None,
         event_groups=None,
         group_col=None,
-        session_id_col=None,
+        session_col=None,
         session_type_col=None,
         agg=None,
         path_col=None,
@@ -734,7 +734,7 @@ class Eventstream:
         Merge consecutive or grouped events into a single representative event.
 
         Exactly one of `consecutive`, `event_groups`, `group_col`, or
-        `session_id_col` must be provided.
+        `session_col` must be provided.
 
         Parameters
         ----------
@@ -756,11 +756,11 @@ class Eventstream:
             the same value is collapsed into one event named after that value.
             Example: a `session_type` column with values `browse, browse, search`
             collapses the path into `browse -> search` events.
-        session_id_col : str, optional
+        session_col : str, optional
             Collapse events within each session defined by this column. Requires
             `session_type_col` as well.
         session_type_col : str, optional
-            Column that distinguishes session event types (used with `session_id_col`).
+            Column that distinguishes session event types (used with `session_col`).
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
             `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
@@ -789,7 +789,7 @@ class Eventstream:
             consecutive=consecutive,
             event_groups=event_groups,
             group_col=group_col,
-            session_id_col=session_id_col,
+            session_col=session_col,
             session_type_col=session_type_col,
             agg=agg,
             path_col=path_col,
@@ -1018,7 +1018,7 @@ class Eventstream:
     @_tracked("dp_split_sessions")
     def split_sessions(
         self,
-        session_id_col="session_id",
+        session_col="session_id",
         session_index_col="session_index",
         separator=None,
         start_event=None,
@@ -1037,13 +1037,13 @@ class Eventstream:
 
         Parameters
         ----------
-        session_id_col : str, default `"session_id"`
+        session_col : str, default `"session_id"`
             Name of the new column that holds the unique session identifier.
         session_index_col : str, default `"session_index"`
             Name of the new column that holds the 0-based session index within each path.
         separator : str or list of str, optional
             Event name(s) that mark a session boundary. The separator event starts a new
-            session; the separator row itself belongs to the new session.
+            session; the separator row itself is dropped from the output.
         start_event : str or list of str, optional
             Event name(s) that mark the start of a session. Must be provided together
             with `end_event`.
@@ -1070,7 +1070,7 @@ class Eventstream:
         from retentioneering.data_processors.split_sessions import SplitSessions
 
         new_df, new_schema = SplitSessions(
-            session_id_col=session_id_col,
+            session_col=session_col,
             session_index_col=session_index_col,
             separator=separator,
             start_event=start_event,
@@ -1737,18 +1737,17 @@ class Eventstream:
         state_file: str | None = None,
     ):
         """
-        Interactive clustering widget for Jupyter notebooks.
-
-        Clusters paths by behavioral metrics and shows a Segment Overview-style
-        heatmap for the resulting clusters. All parameters are also editable
-        from the widget's sidebar (including feature/metric configuration and
-        an NMF decomposition option not exposed here as a direct argument).
+        An interactive tool for finding an optimal splitting of paths by behavioral metrics.
+        Allows you to inspect clusters in a [Segment Overview](/docs/widgets/segment-overview)-style heatmap
+        and offers the best possible splitting from the silhouette score perspective.
+        Once the splitting looks right, you can label the clusters and save them as a new segment column
+        of the eventstream right from the UI by clicking "Save Clusters".
 
         Parameters
         ----------
         features : list of dict, optional
-            Metric configurations used as clustering features (see the Path
-            Metrics documentation page); defaults to per-event counts for every
+            Metric configurations used as clustering features (see the [Path
+            Metrics](/docs/path-metrics); defaults to per-event counts for every
             event in the eventstream.
         method : {"kmeans", "hdbscan"}, default "kmeans"
             Clustering algorithm.
@@ -1762,7 +1761,7 @@ class Eventstream:
             Metrics shown in the overview heatmap after clustering (independent
             of `features`); defaults to per-event counts for every event.
             Both `features` and `overview_metrics` accept metric configs from the
-            same Path Metrics registry.
+            same [Path Metrics](/docs/path-metrics) registry.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         height : int, default 520
@@ -1776,7 +1775,7 @@ class Eventstream:
         Examples
         --------
             stream.cluster_analysis(
-                features=[{"metric": "length"}, {"metric": "duration"}],
+                features=[{"metric": "length"}, {"metric": "duration"}, {"metric": "event_count_bulk"}],
                 n_clusters="3-6",
             )
         """

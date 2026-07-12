@@ -50,22 +50,11 @@ stream.funnel()
 
 Arguments are a convenient way to reproduce a specific configuration without clicking through the UI. They are also useful when sharing notebooks — a reader can see the configuration at a glance without opening the widget.
 
-## Saving widget state
-
-Every widget accepts a `state_file` parameter — a path to a JSON file the
-widget state is bound to, e.g. `stream.transition_graph(state_file="checkout.json")`.
-The file is loaded if it exists and created otherwise, and every subsequent
-change is auto-saved to it. It captures the full widget configuration — data
-and display parameters plus extras like node layout, filters, sorting, scroll
-position, and zoom (results are recomputed, not saved) — so re-running the
-cell restores the widget exactly as you left it. Explicitly passed arguments
-override the loaded state.
-
 ## Diff mode
 
 Transition Graph, Step Sankey, Step Matrix, and Funnel support diff mode, which overlays two groups in the same visualization so you can compare their behavior directly. The `diff` parameter takes one of two shapes, depending on how you want to define the two groups.
 
-Every diff value is `group1 − group2`: a positive value (shown in red) means group1 is higher, a negative value (shown in blue) means group2 is higher. This red-for-group1 / blue-for-group2 convention is consistent across all four widgets — nodes and edges in Transition Graph, flows in Step Sankey, cells in Step Matrix, and bars in Funnel — and tooltips spell out the exact value with an explicit `+`/`-` sign.
+Every diff value is `group1 − group2`: a positive value (shown in red) means group1 is higher, a negative value (shown in blue) means group2 is higher. Tooltips spell out the exact values with an explicit `+`/`-` sign.
 
 ### By segment
 
@@ -128,3 +117,14 @@ result = stream.funnel_data(steps=["page_view", "add_to_cart", "purchase"])
 ```
 
 Headless methods accept the same parameters as their widget counterparts, excluding those that are needed for visualization only, like `height`.
+
+## Saving widget state
+
+Every widget accepts a `state_file` parameter — a path to a JSON file the
+widget state is bound to, e.g. `stream.transition_graph(state_file="checkout.json")`.
+The file is loaded if it exists and created otherwise, and every subsequent
+change is auto-saved to it. It captures the full widget configuration — data
+and display parameters plus extras like node layout, filters, sorting, scroll
+position, and zoom (results are recomputed, not saved) — so re-running the
+cell restores the widget exactly as you left it. Explicitly passed arguments
+override the loaded state.

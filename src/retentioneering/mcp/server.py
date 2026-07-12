@@ -637,7 +637,7 @@ def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
                 consecutive=step.get("consecutive"),
                 event_groups=step.get("event_groups"),
                 group_col=step.get("group_col"),
-                session_id_col=step.get("session_id_col"),
+                session_col=step.get("session_col"),
                 session_type_col=step.get("session_type_col"),
                 agg=step.get("agg"),
                 path_col=step.get("path_col"),
@@ -721,7 +721,7 @@ def _apply_preprocessors(stream: Any, preprocessors: list) -> Any:
             )
         elif t == "split_sessions":
             stream = stream.split_sessions(
-                session_id_col=step.get("session_id_col", "session_id"),
+                session_col=step.get("session_col", "session_id"),
                 session_index_col=step.get("session_index_col", "session_index"),
                 separator=step.get("separator"),
                 start_event=step.get("start_event"),

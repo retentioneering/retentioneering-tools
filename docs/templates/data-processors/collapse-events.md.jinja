@@ -170,9 +170,9 @@ After — three `browse` rows collapse into one `browse` event, and the two
 
 `browse → action`
 
-### session_id_col + session_type_col
+### session_col + session_type_col
 
-Collapses every session (identified by `session_id_col`) into a single event
+Collapses every session (identified by `session_col`) into a single event
 named after that session's `session_type_col` value.
 
 Before: `home → catalog → add_to_cart → purchase`, with `session_id` =
@@ -180,7 +180,7 @@ Before: `home → catalog → add_to_cart → purchase`, with `session_id` =
 buying_session, buying_session`
 
 ```python
-stream.collapse_events(session_id_col="session_id", session_type_col="session_kind")
+stream.collapse_events(session_col="session_id", session_type_col="session_kind")
 ```
 
 After — each session becomes a single event named after its type, at the

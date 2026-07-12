@@ -26,7 +26,7 @@ class CollapseEvents(DataProcessor):
     consecutive: bool | List[str] | None
     event_groups: List[Dict[str, Any]] | None
     group_col: str | None
-    session_id_col: str | None
+    session_col: str | None
     session_type_col: str | None
     agg: Dict[str, str]
     path_col: str | None
@@ -37,7 +37,7 @@ class CollapseEvents(DataProcessor):
         consecutive: bool | List[str] | None = None,
         event_groups: List[Dict[str, Any]] | None = None,
         group_col: str | None = None,
-        session_id_col: str | None = None,
+        session_col: str | None = None,
         session_type_col: str | None = None,
         agg: Dict[str, str] | None = None,
         path_col: str | None = None,
@@ -46,7 +46,7 @@ class CollapseEvents(DataProcessor):
         self.consecutive = consecutive
         self.event_groups = event_groups
         self.group_col = group_col
-        self.session_id_col = session_id_col
+        self.session_col = session_col
         self.session_type_col = session_type_col
         self.agg = agg or {}
         self.path_col = path_col
@@ -57,17 +57,17 @@ class CollapseEvents(DataProcessor):
             self.consecutive is not None,
             bool(self.event_groups),
             self.group_col is not None,
-            self.session_id_col is not None,
+            self.session_col is not None,
         ]
         if sum(modes) != 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                "Provide exactly one of: consecutive, event_groups, group_col, session_id_col",
+                "Provide exactly one of: consecutive, event_groups, group_col, session_col",
             )
 
-        if self.session_id_col is not None and self.session_type_col is None:
+        if self.session_col is not None and self.session_type_col is None:
             raise PreprocessingConfigError(
-                PROCESSOR_NAME, "'session_id_col' requires 'session_type_col'"
+                PROCESSOR_NAME, "'session_col' requires 'session_type_col'"
             )
 
         if event_groups is not None:
@@ -504,12 +504,12 @@ class CollapseEvents(DataProcessor):
         subindex_col = schema.subindex
         event_type_col = schema.event_type
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
-        session_id_col = self.session_id_col
+        session_col = self.session_col
         session_type_col = self.session_type_col
 
-        if session_id_col not in df.columns:
+        if session_col not in df.columns:
             raise PreprocessingConfigError(
-                PROCESSOR_NAME, f"column '{session_id_col}' not found in eventstream"
+                PROCESSOR_NAME, f"column '{session_col}' not found in eventstream"
             )
         if session_type_col not in df.columns:
             raise PreprocessingConfigError(
@@ -522,18 +522,18 @@ class CollapseEvents(DataProcessor):
             event_type_col,
             ts_col,
             subindex_col,
-            session_id_col,
+            session_col,
             session_type_col,
         }
         agg_exprs = self._session_agg_exprs(df, self.agg, explicit_cols, ts_col)
         agg_chunk = (", " + ", ".join(agg_exprs)) if agg_exprs else ""
         cols_list = json.dumps(schema.cols)[1:-1]
 
-        # session_id_col and session_type_col may be in schema.cols (custom_cols),
+        # session_col and session_type_col may be in schema.cols (custom_cols),
         # so include them explicitly to satisfy the final SELECT.
         extra_session_cols = ""
-        if session_id_col in schema.cols:
-            extra_session_cols += f", ANY_VALUE({session_id_col}) AS {session_id_col}"
+        if session_col in schema.cols:
+            extra_session_cols += f", ANY_VALUE({session_col}) AS {session_col}"
         if session_type_col in schema.cols:
             extra_session_cols += (
                 f", ANY_VALUE({session_type_col}) AS {session_type_col}"
@@ -550,7 +550,7 @@ class CollapseEvents(DataProcessor):
                 {extra_session_cols}
                 {agg_chunk}
             FROM df
-            GROUP BY {path_col}, {session_id_col}
+            GROUP BY {path_col}, {session_col}
         )
         SELECT {cols_list}
         FROM collapsed

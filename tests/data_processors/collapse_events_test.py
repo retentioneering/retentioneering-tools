@@ -262,16 +262,16 @@ class TestCollapseEventsValidation:
         with pytest.raises(PreprocessingConfigError):
             stream.collapse_events(group_col="event")
 
-    def test_raises_session_id_col_without_session_type_col(self):
+    def test_raises_session_col_without_session_type_col(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError):
-            stream.collapse_events(session_id_col="session_id")
+            stream.collapse_events(session_col="session_id")
 
-    def test_raises_session_id_col_not_found(self):
+    def test_raises_session_col_not_found(self):
         stream = make_stream([["user_1", "A", "2020-01-01"]])
         with pytest.raises(PreprocessingConfigError):
             stream.collapse_events(
-                session_id_col="nonexistent", session_type_col="also_nonexistent"
+                session_col="nonexistent", session_type_col="also_nonexistent"
             )
 
     def test_raises_session_type_col_not_found(self):
@@ -285,7 +285,7 @@ class TestCollapseEventsValidation:
         stream = Eventstream(df, schema)
         with pytest.raises(PreprocessingConfigError):
             stream.collapse_events(
-                session_id_col="session_id", session_type_col="nonexistent"
+                session_col="session_id", session_type_col="nonexistent"
             )
 
     def test_raises_empty_event_groups(self):
@@ -356,7 +356,7 @@ class TestCollapseEventsBySessionType:
             ]
         )
         res = stream.collapse_events(
-            session_id_col="session_id", session_type_col="session_type"
+            session_col="session_id", session_type_col="session_type"
         )
 
         assert events(res) == ["browse", "purchase"]
@@ -370,7 +370,7 @@ class TestCollapseEventsBySessionType:
             ]
         )
         res = stream.collapse_events(
-            session_id_col="session_id", session_type_col="session_type"
+            session_col="session_id", session_type_col="session_type"
         )
 
         assert all(res.df[res.schema.event_type] == COLLAPSED)
@@ -385,7 +385,7 @@ class TestCollapseEventsBySessionType:
             ]
         )
         res = stream.collapse_events(
-            session_id_col="session_id", session_type_col="session_type"
+            session_col="session_id", session_type_col="session_type"
         )
 
         ts = pd.to_datetime(res.df["timestamp"].iloc[0])
@@ -402,7 +402,7 @@ class TestCollapseEventsBySessionType:
             ]
         )
         res = stream.collapse_events(
-            session_id_col="session_id", session_type_col="session_type"
+            session_col="session_id", session_type_col="session_type"
         )
         df = res.df
 
@@ -420,7 +420,7 @@ class TestCollapseEventsBySessionType:
             ]
         )
         res = stream.collapse_events(
-            session_id_col="session_id", session_type_col="session_type"
+            session_col="session_id", session_type_col="session_type"
         )
 
         assert sorted(events(res)) == ["browse", "purchase"]
@@ -446,7 +446,7 @@ class TestCollapseEventsBySessionType:
         stream = Eventstream(df, schema)
 
         res = stream.collapse_events(
-            session_id_col="session_id",
+            session_col="session_id",
             session_type_col="session_type",
             agg={"score": "max"},
         )
@@ -474,7 +474,7 @@ class TestCollapseEventsBySessionType:
         stream = Eventstream(df, schema)
 
         res = stream.collapse_events(
-            session_id_col="session_id", session_type_col="session_type"
+            session_col="session_id", session_type_col="session_type"
         )
         df_res = res.df
         assert int(df_res["score"].iloc[0]) == 10

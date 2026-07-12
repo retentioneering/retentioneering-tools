@@ -107,6 +107,38 @@ stream.get_metrics([
 
 Add an `agg` and the same config becomes a [Segment Overview](/docs/widgets/segment-overview) row, so you can compare activation speed across channels, platforms, or A/B arms.
 
+## Turn sessions into a compact event vocabulary
+
+A raw eventstream can have dozens of granular events, which makes every path
+long and hard to read on a Step Matrix or Transition Graph. Instead of removing or collapsing raw events,
+we can collapse each session down to one event named after its behavior. Ultimately, the resulting
+eventstream has as many unique events as session types, and is far easier to
+explore.
+
+First, split paths into sessions if the eventstream doesn't have them yet:
+
+```python
+stream = stream.split_sessions(timeout="30m")
+```
+
+Then cluster sessions — not paths — by passing the session column as
+`path_col` to [Cluster Analysis](/docs/widgets/cluster-analysis), and use the
+widget to find a splitting that makes sense and see what each cluster
+actually contains.
+
+Once the split looks right, label the clusters right in the UI and click "Save Clusters" to persist the clusters which will become a new column in the eventstream. This is equivalent to running [Add Clusters](/docs/data-processors/add-clusters) with the same `path_col`, `features`, and `n_clusters` you settled on.
+
+Finally, collapse each session into a single event named after its type with
+[Collapse Events](/docs/data-processors/collapse-events):
+
+```python
+stream = stream.collapse_events(session_col="session_id", session_type_col="session_type")
+```
+
+The new eventstream has one event per session, and the number of unique
+events equals the number of session types from clustering — small enough to
+read a Step Matrix or Transition Graph at a glance.
+
 ## Extract behavioral features for ML
 
 Churn and LTV models improve when they see *behavior*, not just demographics. `get_metrics()` turns any set of [path metric](/docs/path-metrics) configs into a clean per-path feature table, ready to join with your training data:
@@ -116,7 +148,7 @@ features = stream.get_metrics([
     {"metric": "length"},
     {"metric": "duration"},
     {"metric": "active_days"},
-    {"metric": "event_count", "metric_args": {"event": "search"}},
+    {"metric": "event_count_bulk"},
     {"metric": "matches_pattern", "metric_args": {"pattern": "login->.*->purchase"}},
 ])
 ```

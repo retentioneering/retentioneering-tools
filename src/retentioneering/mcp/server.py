@@ -242,23 +242,21 @@ def _build_server(
         """Return schema, event list, unique path counts and available segments.
         Reflects the current active stream (after any update_base_stream calls)."""
         cur = _active[0]
-        s = cur.schema
-        ec, pc = s.event_col, s.path_col
-        df = cur.df
-        ts_col = s.timestamp_col
+        d = cur.describe()
+        s = d["schema"]
         result = {
-            "n_paths": int(df[pc].nunique()),
-            "n_events_total": len(df),
-            "event_col": ec,
-            "path_col": pc,
-            "path_cols": s.path_cols,
-            "segment_cols": s.segment_cols,
-            "timestamp_col": ts_col,
+            "n_paths": d["shape"]["n_paths"],
+            "n_events_total": d["shape"]["n_events"],
+            "event_col": s["event_col"],
+            "path_col": s["path_col"],
+            "path_cols": s["path_cols"],
+            "segment_cols": s["segment_cols"],
+            "timestamp_col": s["timestamp_col"],
             "date_range": {
-                "min": str(df[ts_col].min())[:10],
-                "max": str(df[ts_col].max())[:10],
+                "min": str(d["date_range"]["min"])[:10],
+                "max": str(d["date_range"]["max"])[:10],
             },
-            "events": sorted(df[ec].astype(str).unique().tolist()),
+            "events": sorted(str(e) for e in cur.get_event_counts()),
         }
         if context.get("events"):
             result["event_descriptions"] = context["events"]

@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- `Eventstream.describe()`: headless summary of an eventstream — schema,
+  shape (event/path counts), date range, event frequency, and path
+  length/duration distributions (mean/median/min/max/percentiles).
+  Replaces 3.3.0's `describe()`/`describe_events()`, dropped in the 5.0.0
+  rewrite with no direct replacement.
 - All widgets accept a `state_file` argument binding the full widget state
   (data and display parameters, plus widget-specific extras: the transition
   graph's node layout, event visibility, filters, and zoom; the step matrix's

@@ -242,6 +242,50 @@ class Eventstream:
             for col in self.schema.segment_cols
         }
 
+    @_tracked("headless_describe")
+    def describe(
+        self,
+        percentiles: tuple = (0.25, 0.5, 0.75, 0.9, 0.99),
+        top_events: int = 20,
+    ) -> dict:
+        """
+        Compute basic descriptive statistics for the eventstream.
+
+        A quick sanity-check summary of the dataset: schema, shape, date
+        range, event frequency, and per-path-column length/duration
+        statistics. Headless only - for interactive per-segment drill-down
+        use `segment_overview()` instead.
+
+        Parameters
+        ----------
+        percentiles : tuple of float, default (0.25, 0.5, 0.75, 0.9, 0.99)
+            Percentiles (0-1) reported in `path_stats`.
+        top_events : int, default 20
+            Number of most frequent events to include in `event_frequency`.
+
+        Returns
+        -------
+        dict
+            - `schema`: event_col, path_col, path_cols, segment_cols, timestamp_col
+            - `shape`: n_events, n_paths, n_unique_events
+            - `date_range`: min, max, span
+            - `event_frequency`: DataFrame of event/count/share, sorted
+              descending, limited to `top_events` rows
+            - `path_stats`: dict keyed by each entry of `schema.path_cols`,
+              each value a `DataFrame` (from `DataFrame.describe`) with
+              count/mean/std/min/percentiles/max rows and `length`/`duration`
+              columns
+            - `segments`: DataFrame of segment_col/value/count/share, one row
+              per segment value across all segment columns
+
+        Examples
+        --------
+            stream.describe()
+        """
+        from retentioneering.tools.describe import Describe
+
+        return Describe(self).fit(percentiles=percentiles, top_events=top_events)
+
     @_tracked("dp_filter_events")
     def filter_events(
         self,

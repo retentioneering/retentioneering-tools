@@ -743,15 +743,14 @@ class Eventstream:
             Pass `True` to collapse all events; pass a list of event names to collapse
             only those specific events.
         event_groups : list of dict, optional
-            Merge a set of events that belong together into a single representative event.
-            Each group dict must have either an `events` key (list of event names to
-            merge) or a `separator` / `start_event` + `end_event` pair. Additional keys:
-              - `name` (str) — label for the merged event. Required unless
-                `cases` are given.
-              - `cases` (list of dict, optional) — conditional labels: each case is
-                `{"condition": <filter_paths-style condition>, "name": <label>}`,
-                evaluated against the merged group's own events; the group-level
-                `name` becomes the fallback label for groups no case matched.
+            Merge a chain of events into a single representative event.
+              - `events` (str or list of str) — collapse any run of these events, wherever it occurs in the path, into one group.
+              - `separator` (str or list of str) — collapse every event up to and including the next separator event into one group.
+              - `start_event` + `end_event` (str or list of str) — collapse every event between a `start_event` and the next `end_event`, inclusive of both, into one group.
+              - `name` (str) — label for the merged event, required unless `cases` are given.
+              - `cases` (list of dict, optional) — conditional labels evaluated against the group's own events, falling back to `name` for groups no case matched.
+            See [event_groups](/docs/data-processors/collapse-events#event_groups)
+            below for worked examples.
         group_col : str, optional
             Group consecutive rows by this column's value: each run of rows sharing
             the same value is collapsed into one event named after that value.
@@ -764,7 +763,10 @@ class Eventstream:
             Column that distinguishes session event types (used with `session_id_col`).
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
-            `{column: agg_func}` dict. Example: `{"duration": "sum"}`.
+            `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
+            `"last"`, `"min"`, `"max"`, `"mean"`, `"mode"`, `"any"`. See
+            [agg](/docs/data-processors/collapse-events#agg) below. Example:
+            `{"price": "max"}`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         event_col : str, optional

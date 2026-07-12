@@ -10,7 +10,13 @@ stream = Eventstream(df, schema={
 })
 ```
 
-Columns already present in your data become segments by listing them in the schema's `segment_cols`. New ones are derived with [Add Segment](/docs/data-processors/add-segment) and [Add Clusters](/docs/data-processors/add-clusters), and removed with [Drop Segment](/docs/data-processors/drop-segment).
+Columns already present in your data become segments by listing them in the schema's `segment_cols` up front. If the `Eventstream` already exists — the column just rode along as a `custom_col` (see [Eventstream](/docs/eventstream#schema)) — call `add_segment` with no `rules`/`func`/`sql`/`funnel_events` argument to promote it in place, keeping its existing values:
+
+```python
+stream.add_segment("returned")
+```
+
+New segment columns are derived with [Add Segment](/docs/data-processors/add-segment) and [Add Clusters](/docs/data-processors/add-clusters), and removed with [Drop Segment](/docs/data-processors/drop-segment).
 
 ## Static and dynamic segments
 

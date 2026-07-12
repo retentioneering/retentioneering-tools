@@ -50,6 +50,31 @@ class TestFilterEvents:
         with pytest.raises(Exception):
             stream.add_segment(name="country", rules=values)
 
+    def test__add_segment_promotes_custom_col(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)  # no schema -> "country" auto-classified as custom_col
+        assert stream.schema.custom_cols == ["country"]
+
+        res = stream.add_segment(name="country")
+
+        assert res.schema.segment_cols == ["country"]
+        assert res.schema.custom_cols == []
+        assert res.df["country"].tolist() == df["country"].tolist()
+
+    def test__add_segment_promote_rejects_reserved_column(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(PreprocessingConfigError):
+            stream.add_segment(name="user_id")
+
+    def test__add_segment_no_mode_and_not_a_custom_col_raises(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(PreprocessingConfigError):
+            stream.add_segment(name="brand_new_segment")
+
     def test__add_segment_sql(self) -> None:
         df = get_df()
         schema = {"segment_cols": ["country"]}

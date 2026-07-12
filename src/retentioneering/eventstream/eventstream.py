@@ -124,6 +124,30 @@ class Eventstream:
             for col in self.schema.event_cols + self.schema.segment_cols:
                 self._df[col] = self._df[col].astype("category")
 
+        schema = self.schema
+        declared_cols = set(
+            schema.path_cols
+            + schema.event_cols
+            + [schema.timestamp_col]
+            + schema.segment_cols
+            + [schema.event_type, schema.index, schema.subindex]
+        )
+
+        if self.preprocess and schema.custom_cols is not None:
+            # Explicit custom_cols (even []) is a strict declaration: anything
+            # else not covered by the schema is dropped, not silently kept.
+            missing = [c for c in schema.custom_cols if c not in self._df.columns]
+            if missing:
+                raise SchemaConfigError(
+                    f"custom_cols column(s) not found in the DataFrame: {missing}"
+                )
+            allowed = declared_cols | set(schema.custom_cols)
+            self._df = self._df[[c for c in self._df.columns if c in allowed]]
+        else:
+            known_cols = declared_cols | set(schema.custom_cols or [])
+            extra_cols = [c for c in self._df.columns if c not in known_cols]
+            schema.custom_cols = (schema.custom_cols or []) + extra_cols
+
     def _preprocess(self):
         if isinstance(self._df, str):
             df = pd.read_csv(self._df)
@@ -655,7 +679,10 @@ class Eventstream:
         """
         Add a new categorical segment column to the eventstream.
 
-        Exactly one of `rules`, `func`, `sql`, or `funnel_events` must be provided.
+        Exactly one of `rules`, `func`, `sql`, or `funnel_events` must be provided —
+        unless `name` is already listed in `schema.custom_cols`, in which case
+        passing none of them promotes that existing column to a segment in
+        place, without recomputing its values.
 
         Parameters
         ----------
@@ -717,6 +744,11 @@ class Eventstream:
                 "device",
                 sql="SELECT CASE WHEN platform = 'mobile' THEN 'mobile' ELSE 'web' END FROM eventstream",
             )
+
+            # promoting an existing custom column — "returned" already rode along in
+            # the source DataFrame and landed in schema.custom_cols; no mode argument
+            # needed, the column's values are kept as-is
+            stream.add_segment("returned")
         """
         from retentioneering.data_processors.add_segment import AddSegment
 

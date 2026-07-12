@@ -159,10 +159,10 @@ class AddSegment(DataProcessor):
             sql is not None,
             funnel_events is not None,
         ]
-        if sum(arg_is_not_none) != 1:
+        if sum(arg_is_not_none) > 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                "One and only one of the arguments must be defined: "
+                "At most one of the arguments must be defined: "
                 "rules, func, sql, funnel_events.",
             )
         if funnel_events is not None and len(funnel_events) < 2:
@@ -181,16 +181,42 @@ class AddSegment(DataProcessor):
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
+        has_mode = any(
+            [
+                self.rules is not None,
+                self.func is not None,
+                self.sql is not None,
+                self.funnel_events is not None,
+            ]
+        )
+
         if self.name in df.columns:
             if self.name in schema.segment_cols:
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME, f"Segment '{self.name}' already exists."
                 )
-            else:
-                raise PreprocessingConfigError(
-                    PROCESSOR_NAME,
-                    f"Name '{self.name}' is already reserved in the eventstream.",
-                )
+            if self.name in schema.custom_cols and not has_mode:
+                new_df = df.copy()
+                new_df[self.name] = new_df[self.name].astype("category")
+                new_schema = schema.copy()
+                new_schema.custom_cols = [
+                    c for c in new_schema.custom_cols if c != self.name
+                ]
+                new_schema.segment_cols.append(self.name)
+                return new_df, new_schema
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"Name '{self.name}' is already reserved in the eventstream.",
+            )
+
+        if not has_mode:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                "One of the arguments must be defined: rules, func, sql, "
+                "funnel_events — unless promoting an existing custom column to a "
+                f"segment, in which case '{self.name}' must already be a custom "
+                "column and none of them should be set.",
+            )
 
         values = None
 

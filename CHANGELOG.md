@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 
+- `schema.custom_cols` now defaults to `None` instead of `[]`: any DataFrame
+  column not otherwise declared in the schema is added to it automatically,
+  keeping it from being silently dropped by row-reshaping data processors
+  (`collapse_events`, `to_daily_states`). Passing an explicit list — even
+  `[]` — switches to strict mode: only schema-declared and listed columns
+  are kept, everything else is excluded from the eventstream.
 - `Eventstream.describe()`: headless summary of an eventstream — schema,
   shape (event/path counts), date range, event frequency, and path
   length/duration distributions (mean/median/min/max/percentiles).

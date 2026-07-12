@@ -14,7 +14,7 @@ class EventstreamSchema:
     index: str = "index"
     subindex: str = "subindex"
     segment_cols: List[str] = field(default_factory=list)
-    custom_cols: List[str] = field(default_factory=list)
+    custom_cols: List[str] | None = None
 
     def __post_init__(self) -> None:
         if not self.path_cols:
@@ -22,7 +22,10 @@ class EventstreamSchema:
         if not self.event_cols:
             raise ValueError("EventstreamSchema: event_cols must not be empty")
         all_cols = (
-            self.path_cols + self.event_cols + self.segment_cols + self.custom_cols
+            self.path_cols
+            + self.event_cols
+            + self.segment_cols
+            + (self.custom_cols or [])
         )
         seen: set[str] = set()
         dups: set[str] = set()
@@ -48,7 +51,7 @@ class EventstreamSchema:
             + self.event_cols
             + [self.timestamp_col]
             + self.segment_cols
-            + self.custom_cols
+            + (self.custom_cols or [])
         )
 
     @property
@@ -58,7 +61,7 @@ class EventstreamSchema:
             + self.event_cols
             + [self.timestamp_col]
             + self.segment_cols
-            + self.custom_cols
+            + (self.custom_cols or [])
             + [self.event_type, self.index, self.subindex]
         )
 
@@ -85,5 +88,7 @@ class EventstreamSchema:
             index=self.index,
             subindex=self.subindex,
             segment_cols=self.segment_cols.copy(),
-            custom_cols=self.custom_cols.copy(),
+            custom_cols=self.custom_cols.copy()
+            if self.custom_cols is not None
+            else None,
         )

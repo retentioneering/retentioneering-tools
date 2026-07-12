@@ -5,10 +5,11 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Set, Tuple
 
 from retentioneering.data_processors.data_processor import DataProcessor
-from retentioneering.data_processors.filter_paths import FilterPaths
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.metrics.condition_ast import ast_to_sql, extract_metric_configs
+from retentioneering.metrics.metric_builder import combined_metric_name
 from retentioneering.utils.session_detection import (
     build_session_ctes,
     detect_mode,
@@ -200,7 +201,7 @@ class CollapseEvents(DataProcessor):
             )
             return [
                 (
-                    f"has_all_events_{'_and_'.join(events)}",
+                    combined_metric_name(metric, events),
                     f"CASE WHEN ({conds}) THEN 1 ELSE 0 END",
                 )
             ]
@@ -212,7 +213,7 @@ class CollapseEvents(DataProcessor):
             )
             return [
                 (
-                    f"has_any_event_{'_or_'.join(events)}",
+                    combined_metric_name(metric, events),
                     f"CASE WHEN ({conds}) THEN 1 ELSE 0 END",
                 )
             ]
@@ -330,11 +331,10 @@ class CollapseEvents(DataProcessor):
             group, path_col, event_col, ts_col, subindex_col
         )
 
-        fp = FilterPaths(None, None, None)
         all_metric_configs: List[Dict[str, Any]] = []
         seen_keys: Set[str] = set()
         for case in cases:
-            for mc in FilterPaths._extract_metric_configs(case["condition"]):
+            for mc in extract_metric_configs(case["condition"], PROCESSOR_NAME):
                 key = (mc["metric"], str(sorted((mc.get("metric_args") or {}).items())))
                 if key not in seen_keys:
                     seen_keys.add(key)
@@ -354,7 +354,7 @@ class CollapseEvents(DataProcessor):
 
         if cases:
             case_when_parts = [
-                f"WHEN {fp._ast_to_sql(case['condition'])} THEN '{case['name'].replace(chr(39), chr(39) * 2)}'"
+                f"WHEN {ast_to_sql(case['condition'], PROCESSOR_NAME)} THEN '{case['name'].replace(chr(39), chr(39) * 2)}'"
                 for case in cases
             ]
             fallback_escaped = name.replace("'", "''")

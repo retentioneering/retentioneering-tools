@@ -156,6 +156,17 @@ def _normalize_events_required(events: Any, metric_name: str) -> List[str]:
     return events
 
 
+def combined_metric_name(metric: str, events: List[str]) -> str:
+    """Canonical column name for has_all_events/has_any_event: the one piece of
+    metric-naming *logic* (as opposed to plain interpolation) shared across
+    this module, data_processors/filter_paths.py, and
+    data_processors/collapse_events.py - kept here since this module is the
+    single path-metrics registry (see ADR-0007) and the other two are equal
+    consumers of it, not of each other."""
+    joiner = "_and_" if metric == "has_all_events" else "_or_"
+    return f"{metric}_{joiner.join(events)}"
+
+
 class MetricConfig:
     """Parser and validator for metric configurations"""
 
@@ -289,11 +300,10 @@ class MetricConfig:
             }
         elif metric in ("has_all_events", "has_any_event"):
             events = _normalize_events_required(metric_args.get("events"), metric)
-            joiner = "_and_" if metric == "has_all_events" else "_or_"
             return {
                 "type": metric,
                 "events": events,
-                "metric_names": [f"{metric}_{joiner.join(events)}"],
+                "metric_names": [combined_metric_name(metric, events)],
                 "original": config_dict,
             }
         elif metric == "time_between":

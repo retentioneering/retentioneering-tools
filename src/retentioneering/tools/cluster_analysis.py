@@ -94,7 +94,8 @@ class ClusterAnalysis:
                 "silhouette": {
                     "params": search_data["params"],
                     "silhouette": search_data["silhouette"],
-                }
+                },
+                "nmf": None,
             }
 
             best = search_data.get("best")

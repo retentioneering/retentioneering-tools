@@ -1852,7 +1852,7 @@ class Eventstream:
         event_col: str | None = None,
     ) -> dict:
         """
-        Run cluster analysis headlessly and return dict with overview_df / silhouette / nmf / best_params.
+        Run cluster analysis headlessly and return a dict of results.
 
         Pass lists for n_clusters / nmf_components / min_cluster_size to trigger
         grid search with silhouette scoring. n_clusters is required for the kmeans
@@ -1899,6 +1899,27 @@ class Eventstream:
             Path ID column override; defaults to `schema.path_col`.
         event_col : str, optional
             Event name column override; defaults to `schema.event_col`.
+
+        Returns
+        -------
+        dict
+            - `overview_df`: `DataFrame` from the segment overview heatmap,
+              one row per path segmented by cluster label.
+            - `cluster_labels`: `Series` of the cluster label assigned to each
+              path, indexed by `path_col`.
+            - `best_params`: concrete parameter values used to produce
+              `overview_df` — pass straight to `add_clusters`.
+            - `nmf`: `None` if `nmf_components` was not passed (or, in a grid
+              search, if no candidate used NMF); otherwise a dict with
+              `H_matrix`, `features`, and `W_cluster_means`.
+            - `silhouette`: only present when a list was passed for
+              `n_clusters` / `nmf_components` / `min_cluster_size` /
+              `cluster_selection_epsilon` (grid search mode). A dict of two
+              parallel lists — `{"params": [{"n_clusters": 3}, ...],
+              "silhouette": [0.87, ...]}` — one entry per candidate tried;
+              zip them to inspect individual scores. `overview_df`,
+              `cluster_labels`, and `best_params` are omitted in this mode if
+              every candidate was degenerate (fewer than 2 valid clusters).
         """
         from retentioneering.tools.cluster_analysis import ClusterAnalysis
 

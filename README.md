@@ -59,10 +59,10 @@ name, and a timestamp. (Different column names? Pass a
 
 ```python
 import pandas as pd
-from retentioneering import Eventstream
+import retentioneering as rete
 
 df = pd.read_csv("events.csv")   # columns: user_id, event, timestamp
-stream = Eventstream(df)
+stream = rete.Eventstream(df)
 
 stream.transition_graph()        # interactive behavior graph, right in the notebook
 ```
@@ -70,9 +70,9 @@ stream.transition_graph()        # interactive behavior graph, right in the note
 No data at hand? Use the bundled synthetic e-commerce dataset:
 
 ```python
-from retentioneering.datasets.ecom import load_ecom
+import retentioneering as rete
 
-ecom = load_ecom()
+ecom = rete.datasets.load_ecom()
 
 # Build a funnel
 ecom.funnel(steps=["catalog", "add_to_cart", "purchase"])

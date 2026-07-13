@@ -40,9 +40,8 @@ Quick sanity check that everything works:
 ```bash
 uv run pytest tests/ -q
 uv run python -c "
-from retentioneering.datasets.ecom import load_ecom
-from retentioneering import Eventstream
-print(Eventstream(load_ecom()).get_event_counts())
+import retentioneering as rete
+print(rete.datasets.load_ecom().describe())
 "
 ```
 

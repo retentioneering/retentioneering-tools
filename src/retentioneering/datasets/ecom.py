@@ -25,14 +25,13 @@ stories make the data useful for teaching Retentioneering's analysis tools:
 
 Usage
 -----
->>> from retentioneering.datasets.ecom import load_ecom
->>> stream = load_ecom()  # Eventstream, with path_cols/segment_cols preconfigured
+>>> import retentioneering as rete
+>>> stream = rete.datasets.load_ecom()  # Eventstream, with path_cols/segment_cols preconfigured
 
 Pass `as_dataframe=True` for the raw `pd.DataFrame` instead:
 
->>> df = load_ecom(as_dataframe=True)
->>> import retentioneering as hs
->>> stream = hs.Eventstream(df, {
+>>> df = rete.datasets.load_ecom(as_dataframe=True)
+>>> stream = rete.Eventstream(df, {
 ...     "path_cols": ["user_id", "session_id"],
 ...     "segment_cols": [
 ...         "platform", "acquisition_channel", "user_cohort", "user_lifecycle",

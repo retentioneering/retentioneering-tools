@@ -5,9 +5,9 @@
 Retentioneering is an open-source Python library for user behavior analysis. It turns raw event logs into interactive maps of how users actually move through your product: the paths they take, the loops they get stuck in, the step where they silently leave. All inside your notebook, on your own data, in a few lines of code.
 
 ```python
-from retentioneering import Eventstream
+import retentioneering as rete
 
-stream = Eventstream(df)
+stream = rete.Eventstream(df)
 stream.transition_graph()
 ```
 

@@ -55,6 +55,25 @@ class TestDescribe:
         assert len(result["event_frequency"]) == 1
         assert result["event_frequency"]["event"].iloc[0] == "A"
 
+    def test_top_events_truncation_is_marked_on_attrs(self) -> None:
+        result = self._stream().describe(top_events=1)
+        freq = result["event_frequency"]
+        assert freq.attrs["truncated"] is True
+        assert freq.attrs["n_total_events"] == 3
+
+    def test_top_events_none_returns_all_events_untruncated(self) -> None:
+        result = self._stream().describe(top_events=None)
+        freq = result["event_frequency"]
+        assert list(freq["event"]) == ["A", "B", "C"]
+        assert freq.attrs["truncated"] is False
+        assert freq.attrs["n_total_events"] == 3
+
+    def test_no_truncation_when_top_events_covers_all(self) -> None:
+        result = self._stream().describe(top_events=20)
+        freq = result["event_frequency"]
+        assert freq.attrs["truncated"] is False
+        assert freq.attrs["n_total_events"] == 3
+
     def test_path_stats(self) -> None:
         result = self._stream().describe()
         stats = result["path_stats"]["user_id"]

@@ -349,7 +349,7 @@ class Eventstream:
     def describe(
         self,
         percentiles: tuple = (0.25, 0.5, 0.75, 0.9, 0.99),
-        top_events: int = 20,
+        top_events: int | None = 20,
     ) -> dict:
         """
         Compute basic descriptive statistics for the eventstream.
@@ -363,8 +363,12 @@ class Eventstream:
         ----------
         percentiles : tuple of float, default (0.25, 0.5, 0.75, 0.9, 0.99)
             Percentiles (0-1) reported in `path_stats`.
-        top_events : int, default 20
+        top_events : int or None, default 20
             Number of most frequent events to include in `event_frequency`.
+            Pass `None` to include every unique event, unranked and
+            unlimited - use this when the result feeds something that needs
+            the full event vocabulary (e.g. building a rename mapping),
+            since the default silently drops everything past the top 20.
 
         Returns
         -------
@@ -373,7 +377,9 @@ class Eventstream:
             - `shape`: n_events, n_paths, n_unique_events
             - `date_range`: min, max, span
             - `event_frequency`: DataFrame of event/count/share, sorted
-              descending, limited to `top_events` rows
+              descending, limited to `top_events` rows. `.attrs["truncated"]`
+              (bool) and `.attrs["n_total_events"]` (full unique event count)
+              record whether/how much this was cut down.
             - `path_stats`: dict keyed by each entry of `schema.path_cols`,
               each value a `DataFrame` (from `DataFrame.describe`) with
               count/mean/std/min/percentiles/max rows and `length`/`duration`
@@ -384,6 +390,7 @@ class Eventstream:
         Examples
         --------
             stream.describe()
+            stream.describe(top_events=None)  # full event_frequency, no cap
         """
         from retentioneering.tools.describe import Describe
 

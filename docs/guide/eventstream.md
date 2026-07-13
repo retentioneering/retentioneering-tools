@@ -110,6 +110,11 @@ stream = rete.Eventstream(df, schema={
 stream.describe()
 ```
 
+Parameters:
+
+- `percentiles` — percentiles (0-1) reported in `path_stats`. Default `(0.25, 0.5, 0.75, 0.9, 0.99)`.
+- `top_events` — number of most frequent events to include in `event_frequency`. Default `20`; pass `None` to include every unique event, unranked and unlimited (e.g. when building a full event rename mapping, where the default cap would silently drop long-tail events).
+
 Returns a dict:
 
 | Key | Contents |
@@ -117,6 +122,6 @@ Returns a dict:
 | `schema` | `event_col`, `path_col`, `path_cols`, `segment_cols`, `timestamp_col` |
 | `shape` | `n_events`, `n_paths`, `n_unique_events` |
 | `date_range` | `min`, `max`, `span` |
-| `event_frequency` | `DataFrame` of `event`/`count`/`share`, sorted descending |
+| `event_frequency` | `DataFrame` of `event`/`count`/`share`, sorted descending, limited to `top_events` rows (default 20; pass `top_events=None` for the full, unranked list). `.attrs["truncated"]` and `.attrs["n_total_events"]` say whether/how much this was cut down |
 | `path_stats` | dict keyed by each entry of `path_cols`, each a `DataFrame` (`DataFrame.describe()` shape: count/mean/std/min/percentiles/max) with `length`/`duration` columns |
 | `segments` | `DataFrame` of `segment_col`/`value`/`count`/`share`, one row per segment value across all segment columns |

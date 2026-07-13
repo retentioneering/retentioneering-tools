@@ -24,18 +24,22 @@ class Describe:
     def fit(
         self,
         percentiles: Tuple[float, ...] = (0.25, 0.5, 0.75, 0.9, 0.99),
-        top_events: int = 20,
+        top_events: int | None = 20,
     ) -> Dict[str, Any]:
         """
         Compute basic descriptive statistics for the eventstream.
 
         Args:
             percentiles: Percentiles (0-1) to report in `path_stats`.
-            top_events: Number of most frequent events to include in `event_frequency`.
+            top_events: Number of most frequent events to include in `event_frequency`,
+                or `None` to include all events, unranked and unlimited.
 
         Returns:
             Dict with `schema`, `shape`, `date_range`, `event_frequency`,
-            `path_stats`, and `segments` keys.
+            `path_stats`, and `segments` keys. `event_frequency` carries
+            `attrs["truncated"]` (bool) and `attrs["n_total_events"]` (the
+            full unique event count) so truncation is visible on the
+            DataFrame itself, not just derivable via `shape.n_unique_events`.
         """
         es = self.eventstream
         schema = es.schema
@@ -43,6 +47,8 @@ class Describe:
 
         event_counts = es.get_event_counts()
         total_events = int(sum(event_counts.values()))
+        n_unique_events = len(event_counts)
+        truncated = top_events is not None and n_unique_events > top_events
         event_frequency = (
             pd.DataFrame(
                 {
@@ -55,6 +61,8 @@ class Describe:
             .head(top_events)
             .reset_index(drop=True)
         )
+        event_frequency.attrs["truncated"] = truncated
+        event_frequency.attrs["n_total_events"] = n_unique_events
 
         # One DataFrame per path_cols entry (rows: count/mean/std/min/.../max,
         # columns: length/duration) - always keyed by path_col name, even when

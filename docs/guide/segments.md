@@ -31,7 +31,7 @@ Dynamic segments are handled naturally by the segment-aware tools. [Segment Over
 
 ## Creating segments
 
-[Add Segment](/docs/data-processors/add-segment) supports four modes — exactly one must be used per call:
+[Add Segment](/docs/data-processors/add-segment) supports five modes — exactly one must be used per call:
 
 ```python
 # rules — ordered CASE-WHEN conditions
@@ -57,6 +57,9 @@ stream.add_segment("power_user", func=lambda df: df["user_id"].map(power_users_l
 # skipping or reordering a step keeps it out of that step's group (out_of_funnel
 # if even the first step was never completed in order)
 stream.add_segment("funnel", funnel_events=["add_to_cart", "checkout_start", "purchase"])
+
+# time_range — binary "inside" vs "outside" an inclusive timestamp interval
+stream.add_segment("incident", time_range=("2024-03-10", "2024-03-17"))
 ```
 
 [Add Clusters](/docs/data-processors/add-clusters) is a special case: it clusters paths by behavioral metrics with ML and stores the cluster labels as a new static segment, so clusters immediately work everywhere ordinary segments do.
@@ -65,15 +68,22 @@ stream.add_segment("funnel", funnel_events=["add_to_cart", "checkout_start", "pu
 
 ### Inside vs outside an anomalous period
 
-When something unusual happens — a payment gateway incident, a broken release, a marketing spike, a bot attack — the first question is "how did behavior change?" A dynamic segment over the timestamp cleanly separates the anomalous window from normal operation:
+When something unusual happens — a payment gateway incident, a broken release, a marketing spike, a bot attack — the first question is "how did behavior change?" A dynamic segment over the timestamp cleanly separates the anomalous window from normal operation. The `time_range` mode covers this directly — pass the `(start, end)` bounds and every event is labeled `inside` or `outside`:
+
+```python
+stream.add_segment("incident", time_range=("2024-03-10", "2024-03-17"))
+```
+
+For anything the binary inside/outside split doesn't cover — more than two buckets, or a boundary rule other than a plain inclusive interval — fall back to `sql`:
 
 ```python
 stream.add_segment(
     "incident",
     sql="""
         SELECT CASE
-            WHEN timestamp BETWEEN '2024-03-10' AND '2024-03-17' THEN 'inside'
-            ELSE 'outside'
+            WHEN timestamp < '2024-03-10' THEN 'before'
+            WHEN timestamp <= '2024-03-17' THEN 'during'
+            ELSE 'after'
         END
         FROM eventstream
     """,

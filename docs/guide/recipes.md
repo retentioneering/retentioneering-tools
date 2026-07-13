@@ -2,21 +2,12 @@
 
 Short recipes that map common product questions to retentioneering tools. Each one is a starting point, not a full tutorial — follow the links for details on every tool involved. Throughout this page, `stream` is an [Eventstream](/docs/eventstream) instance.
 
-## Explain an anomalous period
+## Find a root cause in an anomalous period
 
-Conversion dipped last week — was it the payment gateway incident, the new release, or a bot spike? Create a dynamic [segment](/docs/segments) that separates the anomalous window from normal operation, then diff the two groups on any widget:
+A KPI metric dipped last week and you need to find the root cause? Create a dynamic [segment](/docs/segments) that separates the anomalous window from normal operation, then [diff](/docs/widgets/diff) the two groups on any widget:
 
 ```python
-stream = stream.add_segment(
-    "incident",
-    sql="""
-        SELECT CASE
-            WHEN timestamp BETWEEN '2024-03-10' AND '2024-03-17' THEN 'inside'
-            ELSE 'outside'
-        END
-        FROM eventstream
-    """,
-)
+stream = stream.add_segment("incident", time_range=("2024-03-10", "2024-03-17"))
 stream.transition_graph(diff=("incident", "inside", "outside"))
 ```
 
@@ -24,22 +15,27 @@ The graph highlights exactly which transitions degraded during the window. [Segm
 
 ## Open up the funnel
 
-A [Funnel](/docs/widgets/funnel) tells you 40% of paths drop between `add_to_cart` and `checkout_start` — but not what those users did instead. Two moves recover the lost context.
+A [Funnel](/docs/widgets/funnel) `add_to_cart` → `checkout_start` → `purchase` tells you 40% of paths drop between `checkout_start` and `purchase` — but not what those users did instead. Two moves recover the lost context.
 
 First, look *between* the levels: trim each path to the window between two funnel steps and map what actually happens there:
 
 ```python
-stream.truncate_paths(start_event="add_to_cart", end_event="checkout_start").transition_graph()
+stream.truncate_paths(start_event="checkout_start", end_event="purchase").transition_graph()
 ```
 
 Second, follow the users who never made it. The `funnel_events` mode of [Add Segment](/docs/data-processors/add-segment) labels each path with the deepest funnel step it completed *in order* — reaching a step out of sequence, or skipping an earlier one, doesn't count — so drop-offs at each level become comparable groups:
 
 ```python
 labelled = stream.add_segment("funnel", funnel_events=["add_to_cart", "checkout_start", "purchase"])
-labelled.transition_graph(diff=("funnel", "add_to_cart", "purchase"))
+labelled.transition_graph(diff=("funnel", "checkout_start", "purchase"))
 ```
 
-For funnels where order matters more than a rigid step list, the `matches_pattern` [path metric](/docs/path-metrics) expresses a level as a sequence pattern — `"search->.*->purchase"` matches any path that searched and *later* purchased, whatever happened in between.
+Also, you can use [Step Matrix](/docs/widgets/step-matrix) or [Step Sankey](/docs/widgets/step-sankey) along with the `path_pattern` parameter to explore paths around the funnel steps:
+
+```python
+stream.step_matrix(path_pattern="add_to_cart->.*->checkout_start->.*->purchase")
+stream.step_sankey(path_pattern="add_to_cart->.*->checkout_start->.*->purchase")
+```
 
 ## See which paths lead to conversion
 
@@ -63,15 +59,33 @@ stream.step_matrix(diff=("ab_arm", "test", "control"))   # inspect where journey
 To hunt for heterogeneity — an effect that exists only for part of the audience — narrow the stream first and diff again:
 
 ```python
-stream.filter_events(keep={"platform": ["mobile"]}).step_matrix(diff=("ab_arm", "test", "control"))
+stream\
+    .filter_events(keep={"platform": ["mobile"]})\
+    .step_matrix(diff=("ab_arm", "test", "control"))
 ```
 
 ## Compare acquisition channels
 
-Users from different channels arrive with different intent, and their journeys show it. With the channel declared in the schema's `segment_cols`, every widget can compare one channel against all the others using the `<REST>` shorthand:
+Users from different channels arrive with different intent, and their journeys show it. With the channel declared in the schema's [segment_cols](/docs/eventstream#schema), every widget can compare one channel against all the others using the `<REST>` shorthand:
 
 ```python
 stream.step_matrix(diff=("acquisition_channel", "paid_search", "<REST>"))
+```
+Also, you can use [Segment Overview](/docs/widgets/segment-overview) to get a quick overview of the differences between the channels
+comparing multiple metrics – such as path length, event count, conversion rate, and time to purchase – at once.
+
+```python
+stream.segment_overview(
+    segment_col="acquisition_channel",
+    metrics=[
+        {"metric": "length"},
+        {"metric": "event_count_bulk"},
+        # has_event mean is equivalent to conversion rate
+        {"metric": "has_event", "metric_args": {"event": "purchase"}},
+        # median time to purchase (in seconds)
+        {"metric": "time_between", "metric_args": {"start_event": "path_start", "end_event": "purchase"}, "agg": "median"},
+    ]
+)
 ```
 
 ## Discover your behavior types
@@ -100,17 +114,16 @@ stream = stream.add_clusters(
 How long does it take a new user to reach the key action? The `time_between` [path metric](/docs/path-metrics) computes it per path in one call:
 
 ```python
-stream.get_metrics([
+time_to_purchase = stream.get_metrics([
     {"metric": "time_between", "metric_args": {"start_event": "path_start", "end_event": "purchase"}},
 ])
+pd.to_timedelta(time_to_purchase, unit='s').mean()
 ```
 
-Add an `agg` and the same config becomes a [Segment Overview](/docs/widgets/segment-overview) row, so you can compare activation speed across channels, platforms, or A/B arms.
+## Path as a sequence of sessions
 
-## Turn sessions into a compact event vocabulary
-
-A raw eventstream can have dozens of granular events, which makes every path
-long and hard to read on a Step Matrix or Transition Graph. Instead of removing or collapsing raw events,
+A raw eventstream often has hundreds of granular events, which makes every path
+long and hard to read so the widgets become overloaded and branchy. Instead of removing or collapsing raw events,
 we can collapse each session down to one event named after its behavior. Ultimately, the resulting
 eventstream has as many unique events as session types, and is far easier to
 explore.
@@ -126,6 +139,14 @@ Then cluster sessions — not paths — by passing the session column as
 widget to find a splitting that makes sense and see what each cluster
 actually contains.
 
+```python
+stream.cluster_analysis(
+    path_col="session_id",
+    features=[{"metric": "length"}, {"metric": "event_count_bulk"}],
+    overview_metrics=[{"metric": "length"}, {"metric": "event_count_bulk"}],
+)
+```
+
 Once the split looks right, label the clusters right in the UI and click "Save Clusters" to persist the clusters which will become a new column in the eventstream. This is equivalent to running [Add Clusters](/docs/data-processors/add-clusters) with the same `path_col`, `features`, and `n_clusters` you settled on.
 
 Finally, collapse each session into a single event named after its type with
@@ -135,9 +156,9 @@ Finally, collapse each session into a single event named after its type with
 stream = stream.collapse_events(session_col="session_id", session_type_col="session_type")
 ```
 
-The new eventstream has one event per session, and the number of unique
+The new eventstream has one synthetic event per session, and the number of unique
 events equals the number of session types from clustering — small enough to
-read a Step Matrix or Transition Graph at a glance.
+read a [Step Matrix](/docs/widgets/step-matrix) or [Transition Graph](/docs/widgets/transition-graph) at a glance.
 
 ## Extract behavioral features for ML
 

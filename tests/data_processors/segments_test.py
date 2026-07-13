@@ -251,6 +251,71 @@ class TestFilterEvents:
                 name="seg", funnel_events=["A", "B"], path_col="not_a_path_col"
             )
 
+    def test__add_segment_time_range(self) -> None:
+        df = get_df()
+        schema = {"segment_cols": ["country"]}
+        stream = Eventstream(df, schema)
+
+        res = stream.add_segment(
+            name="incident", time_range=("2020-01-02 00:00:00", "2020-01-03 00:00:00")
+        )
+
+        expected_df = df.copy()
+        expected_df["incident"] = [
+            "outside",
+            "inside",
+            "inside",
+            "outside",
+            "outside",
+            "inside",
+        ]
+        expected_schema = {"segment_cols": ["country", "incident"]}
+        expected = Eventstream(expected_df, expected_schema)
+
+        assert res.equals(expected)
+
+    def test__add_segment_time_range_bounds_inclusive(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)
+
+        res = stream.add_segment(
+            name="incident", time_range=("2020-01-01 00:00:00", "2020-01-01 00:00:00")
+        )
+
+        assert res.df["incident"].tolist() == [
+            "inside",
+            "outside",
+            "outside",
+            "inside",
+            "inside",
+            "outside",
+        ]
+
+    def test__add_segment_time_range_wrong_length(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(PreprocessingConfigError):
+            stream.add_segment(name="incident", time_range=("2020-01-01",))
+
+    def test__add_segment_time_range_start_after_end(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(PreprocessingConfigError):
+            stream.add_segment(name="incident", time_range=("2020-01-03", "2020-01-01"))
+
+    def test__add_segment_time_range_and_rules_mutually_exclusive(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(PreprocessingConfigError):
+            stream.add_segment(
+                name="incident",
+                time_range=("2020-01-01", "2020-01-02"),
+                rules=[["male"]],
+            )
+
     def test__drop_segment(self):
         df = get_df()
         schema = {"segment_cols": ["country"]}

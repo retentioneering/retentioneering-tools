@@ -142,6 +142,7 @@ class AddSegment(DataProcessor):
     func: Callable | None
     sql: str | None
     funnel_events: list | None
+    time_range: Collection | None
     path_col: str | None
 
     def __init__(
@@ -151,6 +152,7 @@ class AddSegment(DataProcessor):
         func: Callable | None = None,
         sql: str | None = None,
         funnel_events: list | None = None,
+        time_range: Collection | None = None,
         path_col: str | None = None,
     ) -> None:
         arg_is_not_none = [
@@ -158,16 +160,21 @@ class AddSegment(DataProcessor):
             rules is not None,
             sql is not None,
             funnel_events is not None,
+            time_range is not None,
         ]
         if sum(arg_is_not_none) > 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 "At most one of the arguments must be defined: "
-                "rules, func, sql, funnel_events.",
+                "rules, func, sql, funnel_events, time_range.",
             )
         if funnel_events is not None and len(funnel_events) < 2:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME, "funnel_events must have at least 2 events."
+            )
+        if time_range is not None and len(time_range) != 2:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "time_range must have exactly 2 elements: (start, end)."
             )
 
         self.name = name
@@ -175,6 +182,7 @@ class AddSegment(DataProcessor):
         self.func = func
         self.sql = sql
         self.funnel_events = funnel_events
+        self.time_range = time_range
         self.path_col = path_col
         super().__init__()
 
@@ -187,6 +195,7 @@ class AddSegment(DataProcessor):
                 self.func is not None,
                 self.sql is not None,
                 self.funnel_events is not None,
+                self.time_range is not None,
             ]
         )
 
@@ -213,9 +222,9 @@ class AddSegment(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 "One of the arguments must be defined: rules, func, sql, "
-                "funnel_events — unless promoting an existing custom column to a "
-                f"segment, in which case '{self.name}' must already be a custom "
-                "column and none of them should be set.",
+                "funnel_events, time_range — unless promoting an existing custom "
+                f"column to a segment, in which case '{self.name}' must already be "
+                "a custom column and none of them should be set.",
             )
 
         values = None
@@ -296,6 +305,18 @@ class AddSegment(DataProcessor):
             result = duckdb.sql(query).df()
             result = result.sort_values(_ROW_IDX_COL).reset_index(drop=True)
             values = result["__funnel_level__"].tolist()
+
+        elif self.time_range is not None:
+            start, end = self.time_range
+            start_ts = pd.to_datetime(start)
+            end_ts = pd.to_datetime(end)
+            if start_ts > end_ts:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "time_range start must not be after end."
+                )
+            ts_col = schema.timestamp_col
+            in_range = df[ts_col].between(start_ts, end_ts)
+            values = in_range.map({True: "inside", False: "outside"}).tolist()
 
         new_df = df.copy()
         new_df[self.name] = values

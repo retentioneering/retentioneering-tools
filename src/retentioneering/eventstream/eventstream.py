@@ -675,15 +675,16 @@ class Eventstream:
         func=None,
         sql=None,
         funnel_events=None,
+        time_range=None,
         path_col=None,
     ) -> "Eventstream":
         """
         Add a new categorical segment column to the eventstream.
 
-        Exactly one of `rules`, `func`, `sql`, or `funnel_events` must be provided —
-        unless `name` is already listed in `schema.custom_cols`, in which case
-        passing none of them promotes that existing column to a segment in
-        place, without recomputing its values.
+        Exactly one of `rules`, `func`, `sql`, `funnel_events`, or `time_range`
+        must be provided — unless `name` is already listed in
+        `schema.custom_cols`, in which case passing none of them promotes that
+        existing column to a segment in place, without recomputing its values.
 
         Parameters
         ----------
@@ -714,6 +715,11 @@ class Eventstream:
             `out_of_funnel`.
             Segment values (in ascending funnel order): `out_of_funnel`, then each
             event name from `funnel_events[0]` to `funnel_events[-1]`.
+        time_range : tuple or list, optional
+            `(start, end)` — two timestamps (string or `pd.Timestamp`) bounding
+            an inclusive interval over `schema.timestamp_col`. Each event is
+            labeled `inside` if its timestamp falls within `[start, end]`,
+            otherwise `outside`.
         path_col : str, optional
             Path ID column override for `funnel_events` mode; defaults to
             `schema.path_col`.
@@ -746,6 +752,12 @@ class Eventstream:
                 sql="SELECT CASE WHEN platform = 'mobile' THEN 'mobile' ELSE 'web' END FROM eventstream",
             )
 
+            # time_range mode — binary "inside" vs "outside" a time interval
+            stream.add_segment(
+                "incident",
+                time_range=("2024-03-10", "2024-03-17"),
+            )
+
             # promoting an existing custom column — "returned" already rode along in
             # the source DataFrame and landed in schema.custom_cols; no mode argument
             # needed, the column's values are kept as-is
@@ -759,6 +771,7 @@ class Eventstream:
             func=func,
             sql=sql,
             funnel_events=funnel_events,
+            time_range=time_range,
             path_col=path_col,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)

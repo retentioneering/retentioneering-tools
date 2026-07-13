@@ -136,6 +136,85 @@ def _normalize_events_required(events: Any, metric_name: str) -> List[str]:
     return events
 
 
+def _normalize_time_between(metric_args: Dict[str, Any]) -> tuple[str, str]:
+    """Normalizes 'start_event'/'end_event' metric_args for time_between: both required."""
+    start_event = metric_args.get("start_event")
+    end_event = metric_args.get("end_event")
+    if not start_event or not end_event:
+        raise InvalidMetricConfigError(
+            "'time_between' metric requires 'start_event' and 'end_event' in metric_args"
+        )
+    return start_event, end_event
+
+
+def _normalize_pattern(metric_args: Dict[str, Any]) -> str:
+    """Normalizes the 'pattern' metric_args value for matches_pattern: required, non-empty."""
+    pattern = metric_args.get("pattern")
+    if not pattern:
+        raise InvalidMetricConfigError(
+            "'matches_pattern' metric requires 'pattern' in metric_args"
+        )
+    return pattern
+
+
+def _normalize_in_segment(metric_args: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalizes in_segment's metric_args shape: 'segment_name'/'mode' (required,
+    valid mode) and 'segment_value' (None | scalar | non-empty list, normalized to
+    'segment_values' - a list, or None meaning "all values", resolved at build time).
+
+    Shared by parse (which also needs segment_name/mode to build metric_names) and
+    validate (which layers real-eventstream existence/range checks on top of this
+    same shape).
+    """
+    segment_name = metric_args.get("segment_name")
+    segment_value = metric_args.get("segment_value")
+    mode = metric_args.get("mode", "any")
+
+    if not segment_name:
+        raise InvalidMetricConfigError(
+            "'in_segment' metric requires 'segment_name' in metric_args"
+        )
+    if mode not in IN_SEGMENT_MODES:
+        raise InvalidMetricConfigError(
+            f"'in_segment' metric has invalid mode '{mode}'. Valid modes: {sorted(IN_SEGMENT_MODES)}"
+        )
+
+    if segment_value is None:
+        segment_values = None
+    elif isinstance(segment_value, list):
+        if len(segment_value) == 0:
+            raise InvalidMetricConfigError(
+                "'in_segment' metric requires non-empty 'segment_value' list"
+            )
+        segment_values = segment_value
+    elif isinstance(segment_value, (str, int, float, bool)):
+        segment_values = [segment_value]
+    else:
+        raise InvalidMetricConfigError(
+            f"'in_segment' metric 'segment_value' must be string, number, boolean, list, or None. "
+            f"Got: {type(segment_value).__name__}"
+        )
+
+    return {
+        "segment_name": segment_name,
+        "segment_values": segment_values,
+        "mode": mode,
+    }
+
+
+def _normalize_in_segment_threshold(metric_args: Dict[str, Any]) -> Any:
+    """Normalizes the 'threshold' metric_args value for in_segment's 'event_share'
+    mode: required when present. Range checking (0-1) needs no real-eventstream
+    data, but is validate-only (see `MetricBuilder.validate_metric_config`) since
+    parse only needs to know a threshold was supplied, not that it's sane."""
+    threshold = metric_args.get("threshold")
+    if threshold is None:
+        raise InvalidMetricConfigError(
+            "'in_segment' metric with mode 'event_share' requires 'threshold' (e.g., 0.1 for 10%)"
+        )
+    return threshold
+
+
 def combined_metric_name(metric: str, events: List[str]) -> str:
     """Canonical column name for has_all_events/has_any_event: the one piece of
     metric-naming *logic* (as opposed to plain interpolation) shared across
@@ -241,11 +320,7 @@ class MetricConfig:
                 "original": config_dict,
             }
         elif metric == "matches_pattern":
-            pattern = metric_args.get("pattern")
-            if not pattern:
-                raise InvalidMetricConfigError(
-                    "'matches_pattern' metric requires 'pattern' in metric_args"
-                )
+            pattern = _normalize_pattern(metric_args)
             return {
                 "type": "matches_pattern",
                 "pattern": pattern,
@@ -310,12 +385,7 @@ class MetricConfig:
                 "original": config_dict,
             }
         elif metric == "time_between":
-            start_event = metric_args.get("start_event")
-            end_event = metric_args.get("end_event")
-            if not start_event or not end_event:
-                raise InvalidMetricConfigError(
-                    "'time_between' metric requires 'start_event' and 'end_event' in metric_args"
-                )
+            start_event, end_event = _normalize_time_between(metric_args)
             return {
                 "type": "time_from_to",
                 "start_event": start_event,
@@ -324,61 +394,30 @@ class MetricConfig:
                 "original": config_dict,
             }
         elif metric == "in_segment":
-            segment_name = metric_args.get("segment_name")
-            segment_value = metric_args.get(
-                "segment_value"
-            )  # Can be None, scalar (str/int/float/bool), or list
-            mode = metric_args.get("mode", "any")
+            norm = _normalize_in_segment(metric_args)
+            segment_name = norm["segment_name"]
+            segment_values = norm["segment_values"]  # None means all values
+            mode = norm["mode"]
 
-            if not segment_name:
-                raise InvalidMetricConfigError(
-                    "'in_segment' metric requires 'segment_name' in metric_args"
-                )
-            if mode not in IN_SEGMENT_MODES:
-                raise InvalidMetricConfigError(
-                    f"'in_segment' metric has invalid mode '{mode}'. Valid modes: {sorted(IN_SEGMENT_MODES)}"
-                )
-
-            # Normalize segment_values to list or None (for all values)
-            if segment_value is None:
-                # Will be resolved later to all unique values in the segment column
-                segment_values = None
-                metric_names = None  # Will be set later when we know the actual values
-            elif isinstance(segment_value, list):
-                if len(segment_value) == 0:
-                    raise InvalidMetricConfigError(
-                        "'in_segment' metric requires non-empty 'segment_value' list"
-                    )
-                segment_values = segment_value
-                metric_names = [
-                    f"in_segment_{segment_name}_{v}_{mode}" for v in segment_values
-                ]
-            elif isinstance(segment_value, (str, int, float, bool)):
-                # Single scalar value (string, number, or boolean)
-                segment_values = [segment_value]
-                metric_names = [f"in_segment_{segment_name}_{segment_value}_{mode}"]
-            else:
-                raise InvalidMetricConfigError(
-                    f"'in_segment' metric 'segment_value' must be string, number, boolean, list, or None. Got: {type(segment_value).__name__}"
-                )
+            # metric_names stays None until build time when segment_values is None
+            # (every value in the segment column - not known without the eventstream).
+            metric_names = (
+                None
+                if segment_values is None
+                else [f"in_segment_{segment_name}_{v}_{mode}" for v in segment_values]
+            )
 
             result = {
                 "type": "in_segment",
                 "segment_name": segment_name,
-                "segment_values": segment_values,  # None means all values
+                "segment_values": segment_values,
                 "mode": mode,
-                "metric_names": metric_names,  # None if segment_values is None
+                "metric_names": metric_names,
                 "original": config_dict,
             }
 
-            # Add mode-specific parameters
             if mode == "event_share":
-                threshold = metric_args.get("threshold")
-                if threshold is None:
-                    raise InvalidMetricConfigError(
-                        "'in_segment' metric with mode 'event_share' requires 'threshold' (e.g., 0.1 for 10%)"
-                    )
-                result["threshold"] = threshold
+                result["threshold"] = _normalize_in_segment_threshold(metric_args)
 
             return result
         else:
@@ -411,10 +450,12 @@ class MetricBuilder:
         Raises:
             InvalidMetricConfigError: If configuration is invalid
 
-        Delegates the actual per-metric checks (required fields, valid modes/
-        ranges, event/segment existence) to `metric_schema.py`'s registry —
-        this method's only job is the 'metric' field check (shared by every
-        metric) and assembling the runtime `ValidationContext`.
+        Shape checks (required fields, valid modes/enums) are shared with
+        `_parse_dict_config` via the same `_normalize_*` helpers, so the two
+        can't drift apart on what a metric's `metric_args` must look like.
+        This method's own job on top of that shared shape is exactly what
+        needs real eventstream data and so can't be checked at parse time:
+        event/segment-value existence, and the `in_segment` threshold range.
         """
         if available_events is None:
             event_col = self.schema.event_col
@@ -431,26 +472,15 @@ class MetricBuilder:
         metric_args = metric.get("metric_args", {})
 
         if metric_name in ("event_count", "has_event"):
-            event = metric_args.get("event")
-            if not event or not isinstance(event, str):
-                raise InvalidMetricConfigError(
-                    f"'{metric_name}' metric requires a single 'event' (string) in metric_args"
-                )
+            event = _normalize_single_event(metric_args.get("event"), metric_name)
             if event not in available_events:
                 raise InvalidMetricConfigError(
                     f"Event '{event}' not found. Available events: {sorted(available_events)}"
                 )
 
         elif metric_name in ("event_count_bulk", "has_event_bulk"):
-            # Omitted/None means "all events" (like active_days' active_events) - nothing to validate.
-            # An explicit empty list is invalid (see _normalize_events_bulk).
-            events = metric_args.get("events")
+            events = _normalize_events_bulk(metric_args.get("events"), metric_name)
             if events is not None:
-                if not isinstance(events, list) or len(events) == 0:
-                    raise InvalidMetricConfigError(
-                        f"'{metric_name}' metric 'events' must be a non-empty list, "
-                        f"or omitted/None for all events"
-                    )
                 for e in events:
                     if e not in available_events:
                         raise InvalidMetricConfigError(
@@ -458,11 +488,7 @@ class MetricBuilder:
                         )
 
         elif metric_name in ("has_all_events", "has_any_event"):
-            events = metric_args.get("events")
-            if not isinstance(events, list) or len(events) == 0:
-                raise InvalidMetricConfigError(
-                    f"'{metric_name}' metric requires a non-empty 'events' list in metric_args"
-                )
+            events = _normalize_events_required(metric_args.get("events"), metric_name)
             for e in events:
                 if e not in available_events:
                     raise InvalidMetricConfigError(
@@ -470,12 +496,7 @@ class MetricBuilder:
                     )
 
         elif metric_name == "time_between":
-            start_event = metric_args.get("start_event")
-            end_event = metric_args.get("end_event")
-            if not start_event or not end_event:
-                raise InvalidMetricConfigError(
-                    "'time_between' metric requires 'start_event' and 'end_event' in metric_args"
-                )
+            start_event, end_event = _normalize_time_between(metric_args)
             # path_start and path_end are synthetic events, don't validate them
             if (
                 start_event not in SYNTHETIC_EVENTS
@@ -490,11 +511,7 @@ class MetricBuilder:
                 )
 
         elif metric_name == "matches_pattern":
-            pattern = metric_args.get("pattern")
-            if not pattern:
-                raise InvalidMetricConfigError(
-                    "'matches_pattern' metric requires 'pattern' in metric_args"
-                )
+            pattern = _normalize_pattern(metric_args)
             for tok in pattern.split("->"):
                 if tok == ".*" or tok in SYNTHETIC_EVENTS:
                     continue
@@ -505,20 +522,12 @@ class MetricBuilder:
                     )
 
         elif metric_name == "in_segment":
-            segment_name = metric_args.get("segment_name")
-            segment_value = metric_args.get(
-                "segment_value"
-            )  # Can be None, string, or list
-            mode = metric_args.get("mode", "any")
-
-            if not segment_name:
-                raise InvalidMetricConfigError(
-                    "'in_segment' metric requires 'segment_name' in metric_args"
-                )
-            if mode not in IN_SEGMENT_MODES:
-                raise InvalidMetricConfigError(
-                    f"'in_segment' metric has invalid mode '{mode}'. Valid modes: {sorted(IN_SEGMENT_MODES)}"
-                )
+            norm = _normalize_in_segment(metric_args)
+            segment_name, segment_values, mode = (
+                norm["segment_name"],
+                norm["segment_values"],
+                norm["mode"],
+            )
 
             # Validate that segment column exists
             if segment_name not in self.schema.segment_cols:
@@ -526,19 +535,10 @@ class MetricBuilder:
                     f"Segment '{segment_name}' not found. Available segments: {self.schema.segment_cols}"
                 )
 
-            # Get available segment values
-            available_segment_values = set(self.df[segment_name].unique().tolist())
-
-            # Validate segment_value if provided
-            if segment_value is not None:
-                # Normalize to list for validation
-                if isinstance(segment_value, list):
-                    values_to_check = segment_value
-                else:
-                    # Single scalar value (str, int, float, bool)
-                    values_to_check = [segment_value]
-
-                for v in values_to_check:
+            # Validate segment_values if provided (None means "all values" - nothing to check)
+            if segment_values is not None:
+                available_segment_values = set(self.df[segment_name].unique().tolist())
+                for v in segment_values:
                     if v not in available_segment_values:
                         raise InvalidMetricConfigError(
                             f"Segment value '{v}' not found in segment '{segment_name}'. "
@@ -547,11 +547,7 @@ class MetricBuilder:
 
             # Validate mode-specific parameters
             if mode == "event_share":
-                threshold = metric_args.get("threshold")
-                if threshold is None:
-                    raise InvalidMetricConfigError(
-                        "'event_share' mode requires 'threshold' (e.g., 0.1 for 10%)"
-                    )
+                threshold = _normalize_in_segment_threshold(metric_args)
                 if (
                     not isinstance(threshold, (int, float))
                     or threshold < 0

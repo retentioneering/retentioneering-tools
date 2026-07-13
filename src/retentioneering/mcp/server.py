@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import threading
 from functools import wraps
 
@@ -74,8 +75,15 @@ def serve(
                  "cache_control": {"type": "ephemeral"}}]
 
     Claude Desktop handles caching automatically.
+
+    Raises
+    ------
+    OSError
+        If *port* is already bound by another process (e.g. another local
+        server, or an unrelated app defaulting to the same port).
     """
     _track("mcp_serve", {"has_context": bool(context)})
+    _check_port_available(port)
     mcp = _build_server(stream, context or {}, port=port, notebook_dir=os.getcwd())
     thread = threading.Thread(
         target=lambda: mcp.run(transport="sse"),
@@ -87,6 +95,28 @@ def serve(
         f"Add to Claude Desktop config:\n"
         f'  "retentioneering": {{"url": "http://localhost:{port}/sse"}}'
     )
+
+
+def _check_port_available(port: int) -> None:
+    """Bind-and-release *port* so a port already held by another process
+    (e.g. an unrelated local app defaulting to the same port) raises here,
+    in the caller's thread — instead of failing silently inside the daemon
+    thread `serve()` starts the actual server on, which would otherwise leave
+    the notebook printing a "running" message while no MCP server is
+    reachable and every client-side tool call/connection just goes nowhere.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(("127.0.0.1", port))
+    except OSError as e:
+        raise OSError(
+            f"Port {port} is already in use by another process, so the "
+            f"retentioneering MCP server can't start there. Free the port, or "
+            f"pass a different one: serve(stream, port=<free_port>) — and update "
+            f"the client's MCP config (e.g. Claude Desktop/Code) to match."
+        ) from e
+    finally:
+        sock.close()
 
 
 # ── server builder ─────────────────────────────────────────────────────────────

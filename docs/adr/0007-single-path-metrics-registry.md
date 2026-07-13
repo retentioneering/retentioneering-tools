@@ -1,6 +1,27 @@
 # ADR-0007: Single Path Metrics registry
 
-Status: Accepted (5.0 rewrite; recorded 2026-07)
+Status: Superseded (see `metrics/metric_builder.py`) (recorded 2026-07)
+
+> **Superseded.** The dataclass-based `MetricSchema`/`METRIC_SCHEMAS` registry
+> described below (`metrics/metric_schema.py`) predated a parallel v5-migration
+> rewrite of the metric set itself (`has_event`/`event_count` split into strict
+> single-event forms plus `has_event_bulk`/`event_count_bulk` and
+> `has_all_events`/`has_any_event` — see `metric_builder.py`'s module
+> docstring) that never knew the registry existed. Reconciling the two on
+> merge kept the corrected metric set and moved its shape-declarations back
+> into `metric_builder.py` directly: `_parse_dict_config` and
+> `validate_metric_config` now each dispatch per metric, but share one
+> `_normalize_*` helper function per metric (`_normalize_single_event`,
+> `_normalize_events_bulk`, `_normalize_events_required`,
+> `_normalize_time_between`, `_normalize_pattern`, `_normalize_in_segment`) so
+> a metric's `metric_args` shape still can't drift between parsing and
+> validation — the **goal** below is unchanged, only the container is: a
+> plain function instead of a `MetricSchema` dataclass with `parse`/
+> `validate`/`metric_names` callable fields. `metrics/metric_schema.py` and
+> `tests/metrics/metric_schema_test.py` have been deleted; the JS codegen
+> (`scripts/export_metric_schema.py`, `make export-metric-schema`) now reads
+> `metric_builder.VALID_METRICS` instead of `METRIC_SCHEMAS`, still checked by
+> `tests/metrics/js_export_test.py`.
 
 ## Context
 

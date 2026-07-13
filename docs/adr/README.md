@@ -18,7 +18,7 @@ here; load individual ADRs when a task touches the corresponding area.
 | [0004](0004-schema-and-grain-neutral-paths.md) | Schema model & grain-neutral paths | `path_col` defines the unit of analysis; "path" is deliberately grain-neutral |
 | [0005](0005-anywidget-with-wheel-embedded-js.md) | anywidget + wheel-embedded JS | widget JS is built in CI and shipped inside the wheel; no CDN, no runtime download |
 | [0006](0006-widget-headless-twins.md) | Widget / headless `*_data` twins | every widget has a headless twin; data params = twin's signature |
-| [0007](0007-single-path-metrics-registry.md) | Single Path Metrics registry | one metric registry feeds clustering, overview, and path filtering |
+| [0007](0007-single-path-metrics-registry.md) | Single Path Metrics registry | **Superseded** — historical dataclass registry, kept for context; shape now lives in `metric_builder.py`'s `_normalize_*` helpers |
 | [0008](0008-naming-conventions.md) | 5.0 naming conventions | one concept — one name; industry priors; units in names |
 | [0009](0009-mcp-server-as-agent-interface.md) | MCP server as first-class agent interface | LLM agents get compact summaries + a validated HTML report workflow |
 | [0010](0010-static-html-export.md) | Self-contained static HTML export | exported reports work with no Python kernel behind them |

@@ -873,11 +873,17 @@ class MetricBuilder:
 
         # Build path strings for each path_id, padded with a leading/trailing '->'
         # so every event (including the first/last) is flanked by the delimiter.
+        # Rows are pre-sorted in the FROM subquery and aggregated via
+        # path_agg_ordered, since plain string_agg (path_agg) gives no ordering
+        # guarantee across DuckDB's parallel GROUP BY (see step_matrix.py for
+        # the same pattern).
         path_col_q = engine.quote_ident(path_col)
         event_col_q = engine.quote_ident(event_col)
+        index_col_q = engine.quote_ident(self.schema.index)
+        subindex_col_q = engine.quote_ident(self.schema.subindex)
         query = f"""
-        SELECT {path_col_q}, '->' || {dialect.path_agg(event_col_q)} || '->' as path
-        FROM df_with_start_end
+        SELECT {path_col_q}, '->' || {dialect.path_agg_ordered(event_col_q)} || '->' as path
+        FROM (SELECT * FROM df_with_start_end ORDER BY {path_col_q}, {index_col_q}, {subindex_col_q})
         GROUP BY {path_col_q}
         """
         paths = engine.run(query, df_with_start_end=self.df_with_start_end)

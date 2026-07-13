@@ -118,6 +118,34 @@ result = stream.funnel_data(steps=["page_view", "add_to_cart", "purchase"])
 
 Headless methods accept the same parameters as their widget counterparts, excluding those that are needed for visualization only, like `height`.
 
+## Exporting to HTML
+
+Every widget has an `export_html()` method that writes the current widget as a standalone, self-contained HTML file — no Python kernel, notebook, or network access is required to open it. This is useful for sharing a result with people who don't have Jupyter, or for archiving a snapshot of an analysis.
+
+```python
+widget = stream.transition_graph(edge_weight="proba_out")
+widget.export_html("transition_graph.html")
+```
+
+`export_html()` takes:
+
+| Parameter | Type | Description |
+|---|---|---|
+| `path` | `str` | Destination file path. |
+| `title` | `str` | Title shown in the browser tab. Defaults to the widget's name, e.g. `"Transition Graph"`. |
+| `analysis` | `str \| None` | Optional analysis text rendered alongside the widget. Supports basic markdown (bold, italic, bullet lists, tables, headings). Wrap an event name in square brackets, e.g. `` [basket] ``, to turn it into a link that focuses that event in the widget. |
+| `sidebar_open` | `bool \| None` | Whether the settings sidebar starts open in the exported file. Defaults to the widget's current `sidebar_open` value. |
+
+The export captures the widget's full state at the time `export_html()` is called — computed results, current parameters, and display preferences like node layout or sort order — so the file reproduces exactly what you saw in the notebook. Because there's no kernel behind the exported file, controls that would require recomputation (e.g. changing `edge_weight`) are disabled; layout, zoom, and other purely visual interactions still work.
+
+```python
+stream.funnel(steps=["page_view", "add_to_cart", "purchase"]).export_html(
+    "funnel.html",
+    title="Checkout funnel",
+    analysis="Drop-off at [add_to_cart]: most users leave before reaching checkout.",
+)
+```
+
 ## Saving widget state
 
 Every widget accepts a `state_file` parameter — a path to a JSON file the

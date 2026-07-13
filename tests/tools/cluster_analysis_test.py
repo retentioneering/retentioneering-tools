@@ -104,6 +104,31 @@ class TestClusterAnalysis:
         best_idx = sil["params"].index(result["best_params"])
         assert sil["silhouette"][best_idx] == max(sil["silhouette"])
 
+    def test_kmeans_n_clusters_range_string(self) -> None:
+        """n_clusters accepts the "lo-hi" range string documented on
+        cluster_analysis/cluster_analysis_data, not just a list of ints."""
+        df = get_df()
+        stream = Eventstream(df)
+
+        result = stream.cluster_analysis_data(
+            features=[
+                {"metric": "length"},
+                {"metric": "duration"},
+            ],
+            method="kmeans",
+            n_clusters="2-5",
+            scaler="minmax",
+        )
+
+        assert "silhouette" in result
+        assert [p["n_clusters"] for p in result["silhouette"]["params"]] == [
+            2,
+            3,
+            4,
+            5,
+        ]
+        assert result["best_params"]["n_clusters"] in [2, 3, 4, 5]
+
     def test_hdbscan_basic(self) -> None:
         """Test hdbscan clustering with overview"""
         df = get_df()

@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     import pandas as pd
 
 from retentioneering.exceptions import RetentioneeringError
+from retentioneering.tools.cluster_analysis import parse_n_clusters as _parse_n_clusters
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._html_export import write_html
 
@@ -530,25 +531,3 @@ def _as_n_clusters_str(value) -> str:
     if isinstance(value, list):
         return json.dumps(value)
     return str(value) if value else ""
-
-
-def _parse_n_clusters(raw: str):
-    if not raw or raw.strip() == "":
-        return None
-    s = raw.strip()
-    try:
-        # Range notation: "3-8" → [3,4,5,6,7,8]
-        if "-" in s and not s.startswith("[") and not s.startswith("-"):
-            parts = s.split("-")
-            if len(parts) == 2:
-                lo, hi = int(parts[0].strip()), int(parts[1].strip())
-                return list(range(lo, hi + 1))
-        # JSON list: "[3,4,5]"
-        if s.startswith("["):
-            return json.loads(s)
-        # Comma-separated: "3,4,5"
-        if "," in s:
-            return [int(x.strip()) for x in s.split(",")]
-        return int(s)
-    except Exception:
-        return None

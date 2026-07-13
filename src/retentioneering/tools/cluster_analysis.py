@@ -10,6 +10,7 @@ without saving intermediate eventstream. Supports:
 - NMF: returns H matrix from NMF decomposition alongside results.
 """
 
+import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Literal
 
@@ -33,6 +34,42 @@ T_ClusteringMethod = Literal["kmeans", "hdbscan"]
 T_Scaler = Literal["minmax", "standard"] | None
 
 
+def parse_n_clusters(value):
+    """Normalize an `n_clusters` argument into `None`, an `int`, or a `list[int]`.
+
+    Passes through values that are already the right shape (`None`, `int`,
+    `list`/`tuple`) and additionally understands the string forms documented
+    on `Eventstream.cluster_analysis`/`cluster_analysis_data`: a plain int
+    ("3"), a range ("3-8"), a JSON list ("[3,5,7]"), or a comma-separated list
+    ("3,5,7"). Returns `None` if a string doesn't match any of those forms.
+    """
+    if value is None or isinstance(value, int):
+        return value
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    if not isinstance(value, str):
+        return value
+    s = value.strip()
+    if not s:
+        return None
+    try:
+        # Range notation: "3-8" -> [3,4,5,6,7,8]
+        if "-" in s and not s.startswith("[") and not s.startswith("-"):
+            parts = s.split("-")
+            if len(parts) == 2:
+                lo, hi = int(parts[0].strip()), int(parts[1].strip())
+                return list(range(lo, hi + 1))
+        # JSON list: "[3,4,5]"
+        if s.startswith("["):
+            return json.loads(s)
+        # Comma-separated: "3,4,5"
+        if "," in s:
+            return [int(x.strip()) for x in s.split(",")]
+        return int(s)
+    except Exception:
+        return None
+
+
 @dataclass
 class ClusterAnalysis:
     eventstream: "Eventstream"
@@ -42,7 +79,7 @@ class ClusterAnalysis:
         features_config: List[Dict[str, Any]],
         method: T_ClusteringMethod = "kmeans",
         scaler: T_Scaler = "minmax",
-        n_clusters: int | List[int] | None = None,
+        n_clusters: int | List[int] | str | None = None,
         min_cluster_size: int | List[int] | None = None,
         cluster_selection_epsilon: float | List[float] | None = None,
         nmf_components: int | List[int] | None = None,
@@ -50,6 +87,8 @@ class ClusterAnalysis:
         path_col: str | None = None,
         event_col: str | None = None,
     ) -> Dict[str, Any]:
+        n_clusters = parse_n_clusters(n_clusters)
+
         if method == "kmeans":
             if isinstance(n_clusters, (list, tuple)):
                 n_clusters_missing = len(n_clusters) == 0 or any(

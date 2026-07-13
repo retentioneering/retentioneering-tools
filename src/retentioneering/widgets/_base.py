@@ -38,6 +38,7 @@ from typing import Any, Callable
 import anywidget
 import traitlets
 
+from retentioneering.exceptions import WidgetExportError
 from retentioneering.widgets._esm import _get_esm
 from retentioneering.widgets._state_file import StateFileMixin
 
@@ -83,6 +84,21 @@ class RetentioneeringWidget(StateFileMixin, anywidget.AnyWidget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.observe(self._on_compute_request, names=["compute_request"])
+
+    def _raise_if_error(self) -> None:
+        """Guard for ``export_html``: refuse to export a stale/failed result.
+
+        ``_recompute`` swallows non-``RetentioneeringError`` exceptions into
+        the ``error`` trait (so the live widget can show an inline banner
+        instead of crashing the notebook cell) and resets ``result`` to
+        ``"{}"``. ``export_html`` reads ``result`` straight off the
+        traitlets, so without this check it would silently write out a file
+        with an empty result instead of surfacing the failure.
+        """
+        if self.error:
+            raise WidgetExportError(
+                f"Cannot export: the widget's last computation failed: {self.error}"
+            )
 
     # ── compute RPC plumbing ────────────────────────────────────────────────
 

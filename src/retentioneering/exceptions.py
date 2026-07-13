@@ -80,3 +80,8 @@ class PathIdNotFoundError(RetentioneeringError):
 class InvalidComplementConfigError(MetricDistributionError):
     def __init__(self, message: str):
         super().__init__(message, "INVALID_COMPLEMENT_CONFIG")
+
+
+class WidgetExportError(RetentioneeringError):
+    def __init__(self, message: str):
+        super().__init__(message, "WIDGET_EXPORT_ERROR")

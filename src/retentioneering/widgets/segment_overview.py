@@ -188,6 +188,7 @@ class SegmentOverviewWidget(RetentioneeringWidget):
         analysis: str | None = None,
         sidebar_open: bool | None = None,
     ) -> None:
+        self._raise_if_error()
         data = {
             "widget_type": "segment_overview",
             "result": json.loads(self.result or "{}"),

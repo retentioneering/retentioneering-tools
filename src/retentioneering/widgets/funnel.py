@@ -185,6 +185,7 @@ class FunnelWidget(RetentioneeringWidget):
             Whether the settings sidebar starts open in the exported file.
             Defaults to the widget's current ``sidebar_open`` value.
         """
+        self._raise_if_error()
         data = {
             "widget_type": "funnel",
             "result": json.loads(self.result or "{}"),

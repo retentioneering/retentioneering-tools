@@ -124,6 +124,24 @@ class TestFilterEvents:
 
         assert res.equals(expected)
 
+    def test__keep_unknown_event_raises(self) -> None:
+        stream = Eventstream(get_df(), {"custom_cols": ["country"]})
+
+        with pytest.raises(Exception):
+            stream.filter_events(keep={"event": ["xxxxxxxx"]})
+
+    def test__drop_unknown_event_raises(self) -> None:
+        stream = Eventstream(get_df(), {"custom_cols": ["country"]})
+
+        with pytest.raises(Exception):
+            stream.filter_events(drop={"event": ["xxxxxxxx"]})
+
+    def test__keep_unknown_path_id_raises(self) -> None:
+        stream = Eventstream(get_df(), {"custom_cols": ["country"]})
+
+        with pytest.raises(Exception):
+            stream.filter_events(keep={"user_id": ["user_xxxxx"]})
+
     def test__scalar_values_raises(self) -> None:
         stream = Eventstream(get_df(), {"custom_cols": ["country"]})
 

@@ -112,12 +112,28 @@ class TestFunnel:
         with pytest.raises(InvalidParameterError):
             stream.funnel_data(steps=["A", "B"], path_col="not_a_path_col")
 
+    def test_funnel_rejects_typoed_step(self) -> None:
+        df = pd.DataFrame(
+            [
+                ["user_1", "add_to_cart", "2020-01-01 00:00:00"],
+                ["user_1", "cart", "2020-01-01 00:01:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df, {"event_cols": ["event"]})
+        with pytest.raises(InvalidParameterError):
+            stream.funnel_data(steps=["add_to_cart", "xxxxxxxx", "cart"])
+
     def test_funnel_no_conversions(self) -> None:
         df = pd.DataFrame(
             [
                 ["user_1", "A", "2020-01-01 00:00:00"],
                 ["user_2", "A", "2020-01-01 00:00:00"],
                 ["user_3", "C", "2020-01-01 00:00:00"],
+                # "B" exists in the eventstream (so it's a valid step, not a
+                # typo) but never occurs after "A" for any path, so step 2
+                # is still reached by zero paths.
+                ["user_4", "B", "2020-01-01 00:00:00"],
             ],
             columns=["user_id", "event", "timestamp"],
         )

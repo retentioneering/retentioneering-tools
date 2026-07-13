@@ -4,6 +4,7 @@ import pathlib
 import anywidget
 import traitlets
 
+from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._esm import _get_esm
 from retentioneering.widgets._state_file import StateFileMixin
 from retentioneering.widgets._utils import parse_diff as _parse_diff
@@ -156,6 +157,8 @@ class StepMatrixWidget(StateFileMixin, anywidget.AnyWidget):
                 path_pattern=self.path_pattern or None,
             )
             self.result = json.dumps(result)
+        except RetentioneeringError:
+            raise
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"

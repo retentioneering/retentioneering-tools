@@ -4,6 +4,7 @@ import pathlib
 import anywidget
 import traitlets
 
+from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._esm import _get_esm
 from retentioneering.widgets._state_file import StateFileMixin
 from retentioneering.widgets._utils import parse_diff as _parse_diff
@@ -201,6 +202,8 @@ class TransitionGraphWidget(StateFileMixin, anywidget.AnyWidget):
             else:
                 self.event_counts_g1 = "{}"
                 self.event_counts_g2 = "{}"
+        except RetentioneeringError:
+            raise
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"

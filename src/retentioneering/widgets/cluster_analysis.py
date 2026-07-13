@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
+from retentioneering.exceptions import RetentioneeringError  # noqa: E402
 from retentioneering.widgets._esm import _get_esm  # noqa: E402
 from retentioneering.widgets._html_export import write_html  # noqa: E402
 from retentioneering.widgets._state_file import StateFileMixin  # noqa: E402
@@ -268,6 +269,8 @@ class ClusterAnalysisWidget(StateFileMixin, anywidget.AnyWidget):
             self.result = json.dumps(result)
             self.chosen_params = json.dumps(raw.get("best_params") or {})
             self._cluster_labels = raw.get("cluster_labels")
+        except RetentioneeringError:
+            raise
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"

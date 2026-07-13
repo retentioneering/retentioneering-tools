@@ -1183,15 +1183,26 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     def _split_two(self, split, path_col: str | None = None):
-        from retentioneering.exceptions import EmptyEventstreamError, DiffConfigError
+        from retentioneering.exceptions import (
+            EmptyEventstreamError,
+            DiffConfigError,
+            SegmentValueNotFoundError,
+            PathIdNotFoundError,
+        )
 
         if len(split) == 3:
             segment_col, v1, v2 = split[0], split[1], split[2]
             if segment_col not in self.schema.segment_cols:
                 raise DiffConfigError(f"'{segment_col}' is not a segment column")
+            all_vals = set(self.get_segment_levels().get(segment_col, []))
+            if v1 not in all_vals:
+                raise SegmentValueNotFoundError(
+                    segment_value=v1,
+                    segment_col=segment_col,
+                    available_values=sorted(all_vals),
+                )
             s1 = self.filter_events(keep={segment_col: [v1]})
             if v2 == "<REST>":
-                all_vals = set(self.get_segment_levels().get(segment_col, []))
                 v2_vals = list(all_vals - {v1})
                 if not v2_vals:
                     raise DiffConfigError(
@@ -1199,11 +1210,24 @@ class Eventstream:
                         "'<REST>' requires at least one complementary value."
                     )
             else:
+                if v2 not in all_vals:
+                    raise SegmentValueNotFoundError(
+                        segment_value=v2,
+                        segment_col=segment_col,
+                        available_values=sorted(all_vals),
+                    )
                 v2_vals = [v2]
             s2 = self.filter_events(keep={segment_col: v2_vals})
         elif len(split) == 2:
             ids1, ids2 = split[0], split[1]
             path_col = path_col or self.schema.path_col
+            available_ids = set(self._df[path_col].unique().tolist())
+            missing1 = [i for i in ids1 if i not in available_ids]
+            missing2 = [i for i in ids2 if i not in available_ids]
+            if missing1 or missing2:
+                raise PathIdNotFoundError(
+                    sorted(set(missing1 + missing2), key=str), path_col
+                )
             s1 = self.filter_events(keep={path_col: list(ids1)})
             s2 = self.filter_events(keep={path_col: list(ids2)})
         else:

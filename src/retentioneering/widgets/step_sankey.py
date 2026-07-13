@@ -7,6 +7,7 @@ import traitlets
 _STATIC = pathlib.Path(__file__).parent.parent / "static"
 _UNSET = object()
 
+from retentioneering.exceptions import RetentioneeringError  # noqa: E402
 from retentioneering.widgets._esm import _get_esm  # noqa: E402
 from retentioneering.widgets._state_file import StateFileMixin  # noqa: E402
 from retentioneering.widgets._utils import parse_diff as _parse_diff  # noqa: E402
@@ -187,6 +188,8 @@ class StepSankeyWidget(StateFileMixin, anywidget.AnyWidget):
                 path_pattern=self.path_pattern or None,
             )
             self.result = json.dumps(result)
+        except RetentioneeringError:
+            raise
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"

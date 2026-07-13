@@ -106,6 +106,17 @@ class FilterEvents(DataProcessor):
                         PROCESSOR_NAME, column, df.columns.tolist()
                     )
 
+            for column, values in column_filter.items():
+                available_values = set(df[column].unique().tolist())
+                unknown = [v for v in values if v not in available_values]
+                if unknown:
+                    message = f"Value(s) {unknown} not found in column '{column}'."
+                    if column not in schema.path_cols:
+                        message += (
+                            f" Available values: {sorted(available_values, key=str)}"
+                        )
+                    raise PreprocessingConfigError(PROCESSOR_NAME, message)
+
             conditions = []
             for column, values in column_filter.items():
                 values_str = ", ".join(_sql_literal(v) for v in values)

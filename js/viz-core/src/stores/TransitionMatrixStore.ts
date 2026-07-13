@@ -167,12 +167,12 @@ export class TransitionMatrixStore {
 
     const share1 = rowColSum(this._group1Values, idx1) / (2 * t1);
     const share2 = rowColSum(this._group2Values, idx2) / (2 * t2);
-    return { group1Value: share1, group2Value: share2, diffValue: share2 - share1 };
+    return { group1Value: share1, group2Value: share2, diffValue: share1 - share2 };
   }
 
-  /** share_group2(E) − share_group1(E), where share = (rowSum + colSum) / (2 * totalMatrixSum).
-   *  Positive → event is proportionally more common in group 2 (red).
-   *  Negative → more common in group 1 (blue).
+  /** share_group1(E) − share_group2(E), where share = (rowSum + colSum) / (2 * totalMatrixSum).
+   *  Positive → event is proportionally more common in group 1 (red).
+   *  Negative → more common in group 2 (blue).
    *  Returns null when not in differential mode or event is missing. */
   getNodeShareDiff(eventId: string): number | null {
     if (!this._group1Values || !this._group2Values) return null;
@@ -195,7 +195,7 @@ export class TransitionMatrixStore {
 
     const share1 = rowColSum(this._group1Values, idx1) / (2 * t1);
     const share2 = rowColSum(this._group2Values, idx2) / (2 * t2);
-    return share2 - share1;
+    return share1 - share2;
   }
 
   getDiffCellBreakdown(row: string, col: string) {

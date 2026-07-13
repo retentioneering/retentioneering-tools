@@ -250,7 +250,7 @@ class TestSplitSessionsSchema:
             ]
         )
         res = stream.split_sessions(
-            separator="sep", session_id_col="sid", session_index_col="snum"
+            separator="sep", session_col="sid", session_index_col="snum"
         )
         assert "sid" in res.schema.path_cols
         assert "snum" in res.schema.custom_cols

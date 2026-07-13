@@ -89,7 +89,7 @@ contract is unchanged, it's just registered via `engine.run(sql, eventstream=df)
 
 ### Naming conventions (ADR-0008)
 
-One concept — one name: `path_col` / `event_col` / `timestamp_col` / `session_id_col` /
+One concept — one name: `path_col` / `event_col` / `timestamp_col` / `session_col` /
 `segment_col`; window anchors are always `start_event` / `end_event`; the diff sentinel is
 `<REST>`; duration inputs are strings with units (`"30m"`) or `pd.Timedelta`, time outputs are
 seconds; processors are verb-first, widgets are nouns, headless methods are `<widget>_data`.

@@ -81,7 +81,7 @@ class TestAddClusters:
 
         features = [
             {"metric": "length"},
-            {"metric": "has_event", "metric_args": {"events": "purchase"}},
+            {"metric": "has_event", "metric_args": {"event": "purchase"}},
         ]
 
         result = stream.add_clusters(
@@ -101,7 +101,7 @@ class TestAddClusters:
         stream = Eventstream(df)
 
         features = [
-            {"metric": "event_count", "metric_args": {"events": "view"}},
+            {"metric": "event_count", "metric_args": {"event": "view"}},
             {"metric": "duration"},
         ]
 
@@ -265,9 +265,9 @@ class TestAddClusters:
         features = [
             {"metric": "length"},
             {"metric": "duration"},
-            {"metric": "has_event", "metric_args": {"events": "purchase"}},
-            {"metric": "has_event", "metric_args": {"events": "view"}},
-            {"metric": "event_count", "metric_args": {"events": "view"}},
+            {"metric": "has_event", "metric_args": {"event": "purchase"}},
+            {"metric": "has_event", "metric_args": {"event": "view"}},
+            {"metric": "event_count", "metric_args": {"event": "view"}},
         ]
 
         result = stream.add_clusters(
@@ -308,8 +308,8 @@ class TestAddClusters:
         features = [
             {"metric": "length"},
             {"metric": "duration"},
-            {"metric": "has_event", "metric_args": {"events": "purchase"}},
-            {"metric": "event_count", "metric_args": {"events": "view"}},
+            {"metric": "has_event", "metric_args": {"event": "purchase"}},
+            {"metric": "event_count", "metric_args": {"event": "view"}},
         ]
 
         result = stream.add_clusters(
@@ -344,7 +344,7 @@ class TestAddClusters:
         features = [
             {"metric": "length"},
             {"metric": "duration"},
-            {"metric": "has_event", "metric_args": {"events": "purchase"}},
+            {"metric": "has_event", "metric_args": {"event": "purchase"}},
         ]
 
         result = stream.add_clusters(
@@ -371,7 +371,7 @@ class TestAddClusters:
 
         features = [
             {"metric": "length"},
-            {"metric": "has_event", "metric_args": {"events": "purchse"}},  # typo
+            {"metric": "has_event", "metric_args": {"event": "purchse"}},  # typo
         ]
 
         with pytest.raises(InvalidMetricConfigError, match="purchse"):

@@ -25,16 +25,16 @@ By default, Eventstream expects columns named `user_id`, `event`, and `timestamp
 
 ```python
 import pandas as pd
-from retentioneering import Eventstream
+import retentioneering as rete
 
 df = pd.read_csv("events.csv")
-stream = Eventstream(df)
+stream = rete.Eventstream(df)
 ```
 
 You can also pass a CSV path directly:
 
 ```python
-stream = Eventstream("events.csv")
+stream = rete.Eventstream("events.csv")
 ```
 
 ## Expected data format
@@ -60,7 +60,7 @@ Each row in your DataFrame represents a single event. At minimum, you need a pat
 The schema tells retentioneering which columns in your DataFrame correspond to paths, events, timestamps, and segments. Pass it as a dict to the `schema` parameter.
 
 ```python
-stream = Eventstream(df, schema={
+stream = rete.Eventstream(df, schema={
     "path_cols": ["user_id"],
     "event_cols": ["event"],
     "timestamp_col": "timestamp",
@@ -74,25 +74,24 @@ stream = Eventstream(df, schema={
 | `event_cols` | `["event"]` | Columns that contain event names. The first column is the primary event column. |
 | `timestamp_col` | `"timestamp"` | The timestamp column. |
 | `segment_cols` | `[]` | Columns treated as segmentations, available in widgets and metrics. See [Key concepts](#key-concepts). |
-| `custom_cols` | `[]` | Extra columns to carry through without special treatment. |
+| `custom_cols` | `None` | Extra columns you may need for working with the eventstream. Left as `None`, every column not covered by the rest of the schema is included automatically. Set to a list — even `[]` — and only those columns (plus the ones already covered by the schema) are kept; anything else is dropped. |
 
 ## Sample dataset
 
 retentioneering ships with a synthetic e-commerce dataset you can use to try the library without your own data. It contains six months of user sessions on a consumer electronics store, with several embedded behavioral patterns designed to showcase the analysis tools.
 
 ```python
-from retentioneering.datasets.ecom import load_ecom
+import retentioneering as rete
 
-stream = load_ecom()
+stream = rete.datasets.load_ecom()
 ```
 which is equivalent to:
 
 ```python
-from retentioneering.datasets.ecom import load_ecom
-from retentioneering import Eventstream
+import retentioneering as rete
 
-df = load_ecom(as_dataframe=True)
-stream = Eventstream(df, schema={
+df = rete.datasets.load_ecom(as_dataframe=True)
+stream = rete.Eventstream(df, schema={
     "path_cols": ["user_id", "session_id"],
     "segment_cols": [
         "platform",
@@ -102,3 +101,22 @@ stream = Eventstream(df, schema={
     ],
 })
 ```
+
+## Inspecting your data
+
+`stream.describe()` is a quick sanity check on what got loaded: dataset shape, schema, date range, event frequency, and path length/duration statistics.
+
+```python
+stream.describe()
+```
+
+Returns a dict:
+
+| Key | Contents |
+|---|---|
+| `schema` | `event_col`, `path_col`, `path_cols`, `segment_cols`, `timestamp_col` |
+| `shape` | `n_events`, `n_paths`, `n_unique_events` |
+| `date_range` | `min`, `max`, `span` |
+| `event_frequency` | `DataFrame` of `event`/`count`/`share`, sorted descending |
+| `path_stats` | dict keyed by each entry of `path_cols`, each a `DataFrame` (`DataFrame.describe()` shape: count/mean/std/min/percentiles/max) with `length`/`duration` columns |
+| `segments` | `DataFrame` of `segment_col`/`value`/`count`/`share`, one row per segment value across all segment columns |

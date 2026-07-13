@@ -223,7 +223,7 @@ class TestSegmentOverview:
             metrics=[
                 {
                     "metric": "event_count",
-                    "metric_args": {"events": "checkout"},
+                    "metric_args": {"event": "checkout"},
                     "agg": "mean",
                 },
             ],
@@ -254,7 +254,7 @@ class TestSegmentOverview:
             metrics=[
                 {
                     "metric": "has_event",
-                    "metric_args": {"events": "purchase"},
+                    "metric_args": {"event": "purchase"},
                     "agg": "mean",
                 },
             ],
@@ -376,7 +376,7 @@ class TestSegmentOverview:
             metrics=[
                 {"metric": "length", "agg": "mean"},
                 {"metric": "duration", "agg": "median"},
-                {"metric": "has_event", "metric_args": {"events": "C"}, "agg": "mean"},
+                {"metric": "has_event", "metric_args": {"event": "C"}, "agg": "mean"},
             ],
         )
 
@@ -543,7 +543,7 @@ class TestSegmentOverview:
             metrics=[
                 {
                     "metric": "has_event",
-                    "metric_args": {"events": "purchase"},
+                    "metric_args": {"event": "purchase"},
                     "agg": "mean",
                 },
             ],
@@ -582,8 +582,8 @@ class TestSegmentOverview:
         assert result.index[0] == "segment_size"
         assert result.index[1] == "segment_share"
 
-    def test_has_with_multiple_events(self) -> None:
-        """Test has metric with a list of events returns multiple rows"""
+    def test_has_bulk_with_multiple_events(self) -> None:
+        """Test has_event_bulk metric with a list of events returns multiple rows"""
         df = pd.DataFrame(
             [
                 ["user_1", "login", "segment_1", "2020-01-01 00:00:00"],
@@ -604,7 +604,7 @@ class TestSegmentOverview:
             segment_col="segment",
             metrics=[
                 {
-                    "metric": "has_event",
+                    "metric": "has_event_bulk",
                     "metric_args": {"events": ["purchase", "view"]},
                     "agg": "mean",
                 },
@@ -612,21 +612,21 @@ class TestSegmentOverview:
         )
 
         # Should have rows for both events
-        assert "has_event_purchase_mean" in result.index
-        assert "has_event_view_mean" in result.index
+        assert "has_event_bulk_purchase_mean" in result.index
+        assert "has_event_bulk_view_mean" in result.index
 
         # segment_1: user_1 has purchase (1), user_2 doesn't (0) -> mean = 0.5
         # segment_2: user_3 has purchase (1) -> mean = 1.0
-        assert result.loc["has_event_purchase_mean", "segment_1"] == 0.5
-        assert result.loc["has_event_purchase_mean", "segment_2"] == 1.0
+        assert result.loc["has_event_bulk_purchase_mean", "segment_1"] == 0.5
+        assert result.loc["has_event_bulk_purchase_mean", "segment_2"] == 1.0
 
         # segment_1: user_1 doesn't have view (0), user_2 has view (1) -> mean = 0.5
         # segment_2: user_3 has view (1) -> mean = 1.0
-        assert result.loc["has_event_view_mean", "segment_1"] == 0.5
-        assert result.loc["has_event_view_mean", "segment_2"] == 1.0
+        assert result.loc["has_event_bulk_view_mean", "segment_1"] == 0.5
+        assert result.loc["has_event_bulk_view_mean", "segment_2"] == 1.0
 
-    def test_event_count_with_multiple_events(self) -> None:
-        """Test event_count metric with a list of events returns multiple rows"""
+    def test_event_count_bulk_with_multiple_events(self) -> None:
+        """Test event_count_bulk metric with a list of events returns multiple rows"""
         df = pd.DataFrame(
             [
                 ["user_1", "click", "segment_1", "2020-01-01 00:00:00"],
@@ -647,7 +647,7 @@ class TestSegmentOverview:
             segment_col="segment",
             metrics=[
                 {
-                    "metric": "event_count",
+                    "metric": "event_count_bulk",
                     "metric_args": {"events": ["click", "scroll"]},
                     "agg": "mean",
                 },
@@ -655,20 +655,20 @@ class TestSegmentOverview:
         )
 
         # Should have rows for both events
-        assert "event_count_click_mean" in result.index
-        assert "event_count_scroll_mean" in result.index
+        assert "event_count_bulk_click_mean" in result.index
+        assert "event_count_bulk_scroll_mean" in result.index
 
         # segment_1: user_1 has 2 clicks, user_2 has 0 -> mean = 1.0
         # segment_2: user_3 has 1 click -> mean = 1.0
-        assert result.loc["event_count_click_mean", "segment_1"] == 1.0
-        assert result.loc["event_count_click_mean", "segment_2"] == 1.0
+        assert result.loc["event_count_bulk_click_mean", "segment_1"] == 1.0
+        assert result.loc["event_count_bulk_click_mean", "segment_2"] == 1.0
 
         # segment_1: user_1 has 1 scroll, user_2 has 3 -> mean = 2.0
         # segment_2: user_3 has 0 scrolls -> mean = 0.0
-        assert result.loc["event_count_scroll_mean", "segment_1"] == 2.0
-        assert result.loc["event_count_scroll_mean", "segment_2"] == 0.0
+        assert result.loc["event_count_bulk_scroll_mean", "segment_1"] == 2.0
+        assert result.loc["event_count_bulk_scroll_mean", "segment_2"] == 0.0
 
-    def test_event_count_all_events_wildcard(self) -> None:
+    def test_event_count_bulk_all_events_wildcard(self) -> None:
         """Omitting 'events' counts every event in the stream, like active_days' active_events"""
         df = pd.DataFrame(
             [
@@ -686,15 +686,15 @@ class TestSegmentOverview:
 
         result = stream.segment_overview_data(
             segment_col="segment",
-            metrics=[{"metric": "event_count", "agg": "mean"}],
+            metrics=[{"metric": "event_count_bulk", "agg": "mean"}],
         )
 
-        assert "event_count_click_mean" in result.index
-        assert "event_count_scroll_mean" in result.index
-        assert result.loc["event_count_click_mean", "segment_1"] == 1.0
-        assert result.loc["event_count_scroll_mean", "segment_1"] == 1.0
-        assert result.loc["event_count_click_mean", "segment_2"] == 1.0
-        assert result.loc["event_count_scroll_mean", "segment_2"] == 0.0
+        assert "event_count_bulk_click_mean" in result.index
+        assert "event_count_bulk_scroll_mean" in result.index
+        assert result.loc["event_count_bulk_click_mean", "segment_1"] == 1.0
+        assert result.loc["event_count_bulk_scroll_mean", "segment_1"] == 1.0
+        assert result.loc["event_count_bulk_click_mean", "segment_2"] == 1.0
+        assert result.loc["event_count_bulk_scroll_mean", "segment_2"] == 0.0
 
     def test_event_count_all_events_wildcard_honors_non_default_agg(self) -> None:
         """Omitting 'events' must still honor a non-'mean' 'agg' (e.g. 'median').
@@ -703,7 +703,9 @@ class TestSegmentOverview:
         'cols' list for the wildcard (since the resolved column names weren't known
         without the eventstream's available events), so the 'agg' requested for the
         wildcard metric was silently dropped and every wildcard column fell back to
-        the 'mean' default below regardless of what was requested.
+        the 'mean' default below regardless of what was requested. `event_count` is
+        strictly single-event now (see metric_builder.py's has_event/event_count
+        split) - 'events' wildcard/list fan-out lives on 'event_count_bulk'.
         """
         df = pd.DataFrame(
             [
@@ -722,22 +724,22 @@ class TestSegmentOverview:
             segment_col="segment",
             metrics=[
                 {
-                    "metric": "event_count",
-                    "metric_args": {"events": "click"},
+                    "metric": "event_count_bulk",
+                    "metric_args": {"events": ["click"]},
                     "agg": "median",
                 }
             ],
         )
         wildcard = stream.segment_overview_data(
             segment_col="segment",
-            metrics=[{"metric": "event_count", "agg": "median"}],
+            metrics=[{"metric": "event_count_bulk", "agg": "median"}],
         )
 
-        assert "event_count_click_median" in wildcard.index
-        assert "event_count_click_mean" not in wildcard.index
+        assert "event_count_bulk_click_median" in wildcard.index
+        assert "event_count_bulk_click_mean" not in wildcard.index
         assert (
-            wildcard.loc["event_count_click_median", "segment_1"]
-            == explicit.loc["event_count_click_median", "segment_1"]
+            wildcard.loc["event_count_bulk_click_median", "segment_1"]
+            == explicit.loc["event_count_bulk_click_median", "segment_1"]
         )
 
     def test_time_between_metric(self) -> None:
@@ -965,7 +967,7 @@ class TestSegmentOverview:
         with pytest.raises(InvalidMetricConfigError, match="AA"):
             stream.segment_overview_data(
                 segment_col="segment",
-                metrics=[{"metric": "has_event", "metric_args": {"events": "AA"}}],
+                metrics=[{"metric": "has_event", "metric_args": {"event": "AA"}}],
             )
 
 
@@ -1043,7 +1045,7 @@ class TestMetricDistribution:
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value=["segment_1", "segment_2"],
-            metric={"metric": "has_event", "metric_args": {"events": "purchase"}},
+            metric={"metric": "has_event", "metric_args": {"event": "purchase"}},
         )
 
         assert "distribution_1" in result
@@ -1209,7 +1211,7 @@ class TestMetricDistribution:
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value="segment_1",
-            metric={"metric": "event_count", "metric_args": {"events": "click"}},
+            metric={"metric": "event_count", "metric_args": {"event": "click"}},
             complement=True,
         )
 
@@ -1278,7 +1280,7 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        # This config produces 2 metrics: event_count_click and event_count_purchase
+        # This config produces 2 metrics: event_count_bulk_click and event_count_bulk_purchase
         with pytest.raises(
             InvalidMetricConfigError, match="requires exactly one metric"
         ):
@@ -1286,13 +1288,13 @@ class TestMetricDistribution:
                 segment_col="segment",
                 segment_value=["segment_1", "segment_2"],
                 metric={
-                    "metric": "event_count",
+                    "metric": "event_count_bulk",
                     "metric_args": {"events": ["click", "purchase"]},
                 },
             )
 
-    def test_has_multiple_events_error(self) -> None:
-        """Test that error is raised when 'has_event' metric has multiple events"""
+    def test_has_bulk_multiple_events_error(self) -> None:
+        """Test that error is raised when 'has_event_bulk' metric has multiple events"""
         df = pd.DataFrame(
             [
                 ["user_1", "click", "segment_1", "2020-01-01 00:00:00"],
@@ -1305,7 +1307,7 @@ class TestMetricDistribution:
         schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
         stream = Eventstream(df, schema)
 
-        # This config produces 2 metrics: has_click and has_purchase
+        # This config produces 2 metrics: has_event_bulk_click and has_event_bulk_purchase
         with pytest.raises(
             InvalidMetricConfigError, match="requires exactly one metric"
         ):
@@ -1313,7 +1315,7 @@ class TestMetricDistribution:
                 segment_col="segment",
                 segment_value=["segment_1", "segment_2"],
                 metric={
-                    "metric": "has_event",
+                    "metric": "has_event_bulk",
                     "metric_args": {"events": ["click", "purchase"]},
                 },
             )
@@ -1459,7 +1461,7 @@ class TestMetricDistribution:
         result = SegmentOverview(stream).get_metric_distribution(
             segment_col="segment",
             segment_value=["segment_1", "segment_2"],
-            metric={"metric": "has_event", "metric_args": {"events": "purchase"}},
+            metric={"metric": "has_event", "metric_args": {"event": "purchase"}},
         )
 
         # For discrete (has) metric, log_scale should always be False

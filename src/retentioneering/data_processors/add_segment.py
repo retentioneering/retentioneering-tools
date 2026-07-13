@@ -79,9 +79,10 @@ def _build_funnel_segment_query(
     so comparing index_col directly is correct at any accepted grain (see
     ADR-0004).
 
-    Segment values (named after the last event reached in sequence):
-      funnel_events[k]  — path reached step k but not k+1
-      'out_of_funnel'   — path never reached step 0
+    Segment values (named after the deepest step completed in order):
+      funnel_events[k]  — path completed steps 0..k in order, but not step k+1
+                          in order (missing, or out of sequence)
+      'out_of_funnel'   — path never completed step 0 in order
 
     Reads from the 'eventstream' variable in caller scope (same as sql= mode).
     Row order is restored via _ROW_IDX_COL.
@@ -139,6 +140,7 @@ class AddSegment(DataProcessor):
     func: Callable | None
     sql: str | None
     funnel_events: list | None
+    time_range: Collection | None
     path_col: str | None
 
     def __init__(
@@ -148,6 +150,7 @@ class AddSegment(DataProcessor):
         func: Callable | None = None,
         sql: str | None = None,
         funnel_events: list | None = None,
+        time_range: Collection | None = None,
         path_col: str | None = None,
     ) -> None:
         arg_is_not_none = [
@@ -155,16 +158,21 @@ class AddSegment(DataProcessor):
             rules is not None,
             sql is not None,
             funnel_events is not None,
+            time_range is not None,
         ]
-        if sum(arg_is_not_none) != 1:
+        if sum(arg_is_not_none) > 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                "One and only one of the arguments must be defined: "
-                "rules, func, sql, funnel_events.",
+                "At most one of the arguments must be defined: "
+                "rules, func, sql, funnel_events, time_range.",
             )
         if funnel_events is not None and len(funnel_events) < 2:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME, "funnel_events must have at least 2 events."
+            )
+        if time_range is not None and len(time_range) != 2:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME, "time_range must have exactly 2 elements: (start, end)."
             )
 
         self.name = name
@@ -172,22 +180,50 @@ class AddSegment(DataProcessor):
         self.func = func
         self.sql = sql
         self.funnel_events = funnel_events
+        self.time_range = time_range
         self.path_col = path_col
         super().__init__()
 
     def apply(
         self, df: pd.DataFrame, schema: EventstreamSchema
     ) -> Tuple[pd.DataFrame, EventstreamSchema]:
+        has_mode = any(
+            [
+                self.rules is not None,
+                self.func is not None,
+                self.sql is not None,
+                self.funnel_events is not None,
+                self.time_range is not None,
+            ]
+        )
+
         if self.name in df.columns:
             if self.name in schema.segment_cols:
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME, f"Segment '{self.name}' already exists."
                 )
-            else:
-                raise PreprocessingConfigError(
-                    PROCESSOR_NAME,
-                    f"Name '{self.name}' is already reserved in the eventstream.",
-                )
+            if self.name in schema.custom_cols and not has_mode:
+                new_df = df.copy()
+                new_df[self.name] = new_df[self.name].astype("category")
+                new_schema = schema.copy()
+                new_schema.custom_cols = [
+                    c for c in new_schema.custom_cols if c != self.name
+                ]
+                new_schema.segment_cols.append(self.name)
+                return new_df, new_schema
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"Name '{self.name}' is already reserved in the eventstream.",
+            )
+
+        if not has_mode:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                "One of the arguments must be defined: rules, func, sql, "
+                "funnel_events, time_range — unless promoting an existing custom "
+                f"column to a segment, in which case '{self.name}' must already be "
+                "a custom column and none of them should be set.",
+            )
 
         values = None
 
@@ -266,6 +302,18 @@ class AddSegment(DataProcessor):
             result = engine.run(query, eventstream=eventstream)
             result = result.sort_values(_ROW_IDX_COL).reset_index(drop=True)
             values = result["__funnel_level__"].tolist()
+
+        elif self.time_range is not None:
+            start, end = self.time_range
+            start_ts = pd.to_datetime(start)
+            end_ts = pd.to_datetime(end)
+            if start_ts > end_ts:
+                raise PreprocessingConfigError(
+                    PROCESSOR_NAME, "time_range start must not be after end."
+                )
+            ts_col = schema.timestamp_col
+            in_range = df[ts_col].between(start_ts, end_ts)
+            values = in_range.map({True: "inside", False: "outside"}).tolist()
 
         new_df = df.copy()
         new_df[self.name] = values

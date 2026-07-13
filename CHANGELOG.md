@@ -3,28 +3,6 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased]
-
-### Added
-
-- All widgets accept a `state_file` argument binding the full widget state
-  (data and display parameters, plus widget-specific extras: the transition
-  graph's node layout, event visibility, filters, and zoom; the step matrix's
-  event visibility/pins, filters, row order, step window, and horizontal
-  scroll; the step sankey's event count filter and horizontal scroll; the
-  cluster analysis' cluster renames and active tab) to a JSON file: if the
-  file exists the state is loaded from it, otherwise it is created, and every
-  subsequent change is auto-saved. Explicitly passed arguments override the
-  loaded state.
-- The transition graph keeps its zoom/pan across recomputes (changing edge
-  weight, diff, or path column no longer resets the viewport); step matrix
-  and step sankey likewise keep their horizontal scroll and row order.
-
-### Fixed
-
-- Cluster analysis: Apply is disabled while NMF is enabled but the number of
-  components is empty (previously such an Apply silently ran without NMF).
-
 ## [5.0.0]
 
 Complete rewrite of the library's core engine, compared to 3.3.0. The
@@ -61,28 +39,31 @@ Renamed or changed signature (same concept, different call shape):
   — `func` is now one of four alternative filtering modes
 - `add_start_end_events()` → `add_start_end_events(path_col=None)`
 - `split_sessions(timeout, delimiter_events, delimiter_col, session_col, mark_truncated)`
-  → `split_sessions(session_id_col, session_index_col, separator, start_event, end_event, timeout, path_col, event_col)`
+  → `split_sessions(session_col, session_index_col, separator, start_event, end_event, timeout, path_col, event_col)`
   — `timeout` now takes a duration string with an explicit unit (`"30m"`) or
   a `pandas.Timedelta`; bare numbers are rejected
 - `truncate_paths(drop_before, drop_after, occurrence_before, occurrence_after, shift_before, shift_after)`
   → `truncate_paths(start_event, end_event, path_col=None, event_col=None)`
 - `rename(rules: list[dict])` → `rename_events(mapping: dict)`
-- `collapse_loops(suffix, time_agg)` → `collapse_events(consecutive, event_groups, group_col, session_id_col, session_type_col, agg, path_col, event_col)`
+- `collapse_loops(suffix, time_agg)` → `collapse_events(consecutive, event_groups, group_col, session_col, session_type_col, agg, path_col, event_col)`
+- `describe()`/`describe_events()` → `describe()` — single headless summary
+  (schema, shape (event/path counts), date range, event frequency, and path
+  length/duration distributions (mean/median/min/max/percentiles))
 
 Removed, no equivalent in this release:
 `copy()`, `append_eventstream()`, `index_events()`, `add_custom_col()`,
 `clusters()` (the stateful `fit()`/`extract_features()` object), `cohorts()`,
 `stattests()`, `timedelta_hist()`, `user_lifetime_hist()`,
-`event_timestamp_hist()`, `describe()`, `describe_events()`,
-`preprocessing_graph()`, `transition_matrix()` as a public method (the
-computation still happens internally inside `transition_graph_data()`),
-`sequences()`, `add_negative_events()`, `add_positive_events()`,
-`drop_paths()`, `group_events()`, `group_events_bulk()`,
-`label_cropped_paths()`, `label_lost_users()`, `label_new_users()`, `pipe()`
+`event_timestamp_hist()`, `preprocessing_graph()`, `transition_matrix()` as a
+public method (the computation still happens internally inside
+`transition_graph_data()`), `sequences()`, `add_negative_events()`,
+`add_positive_events()`, `drop_paths()`, `group_events()`,
+`group_events_bulk()`, `label_cropped_paths()`, `label_lost_users()`,
+`label_new_users()`, `pipe()`
 
 Added, no equivalent in 3.3.0:
 `schema`/`df` properties, `is_empty()`, `equals()`, `get_event_counts()`,
-`fingerprint`, `get_segment_values()`, `urls_to_events()`, `filter_paths()`
+`fingerprint`, `get_segment_levels()`, `urls_to_events()`, `filter_paths()`
 (condition-tree based), `get_metrics()`, `add_events()`, `add_segment()`,
 `add_clusters()` (a new one-shot processor, unrelated to 3.3.0's `clusters()`),
 `to_daily_states()`, `drop_segment()`, `edit_events()`, `drop_events()`,
@@ -93,7 +74,7 @@ Added, no equivalent in 3.3.0:
 
 Naming conventions across the new API:
 - one column vocabulary everywhere: `path_col`, `event_col`, `timestamp_col`,
-  `session_id_col`, `segment_col`
+  `session_col`, `segment_col`
 - window anchors are always the `start_event` / `end_event` pair
   (`truncate_paths`, `split_sessions`, the `time_between` metric)
 - the diff-mode sentinel for "every other segment value" is `<REST>`
@@ -106,6 +87,7 @@ Naming conventions across the new API:
 
 ### Added
 
+- VS Code-based environments (including Cursor) are fully supported now.
 - **Segment Overview** — a new widget/tool with no equivalent in 3.3.0, for
   comparing metrics across segments
 - **MCP server** (`retentioneering.mcp.serve()`) — exposes the eventstream
@@ -114,7 +96,13 @@ Naming conventions across the new API:
   multi-widget static HTML report with clickable cross-references
 - `ipywidgets` is now a core dependency, so widgets work out of the box in
   plain JupyterLab
-- `rename_segment_values(segment_col, mapping)` — rename values within an existing
+- `schema.custom_cols` now defaults to `None` instead of `[]`: any DataFrame
+  column not otherwise declared in the schema is added to it automatically,
+  keeping it from being silently dropped by row-reshaping data processors
+  (`collapse_events`, `to_daily_states`). Passing an explicit list — even
+  `[]` — switches to strict mode: only schema-declared and listed columns
+  are kept, everything else is excluded from the eventstream.
+- `rename_segment_levels(segment_col, mapping)` — rename levels within an existing
   segment column (e.g. cluster labels produced by `add_clusters`, or messy raw
   segment data), analogous to `rename_events` but for segment columns
 - `cluster_analysis_data()` and the Cluster Analysis widget now report `best_params`
@@ -125,6 +113,18 @@ Naming conventions across the new API:
   clustering into the eventstream as a new segment column, optionally renaming
   cluster labels first. Choose either a copy-pasteable `add_clusters(...)` code
   snippet (`stream` stays untouched) or applying it in place immediately
+- All widgets accept a `state_file` argument binding the full widget state
+  (data and display parameters, plus widget-specific extras: the transition
+  graph's node layout, event visibility, filters, and zoom; the step matrix's
+  event visibility/pins, filters, row order, step window, and horizontal
+  scroll; the step sankey's event count filter and horizontal scroll; the
+  cluster analysis' cluster renames and active tab) to a JSON file: if the
+  file exists the state is loaded from it, otherwise it is created, and every
+  subsequent change is auto-saved. Explicitly passed arguments override the
+  loaded state.
+- The transition graph keeps its zoom/pan across recomputes (changing edge
+  weight, diff, or path column no longer resets the viewport); step matrix
+  and step sankey likewise keep their horizontal scroll and row order.
 
 ### Fixed
 

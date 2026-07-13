@@ -57,6 +57,7 @@ DATA_PROCESSORS = [
     "drop_events",
     "edit_events",
     "rename_events",
+    "rename_segment_levels",
     "sample_paths",
     "split_sessions",
     "truncate_paths",

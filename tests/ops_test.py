@@ -39,7 +39,7 @@ def test_registered_ops_covers_full_processor_surface():
         "drop_segment",
         "edit_events",
         "rename_events",
-        "rename_segment_values",
+        "rename_segment_levels",
         "drop_events",
         "sample_paths",
         "split_sessions",

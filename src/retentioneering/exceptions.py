@@ -71,6 +71,12 @@ class SegmentValueNotFoundError(MetricDistributionError):
         super().__init__(message, "SEGMENT_VALUE_NOT_FOUND")
 
 
+class PathIdNotFoundError(RetentioneeringError):
+    def __init__(self, path_ids: list, path_col: str):
+        message = f"Path ID(s) {path_ids} not found in column '{path_col}'"
+        super().__init__(message, "PATH_ID_NOT_FOUND")
+
+
 class InvalidComplementConfigError(MetricDistributionError):
     def __init__(self, message: str):
         super().__init__(message, "INVALID_COMPLEMENT_CONFIG")

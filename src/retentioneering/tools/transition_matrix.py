@@ -176,4 +176,4 @@ class TransitionMatrix:
             fill_value = 0 if values not in time_values else pd.NaT
             tm1 = tm1.reindex(index=index, columns=columns, fill_value=fill_value)
             tm2 = tm2.reindex(index=index, columns=columns, fill_value=fill_value)
-            return tm2 - tm1, tm1, tm2
+            return tm1 - tm2, tm1, tm2

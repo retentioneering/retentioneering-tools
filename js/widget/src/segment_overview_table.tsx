@@ -57,8 +57,10 @@ export function formatCellValue(metric: string, v: number | null | undefined): s
 // event_count_purchase_mean / has_event_add_to_cart_median → "purchase · event_count · mean"
 // (the event name is the interesting part — leading it keeps it from getting lost
 // between the metric prefix and the aggregation suffix on a narrow column).
+// The bulk variants must be checked before the plain ones: "event_count_bulk_x"
+// also starts with "event_count_", so the more specific prefix has to win.
 export function formatMetricLabel(metric: string): string {
-  for (const base of ["event_count", "has_event"]) {
+  for (const base of ["event_count_bulk", "has_event_bulk", "has_all_events", "has_any_event", "event_count", "has_event"]) {
     if (!metric.startsWith(base + "_")) continue;
     const rest = metric.slice(base.length + 1);
     for (const agg of AGG_OPTIONS) {
@@ -458,22 +460,39 @@ export function SegmentOverviewTable({
 export function metricBaseName(metricName: string): string {
   // "event_count_checkout_mean" → "event_count"
   // "length_mean" → "length"
-  const known = ["event_count", "has_event", "time_between", "active_days", "in_segment", "matches_pattern", "first_event_time", "duration", "length"];
+  // Bulk variants are checked before the plain ones: "event_count_bulk_x" also
+  // starts with "event_count", so the more specific prefix has to win.
+  const known = ["event_count_bulk", "has_event_bulk", "has_all_events", "has_any_event", "event_count", "has_event", "time_between", "active_days", "in_segment", "matches_pattern", "first_event_time", "duration", "length"];
   for (const k of known) if (metricName.startsWith(k)) return k;
   return metricName.split("_")[0];
 }
 
 export function metricArgsFromName(metricName: string, _events: string[]): any {
-  // Best-effort extraction — backend will validate
+  // Best-effort extraction — backend will validate. A single cell's
+  // distribution is inherently single-valued, so both the plain and bulk
+  // variants reconstruct into the strict single-event 'event_count'/'has_event'
+  // config (never '*_bulk', which can't be used for a single-column request).
   const m = metricBaseName(metricName);
+  if (m === "event_count_bulk") {
+    const rest = metricName.replace(/^event_count_bulk_/, "").replace(/_[a-z\d]+$/, "");
+    return rest ? { event: rest } : undefined;
+  }
+  if (m === "has_event_bulk") {
+    const rest = metricName.replace(/^has_event_bulk_/, "").replace(/_[a-z\d]+$/, "");
+    return rest ? { event: rest } : undefined;
+  }
   if (m === "event_count") {
     const rest = metricName.replace(/^event_count_/, "").replace(/_[a-z\d]+$/, "");
-    return rest ? { events: rest } : undefined;
+    return rest ? { event: rest } : undefined;
   }
   if (m === "has_event") {
     const rest = metricName.replace(/^has_event_/, "").replace(/_[a-z\d]+$/, "");
-    return rest ? { events: rest } : undefined;
+    return rest ? { event: rest } : undefined;
   }
+  // has_all_events/has_any_event: the joined events list can't be
+  // unambiguously split back out if an event name itself contains "_and_"/
+  // "_or_", so we deliberately don't reconstruct metric_args for these -
+  // callers should treat a missing metric_args as "can't drill in further".
   return undefined;
 }
 
@@ -495,9 +514,18 @@ export function useDistributionSelection({ host, result, rootRef, segmentCol, pa
   const [distLoading, setDistLoading] = React.useState(false);
   const [ctxMenu, setCtxMenu] = React.useState<{ x: number; y: number; mi: number; si: number } | null>(null);
 
+  // has_all_events/has_any_event columns can't be drilled into: the joined
+  // events list in the column name can't be unambiguously reconstructed into
+  // metric_args (see metricArgsFromName), so their cells aren't selectable.
+  const isDrillable = React.useCallback((mi: number) => {
+    if (!result) return false;
+    const base = metricBaseName(result.metrics[mi]);
+    return base !== "has_all_events" && base !== "has_any_event";
+  }, [result]);
+
   // Left click: select/deselect (shift = add second cell in same row, max 2)
   const handleCellClick = React.useCallback((mi: number, si: number, shift: boolean) => {
-    if (!result) return;
+    if (!result || !isDrillable(mi)) return;
     const key = `${mi}:${si}`;
     setCtxMenu(null);
     setSelected(prev => {
@@ -512,11 +540,11 @@ export function useDistributionSelection({ host, result, rootRef, segmentCol, pa
       next.add(key);
       return next;
     });
-  }, [result]);
+  }, [result, isDrillable]);
 
   // Right click: show context menu at position relative to widget root
   const handleCellRightClick = React.useCallback((mi: number, si: number, clientX: number, clientY: number) => {
-    if (!result || !rootRef.current) return;
+    if (!result || !rootRef.current || !isDrillable(mi)) return;
     const rect = rootRef.current.getBoundingClientRect();
     setCtxMenu({ x: clientX - rect.left, y: clientY - rect.top, mi, si });
     const key = `${mi}:${si}`;
@@ -528,7 +556,7 @@ export function useDistributionSelection({ host, result, rootRef, segmentCol, pa
       next.add(key);
       return next;
     });
-  }, [result, rootRef]);
+  }, [result, rootRef, isDrillable]);
 
   // Show distribution for currently selected cells in the right-clicked row
   const handleShowDist = React.useCallback(() => {

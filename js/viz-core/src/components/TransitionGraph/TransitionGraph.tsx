@@ -13,6 +13,7 @@ import { useGraphLayout } from "./hooks/useGraphLayout";
 import { DEFAULT_VALUE_TYPE, isTimeValueType, isProbabilityValueType, type MatrixValueType } from "../../utils/value-types";
 import { formatNumber } from "../../utils/format-number";
 import { formatTime } from "../../utils/format-time";
+import { resolveDiffLabels } from "../../utils/diff-tooltip";
 import { RangeSlider } from "./RangeSlider";
 import { SearchBar } from "./SearchBar";
 import { DiffBreakdownTooltip } from "./DiffBreakdownTooltip";
@@ -373,6 +374,10 @@ export const TransitionGraph = observer(function TransitionGraph({
   const hasShownInitialSceneRef = React.useRef(false);
   const isDifferential =
     !!committedDiffSegment || committedMatrixType === "differential";
+  const diffLabels = React.useMemo(
+    () => resolveDiffLabels(diffSegment, diffValue1, diffValue2),
+    [diffSegment, diffValue1, diffValue2],
+  );
   const graphLayoutResult = graphLayoutData?.result ?? null;
   const tooltipSide = React.useMemo<"left" | "right">(() => {
     if (!tooltip) return "right";
@@ -1978,9 +1983,9 @@ export const TransitionGraph = observer(function TransitionGraph({
             <DiffBreakdownTooltip
               title={<span>{tooltip.eventId}</span>}
               subtitle="share of event in group"
-              segmentName={diffSegment || "segment"}
-              value1Label={diffValue1 != null && diffValue1 !== "" ? String(diffValue1) : "group1"}
-              value2Label={diffValue2 != null && diffValue2 !== "" ? String(diffValue2) : "group2"}
+              segmentName={diffLabels.segmentName}
+              value1Label={diffLabels.value1Label}
+              value2Label={diffLabels.value2Label}
               group1Value={tooltip.group1Value}
               group2Value={tooltip.group2Value}
               diffValue={tooltip.diffValue}
@@ -1995,9 +2000,9 @@ export const TransitionGraph = observer(function TransitionGraph({
                   <span>{tooltip.to}</span>
                 </span>
               }
-              segmentName={diffSegment || "segment"}
-              value1Label={diffValue1 != null && diffValue1 !== "" ? String(diffValue1) : "group1"}
-              value2Label={diffValue2 != null && diffValue2 !== "" ? String(diffValue2) : "group2"}
+              segmentName={diffLabels.segmentName}
+              value1Label={diffLabels.value1Label}
+              value2Label={diffLabels.value2Label}
               group1Value={tooltip.group1Value}
               group2Value={tooltip.group2Value}
               diffValue={tooltip.diffValue}

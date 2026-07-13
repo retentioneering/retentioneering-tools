@@ -2,8 +2,10 @@ import json
 
 import traitlets
 
+from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import parse_diff as _parse_diff
+from retentioneering.widgets._utils import step_matrix_blocks as _step_matrix_blocks
 from retentioneering.widgets._html_export import write_html
 
 
@@ -73,7 +75,7 @@ class StepSankeyWidget(RetentioneeringWidget):
 
         # Catalogues
         try:
-            self.segment_levels = json.dumps(eventstream.get_segment_values())
+            self.segment_levels = json.dumps(eventstream.get_segment_levels())
         except Exception:
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)
@@ -151,6 +153,8 @@ class StepSankeyWidget(RetentioneeringWidget):
                 path_pattern=self.path_pattern or None,
             )
             self.result = json.dumps(result)
+        except RetentioneeringError:
+            raise
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"
@@ -166,6 +170,7 @@ class StepSankeyWidget(RetentioneeringWidget):
             path_col=path_col,
             path_pattern=path_pattern,
         )
+        raw = _step_matrix_blocks(raw, diff, path_pattern)
 
         if diff is not None:
             diff_sms, sms1, sms2 = raw

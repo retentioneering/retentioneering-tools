@@ -10,13 +10,19 @@ stream = Eventstream(df, schema={
 })
 ```
 
-Columns already present in your data become segments by listing them in the schema's `segment_cols`. New ones are derived with [Add Segment](/docs/data-processors/add-segment) and [Add Clusters](/docs/data-processors/add-clusters), and removed with [Drop Segment](/docs/data-processors/drop-segment).
+Columns already present in your data become segments by listing them in the schema's `segment_cols` up front. If the `Eventstream` already exists — the column just rode along as a `custom_col` (see [Eventstream](/docs/eventstream#schema)) — call `add_segment` with no `rules`/`func`/`sql`/`funnel_events` argument to promote it in place, keeping its existing values:
+
+```python
+stream.add_segment("returned")
+```
+
+New segment columns are derived with [Add Segment](/docs/data-processors/add-segment) and [Add Clusters](/docs/data-processors/add-clusters), have their levels renamed with [Rename Segment Levels](/docs/data-processors/rename-segment-levels), and are removed with [Drop Segment](/docs/data-processors/drop-segment).
 
 ## Static and dynamic segments
 
 Segment values are stored per event row. This gives two kinds of segments:
 
-- **Static** — the value is constant for the whole path: `country`, `acquisition_channel`, an A/B test arm, a cluster label, the last funnel step reached. A static segment answers "*which paths* behave differently?"
+- **Static** — the value is constant for the whole path: `country`, `acquisition_channel`, an A/B test arm, a cluster label, the deepest funnel step reached in order. A static segment answers "*which paths* behave differently?"
 - **Dynamic** — the value changes along the path, because it is assigned per event: `weekend` / `weekday` depending on each event's timestamp, `inside` / `outside` an incident window, a user state that evolves from `new` through `returning` to `loyal`. A dynamic segment answers "*which parts of a path* behave differently?"
 
 The row-level modes of `add_segment` (`rules`, `sql`, `func`) can produce either kind — a static segment is simply one whose value happens to be constant within each path. The `funnel_events` mode and `add_clusters` always produce static, per-path segments.
@@ -25,7 +31,7 @@ Dynamic segments are handled naturally by the segment-aware tools. [Segment Over
 
 ## Creating segments
 
-[Add Segment](/docs/data-processors/add-segment) supports four modes — exactly one must be used per call:
+[Add Segment](/docs/data-processors/add-segment) supports five modes — exactly one must be used per call:
 
 ```python
 # rules — ordered CASE-WHEN conditions
@@ -47,8 +53,13 @@ stream.add_segment(
 # func — any Python function over the raw DataFrame
 stream.add_segment("power_user", func=lambda df: df["user_id"].map(power_users_lookup))
 
-# funnel_events — the last funnel step each path reached
+# funnel_events — the deepest funnel step each path completed in order;
+# skipping or reordering a step keeps it out of that step's group (out_of_funnel
+# if even the first step was never completed in order)
 stream.add_segment("funnel", funnel_events=["add_to_cart", "checkout_start", "purchase"])
+
+# time_range — binary "inside" vs "outside" an inclusive timestamp interval
+stream.add_segment("incident", time_range=("2024-03-10", "2024-03-17"))
 ```
 
 [Add Clusters](/docs/data-processors/add-clusters) is a special case: it clusters paths by behavioral metrics with ML and stores the cluster labels as a new static segment, so clusters immediately work everywhere ordinary segments do.
@@ -57,15 +68,22 @@ stream.add_segment("funnel", funnel_events=["add_to_cart", "checkout_start", "pu
 
 ### Inside vs outside an anomalous period
 
-When something unusual happens — a payment gateway incident, a broken release, a marketing spike, a bot attack — the first question is "how did behavior change?" A dynamic segment over the timestamp cleanly separates the anomalous window from normal operation:
+When something unusual happens — a payment gateway incident, a broken release, a marketing spike, a bot attack — the first question is "how did behavior change?" A dynamic segment over the timestamp cleanly separates the anomalous window from normal operation. The `time_range` mode covers this directly — pass the `(start, end)` bounds and every event is labeled `inside` or `outside`:
+
+```python
+stream.add_segment("incident", time_range=("2024-03-10", "2024-03-17"))
+```
+
+For anything the binary inside/outside split doesn't cover — more than two buckets, or a boundary rule other than a plain inclusive interval — fall back to `sql`:
 
 ```python
 stream.add_segment(
     "incident",
     sql="""
         SELECT CASE
-            WHEN timestamp BETWEEN '2024-03-10' AND '2024-03-17' THEN 'inside'
-            ELSE 'outside'
+            WHEN timestamp < '2024-03-10' THEN 'before'
+            WHEN timestamp <= '2024-03-17' THEN 'during'
+            ELSE 'after'
         END
         FROM eventstream
     """,

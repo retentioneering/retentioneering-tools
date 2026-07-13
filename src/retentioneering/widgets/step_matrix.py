@@ -2,8 +2,10 @@ import json
 
 import traitlets
 
+from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import parse_diff as _parse_diff
+from retentioneering.widgets._utils import step_matrix_blocks as _step_matrix_blocks
 from retentioneering.widgets._html_export import write_html
 
 
@@ -62,6 +64,7 @@ class StepMatrixWidget(RetentioneeringWidget):
         diff=_UNSET,
         path_col=_UNSET,
         path_pattern=_UNSET,
+        step_window=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
         state_file=None,
@@ -84,7 +87,7 @@ class StepMatrixWidget(RetentioneeringWidget):
         except Exception:
             self.event_list = "[]"
         try:
-            self.segment_levels = json.dumps(eventstream.get_segment_values())
+            self.segment_levels = json.dumps(eventstream.get_segment_levels())
         except Exception:
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)
@@ -94,6 +97,7 @@ class StepMatrixWidget(RetentioneeringWidget):
         self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
         self.path_col = path_col if path_col is not _UNSET else ""
         self.path_pattern = path_pattern if path_pattern is not _UNSET else ""
+        self.step_window = step_window if step_window is not _UNSET else 3
         self.height = height if height is not _UNSET else 600
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
 
@@ -105,6 +109,7 @@ class StepMatrixWidget(RetentioneeringWidget):
                     ("diff", diff),
                     ("path_col", path_col),
                     ("path_pattern", path_pattern),
+                    ("step_window", step_window),
                     ("height", height),
                     ("sidebar_open", sidebar_open),
                 )
@@ -157,6 +162,8 @@ class StepMatrixWidget(RetentioneeringWidget):
                 path_pattern=self.path_pattern or None,
             )
             self.result = json.dumps(result)
+        except RetentioneeringError:
+            raise
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"
@@ -172,6 +179,7 @@ class StepMatrixWidget(RetentioneeringWidget):
             path_col=path_col,
             path_pattern=path_pattern,
         )
+        raw = _step_matrix_blocks(raw, diff, path_pattern)
         if diff is not None:
             diff_sms, sms1, sms2 = raw
             matrices = [_df_to_matrix(sm) for sm in diff_sms]

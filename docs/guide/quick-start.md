@@ -14,23 +14,18 @@ Create an [Eventstream](/docs/eventstream) from a pandas DataFrame. By default, 
 
 ```python
 import pandas as pd
-from retentioneering import Eventstream
+import retentioneering as rete
 
 df = pd.read_csv("events.csv")
-stream = Eventstream(df)
+stream = rete.Eventstream(df)
 ```
 
 No CSV yet? Use the built-in sample dataset to follow along:
 
 ```python
-from retentioneering.datasets.ecom import load_ecom
-from retentioneering import Eventstream
+import retentioneering as rete
 
-df = load_ecom()
-stream = Eventstream(df, schema={
-    "path_cols": ["user_id"],
-    "segment_cols": ["platform", "acquisition_channel"],
-})
+stream = rete.datasets.load_ecom()
 ```
 
 ## 3. Explore with a widget
@@ -45,11 +40,11 @@ Compare two user segments side by side:
 
 Explore user paths step by step around important events or drop-off points with [Step Sankey](/docs/widgets/step-sankey):
 
-<DemoWidget cmd={`stream.step_sankey(path_pattern=".*->purchase")`} path="/docs-demos/guide/quick-start/step-sankey.html" height={560} sidebarOpen={false}/>
+<DemoWidget cmd={`stream.step_sankey(path_pattern="purchase")`} path="/docs-demos/guide/quick-start/step-sankey.html" height={560} sidebarOpen={false}/>
 
 or its equivalent [Step Matrix](/docs/widgets/step-matrix):
 
-<DemoWidget cmd={`stream.step_matrix(path_pattern=".*->purchase")`} path="/docs-demos/guide/quick-start/step-matrix.html" height={560} sidebarOpen={false} />
+<DemoWidget cmd={`stream.step_matrix(path_pattern="purchase")`} path="/docs-demos/guide/quick-start/step-matrix.html" height={560} sidebarOpen={false} />
 
 ## 4. Prepare your data
 
@@ -57,7 +52,7 @@ Use [data processors](/docs/data-processors) to clean and shape the eventstream 
 
 ```python
 stream = (
-    Eventstream(df)
+    rete.Eventstream(df)
     .filter_events(drop={"event": ["bot_ping"]})
     .rename_events({"btn_click": "button_click"})
 )

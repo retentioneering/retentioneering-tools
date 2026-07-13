@@ -241,6 +241,72 @@ def test_truncate_paths_path_col_override_rejects_undeclared_column():
         stream.truncate_paths(start_event="A", end_event="B", path_col="not_a_path_col")
 
 
+def test_truncate_paths_path_start_sentinel(simple_eventstream):
+    """`start_event="path_start"` keeps everything from the path's actual
+    first event up to the first occurrence of `end_event`, without requiring
+    any specific start anchor to be present."""
+    result = simple_eventstream.truncate_paths(start_event="path_start", end_event="C")
+    df = result.df
+
+    assert df[df["user_id"] == 1]["event"].tolist() == ["A", "B", "C"]
+    assert df[df["user_id"] == 2]["event"].tolist() == ["A", "B", "C"]
+    assert df[df["user_id"] == 3]["event"].tolist() == ["X", "B", "C"]
+
+
+def test_truncate_paths_path_end_sentinel(simple_eventstream):
+    """`end_event="path_end"` keeps everything from the first occurrence of
+    `start_event` to the path's actual last event, without requiring any
+    specific end anchor to be present."""
+    result = simple_eventstream.truncate_paths(start_event="C", end_event="path_end")
+    df = result.df
+
+    assert df[df["user_id"] == 1]["event"].tolist() == ["C", "D", "E"]
+    assert df[df["user_id"] == 2]["event"].tolist() == ["C", "D"]
+    assert df[df["user_id"] == 3]["event"].tolist() == ["C", "Y", "Z"]
+
+
+def test_truncate_paths_path_start_and_path_end_sentinels(simple_eventstream):
+    """Both sentinels together keep each path unchanged, start to end."""
+    result = simple_eventstream.truncate_paths(
+        start_event="path_start", end_event="path_end"
+    )
+    df = result.df
+
+    assert df[df["user_id"] == 1]["event"].tolist() == ["A", "B", "C", "D", "E"]
+    assert df[df["user_id"] == 2]["event"].tolist() == ["A", "B", "C", "D"]
+    assert df[df["user_id"] == 3]["event"].tolist() == ["X", "B", "C", "Y", "Z"]
+
+
+def test_truncate_paths_path_start_sentinel_end_is_first_event():
+    """When the target end event is itself the path's first event, the
+    window degenerates to that single row instead of being excluded."""
+    data = pd.DataFrame(
+        {
+            "user_id": [1, 1, 1],
+            "event": ["B", "C", "D"],
+            "timestamp": pd.to_datetime(
+                ["2023-01-01 10:00", "2023-01-01 11:00", "2023-01-01 12:00"]
+            ),
+        }
+    )
+    stream = Eventstream(data)
+    result = stream.truncate_paths(start_event="path_start", end_event="B")
+    assert result.df["event"].tolist() == ["B"]
+
+
+def test_truncate_paths_path_end_sentinel_excludes_paths_missing_start(
+    simple_eventstream,
+):
+    """`end_event="path_end"` still drops paths that never contain
+    `start_event` — the sentinel only relaxes the missing-end case."""
+    result = simple_eventstream.truncate_paths(start_event="Z", end_event="path_end")
+    df = result.df
+
+    assert df[df["user_id"] == 1]["event"].tolist() == []
+    assert df[df["user_id"] == 2]["event"].tolist() == []
+    assert df[df["user_id"] == 3]["event"].tolist() == ["Z"]
+
+
 def test_truncate_paths_custom_columns():
     """Test truncate_paths with custom path_col and event_col."""
     data = pd.DataFrame(

@@ -50,37 +50,48 @@ stream.funnel()
 
 Arguments are a convenient way to reproduce a specific configuration without clicking through the UI. They are also useful when sharing notebooks — a reader can see the configuration at a glance without opening the widget.
 
-## Saving widget state
-
-Every widget accepts a `state_file` parameter — a path to a JSON file the
-widget state is bound to, e.g. `stream.transition_graph(state_file="checkout.json")`.
-The file is loaded if it exists and created otherwise, and every subsequent
-change is auto-saved to it. It captures the full widget configuration — data
-and display parameters plus extras like node layout, filters, sorting, scroll
-position, and zoom (results are recomputed, not saved) — so re-running the
-cell restores the widget exactly as you left it. Explicitly passed arguments
-override the loaded state.
-
 ## Diff mode
 
-Transition Graph, Step Sankey, Step Matrix, and Funnel support diff mode, which overlays two groups in the same visualization so you can compare their behavior directly.
+Transition Graph, Step Sankey, Step Matrix, and Funnel support diff mode, which overlays two groups in the same visualization so you can compare their behavior directly. The `diff` parameter takes one of two shapes, depending on how you want to define the two groups.
 
-Pass a 3-element list `[segment_col, value1, value2]` to the `diff` parameter:
+Every diff value is `group1 − group2`: a positive value (shown in red) means group1 is higher, a negative value (shown in blue) means group2 is higher. Tooltips spell out the exact values with an explicit `+`/`-` sign.
+
+### By segment
+
+Pass a 3-element tuple or list `(segment_col, value1, value2)` to compare two values of a segment column:
 
 ```python
 stream.funnel(
     steps=["page_view", "add_to_cart", "purchase"],
-    diff=["plan", "pro", "free"],
+    diff=("plan", "pro", "free"),
 )
 ```
 
 Use the reserved value `<REST>` as `value2` to compare a segment against everyone else:
 
 ```python
-stream.transition_graph(diff=["country", "US", "<REST>"])
+stream.transition_graph(diff=("country", "US", "<REST>"))
 ```
 
-Diff mode can also be configured interactively in the widget sidebar.
+This form is also available interactively in the widget sidebar: pick a segment column and two of its values from the dropdowns.
+
+### By path-id groups
+
+Pass a 2-element tuple or list `(path_ids1, path_ids2)` — each side any iterable of path IDs (list, tuple, set, ...) — to compare two explicit, arbitrary groups of paths, without going through a segment column:
+
+```python
+stream.step_matrix(diff=(["user_1", "user_2"], ["user_3", "user_4", "user_5"]))
+```
+
+This form is programmatic only — there is no sidebar UI for picking path-id groups. Tooltips and captions show generic "Group 1" / "Group 2" labels instead of segment names or raw IDs.
+
+### Headless data in diff mode
+
+Diff mode changes what each widget's headless `*_data()` twin returns (see [Headless mode](#headless-mode)):
+
+- `transition_graph_data()` returns `(diff, group1, group2)` instead of a single matrix — three DataFrames, where `diff = group1 - group2`.
+- `step_sankey_data()` / `step_matrix_data()` return `(combined, group1, group2)` instead of a single DataFrame — three DataFrames, where `combined = group1 - group2`. With `path_pattern` (multiple anchor blocks), each of the three is instead a tuple with one DataFrame per block, and `combined_blocks[i] = group1_blocks[i] - group2_blocks[i]`.
+- `funnel_data()` keeps the same `{"steps": [...]}` shape, but each step dict gets `funnel1_unique_paths`, `funnel1_conversion_rate`, `funnel1_step_conversion_rate`, `funnel2_unique_paths`, `funnel2_conversion_rate`, `funnel2_step_conversion_rate`, `delta_unique_paths`, `delta_conversion_rate`, and `delta_step_conversion_rate` instead of the plain `unique_paths`/`conversion_rate`/`step_conversion_rate` keys (`delta_* = funnel1_* - funnel2_*`).
 
 ## Headless mode
 
@@ -106,3 +117,14 @@ result = stream.funnel_data(steps=["page_view", "add_to_cart", "purchase"])
 ```
 
 Headless methods accept the same parameters as their widget counterparts, excluding those that are needed for visualization only, like `height`.
+
+## Saving widget state
+
+Every widget accepts a `state_file` parameter — a path to a JSON file the
+widget state is bound to, e.g. `stream.transition_graph(state_file="checkout.json")`.
+The file is loaded if it exists and created otherwise, and every subsequent
+change is auto-saved to it. It captures the full widget configuration — data
+and display parameters plus extras like node layout, filters, sorting, scroll
+position, and zoom (results are recomputed, not saved) — so re-running the
+cell restores the widget exactly as you left it. Explicitly passed arguments
+override the loaded state.

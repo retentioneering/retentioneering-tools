@@ -1,11 +1,9 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 
-import { METRIC_NAMES } from "./generated/metric_names.generated";
-
 // ── constants ──────────────────────────────────────────────────────────────
 
-export { METRIC_NAMES };
+export const METRIC_NAMES = ["active_days","duration","event_count","event_count_bulk","first_event_time","has_all_events","has_any_event","has_event","has_event_bulk","in_segment","length","matches_pattern","time_between"];
 export const AGG_OPTIONS  = ["mean","median","q5","q25","q75","q95","complement_distance"];
 export const AGG_LABELS: Record<string, string> = {
   mean: "Mean", median: "Median", q5: "Q5", q25: "Q25", q75: "Q75", q95: "Q95",
@@ -16,9 +14,13 @@ const METRIC_TIPS: Record<string, string> = {
   active_days:    "Number of unique calendar days with at least one event.",
   in_segment:     "Path membership check for a segment value.\n• any: ≥1 event has the value\n• all: all events have the value\n• event_share: ≥ threshold share of events have the value\nIf multiple segment values are selected, a separate metric is created for each value.",
   duration:       "Time (seconds) between the first and last event.",
-  event_count:    "Number of times the selected event(s) occurred.\nLeave events empty to count every event.",
+  event_count:    "Number of times the selected event occurred.",
+  event_count_bulk: "Number of times each selected event occurred, one column per event.\nLeave events empty to count every event.",
   first_event_time: "Unix timestamp of the first event.",
-  has_event:            "1 if the selected event(s) occurred at least once, 0 otherwise.\nLeave events empty to check every event.",
+  has_all_events: "1 if ALL of the selected events occurred at least once, 0 otherwise (AND).",
+  has_any_event:  "1 if ANY of the selected events occurred at least once, 0 otherwise (OR).",
+  has_event:            "1 if the selected event occurred at least once, 0 otherwise.",
+  has_event_bulk: "1 if each selected event occurred at least once, one column per event.\nLeave events empty to check every event.",
   length:         "Total number of events in the path.",
   matches_pattern:        "1 if the path matches the pattern, 0 otherwise.\nEvents separated by ->, .* matches any sequence.\nExample: login->.*->purchase",
   time_between:   "Time (seconds) between the first occurrences of two events.\nNull if either event is missing.",
@@ -217,7 +219,13 @@ export function SingleSelect({ value, options, placeholder, onChange }: {
 export function validateMetricCfg(cfg: any): string | null {
   const m = cfg?.metric;
   const a = cfg?.metric_args ?? {};
-  // event_count/has_event: leaving 'events' empty means "all events" (like active_days), no error.
+  // event_count_bulk/has_event_bulk: leaving 'events' empty means "all events" (like active_days), no error.
+  if (m === "event_count" || m === "has_event") {
+    if (!a.event) return "Select an event";
+  }
+  if (m === "has_all_events" || m === "has_any_event") {
+    if (!Array.isArray(a.events) || a.events.length === 0) return "Select at least one event";
+  }
   if (m === "time_between") {
     if (!a.start_event) return "Select From event";
     if (!a.end_event)   return "Select To event";
@@ -253,12 +261,14 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
   onRemove: () => void;
 }) {
   const sel = mkSel();
-  const needsEvent      = ["event_count", "has_event"].includes(cfg.metric);
+  const needsSingleEvent  = ["event_count", "has_event"].includes(cfg.metric);
+  const needsEventsBulk   = ["event_count_bulk", "has_event_bulk"].includes(cfg.metric);
+  const needsEventsRequired = ["has_all_events", "has_any_event"].includes(cfg.metric);
   const needsRange      = cfg.metric === "time_between";
   const needsInSegment  = cfg.metric === "in_segment";
   const needsMatches    = cfg.metric === "matches_pattern";
   const needsActiveDays = cfg.metric === "active_days";
-  const hasSecondRow    = needsEvent || needsRange || needsInSegment || needsMatches || needsActiveDays;
+  const hasSecondRow    = needsSingleEvent || needsEventsBulk || needsEventsRequired || needsRange || needsInSegment || needsMatches || needsActiveDays;
 
   const err = showErrors ? validateMetricCfg(cfg) : null;
 
@@ -286,13 +296,31 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
         </button>
       </div>
 
-      {needsEvent && (() => {
+      {needsSingleEvent && (
+        <div>
+          <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Event</div>
+          <SingleSelect value={cfg.metric_args?.event ?? ""} options={events} placeholder="Event…" onChange={v => onChange({ ...cfg, metric_args: { event: v } })} />
+        </div>
+      )}
+
+      {needsEventsBulk && (() => {
         const raw = cfg.metric_args?.events;
         const sel2: string[] = !raw ? [] : Array.isArray(raw) ? raw.map(String) : [String(raw)];
         return (
           <div>
             <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Events (optional — leave empty for all events)</div>
             <MultiSelect selected={sel2} options={events} onChange={vals => onChange({ ...cfg, metric_args: { events: vals.length ? vals : undefined } })} placeholder="Events…" />
+          </div>
+        );
+      })()}
+
+      {needsEventsRequired && (() => {
+        const raw = cfg.metric_args?.events;
+        const sel2: string[] = !raw ? [] : Array.isArray(raw) ? raw.map(String) : [String(raw)];
+        return (
+          <div>
+            <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 3 }}>Events</div>
+            <MultiSelect selected={sel2} options={events} onChange={vals => onChange({ ...cfg, metric_args: { events: vals } })} placeholder="Events…" />
           </div>
         );
       })()}

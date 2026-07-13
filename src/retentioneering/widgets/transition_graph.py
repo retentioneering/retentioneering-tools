@@ -2,6 +2,7 @@ import json
 
 import traitlets
 
+from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import parse_diff as _parse_diff
 from retentioneering.widgets._html_export import write_html
@@ -67,7 +68,7 @@ class TransitionGraphWidget(RetentioneeringWidget):
         self._load_state_file(state_file)
 
         try:
-            self.segment_levels = json.dumps(eventstream.get_segment_values())
+            self.segment_levels = json.dumps(eventstream.get_segment_levels())
         except Exception:
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)
@@ -175,6 +176,8 @@ class TransitionGraphWidget(RetentioneeringWidget):
             else:
                 self.event_counts_g1 = "{}"
                 self.event_counts_g2 = "{}"
+        except RetentioneeringError:
+            raise
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"

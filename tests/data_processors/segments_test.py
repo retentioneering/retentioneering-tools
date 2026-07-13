@@ -50,6 +50,31 @@ class TestFilterEvents:
         with pytest.raises(Exception):
             stream.add_segment(name="country", rules=values)
 
+    def test__add_segment_promotes_custom_col(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)  # no schema -> "country" auto-classified as custom_col
+        assert stream.schema.custom_cols == ["country"]
+
+        res = stream.add_segment(name="country")
+
+        assert res.schema.segment_cols == ["country"]
+        assert res.schema.custom_cols == []
+        assert res.df["country"].tolist() == df["country"].tolist()
+
+    def test__add_segment_promote_rejects_reserved_column(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(PreprocessingConfigError):
+            stream.add_segment(name="user_id")
+
+    def test__add_segment_no_mode_and_not_a_custom_col_raises(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(PreprocessingConfigError):
+            stream.add_segment(name="brand_new_segment")
+
     def test__add_segment_sql(self) -> None:
         df = get_df()
         schema = {"segment_cols": ["country"]}
@@ -187,6 +212,31 @@ class TestFilterEvents:
         assert seg_by_session["S1"] == "A"
         assert seg_by_session["S2"] == "out_of_funnel"
 
+    def test__add_segment_funnel_events_is_strictly_ordered(self) -> None:
+        # funnel_events is a closed/strictly-ordered funnel: a step only counts
+        # if every earlier step also happened, in order. Reaching a later step
+        # without the earlier ones (in order) does NOT credit the path for it.
+        df = pd.DataFrame(
+            [
+                # P1: basket then shipping, in order -> deepest step is "shipping"
+                ["P1", "basket", "2024-01-01 10:00:00"],
+                ["P1", "shipping", "2024-01-01 10:01:00"],
+                # P2: shipping only, never basket -> out_of_funnel
+                ["P2", "shipping", "2024-01-01 10:00:00"],
+                # P3: shipping then basket, out of order -> credited only for "basket"
+                ["P3", "shipping", "2024-01-01 10:00:00"],
+                ["P3", "basket", "2024-01-01 10:01:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df, {"path_cols": ["user_id"]})
+        res = stream.add_segment(name="seg", funnel_events=["basket", "shipping"])
+
+        seg_by_path = res.df.groupby("user_id", observed=True)["seg"].first()
+        assert seg_by_path["P1"] == "shipping"
+        assert seg_by_path["P2"] == "out_of_funnel"
+        assert seg_by_path["P3"] == "basket"
+
     def test__add_segment_funnel_events_rejects_undeclared_path_col(self) -> None:
         df = pd.DataFrame(
             [
@@ -199,6 +249,71 @@ class TestFilterEvents:
         with pytest.raises(PreprocessingConfigError):
             stream.add_segment(
                 name="seg", funnel_events=["A", "B"], path_col="not_a_path_col"
+            )
+
+    def test__add_segment_time_range(self) -> None:
+        df = get_df()
+        schema = {"segment_cols": ["country"]}
+        stream = Eventstream(df, schema)
+
+        res = stream.add_segment(
+            name="incident", time_range=("2020-01-02 00:00:00", "2020-01-03 00:00:00")
+        )
+
+        expected_df = df.copy()
+        expected_df["incident"] = [
+            "outside",
+            "inside",
+            "inside",
+            "outside",
+            "outside",
+            "inside",
+        ]
+        expected_schema = {"segment_cols": ["country", "incident"]}
+        expected = Eventstream(expected_df, expected_schema)
+
+        assert res.equals(expected)
+
+    def test__add_segment_time_range_bounds_inclusive(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)
+
+        res = stream.add_segment(
+            name="incident", time_range=("2020-01-01 00:00:00", "2020-01-01 00:00:00")
+        )
+
+        assert res.df["incident"].tolist() == [
+            "inside",
+            "outside",
+            "outside",
+            "inside",
+            "inside",
+            "outside",
+        ]
+
+    def test__add_segment_time_range_wrong_length(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(PreprocessingConfigError):
+            stream.add_segment(name="incident", time_range=("2020-01-01",))
+
+    def test__add_segment_time_range_start_after_end(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(PreprocessingConfigError):
+            stream.add_segment(name="incident", time_range=("2020-01-03", "2020-01-01"))
+
+    def test__add_segment_time_range_and_rules_mutually_exclusive(self) -> None:
+        df = get_df()
+        stream = Eventstream(df)
+
+        with pytest.raises(PreprocessingConfigError):
+            stream.add_segment(
+                name="incident",
+                time_range=("2020-01-01", "2020-01-02"),
+                rules=[["male"]],
             )
 
     def test__drop_segment(self):
@@ -222,12 +337,12 @@ class TestFilterEvents:
         with pytest.raises(Exception):
             stream.drop_segment("event")
 
-    def test__get_segment_values(self):
+    def test__get_segment_levels(self):
         df = get_df()
         df["sex"] = ["female", "female", "female", "male", "female", "female"]
         schema = {"segment_cols": ["country", "sex"]}
         stream = Eventstream(df, schema)
-        res = stream.get_segment_values()
+        res = stream.get_segment_levels()
 
         expected = {"country": ["UK", "US"], "sex": ["female", "male"]}
         assert res == expected

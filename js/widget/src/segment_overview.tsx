@@ -86,7 +86,7 @@ function MetricsOverlay({ metrics, events, segmentCols, segmentLevels, onMetrics
 
   const [submitted, setSubmitted] = React.useState(false);
   const listRef = React.useRef<HTMLDivElement>(null);
-  const addMetric    = () => onMetricsChange([...metrics, { metric: "event_count", agg: "mean", metric_args: undefined }]);
+  const addMetric    = () => onMetricsChange([...metrics, { metric: "event_count_bulk", agg: "mean", metric_args: undefined }]);
   const updateMetric = (i: number, cfg: any) => onMetricsChange(metrics.map((m, j) => j === i ? cfg : m));
   const removeMetric = (i: number) => onMetricsChange(metrics.filter((_, j) => j !== i));
   const errCount = metrics.filter(m => validateMetricCfg(m) !== null).length;

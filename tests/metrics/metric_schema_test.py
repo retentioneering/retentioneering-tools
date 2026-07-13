@@ -1,12 +1,14 @@
-"""Unit tests for the metric schema registry (metric_schema.py) — the single
-source of truth `MetricConfig._parse_dict_config` and
-`MetricBuilder.validate_metric_config` both dispatch into.
+"""Unit tests for the metric schema registry (metric_schema.py).
+
+Note: `metric_builder.py`'s dispatch no longer routes through this registry
+(see `metrics/condition_ast.py` / `MetricBuilder._parse_dict_config`'s explicit
+per-metric dispatch) — this module is exercised standalone here, not as the
+source of truth for `VALID_METRICS`.
 """
 
 import pytest
 
 from retentioneering.exceptions import InvalidMetricConfigError
-from retentioneering.metrics.metric_builder import VALID_METRICS
 from retentioneering.metrics.metric_schema import (
     METRIC_SCHEMAS,
     ValidationContext,
@@ -21,13 +23,6 @@ def make_ctx(available_events=(), segment_cols=(), segment_values=None):
         segment_cols=list(segment_cols),
         segment_values=(segment_values or (lambda col: set())),
     )
-
-
-def test_valid_metrics_matches_schema_registry():
-    """A cheap guard against the registry and the derived constant drifting
-    apart — and a reminder to also update docs/guide/path-metrics.md and the
-    JS metric editor (js/widget/src/metric_config_row.tsx) when this fails."""
-    assert VALID_METRICS == set(METRIC_SCHEMAS)
 
 
 class TestZeroArgMetrics:

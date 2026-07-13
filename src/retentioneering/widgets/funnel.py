@@ -2,6 +2,7 @@ import json
 
 import traitlets
 
+from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import parse_diff as _parse_diff
 from retentioneering.widgets._html_export import write_html
@@ -57,7 +58,7 @@ class FunnelWidget(RetentioneeringWidget):
         except Exception:
             self.event_list = "[]"
         try:
-            self.segment_levels = json.dumps(eventstream.get_segment_values())
+            self.segment_levels = json.dumps(eventstream.get_segment_levels())
         except Exception:
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)
@@ -125,6 +126,8 @@ class FunnelWidget(RetentioneeringWidget):
             self.result = json.dumps(
                 self._compute_raw(steps=steps, diff=diff, path_col=pid)
             )
+        except RetentioneeringError:
+            raise
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"
@@ -135,9 +138,13 @@ class FunnelWidget(RetentioneeringWidget):
         result = self._eventstream.funnel_data(
             steps=steps, diff=diff, path_col=path_col
         )
-        if diff and len(diff) == 3:
-            result["group1_label"] = str(diff[1])
-            result["group2_label"] = str(diff[2])
+        if diff:
+            if len(diff) == 3:
+                result["group1_label"] = str(diff[1])
+                result["group2_label"] = str(diff[2])
+            else:
+                result["group1_label"] = "Group 1"
+                result["group2_label"] = "Group 2"
             steps_list = result.get("steps", [])
             if steps_list:
                 r1 = steps_list[0].get("funnel1_conversion_rate") or 0

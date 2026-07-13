@@ -1,4 +1,5 @@
 import re
+import warnings
 from dataclasses import dataclass
 from functools import reduce
 from typing import TYPE_CHECKING, Tuple
@@ -49,6 +50,10 @@ class StepMatrix:
                 sms, sms1, sms2 = self._process_diff_matrix(max_steps, diff, path_col)
                 return tuple(sms), tuple(sms1), tuple(sms2)
         else:
+            path_pattern = self._normalize_path_pattern(path_pattern)
+            event_col = self.eventstream.schema.event_col
+            available_events = set(self.eventstream.df[event_col].unique().tolist())
+            self._validate_path_pattern_tokens(path_pattern, available_events)
             if diff is None:
                 sms = self._process_pattern_matrix(
                     max_steps, None, path_pattern, path_col
@@ -59,6 +64,51 @@ class StepMatrix:
                     max_steps, diff, path_pattern, path_col
                 )
                 return tuple(sms), tuple(sms1), tuple(sms2)
+
+    @staticmethod
+    def _normalize_path_pattern(path_pattern: str) -> str:
+        """Strip a redundant leading ".*->" and/or trailing "->.*".
+
+        A pattern already matches anywhere in the path by default (a bare
+        "X" and ".*->X->.*" select the same paths), so boundary wildcards
+        add nothing -- except a trailing ".*" also throws off
+        `_find_center_position`'s anchor bookkeeping, shifting the anchor's
+        own column off of 0. Trimming both forms up front keeps every
+        pattern on the bare-literal path, which centers correctly.
+        """
+        normalized = path_pattern
+        stripped_leading = normalized.startswith(".*->")
+        if stripped_leading:
+            normalized = normalized[len(".*->") :]
+        stripped_trailing = normalized.endswith("->.*")
+        if stripped_trailing:
+            normalized = normalized[: -len("->.*")]
+
+        if (stripped_leading or stripped_trailing) and normalized:
+            warnings.warn(
+                f"path_pattern {path_pattern!r} has a redundant leading/trailing "
+                f"'.*' -- a pattern already matches anywhere in the path by "
+                f"default. Using {normalized!r} instead.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return normalized
+        return path_pattern
+
+    @staticmethod
+    def _validate_path_pattern_tokens(path_pattern: str, available_events: set) -> None:
+        """Guards against typos in path_pattern: a mistyped event name would
+        otherwise silently produce zero matches (surfaced only as the generic
+        PatternNoMatchError, indistinguishable from a legitimately-empty result)."""
+        path_start = EventTypes().PATH_START.name
+        path_end = EventTypes().PATH_END.name
+        for tok in path_pattern.split("->"):
+            if tok in ("", ".*", path_start, path_end):
+                continue
+            if tok not in available_events:
+                raise InvalidParameterError(
+                    "path_pattern", tok, sorted(available_events)
+                )
 
     @staticmethod
     def _align_matrices(sms1, sms2):
@@ -83,7 +133,7 @@ class StepMatrix:
         sms1 = StepMatrix(stream1).fit(max_steps=max_steps, path_col=path_col)
         sms2 = StepMatrix(stream2).fit(max_steps=max_steps, path_col=path_col)
         sms1, sms2 = self._align_matrices(list(sms1), list(sms2))
-        sms = [sms2[i] - sms1[i] for i in range(len(sms1))]
+        sms = [sms1[i] - sms2[i] for i in range(len(sms1))]
         return sms, sms1, sms2
 
     def _regular(self, max_steps: int, path_col: str) -> pd.DataFrame:
@@ -374,5 +424,5 @@ class StepMatrix:
                 )
 
             new_sms1, new_sms2 = self._align_matrices(list(sms1), list(sms2))
-            sms = [new_sms2[i] - new_sms1[i] for i in range(len(new_sms1))]
+            sms = [new_sms1[i] - new_sms2[i] for i in range(len(new_sms1))]
             return sms, new_sms1, new_sms2

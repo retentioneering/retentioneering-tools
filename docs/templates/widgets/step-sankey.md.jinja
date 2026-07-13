@@ -6,8 +6,23 @@
 ### Basic
 <DemoWidget cmd={`stream.step_sankey()`} path="/docs-demos/widgets/step-sankey/basic.html" height={560} />
 
-### Path pattern
-<DemoWidget cmd={`stream.step_sankey(path_pattern=".*->add_to_cart->.*->purchase->.*->path_end")`} path="/docs-demos/widgets/step-sankey/path_pattern.html" height={560} />
+### Path pattern - central event
+A single event as `path_pattern` re-centers the diagram on that event instead of
+`path_start`: column 0 is always `purchase`, negative columns are the steps leading up
+
+<DemoWidget cmd={`stream.step_sankey(path_pattern="purchase")`} path="/docs-demos/widgets/step-sankey/path_pattern_central.html" height={660} />
+
+### Path pattern - funnel patterns
+Chaining several anchors with `.*` renders one diagram block per anchor, side by side,
+so you can follow a multi-step funnel across blocks.
+
+<DemoWidget cmd={`stream.step_sankey(path_pattern="payment_details->.*->shipping_details->.*->purchase", step_window=2)`} path="/docs-demos/widgets/step-sankey/path_pattern_funnel.html" height={660} sidebarOpen={false} />
+
+### Path pattern - drop-off points
+`path_pattern="path_end"` centers on where paths end, so the columns to the left show
+what users tend to do right before dropping off (or completing their path).
+
+<DemoWidget cmd={`stream.step_sankey(path_pattern="path_end")`} path="/docs-demos/widgets/step-sankey/path_pattern_dropoff.html" height={660} />
 
 ### Diff mode
 <DemoWidget cmd={`stream.step_sankey(diff=["platform", "mobile", "desktop"])`} path="/docs-demos/widgets/step-sankey/diff.html" height={560} />

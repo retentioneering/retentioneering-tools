@@ -16,7 +16,7 @@ The rules, in force for all future API additions:
 
 1. **One concept — one name.** Column-name arguments end in `_col` and use a
    single vocabulary: `path_col`, `event_col`, `timestamp_col`,
-   `session_id_col`, `segment_col`. Window anchors are always the
+   `session_col`, `segment_col`. Window anchors are always the
    `start_event` / `end_event` pair (`truncate_paths`, `split_sessions`, the
    `time_between` metric). The "everything else" diff sentinel is `<REST>`.
 2. **Match ecosystem priors** where one exists: `n`/`frac`

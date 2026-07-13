@@ -76,7 +76,7 @@ class AddClusters(DataProcessor):
                      Example: [
                          {"metric": "length"},
                          {"metric": "duration"},
-                         {"metric": "event_count", "metric_args": {"events": "purchase"}}
+                         {"metric": "event_count", "metric_args": {"event": "purchase"}}
                      ]
             method: Clustering method - "kmeans" or "hdbscan"
             scaler: Feature scaler - "minmax", "standard", or None.

@@ -6,6 +6,7 @@ import { StepColumn } from "./StepColumn";
 import { ConnectionLayer } from "./ConnectionLayer";
 import { GapSeparator } from "./GapSeparator";
 import { DiffBreakdownTooltip } from "../TransitionGraph/DiffBreakdownTooltip";
+import { resolveDiffLabels } from "../../utils/diff-tooltip";
 
 const COLUMN_WIDTH = 70;
 const COLUMN_GAP = 40;
@@ -51,6 +52,10 @@ export const StepSankey = observer(({
   onScrollXChange,
 }: StepSankeyProps) => {
   const isDiff = !!diffSegment;
+  const diffLabels = React.useMemo(
+    () => resolveDiffLabels(diffSegment, diffValue1, diffValue2),
+    [diffSegment, diffValue1, diffValue2],
+  );
 
   const stepWindow = (stepWindowProp && stepWindowProp > 0) ? stepWindowProp : maxSteps;
 
@@ -551,9 +556,9 @@ export const StepSankey = observer(({
                 <span>step {hoveredDiffNode.stepIndex}</span>
               </span>
             }
-            segmentName={diffSegment || "segment"}
-            value1Label={diffValue1 != null && diffValue1 !== "" ? String(diffValue1) : "group1"}
-            value2Label={diffValue2 != null && diffValue2 !== "" ? String(diffValue2) : "group2"}
+            segmentName={diffLabels.segmentName}
+            value1Label={diffLabels.value1Label}
+            value2Label={diffLabels.value2Label}
             group1Value={hoveredDiffNode.group1Value}
             group2Value={hoveredDiffNode.group2Value}
             diffValue={hoveredDiffNode.diffValue}

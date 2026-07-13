@@ -5,10 +5,11 @@ from typing import Any, Dict, List, Set, Tuple
 from retentioneering import engine
 from retentioneering.engine import dialect
 from retentioneering.data_processors.data_processor import DataProcessor
-from retentioneering.data_processors.filter_paths import FilterPaths
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.metrics.condition_ast import ast_to_sql, extract_metric_configs
+from retentioneering.metrics.metric_builder import combined_metric_name
 from retentioneering.utils.session_detection import (
     build_session_ctes,
     detect_mode,
@@ -27,7 +28,7 @@ class CollapseEvents(DataProcessor):
     consecutive: bool | List[str] | None
     event_groups: List[Dict[str, Any]] | None
     group_col: str | None
-    session_id_col: str | None
+    session_col: str | None
     session_type_col: str | None
     agg: Dict[str, str]
     path_col: str | None
@@ -38,7 +39,7 @@ class CollapseEvents(DataProcessor):
         consecutive: bool | List[str] | None = None,
         event_groups: List[Dict[str, Any]] | None = None,
         group_col: str | None = None,
-        session_id_col: str | None = None,
+        session_col: str | None = None,
         session_type_col: str | None = None,
         agg: Dict[str, str] | None = None,
         path_col: str | None = None,
@@ -47,7 +48,7 @@ class CollapseEvents(DataProcessor):
         self.consecutive = consecutive
         self.event_groups = event_groups
         self.group_col = group_col
-        self.session_id_col = session_id_col
+        self.session_col = session_col
         self.session_type_col = session_type_col
         self.agg = agg or {}
         self.path_col = path_col
@@ -58,17 +59,17 @@ class CollapseEvents(DataProcessor):
             self.consecutive is not None,
             bool(self.event_groups),
             self.group_col is not None,
-            self.session_id_col is not None,
+            self.session_col is not None,
         ]
         if sum(modes) != 1:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
-                "Provide exactly one of: consecutive, event_groups, group_col, session_id_col",
+                "Provide exactly one of: consecutive, event_groups, group_col, session_col",
             )
 
-        if self.session_id_col is not None and self.session_type_col is None:
+        if self.session_col is not None and self.session_type_col is None:
             raise PreprocessingConfigError(
-                PROCESSOR_NAME, "'session_id_col' requires 'session_type_col'"
+                PROCESSOR_NAME, "'session_col' requires 'session_type_col'"
             )
 
         if event_groups is not None:
@@ -183,22 +184,44 @@ class CollapseEvents(DataProcessor):
         ts_col_q = engine.quote_ident(ts_col)
 
         if metric == "has_event":
-            events = to_list(args.get("events", []))
+            event = args.get("event")
             return [
                 (
-                    f"has_event_{e}",
-                    f"MAX(CASE WHEN {event_col_q} = {quote_literal(e)} THEN 1 ELSE 0 END)",
+                    f"has_event_{event}",
+                    f"MAX(CASE WHEN {event_col_q} = {quote_literal(event)} THEN 1 ELSE 0 END)",
                 )
-                for e in events
             ]
         elif metric == "event_count":
-            events = to_list(args.get("events", []))
+            event = args.get("event")
             return [
                 (
-                    f"event_count_{e}",
-                    f"COUNT(CASE WHEN {event_col_q} = {quote_literal(e)} THEN 1 ELSE NULL END)",
+                    f"event_count_{event}",
+                    f"COUNT(CASE WHEN {event_col_q} = {quote_literal(event)} THEN 1 ELSE NULL END)",
                 )
+            ]
+        elif metric == "has_all_events":
+            events = to_list(args.get("events", []))
+            conds = " AND ".join(
+                f"MAX(CASE WHEN {event_col_q} = {quote_literal(e)} THEN 1 ELSE 0 END) = 1"
                 for e in events
+            )
+            return [
+                (
+                    combined_metric_name(metric, events),
+                    f"CASE WHEN ({conds}) THEN 1 ELSE 0 END",
+                )
+            ]
+        elif metric == "has_any_event":
+            events = to_list(args.get("events", []))
+            conds = " OR ".join(
+                f"MAX(CASE WHEN {event_col_q} = {quote_literal(e)} THEN 1 ELSE 0 END) = 1"
+                for e in events
+            )
+            return [
+                (
+                    combined_metric_name(metric, events),
+                    f"CASE WHEN ({conds}) THEN 1 ELSE 0 END",
+                )
             ]
         elif metric == "duration":
             return [("duration", dialect.epoch(f"MAX({ts_col_q}) - MIN({ts_col_q})"))]
@@ -218,7 +241,10 @@ class CollapseEvents(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 f"Metric '{metric}' is not supported in event_groups cases. "
-                f"Supported metrics: has_event, event_count, duration, length, time_between, active_days.",
+                f"Supported metrics: has_event, event_count, has_all_events, has_any_event, "
+                f"duration, length, time_between, active_days. "
+                f"(has_event_bulk/event_count_bulk are never supported here - they produce "
+                f"multiple columns.)",
             )
 
     def _collapse_consecutive(
@@ -322,11 +348,10 @@ class CollapseEvents(DataProcessor):
             group, path_col, event_col, ts_col, subindex_col
         )
 
-        fp = FilterPaths(None, None, None)
         all_metric_configs: List[Dict[str, Any]] = []
         seen_keys: Set[str] = set()
         for case in cases:
-            for mc in FilterPaths._extract_metric_configs(case["condition"]):
+            for mc in extract_metric_configs(case["condition"], PROCESSOR_NAME):
                 key = (mc["metric"], str(sorted((mc.get("metric_args") or {}).items())))
                 if key not in seen_keys:
                     seen_keys.add(key)
@@ -348,7 +373,7 @@ class CollapseEvents(DataProcessor):
 
         if cases:
             case_when_parts = [
-                f"WHEN {fp._ast_to_sql(case['condition'])} THEN '{case['name'].replace(chr(39), chr(39) * 2)}'"
+                f"WHEN {ast_to_sql(case['condition'], PROCESSOR_NAME)} THEN '{case['name'].replace(chr(39), chr(39) * 2)}'"
                 for case in cases
             ]
             fallback_escaped = name.replace("'", "''")
@@ -508,12 +533,12 @@ class CollapseEvents(DataProcessor):
         subindex_col = schema.subindex
         event_type_col = schema.event_type
         collapsed_event_type = EventTypes().COLLAPSED_EVENT.type
-        session_id_col = self.session_id_col
+        session_col = self.session_col
         session_type_col = self.session_type_col
 
-        if session_id_col not in df.columns:
+        if session_col not in df.columns:
             raise PreprocessingConfigError(
-                PROCESSOR_NAME, f"column '{session_id_col}' not found in eventstream"
+                PROCESSOR_NAME, f"column '{session_col}' not found in eventstream"
             )
         if session_type_col not in df.columns:
             raise PreprocessingConfigError(
@@ -526,7 +551,7 @@ class CollapseEvents(DataProcessor):
             event_type_col,
             ts_col,
             subindex_col,
-            session_id_col,
+            session_col,
             session_type_col,
         }
         agg_exprs = self._session_agg_exprs(df, self.agg, explicit_cols, ts_col)
@@ -537,17 +562,15 @@ class CollapseEvents(DataProcessor):
         ts_col_q = engine.quote_ident(ts_col)
         subindex_col_q = engine.quote_ident(subindex_col)
         event_type_col_q = engine.quote_ident(event_type_col)
-        session_id_col_q = engine.quote_ident(session_id_col)
+        session_col_q = engine.quote_ident(session_col)
         session_type_col_q = engine.quote_ident(session_type_col)
         cols_list = ", ".join(engine.quote_ident(c) for c in schema.cols)
 
-        # session_id_col and session_type_col may be in schema.cols (custom_cols),
+        # session_col and session_type_col may be in schema.cols (custom_cols),
         # so include them explicitly to satisfy the final SELECT.
         extra_session_cols = ""
-        if session_id_col in schema.cols:
-            extra_session_cols += (
-                f", ANY_VALUE({session_id_col_q}) AS {session_id_col_q}"
-            )
+        if session_col in schema.cols:
+            extra_session_cols += f", ANY_VALUE({session_col_q}) AS {session_col_q}"
         if session_type_col in schema.cols:
             extra_session_cols += (
                 f", ANY_VALUE({session_type_col_q}) AS {session_type_col_q}"
@@ -564,7 +587,7 @@ class CollapseEvents(DataProcessor):
                 {extra_session_cols}
                 {agg_chunk}
             FROM df
-            GROUP BY {path_col_q}, {session_id_col_q}
+            GROUP BY {path_col_q}, {session_col_q}
         )
         SELECT {cols_list}
         FROM collapsed

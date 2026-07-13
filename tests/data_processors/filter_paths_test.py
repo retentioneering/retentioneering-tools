@@ -39,13 +39,13 @@ class TestFilterPathsAST:
                     "op": ">",
                     "metric": "event_count",
                     "value": 1,
-                    "metric_args": {"events": "purchase"},
+                    "metric_args": {"event": "purchase"},
                 },
                 {
                     "op": "=",
                     "metric": "has_event",
                     "value": True,
-                    "metric_args": {"events": "promo_view"},
+                    "metric_args": {"event": "promo_view"},
                 },
                 {
                     "op": "not",
@@ -57,13 +57,13 @@ class TestFilterPathsAST:
                                     "op": "=",
                                     "metric": "has_event",
                                     "value": True,
-                                    "metric_args": {"events": "logout"},
+                                    "metric_args": {"event": "logout"},
                                 },
                                 {
                                     "op": "=",
                                     "metric": "has_event",
                                     "value": True,
-                                    "metric_args": {"events": "cancellation"},
+                                    "metric_args": {"event": "cancellation"},
                                 },
                             ],
                         }
@@ -83,6 +83,19 @@ class TestFilterPathsAST:
         with pytest.raises((PreprocessingConfigError, InvalidMetricConfigError)):
             _ = stream.filter_paths(condition=condition)
 
+    def test__condition_has_event_missing_event_key_raises(self) -> None:
+        """has_event/event_count now require a single 'event' key - the old
+        'events' key (string or list) is no longer accepted."""
+        stream = build_stream()
+        condition = {
+            "op": "=",
+            "metric": "has_event",
+            "value": True,
+            "metric_args": {"events": "purchase"},
+        }
+        with pytest.raises((PreprocessingConfigError, InvalidMetricConfigError)):
+            _ = stream.filter_paths(condition=condition)
+
     def test__condition_with_typo_event_raises_instead_of_matching_all(self) -> None:
         """A typoed event name must fail loudly, not silently build an
         all-zero has_event column that makes `== False` match every path."""
@@ -91,7 +104,7 @@ class TestFilterPathsAST:
             "op": "=",
             "metric": "has_event",
             "value": False,
-            "metric_args": {"events": "purchse"},  # typo of "purchase"
+            "metric_args": {"event": "purchse"},  # typo of "purchase"
         }
         with pytest.raises(InvalidMetricConfigError, match="purchse"):
             _ = stream.filter_paths(condition=condition)
@@ -102,7 +115,7 @@ class TestFilterPathsAST:
             "op": ">",
             "metric": "event_count",
             "value": 0,
-            "metric_args": {"events": "purchse"},  # typo of "purchase"
+            "metric_args": {"event": "purchse"},  # typo of "purchase"
         }
         with pytest.raises(InvalidMetricConfigError, match="purchse"):
             _ = stream.filter_paths(condition=condition)
@@ -113,7 +126,7 @@ class TestFilterPathsAST:
             "op": ">",
             "metric": "event_count",
             "value": 10,
-            "metric_args": {"events": "purchase"},
+            "metric_args": {"event": "purchase"},
         }
         with pytest.raises(EmptyEventstreamError):
             _ = stream.filter_paths(condition=condition)
@@ -124,7 +137,7 @@ class TestFilterPathsAST:
             "op": "in",
             "metric": "event_count",
             "value": [2],
-            "metric_args": {"events": "purchase"},
+            "metric_args": {"event": "purchase"},
         }
         res = stream.filter_paths(condition=condition)
 
@@ -137,7 +150,7 @@ class TestFilterPathsAST:
             "op": "in",
             "metric": "has_event",
             "value": [False],
-            "metric_args": {"events": "logout"},
+            "metric_args": {"event": "logout"},
         }
         res = stream.filter_paths(condition=condition)
 
@@ -223,20 +236,20 @@ class TestFilterPathsAST:
             "op": ">",
             "metric": "event_count",
             "value": 1,
-            "metric_args": {"events": "purchase"},
+            "metric_args": {"event": "purchase"},
         }
         res = stream.filter_paths(condition=condition, path_col="session_id")
 
         expected = stream.filter_events(keep={"session_id": ["sess_2"]})
         assert res.equals(expected)
 
-    def test__condition_has_with_list_of_events_all_present(self) -> None:
-        """Test has metric with list of events - checking if ALL are present"""
+    def test__has_all_events_all_present(self) -> None:
+        """has_all_events (AND semantics) - every user has both events"""
         stream = build_stream()
 
         condition = {
             "op": "=",
-            "metric": "has_event",
+            "metric": "has_all_events",
             "value": True,
             "metric_args": {"events": ["promo_view", "purchase"]},
         }
@@ -247,13 +260,13 @@ class TestFilterPathsAST:
         )
         assert res.equals(expected)
 
-    def test__condition_has_with_list_of_events_all_present_subset(self) -> None:
-        """Test has metric with list of events - only some users have all"""
+    def test__has_all_events_subset(self) -> None:
+        """has_all_events (AND semantics) - only some users have all"""
         stream = build_stream()
 
         condition = {
             "op": "=",
-            "metric": "has_event",
+            "metric": "has_all_events",
             "value": True,
             "metric_args": {"events": ["promo_view", "logout"]},
         }
@@ -262,13 +275,16 @@ class TestFilterPathsAST:
         expected = stream.filter_events(keep={"user_id": ["user_1"]})
         assert res.equals(expected)
 
-    def test__condition_has_with_list_of_events_at_least_one_absent(self) -> None:
-        """Test has metric with list of events - checking if at least one is absent"""
+    def test__has_all_events_false_means_not_all_present(self) -> None:
+        """has_all_events == False is 'at least one of the listed events is
+        absent' - no user has BOTH logout and cancellation, so all three are
+        kept (this mirrors the pre-redesign has_event+list '=False' behavior,
+        now expressed through the single-valued has_all_events metric)."""
         stream = build_stream()
 
         condition = {
             "op": "=",
-            "metric": "has_event",
+            "metric": "has_all_events",
             "value": False,
             "metric_args": {"events": ["logout", "cancellation"]},
         }
@@ -279,8 +295,24 @@ class TestFilterPathsAST:
         )
         assert res.equals(expected)
 
-    def test__condition_has_with_list_combined_logic(self) -> None:
-        """Test complex condition using has metric with list"""
+    def test__has_any_event_or_semantics(self) -> None:
+        """has_any_event (genuine OR-of-presence) - user_1 has logout, user_3
+        has cancellation, user_2 has neither."""
+        stream = build_stream()
+
+        condition = {
+            "op": "=",
+            "metric": "has_any_event",
+            "value": True,
+            "metric_args": {"events": ["logout", "cancellation"]},
+        }
+        res = stream.filter_paths(condition=condition)
+
+        expected = stream.filter_events(keep={"user_id": ["user_1", "user_3"]})
+        assert res.equals(expected)
+
+    def test__has_all_events_combined_with_other_metric(self) -> None:
+        """Test complex condition using has_all_events combined with event_count"""
         stream = build_stream()
 
         condition = {
@@ -290,11 +322,11 @@ class TestFilterPathsAST:
                     "op": ">",
                     "metric": "event_count",
                     "value": 0,
-                    "metric_args": {"events": "purchase"},
+                    "metric_args": {"event": "purchase"},
                 },
                 {
                     "op": "=",
-                    "metric": "has_event",
+                    "metric": "has_all_events",
                     "value": True,
                     "metric_args": {"events": ["promo_view", "purchase"]},
                 },
@@ -307,6 +339,52 @@ class TestFilterPathsAST:
             keep={"user_id": ["user_1", "user_2", "user_3"]}
         )
         assert res.equals(expected)
+
+    def test__has_all_events_missing_events_raises(self) -> None:
+        stream = build_stream()
+        condition = {
+            "op": "=",
+            "metric": "has_all_events",
+            "value": True,
+            "metric_args": {},
+        }
+        with pytest.raises((PreprocessingConfigError, InvalidMetricConfigError)):
+            _ = stream.filter_paths(condition=condition)
+
+    def test__has_all_events_typo_raises(self) -> None:
+        stream = build_stream()
+        condition = {
+            "op": "=",
+            "metric": "has_all_events",
+            "value": True,
+            "metric_args": {"events": ["promo_view", "purchse"]},  # typo
+        }
+        with pytest.raises(InvalidMetricConfigError, match="purchse"):
+            _ = stream.filter_paths(condition=condition)
+
+    @pytest.mark.parametrize("metric", ["has_event_bulk", "event_count_bulk"])
+    def test__bulk_metric_forbidden_in_comparison_condition(self, metric: str) -> None:
+        stream = build_stream()
+        condition = {
+            "op": "=",
+            "metric": metric,
+            "value": True,
+            "metric_args": {"events": ["promo_view", "purchase"]},
+        }
+        with pytest.raises(PreprocessingConfigError):
+            _ = stream.filter_paths(condition=condition)
+
+    @pytest.mark.parametrize("metric", ["has_event_bulk", "event_count_bulk"])
+    def test__bulk_metric_forbidden_in_in_condition(self, metric: str) -> None:
+        stream = build_stream()
+        condition = {
+            "op": "in",
+            "metric": metric,
+            "value": [1],
+            "metric_args": {"events": ["promo_view", "purchase"]},
+        }
+        with pytest.raises(PreprocessingConfigError):
+            _ = stream.filter_paths(condition=condition)
 
     def test__matches_combined_with_metrics(self) -> None:
         """Test combining matches with other metrics"""
@@ -325,7 +403,7 @@ class TestFilterPathsAST:
                     "op": ">",
                     "metric": "event_count",
                     "value": 1,
-                    "metric_args": {"events": "purchase"},
+                    "metric_args": {"event": "purchase"},
                 },
             ],
         }
@@ -334,6 +412,92 @@ class TestFilterPathsAST:
 
         expected = stream.filter_events(keep={"user_id": ["user_2"]})
         assert res.equals(expected)
+
+    def test__matches_pattern_does_not_match_prefix_suffix_collision(self) -> None:
+        """Regression: a pattern like 'results->basket' must not match inside
+        an unrelated event name that merely ends in 'results' followed by a
+        real '->basket' - matching is on whole tokens, not substrings."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "user_search", "2020-01-01 00:00:00"],
+                ["user_1", "basket", "2020-01-01 00:01:00"],
+                ["user_2", "results", "2020-01-01 00:00:00"],
+                ["user_2", "basket", "2020-01-01 00:01:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df)
+
+        condition = {
+            "op": "=",
+            "metric": "matches_pattern",
+            "value": True,
+            "metric_args": {"pattern": "results->basket"},
+        }
+        res = stream.filter_paths(condition=condition)
+
+        # user_1's "user_search" ends in a substring shared with "results" but
+        # is a different, whole event token - only user_2 has a real "results"
+        # event immediately followed by "basket".
+        expected = stream.filter_events(keep={"user_id": ["user_2"]})
+        assert res.equals(expected)
+
+    def test__matches_pattern_escapes_regex_metacharacters(self) -> None:
+        """Regression: an event literally named 'item(1)' must be matched as a
+        literal, not interpreted as a regex capture group; a '.' in an event
+        name must not act as a wildcard over unrelated events."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "item(1)", "2020-01-01 00:00:00"],
+                ["user_1", "checkout", "2020-01-01 00:01:00"],
+                ["user_2", "a.c", "2020-01-01 00:00:00"],
+                ["user_3", "abcX", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df)
+
+        condition = {
+            "op": "=",
+            "metric": "matches_pattern",
+            "value": True,
+            "metric_args": {"pattern": "item(1)->checkout"},
+        }
+        res = stream.filter_paths(condition=condition)
+        expected = stream.filter_events(keep={"user_id": ["user_1"]})
+        assert res.equals(expected)
+
+    def test__matches_pattern_dot_is_not_a_wildcard_over_events(self) -> None:
+        df = pd.DataFrame(
+            [
+                ["user_1", "a.c", "2020-01-01 00:00:00"],
+                ["user_2", "abcX", "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df)
+
+        condition = {
+            "op": "=",
+            "metric": "matches_pattern",
+            "value": True,
+            "metric_args": {"pattern": "a.c"},
+        }
+        res = stream.filter_paths(condition=condition)
+        # only user_1's literal "a.c" event should match, not user_2's "abcX"
+        expected = stream.filter_events(keep={"user_id": ["user_1"]})
+        assert res.equals(expected)
+
+    def test__matches_pattern_typo_raises(self) -> None:
+        stream = build_stream()
+        condition = {
+            "op": "=",
+            "metric": "matches_pattern",
+            "value": True,
+            "metric_args": {"pattern": "promo_view->purchse"},  # typo
+        }
+        with pytest.raises(InvalidMetricConfigError, match="purchse"):
+            _ = stream.filter_paths(condition=condition)
 
     def test__in_segment_any_mode_scalar_value(self) -> None:
         """in_segment with mode=any and a scalar segment_value keeps only matching paths"""
@@ -410,86 +574,13 @@ class TestFilterPathsAST:
                     "op": ">",
                     "metric": "event_count",
                     "value": 1,
-                    "metric_args": {"events": "purchase"},
+                    "metric_args": {"event": "purchase"},
                 },
             ],
         }
         res = stream.filter_paths(condition=condition)
 
         expected = stream.filter_events(keep={"user_id": ["user_2"]})
-        assert res.equals(expected)
-
-    def test__event_count_no_events_arg_counts_all_events(self) -> None:
-        """Omitting 'events' (or passing None/[]) means 'all events' for event_count -
-        the per-path total across every event in the stream, i.e. the sum of every
-        per-event column MetricBuilder builds for the wildcard."""
-        df = pd.DataFrame(
-            [
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "B", "2020-01-01 00:01:00"],
-                ["user_2", "A", "2020-01-01 00:00:00"],
-            ],
-            columns=["user_id", "event", "timestamp"],
-        )
-        stream = Eventstream(df)
-
-        condition = {"op": ">", "metric": "event_count", "value": 1}
-        res = stream.filter_paths(condition=condition)
-
-        expected = stream.filter_events(keep={"user_id": ["user_1"]})
-        assert res.equals(expected)
-
-    def test__event_count_bare_metric_no_metric_args_key_at_all(self) -> None:
-        """Same wildcard behavior when 'metric_args' is omitted entirely (not just its
-        'events' key) - this is the exact shape from the reported bug repro."""
-        df = pd.DataFrame(
-            [
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "B", "2020-01-01 00:01:00"],
-                ["user_2", "A", "2020-01-01 00:00:00"],
-            ],
-            columns=["user_id", "event", "timestamp"],
-        )
-        stream = Eventstream(df)
-
-        res = stream.filter_paths({"metric": "event_count", "op": ">", "value": 1})
-
-        expected = stream.filter_events(keep={"user_id": ["user_1"]})
-        assert res.equals(expected)
-
-    def test__event_count_with_list_of_events_sums_counts(self) -> None:
-        """event_count with an explicit list of events sums the per-event counts
-        instead of silently comparing only the first event's column."""
-        stream = build_stream()
-
-        condition = {
-            "op": ">",
-            "metric": "event_count",
-            "value": 1,
-            "metric_args": {"events": ["purchase", "cancellation"]},
-        }
-        res = stream.filter_paths(condition=condition)
-
-        expected = stream.filter_events(keep={"user_id": ["user_2", "user_3"]})
-        assert res.equals(expected)
-
-    def test__has_event_no_events_arg_true_requires_all_events_present(self) -> None:
-        """Omitting 'events' for has_event means 'all events' - like the explicit-list
-        case, '= True' requires every event in the stream to be present on the path."""
-        df = pd.DataFrame(
-            [
-                ["user_1", "A", "2020-01-01 00:00:00"],
-                ["user_1", "B", "2020-01-01 00:01:00"],
-                ["user_2", "A", "2020-01-01 00:00:00"],
-            ],
-            columns=["user_id", "event", "timestamp"],
-        )
-        stream = Eventstream(df)
-
-        condition = {"op": "=", "metric": "has_event", "value": True}
-        res = stream.filter_paths(condition=condition)
-
-        expected = stream.filter_events(keep={"user_id": ["user_1"]})
         assert res.equals(expected)
 
     def test__active_days_no_active_events_arg_counts_all_days(self) -> None:
@@ -549,7 +640,7 @@ class TestFilterPathsConditionSugar:
                 "op": "==",
                 "metric": "has_event",
                 "value": True,
-                "metric_args": {"events": "purchase"},
+                "metric_args": {"event": "purchase"},
             }
         )
         assert set(res.df["user_id"].astype(str)) == {"user_1"}
@@ -563,7 +654,7 @@ class TestFilterPathsConditionSugar:
                     "op": "=",
                     "metric": "has_event",
                     "value": True,
-                    "metric_args": {"events": "purchase"},
+                    "metric_args": {"event": "purchase"},
                 },
             ]
         )

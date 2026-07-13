@@ -42,6 +42,54 @@ def test_schema_custom_cols(simple_df):
     assert es.schema.event_col == "action"
 
 
+def test_schema_unknown_key_raises_with_suggestion(simple_df):
+    from retentioneering.exceptions import SchemaConfigError
+
+    with pytest.raises(SchemaConfigError, match="timestamp_col"):
+        Eventstream(simple_df, {"timestamp": "timestamp"})
+
+
+def test_schema_auto_classifies_undeclared_columns_as_custom_cols(simple_df):
+    df = simple_df.copy()
+    df["returned"] = [True, True, True, False, False]
+    es = Eventstream(df)
+    assert es.schema.custom_cols == ["returned"]
+    assert "returned" in es.df.columns
+
+
+def test_schema_auto_custom_cols_excludes_declared_columns(simple_df):
+    df = simple_df.copy()
+    df["country"] = ["US", "US", "US", "DE", "DE"]
+    es = Eventstream(df, {"segment_cols": ["country"]})
+    assert es.schema.custom_cols == []
+    assert es.schema.segment_cols == ["country"]
+
+
+def test_schema_explicit_empty_custom_cols_drops_undeclared_columns(simple_df):
+    df = simple_df.copy()
+    df["returned"] = [True, True, True, False, False]
+    es = Eventstream(df, {"custom_cols": []})
+    assert es.schema.custom_cols == []
+    assert "returned" not in es.df.columns
+
+
+def test_schema_explicit_custom_cols_keeps_only_listed_columns(simple_df):
+    df = simple_df.copy()
+    df["returned"] = [True, True, True, False, False]
+    df["source"] = ["ads", "ads", "ads", "organic", "organic"]
+    es = Eventstream(df, {"custom_cols": ["returned"]})
+    assert es.schema.custom_cols == ["returned"]
+    assert "returned" in es.df.columns
+    assert "source" not in es.df.columns
+
+
+def test_schema_explicit_custom_cols_missing_from_df_raises(simple_df):
+    from retentioneering.exceptions import SchemaConfigError
+
+    with pytest.raises(SchemaConfigError, match="returned"):
+        Eventstream(simple_df, {"custom_cols": ["returned"]})
+
+
 def test_index_created(simple_df):
     es = Eventstream(simple_df)
     assert "index" in es.df.columns
@@ -86,6 +134,34 @@ def test_path_cols_nesting_violation_raises():
     )
     with pytest.raises(SchemaConfigError):
         Eventstream(df, {"path_cols": ["session_id", "user_id"]})
+
+
+def test_path_col_none_raises():
+    from retentioneering.exceptions import SchemaConfigError
+
+    df = pd.DataFrame(
+        {
+            "user_id": ["u1", None],
+            "event": ["a", "b"],
+            "timestamp": pd.to_datetime(["2024-01-01 10:00", "2024-01-01 10:01"]),
+        }
+    )
+    with pytest.raises(SchemaConfigError):
+        Eventstream(df)
+
+
+def test_path_col_preserves_numeric_dtype():
+    df = pd.DataFrame(
+        {
+            "user_id": [1, 1, 2],
+            "event": ["a", "b", "c"],
+            "timestamp": pd.to_datetime(
+                ["2024-01-01 10:00", "2024-01-01 10:01", "2024-01-01 10:02"]
+            ),
+        }
+    )
+    es = Eventstream(df)
+    assert es.df["user_id"].dtype == "int64"
 
 
 def test_add_start_end_events(simple_df):

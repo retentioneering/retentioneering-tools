@@ -7,6 +7,7 @@ import traitlets
 if TYPE_CHECKING:
     import pandas as pd
 
+from retentioneering.exceptions import RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._html_export import write_html
 
@@ -122,14 +123,14 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         self.path_cols = json.dumps(eventstream.schema.path_cols)
         self.segment_cols = json.dumps(eventstream.schema.segment_cols)
         try:
-            self.segment_levels = json.dumps(eventstream.get_segment_values())
+            self.segment_levels = json.dumps(eventstream.get_segment_levels())
         except Exception:
             self.segment_levels = "{}"
 
         _feat = features if features is not _UNSET else None
         if _feat is None:
             # No 'events' -> wildcard (all events), same as leaving it empty in the UI.
-            _feat = [{"metric": "event_count"}]
+            _feat = [{"metric": "event_count_bulk"}]
         self.features = (
             json.dumps(_feat) if isinstance(_feat, list) else (_feat or "[]")
         )
@@ -143,7 +144,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         self.nmf_components = ""
         _mc = overview_metrics if overview_metrics is not _UNSET else None
         if _mc is None:
-            _mc = [{"metric": "event_count", "agg": "mean"}]
+            _mc = [{"metric": "event_count_bulk", "agg": "mean"}]
         self.overview_metrics = (
             json.dumps(_mc) if isinstance(_mc, list) else (_mc or "[]")
         )
@@ -214,8 +215,9 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
                 json.loads(self.overview_metrics) if self.overview_metrics else []
             )
         n_clusters_raw = params.get("n_clusters", self.n_clusters)
-        nmf_raw = params.get(
-            "nmf_components", self.nmf_components if self.nmf_enabled else ""
+        nmf_enabled = params.get("nmf_enabled", self.nmf_enabled)
+        nmf_raw = (
+            params.get("nmf_components", self.nmf_components) if nmf_enabled else ""
         )
         return self._compute_raw(
             features=features,
@@ -277,6 +279,8 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
             self.result = json.dumps(computed["result"])
             self.chosen_params = json.dumps(computed["best_params"])
             self._cluster_labels = computed["cluster_labels"]
+        except RetentioneeringError:
+            raise
         except Exception as exc:
             self.error = str(exc)
             self.result = "{}"
@@ -420,15 +424,15 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
 
     def _apply_clusters_inplace(self, kwargs: dict, rename: dict) -> None:
         from retentioneering.data_processors.add_clusters import AddClusters
-        from retentioneering.data_processors.rename_segment_values import (
-            RenameSegmentValues,
+        from retentioneering.data_processors.rename_segment_levels import (
+            RenameSegmentLevels,
         )
 
         new_df, new_schema = AddClusters(eventstream=self._eventstream, **kwargs).apply(
             self._eventstream.df, self._eventstream.schema
         )
         if rename:
-            new_df, new_schema = RenameSegmentValues(kwargs["name"], rename).apply(
+            new_df, new_schema = RenameSegmentLevels(kwargs["name"], rename).apply(
                 new_df, new_schema
             )
 
@@ -443,7 +447,7 @@ class ClusterAnalysisWidget(RetentioneeringWidget):
         # Refresh this widget's own catalogs so its sidebar reflects the new column.
         self.segment_cols = json.dumps(es.schema.segment_cols)
         try:
-            self.segment_levels = json.dumps(es.get_segment_values())
+            self.segment_levels = json.dumps(es.get_segment_levels())
         except Exception:
             pass
 

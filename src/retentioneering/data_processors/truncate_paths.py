@@ -4,10 +4,14 @@ import pandas as pd
 
 from retentioneering import engine
 from retentioneering.data_processors.data_processor import DataProcessor
+from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
 
 PROCESSOR_NAME = "truncate_paths"
+
+_PATH_START = EventTypes().PATH_START.name
+_PATH_END = EventTypes().PATH_END.name
 
 
 class TruncatePaths(DataProcessor):
@@ -18,10 +22,12 @@ class TruncatePaths(DataProcessor):
     ----------
     start_event : str
         The event that marks the start of the window. The truncated path will
-        start from this event.
+        start from this event. The reserved name `"path_start"` anchors the
+        window at the path's actual first event instead of a named one.
     end_event : str
         The event that marks the end of the window. The truncated path will end
-        at this event.
+        at this event. The reserved name `"path_end"` anchors the window at the
+        path's actual last event instead of a named one.
     path_col : str, optional
         Path ID column name. If None, taken from schema.
     event_col : str, optional
@@ -75,6 +81,29 @@ class TruncatePaths(DataProcessor):
         index_col_q = engine.quote_ident(schema.index)
         subindex_col_q = engine.quote_ident(schema.subindex)
 
+        # "path_start"/"path_end" are reserved sentinels (see EventTypes): they
+        # anchor the window at the path's actual first/last event rather than
+        # searching for a named event, so no path is ever dropped on that side.
+        start_is_path_start = self.start_event == _PATH_START
+        end_is_path_end = self.end_event == _PATH_END
+
+        start_idx_expr = (
+            f"MIN({index_col_q})"
+            if start_is_path_start
+            else f"MIN(CASE WHEN {event_col_q} = {start_literal} THEN {index_col_q} END)"
+        )
+
+        if end_is_path_end:
+            end_idx_expr = f"MAX(df.{index_col_q})"
+            end_filter = "sb.start_idx IS NOT NULL"
+        else:
+            end_idx_expr = f"MIN(CASE WHEN df.{event_col_q} = {end_literal} THEN df.{index_col_q} END)"
+            end_filter = (
+                f"df.{index_col_q} >= sb.start_idx"
+                if start_is_path_start
+                else f"df.{index_col_q} > sb.start_idx OR (df.{index_col_q} = sb.start_idx AND {start_literal} = {end_literal})"
+            )
+
         # path_cols is validated (coarsest-first, strictly nested) at Eventstream
         # construction time, and path_col is restricted to schema.path_cols
         # above, so comparing schema.index directly is correct at any accepted
@@ -86,17 +115,17 @@ class TruncatePaths(DataProcessor):
         WITH start_bounds AS (
             SELECT
                 {path_col_q},
-                MIN(CASE WHEN {event_col_q} = {start_literal} THEN {index_col_q} END) AS start_idx
+                {start_idx_expr} AS start_idx
             FROM df
             GROUP BY {path_col_q}
         ),
         end_bounds AS (
             SELECT
                 df.{path_col_q},
-                MIN(CASE WHEN df.{event_col_q} = {end_literal} THEN df.{index_col_q} END) AS end_idx
+                {end_idx_expr} AS end_idx
             FROM df
             INNER JOIN start_bounds sb ON df.{path_col_q} = sb.{path_col_q}
-            WHERE df.{index_col_q} > sb.start_idx OR (df.{index_col_q} = sb.start_idx AND {start_literal} = {end_literal})
+            WHERE {end_filter}
             GROUP BY df.{path_col_q}
         ),
         path_bounds AS (

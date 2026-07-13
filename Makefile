@@ -98,6 +98,12 @@ test-release:
 # version string is reserved forever and the package is publicly installable
 # immediately.
 #
+# Also renames CHANGELOG.md's "## [<base version>]" section header (e.g.
+# "## [5.0.0]") to "## [<VERSION>]" (e.g. "## [5.0.0rc1]") for this temp
+# commit, so release.yml's notes extraction finds a matching section. This
+# is a plain rename, not a merge -- any separate "## [Unreleased]" content
+# is left alone; fold it in by hand first if it should ship in these notes.
+#
 # Usage: make rc-release VERSION=5.0.0rc1
 rc-release:
 	@if [ -z "$(VERSION)" ]; then \
@@ -110,7 +116,9 @@ rc-release:
 	  echo "Refusing: you have uncommitted changes (this uses git reset --hard). Commit or stash first."; exit 1; \
 	fi
 	sed -i '' 's/^version = ".*"/version = "$(VERSION)"/' pyproject.toml
-	git add pyproject.toml
+	@base="$$(echo $(VERSION) | sed -E 's/rc[0-9]+$$//')"; \
+	sed -i '' "s/^## \[$${base}\]\$$/## [$(VERSION)]/" CHANGELOG.md
+	git add pyproject.toml CHANGELOG.md
 	git commit -m "rc-release: $(VERSION)"
 	git tag v$(VERSION)
 	git push origin v$(VERSION)

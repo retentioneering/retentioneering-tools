@@ -2,6 +2,7 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext } from "./widget-utils";
+import { resolveDiffLabels } from "@retentioneering/viz-core";
 
 // ── types ──────────────────────────────────────────────────────────────────
 
@@ -314,9 +315,9 @@ function EventRow({ ev, blocks, allColIndices, blockEvMin, blockEvMax, blockHasB
             onClick={e => e.stopPropagation()}>
             {isDiff && eventCountG1 !== undefined && eventCountG2 !== undefined ? (
               <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
-                <span style={{ fontSize: 10, color: "#3b82f6" }}>{fmtCount(eventCountG1)}</span>
+                <span style={{ fontSize: 10, color: "#ef4444" }}>{fmtCount(eventCountG1)}</span>
                 <span style={{ fontSize: 9, color: "#9ca3af" }}>/</span>
-                <span style={{ fontSize: 10, color: "#ef4444" }}>{fmtCount(eventCountG2)}</span>
+                <span style={{ fontSize: 10, color: "#3b82f6" }}>{fmtCount(eventCountG2)}</span>
               </span>
             ) : (
               <span style={{ fontSize: 10, color: "#9ca3af", fontVariantNumeric: "tabular-nums", width: 28, textAlign: "right", flexShrink: 0, visibility: eventCount !== undefined ? "visible" : "hidden" }}>
@@ -367,7 +368,9 @@ function EventRow({ ev, blocks, allColIndices, blockEvMin, blockEvMax, blockHasB
 
 // Retentioneering-style sort: for each column in order, pick the remaining row with max value.
 // anchorEv (if provided) is pinned to the top; the rest are sorted normally.
-function sortByDirection(block: MatrixBlock, direction: "left" | "right", anchorEv: string | null): string[] {
+// In diff mode, values are signed (value1 - value2), so ranking uses their magnitude
+// instead of raw value — otherwise events where group2 >> group1 would never surface.
+function sortByDirection(block: MatrixBlock, direction: "left" | "right", anchorEv: string | null, isDiff: boolean): string[] {
   const colIndices = block.columns
     .map((c, i) => ({ c, i }))
     .filter(({ c }) => direction === "left" ? c < 0 : c > 0)
@@ -382,13 +385,41 @@ function sortByDirection(block: MatrixBlock, direction: "left" | "right", anchor
     let maxVal = -Infinity, maxEv: string | null = null;
     for (const ev of remaining) {
       const ri = block.events.indexOf(ev);
-      const v = block.values[ri]?.[ci] ?? 0;
+      const raw = block.values[ri]?.[ci] ?? 0;
+      const v = isDiff ? Math.abs(raw) : raw;
       if (maxEv === null || v > maxVal) { maxVal = v; maxEv = ev; }
     }
     if (maxEv !== null) { order.push(maxEv); remaining.delete(maxEv); }
   }
   order.push(...remaining);
   return anchorEv ? [anchorEv, ...order] : order;
+}
+
+// The event with the highest value at column 0 (the anchor's own column) —
+// used to pin the anchor row when auto-sorting. In diff mode block.values are
+// differences, so the centering event has value 0 there; group1 always has
+// the real frequencies.
+function findAnchorEvent(block: MatrixBlock): string | null {
+  const src = block.group1 ?? block;
+  const col0ci = src.columns.indexOf(0);
+  if (col0ci < 0) return null;
+  let best = -Infinity, anchorEv: string | null = null;
+  for (let ri = 0; ri < src.events.length; ri++) {
+    const v = src.values[ri]?.[col0ci] ?? 0;
+    if (v > best) { best = v; anchorEv = src.events[ri]; }
+  }
+  return anchorEv;
+}
+
+// Default row order: sort the first block by its right (forward-looking)
+// neighborhood, since that's the direction with something to show for a
+// path_start-anchored or mid-path anchor. A block with no right neighborhood
+// at all (e.g. a `path_pattern` ending at `path_end`, like ".*->path_end")
+// has nothing there to sort by, so fall back to its left neighborhood.
+function computeDefaultOrder(block: MatrixBlock | undefined, isDiff: boolean): string[] {
+  if (!block) return [];
+  const direction: "left" | "right" = block.columns.some(c => c > 0) ? "right" : "left";
+  return sortByDirection(block, direction, findAnchorEvent(block), isDiff);
 }
 
 interface SortState { order: string[]; lex_dir: "asc" | "desc" | null; }
@@ -432,6 +463,11 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
     blocks.forEach(b => b.events.forEach(e => seen.add(e)));
     return [...seen];
   }, [blocks]);
+
+  const diffLabels = React.useMemo(
+    () => resolveDiffLabels(diffSeg, diffV1, diffV2),
+    [diffSeg, diffV1, diffV2],
+  );
 
   const openGoTo = (e: React.MouseEvent<HTMLButtonElement>) => {
     setGoToRect((e.currentTarget.closest("th") as HTMLElement).getBoundingClientRect());
@@ -486,32 +522,22 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
   // Custom row order (drag / sort buttons / lexicographic sort)
   const [customOrder, setCustomOrder] = React.useState<string[]>(initialSortState?.order ?? []);
   const [lexSortDir, setLexSortDir] = React.useState<"asc" | "desc" | null>(initialSortState?.lex_dir ?? null);
-  // Reconcile with the data: keep the current order, append events new to it
+  // Reconcile with the data: keep the current order, append events new to it.
+  // The very first time (no saved/custom order yet), default to sorting the
+  // first block by its right neighborhood (or left, if it has none).
   React.useEffect(() => {
     const evs = blocks[0]?.events ?? [];
     setCustomOrder(prev => prev.length > 0
       ? [...prev.filter(e => evs.includes(e)), ...evs.filter(e => !prev.includes(e))]
-      : evs);
-  }, [blocks]);
+      : computeDefaultOrder(blocks[0], isDiff));
+  }, [blocks, isDiff]);
 
   const handleSort = React.useCallback((bi: number, direction: "left" | "right") => {
     const block = blocks[bi]; if (!block) return;
-    // Use original (non-diff) values to find anchor: in diff mode block.values are differences,
-    // so the centering event has value 0 there; group1 always has the real frequencies.
-    const src = block.group1 ?? block;
-    const col0ci = src.columns.indexOf(0);
-    let anchorEv: string | null = null;
-    if (col0ci >= 0) {
-      let best = -Infinity;
-      for (let ri = 0; ri < src.events.length; ri++) {
-        const v = src.values[ri]?.[col0ci] ?? 0;
-        if (v > best) { best = v; anchorEv = src.events[ri]; }
-      }
-    }
-    const order = sortByDirection(block, direction, anchorEv);
+    const order = sortByDirection(block, direction, findAnchorEvent(block), isDiff);
     setCustomOrder(order);
     onSortChange?.(order, lexSortDir);
-  }, [blocks, onSortChange, lexSortDir]);
+  }, [blocks, onSortChange, lexSortDir, isDiff]);
 
 
   const { blockEvMin, blockEvMax } = React.useMemo(() => {
@@ -808,16 +834,16 @@ function MatrixView({ blocks, stepWindow, isDiff, labelWidth, onLabelResize, hid
           {isDiff ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-                <span style={{ color: "#ef4444" }}>{diffSeg ?? "segment"}: {String(diffV2 ?? "group 2")}</span>
-                <span style={{ fontFamily: "monospace", color: "#111827" }}>{cellTip.g2 !== null ? cellTip.g2.toFixed(4) : "—"}</span>
+                <span style={{ color: "#ef4444" }}>{diffLabels.segmentName ? `${diffLabels.segmentName}: ${diffLabels.value1Label}` : diffLabels.value1Label}</span>
+                <span style={{ fontFamily: "monospace", color: "#111827" }}>{cellTip.g1 !== null ? cellTip.g1.toFixed(4) : "—"}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-                <span style={{ color: "#3b82f6" }}>{diffSeg ?? "segment"}: {String(diffV1 ?? "group 1")}</span>
-                <span style={{ fontFamily: "monospace", color: "#111827" }}>{cellTip.g1 !== null ? cellTip.g1.toFixed(4) : "—"}</span>
+                <span style={{ color: "#3b82f6" }}>{diffLabels.segmentName ? `${diffLabels.segmentName}: ${diffLabels.value2Label}` : diffLabels.value2Label}</span>
+                <span style={{ fontFamily: "monospace", color: "#111827" }}>{cellTip.g2 !== null ? cellTip.g2.toFixed(4) : "—"}</span>
               </div>
               <div style={{ borderTop: "1px solid #e5e7eb", margin: "2px 0" }} />
               <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-                <span style={{ fontWeight: 500, color: "#111827" }}>diff ({String(diffV2 ?? "g2")} − {String(diffV1 ?? "g1")})</span>
+                <span style={{ fontWeight: 500, color: "#111827" }}>diff ({diffLabels.value1Label} − {diffLabels.value2Label})</span>
                 <span style={{ fontFamily: "monospace", fontWeight: 600,
                   color: cellTip.v === 0 ? "#111827" : cellTip.v > 0 ? "#ef4444" : "#3b82f6" }}>
                   {cellTip.v >= 0 ? "+" : ""}{cellTip.v.toFixed(4)}
@@ -1159,7 +1185,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <FLabel tip="Compare two groups. Red = more in group 2, blue = more in group 1.">Diff by Segment</FLabel>
+                <FLabel tip="Compare two groups. Red = more in group 1, blue = more in group 2.">Diff by Segment</FLabel>
                 <select value={localDiffSeg} onChange={e => {
                   const col = e.target.value;
                   setLocalDiffSeg(col);
@@ -1175,14 +1201,14 @@ export function render({ host, el, isStatic = false }: RenderContext) {
                   <>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0 }}>
-                        <span style={{ color: "rgb(59,130,246)", fontSize: 13, flexShrink: 0 }}>●</span>
+                        <span style={{ color: "rgb(239,68,68)", fontSize: 13, flexShrink: 0 }}>●</span>
                         <select value={localDiffV1} onChange={e => setLocalDiffV1(e.target.value)} style={{ ...sidebarSel, flex: 1, minWidth: 0, width: "auto" }} disabled={isLoading || isStatic}>
                           {(segLevels[localDiffSeg] ?? []).map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localDiffV2}>{String(v)}</option>)}
                         </select>
                       </div>
                       <span style={{ color: SC.muted, fontSize: 11, flexShrink: 0 }}>vs</span>
                       <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0 }}>
-                        <span style={{ color: "rgb(239,68,68)", fontSize: 13, flexShrink: 0 }}>●</span>
+                        <span style={{ color: "rgb(59,130,246)", fontSize: 13, flexShrink: 0 }}>●</span>
                         <select value={localDiffV2} onChange={e => setLocalDiffV2(e.target.value)} style={{ ...sidebarSel, flex: 1, minWidth: 0, width: "auto" }} disabled={isLoading || isStatic}>
                           {(segLevels[localDiffSeg] ?? []).map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localDiffV1}>{String(v)}</option>)}
                           <option value={REST_VALUE}>{REST_LABEL}</option>

@@ -98,7 +98,7 @@ class Eventstream:
 
     @cached_property
     def schema(self) -> EventstreamSchema:
-        return EventstreamSchema(**(self._schema or {}))
+        return EventstreamSchema.from_dict(self._schema)
 
     @property
     def df(self) -> pd.DataFrame:
@@ -126,6 +126,30 @@ class Eventstream:
             for col in self.schema.event_cols + self.schema.segment_cols:
                 self._df[col] = self._df[col].astype("category")
 
+        schema = self.schema
+        declared_cols = set(
+            schema.path_cols
+            + schema.event_cols
+            + [schema.timestamp_col]
+            + schema.segment_cols
+            + [schema.event_type, schema.index, schema.subindex]
+        )
+
+        if self.preprocess and schema.custom_cols is not None:
+            # Explicit custom_cols (even []) is a strict declaration: anything
+            # else not covered by the schema is dropped, not silently kept.
+            missing = [c for c in schema.custom_cols if c not in self._df.columns]
+            if missing:
+                raise SchemaConfigError(
+                    f"custom_cols column(s) not found in the DataFrame: {missing}"
+                )
+            allowed = declared_cols | set(schema.custom_cols)
+            self._df = self._df[[c for c in self._df.columns if c in allowed]]
+        else:
+            known_cols = declared_cols | set(schema.custom_cols or [])
+            extra_cols = [c for c in self._df.columns if c not in known_cols]
+            schema.custom_cols = (schema.custom_cols or []) + extra_cols
+
     def _preprocess(self):
         if isinstance(self._df, str):
             df = pd.read_csv(self._df)
@@ -142,8 +166,12 @@ class Eventstream:
         df[schema.timestamp_col] = _to_datetime_auto(df[schema.timestamp_col])
 
         for col in schema.path_cols:
-            if df[col].dtype == "float64":
-                df[col] = df[col].astype("str")
+            if df[col].isna().any():
+                raise SchemaConfigError(
+                    f"path_cols column '{col}' contains missing values (None/NaN). "
+                    f"Every event must belong to a path; drop or fill the missing "
+                    f"values in '{col}' before creating the Eventstream."
+                )
 
         if len(schema.path_cols) > 1:
             _validate_path_cols_nesting(df, schema.path_cols)
@@ -300,11 +328,55 @@ class Eventstream:
         )
         return hashlib.md5(payload.encode()).hexdigest()
 
-    def get_segment_values(self) -> dict[str, list[str]]:
+    def get_segment_levels(self) -> dict[str, list[str]]:
         return {
             col: self._df[col].cat.categories.tolist()
             for col in self.schema.segment_cols
         }
+
+    @_tracked("headless_describe")
+    def describe(
+        self,
+        percentiles: tuple = (0.25, 0.5, 0.75, 0.9, 0.99),
+        top_events: int = 20,
+    ) -> dict:
+        """
+        Compute basic descriptive statistics for the eventstream.
+
+        A quick sanity-check summary of the dataset: schema, shape, date
+        range, event frequency, and per-path-column length/duration
+        statistics. Headless only - for interactive per-segment drill-down
+        use `segment_overview()` instead.
+
+        Parameters
+        ----------
+        percentiles : tuple of float, default (0.25, 0.5, 0.75, 0.9, 0.99)
+            Percentiles (0-1) reported in `path_stats`.
+        top_events : int, default 20
+            Number of most frequent events to include in `event_frequency`.
+
+        Returns
+        -------
+        dict
+            - `schema`: event_col, path_col, path_cols, segment_cols, timestamp_col
+            - `shape`: n_events, n_paths, n_unique_events
+            - `date_range`: min, max, span
+            - `event_frequency`: DataFrame of event/count/share, sorted
+              descending, limited to `top_events` rows
+            - `path_stats`: dict keyed by each entry of `schema.path_cols`,
+              each value a `DataFrame` (from `DataFrame.describe`) with
+              count/mean/std/min/percentiles/max rows and `length`/`duration`
+              columns
+            - `segments`: DataFrame of segment_col/value/count/share, one row
+              per segment value across all segment columns
+
+        Examples
+        --------
+            stream.describe()
+        """
+        from retentioneering.tools.describe import Describe
+
+        return Describe(self).fit(percentiles=percentiles, top_events=top_events)
 
     @_tracked("dp_filter_events")
     @_op
@@ -370,7 +442,8 @@ class Eventstream:
         event_col=None,
     ) -> "Eventstream":
         """
-        Cluster paths using ML and add a new segment column with integer cluster labels.
+        Cluster paths using ML and add a new segment column with `cluster_0`, `cluster_1`,
+        etc. cluster labels.
 
         Per-path metrics are computed from `features`, optionally scaled, then passed to
         the chosen clustering algorithm. The resulting cluster label is broadcast to every
@@ -384,9 +457,11 @@ class Eventstream:
             Metric configurations used as clustering features. Each dict has a
             `"metric"` key (str) and an optional `"metric_args"` key (dict).
             Available metrics: `"length"`, `"duration"`, `"event_count"`,
-            `"has_event"`, `"time_between"`, `"first_event_time"`, `"active_days"`,
-            `"matches_pattern"`, `"in_segment"`. See the Path Metrics documentation
-            page for the full metric reference.
+            `"has_event"`, `"event_count_bulk"`, `"has_event_bulk"`,
+            `"has_all_events"`, `"has_any_event"`, `"time_between"`,
+            `"first_event_time"`, `"active_days"`, `"matches_pattern"`,
+            `"in_segment"`. See the Path Metrics documentation page for the full
+            metric reference.
         method : str, default `"kmeans"`
             Clustering algorithm. One of `"kmeans"` or `"hdbscan"`.
         scaler : str or None, default `None`
@@ -410,7 +485,7 @@ class Eventstream:
                 name="cluster",
                 features=[
                     {"metric": "length"},
-                    {"metric": "event_count", "metric_args": {"events": "purchase"}},
+                    {"metric": "event_count", "metric_args": {"event": "purchase"}},
                 ],
                 method="kmeans",
                 n_clusters=4,
@@ -543,6 +618,11 @@ class Eventstream:
             child nodes.
             A plain list of nodes is shorthand for AND:
             `[cond1, cond2]` ≡ `{"op": "and", "args": [cond1, cond2]}`.
+            `has_event`/`event_count` take a single `event` (string) — for a
+            multi-event AND/OR condition use `has_all_events`/`has_any_event` with
+            an `events` list instead. `has_event_bulk`/`event_count_bulk` (which
+            expand into one column per event, for `segment_overview`/`add_clusters`)
+            cannot be used here since a condition needs exactly one value per path.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         event_col : str, optional
@@ -551,7 +631,11 @@ class Eventstream:
         Examples
         --------
             # Keep paths that contain at least one purchase
-            stream.filter_paths({"op": ">", "metric": "event_count", "value": 0, "metric_args": {"events": "purchase"}})
+            stream.filter_paths({"op": ">", "metric": "event_count", "value": 0, "metric_args": {"event": "purchase"}})
+
+            # Keep paths that contain a promo_view or a discount_applied event
+            stream.filter_paths({"op": "=", "metric": "has_any_event", "value": True,
+                                  "metric_args": {"events": ["promo_view", "discount_applied"]}})
 
             # Keep paths longer than 3 events that match a funnel pattern
             # (a top-level list means AND)
@@ -576,13 +660,7 @@ class Eventstream:
         # Build metrics
         metrics = self.get_metrics(metric_configs, path_col=path_col).reset_index()
 
-        # Events available for resolving the "all events" wildcard (omitted/None/[]
-        # 'events' on has_event/event_count) to the actual per-event column names
-        # MetricBuilder produced above.
-        available_events = sorted(self.df[self.schema.event_col].unique().tolist())
-        where_condition = dp._get_where_condition(
-            condition, available_events=available_events
-        )
+        where_condition = dp._get_where_condition(condition)
         path_col_q = engine.quote_ident(path_col)
         query = f"SELECT {path_col_q} FROM metrics WHERE {where_condition}"
         path_ids = engine.run(query, metrics=metrics)[path_col].tolist()
@@ -668,12 +746,16 @@ class Eventstream:
         func=None,
         sql=None,
         funnel_events=None,
+        time_range=None,
         path_col=None,
     ) -> "Eventstream":
         """
         Add a new categorical segment column to the eventstream.
 
-        Exactly one of `rules`, `func`, `sql`, or `funnel_events` must be provided.
+        Exactly one of `rules`, `func`, `sql`, `funnel_events`, or `time_range`
+        must be provided — unless `name` is already listed in
+        `schema.custom_cols`, in which case passing none of them promotes that
+        existing column to a segment in place, without recomputing its values.
 
         Parameters
         ----------
@@ -694,11 +776,21 @@ class Eventstream:
             order must match the eventstream.
             Example: `"SELECT CASE WHEN platform = 'mobile' THEN 'mobile' ELSE 'web' END FROM eventstream"`.
         funnel_events : list of str, optional
-            Ordered list of at least 2 event names defining a funnel. Each path is
-            assigned the name of the last funnel step reached in sequence, or
-            `out_of_funnel` if the first step was never reached.
+            Ordered list of at least 2 event names defining a strict, ordered
+            ("closed") funnel. A path is assigned `funnel_events[k]` only if it
+            contains every event `funnel_events[0]` through `funnel_events[k]`
+            *and* their last occurrences appear in that same order — reaching a
+            later step without having completed the earlier ones in order does
+            not count towards it. A path is assigned the highest such `k`; if it
+            never completes even `funnel_events[0]`, it is labeled
+            `out_of_funnel`.
             Segment values (in ascending funnel order): `out_of_funnel`, then each
             event name from `funnel_events[0]` to `funnel_events[-1]`.
+        time_range : tuple or list, optional
+            `(start, end)` — two timestamps (string or `pd.Timestamp`) bounding
+            an inclusive interval over `schema.timestamp_col`. Each event is
+            labeled `inside` if its timestamp falls within `[start, end]`,
+            otherwise `outside`.
         path_col : str, optional
             Path ID column override for `funnel_events` mode; defaults to
             `schema.path_col`.
@@ -715,18 +807,32 @@ class Eventstream:
                 ],
             )
 
-            # funnel_events mode — assign the last funnel step reached per path
+            # funnel_events mode — assign the deepest funnel step reached in order
             stream.add_segment(
                 "funnel",
                 funnel_events=["add_to_cart", "checkout_start", "purchase"],
             )
             # Resulting segment values: out_of_funnel | add_to_cart | checkout_start | purchase
+            # A path with only "checkout_start" (no "add_to_cart") is out_of_funnel — the
+            # funnel is strictly ordered, so skipping or reordering an earlier step keeps
+            # a path from being credited for a later one it did reach.
 
             # sql mode — one computed column, same row order as the eventstream
             stream.add_segment(
                 "device",
                 sql="SELECT CASE WHEN platform = 'mobile' THEN 'mobile' ELSE 'web' END FROM eventstream",
             )
+
+            # time_range mode — binary "inside" vs "outside" a time interval
+            stream.add_segment(
+                "incident",
+                time_range=("2024-03-10", "2024-03-17"),
+            )
+
+            # promoting an existing custom column — "returned" already rode along in
+            # the source DataFrame and landed in schema.custom_cols; no mode argument
+            # needed, the column's values are kept as-is
+            stream.add_segment("returned")
         """
         from retentioneering.data_processors.add_segment import AddSegment
 
@@ -736,6 +842,7 @@ class Eventstream:
             func=func,
             sql=sql,
             funnel_events=funnel_events,
+            time_range=time_range,
             path_col=path_col,
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
@@ -747,7 +854,7 @@ class Eventstream:
         consecutive=None,
         event_groups=None,
         group_col=None,
-        session_id_col=None,
+        session_col=None,
         session_type_col=None,
         agg=None,
         path_col=None,
@@ -757,7 +864,7 @@ class Eventstream:
         Merge consecutive or grouped events into a single representative event.
 
         Exactly one of `consecutive`, `event_groups`, `group_col`, or
-        `session_id_col` must be provided.
+        `session_col` must be provided.
 
         Parameters
         ----------
@@ -766,28 +873,30 @@ class Eventstream:
             Pass `True` to collapse all events; pass a list of event names to collapse
             only those specific events.
         event_groups : list of dict, optional
-            Merge a set of events that belong together into a single representative event.
-            Each group dict must have either an `events` key (list of event names to
-            merge) or a `separator` / `start_event` + `end_event` pair. Additional keys:
-              - `name` (str) — label for the merged event. Required unless
-                `cases` are given.
-              - `cases` (list of dict, optional) — conditional labels: each case is
-                `{"condition": <filter_paths-style condition>, "name": <label>}`,
-                evaluated against the merged group's own events; the group-level
-                `name` becomes the fallback label for groups no case matched.
+            Merge a chain of events into a single representative event.
+              - `events` (str or list of str) — collapse any run of these events, wherever it occurs in the path, into one group.
+              - `separator` (str or list of str) — collapse every event up to and including the next separator event into one group.
+              - `start_event` + `end_event` (str or list of str) — collapse every event between a `start_event` and the next `end_event`, inclusive of both, into one group.
+              - `name` (str) — label for the merged event, required unless `cases` are given.
+              - `cases` (list of dict, optional) — conditional labels evaluated against the group's own events, falling back to `name` for groups no case matched.
+            See [event_groups](/docs/data-processors/collapse-events#event_groups)
+            below for worked examples.
         group_col : str, optional
             Group consecutive rows by this column's value: each run of rows sharing
             the same value is collapsed into one event named after that value.
             Example: a `session_type` column with values `browse, browse, search`
             collapses the path into `browse -> search` events.
-        session_id_col : str, optional
+        session_col : str, optional
             Collapse events within each session defined by this column. Requires
             `session_type_col` as well.
         session_type_col : str, optional
-            Column that distinguishes session event types (used with `session_id_col`).
+            Column that distinguishes session event types (used with `session_col`).
         agg : dict, optional
             Aggregation rules for non-event columns when rows are merged, as a
-            `{column: agg_func}` dict. Example: `{"duration": "sum"}`.
+            `{column: agg_func}` dict. `agg_func` is one of `"first"` (default),
+            `"last"`, `"min"`, `"max"`, `"mean"`, `"mode"`, `"any"`. See
+            [agg](/docs/data-processors/collapse-events#agg) below. Example:
+            `{"price": "max"}`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         event_col : str, optional
@@ -810,7 +919,7 @@ class Eventstream:
             consecutive=consecutive,
             event_groups=event_groups,
             group_col=group_col,
-            session_id_col=session_id_col,
+            session_col=session_col,
             session_type_col=session_type_col,
             agg=agg,
             path_col=path_col,
@@ -952,36 +1061,38 @@ class Eventstream:
         new_df, new_schema = RenameEvents(mapping).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
-    @_tracked("dp_rename_segment_values")
+    @_tracked("dp_rename_segment_levels")
     @_op
-    def rename_segment_values(self, segment_col: str, mapping: dict) -> "Eventstream":
+    def rename_segment_levels(self, segment_col: str, mapping: dict) -> "Eventstream":
         """
-        Rename values of a segment column using a mapping dict.
+        Rename levels of a segment column using a mapping dict.
 
-        Values not present in `mapping` are left unchanged. Useful for cleaning up
+        Levels not present in `mapping` are left unchanged. Useful for cleaning up
         raw segment data, or for giving a clustering result (e.g. from `add_clusters`)
-        human-readable names.
+        human-readable names. Renaming a level to match another existing level merges
+        the two.
 
         Parameters
         ----------
         segment_col : str
             Name of the segment column. Must be listed in `schema.segment_cols`.
         mapping : dict
-            Mapping of `{old_value: new_value}`.
+            Mapping of `{old_level: new_level}`. Keys must be levels already present
+            in `segment_col` (see `get_segment_levels`).
 
         Examples
         --------
             stream.add_clusters(
                 name="cluster", features=[{"metric": "length"}], n_clusters=3
-            ).rename_segment_values(
+            ).rename_segment_levels(
                 "cluster", {"cluster_0": "buyers", "cluster_1": "browsers"}
             )
         """
-        from retentioneering.data_processors.rename_segment_values import (
-            RenameSegmentValues,
+        from retentioneering.data_processors.rename_segment_levels import (
+            RenameSegmentLevels,
         )
 
-        new_df, new_schema = RenameSegmentValues(segment_col, mapping).apply(
+        new_df, new_schema = RenameSegmentLevels(segment_col, mapping).apply(
             self._df, self.schema
         )
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
@@ -1047,7 +1158,7 @@ class Eventstream:
     @_op
     def split_sessions(
         self,
-        session_id_col="session_id",
+        session_col="session_id",
         session_index_col="session_index",
         separator=None,
         start_event=None,
@@ -1066,13 +1177,13 @@ class Eventstream:
 
         Parameters
         ----------
-        session_id_col : str, default `"session_id"`
+        session_col : str, default `"session_id"`
             Name of the new column that holds the unique session identifier.
         session_index_col : str, default `"session_index"`
             Name of the new column that holds the 0-based session index within each path.
         separator : str or list of str, optional
             Event name(s) that mark a session boundary. The separator event starts a new
-            session; the separator row itself belongs to the new session.
+            session; the separator row itself is dropped from the output.
         start_event : str or list of str, optional
             Event name(s) that mark the start of a session. Must be provided together
             with `end_event`.
@@ -1099,7 +1210,7 @@ class Eventstream:
         from retentioneering.data_processors.split_sessions import SplitSessions
 
         new_df, new_schema = SplitSessions(
-            session_id_col=session_id_col,
+            session_col=session_col,
             session_index_col=session_index_col,
             separator=separator,
             start_event=start_event,
@@ -1121,8 +1232,10 @@ class Eventstream:
         For each path, the first occurrence of `start_event` and the first occurrence
         of `end_event` that comes after it are found. Events outside this window are
         dropped. Paths that do not contain both anchors in the correct order are
-        removed entirely. The reserved names `path_start` / `path_end` are valid
-        anchors, e.g. `end_event="path_end"` keeps everything after `start_event`.
+        removed entirely.
+
+        Use `start_event="path_start"` / `end_event="path_end"` to refer to the actual
+        first and last events of the path.
 
         Parameters
         ----------
@@ -1138,6 +1251,7 @@ class Eventstream:
         Examples
         --------
             stream.truncate_paths(start_event="registration", end_event="purchase")
+            stream.truncate_paths(start_event="registration", end_event="path_end")
         """
         from retentioneering.data_processors.truncate_paths import TruncatePaths
 
@@ -1150,15 +1264,26 @@ class Eventstream:
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
     def _split_two(self, split, path_col: str | None = None):
-        from retentioneering.exceptions import EmptyEventstreamError, DiffConfigError
+        from retentioneering.exceptions import (
+            EmptyEventstreamError,
+            DiffConfigError,
+            SegmentValueNotFoundError,
+            PathIdNotFoundError,
+        )
 
         if len(split) == 3:
             segment_col, v1, v2 = split[0], split[1], split[2]
             if segment_col not in self.schema.segment_cols:
                 raise DiffConfigError(f"'{segment_col}' is not a segment column")
+            all_vals = set(self.get_segment_levels().get(segment_col, []))
+            if v1 not in all_vals:
+                raise SegmentValueNotFoundError(
+                    segment_value=v1,
+                    segment_col=segment_col,
+                    available_values=sorted(all_vals),
+                )
             s1 = self.filter_events(keep={segment_col: [v1]})
             if v2 == "<REST>":
-                all_vals = set(self.get_segment_values().get(segment_col, []))
                 v2_vals = list(all_vals - {v1})
                 if not v2_vals:
                     raise DiffConfigError(
@@ -1166,11 +1291,24 @@ class Eventstream:
                         "'<REST>' requires at least one complementary value."
                     )
             else:
+                if v2 not in all_vals:
+                    raise SegmentValueNotFoundError(
+                        segment_value=v2,
+                        segment_col=segment_col,
+                        available_values=sorted(all_vals),
+                    )
                 v2_vals = [v2]
             s2 = self.filter_events(keep={segment_col: v2_vals})
         elif len(split) == 2:
             ids1, ids2 = split[0], split[1]
             path_col = path_col or self.schema.path_col
+            available_ids = set(self._df[path_col].unique().tolist())
+            missing1 = [i for i in ids1 if i not in available_ids]
+            missing2 = [i for i in ids2 if i not in available_ids]
+            if missing1 or missing2:
+                raise PathIdNotFoundError(
+                    sorted(set(missing1 + missing2), key=str), path_col
+                )
             s1 = self.filter_events(keep={path_col: list(ids1)})
             s2 = self.filter_events(keep={path_col: list(ids2)})
         else:
@@ -1239,10 +1377,12 @@ class Eventstream:
               - `"time_median"` / `"time_q95"` — median / 95th-percentile time between the two events (in seconds).
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
-        diff : tuple, optional
-            `(segment_col, value1, value2)` to compare two segment values, or
-            `(path_ids1, path_ids2)` to compare two explicit path-id groups.
-            `value2` may be `<REST>`, meaning "every other value of `segment_col`".
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` to
+            compare two segment values, or `(path_ids1, path_ids2)` to compare two
+            explicit path-id groups. `value2` may be `<REST>`, meaning "every other
+            value of `segment_col`".
 
         Returns
         -------
@@ -1278,40 +1418,52 @@ class Eventstream:
         max_steps : int, default 10
             Number of path steps to compute (on each side of an anchor, when
             `path_pattern` is given).
-        diff : tuple, optional
-            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `<REST>`. See `transition_graph_data` for the shared diff
-            semantics.
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`. See
+            `transition_graph_data` for the shared diff semantics.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         path_pattern : str, optional
             Restrict/split paths using a `"->"`-separated sequence of anchor
             events, where `.*` matches any run of events, e.g.
-            `".*->add_to_cart->.*->purchase"`. Without a pattern, computes over
+            `"add_to_cart->.*->purchase"`. Without a pattern, computes over
             the whole path from `path_start` to `path_end`. Each anchor event in
-            the pattern produces its own matrix block.
+            the pattern produces its own matrix block. To see the
+            neighborhood around a single event: `path_pattern="add_to_cart"`.
 
         Returns
         -------
-        tuple of pd.DataFrame
-            One matrix per anchor block. In diff mode, returns
-            `(combined_blocks, group1_blocks, group2_blocks)`, each itself a
-            tuple of per-block DataFrames.
+        pd.DataFrame or tuple of pd.DataFrame
+            Without `path_pattern`: a single DataFrame (or, in diff mode,
+            `(combined, group1, group2)` — three DataFrames). With
+            `path_pattern`: one DataFrame per anchor block, as a tuple (or,
+            in diff mode, `(combined_blocks, group1_blocks, group2_blocks)`,
+            each itself a tuple of per-block DataFrames) — a pattern with
+            several anchor events produces several blocks.
 
         Examples
         --------
-            stream.step_sankey_data(max_steps=10)
-            stream.step_sankey_data(path_pattern=".*->purchase")
+            df = stream.step_sankey_data(max_steps=10)
             combined, g1, g2 = stream.step_sankey_data(diff=("plan", "pro", "free"))
+            blocks = stream.step_sankey_data(path_pattern="add_to_cart->.*->purchase")
         """
         from retentioneering.tools.step_matrix import StepMatrix
 
-        return StepMatrix(self).fit(
+        result = StepMatrix(self).fit(
             max_steps=max_steps,
             diff=diff,
             path_col=path_col,
             path_pattern=path_pattern,
         )
+        if path_pattern is not None:
+            return result
+        if diff is None:
+            (sm,) = result
+            return sm
+        combined, group1, group2 = result
+        return combined[0], group1[0], group2[0]
 
     @_tracked("headless_step_matrix")
     def step_matrix_data(
@@ -1321,9 +1473,44 @@ class Eventstream:
         path_col: str | None = None,
         path_pattern: str | None = None,
     ):
-        """Alias for `step_sankey_data` — Step Matrix and Step Sankey render the
+        """
+        Alias for `step_sankey_data` — Step Matrix and Step Sankey render the
         same underlying per-step data, so both widgets share one headless method.
-        See `step_sankey_data` for the full parameter reference."""
+
+        Parameters
+        ----------
+        max_steps : int, default 10
+            Number of path steps to compute (on each side of an anchor, when
+            `path_pattern` is given).
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`. See
+            `transition_graph_data` for the shared diff semantics.
+        path_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        path_pattern : str, optional
+            Restrict/split paths using a `"->"`-separated sequence of anchor
+            events, where `.*` matches any run of events, e.g.
+            `"add_to_cart->.*->purchase"`. Without a pattern, computes over
+            the whole path from `path_start` to `path_end`. Each anchor event in
+            the pattern produces its own matrix block. To see the
+            neighborhood around a single event: `path_pattern="add_to_cart"`.
+
+        Returns
+        -------
+        pd.DataFrame or tuple of pd.DataFrame
+            Without `path_pattern`: a single DataFrame (or, in diff mode,
+            `(combined, group1, group2)` — three DataFrames). With
+            `path_pattern`: one DataFrame per anchor block, as a tuple (or,
+            in diff mode, `(combined_blocks, group1_blocks, group2_blocks)`,
+            each itself a tuple of per-block DataFrames) — a pattern with
+            several anchor events produces several blocks.
+
+        See Also
+        --------
+        step_sankey_data : Same computation; this method is a plain alias.
+        """
         return self.step_sankey_data(
             max_steps=max_steps,
             diff=diff,
@@ -1360,9 +1547,10 @@ class Eventstream:
             Number of path steps to compute.
         step_window : int, default 3
             Number of step columns shown around each anchor.
-        diff : tuple, optional
-            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `<REST>`.
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         path_pattern : str, optional
@@ -1377,7 +1565,7 @@ class Eventstream:
 
         Examples
         --------
-            stream.step_sankey(max_steps=15, path_pattern=".*->purchase->.*")
+            stream.step_sankey(max_steps=15, path_pattern="add_to_cart->.*->purchase")
             stream.step_sankey(diff=("country", "US", "<REST>"))
         """
         from retentioneering.widgets.step_sankey import StepSankeyWidget, _UNSET
@@ -1401,6 +1589,7 @@ class Eventstream:
         diff=None,
         path_col=None,
         path_pattern=None,
+        step_window=None,
         height=None,
         sidebar_open=None,
         state_file=None,
@@ -1421,19 +1610,23 @@ class Eventstream:
         ----------
         max_steps : int, default 10
             Number of path steps to compute on each side of the anchor.
-        diff : tuple, optional
-            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `<REST>`.
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         path_pattern : str, optional
             Restrict/split paths using a `"->"`-separated sequence of anchor
             events, where `.*` matches any run of events, e.g.
-            `".*->add_to_cart->.*->purchase"`. Without a pattern, shows the
+            `"add_to_cart->.*->purchase"`. Without a pattern, shows the
             whole path from `path_start` to `path_end`. Multiple anchors render
             one matrix block per anchor, side by side. A pattern that doesn't
             start at `path_start` or end at `path_end` shows a serrated edge,
-            signalling paths continue beyond the visible range.
+            signalling paths continue beyond the visible range. To see the
+            neighborhood around a single event: `path_pattern="add_to_cart"`.
+        step_window : int, default 3
+            Number of step columns shown around each anchor.
         height : int, default 600
             Widget height in pixels.
         sidebar_open : bool, default True
@@ -1444,8 +1637,8 @@ class Eventstream:
 
         Examples
         --------
-            stream.step_matrix(path_pattern=".*->purchase")
-            stream.step_matrix(path_pattern=".*->add_to_cart->.*->purchase")
+            stream.step_matrix(path_pattern="purchase")
+            stream.step_matrix(path_pattern="add_to_cart->.*->purchase")
             stream.step_matrix(diff=("is_new_user", False, True))
         """
         from retentioneering.widgets.step_matrix import StepMatrixWidget, _UNSET
@@ -1456,6 +1649,7 @@ class Eventstream:
             diff=diff if diff is not None else _UNSET,
             path_col=path_col if path_col is not None else _UNSET,
             path_pattern=path_pattern if path_pattern is not None else _UNSET,
+            step_window=step_window if step_window is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
             state_file=state_file,
@@ -1480,9 +1674,11 @@ class Eventstream:
         ----------
         edge_weight : {"proba_out", "proba_in", "count", "unique_paths", "share_of_total", "avg_per_path", "time_median", "time_q95"}, default "proba_out"
             Value shown on edges. See the [Edge Weights](/docs/widgets/transition-graph#edge-weights) section for more details.
-        diff : tuple, optional
-            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `<REST>`, meaning "every other value of `segment_col`".
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`, meaning "every other
+            value of `segment_col`".
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         height : int, default 500
@@ -1536,9 +1732,10 @@ class Eventstream:
         ----------
         steps : list of str, optional
             Ordered event names defining the funnel steps.
-        diff : tuple, optional
-            `(segment_col, value1, value2)` or `(path_ids1, path_ids2)`; `value2`
-            may be `<REST>`.
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         height : int, default 420
@@ -1573,12 +1770,36 @@ class Eventstream:
         diff=None,
         path_col: str | None = None,
     ) -> dict:
-        """Compute funnel conversion metrics and return a dict (headless).
+        """
+        Compute funnel conversion metrics and return a dict (headless).
+
+        Parameters
+        ----------
+        steps : list of str, optional
+            Ordered event names defining the funnel steps.
+        diff : tuple or list, optional
+            Draws a comparative chart for a pair of segments; see
+            [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` or
+            `(path_ids1, path_ids2)`; `value2` may be `<REST>`.
+        path_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
 
         Returns
         -------
-        dict with key "steps", each item containing step name, unique_paths,
-        conversion_rate (and diff fields when diff is provided).
+        dict with key "steps", a list of per-step dicts with:
+
+        - `step` — event name.
+        - `unique_paths` — number of paths reaching this step.
+        - `conversion_rate` — `unique_paths` as a share of **all paths in the
+          eventstream**, including paths that never entered the funnel.
+        - `step_conversion_rate` — `unique_paths` as a share of the
+          **previous step's** `unique_paths`, i.e. the step-to-step
+          conversion. Equals `conversion_rate` for the first step, since
+          there is no previous step to divide by.
+
+        When `diff` is given, each of the four keys above is split into
+        `funnel1_*` / `funnel2_*` (one per segment) and `delta_*`
+        (`funnel1_* - funnel2_*`) instead.
         """
         from retentioneering.tools.funnel import Funnel
 
@@ -1633,7 +1854,7 @@ class Eventstream:
                 segment_col="plan",
                 metrics=[
                     {"metric": "length", "agg": "mean"},
-                    {"metric": "event_count", "metric_args": {"events": "purchase"}, "agg": "mean"},
+                    {"metric": "event_count", "metric_args": {"event": "purchase"}, "agg": "mean"},
                 ],
             )
         """
@@ -1660,10 +1881,29 @@ class Eventstream:
         path_col: str | None = None,
         event_col: str | None = None,
     ) -> "pd.DataFrame":
-        """Compute aggregated metrics across segment values (headless).
+        """
+        Compute aggregated metrics across segment values (headless).
 
-        Returns a DataFrame with metrics as rows and segment values as columns.
-        Always includes segment_size and segment_share as first two rows.
+        Parameters
+        ----------
+        segment_col : str
+            Segment column to split by; must be one of `schema.segment_cols`.
+        metrics : list of dict, optional
+            Metric configurations, each with a `"metric"` key, optional
+            `"metric_args"`, and an `"agg"` key (`"mean"`, `"median"`, `"q5"`,
+            `"q25"`, `"q75"`, `"q95"`, or `"complement_distance"`) controlling how
+            per-path values roll up across a segment. See the Path Metrics
+            documentation page for the metric reference.
+        path_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        event_col : str, optional
+            Event name column override; defaults to `schema.event_col`.
+
+        Returns
+        -------
+        pd.DataFrame
+            Metrics as rows and segment values as columns. Always includes
+            segment_size and segment_share as the first two rows.
         """
         from retentioneering.tools.segment_overview import SegmentOverview
 
@@ -1688,18 +1928,17 @@ class Eventstream:
         state_file: str | None = None,
     ):
         """
-        Interactive clustering widget for Jupyter notebooks.
-
-        Clusters paths by behavioral metrics and shows a Segment Overview-style
-        heatmap for the resulting clusters. All parameters are also editable
-        from the widget's sidebar (including feature/metric configuration and
-        an NMF decomposition option not exposed here as a direct argument).
+        An interactive tool for finding an optimal splitting of paths by behavioral metrics.
+        Allows you to inspect clusters in a [Segment Overview](/docs/widgets/segment-overview)-style heatmap
+        and offers the best possible splitting from the silhouette score perspective.
+        Once the splitting looks right, you can label the clusters and save them as a new segment column
+        of the eventstream right from the UI by clicking "Save Clusters".
 
         Parameters
         ----------
         features : list of dict, optional
-            Metric configurations used as clustering features (see the Path
-            Metrics documentation page); defaults to per-event counts for every
+            Metric configurations used as clustering features (see the [Path
+            Metrics](/docs/path-metrics); defaults to per-event counts for every
             event in the eventstream.
         method : {"kmeans", "hdbscan"}, default "kmeans"
             Clustering algorithm.
@@ -1713,7 +1952,7 @@ class Eventstream:
             Metrics shown in the overview heatmap after clustering (independent
             of `features`); defaults to per-event counts for every event.
             Both `features` and `overview_metrics` accept metric configs from the
-            same Path Metrics registry.
+            same [Path Metrics](/docs/path-metrics) registry.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         height : int, default 520
@@ -1727,7 +1966,7 @@ class Eventstream:
         Examples
         --------
             stream.cluster_analysis(
-                features=[{"metric": "length"}, {"metric": "duration"}],
+                features=[{"metric": "length"}, {"metric": "duration"}, {"metric": "event_count_bulk"}],
                 n_clusters="3-6",
             )
         """
@@ -1766,7 +2005,8 @@ class Eventstream:
         path_col: str | None = None,
         event_col: str | None = None,
     ) -> dict:
-        """Run cluster analysis headlessly and return dict with overview_df / silhouette / nmf / best_params.
+        """
+        Run cluster analysis headlessly and return a dict of results.
 
         Pass lists for n_clusters / nmf_components / min_cluster_size to trigger
         grid search with silhouette scoring. n_clusters is required for the kmeans
@@ -1776,6 +2016,64 @@ class Eventstream:
         `overview_df` (the winning combination when searching, or just the fixed
         values passed in otherwise) — pass it straight to `add_clusters` to
         materialize the same clustering as a segment column.
+
+        Parameters
+        ----------
+        features : list of dict, optional
+            Metric configurations used as clustering features (see the Path
+            Metrics documentation page); defaults to per-event counts for every
+            event in the eventstream.
+        method : {"kmeans", "hdbscan"}, default "kmeans"
+            Clustering algorithm.
+        scaler : {"minmax", "standard"}, optional
+            Feature scaler applied before clustering; default `"minmax"`.
+        n_clusters : int, list of int, or str, optional
+            Number of clusters. A single int fixes the cluster count; a list of
+            ints or a range string (e.g. `"3-8"`) runs a silhouette-scored grid
+            search over that range and picks the best. Defaults to `"3-8"`.
+        min_cluster_size : int or list of int, optional
+            Minimum cluster size for the `"hdbscan"` method; defaults to `5`.
+            A list triggers a silhouette-scored grid search over the given
+            values.
+        cluster_selection_epsilon : float or list of float, optional
+            Cluster selection epsilon for the `"hdbscan"` method; defaults to
+            `0.0`. A list triggers a silhouette-scored grid search over the
+            given values.
+        nmf_components : int or list of int, optional
+            Number of components for an optional NMF (non-negative matrix
+            factorization) step applied to the scaled features before
+            clustering; if omitted, NMF is skipped. A list triggers a
+            silhouette-scored grid search over the given values.
+        overview_metrics : list of dict, optional
+            Metrics shown in the overview heatmap after clustering (independent
+            of `features`); defaults to per-event counts for every event.
+            Both `features` and `overview_metrics` accept metric configs from the
+            same Path Metrics registry.
+        path_col : str, optional
+            Path ID column override; defaults to `schema.path_col`.
+        event_col : str, optional
+            Event name column override; defaults to `schema.event_col`.
+
+        Returns
+        -------
+        dict
+            - `overview_df`: `DataFrame` from the segment overview heatmap,
+              one row per path segmented by cluster label.
+            - `cluster_labels`: `Series` of the cluster label assigned to each
+              path, indexed by `path_col`.
+            - `best_params`: concrete parameter values used to produce
+              `overview_df` — pass straight to `add_clusters`.
+            - `nmf`: `None` if `nmf_components` was not passed (or, in a grid
+              search, if no candidate used NMF); otherwise a dict with
+              `H_matrix`, `features`, and `W_cluster_means`.
+            - `silhouette`: only present when a list was passed for
+              `n_clusters` / `nmf_components` / `min_cluster_size` /
+              `cluster_selection_epsilon` (grid search mode). A dict of two
+              parallel lists — `{"params": [{"n_clusters": 3}, ...],
+              "silhouette": [0.87, ...]}` — one entry per candidate tried;
+              zip them to inspect individual scores. `overview_df`,
+              `cluster_labels`, and `best_params` are omitted in this mode if
+              every candidate was degenerate (fewer than 2 valid clusters).
         """
         from retentioneering.tools.cluster_analysis import ClusterAnalysis
 

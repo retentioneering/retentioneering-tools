@@ -185,8 +185,8 @@ class TestClusterAnalysis:
             features=[
                 {"metric": "length"},
                 {"metric": "duration"},
-                {"metric": "has_event", "metric_args": {"events": "purchase"}},
-                {"metric": "event_count", "metric_args": {"events": "view"}},
+                {"metric": "has_event", "metric_args": {"event": "purchase"}},
+                {"metric": "event_count", "metric_args": {"event": "view"}},
             ],
             method="kmeans",
             n_clusters=2,
@@ -220,7 +220,7 @@ class TestClusterAnalysis:
             features=[
                 {"metric": "length"},
                 {"metric": "duration"},
-                {"metric": "has_event", "metric_args": {"events": "purchase"}},
+                {"metric": "has_event", "metric_args": {"event": "purchase"}},
             ],
             method="kmeans",
             n_clusters=[2, 3, 4],
@@ -249,7 +249,7 @@ class TestClusterAnalysis:
             features=[
                 {"metric": "length"},
                 {"metric": "duration"},
-                {"metric": "has_event", "metric_args": {"events": "purchase"}},
+                {"metric": "has_event", "metric_args": {"event": "purchase"}},
             ],
             method="kmeans",
             n_clusters=2,
@@ -274,7 +274,7 @@ class TestClusterAnalysis:
             features=[
                 {"metric": "length"},
                 {"metric": "duration"},
-                {"metric": "has_event", "metric_args": {"events": "purchase"}},
+                {"metric": "has_event", "metric_args": {"event": "purchase"}},
             ],
             method="kmeans",
             n_clusters=[2, 3],
@@ -354,7 +354,7 @@ class TestClusterAnalysis:
             stream.cluster_analysis_data(
                 features=[
                     {"metric": "length"},
-                    {"metric": "has_event", "metric_args": {"events": "purchse"}},
+                    {"metric": "has_event", "metric_args": {"event": "purchse"}},
                 ],
                 method="kmeans",
                 n_clusters=2,

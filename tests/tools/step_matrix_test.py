@@ -9,7 +9,7 @@ class TestStepMatrix:
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         stream = Eventstream(df)
         max_steps = 5
-        res = stream.step_sankey_data(max_steps=max_steps)[0]
+        res = stream.step_sankey_data(max_steps=max_steps)
 
         expected = pd.DataFrame(
             [
@@ -35,14 +35,14 @@ class TestStepMatrix:
         max_steps = 5
         res = stream.step_sankey_data(
             max_steps=max_steps, diff=("country", "US", "UK"), path_col="session_id"
-        )[0][0]
+        )[0]
 
         expected = pd.DataFrame(
             [
                 [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 1 / 2, -1 / 2.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 1 / 2, -1 / 2],
-                [0.0, 0.0, 0.0, -1 / 2, 0.0, 1 / 2],
+                [0.0, 0.0, 0.0, -1 / 2, 1 / 2.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, -1 / 2, 1 / 2],
+                [0.0, 0.0, 0.0, 1 / 2, 0.0, -1 / 2],
                 [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             ],
             index=["path_start", "A", "B", "C", "path_end"],
@@ -103,9 +103,9 @@ class TestStepMatrix:
             columns=columns,
         )
 
-        pd.testing.assert_frame_equal(sms1[0], expected_g1)
-        pd.testing.assert_frame_equal(sms2[0], expected_g2)
-        pd.testing.assert_frame_equal(diff_sms[0], expected_g2 - expected_g1)
+        pd.testing.assert_frame_equal(sms1, expected_g1)
+        pd.testing.assert_frame_equal(sms2, expected_g2)
+        pd.testing.assert_frame_equal(diff_sms, expected_g1 - expected_g2)
 
     def test__diff_with_rest_and_no_complement_raises(self) -> None:
         """diff value2="<REST>" must raise a clear error, not a raw DuckDB exception,
@@ -127,6 +127,31 @@ class TestStepMatrix:
             stream.step_sankey_data(
                 max_steps=3, diff=("country", "US", "<REST>"), path_col="session_id"
             )
+
+    def test__diff_with_path_pattern_uses_group1_minus_group2(self) -> None:
+        """Regression guard: the combined diff matrix must be group1 - group2
+        whether or not path_pattern is set. _process_pattern_matrix previously
+        computed group2 - group1 here, an inverted sign relative to the
+        no-pattern path (_process_diff_matrix)."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "US"],
+                ["user_1", "B", "2020-01-01 00:01:00", "US"],
+                ["user_2", "A", "2020-01-01 00:00:00", "US"],
+                ["user_2", "B", "2020-01-01 00:01:00", "US"],
+                ["user_3", "A", "2020-01-01 00:00:00", "UK"],
+            ],
+            columns=["user_id", "event", "timestamp", "country"],
+        )
+        stream = Eventstream(df, {"segment_cols": ["country"]})
+
+        diff_sms, sms1, sms2 = stream.step_sankey_data(
+            max_steps=3, diff=("country", "US", "UK"), path_pattern="A"
+        )
+
+        assert len(diff_sms) > 0
+        for i in range(len(diff_sms)):
+            pd.testing.assert_frame_equal(diff_sms[i], sms1[i] - sms2[i])
 
     def test__path_end_session_id(self, fx_read_csv):
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
@@ -167,7 +192,7 @@ class TestStepMatrix:
             columns=["user_id", "session_id", "event", "timestamp"],
         )
         stream = Eventstream(df, {"path_cols": ["user_id", "session_id"]})
-        (res,) = stream.step_sankey_data(max_steps=4, path_col="session_id")
+        res = stream.step_sankey_data(max_steps=4, path_col="session_id")
 
         # session S1: path_start -> A -> B -> path_end
         # session S2: path_start -> C -> D -> path_end
@@ -473,13 +498,51 @@ class TestStepMatrix:
 
         pd.testing.assert_frame_equal(res[0], expected)
 
+    def test__path_pattern_9_redundant_wildcard_centers_anchor(self, fx_read_csv):
+        """Regression test: wrapping the anchor in a redundant leading/trailing
+        '.*' must still center it at column 0, not column -1."""
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+        max_steps = 2
+
+        with pytest.warns(UserWarning, match="redundant"):
+            res = stream.step_sankey_data(max_steps=max_steps, path_pattern=".*->B->.*")
+
+        assert res[0].loc["B", 0] == 1.0
+        assert res[0].loc["B", -1] == 0.0
+
+    def test__path_pattern_10_redundant_wildcard_matches_bare_pattern(
+        self, fx_read_csv
+    ):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+        max_steps = 2
+
+        with pytest.warns(UserWarning, match="redundant"):
+            wrapped = stream.step_sankey_data(
+                max_steps=max_steps, path_pattern=".*->B->.*"
+            )
+        bare = stream.step_sankey_data(max_steps=max_steps, path_pattern="B")
+
+        pd.testing.assert_frame_equal(wrapped[0], bare[0])
+
+    def test__path_pattern_no_warning_without_redundant_wildcard(
+        self, fx_read_csv, recwarn
+    ):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+        stream.step_sankey_data(max_steps=2, path_pattern="path_start->.*->C")
+
+        assert len(recwarn) == 0
+
     def test__path_pattern_empty_raises_error(self, fx_read_csv):
         """Test that PatternNoMatchError is raised when path_pattern matches no paths (regular case)"""
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         stream = Eventstream(df)
         max_steps = 2
-        # Use a pattern that will match no paths
-        non_matching_pattern = "path_start->X->Y->Z->path_end"
+        # A pattern of real events (A/B/C) that never occurs adjacently in the
+        # fixture - legitimately zero matches, as opposed to a typo.
+        non_matching_pattern = "path_start->A->A->A->path_end"
 
         with pytest.raises(PatternNoMatchError) as exc_info:
             stream.step_sankey_data(
@@ -496,8 +559,9 @@ class TestStepMatrix:
             df, {"path_cols": ["session_id"], "segment_cols": ["country"]}
         )
         max_steps = 2
-        # Use a pattern that will match no paths
-        non_matching_pattern = "path_start->X->Y->Z->path_end"
+        # A pattern of real events (A/B/C) that never occurs adjacently in the
+        # fixture - legitimately zero matches, as opposed to a typo.
+        non_matching_pattern = "path_start->A->A->A->path_end"
 
         with pytest.raises(PatternNoMatchError) as exc_info:
             stream.step_sankey_data(
@@ -509,6 +573,90 @@ class TestStepMatrix:
 
         assert exc_info.value.error_code == "PATTERN_NO_MATCH"
         assert non_matching_pattern in exc_info.value.message
+
+    def test__path_pattern_typo_raises_invalid_parameter_error(self, fx_read_csv):
+        """A typoed event in path_pattern must fail loudly with a specific
+        'unknown event' error, not the generic PatternNoMatchError."""
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+
+        with pytest.raises(InvalidParameterError) as exc_info:
+            stream.step_sankey_data(max_steps=2, path_pattern="path_start->X->path_end")
+
+        assert "X" in exc_info.value.message
+
+    def test__path_pattern_typo_raises_for_step_matrix_too(self, fx_read_csv):
+        """step_matrix shares the same path_pattern validation as step_sankey
+        (both delegate to StepMatrix.fit())."""
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+
+        with pytest.raises(InvalidParameterError):
+            stream.step_matrix_data(max_steps=2, path_pattern="typo_event")
+
+
+class TestStepMatrixDataReturnShape:
+    """Without path_pattern there is always exactly one block, so the public
+    step_sankey_data/step_matrix_data collapse to the same shape as
+    transition_graph_data: a bare DataFrame (or a flat diff triple) instead of
+    a tuple of one-element tuples. With path_pattern, the block count depends
+    on the pattern, so the tuple-of-blocks form is kept."""
+
+    def test__no_pattern_no_diff_returns_bare_dataframe(self, fx_read_csv):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+
+        res = stream.step_sankey_data(max_steps=3)
+
+        assert isinstance(res, pd.DataFrame)
+
+    def test__no_pattern_diff_returns_flat_triple(self, fx_read_csv):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(
+            df, {"path_cols": ["session_id"], "segment_cols": ["country"]}
+        )
+
+        combined, group1, group2 = stream.step_sankey_data(
+            max_steps=3, diff=("country", "US", "UK"), path_col="session_id"
+        )
+
+        assert isinstance(combined, pd.DataFrame)
+        assert isinstance(group1, pd.DataFrame)
+        assert isinstance(group2, pd.DataFrame)
+        pd.testing.assert_frame_equal(combined, group1 - group2)
+
+    def test__with_pattern_no_diff_still_returns_tuple(self, fx_read_csv):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+
+        res = stream.step_sankey_data(max_steps=3, path_pattern="B")
+
+        assert isinstance(res, tuple)
+        assert isinstance(res[0], pd.DataFrame)
+
+    def test__with_pattern_diff_still_returns_nested_tuples(self, fx_read_csv):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(
+            df, {"path_cols": ["session_id"], "segment_cols": ["country"]}
+        )
+
+        combined, group1, group2 = stream.step_sankey_data(
+            max_steps=3,
+            diff=("country", "US", "UK"),
+            path_col="session_id",
+            path_pattern="B",
+        )
+
+        assert isinstance(combined, tuple) and isinstance(combined[0], pd.DataFrame)
+        assert isinstance(group1, tuple) and isinstance(group1[0], pd.DataFrame)
+        assert isinstance(group2, tuple) and isinstance(group2[0], pd.DataFrame)
+
+    def test__step_matrix_data_alias_matches_shape(self, fx_read_csv):
+        df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
+        stream = Eventstream(df)
+
+        assert isinstance(stream.step_matrix_data(max_steps=3), pd.DataFrame)
+        assert isinstance(stream.step_matrix_data(max_steps=3, path_pattern="B"), tuple)
 
 
 class TestStepMatrixDataAlias:
@@ -524,6 +672,4 @@ class TestStepMatrixDataAlias:
         stream = Eventstream(df)
         via_sankey = stream.step_sankey_data(max_steps=3)
         via_matrix = stream.step_matrix_data(max_steps=3)
-        assert len(via_sankey) == len(via_matrix)
-        for a, b in zip(via_sankey, via_matrix):
-            pd.testing.assert_frame_equal(a, b)
+        pd.testing.assert_frame_equal(via_sankey, via_matrix)

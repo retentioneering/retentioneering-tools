@@ -141,7 +141,7 @@ class TestGetMetricsEscaping:
         )
 
         metrics = stream.get_metrics(
-            [{"metric": "event_count", "metric_args": {"events": "o'brien_page"}}]
+            [{"metric": "event_count", "metric_args": {"event": "o'brien_page"}}]
         )
 
         assert metrics.loc["user_1", metrics.columns[0]] == 2
@@ -155,7 +155,7 @@ class TestGetMetricsEscaping:
         )
 
         metrics = stream.get_metrics(
-            [{"metric": "has_event", "metric_args": {"events": "o'brien_page"}}]
+            [{"metric": "has_event", "metric_args": {"event": "o'brien_page"}}]
         )
 
         col = metrics.columns[0]
@@ -224,7 +224,7 @@ class TestCollapseEventsMetricEscaping:
                                 "op": ">",
                                 "metric": "has_event",
                                 "value": 0,
-                                "metric_args": {"events": "o'brien_page"},
+                                "metric_args": {"event": "o'brien_page"},
                             },
                             "name": "obrien_session",
                         }
@@ -255,7 +255,7 @@ class TestCollapseEventsMetricEscaping:
                                 "op": ">",
                                 "metric": "event_count",
                                 "value": 1,
-                                "metric_args": {"events": "o'brien_page"},
+                                "metric_args": {"event": "o'brien_page"},
                             },
                             "name": "active_session",
                         }
@@ -334,10 +334,15 @@ class TestAddEventsChurnEscaping:
 
 class TestMatchesPatternEscaping:
     def test__pattern_with_apostrophe_no_matches(self) -> None:
+        """A real event containing an apostrophe must be safely escaped in the
+        SQL query and correctly report no match when it doesn't precede the
+        target event (as opposed to a nonexistent/typoed event, which now
+        raises InvalidMetricConfigError instead - see metric_builder_test.py)."""
         stream = make_stream(
             [
-                ["user_1", "promo_view", "2020-01-01 00:00:00"],
-                ["user_1", "purchase", "2020-01-01 00:01:00"],
+                ["user_1", "o'brien_page", "2020-01-01 00:00:00"],
+                ["user_1", "logout", "2020-01-01 00:01:00"],
+                ["user_2", "purchase", "2020-01-01 00:00:00"],
             ]
         )
 
@@ -345,7 +350,7 @@ class TestMatchesPatternEscaping:
             [
                 {
                     "metric": "matches_pattern",
-                    "metric_args": {"pattern": "o'brien->purchase"},
+                    "metric_args": {"pattern": "o'brien_page->purchase"},
                 }
             ]
         )

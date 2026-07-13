@@ -26,3 +26,5 @@ export { formatNumber, formatPopulation } from "./utils/format-number";
 export { formatTime } from "./utils/format-time";
 export { MATRIX_VALUE_TYPES, DEFAULT_VALUE_TYPE, isTimeValueType, isProbabilityValueType } from "./utils/value-types";
 export type { MatrixValueType } from "./utils/value-types";
+export { resolveDiffLabels } from "./utils/diff-tooltip";
+export type { DiffLabels } from "./utils/diff-tooltip";

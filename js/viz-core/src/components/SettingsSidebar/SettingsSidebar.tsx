@@ -249,7 +249,7 @@ export const SettingsSidebar = observer(function SettingsSidebar({
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0 }}>
-                  <span title="Group 1 (blue)" style={{ color: "rgb(59, 130, 246)", fontSize: 13, flexShrink: 0, lineHeight: 1 }}>●</span>
+                  <span title="Group 1 (red)" style={{ color: "rgb(239, 68, 68)", fontSize: 13, flexShrink: 0, lineHeight: 1 }}>●</span>
                   <select
                     value={localVal1}
                     onChange={(e) => setLocalVal1(e.target.value)}
@@ -261,7 +261,7 @@ export const SettingsSidebar = observer(function SettingsSidebar({
                 </div>
                 <span style={{ color: C.muted, fontSize: 11, flexShrink: 0 }}>vs</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0 }}>
-                  <span title="Group 2 (red)" style={{ color: "rgb(239, 68, 68)", fontSize: 13, flexShrink: 0, lineHeight: 1 }}>●</span>
+                  <span title="Group 2 (blue)" style={{ color: "rgb(59, 130, 246)", fontSize: 13, flexShrink: 0, lineHeight: 1 }}>●</span>
                   <select
                     value={localVal2}
                     onChange={(e) => setLocalVal2(e.target.value)}

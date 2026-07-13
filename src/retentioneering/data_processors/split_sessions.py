@@ -18,7 +18,7 @@ PROCESSOR_NAME = "split_sessions"
 
 @dataclass
 class SplitSessions(DataProcessor):
-    session_id_col: str
+    session_col: str
     session_index_col: str
     separator: List[str] | None
     start_event: List[str] | None
@@ -29,7 +29,7 @@ class SplitSessions(DataProcessor):
 
     def __init__(
         self,
-        session_id_col: str = "session_id",
+        session_col: str = "session_id",
         session_index_col: str = "session_index",
         separator: str | List[str] | None = None,
         start_event: str | List[str] | None = None,
@@ -38,7 +38,7 @@ class SplitSessions(DataProcessor):
         path_col: str | None = None,
         event_col: str | None = None,
     ) -> None:
-        self.session_id_col = session_id_col
+        self.session_col = session_col
         self.session_index_col = session_index_col
         self.separator = to_list(separator) if separator else None
         self.start_event = to_list(start_event) if start_event else None
@@ -99,7 +99,7 @@ class SplitSessions(DataProcessor):
         ts_col = schema.timestamp_col
         subindex_col = schema.subindex
 
-        for col in (self.session_id_col, self.session_index_col):
+        for col in (self.session_col, self.session_index_col):
             if col in schema.cols:
                 raise PreprocessingConfigError(
                     PROCESSOR_NAME, f"column '{col}' already exists in the eventstream"
@@ -114,7 +114,7 @@ class SplitSessions(DataProcessor):
         event_col_q = engine.quote_ident(event_col)
         ts_col_q = engine.quote_ident(ts_col)
         subindex_col_q = engine.quote_ident(subindex_col)
-        session_id_col_q = engine.quote_ident(self.session_id_col)
+        session_col_q = engine.quote_ident(self.session_col)
         session_index_col_q = engine.quote_ident(self.session_index_col)
 
         cols_with_prefix = ", ".join(f"w.{engine.quote_ident(c)}" for c in schema.cols)
@@ -133,7 +133,7 @@ class SplitSessions(DataProcessor):
             CASE WHEN w._in_session = 1 THEN CAST(w._session_counter AS INTEGER) END AS {session_index_col_q},
             CASE WHEN w._in_session = 1
                  THEN CONCAT(CAST(w.{path_col_q} AS VARCHAR), '_', CAST(w._session_counter AS VARCHAR))
-            END AS {session_id_col_q}
+            END AS {session_col_q}
         FROM with_session_id w
         {where_clause}
         ORDER BY w.{path_col_q}, w.{ts_col_q}, w.{subindex_col_q}
@@ -143,6 +143,6 @@ class SplitSessions(DataProcessor):
 
         new_schema = schema.copy()
         new_schema.custom_cols = schema.custom_cols + [self.session_index_col]
-        new_schema.path_cols = schema.path_cols + [self.session_id_col]
+        new_schema.path_cols = schema.path_cols + [self.session_col]
 
         return result, new_schema

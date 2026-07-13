@@ -45,7 +45,7 @@ Renamed or changed signature (same concept, different call shape):
 - `truncate_paths(drop_before, drop_after, occurrence_before, occurrence_after, shift_before, shift_after)`
   → `truncate_paths(start_event, end_event, path_col=None, event_col=None)`
 - `rename(rules: list[dict])` → `rename_events(mapping: dict)`
-- `collapse_loops(suffix, time_agg)` → `collapse_events(consecutive, event_groups, group_col, session_id_col, session_type_col, agg, path_col, event_col)`
+- `collapse_loops(suffix, time_agg)` → `collapse_events(consecutive, event_groups, group_col, session_col, session_type_col, agg, path_col, event_col)`
 - `describe()`/`describe_events()` → `describe()` — single headless summary
   (schema, shape (event/path counts), date range, event frequency, and path
   length/duration distributions (mean/median/min/max/percentiles))
@@ -74,7 +74,7 @@ Added, no equivalent in 3.3.0:
 
 Naming conventions across the new API:
 - one column vocabulary everywhere: `path_col`, `event_col`, `timestamp_col`,
-  `session_id_col`, `segment_col`
+  `session_col`, `segment_col`
 - window anchors are always the `start_event` / `end_event` pair
   (`truncate_paths`, `split_sessions`, the `time_between` metric)
 - the diff-mode sentinel for "every other segment value" is `<REST>`
@@ -87,6 +87,7 @@ Naming conventions across the new API:
 
 ### Added
 
+- VS Code-based environments (including Cursor) are fully supported now.
 - **Segment Overview** — a new widget/tool with no equivalent in 3.3.0, for
   comparing metrics across segments
 - **MCP server** (`retentioneering.mcp.serve()`) — exposes the eventstream

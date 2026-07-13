@@ -82,3 +82,17 @@ class TestFindUnlinkedNumbers:
         issues = _find_unlinked_numbers("Conversion grew `2.2×` during the spike")
 
         assert issues == []
+
+    def test__edge_linked_only_on_source_endpoint_is_flagged(self) -> None:
+        issues = _find_unlinked_numbers(
+            "**[Mobile vs Desktop:shipping_details]** → purchase: 6.5% mobile"
+        )
+
+        assert any("Edge in plain text" in issue.get("hint", "") for issue in issues)
+
+    def test__edge_fully_wrapped_in_one_link_is_ok(self) -> None:
+        issues = _find_unlinked_numbers(
+            "**[Overall Flow:review_order->purchase]** reaches 38% conversion"
+        )
+
+        assert issues == []

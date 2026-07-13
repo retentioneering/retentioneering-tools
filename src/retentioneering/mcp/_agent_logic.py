@@ -237,7 +237,11 @@ def _find_unlinked_numbers(analysis: str) -> list[dict]:
     issues: list[dict] = []
     in_code_fence = False
 
-    _EDGE_PAT = re.compile(r"(\w[\w_]*)(?:\s*(?:→|->)\s*)(\w[\w_]*)")
+    # [\]\*`]* / [\[\*`]* tolerate markdown noise (a closing "]**" from a link
+    # wrapping only the source event, opening "**[" of a link around the
+    # target, stray backticks) sitting between an event name and the arrow —
+    # otherwise "**[Tab:src]** → tgt" reads as no arrow match at all.
+    _EDGE_PAT = re.compile(r"(\w[\w_]*)[\]\*`]*\s*(?:→|->)\s*[\[\*`]*(\w[\w_]*)")
 
     for lineno, raw in enumerate(analysis.split("\n"), 1):
         s = raw.strip()
@@ -264,18 +268,21 @@ def _find_unlinked_numbers(analysis: str) -> list[dict]:
         # Remove inline code spans before the remaining checks
         s_no_code = re.sub(r"`[^`]*`", "", s)
 
-        # Find all link positions
-        link_positions = [m.start() for m in re.finditer(r"\[[^\]]+\]", s_no_code)]
+        # Find all link spans
+        link_spans = [m.span() for m in re.finditer(r"\[[^\]]+\]", s_no_code)]
+        link_positions = [span[0] for span in link_spans]
 
-        # Flag edge notation not inside a link
+        # Flag edge notation unless the WHOLE "src -> tgt" span sits inside a
+        # single link. A link wrapping only one endpoint (e.g.
+        # "**[Tab:shipping_details]** → purchase") still points at a node,
+        # not the edge, so checking only the match's start (as before) missed
+        # this — src alone is "inside" that link even though tgt isn't.
         for m in _EDGE_PAT.finditer(s_no_code):
-            pos = m.start()
-            # Check it's not already inside a [tab:src->tgt] link
-            in_link = any(
-                lm.start() <= pos <= lm.end()
-                for lm in re.finditer(r"\[[^\]]+\]", s_no_code)
+            start, end = m.start(), m.end()
+            fully_linked = any(
+                lspan[0] <= start and end <= lspan[1] for lspan in link_spans
             )
-            if not in_link:
+            if not fully_linked:
                 issues.append(
                     {
                         "line": lineno,

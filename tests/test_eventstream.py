@@ -49,6 +49,15 @@ def test_schema_unknown_key_raises_with_suggestion(simple_df):
         Eventstream(simple_df, {"timestamp": "timestamp"})
 
 
+def test_event_name_with_path_delimiter_raises(simple_df):
+    from retentioneering.exceptions import SchemaConfigError
+
+    df = simple_df.copy()
+    df["event"] = df["event"].replace({"cart": "add->cart"})
+    with pytest.raises(SchemaConfigError, match="add->cart"):
+        Eventstream(df)
+
+
 def test_schema_auto_classifies_undeclared_columns_as_custom_cols(simple_df):
     df = simple_df.copy()
     df["returned"] = [True, True, True, False, False]

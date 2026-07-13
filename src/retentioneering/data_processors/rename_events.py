@@ -5,6 +5,7 @@ import pandas as pd
 from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.utils.sequences import find_delimiter_collisions
 
 PROCESSOR_NAME = "rename_events"
 
@@ -22,6 +23,15 @@ class RenameEvents(DataProcessor):
         ):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME, "All keys and values in 'mapping' must be strings."
+            )
+
+        offenders = find_delimiter_collisions(mapping.values())
+        if offenders:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"New event name(s) {offenders} in 'mapping' contain '->', which "
+                f"retentioneering uses as the path delimiter in matches_pattern/"
+                f"step_matrix pattern matching. Choose different names.",
             )
 
         self.mapping = mapping

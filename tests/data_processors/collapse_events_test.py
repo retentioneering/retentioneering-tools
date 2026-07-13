@@ -330,6 +330,36 @@ class TestCollapseEventsValidation:
         with pytest.raises(PreprocessingConfigError):
             stream.collapse_events(event_groups=[{"events": ["A"]}])
 
+    def test_raises_group_name_with_path_delimiter(self):
+        stream = make_stream([["user_1", "A", "2020-01-01"]])
+        with pytest.raises(PreprocessingConfigError, match="add->cart"):
+            stream.collapse_events(
+                event_groups=[{"events": ["A"], "name": "add->cart"}]
+            )
+
+    def test_raises_case_name_with_path_delimiter(self):
+        stream = make_stream([["user_1", "A", "2020-01-01"]])
+        with pytest.raises(PreprocessingConfigError, match="add->cart"):
+            stream.collapse_events(
+                event_groups=[
+                    {
+                        "events": ["A"],
+                        "name": "session",
+                        "cases": [
+                            {
+                                "name": "add->cart",
+                                "condition": {
+                                    "op": ">",
+                                    "metric": "has_event",
+                                    "value": 0,
+                                    "metric_args": {"event": "A"},
+                                },
+                            }
+                        ],
+                    }
+                ]
+            )
+
 
 # ---------------------------------------------------------------------------
 # Session type mode

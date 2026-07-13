@@ -108,3 +108,7 @@ class TestRenameEvents:
     def test__non_string_values_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
             Eventstream(get_df()).rename_events(mapping={"A": 123})
+
+    def test__new_name_with_path_delimiter_raises(self) -> None:
+        with pytest.raises(PreprocessingConfigError, match="add->cart"):
+            Eventstream(get_df()).rename_events(mapping={"A": "add->cart"})

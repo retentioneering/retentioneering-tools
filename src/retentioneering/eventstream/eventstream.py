@@ -11,6 +11,7 @@ from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import SchemaConfigError
 from retentioneering.ops import op as _op
 from retentioneering.tools.types import T_TransitionMatrixValues, T_Diff
+from retentioneering.utils.sequences import find_delimiter_collisions
 
 
 def _to_datetime_auto(series: pd.Series) -> pd.Series:
@@ -178,6 +179,16 @@ class Eventstream:
 
         for col in schema.event_cols + schema.segment_cols:
             df[col] = df[col].astype("category")
+
+        for col in schema.event_cols:
+            offenders = find_delimiter_collisions(df[col].cat.categories.tolist())
+            if offenders:
+                raise SchemaConfigError(
+                    f"Event name(s) {offenders} in column '{col}' contain '->', "
+                    f"which retentioneering uses as the path delimiter in "
+                    f"matches_pattern/step_matrix pattern matching. Rename these "
+                    f"events before creating the Eventstream."
+                )
 
         if schema.event_type not in df.columns:
             df[schema.event_type] = event_types.RAW_EVENT.type

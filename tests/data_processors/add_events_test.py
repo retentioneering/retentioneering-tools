@@ -316,3 +316,7 @@ class TestAddEventsValidation:
     def test__name_empty_raises(self) -> None:
         with pytest.raises(PreprocessingConfigError):
             Eventstream(get_df()).add_events(name="", source_events=["A"])
+
+    def test__name_with_path_delimiter_raises(self) -> None:
+        with pytest.raises(PreprocessingConfigError, match="add->cart"):
+            Eventstream(get_df()).add_events(name="add->cart", source_events=["A"])

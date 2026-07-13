@@ -8,6 +8,7 @@ from retentioneering.data_processors.data_processor import DataProcessor
 from retentioneering.eventstream.event_type import EventTypes
 from retentioneering.eventstream.schema import EventstreamSchema
 from retentioneering.exceptions import PreprocessingConfigError
+from retentioneering.utils.sequences import find_delimiter_collisions
 from retentioneering.utils.sql_quoting import quote_list
 
 PROCESSOR_NAME = "add_events"
@@ -24,6 +25,13 @@ class AddEvents(DataProcessor):
         if not isinstance(name, str) or not name:
             raise PreprocessingConfigError(
                 PROCESSOR_NAME, "Argument 'name' must be a non-empty string."
+            )
+        if find_delimiter_collisions([name]):
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"Argument 'name' ({name!r}) contains '->', which retentioneering "
+                f"uses as the path delimiter in matches_pattern/step_matrix pattern "
+                f"matching. Choose a different name.",
             )
 
         n_modes = sum([source_events is not None, sql is not None, churn is not None])

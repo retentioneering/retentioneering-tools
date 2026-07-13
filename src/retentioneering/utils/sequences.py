@@ -1,3 +1,19 @@
+PATH_DELIMITER = "->"
+
+
+def find_delimiter_collisions(names, delimiter=PATH_DELIMITER):
+    """
+    Return the subset of `names` that contain the literal path delimiter
+    `delimiter`. Every `->`-joined path/pattern in this codebase
+    (matches_pattern, step_matrix, this module's own gap expansion above)
+    treats `delimiter` as a token boundary; an event name containing it
+    becomes indistinguishable from multiple separate tokens once joined into
+    a path string. Callers use this to reject such names up front, before
+    they can produce a silent, incorrect pattern match.
+    """
+    return sorted({n for n in names if delimiter in n})
+
+
 def generate_patterns_with_optional_gaps(pattern):
     """
     Generate all possible patterns with '.*' enabled or disabled. For example, we need to extend a given 'A->.*->B',

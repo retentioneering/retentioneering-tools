@@ -18,6 +18,7 @@ from retentioneering.utils.session_detection import (
     to_list,
     _MODE_TIMEOUT,
 )
+from retentioneering.utils.sequences import find_delimiter_collisions
 from retentioneering.utils.sql_quoting import quote_literal
 
 PROCESSOR_NAME = "collapse_events"
@@ -113,6 +114,17 @@ class CollapseEvents(DataProcessor):
             raise PreprocessingConfigError(
                 PROCESSOR_NAME,
                 "each group must specify 'name' or at least one item in 'cases'",
+            )
+
+        names = [g["name"]] if g.get("name") else []
+        names += [c["name"] for c in (g.get("cases") or []) if c.get("name")]
+        offenders = find_delimiter_collisions(names)
+        if offenders:
+            raise PreprocessingConfigError(
+                PROCESSOR_NAME,
+                f"New event name(s) {offenders} contain '->', which retentioneering "
+                f"uses as the path delimiter in matches_pattern/step_matrix pattern "
+                f"matching. Choose different names.",
             )
 
     def apply(

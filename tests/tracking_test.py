@@ -1,6 +1,7 @@
 """Tests for the PostHog tracking opt-out."""
 
 import json
+import sys
 from functools import cached_property
 from unittest.mock import MagicMock
 
@@ -63,6 +64,66 @@ def test_track_respects_no_track_in_config_file(monkeypatch, tmp_path):
     _tracking.track("some_event", {"key": "value"})
 
     fake_ph.capture.assert_not_called()
+
+
+# ── distinct_id / Colab shared machine-id ───────────────────────────────────────
+
+
+def test_distinct_id_uses_machine_id_outside_colab(monkeypatch):
+    monkeypatch.setattr(_tracking, "_is_colab", lambda: False)
+    monkeypatch.setattr(
+        _tracking.pathlib.Path, "read_text", lambda self: "fake-machine-id\n"
+    )
+
+    _, id_type = _tracking._distinct_id()
+
+    assert id_type == "machine-id"
+
+
+def test_distinct_id_skips_machine_id_on_colab(monkeypatch, tmp_path):
+    # Colab VMs are cloned from a shared base image, so /etc/machine-id can be
+    # identical across every user's runtime — must not reach tier 1/2 at all.
+    monkeypatch.setattr(_tracking, "_is_colab", lambda: True)
+    monkeypatch.setattr(
+        _tracking.pathlib.Path,
+        "read_text",
+        lambda self: (_ for _ in ()).throw(AssertionError("must not read machine-id")),
+    )
+    monkeypatch.setattr(_tracking, "_CONFIG", tmp_path / "config.json")
+
+    _, id_type = _tracking._distinct_id()
+
+    assert id_type == "saved-uuid"
+
+
+def test_distinct_id_saved_uuid_persists_across_calls(monkeypatch, tmp_path):
+    monkeypatch.setattr(_tracking, "_is_colab", lambda: True)
+    monkeypatch.setattr(_tracking, "_CONFIG", tmp_path / "config.json")
+
+    first, _ = _tracking._distinct_id()
+    second, _ = _tracking._distinct_id()
+
+    assert first == second
+
+
+def test_is_colab_detects_module(monkeypatch):
+    monkeypatch.setitem(sys.modules, "google.colab", MagicMock())
+
+    assert _tracking._is_colab() is True
+
+
+def test_is_colab_detects_backend_env_var(monkeypatch):
+    monkeypatch.delitem(sys.modules, "google.colab", raising=False)
+    monkeypatch.setenv("COLAB_BACKEND_VERSION", "1")
+
+    assert _tracking._is_colab() is True
+
+
+def test_is_colab_false_otherwise(monkeypatch):
+    monkeypatch.delitem(sys.modules, "google.colab", raising=False)
+    monkeypatch.delenv("COLAB_BACKEND_VERSION", raising=False)
+
+    assert _tracking._is_colab() is False
 
 
 # ── caller_context / caller_type attribution ────────────────────────────────────

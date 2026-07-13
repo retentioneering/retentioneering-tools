@@ -41,23 +41,33 @@ except Exception:
 # ── distinct_id ────────────────────────────────────────────────────────────────
 
 
+def _is_colab() -> bool:
+    return "google.colab" in sys.modules or bool(
+        os.environ.get("COLAB_BACKEND_VERSION")
+    )
+
+
 def _distinct_id() -> tuple[str, str]:
     """Return (distinct_id, id_type)."""
-    # 1. /etc/machine-id — Linux (systemd), stable even in most containers
-    try:
-        mid = pathlib.Path("/etc/machine-id").read_text().strip()
-        if mid:
-            return str(uuid.uuid5(uuid.NAMESPACE_DNS, mid)), "machine-id"
-    except Exception:
-        pass
-    # 2. MAC address — macOS, Windows, Linux without /etc/machine-id
-    try:
-        node = uuid.getnode()
-        # Real MAC address has the multicast bit unset
-        if not (node >> 40) & 1:
-            return str(uuid.uuid5(uuid.NAMESPACE_DNS, str(node))), "mac-address"
-    except Exception:
-        pass
+    # Colab VMs are cloned from a shared base image, so /etc/machine-id and the
+    # virtual NIC's MAC address are frequently baked into the image and identical
+    # across every user's runtime — skip straight to the per-VM saved UUID below.
+    if not _is_colab():
+        # 1. /etc/machine-id — Linux (systemd), stable even in most containers
+        try:
+            mid = pathlib.Path("/etc/machine-id").read_text().strip()
+            if mid:
+                return str(uuid.uuid5(uuid.NAMESPACE_DNS, mid)), "machine-id"
+        except Exception:
+            pass
+        # 2. MAC address — macOS, Windows, Linux without /etc/machine-id
+        try:
+            node = uuid.getnode()
+            # Real MAC address has the multicast bit unset
+            if not (node >> 40) & 1:
+                return str(uuid.uuid5(uuid.NAMESPACE_DNS, str(node))), "mac-address"
+        except Exception:
+            pass
     # 3. Saved random UUID — Colab VMs, Docker, anything else
     try:
         _CONFIG.parent.mkdir(parents=True, exist_ok=True)
@@ -78,7 +88,7 @@ def _distinct_id() -> tuple[str, str]:
 
 
 def _detect_env() -> str:
-    if "google.colab" in sys.modules or os.environ.get("COLAB_BACKEND_VERSION"):
+    if _is_colab():
         return "colab"
     try:
         shell = get_ipython().__class__.__name__  # type: ignore[name-defined]

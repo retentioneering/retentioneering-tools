@@ -3,34 +3,6 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased]
-
-### Added
-
-- `schema.custom_cols` now defaults to `None` instead of `[]`: any DataFrame
-  column not otherwise declared in the schema is added to it automatically,
-  keeping it from being silently dropped by row-reshaping data processors
-  (`collapse_events`, `to_daily_states`). Passing an explicit list — even
-  `[]` — switches to strict mode: only schema-declared and listed columns
-  are kept, everything else is excluded from the eventstream.
-- `Eventstream.describe()`: headless summary of an eventstream — schema,
-  shape (event/path counts), date range, event frequency, and path
-  length/duration distributions (mean/median/min/max/percentiles).
-  Replaces 3.3.0's `describe()`/`describe_events()`, dropped in the 5.0.0
-  rewrite with no direct replacement.
-- All widgets accept a `state_file` argument binding the full widget state
-  (data and display parameters, plus widget-specific extras: the transition
-  graph's node layout, event visibility, filters, and zoom; the step matrix's
-  event visibility/pins, filters, row order, step window, and horizontal
-  scroll; the step sankey's event count filter and horizontal scroll; the
-  cluster analysis' cluster renames and active tab) to a JSON file: if the
-  file exists the state is loaded from it, otherwise it is created, and every
-  subsequent change is auto-saved. Explicitly passed arguments override the
-  loaded state.
-- The transition graph keeps its zoom/pan across recomputes (changing edge
-  weight, diff, or path column no longer resets the viewport); step matrix
-  and step sankey likewise keep their horizontal scroll and row order.
-
 ## [5.0.0]
 
 Complete rewrite of the library's core engine, compared to 3.3.0. The
@@ -74,17 +46,20 @@ Renamed or changed signature (same concept, different call shape):
   → `truncate_paths(start_event, end_event, path_col=None, event_col=None)`
 - `rename(rules: list[dict])` → `rename_events(mapping: dict)`
 - `collapse_loops(suffix, time_agg)` → `collapse_events(consecutive, event_groups, group_col, session_id_col, session_type_col, agg, path_col, event_col)`
+- `describe()`/`describe_events()` → `describe()` — single headless summary
+  (schema, shape (event/path counts), date range, event frequency, and path
+  length/duration distributions (mean/median/min/max/percentiles))
 
 Removed, no equivalent in this release:
 `copy()`, `append_eventstream()`, `index_events()`, `add_custom_col()`,
 `clusters()` (the stateful `fit()`/`extract_features()` object), `cohorts()`,
 `stattests()`, `timedelta_hist()`, `user_lifetime_hist()`,
-`event_timestamp_hist()`, `describe()`, `describe_events()`,
-`preprocessing_graph()`, `transition_matrix()` as a public method (the
-computation still happens internally inside `transition_graph_data()`),
-`sequences()`, `add_negative_events()`, `add_positive_events()`,
-`drop_paths()`, `group_events()`, `group_events_bulk()`,
-`label_cropped_paths()`, `label_lost_users()`, `label_new_users()`, `pipe()`
+`event_timestamp_hist()`, `preprocessing_graph()`, `transition_matrix()` as a
+public method (the computation still happens internally inside
+`transition_graph_data()`), `sequences()`, `add_negative_events()`,
+`add_positive_events()`, `drop_paths()`, `group_events()`,
+`group_events_bulk()`, `label_cropped_paths()`, `label_lost_users()`,
+`label_new_users()`, `pipe()`
 
 Added, no equivalent in 3.3.0:
 `schema`/`df` properties, `is_empty()`, `equals()`, `get_event_counts()`,
@@ -120,6 +95,12 @@ Naming conventions across the new API:
   multi-widget static HTML report with clickable cross-references
 - `ipywidgets` is now a core dependency, so widgets work out of the box in
   plain JupyterLab
+- `schema.custom_cols` now defaults to `None` instead of `[]`: any DataFrame
+  column not otherwise declared in the schema is added to it automatically,
+  keeping it from being silently dropped by row-reshaping data processors
+  (`collapse_events`, `to_daily_states`). Passing an explicit list — even
+  `[]` — switches to strict mode: only schema-declared and listed columns
+  are kept, everything else is excluded from the eventstream.
 - `rename_segment_levels(segment_col, mapping)` — rename levels within an existing
   segment column (e.g. cluster labels produced by `add_clusters`, or messy raw
   segment data), analogous to `rename_events` but for segment columns
@@ -131,6 +112,18 @@ Naming conventions across the new API:
   clustering into the eventstream as a new segment column, optionally renaming
   cluster labels first. Choose either a copy-pasteable `add_clusters(...)` code
   snippet (`stream` stays untouched) or applying it in place immediately
+- All widgets accept a `state_file` argument binding the full widget state
+  (data and display parameters, plus widget-specific extras: the transition
+  graph's node layout, event visibility, filters, and zoom; the step matrix's
+  event visibility/pins, filters, row order, step window, and horizontal
+  scroll; the step sankey's event count filter and horizontal scroll; the
+  cluster analysis' cluster renames and active tab) to a JSON file: if the
+  file exists the state is loaded from it, otherwise it is created, and every
+  subsequent change is auto-saved. Explicitly passed arguments override the
+  loaded state.
+- The transition graph keeps its zoom/pan across recomputes (changing edge
+  weight, diff, or path column no longer resets the viewport); step matrix
+  and step sankey likewise keep their horizontal scroll and row order.
 
 ### Fixed
 

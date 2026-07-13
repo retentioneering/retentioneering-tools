@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [5.0.0]
+## [5.0.0rc2]
 
 Complete rewrite of the library's core engine, compared to 3.3.0. The
 pandas-based `Eventstream`, the iframe+CDN-loaded Transition Graph /

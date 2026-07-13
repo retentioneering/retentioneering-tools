@@ -950,6 +950,56 @@ class TestSegmentOverview:
         assert result.loc["segment_size", "control__1"] == 1
         assert result.loc["segment_size", "test__1"] == 1
 
+    def test_none_segment_value_forms_own_group(self) -> None:
+        """Regression: a missing (None/NaN) segment value — which add_segment's
+        func=/sql= modes can produce — must form its own visible group instead
+        of silently disappearing from the result."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "segment_1", "2020-01-01 00:00:00"],
+                ["user_1", "B", "segment_1", "2020-01-01 00:01:00"],
+                ["user_2", "A", "segment_2", "2020-01-01 00:00:00"],
+                ["user_3", "A", None, "2020-01-01 00:00:00"],
+                ["user_3", "B", None, "2020-01-01 00:01:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        result = stream.segment_overview_data(
+            segment_col="segment",
+            metrics=[{"metric": "length", "agg": "mean"}],
+        )
+
+        assert None in result.columns
+        assert result.loc["segment_size", "segment_1"] == 1
+        assert result.loc["segment_size", "segment_2"] == 1
+        assert result.loc["segment_size", None] == 1
+        # No path silently dropped: shares must sum to 1.
+        assert result.loc["segment_share"].sum() == pytest.approx(1.0)
+        assert result.loc["length_mean", None] == 2.0
+
+    def test_numeric_segment_values_preserve_dtype(self) -> None:
+        """Regression: numeric segment values must come back as numbers, not
+        as strings like '1.0' (the old astype(str) composite-key approach)."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", 1.0, "2020-01-01 00:00:00"],
+                ["user_2", "A", 2.0, "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        result = stream.segment_overview_data(segment_col="segment", metrics=[])
+
+        assert all(isinstance(c, float) for c in result.columns)
+        assert set(result.columns) == {1.0, 2.0}
+
     def test_typo_event_in_metric_raises(self) -> None:
         """A typoed event name in a metric must fail loudly instead of
         silently producing an all-zero/all-NaN column."""
@@ -1145,6 +1195,57 @@ class TestMetricDistribution:
 
         # Wasserstein distance should be positive
         assert result["distance"] > 0
+
+    def test_none_segment_value_with_complement(self) -> None:
+        """Regression: segment_value=None (a scalar, not a list) selects the
+        missing-segment group instead of crashing on `list(None)`."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "segment_1", "2020-01-01 00:00:00"],
+                ["user_1", "B", "segment_1", "2020-01-01 00:01:00"],
+                ["user_2", "A", "segment_1", "2020-01-01 00:00:00"],
+                ["user_2", "B", "segment_1", "2020-01-01 00:01:00"],
+                ["user_3", "A", None, "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        result = SegmentOverview(stream).get_metric_distribution(
+            segment_col="segment",
+            segment_value=None,
+            metric={"metric": "length"},
+            complement=True,
+        )
+
+        assert result["distribution_1"]["mean"] == 1.0  # the None-segment path
+        assert result["distribution_2"]["mean"] == 2.0  # everyone else
+
+    def test_pair_with_none_segment_value(self) -> None:
+        """Regression: [value, None] pairs the missing-segment group against
+        a real one."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "segment_1", "2020-01-01 00:00:00"],
+                ["user_1", "B", "segment_1", "2020-01-01 00:01:00"],
+                ["user_2", "A", None, "2020-01-01 00:00:00"],
+            ],
+            columns=["user_id", "event", "segment", "timestamp"],
+        )
+
+        schema = {"event_cols": ["event"], "segment_cols": ["segment"]}
+        stream = Eventstream(df, schema)
+
+        result = SegmentOverview(stream).get_metric_distribution(
+            segment_col="segment",
+            segment_value=["segment_1", None],
+            metric={"metric": "length"},
+        )
+
+        assert result["distribution_1"]["mean"] == 2.0
+        assert result["distribution_2"]["mean"] == 1.0
 
     def test_invalid_segment_column(self) -> None:
         """Test error handling for invalid segment column"""

@@ -28,12 +28,6 @@ from retentioneering.exceptions import (
 )
 from retentioneering.metrics.metric_builder import MetricBuilder, MetricConfig
 
-# Separator used to build composite (path_id, segment_value) identifiers.
-# A control character (ASCII unit separator) is used so that segment values or
-# path ids containing common substrings like "__" cannot collide or be
-# truncated when the segment value is recovered from the composite id.
-_COMPOSITE_SEP = "\x1f"
-
 # Threshold for considering metric as discrete (use bar chart instead of histogram)
 DISCRETE_THRESHOLD = 10
 
@@ -55,6 +49,52 @@ AGG_FUNCTIONS = {
     "q75": lambda x: x.quantile(0.75),
     "q95": lambda x: x.quantile(0.95),
 }
+
+
+def _build_composite_path(
+    df: pd.DataFrame, path_col: str, segment_col: str
+) -> Tuple[np.ndarray, Dict[Any, Any]]:
+    """
+    Build an integer composite path id combining ``path_col`` and ``segment_col``,
+    so MetricBuilder can compute per-path metrics separately for each segment
+    value.
+
+    This uses `factorize` rather than the previous `astype(str) + sep +
+    astype(str)` string concatenation, which had two failure modes: numeric
+    segment values came back stringified (e.g. `1.0` instead of `1`), and rows
+    with a missing (None/NaN) segment value — which `add_segment` can produce
+    via its `func`/`sql` modes — silently vanished, since concatenating a NaN
+    into a string produces NaN for the whole composite key. `path_col` is
+    already guaranteed non-null by Eventstream's own validation, and
+    `use_na_sentinel=False` gives every distinct segment value (including a
+    missing one) its own stable code, so the composite id is always defined.
+
+    Returns the composite id array and a mapping from composite id back to the
+    original segment value (None for a missing segment, the original value
+    otherwise).
+    """
+    segment_codes, segment_uniques = pd.factorize(
+        df[segment_col], use_na_sentinel=False
+    )
+    pairs = pd.array(list(zip(df[path_col], segment_codes)), dtype=object)
+    composite_ids, _ = pd.factorize(pairs)
+    segment_by_composite = dict(
+        zip(
+            composite_ids,
+            (
+                None if pd.isna(segment_uniques[code]) else segment_uniques[code]
+                for code in segment_codes
+            ),
+        )
+    )
+    return composite_ids, segment_by_composite
+
+
+def _segment_mask(series: pd.Series, value: Any) -> pd.Series:
+    """Mask matching `value` in `series`, treating None/NaN as their own group."""
+    if pd.isna(value):
+        return series.isna()
+    return series == value
 
 
 @dataclass
@@ -101,9 +141,10 @@ class SegmentOverview:
 
         # Create composite path ID: (path_id, segment_value)
         composite_col = "__composite_path_id__"
-        df[composite_col] = (
-            df[path_col].astype(str) + _COMPOSITE_SEP + df[segment_col].astype(str)
+        composite_ids, segment_by_composite = _build_composite_path(
+            df, path_col, segment_col
         )
+        df[composite_col] = composite_ids
 
         # Create a temporary eventstream with composite path ID
         from retentioneering.eventstream.eventstream import Eventstream
@@ -136,15 +177,11 @@ class SegmentOverview:
                 config=metrics,
                 path_col=composite_col,
             )
-            metrics_df[segment_col] = metrics_df.index.str.rsplit(
-                _COMPOSITE_SEP, n=1
-            ).str[-1]
+            metrics_df[segment_col] = metrics_df.index.map(segment_by_composite)
         else:
             unique_composite_ids = df[composite_col].unique()
             metrics_df = pd.DataFrame(index=unique_composite_ids)
-            metrics_df[segment_col] = metrics_df.index.str.rsplit(
-                _COMPOSITE_SEP, n=1
-            ).str[-1]
+            metrics_df[segment_col] = metrics_df.index.map(segment_by_composite)
 
         metric_columns = [col for col in metrics_df.columns if col != segment_col]
         total_paths = len(metrics_df)
@@ -162,8 +199,10 @@ class SegmentOverview:
             else:
                 raise ValueError(f"Unknown aggregation type: {agg}")
 
-        # Compute segment_size and segment_share
-        grouped = metrics_df.groupby(segment_col)
+        # Compute segment_size and segment_share. dropna=False keeps paths with a
+        # missing (None/NaN) segment value as their own group instead of
+        # silently excluding them.
+        grouped = metrics_df.groupby(segment_col, dropna=False)
         segment_sizes = grouped.size()
 
         result_data = {
@@ -184,7 +223,7 @@ class SegmentOverview:
         for col in complement_distance_cols:
             complement_distance_values = {}
             for segment_value in segment_sizes.index:
-                mask = metrics_df[segment_col] == segment_value
+                mask = _segment_mask(metrics_df[segment_col], segment_value)
                 segment_data = metrics_df.loc[mask, col].dropna()
                 complement_data = metrics_df.loc[~mask, col].dropna()
 
@@ -203,15 +242,30 @@ class SegmentOverview:
         result_df = pd.DataFrame(result_data).T
         result_df.index.name = "metric"
 
-        # Sort columns for consistent output
-        result_df = result_df[sorted(result_df.columns)]
+        # groupby always represents a missing segment via its own internal NaN
+        # sentinel; normalize it to a real `None` column label so callers can
+        # reliably test `col is None` and JSON serialization doesn't choke on a
+        # bare NaN. dtype=object is required here: assigning a plain list back
+        # to .columns lets pandas re-infer the Index dtype, which silently
+        # coerces None back into its own NaN sentinel when mixed with strings.
+        result_df.columns = pd.Index(
+            [None if pd.isna(c) else c for c in result_df.columns], dtype=object
+        )
+
+        # Sort columns for consistent output (None sorts last). List-based
+        # column selection (`df[[...]]`) normalizes a bare `None` key back to
+        # NaN and fails to find it, unlike scalar `.get_loc`, so reorder
+        # positionally instead.
+        sorted_columns = sorted(result_df.columns, key=lambda v: (v is None, v))
+        column_order = [result_df.columns.get_loc(c) for c in sorted_columns]
+        result_df = result_df.iloc[:, column_order]
 
         return result_df
 
     def get_metric_distribution(
         self,
         segment_col: str,
-        segment_value: str | List[str],
+        segment_value: Any | List[Any],
         metric: Dict[str, Any],
         complement: bool = False,
         path_col: str | None = None,
@@ -221,7 +275,8 @@ class SegmentOverview:
 
         Args:
             segment_col: Name of the segment column
-            segment_value: Either a single segment value or a list of two values
+            segment_value: Either a single segment value (None selects paths with a
+                missing segment value) or a list of two values
             metric: Metric configuration dict with 'metric' and optional 'metric_args'
             complement: If True and segment_value is a single value, compare with
                        complement (all other values in the segment). Ignored for pairs.
@@ -252,8 +307,19 @@ class SegmentOverview:
                 allowed_values=self.eventstream.schema.segment_cols,
             )
 
-        # Normalize segment_value to list and validate complement config
-        if isinstance(segment_value, str):
+        # Normalize segment_value to list and validate complement config. A plain
+        # (non-list) value — including None, which selects paths with a missing
+        # segment value — is treated as a single segment; only an explicit list
+        # requests a pair comparison.
+        if isinstance(segment_value, list):
+            segment_values = list(segment_value)
+            if complement:
+                raise InvalidComplementConfigError(
+                    "complement=True is only valid when a single segment value is provided. "
+                    "When comparing two segment values, set complement=False."
+                )
+            use_complement = False
+        else:
             segment_values = [segment_value]
             if not complement:
                 raise InvalidComplementConfigError(
@@ -262,17 +328,13 @@ class SegmentOverview:
                     "or provide two segment values to compare."
                 )
             use_complement = True
-        else:
-            segment_values = list(segment_value)
-            if complement:
-                raise InvalidComplementConfigError(
-                    "complement=True is only valid when a single segment value is provided. "
-                    "When comparing two segment values, set complement=False."
-                )
-            use_complement = False
 
-        # Validate segment values exist
-        available_segment_values = df[segment_col].unique().tolist()
+        # Validate segment values exist. NaN/None both mean "missing segment
+        # value", so normalize both sides before comparing.
+        available_segment_values = [
+            None if pd.isna(v) else v for v in df[segment_col].unique().tolist()
+        ]
+        segment_values = [None if pd.isna(sv) else sv for sv in segment_values]
         for sv in segment_values:
             if sv not in available_segment_values:
                 raise SegmentValueNotFoundError(
@@ -286,9 +348,10 @@ class SegmentOverview:
 
         # Create composite path ID: (path_id, segment_value)
         composite_col = "__composite_path_id__"
-        df[composite_col] = (
-            df[path_col].astype(str) + _COMPOSITE_SEP + df[segment_col].astype(str)
+        composite_ids, segment_by_composite = _build_composite_path(
+            df, path_col, segment_col
         )
+        df[composite_col] = composite_ids
 
         # Create a temporary eventstream with composite path ID
         from retentioneering.eventstream.eventstream import Eventstream
@@ -303,9 +366,7 @@ class SegmentOverview:
             config=[metric],
             path_col=composite_col,
         )
-        metrics_df[segment_col] = metrics_df.index.str.rsplit(_COMPOSITE_SEP, n=1).str[
-            -1
-        ]
+        metrics_df[segment_col] = metrics_df.index.map(segment_by_composite)
 
         # Get the metric column name - must be exactly one
         metric_cols = [col for col in metrics_df.columns if col != segment_col]
@@ -325,7 +386,7 @@ class SegmentOverview:
 
         # Get data for segment values
         if len(segment_values) == 1:
-            mask = metrics_df[segment_col] == segment_values[0]
+            mask = _segment_mask(metrics_df[segment_col], segment_values[0])
             data_1 = metrics_df.loc[mask, metric_col].dropna().values
 
             if use_complement:
@@ -335,8 +396,8 @@ class SegmentOverview:
                 distribution, log_scale = self._build_single_distribution(data_1)
                 return {"distribution": distribution, "log_scale": log_scale}
         else:
-            mask_1 = metrics_df[segment_col] == segment_values[0]
-            mask_2 = metrics_df[segment_col] == segment_values[1]
+            mask_1 = _segment_mask(metrics_df[segment_col], segment_values[0])
+            mask_2 = _segment_mask(metrics_df[segment_col], segment_values[1])
             data_1 = metrics_df.loc[mask_1, metric_col].dropna().values
             data_2 = metrics_df.loc[mask_2, metric_col].dropna().values
             return self._build_pair_distribution(data_1, data_2)

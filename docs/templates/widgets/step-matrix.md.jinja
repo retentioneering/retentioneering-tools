@@ -1,0 +1,37 @@
+{% extends "_widget_base.md.jinja" %}
+
+{% block demo_examples %}
+## Examples
+
+### Basic
+Without a `path_pattern`, the matrix is anchored at `path_start`: column 0 is the first
+step of every path, and each column to the right is one step further in.
+
+<DemoWidget cmd={`stream.step_matrix()`} path="/docs-demos/widgets/step-matrix/basic.html" height={660} />
+
+### Path pattern - central event
+A single event as `path_pattern` re-centers the matrix on that event instead of
+`path_start`: column 0 is always `purchase`, negative columns are the steps leading up
+to it, positive columns are what follows.
+
+<DemoWidget cmd={`stream.step_matrix(path_pattern="purchase")`} path="/docs-demos/widgets/step-matrix/path_pattern_central.html" height={660} />
+
+### Path pattern - funnel patterns
+Chaining several anchors with `.*` renders one matrix block per anchor, side by side,
+so you can follow a multi-step funnel across blocks.
+
+<DemoWidget cmd={`stream.step_matrix(path_pattern="payment_details->.*->shipping_details->.*->purchase", step_window=2)`} path="/docs-demos/widgets/step-matrix/path_pattern_funnel.html" height={660} sidebarOpen={false} />
+
+### Path pattern - drop-off points
+`path_pattern="path_end"` centers on where paths end, so the columns to the left show
+what users tend to do right before dropping off (or completing their path).
+
+<DemoWidget cmd={`stream.step_matrix(path_pattern="path_end")`} path="/docs-demos/widgets/step-matrix/path_pattern_dropoff.html" height={660} />
+
+### Diff mode
+Passing `diff` splits paths into two segments and shows the difference between them at
+each step, making it easy to spot where the segments' behavior diverges.
+
+<DemoWidget cmd={`stream.step_matrix(diff=["platform", "mobile", "desktop"])`} path="/docs-demos/widgets/step-matrix/diff.html" height={660} />
+
+{% endblock %}

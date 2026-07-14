@@ -1,0 +1,8 @@
+{% extends "_data_processor_base.md.jinja" %}
+
+{% block extra %}
+### Leaf node keys
+
+{{ bullets(doc.parameters, "condition") }}
+
+{% endblock %}

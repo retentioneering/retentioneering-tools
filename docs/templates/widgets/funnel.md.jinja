@@ -1,0 +1,16 @@
+{% extends "_widget_base.md.jinja" %}
+
+{% block demo_examples %}
+## Examples
+
+### Basic
+<DemoWidget cmd={`stream.funnel(
+    steps=["catalog", "product_view", "add_to_cart", "purchase"],
+)`} path="/docs-demos/widgets/funnel/basic.html" height={480} />
+
+### Diff mode
+<DemoWidget cmd={`stream.funnel(
+    steps=["catalog", "product_view", "add_to_cart", "purchase"],
+    diff=["platform", "mobile", "desktop"]
+)`} path="/docs-demos/widgets/funnel/diff.html" height={480} />
+{% endblock %}

@@ -1,0 +1,161 @@
+"""Tests for ClusterAnalysisWidget's 'save clusters to eventstream' action."""
+
+import json
+
+import pandas as pd
+
+from retentioneering.eventstream.eventstream import Eventstream
+from retentioneering.widgets.cluster_analysis import ClusterAnalysisWidget
+
+
+def _make_stream() -> Eventstream:
+    df = pd.DataFrame(
+        [
+            ["user_1", "login", "2020-01-01 00:00:00"],
+            ["user_1", "view", "2020-01-01 00:01:00"],
+            ["user_2", "login", "2020-01-01 00:00:00"],
+            ["user_2", "view", "2020-01-01 00:01:00"],
+            ["user_2", "view", "2020-01-01 00:02:00"],
+            ["user_2", "view", "2020-01-01 00:03:00"],
+        ],
+        columns=["user_id", "event", "timestamp"],
+    )
+    return Eventstream(df)
+
+
+class TestClusterAnalysisWidgetSave:
+    def test__chosen_params_reports_fixed_n_clusters(self) -> None:
+        stream = _make_stream()
+        widget = ClusterAnalysisWidget(
+            stream, features=[{"metric": "length"}], n_clusters=2
+        )
+
+        assert json.loads(widget.chosen_params) == {"n_clusters": 2}
+
+    def test__chosen_params_reports_grid_search_winner(self) -> None:
+        # Needs enough distinct paths for KMeans(n_clusters=3) to be valid.
+        df = pd.DataFrame(
+            [
+                ["user_1", "login", "2020-01-01 00:00:00"],
+                ["user_2", "login", "2020-01-01 00:00:00"],
+                ["user_2", "view", "2020-01-01 00:01:00"],
+                ["user_3", "login", "2020-01-01 00:00:00"],
+                ["user_3", "view", "2020-01-01 00:01:00"],
+                ["user_3", "view", "2020-01-01 00:02:00"],
+                ["user_4", "login", "2020-01-01 00:00:00"],
+                ["user_4", "view", "2020-01-01 00:01:00"],
+                ["user_4", "view", "2020-01-01 00:02:00"],
+                ["user_4", "view", "2020-01-01 00:03:00"],
+            ],
+            columns=["user_id", "event", "timestamp"],
+        )
+        stream = Eventstream(df)
+        widget = ClusterAnalysisWidget(
+            stream, features=[{"metric": "length"}], n_clusters=[2, 3]
+        )
+        assert widget.error == ""
+
+        params = json.loads(widget.chosen_params)
+        assert params["n_clusters"] in (2, 3)
+
+    def test__save_mutates_shared_eventstream(self) -> None:
+        stream = _make_stream()
+        widget = ClusterAnalysisWidget(
+            stream, features=[{"metric": "length"}], n_clusters=2
+        )
+
+        widget.save_segment_name = "cluster"
+        widget.save_rename = json.dumps({"cluster_0": "short", "cluster_1": "long"})
+        widget.save_trigger = "1"
+
+        result = json.loads(widget.save_result)
+        assert result["ok"] is True
+        assert result["segment_name"] == "cluster"
+
+        # `stream` is the exact same object passed to the widget - it must reflect
+        # the new segment column without any reassignment.
+        assert "cluster" in stream.schema.segment_cols
+        assert set(stream.df["cluster"].unique().tolist()) <= {"short", "long"}
+
+        # cached_property schema/fingerprint must not be stale.
+        assert stream.schema.segment_cols == ["cluster"]
+
+        # The widget's own catalogs must be refreshed too.
+        assert "cluster" in json.loads(widget.segment_cols)
+
+    def test__save_without_rename(self) -> None:
+        stream = _make_stream()
+        widget = ClusterAnalysisWidget(
+            stream, features=[{"metric": "length"}], n_clusters=2
+        )
+
+        widget.save_segment_name = "cluster"
+        widget.save_trigger = "1"
+
+        result = json.loads(widget.save_result)
+        assert result["ok"] is True
+        assert any(
+            c.startswith("cluster_") for c in stream.df["cluster"].unique().tolist()
+        )
+
+    def test__save_without_segment_name_reports_error(self) -> None:
+        stream = _make_stream()
+        widget = ClusterAnalysisWidget(
+            stream, features=[{"metric": "length"}], n_clusters=2
+        )
+
+        widget.save_trigger = "1"
+
+        result = json.loads(widget.save_result)
+        assert result["ok"] is False
+        assert "error" in result
+
+    def test__save_with_colliding_segment_name_reports_error(self) -> None:
+        stream = _make_stream()
+        widget = ClusterAnalysisWidget(
+            stream, features=[{"metric": "length"}], n_clusters=2
+        )
+        widget.save_segment_name = "user_id"
+        widget.save_trigger = "1"
+
+        result = json.loads(widget.save_result)
+        assert result["ok"] is False
+
+
+class TestClusterAnalysisWidgetDefaults:
+    def test__default_features_and_metrics_use_the_all_events_wildcard(self) -> None:
+        """Defaults must not enumerate every event - it's unreadable in generated
+        code and unnecessary now that event_count_bulk/has_event_bulk support the
+        wildcard (event_count/has_event are strict single-event, no wildcard)."""
+        stream = _make_stream()
+        widget = ClusterAnalysisWidget(stream)
+
+        assert json.loads(widget.features) == [{"metric": "event_count_bulk"}]
+        assert json.loads(widget.overview_metrics) == [
+            {"metric": "event_count_bulk", "agg": "mean"}
+        ]
+
+
+class TestClusterAnalysisStreamVarName:
+    def test__infers_the_variable_name_used_at_the_call_site(self) -> None:
+        es = _make_stream()
+        widget = es.cluster_analysis(features=[{"metric": "length"}], n_clusters=2)
+
+        assert widget.stream_var_name == "es"
+
+    def test__falls_back_to_stream_when_not_bound_to_a_variable(self) -> None:
+        widget = _make_stream().cluster_analysis(
+            features=[{"metric": "length"}], n_clusters=2
+        )
+
+        assert widget.stream_var_name == "stream"
+
+    def test__direct_widget_construction_defaults_to_stream(self) -> None:
+        """ClusterAnalysisWidget(...) called directly (not via Eventstream.cluster_analysis)
+        has no caller frame to inspect, so it must fall back to the default."""
+        stream = _make_stream()
+        widget = ClusterAnalysisWidget(
+            stream, features=[{"metric": "length"}], n_clusters=2
+        )
+
+        assert widget.stream_var_name == "stream"

@@ -1,0 +1,68 @@
+name: Test Release (TestPyPI)
+
+# Triggered by pushing a `test-v*` tag -- lets you dry-run the whole
+# packaging + publish pipeline against test.pypi.org before cutting a real
+# release. Unlike release.yml, this never touches the real PyPI project.
+# Tag-triggered (not workflow_dispatch) specifically so it works from any
+# branch, including ones that haven't been merged to the default branch yet
+# -- workflow_dispatch requires the workflow file to already exist there.
+#
+# Use `make test-release VERSION=x.y.z` rather than tagging by hand: it
+# also keeps the version-bump commit off your actual branch history.
+#
+# TestPyPI (like real PyPI) permanently reserves each version string once
+# published -- pick a new VERSION each time you want to test again.
+
+on:
+  push:
+    tags:
+      - "test-v*"
+
+jobs:
+  test-release:
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: js/package-lock.json
+
+      - name: Install JS dependencies
+        working-directory: js
+        run: npm ci
+
+      - name: Build JS
+        run: |
+          npm run build --prefix js/viz-core
+          npm run build --prefix js/widget
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      - name: Run tests
+        run: uv run pytest tests/ -v
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Verify the wheel embeds the JS bundle
+        run: |
+          set -e
+          WHEEL=$(ls dist/*.whl)
+          unzip -l "$WHEEL" | grep -q 'retentioneering/static/widget\.js' || {
+            echo "::error::widget.js is missing from the built wheel"; exit 1;
+          }
+
+      - name: Publish to TestPyPI
+        run: uv publish --publish-url https://test.pypi.org/legacy/

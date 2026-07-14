@@ -1,0 +1,36 @@
+# {{ title }}
+
+{{ doc.summary }}
+
+## Usage
+
+```python
+{{ doc.examples or default_call }}
+```
+
+{% set data_params, display_params = split_by_headless(doc.parameters, headless.parameters) %}
+## Parameters
+
+### Data
+
+Data parameters change the computed result. They are exactly the arguments of
+the widget's headless twin `stream.{{ headless_name }}()` — see
+[headless mode](#headless-mode) below.
+
+{{ param_table(data_params) }}
+
+### Display
+
+Display parameters only affect how the widget is rendered.
+
+{{ param_table(display_params) }}
+
+{% block extra %}{% endblock %}
+## Headless mode
+
+`stream.{{ headless_name }}()`
+
+{{ headless.summary }}
+
+
+{% block demo_examples %}{% endblock %}

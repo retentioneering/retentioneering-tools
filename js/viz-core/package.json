@@ -1,0 +1,38 @@
+{
+  "name": "@retentioneering/viz-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/viz-core.js",
+  "exports": {
+    ".": "./dist/viz-core.js",
+    "./styles.css": "./dist/viz-core.css"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch"
+  },
+  "dependencies": {
+    "@radix-ui/react-slider": "^1.2.2",
+    "@supabase/supabase-js": "^2.108.2",
+    "cytoscape": "^3.33.1",
+    "cytoscape-fcose": "^2.2.0",
+    "lucide-react": "^0.471.0",
+    "mobx": "^6.13.6",
+    "mobx-react-lite": "^4.1.0",
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/cytoscape": "^3.21.9",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "typescript": "^5.7.3",
+    "vite": "^6.3.5"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  }
+}

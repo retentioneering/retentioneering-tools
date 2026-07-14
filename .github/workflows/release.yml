@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # PyPI trusted publishing (OIDC) — no API token needed
+      contents: write   # create the GitHub Release
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: js/package-lock.json
+
+      - name: Install JS dependencies
+        working-directory: js
+        run: npm ci
+
+      - name: Build JS
+        run: |
+          npm run build --prefix js/viz-core
+          npm run build --prefix js/widget
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      - name: Run tests
+        run: uv run pytest tests/ -v
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Verify the wheel embeds the JS bundle
+        run: |
+          set -e
+          WHEEL=$(ls dist/*.whl)
+          unzip -l "$WHEEL" | grep -q 'retentioneering/static/widget\.js' || {
+            echo "::error::widget.js is missing from the built wheel"; exit 1;
+          }
+
+      - name: Publish to PyPI
+        run: uv publish
+
+      - name: Extract release notes from CHANGELOG.md
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          {
+            echo "notes<<EOF"
+            awk -v ver="$VERSION" '
+              $0 ~ "^## \\[" ver "\\]" { found=1; next }
+              found && /^## \[/ { exit }
+              found { print }
+            ' CHANGELOG.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF_NAME" == *rc* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.notes }}
+          prerelease: ${{ steps.notes.outputs.prerelease }}
+          files: dist/*

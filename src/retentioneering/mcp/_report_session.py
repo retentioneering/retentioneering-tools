@@ -19,12 +19,29 @@ from retentioneering.mcp._agent_logic import _apply_preprocessors, _build_data_n
 
 
 class ReportSession:
-    def __init__(self, base_stream: Any, context: dict):
-        self._base_stream = base_stream  # original, never mutated
+    def __init__(self, base_stream: Any | None, context: dict | None = None):
+        self._base_stream = base_stream  # original, until load_data() replaces it
         self.active_stream = base_stream
-        self.context_events: set = set(context.get("events", {}).keys())
+        self.context: dict = context or {}
+        self.context_events: set = set(self.context.get("events", {}).keys())
         self.base_preprocessors: list = []
         self.pending_tabs: list[dict] = []
+
+    def load_data(self, stream: Any, context: dict | None = None) -> Any:
+        """Replace the base/active stream with *stream* — used by the
+        data-agnostic load_data tool, whether serve() started with no stream
+        at all or the agent wants to switch to an entirely different dataset
+        mid-session. Clears preprocessing and pending tabs from the previous
+        stream, since neither applies to the new data.
+        """
+        self._base_stream = stream
+        self.active_stream = stream
+        self.base_preprocessors = []
+        self.pending_tabs = []
+        if context is not None:
+            self.context = context
+            self.context_events = set(context.get("events", {}).keys())
+        return stream
 
     @staticmethod
     def stream_stats(stream: Any) -> dict:

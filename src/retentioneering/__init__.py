@@ -1,4 +1,4 @@
-from retentioneering import datasets
+from retentioneering import datasets, mcp
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.eventstream.schema import EventstreamSchema
 
@@ -9,4 +9,4 @@ try:
 except Exception:
     __version__ = "unknown"
 
-__all__ = ["Eventstream", "EventstreamSchema", "__version__", "datasets"]
+__all__ = ["Eventstream", "EventstreamSchema", "__version__", "datasets", "mcp"]

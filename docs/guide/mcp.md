@@ -6,17 +6,28 @@ The MCP server runs **locally** in the Jupyter kernel, so it requires a local Py
 
 ## Starting the server
 
+You can either start the server with no context so the agent will have to upload the eventstream itself to analyse it:
 ```python
-from retentioneering.mcp import serve
+import retentioneering as rete
 
-serve(stream, context={
+rete.mcp.serve(port=8765)
+```
+
+or with context to analyse an eventstream that is already in the kernel's memory:
+
+```python
+import retentioneering as rete
+
+stream = rete.datasets.load_ecom()
+rete.mcp.serve(stream, context={
     "description": "E-commerce store. Main KPI — purchase conversion.",
     "events": {
         "purchase":    "Completed a purchase",
         "add_to_cart": "Added an item to cart",
-    },
-    "port": 8765
-})
+    }
+  },
+  port=8765
+)
 ```
 
 The `stream` argument is the [Eventstream](/docs/eventstream) you want the agent to analyse. It stays in the kernel's memory — the agent reads from it via tool calls without copying data anywhere. The optional `context` dict adds semantic information that the agent uses to write better analysis.
@@ -25,7 +36,7 @@ The `stream` argument is the [Eventstream](/docs/eventstream) you want the agent
 
 Any agent that supports MCP over SSE can connect using the server URL `http://localhost:8765/sse` (adjust the port if you changed it). Setup instructions for popular agents:
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code/mcp) — run `claude mcp add retentioneering --transport sse http://localhost:8765/sse`
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code/mcp) — run `claude mcp add --scope user --transport sse retentioneering http://localhost:8765/sse`
 - [Codex](https://developers.openai.com/codex/mcp) — add the server URL to Settings → MCP Servers → Add Server (Streamable HTTP)
 - [Cursor](https://cursor.com/docs/mcp) — add the server under Settings → Tools & MCPs → New MCP Server
 

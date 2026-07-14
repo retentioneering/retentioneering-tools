@@ -41,6 +41,65 @@ from retentioneering.mcp._prompts import (
 from retentioneering.mcp._report_session import ReportSession
 
 
+def _require_stream(session: Any) -> dict | None:
+    """Guard for tools that operate on the active stream. Returns an error
+    dict if serve() was started without a stream and load_data() hasn't been
+    called yet; None if a stream is present and the caller can proceed.
+    """
+    if session.active_stream is None:
+        return {
+            "error": (
+                "No eventstream loaded yet. Call load_data(path=..., schema=...) "
+                "first to load a CSV file into this session."
+            )
+        }
+    return None
+
+
+def load_data(
+    session: Any,
+    path: str,
+    schema: dict | None = None,
+    context: dict | None = None,
+) -> dict:
+    """
+    Load an eventstream from a local CSV file and set it as the base stream
+    for this session, replacing whatever stream is currently active (from
+    serve() or an earlier load_data call).
+
+    Call this FIRST, before any other tool, if serve() was started without a
+    stream (data-agnostic mode) — every other tool returns an error until
+    this succeeds. Also usable later to switch the session to an entirely
+    different dataset.
+
+    Parameters
+    ----------
+    path:
+        Path to a CSV file, readable by the process running the MCP server
+        (same filesystem as wherever serve() was invoked from).
+    schema:
+        Optional column mapping:
+          {"path_cols": [...], "event_cols": [...], "timestamp_col": "...",
+           "segment_cols": [...]}
+        Defaults to path_cols=["user_id"], event_cols=["event"],
+        timestamp_col="timestamp" for any key left unspecified.
+    context:
+        Optional semantic layer — same shape as serve()'s context argument
+        (description, events, kpis). Replaces any context set previously.
+
+    Returns
+    -------
+    Stream stats: n_paths, n_events_total, events list.
+    {"error": ...} if the file can't be read or doesn't match the schema.
+    """
+    try:
+        stream = Eventstream(path, schema=schema)
+    except Exception as exc:
+        return {"error": str(exc)}
+    session.load_data(stream, context)
+    return {"status": "data loaded", **ReportSession.stream_stats(stream)}
+
+
 def update_base_stream(session: Any, preprocessors: list) -> dict:
     """
     Apply preprocessing to the original eventstream and set it as the active
@@ -67,6 +126,8 @@ def update_base_stream(session: Any, preprocessors: list) -> dict:
     -------
     Stream stats: n_paths, n_events_total, events list.
     """
+    if (err := _require_stream(session)) is not None:
+        return err
     try:
         new_stream = session.update_base_stream(preprocessors)
     except Exception as exc:
@@ -82,6 +143,8 @@ def reset_base_stream(session: Any) -> dict:
 
     Returns updated stream stats.
     """
+    if (err := _require_stream(session)) is not None:
+        return err
     new_stream = session.reset_base_stream()
     return {
         "status": "base stream reset to original",
@@ -132,6 +195,8 @@ def describe_tool(tool: str = "") -> dict:
 def describe(session: Any, context: dict) -> dict:
     """Return schema, event list, unique path counts and available segments.
     Reflects the current active stream (after any update_base_stream calls)."""
+    if (err := _require_stream(session)) is not None:
+        return err
     cur = session.active_stream
     s = cur.schema
     ec, pc = s.event_col, s.path_col
@@ -197,6 +262,8 @@ def add_transition_graph(
         Use sparingly — prefer update_base_stream when the same preprocessing
         applies to multiple visualisations.
     """
+    if (err := _require_stream(session)) is not None:
+        return err
     src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
     widget = src.transition_graph(
         edge_weight=edge_weight, diff=diff, path_col=path_col or None
@@ -262,6 +329,8 @@ def add_step_matrix(
 
     local_preprocessors: same as in add_transition_graph.
     """
+    if (err := _require_stream(session)) is not None:
+        return err
     src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
     widget = src.step_matrix(
         max_steps=max_steps,
@@ -360,6 +429,8 @@ def add_segment_overview(
 
     local_preprocessors: same as in add_transition_graph.
     """
+    if (err := _require_stream(session)) is not None:
+        return err
     src = _apply_preprocessors(session.active_stream, local_preprocessors or [])
     widget = src.segment_overview(
         segment_col=segment_col,

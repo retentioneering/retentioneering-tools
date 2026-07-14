@@ -74,7 +74,7 @@ filterwarnings = [
 [dependency-groups]
 dev = [
     "ipykernel>=7.3.0",
-    "jupyterlab>=4.5.8",
+    "jupyterlab>=4.5.9",
     "pytest>=9.1.0",
     "pre-commit>=4.0.0",
     "ruff>=0.8.6",

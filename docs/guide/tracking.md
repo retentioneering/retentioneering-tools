@@ -30,7 +30,7 @@ Every event also records whether the call was made by your code or by an agent t
 
 We **never** collect any sensitive data from your eventstream — no event names, no user identifiers, no path contents, no segment values, and no business metrics. We also never collect method parameter values or exception messages. Your data stays entirely on your machine.
 
-We don't collect anything about your environment beyond: an anonymous device identifier (a one-way hash derived from the machine id, or a random UUID stored in `~/.retentioneering/config.json`, from which nothing about you or your machine can be recovered), the library version, OS and OS version, Python version, and the runtime environment (Jupyter, VS Code, Google Colab, or script).
+We don't collect anything about your environment beyond: an anonymous device identifier (a one-way hash derived from the machine id, or a random UUID stored in `~/.retentioneering/config.json`, from which nothing about you or your machine can be recovered), the library version, OS and OS version, Python version, the runtime environment (Jupyter, VS Code, Google Colab, or script), the Jupyter kernel id when running inside a notebook, and — for plain scripts — a one-way hash of the invoked script's path and a separate one-way hash of the full command line (arguments included). The latter two let you tell apart events from different scripts or automated agents sharing one machine (which would otherwise share the same device identifier above); the actual path and arguments are never sent, only the hashes.
 
 ## Opting out
 

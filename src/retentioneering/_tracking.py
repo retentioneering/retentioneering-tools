@@ -112,6 +112,27 @@ def _kernel_id() -> str | None:
         return None
 
 
+def _script_path_hash() -> str | None:
+    """Hash of the entrypoint path (sys.argv[0]) — distinguishes separate agents/
+    scripts sharing one machine (and thus one distinct_id) from each other, without
+    ever sending the actual path (which may embed a username or project name).
+    Stable across runs of the same script regardless of its CLI arguments."""
+    try:
+        return str(uuid.uuid5(uuid.NAMESPACE_DNS, sys.argv[0]))
+    except Exception:
+        return None
+
+
+def _command_hash() -> str | None:
+    """Hash of the full CLI invocation (argv, including arguments) — finer-grained
+    than script_path_hash: distinguishes different invocations of the same generic
+    script (e.g. a shared runner launched with different configs)."""
+    try:
+        return str(uuid.uuid5(uuid.NAMESPACE_DNS, " ".join(sys.argv)))
+    except Exception:
+        return None
+
+
 # ── cached base properties ─────────────────────────────────────────────────────
 
 
@@ -138,6 +159,12 @@ _BASE_PROPS: dict = {
 _kernel = _kernel_id()
 if _kernel:
     _BASE_PROPS["kernel_id"] = _kernel
+
+if _script_path_hash_val := _script_path_hash():
+    _BASE_PROPS["script_path_hash"] = _script_path_hash_val
+
+if _command_hash_val := _command_hash():
+    _BASE_PROPS["command_hash"] = _command_hash_val
 
 
 # ── opt-out ────────────────────────────────────────────────────────────────────

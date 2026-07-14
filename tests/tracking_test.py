@@ -126,6 +126,54 @@ def test_is_colab_false_otherwise(monkeypatch):
     assert _tracking._is_colab() is False
 
 
+# ── script_path_hash / command_hash — telling separate scripts/agents apart ────
+
+
+def test_script_path_hash_stable_regardless_of_args(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["/agents/scraper.py", "--task-id=1"])
+    first = _tracking._script_path_hash()
+    monkeypatch.setattr(sys, "argv", ["/agents/scraper.py", "--task-id=2"])
+    second = _tracking._script_path_hash()
+
+    assert first == second
+
+
+def test_script_path_hash_differs_for_different_scripts(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["/agents/scraper.py"])
+    scraper = _tracking._script_path_hash()
+    monkeypatch.setattr(sys, "argv", ["/agents/trainer.py"])
+    trainer = _tracking._script_path_hash()
+
+    assert scraper != trainer
+
+
+def test_script_path_hash_never_contains_raw_path(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["/Users/jdoe/secret-project/scraper.py"])
+
+    result = _tracking._script_path_hash()
+
+    assert "jdoe" not in result
+    assert "secret-project" not in result
+
+
+def test_command_hash_differs_when_args_change(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["/agents/runner.py", "--config=a.yaml"])
+    first = _tracking._command_hash()
+    monkeypatch.setattr(sys, "argv", ["/agents/runner.py", "--config=b.yaml"])
+    second = _tracking._command_hash()
+
+    assert first != second
+
+
+def test_command_hash_stable_for_identical_invocation(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["/agents/runner.py", "--config=a.yaml"])
+
+    first = _tracking._command_hash()
+    second = _tracking._command_hash()
+
+    assert first == second
+
+
 # ── caller_context / caller_type attribution ────────────────────────────────────
 
 

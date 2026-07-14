@@ -105,10 +105,6 @@ class Eventstream:
     def df(self) -> pd.DataFrame:
         return self._df
 
-    @df.setter
-    def df(self, v: pd.DataFrame):
-        self._df = v
-
     @_tracked(
         "eventstream_created",
         condition=lambda self: self.preprocess,

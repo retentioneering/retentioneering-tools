@@ -78,9 +78,16 @@ export function formatMetricLabel(metric: string): string {
 
 export interface SegmentOverviewData {
   metrics:  string[];
-  segments: string[];
+  segments: (string | null)[];   // null = paths with no value for this segment column
   values:   (number | null)[][];   // values[metricIdx][segmentIdx]
 }
+
+/** Stand-in for a null segment column (get_segment_levels' "<MISSING>" group,
+ *  which segment_overview_data surfaces as a real None column label). Used
+ *  both as the display label and, since data-segment/key need a string, as
+ *  the DOM sentinel for that column. */
+const NO_SEGMENT_LABEL = "(no segment)";
+const NO_SEGMENT_KEY = "__none__";
 
 export interface DistributionData {
   bins: number[];
@@ -400,15 +407,19 @@ export function SegmentOverviewTable({
           <thead>
             <tr>
               <th style={{ ...thL, background: "#f9fafb" }}>Metric</th>
-              {segments.map(seg => (
-                <th key={seg} data-segment={seg} style={thV}>
-                  {onRename ? (
-                    <EditableHeaderLabel value={renameMap?.[seg] ?? seg} onChange={v => onRename(seg, v)} />
-                  ) : (
-                    <span title={seg}>{seg}</span>
-                  )}
-                </th>
-              ))}
+              {segments.map(seg => {
+                const segKey = seg ?? NO_SEGMENT_KEY;
+                const label = seg ?? NO_SEGMENT_LABEL;
+                return (
+                  <th key={segKey} data-segment={segKey} style={thV}>
+                    {onRename ? (
+                      <EditableHeaderLabel value={renameMap?.[segKey] ?? label} onChange={v => onRename(segKey, v)} />
+                    ) : (
+                      <span title={label}>{label}</span>
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -426,7 +437,7 @@ export function SegmentOverviewTable({
                     return (
                       <td
                         key={si}
-                        data-segment={seg}
+                        data-segment={seg ?? NO_SEGMENT_KEY}
                         title={formatCellValue(metric, v)}
                         onClick={onCellClick ? (e => onCellClick(mi, si, e.shiftKey)) : undefined}
                         onContextMenu={onCellRightClick ? (e => { e.preventDefault(); onCellRightClick(mi, si, e.clientX, e.clientY); }) : undefined}
@@ -599,8 +610,11 @@ export function useDistributionSelection({ host, result, rootRef, segmentCol, pa
 
       setDistModal({
         result: r,
-        label1: segs[0] ?? "Segment",
-        label2: segs[1] ?? "Complement",
+        // segs[i] is `null` (a real "no segment value" group, not a missing
+        // selection) whenever that cell's column is the None segment — only
+        // fall back to the generic label when no cell was selected at all.
+        label1: segs[0] !== undefined ? (segs[0] ?? NO_SEGMENT_LABEL) : "Segment",
+        label2: segs[1] !== undefined ? (segs[1] ?? NO_SEGMENT_LABEL) : "Complement",
         metric: metricName,
       });
       setDistLoading(false);

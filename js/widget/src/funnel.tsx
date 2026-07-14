@@ -12,6 +12,14 @@ const DIFF_B = "#3b82f6";
 const REST_VALUE = "<REST>";
 const REST_LABEL = "Rest (everyone else)";
 
+/** get_segment_levels' sentinel for paths with no value assigned for this segment column. */
+const MISSING_VALUE = "<MISSING>";
+const MISSING_LABEL = "No segment value";
+
+function segmentValueLabel(v: string): string {
+  return v === MISSING_VALUE ? MISSING_LABEL : v;
+}
+
 // Estimated heights for auto-sizing
 const HEADER_H     = 48;  // sidebar header
 const SIDEBAR_W    = 252;
@@ -564,14 +572,14 @@ function Sidebar({ steps, events, segLevels, pathCols, pathIdCol,
               <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
                 <span style={{ color: "rgb(239,68,68)", fontSize: 13, flexShrink: 0 }}>●</span>
                 <select value={localV1} onChange={e => setLocalV1(e.target.value)} style={{ ...sel, flex: 1, minWidth: 0, width: "auto" }} disabled={isLoading || isStatic}>
-                  {localLevels.map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localV2}>{String(v)}</option>)}
+                  {localLevels.map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localV2}>{segmentValueLabel(String(v))}</option>)}
                 </select>
               </div>
               <span style={{ color: "#6b7280", fontSize: 11, flexShrink: 0 }}>vs</span>
               <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
                 <span style={{ color: "rgb(59,130,246)", fontSize: 13, flexShrink: 0 }}>●</span>
                 <select value={localV2} onChange={e => setLocalV2(e.target.value)} style={{ ...sel, flex: 1, minWidth: 0, width: "auto" }} disabled={isLoading || isStatic}>
-                  {localLevels.map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localV1}>{String(v)}</option>)}
+                  {localLevels.map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localV1}>{segmentValueLabel(String(v))}</option>)}
                   <option value={REST_VALUE}>{REST_LABEL}</option>
                 </select>
               </div>

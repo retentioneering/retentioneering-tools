@@ -922,7 +922,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
 
         {!isStatic && saveOpen && (
           <SaveClustersOverlay
-            segments={result.overview?.segments ?? []}
+            segments={(result.overview?.segments ?? []).filter((s): s is string => s !== null)}
             initialRename={headerRename}
             streamVarName={streamVarName}
             features={features} method={method} scaler={scaler}

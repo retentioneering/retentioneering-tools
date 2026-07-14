@@ -347,6 +347,26 @@ class TestFilterEvents:
         expected = {"country": ["UK", "US"], "sex": ["female", "male"]}
         assert res == expected
 
+    def test__get_segment_levels_appends_missing_sentinel(self):
+        """A segment column with some None/NaN values must surface a
+        '<MISSING>' level so diff pickers can select that group."""
+        df = get_df()
+        df["sex"] = ["female", None, "female", "male", "female", "female"]
+        schema = {"segment_cols": ["country", "sex"]}
+        stream = Eventstream(df, schema)
+        res = stream.get_segment_levels()
+
+        assert res == {"country": ["UK", "US"], "sex": ["female", "male", "<MISSING>"]}
+
+    def test__get_segment_levels_no_sentinel_without_missing_values(self):
+        """A fully-populated segment column must not gain the sentinel."""
+        df = get_df()
+        schema = {"segment_cols": ["country"]}
+        stream = Eventstream(df, schema)
+        res = stream.get_segment_levels()
+
+        assert "<MISSING>" not in res["country"]
+
 
 class TestSplitTwo:
     def test___split_two_outer_literal(self) -> None:
@@ -374,3 +394,42 @@ class TestSplitTwo:
         # stream2 should contain seg_2 and seg_3 rows (complement of seg_1)
         assert set(stream2.df["user_id"].tolist()) == {"user_3", "user_4", "user_5"}
         assert set(stream2.df["my_segment"].unique()) == {"seg_2", "seg_3"}
+
+    def test___split_two_missing_sentinel_selects_null_segment_group(self) -> None:
+        """'<MISSING>' must select paths with no assigned segment value, since
+        SQL IN (used by keep=) never matches NULL."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "seg_1"],
+                ["user_2", "B", "2020-01-02 00:00:00", "seg_1"],
+                ["user_3", "C", "2020-01-01 00:00:00", None],
+                ["user_4", "D", "2020-01-01 00:00:00", None],
+            ],
+            columns=["user_id", "event", "timestamp", "my_segment"],
+        )
+        schema = {"segment_cols": ["my_segment"]}
+        stream = Eventstream(df, schema)
+
+        stream1, stream2 = stream._split_two(["my_segment", "seg_1", "<MISSING>"])
+
+        assert set(stream1.df["user_id"].tolist()) == {"user_1", "user_2"}
+        assert set(stream2.df["user_id"].tolist()) == {"user_3", "user_4"}
+
+    def test___split_two_rest_includes_missing_segment_group(self) -> None:
+        """'<REST>' must pool the missing-segment group along with every
+        other real value, not silently exclude it."""
+        df = pd.DataFrame(
+            [
+                ["user_1", "A", "2020-01-01 00:00:00", "seg_1"],
+                ["user_2", "B", "2020-01-02 00:00:00", "seg_2"],
+                ["user_3", "C", "2020-01-01 00:00:00", None],
+            ],
+            columns=["user_id", "event", "timestamp", "my_segment"],
+        )
+        schema = {"segment_cols": ["my_segment"]}
+        stream = Eventstream(df, schema)
+
+        stream1, stream2 = stream._split_two(["my_segment", "seg_1", "<REST>"])
+
+        assert set(stream1.df["user_id"].tolist()) == {"user_1"}
+        assert set(stream2.df["user_id"].tolist()) == {"user_2", "user_3"}

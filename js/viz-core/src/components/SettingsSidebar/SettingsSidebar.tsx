@@ -17,6 +17,14 @@ export const SIDEBAR_WIDTH = 280;
 const REST_VALUE = "<REST>";
 const REST_LABEL = "Rest (everyone else)";
 
+/** get_segment_levels' sentinel for paths with no value assigned for this segment column. */
+const MISSING_VALUE = "<MISSING>";
+const MISSING_LABEL = "No segment value";
+
+function segmentValueLabel(v: string): string {
+  return v === MISSING_VALUE ? MISSING_LABEL : v;
+}
+
 const C = {
   bg: "#ffffff", bgSection: "#f9fafb",
   border: "#e5e7eb", borderLight: "#d1d5db",
@@ -256,7 +264,7 @@ export const SettingsSidebar = observer(function SettingsSidebar({
                     style={{ ...selectStyle, flex: 1, minWidth: 0, width: "auto" }}
                     disabled={isLoading || isStatic}
                   >
-                    {localLevels.map((v) => <option key={String(v)} value={String(v)} disabled={String(v) === String(localVal2)}>{String(v)}</option>)}
+                    {localLevels.map((v) => <option key={String(v)} value={String(v)} disabled={String(v) === String(localVal2)}>{segmentValueLabel(String(v))}</option>)}
                   </select>
                 </div>
                 <span style={{ color: C.muted, fontSize: 11, flexShrink: 0 }}>vs</span>
@@ -268,7 +276,7 @@ export const SettingsSidebar = observer(function SettingsSidebar({
                     style={{ ...selectStyle, flex: 1, minWidth: 0, width: "auto" }}
                     disabled={isLoading || isStatic}
                   >
-                    {localLevels.map((v) => <option key={String(v)} value={String(v)} disabled={String(v) === String(localVal1)}>{String(v)}</option>)}
+                    {localLevels.map((v) => <option key={String(v)} value={String(v)} disabled={String(v) === String(localVal1)}>{segmentValueLabel(String(v))}</option>)}
                     <option value={REST_VALUE}>{REST_LABEL}</option>
                   </select>
                 </div>

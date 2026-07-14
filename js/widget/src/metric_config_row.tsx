@@ -357,7 +357,10 @@ export function MetricRow({ cfg, events, segmentCols, segmentLevels, showErrors,
 
       {needsInSegment && (() => {
         const segName    = cfg.metric_args?.segment_name ?? "";
-        const segValues  = (segmentLevels[segName] ?? []).map(String);
+        // "<MISSING>" (get_segment_levels' sentinel for a None/NaN segment
+        // value) isn't understood by the in_segment metric's matching, so
+        // exclude it here rather than offer a value that silently no-ops.
+        const segValues  = (segmentLevels[segName] ?? []).map(String).filter(v => v !== "<MISSING>");
         const curVal     = cfg.metric_args?.segment_value;
         const selectedVals: string[] = Array.isArray(curVal) ? curVal.map(String) : (curVal ? [String(curVal)] : []);
         const mode       = cfg.metric_args?.mode ?? "any";

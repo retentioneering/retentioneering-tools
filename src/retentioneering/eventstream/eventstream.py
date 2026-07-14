@@ -13,6 +13,10 @@ from retentioneering.ops import op as _op
 from retentioneering.tools.types import T_TransitionMatrixValues, T_Diff
 from retentioneering.utils.sequences import find_delimiter_collisions
 
+#: `diff`/`get_segment_levels` sentinel standing in for a missing (None/NaN)
+#: segment value, since it can't be a real dict/query value the way `<REST>` can.
+SEGMENT_MISSING = "<MISSING>"
+
 
 def _to_datetime_auto(series: pd.Series) -> pd.Series:
     if pd.api.types.is_integer_dtype(series):
@@ -336,10 +340,22 @@ class Eventstream:
         return hashlib.md5(payload.encode()).hexdigest()
 
     def get_segment_levels(self) -> dict[str, list[str]]:
-        return {
-            col: self._df[col].cat.categories.tolist()
-            for col in self.schema.segment_cols
-        }
+        """Available values per segment column, for UI catalogues and `diff`.
+
+        A `Categorical`'s `.cat.categories` never includes NaN, so a segment
+        column that has paths with no assigned value (e.g. via `add_segment`'s
+        `func=`/`sql=` modes) would otherwise have that group silently
+        unselectable. When that happens, the `SEGMENT_MISSING` sentinel is
+        appended to the level list to represent it.
+        """
+        levels = {}
+        for col in self.schema.segment_cols:
+            series = self._df[col]
+            cats = series.cat.categories.tolist()
+            if series.isna().any():
+                cats = cats + [SEGMENT_MISSING]
+            levels[col] = cats
+        return levels
 
     @_tracked("headless_describe")
     def describe(
@@ -1277,6 +1293,18 @@ class Eventstream:
         ).apply(self._df, self.schema)
         return Eventstream(new_df, asdict(new_schema), preprocess=False)
 
+    def _filter_by_segment_values(
+        self, segment_col: str, values: list
+    ) -> "Eventstream":
+        """`keep`-style filter, but values may include SEGMENT_MISSING — which
+        `keep=` can't express, since SQL `IN` never matches NULL."""
+        if SEGMENT_MISSING not in values:
+            return self.filter_events(keep={segment_col: values})
+        real_values = {v for v in values if v != SEGMENT_MISSING}
+        return self.filter_events(
+            func=lambda df: df[segment_col].isin(real_values) | df[segment_col].isna()
+        )
+
     def _split_two(self, split, path_col: str | None = None):
         from retentioneering.exceptions import (
             EmptyEventstreamError,
@@ -1296,7 +1324,7 @@ class Eventstream:
                     segment_col=segment_col,
                     available_values=sorted(all_vals),
                 )
-            s1 = self.filter_events(keep={segment_col: [v1]})
+            s1 = self._filter_by_segment_values(segment_col, [v1])
             if v2 == "<REST>":
                 v2_vals = list(all_vals - {v1})
                 if not v2_vals:
@@ -1312,7 +1340,7 @@ class Eventstream:
                         available_values=sorted(all_vals),
                     )
                 v2_vals = [v2]
-            s2 = self.filter_events(keep={segment_col: v2_vals})
+            s2 = self._filter_by_segment_values(segment_col, v2_vals)
         elif len(split) == 2:
             ids1, ids2 = split[0], split[1]
             path_col = path_col or self.schema.path_col
@@ -1396,7 +1424,9 @@ class Eventstream:
             [Diff mode](/docs/widgets#diff-mode). `(segment_col, value1, value2)` to
             compare two segment values, or `(path_ids1, path_ids2)` to compare two
             explicit path-id groups. `value2` may be `<REST>`, meaning "every other
-            value of `segment_col`".
+            value of `segment_col`". Either value may be `<MISSING>`, meaning paths
+            with no `segment_col` value assigned (e.g. left unset by `add_segment`'s
+            `func=`/`sql=` modes) — see `get_segment_levels`.
 
         Returns
         -------

@@ -26,6 +26,14 @@ interface MatrixResult {
 const REST_VALUE = "<REST>";
 const REST_LABEL = "Rest (everyone else)";
 
+/** get_segment_levels' sentinel for paths with no value assigned for this segment column. */
+const MISSING_VALUE = "<MISSING>";
+const MISSING_LABEL = "No segment value";
+
+function segmentValueLabel(v: string): string {
+  return v === MISSING_VALUE ? MISSING_LABEL : v;
+}
+
 // ── colour ─────────────────────────────────────────────────────────────────
 
 function cellBg(v: number, min: number, max: number, isDiff: boolean, heatmapType: "overall"|"row"|"col"): string {
@@ -1203,14 +1211,14 @@ export function render({ host, el, isStatic = false }: RenderContext) {
                       <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0 }}>
                         <span style={{ color: "rgb(239,68,68)", fontSize: 13, flexShrink: 0 }}>●</span>
                         <select value={localDiffV1} onChange={e => setLocalDiffV1(e.target.value)} style={{ ...sidebarSel, flex: 1, minWidth: 0, width: "auto" }} disabled={isLoading || isStatic}>
-                          {(segLevels[localDiffSeg] ?? []).map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localDiffV2}>{String(v)}</option>)}
+                          {(segLevels[localDiffSeg] ?? []).map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localDiffV2}>{segmentValueLabel(String(v))}</option>)}
                         </select>
                       </div>
                       <span style={{ color: SC.muted, fontSize: 11, flexShrink: 0 }}>vs</span>
                       <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, minWidth: 0 }}>
                         <span style={{ color: "rgb(59,130,246)", fontSize: 13, flexShrink: 0 }}>●</span>
                         <select value={localDiffV2} onChange={e => setLocalDiffV2(e.target.value)} style={{ ...sidebarSel, flex: 1, minWidth: 0, width: "auto" }} disabled={isLoading || isStatic}>
-                          {(segLevels[localDiffSeg] ?? []).map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localDiffV1}>{String(v)}</option>)}
+                          {(segLevels[localDiffSeg] ?? []).map(v => <option key={String(v)} value={String(v)} disabled={String(v) === localDiffV1}>{segmentValueLabel(String(v))}</option>)}
                           <option value={REST_VALUE}>{REST_LABEL}</option>
                         </select>
                       </div>

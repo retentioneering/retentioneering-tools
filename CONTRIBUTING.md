@@ -25,10 +25,15 @@ git clone https://github.com/retentioneering/retentioneering-tools.git
 cd retentioneering-tools
 
 make install     # = uv sync (Python deps incl. dev group) + npm install in js/
+                 #   + pre-commit install (git hook that runs ruff/gitleaks/hygiene on every commit)
 make build       # build the widget JS bundles into src/retentioneering/static/
-
-uv run pre-commit install   # one-time; runs ruff/gitleaks/hygiene hooks on every commit
 ```
+
+`make install` wires up the pre-commit git hook for you, so your commits are
+auto-checked. If you set up the environment without `make install`, run
+`uv run pre-commit install` once yourself — otherwise commits skip the hooks
+locally and CI's `lint` job (which runs `pre-commit run --all-files`) will flag
+the formatting on your PR instead.
 
 `make build` matters more than it looks: the JS bundles (`widget.js`,
 `widget-static.js`) are **gitignored** and built from source — without them,

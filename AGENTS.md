@@ -175,3 +175,13 @@ source of truth — change the docstring, re-render, done.
 No dynamic versioning — `pyproject.toml`'s `version = "..."` is the literal source of truth for
 what gets built and published; it is not derived from git tags. Bumping the git tag alone does
 not change what version the built package identifies as.
+
+## Agent skills
+
+Task-oriented skill packages live in `.agents/skills/` (see its README for the index and
+consumption notes) with an identical copy under `.claude/skills/` for Claude Code's
+native skill loader. Two skills ship today: `retentioneering-product-analytics`
+(event-log analysis workflow: inspect → recipe → execute → validate → interpret) and
+`retentioneering-contributing` (turning findings into issues/PRs that match this
+repository's conventions). When public API changes, re-verify the version-checked claims
+in each skill's `references/api-map.md`.

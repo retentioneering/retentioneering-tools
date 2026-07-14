@@ -11,7 +11,7 @@
 
 ## Checklist
 
-- [ ] Ran `make install` (or `uv run pre-commit install`) so the git hook is active
+- [ ] Ran `uv run pre-commit install` (one-time per clone) so the git hook is active
 - [ ] `uv run pre-commit run --all-files` passes (ruff lint + format, hygiene, gitleaks) — this is CI's `lint` job
 - [ ] `uv run pytest tests/ -q` passes
 - [ ] Added/updated tests (a bug fix includes the failing-before test)

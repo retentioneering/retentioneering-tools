@@ -158,9 +158,10 @@ class TestStepMatrix:
         schema = {"path_cols": ["user_id", "session_id"]}
         stream = Eventstream(df, schema)
         max_steps = 5
-        res = stream.step_sankey_data(
-            max_steps=max_steps, path_pattern=".*->path_end", path_col="session_id"
-        )[0]
+        with pytest.warns(UserWarning, match="redundant"):
+            res = stream.step_sankey_data(
+                max_steps=max_steps, path_pattern=".*->path_end", path_col="session_id"
+            )[0]
 
         expected = pd.DataFrame(
             [
@@ -460,7 +461,10 @@ class TestStepMatrix:
         df = fx_read_csv("tools/step_matrix_input.csv", sep="\t")
         stream = Eventstream(df)
         max_steps = 2
-        res = stream.step_sankey_data(max_steps=max_steps, path_pattern=".*->path_end")
+        with pytest.warns(UserWarning, match="redundant"):
+            res = stream.step_sankey_data(
+                max_steps=max_steps, path_pattern=".*->path_end"
+            )
         index = pd.Index(["path_start", "A", "B", "C", "path_end"], name="event")
 
         expected = pd.DataFrame(

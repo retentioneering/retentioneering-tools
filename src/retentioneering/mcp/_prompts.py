@@ -244,7 +244,7 @@ def _static_instructions(tail: str = "") -> str:
 
 
 def _system_instructions(
-    stream: "Eventstream", context: dict, notebook_dir: str = ""
+    stream: "Eventstream | None", context: dict, notebook_dir: str = ""
 ) -> str:
     """Full system prompt for the notebook `serve()` flow: a small per-stream
     header (stats, business context) computed fresh at server-start, followed
@@ -252,16 +252,28 @@ def _system_instructions(
     cacheable (it depends on the specific stream/context passed to `serve()`)
     — platform callers skip it entirely and rely on the agent's own first
     workflow step (`describe()`) to learn the current data shape instead.
-    """
-    s = stream.schema
-    df = stream.df
-    n_paths = int(df[s.path_col].nunique())
-    events = sorted(df[s.event_col].astype(str).unique().tolist())
 
-    header = [
-        f"The stream contains {n_paths} unique paths and {len(events)} distinct events.",
-        f"Event column: '{s.event_col}'. Path column: '{s.path_col}'.",
-    ]
+    `stream` is None when `serve()` was started in data-agnostic mode (no
+    stream passed) — the header then tells the agent to call `load_data`
+    before anything else, instead of reporting stats for data that doesn't
+    exist yet.
+    """
+    if stream is None:
+        header = [
+            "No eventstream is loaded yet — serve() was started without one "
+            "(data-agnostic mode).",
+            "Call load_data(path=..., schema=...) FIRST, before any other tool "
+            "(every other tool errors until data is loaded).",
+        ]
+    else:
+        s = stream.schema
+        df = stream.df
+        n_paths = int(df[s.path_col].nunique())
+        events = sorted(df[s.event_col].astype(str).unique().tolist())
+        header = [
+            f"The stream contains {n_paths} unique paths and {len(events)} distinct events.",
+            f"Event column: '{s.event_col}'. Path column: '{s.path_col}'.",
+        ]
     if context.get("description"):
         header.append(f"Business context: {context['description']}")
     if context.get("events"):

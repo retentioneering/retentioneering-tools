@@ -92,6 +92,59 @@ class TestUpdateAndResetBaseStream:
         assert session.base_preprocessors == []
 
 
+class TestLoadDataAndDataAgnosticMode:
+    def test__tools_error_before_any_data_is_loaded(self) -> None:
+        session = ReportSession(None, None)
+
+        assert "error" in tools.describe(session, session.context)
+        assert "error" in tools.update_base_stream(session, [])
+        assert "error" in tools.reset_base_stream(session)
+        assert "error" in tools.add_transition_graph(session, label="Flow")
+        assert "error" in tools.add_step_matrix(session, label="Steps")
+        assert "error" in tools.add_segment_overview(
+            session, label="Segments", segment_col="platform"
+        )
+
+    def test__load_data_populates_an_empty_session(self, tmp_path) -> None:
+        session = ReportSession(None, None)
+        csv_path = tmp_path / "events.csv"
+        get_stream().df.to_csv(csv_path, index=False)
+
+        result = tools.load_data(session, str(csv_path))
+
+        assert result["status"] == "data loaded"
+        assert set(result["events"]) >= {"view", "noise", "purchase"}
+        assert session.active_stream is not None
+        assert "error" not in tools.describe(session, session.context)
+
+    def test__load_data_sets_context(self, tmp_path) -> None:
+        session = ReportSession(None, None)
+        csv_path = tmp_path / "events.csv"
+        get_stream().df.to_csv(csv_path, index=False)
+
+        tools.load_data(session, str(csv_path), context={"description": "test biz"})
+
+        assert session.context == {"description": "test biz"}
+
+    def test__load_data_replaces_an_existing_stream_and_clears_tabs(self) -> None:
+        session = get_session()
+        tools.add_transition_graph(session, label="Overall Flow")
+        assert session.pending_tabs
+
+        result = tools.load_data(session, __file__)  # any unreadable-as-CSV path
+
+        assert "error" in result
+        # Failed load must not have touched the previous stream/tabs.
+        assert session.pending_tabs
+
+    def test__load_data_error_on_bad_path(self) -> None:
+        session = ReportSession(None, None)
+
+        result = tools.load_data(session, "/no/such/file.csv")
+
+        assert "error" in result
+
+
 class TestPlaybookAndDescribeTool:
     def test__playbook_empty_returns_index(self) -> None:
         result = tools.playbook("")

@@ -5,6 +5,7 @@ Usage in a Jupyter notebook:
     from retentioneering.mcp import serve
     serve(stream)
     serve(stream, context={"description": "...", "events": {...}})
+    serve()  # data-agnostic: agent loads data itself via the load_data tool
 
 Transport/protocol wiring only (FastMCP/SSE, `@mcp.tool()` registration,
 tracking-context tagging). Every tool is a one-line adapter over a function
@@ -43,7 +44,7 @@ __all__ = ["serve", "_apply_preprocessors", "_find_unlinked_numbers"]
 
 
 def serve(
-    stream: "Eventstream",
+    stream: "Eventstream | None" = None,
     context: dict | None = None,
     port: int = 8765,
 ) -> None:
@@ -53,7 +54,10 @@ def serve(
     Parameters
     ----------
     stream:
-        The prepared Eventstream to analyse.
+        The prepared Eventstream to analyse. Optional — omit it to start in
+        data-agnostic mode: the server has no data until the connected agent
+        calls the load_data tool with a CSV path (every other tool errors
+        with a clear message until then).
     context:
         Optional semantic layer — descriptions of events, segments, KPIs, etc.
         Example::
@@ -82,7 +86,9 @@ def serve(
         If *port* is already bound by another process (e.g. another local
         server, or an unrelated app defaulting to the same port).
     """
-    _track("mcp_serve", {"has_context": bool(context)})
+    _track(
+        "mcp_serve", {"has_context": bool(context), "has_stream": stream is not None}
+    )
     _check_port_available(port)
     mcp = _build_server(stream, context or {}, port=port, notebook_dir=os.getcwd())
     thread = threading.Thread(
@@ -123,7 +129,7 @@ def _check_port_available(port: int) -> None:
 
 
 def _build_server(
-    stream: "Eventstream",
+    stream: "Eventstream | None",
     context: dict,
     port: int = 8765,
     notebook_dir: str = "",
@@ -148,6 +154,43 @@ def _build_server(
         return decorator
 
     session = ReportSession(stream, context)
+
+    @_tool()
+    def load_data(
+        path: str, schema: dict | None = None, context: dict | None = None
+    ) -> str:
+        """
+        Load an eventstream from a local CSV file and set it as the base stream
+        for this session, replacing whatever stream is currently active (from
+        serve() or an earlier load_data call).
+
+        Call this FIRST, before any other tool, if serve() was started without
+        a stream (data-agnostic mode) — every other tool errors until this
+        succeeds. Also usable later to switch the session to an entirely
+        different dataset.
+
+        Parameters
+        ----------
+        path:
+            Path to a CSV file, readable by the process running the MCP server
+            (same filesystem as wherever serve() was invoked from).
+        schema:
+            Optional column mapping:
+              {"path_cols": [...], "event_cols": [...], "timestamp_col": "...",
+               "segment_cols": [...]}
+            Defaults to path_cols=["user_id"], event_cols=["event"],
+            timestamp_col="timestamp" for any key left unspecified.
+        context:
+            Optional semantic layer — same shape as serve()'s context argument
+            (description, events, kpis). Replaces any context set previously.
+
+        Returns
+        -------
+        JSON with updated stream stats: n_paths, n_events_total, events list.
+        """
+        return json.dumps(
+            tools.load_data(session, path, schema, context), ensure_ascii=False
+        )
 
     @_tool()
     def update_base_stream(preprocessors: list) -> str:
@@ -226,7 +269,7 @@ def _build_server(
     def describe() -> str:
         """Return schema, event list, unique path counts and available segments.
         Reflects the current active stream (after any update_base_stream calls)."""
-        return json.dumps(tools.describe(session, context), ensure_ascii=False)
+        return json.dumps(tools.describe(session, session.context), ensure_ascii=False)
 
     @_tool()
     def add_transition_graph(

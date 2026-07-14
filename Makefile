@@ -3,7 +3,6 @@
 install:
 	uv sync
 	cd js && npm install
-	uv run pre-commit install
 
 build: build-viz build-widget
 

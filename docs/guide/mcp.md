@@ -62,10 +62,13 @@ Once connected, you can ask the agent questions like:
 
 The agent will call the appropriate tools, build visualisations, and generate a self-contained HTML report with interactive charts and clickable annotations.
 
+See also [Agent Skills](/docs/agent-skills) — instruction packages for coding agents (Claude Code, Codex) that run analyses directly in your own code, rather than over MCP.
+
 ## Available tools
 
 | Tool | Description |
 |---|---|
+| `load_data(path, schema, context)` | Load an eventstream from a local CSV and set it as the session's base stream — required first call if `serve()` was started with no `stream` (data-agnostic mode); also usable later to switch datasets. |
 | `describe()` | Schema, event list, path counts, timestamp range. |
 | `reset_base_stream()` | Reset the active stream to the original eventstream passed to `serve()`. |
 | `playbook(scenario)` | Step-by-step recipes for common analysis patterns. |

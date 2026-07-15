@@ -41,7 +41,7 @@ More recipes like these live on the [Recipes](/docs/recipes) page.
 - **Fast on millions of rows.** The engine is backed by [DuckDB](https://duckdb.org), so exploration stays interactive on production-scale event logs — on your laptop.
 - **Your data, your rules.** Load events from pandas, CSV, or Parquet — whatever comes out of your warehouse. Custom event grouping, sessionization ([`split_sessions`](/docs/data-processors)), and cleanup are a chained method call away, with no SaaS interface limits.
 - **Notebook-native, shareable anywhere.** Widgets run in Jupyter, VS Code, and Google Colab, and every one of them exports to a standalone interactive HTML file you can drop into a message to a PM — no Python required to open it.
-- **AI-ready.** The built-in [MCP server](/docs/mcp) lets an LLM agent explore your eventstream with the full toolkit — ask "why did retention dip last week?" in plain language.
+- **AI-ready.** The built-in [MCP server](/docs/mcp) lets an LLM agent explore your eventstream with the full toolkit — ask "why did retention dip last week?" in plain language. [Agent Skills](/docs/agent-skills) teach coding agents like Claude Code or Codex how to run and contribute analyses in this codebase.
 
 ## Who is it for
 

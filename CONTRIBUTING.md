@@ -24,17 +24,17 @@ for both humans and coding agents lives in [AGENTS.md](AGENTS.md).
 git clone https://github.com/retentioneering/retentioneering-tools.git
 cd retentioneering-tools
 
-make install     # = uv sync (Python deps incl. dev group) + npm install in js/
+make install-dev # = make install (uv sync + npm install) + one-time pre-commit
+                 # git hook install (ruff/gitleaks/hygiene run on every commit)
 make build       # build the widget JS bundles into src/retentioneering/static/
-
-uv run pre-commit install   # one-time; installs the git hook that runs
-                            # ruff/gitleaks/hygiene on every commit
 ```
 
-`pre-commit install` is a one-time step per clone (git hooks live in local
-`.git/hooks/` and never travel with a clone). Skip it and your commits bypass
-the hooks locally — CI's `lint` job (which runs `pre-commit run --all-files`)
-then flags the formatting on your PR instead.
+`make install-dev` registers the git hook, which is a one-time step per clone (git
+hooks live in local `.git/hooks/` and never travel with a clone). Skip it —
+e.g. by running plain `make install` instead, if you're only building the
+library from source rather than contributing patches — and your commits
+bypass the hooks locally; CI's `lint` job (which runs
+`pre-commit run --all-files`) then flags the formatting on your PR instead.
 
 `make build` matters more than it looks: the JS bundles (`widget.js`,
 `widget-static.js`) are **gitignored** and built from source — without them,

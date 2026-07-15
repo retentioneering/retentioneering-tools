@@ -41,6 +41,7 @@ uv run pytest tests/data_processors/add_events_test.py::test_name -v   # single 
 
 uv run pre-commit run --all-files    # ruff (lint+format) + gitleaks + hygiene hooks
 uv run pre-commit install            # one-time, makes hooks run automatically on `git commit`
+# or: make install-dev      # = make install + the pre-commit install line above
 
 uv run python docs/scripts/render_pages.py           # regenerate reference docs from docstrings
 uv run python docs/scripts/generate_widget_demos.py  # regenerate static widget demos

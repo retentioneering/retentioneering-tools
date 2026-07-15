@@ -99,10 +99,10 @@ For API proposals, the accepted framing (from templates): problem → evidence o
 Read `references/repo-conventions.md` first. Non-negotiables:
 
 1. Fork or branch from `master`-tracking `v5-migration`; one logical change per PR.
-2. `uv sync` (or `make install`, which also runs `npm install`), then **`uv run pre-commit
-   install`** — a one-time-per-clone step that wires the git hook so commits are auto-checked;
-   skip it and commits bypass the hooks locally and CI's `lint` job flags the formatting on your
-   PR. Add `make build` only when touching widgets/JS.
+2. **`make install-dev`** — installs deps (`uv sync` + `npm install`) and wires the git hook
+   (a one-time-per-clone step) so commits are auto-checked; skip it and commits bypass the hooks
+   locally and CI's `lint` job flags the formatting on your PR. Add `make build` only when
+   touching widgets/JS.
 3. Follow naming conventions (ADR-0008): `path_col/event_col/timestamp_col/session_col`,
    `start_event/end_event`, verb-first processors, noun widgets, `<widget>_data` twins.
 4. All DuckDB execution goes through the unified query engine (L1) — no ad-hoc

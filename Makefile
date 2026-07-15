@@ -1,8 +1,15 @@
-.PHONY: install build build-viz build-widget export-metric-schema test watch clean release test-release rc-release
+.PHONY: install install-dev build build-viz build-widget export-metric-schema test watch clean release test-release rc-release
 
 install:
 	uv sync
 	cd js && npm install
+
+# Full contributor setup: base install plus the one-time git hook that runs
+# ruff/gitleaks/hygiene on every commit. Only needed if you'll be committing
+# to this repo -- someone building the library from source to just use it
+# doesn't need the hook, so it's kept out of plain `install`.
+install-dev: install
+	uv run pre-commit install
 
 build: build-viz build-widget
 

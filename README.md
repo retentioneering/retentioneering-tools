@@ -8,11 +8,12 @@
 
 ## What is Retentioneering?
 
-Retentioneering is a Python library for behavioral analytics on event data:
-clickstreams, product event logs, user paths. Where funnels tell you *what*
-happened, retentioneering shows *how* users actually behave — real paths to
-conversion, loops and dead ends, behavioral segments, and the differences in
-behavior between any two groups of users.
+**Retentioneering is an open-source Python toolkit, MCP server, and collection of agent skills for reproducible product analytics on clickstream and event log data.** Instead of relying on one-off scripts generated for a single question, analysts and AI agents can use tested analytical primitives and reusable workflows to inspect customer journeys, explore graph-based user flows, discover behavioral segments, evaluate experiments, and cross-check results through independent, auditable computations. By reusing domain-specific analytics components instead of generating every analysis from scratch, Retentioneering can reduce implementation effort, agent token usage, and the risk of subtle analytical errors.
+
+Use Retentioneering when you want to turn raw sequences of user and system events into answers to questions such as: *Where do users get stuck? Which journeys lead to conversion or churn? What behavioral segments exist in the data? How do flows differ between cohorts or experiment groups?* Load a clickstream, product event log, or other timestamped event data into a Retentioneering `Eventstream` object, then explore interactive user-flow graphs and detailed step-matrix visualizations, compare conversion paths, analyze behavioral segments, evaluate A/B tests, or ask an AI agent to run and cross-check the analysis through Retentioneering MCP and agent skills. The resulting analyses, visualizations, and simulated interventions can be exported into clear, shareable HTML reports.
+
+**Retentioneering supports multi-resolution analysis of user behavior, from individual events lasting seconds to sessions, recurring usage patterns, and customer journeys unfolding over months or years.** Funnels summarize whether users passed through predefined stages; Retentioneering reveals how they actually moved through the product: alternative routes to conversion, loops, dead ends, repeated behaviors, hidden segments, and differences between any two cohorts. The same graph and step-matrix methods can operate on raw events or on higher-level behavioral units, such as sessions, feature-use episodes, lifecycle stages, or custom product patterns. This makes it possible to zoom in on local interactions, zoom out to long-term journeys, and move between these levels without abandoning the same analytical framework.
+
 
 Retentioneering is code-first and quickest way from raw data into detailed views and product insights.
 With average python knowledge you can quickly identify what can be improved in the website, application or chats interactions by finding and isolating specific patterns of different users at multiple scales - session to session and within each session or its pieces.

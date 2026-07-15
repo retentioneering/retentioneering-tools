@@ -18,8 +18,9 @@ Use Retentioneering when you want to turn raw sequences of user and system event
 Retentioneering is code-first and quickest way from raw data into detailed views and product insights.
 With average python knowledge you can quickly identify what can be improved in the website, application or chats interactions by finding and isolating specific patterns of different users at multiple scales - session to session and within each session or its pieces.
 
-It runs on your raw data (a pandas DataFrame or CSV is enough), and renders interactive
-widgets right in Jupyter, Cursor or whatever IDE you prefer — no SaaS, no data leaving your machine.
+It runs directly on your raw event data, whether provided as a pandas DataFrame, CSV, TSV, Parquet file, or a custom export from BigQuery, ClickHouse, or another event database.
+
+Retentioneering renders interactive widgets directly in Jupyter, Google Colab, Cursor, VS Code, Codex, Claude Code, or another Python-compatible development environment, without requiring a hosted Retentioneering SaaS platform. The analysis runs in your own environment. Your raw and analysed event data never leaves your machine. Anonymous product telemetry, used to understand overall tool usage and improve the toolkit, may be enabled by default and can be disabled at any time.
 
 
 **Retentioneering-tools Version 5.0 is a ground-up rewrite.** The pandas engine and CDN-loaded

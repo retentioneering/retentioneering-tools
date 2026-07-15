@@ -4,20 +4,67 @@ build-backend = "hatchling.build"
 
 [project]
 name = "retentioneering"
-version = "5.0.0"
+version = "5.0.1"
 authors = [
   { name = "Retentioneering User Trajectory Analysis Lab", email = "retentioneering@gmail.com" },
 ]
-description = "Retentioneering is a Python library for user retention and clickstream analysis, with interactive DuckDB-backed Eventstream analysis and Jupyter widgets."
+description = "Open-source Python toolkit, MCP server, and agent skills for reproducible product and quantitative UX analytics on clickstream and event logs: multiscale interactive user-flow graphs, customer journeys and user flow analysis, behavioral segmentation, A/B tests, process mining, and Markov models"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "Retentioneering Software Non-Exclusive License" }
-keywords = ["ANALYTICS", "CLICKSTREAM", "RETENTION", "GRAPHS", "TRAJECTORIES", "CJM", "CUSTOMER-SEGMENTATION"]
+license = "Apache-2.0"
+keywords = [
+    "product analytics",
+    "clickstream analytics",
+    "event log analysis",
+    "behavioral analytics",
+    "customer journey analytics",
+    "user journey analysis",
+    "user flow analysis",
+    "quantitative UX",
+    "multiscale analytics",
+    "session analysis",
+    "funnel analysis",
+    "retention analysis",
+    "conversion analysis",
+    "what if cjm analysis",
+    "behavioral segmentation",
+    "path analysis",
+    "graph analytics",
+    "process mining",
+    "A/B testing",
+    "retentioneering",
+    "Markov chains",
+    "reproducible analytics",
+    "auditable analytics",
+    "MCP server",
+    "agent skills",
+    "AI agents",
+]
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
+
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Information Technology",
+
+    "Framework :: Jupyter",
+    "Framework :: Jupyter :: JupyterLab",
+    "Framework :: IPython",
+
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Scientific/Engineering :: Mathematics",
+
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+
+    "Operating System :: OS Independent",
+
     "Programming Language :: Python :: 3",
-    "Operating System :: Microsoft :: Windows",
-    "Operating System :: Unix",
-    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "pandas>=2.2",

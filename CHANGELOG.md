@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [5.0.1] - 2026-07-15
+
+### Changed
+- Relicensed from the Retentioneering Software Non-Exclusive License to Apache-2.0
+- Updated the PyPI package description, keywords, and classifiers for discoverability
+
+### Fixed
+- Release workflow runs are now labeled `Release <tag>` instead of inheriting the
+  triggering commit's message, so they're distinguishable from CI runs in the
+  Actions list
+
 ## [5.0.0] - 2026-07-15
 
 Complete rewrite of the library's core engine, compared to 3.3.0. The

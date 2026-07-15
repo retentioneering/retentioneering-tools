@@ -11,8 +11,6 @@ This is different from the [MCP server](/docs/mcp): the MCP server runs inside a
 | `retentioneering-product-analytics` | You have event-level data (user, event, timestamp columns) and ask an agent why users convert, churn, loop, or abandon a flow. Drives the full workflow: inspect the log → pick a recipe → execute → validate → interpret. |
 | `retentioneering-contributing` | You ask an agent to turn a bug, friction report, or feature idea into an issue or pull request against this repository. Drives: capture → validate → minimal reproduction → issue/PR. |
 
-## Where they live
-
 The skills are duplicated under two directories in the repository, kept identical by design:
 
 - `.claude/skills/` — loaded automatically by Claude Code.
@@ -22,21 +20,7 @@ Each skill is a directory with a `SKILL.md` entry point (objective, activation c
 
 ## Using a skill
 
-Inside a clone of `retentioneering-tools`, `.claude/skills/` already sits at the repo root, so
-Claude Code picks it up with no setup. Elsewhere:
-
-- **Claude Code**: copy the skill directory into `~/.claude/skills/` — it then applies across
-  all your projects.
-
-  ```bash
-  cp -r /path/to/retentioneering-tools/.claude/skills/retentioneering-product-analytics \
-        ~/.claude/skills/
-  ```
-
-- **Claude Cowork**: in the app, go to Customize → Skills → Add, and paste in the contents of
-  the skill's `SKILL.md` from the repository.
-
-- **Codex/other tools**: copy the skill directory into your project's `.agents/skills/`.
+To use a skill, run the agent from inside a clone of the `retentioneering-tools` repository.
 
 ## Contributing to the skills
 

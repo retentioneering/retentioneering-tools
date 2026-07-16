@@ -5,7 +5,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/retentioneering)](https://pypi.org/project/retentioneering/)
 [![Downloads](https://pepy.tech/badge/retentioneering)](https://pepy.tech/project/retentioneering)
 [![Downloads](https://static.pepy.tech/badge/retentioneering/month)](https://pepy.tech/project/retentioneering)
-[![OpenAgentSkill Trust](https://www.openagentskill.com/api/badge/retentioneering-retentioneering-tools?metric=trust&label=Trust)](https://www.openagentskill.com/skills/retentioneering-retentioneering-tools)
+
 
 ## What is Retentioneering?
 

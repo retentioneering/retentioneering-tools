@@ -1,6 +1,6 @@
 // Components
 export { TransitionGraph } from "./components/TransitionGraph";
-export type { TransitionGraphProps, StoredPosition, StoredViewport } from "./components/TransitionGraph";
+export type { TransitionGraphProps, StoredPosition, StoredViewport, EdgeFilterSpec } from "./components/TransitionGraph";
 export { StepSankey } from "./components/StepSankey";
 export type { StepSankeyProps } from "./components/StepSankey";
 

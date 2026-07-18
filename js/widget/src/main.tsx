@@ -80,10 +80,16 @@ export function focusNode(eventRef: string, el: HTMLElement) {
     cy.on("tap", tapHandler);
     (cy as any).__stopEdgeAnim = stopAnim;
   } else {
-    // Node reference
+    // Node reference — fit the node together with its visible neighborhood so
+    // none of its edges end outside the viewport (fitting just the node
+    // over-zooms and cuts the focused edges off).
     const node = cy.getElementById(eventRef);
     if (node && node.length) {
-      cy.animate({ fit: { eles: node, padding: 80 } }, { duration: 400 });
+      const edges = node
+        .connectedEdges()
+        .filter((edge: any) => !edge.hasClass("filtered"));
+      const neighborhood = edges.union(edges.connectedNodes()).union(node);
+      cy.animate({ fit: { eles: neighborhood, padding: 80 } }, { duration: 400 });
       node.emit("tap");
     }
   }

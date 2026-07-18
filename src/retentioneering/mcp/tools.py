@@ -272,13 +272,14 @@ def add_transition_graph(
         return {"error": widget.error, "label": label}
     data = {
         "widget_type": "transition_graph",
+        "widget_id": widget.widget_id,
         "result": json.loads(widget.result or "{}"),
         "edge_weight": widget.edge_weight,
         "diff": json.loads(widget.diff) if widget.diff else None,
         "event_counts": json.loads(widget.event_counts or "{}"),
         "event_counts_g1": json.loads(widget.event_counts_g1 or "{}"),
         "event_counts_g2": json.loads(widget.event_counts_g2 or "{}"),
-        "node_positions": {},
+        "node_positions": widget.semantic_layout_positions(),
         "event_visibility": {},
         "segment_levels": json.loads(widget.segment_levels or "{}"),
         "path_cols": json.loads(widget.path_cols or "[]"),

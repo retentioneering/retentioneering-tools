@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import uuid
 from typing import Any, Callable
 
 import anywidget
@@ -70,6 +71,17 @@ class RetentioneeringWidget(StateFileMixin, anywidget.AnyWidget):
     # ── display state ───────────────────────────────────────────────────────
     is_loading = traitlets.Bool(False).tag(sync=True)
     error = traitlets.Unicode("").tag(sync=True)
+
+    #: Unique id of this widget *instance* — a fresh uuid per Python object,
+    #: deliberately NOT persisted to state files. JS uses it to namespace
+    #: per-widget browser state (e.g. node positions in localStorage) so one
+    #: widget's manual arrangement can never leak into another widget or a
+    #: re-created one.
+    widget_id = traitlets.Unicode().tag(sync=True)
+
+    @traitlets.default("widget_id")
+    def _default_widget_id(self) -> str:
+        return uuid.uuid4().hex
 
     # ── generic compute protocol ────────────────────────────────────────────
     compute_request = traitlets.Unicode("").tag(sync=True)

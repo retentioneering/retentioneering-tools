@@ -14,9 +14,11 @@ import { DEFAULT_VALUE_TYPE, isTimeValueType, isProbabilityValueType, type Matri
 import { formatNumber } from "../../utils/format-number";
 import { formatTime } from "../../utils/format-time";
 import { resolveDiffLabels } from "../../utils/diff-tooltip";
+import { withSeededRandom } from "../../utils/seeded-random";
 import { RangeSlider } from "./RangeSlider";
 import { SearchBar } from "./SearchBar";
 import { DiffBreakdownTooltip } from "./DiffBreakdownTooltip";
+import { GraphLegend } from "./GraphLegend";
 
 // Register the fcose layout
 if (typeof cytoscape !== "undefined") {
@@ -69,8 +71,67 @@ const DEFAULT_NODE_COLOR = "250, 204, 21";
 const FOCUS_LABEL_MIN_VISIBLE_RATIO = 0.08;
 const BASE_ARROW_MIN_VISIBLE_RATIO = 0.14;
 const FOCUS_ARROW_MIN_VISIBLE_RATIO = 0.22;
-const FOCUS_COLOR_MIN_VISIBLE_RATIO = 0.18;
 const DEFAULT_LOOP_DIRECTION = "-90deg";
+// Adaptive edge labels: label everything on small graphs, a bounded share of
+// the visible (non-filtered) edges on large ones.
+const EDGE_LABELS_ALL_THRESHOLD = 12;
+const EDGE_LABELS_MIN = 10;
+const EDGE_LABELS_MAX = 25;
+const EDGE_LABELS_SHARE = 0.15;
+// Deterministic seed for the fcose layout runs (see withSeededRandom).
+const LAYOUT_RANDOM_SEED = 0x9e3779b9;
+// Single padding for every fit-to-canvas call (initial render, Reset
+// layout, the Fit button, the sidebar Fit action) — they must all produce
+// the identical viewport.
+const FIT_PADDING = 30;
+// Per-node top-k edge filter (the default "auto" mode).
+const DEFAULT_TOP_K = 4;
+const TOP_K_MIN = 1;
+const TOP_K_MAX = 10;
+// Hard cap on created cytoscape edge elements. Beyond it the ultra-thin tail
+// is not even instantiated (a 200-event proba graph approaches n² edges);
+// the legend's coverage indicator reports what is hidden.
+const EDGE_BUILD_CAP = 5000;
+
+/** Edge filter state: per-node top-k ("auto") or a manual weight range. */
+export type EdgeFilterSpec =
+  | { mode: "topk"; k: number }
+  | { mode: "range"; range: [number, number] };
+
+const edgeKey = (source: string, target: string) => `${source}|${target}`;
+
+/**
+ * Per-node top-k filter rule: keep an edge if it is among the k strongest
+ * outgoing edges of its source (self-loops count as outgoing) OR it is the
+ * single strongest incoming edge of its target — so no visible node ends up
+ * with zero edges. `edges` must be sorted by |weight| descending.
+ */
+function computeTopKKeptSet(
+  edges: Array<{
+    source: string;
+    target: string;
+    weight: number;
+    isSelfLoop: boolean;
+  }>,
+  k: number,
+): Set<string> {
+  const outTaken = new Map<string, number>();
+  const seenIncoming = new Set<string>();
+  const kept = new Set<string>();
+  edges.forEach((edge) => {
+    const taken = outTaken.get(edge.source) ?? 0;
+    if (taken < k) {
+      outTaken.set(edge.source, taken + 1);
+      kept.add(edgeKey(edge.source, edge.target));
+    }
+    // First incoming edge per target in weight-sorted order = its strongest.
+    if (!edge.isSelfLoop && !seenIncoming.has(edge.target)) {
+      seenIncoming.add(edge.target);
+      kept.add(edgeKey(edge.source, edge.target));
+    }
+  });
+  return kept;
+}
 
 // Palette colors (RGB strings)
 const PALETTE_COLORS = [
@@ -263,9 +324,10 @@ export interface TransitionGraphProps {
   initialPositions?: Record<string, StoredPosition>;
   // called on every drag-end; parent can persist to Python / file
   onPositionsChange?: (positions: Record<string, StoredPosition>) => void;
-  // persistence: edge weight filter [min, max], normalized to 0..1
-  initialEdgeFilter?: [number, number] | null;
-  onEdgeFilterChange?: (filter: [number, number]) => void;
+  // persistence: edge filter — per-node top-k ("auto", the default) or a
+  // manual [min, max] weight range normalized to 0..1
+  initialEdgeFilter?: EdgeFilterSpec | null;
+  onEdgeFilterChange?: (filter: EdgeFilterSpec) => void;
   // persistence: canvas zoom/pan
   initialViewport?: StoredViewport | null;
   onViewportChange?: (viewport: StoredViewport) => void;
@@ -302,9 +364,16 @@ export const TransitionGraph = observer(function TransitionGraph({
   const currentValuesType = valuesTypeProp !== undefined ? valuesTypeProp : internalValuesType;
   const handleValuesTypeChange = (v: MatrixValueType) => { setInternalValuesType(v); onValuesTypeChange?.(v); };
 
+  // Node POSITIONS are namespaced per widget instance (widget_id is a fresh
+  // uuid per Python widget), so one widget's manual arrangement never leaks
+  // into another or a re-created one — that leak silently suppressed the
+  // backend auto-layout. Colors and the legend collapse state are user
+  // preferences keyed by event names and deliberately stay in the shared
+  // namespace, surviving cell re-runs.
   const effectiveWidgetId = widgetId ?? "default";
-  const { getEdgeColor, setEdgeColor, removeEdgeColor } = useEdgeColors(effectiveWidgetId);
-  const { getNodeColor, setNodeColor, removeNodeColor } = useNodeColors(effectiveWidgetId);
+  const sharedPreferencesId = "default";
+  const { getEdgeColor, setEdgeColor, removeEdgeColor } = useEdgeColors(sharedPreferencesId);
+  const { getNodeColor, setNodeColor, removeNodeColor } = useNodeColors(sharedPreferencesId);
   const {
     positions: savedPositions,
     savePositions,
@@ -313,15 +382,16 @@ export const TransitionGraph = observer(function TransitionGraph({
   const { data: graphLayoutData, isLoading: isGraphLayoutLoading } =
     useGraphLayout(host);
 
-  const [edgeThreshold, setEdgeThreshold] = React.useState(() =>
-    initialEdgeFilter && initialEdgeFilter.length === 2
-      ? `${initialEdgeFilter[0]},${initialEdgeFilter[1]}`
-      : "0,1",
+  const [edgeFilter, setEdgeFilterState] = React.useState<EdgeFilterSpec>(
+    () => initialEdgeFilter ?? { mode: "topk", k: DEFAULT_TOP_K },
   );
-  const handleEdgeThresholdChange = React.useCallback((value: [number, number]) => {
-    setEdgeThreshold(`${value[0].toFixed(3)},${value[1].toFixed(3)}`);
-    onEdgeFilterChange?.([value[0], value[1]]);
-  }, [onEdgeFilterChange]);
+  const handleEdgeFilterChange = React.useCallback(
+    (filter: EdgeFilterSpec) => {
+      setEdgeFilterState(filter);
+      onEdgeFilterChange?.(filter);
+    },
+    [onEdgeFilterChange],
+  );
 
   const requestedValueType = currentValuesType;
   const isDark =
@@ -329,7 +399,6 @@ export const TransitionGraph = observer(function TransitionGraph({
     (theme !== "light" &&
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-color-scheme: dark)").matches);
-  const neutralFocusColor = isDark ? "148, 163, 184" : "107, 114, 128";
   const [searchOpen, setSearchOpen] = React.useState(false);
 
   const [committedValueType, setCommittedValueType] =
@@ -368,6 +437,14 @@ export const TransitionGraph = observer(function TransitionGraph({
   const [positionsVersion, setPositionsVersion] = React.useState(0);
   const [sceneMaskOpacity, setSceneMaskOpacity] = React.useState(0);
   const [focusedNodes, setFocusedNodes] = React.useState<string[]>([]);
+  // Edge-focus mode (click an edge) — mutually exclusive with focusedNodes.
+  const [focusedEdge, setFocusedEdge] = React.useState<{
+    source: string;
+    target: string;
+  } | null>(null);
+  // Bumped after every cytoscape rebuild so effects that mutate the current cy
+  // instance (filtering, label allocation) re-run against the new generation.
+  const [graphVersion, setGraphVersion] = React.useState(0);
   const sceneTransitionTimeoutRef = React.useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
@@ -388,17 +465,6 @@ export const TransitionGraph = observer(function TransitionGraph({
   const edgeColorPicker = colorPicker?.kind === "edge" ? colorPicker : null;
   const nodeColorPicker = colorPicker?.kind === "node" ? colorPicker : null;
 
-  // Parse edge threshold from state parameter
-  const edgeThresholdParsed = React.useMemo(() => {
-    const parts = edgeThreshold.split(",").map((s) => parseFloat(s));
-    if (parts.length === 2 && parts.every((n) => !isNaN(n))) {
-      return [
-        Math.max(0, Math.min(1, parts[0])),
-        Math.max(0, Math.min(1, parts[1])),
-      ] as [number, number];
-    }
-    return [0, 1] as [number, number];
-  }, [edgeThreshold]);
 
   React.useEffect(() => {
     if (!store.hasData || store.isUpdating) return;
@@ -482,6 +548,74 @@ export const TransitionGraph = observer(function TransitionGraph({
     onPositionsChange?.(positionsRef.current); // → Python traitlet / file
   }, [savePositions, onPositionsChange]);
 
+  // Deterministic auto-layout pipeline for graphs WITHOUT backend semantic
+  // positions: fcose starting from the current (preset, hash-based)
+  // positions, left-to-right flip anchored on session_start, persist, fit.
+  // When the backend provides semantic positions they are final and are
+  // applied as-is — running fcose over them (even constrained) destroys the
+  // cluster-block structure they encode.
+  const runAutoLayout = React.useCallback(
+    (cy: Core) => {
+      const layout = cy.layout({
+        name: "fcose",
+        randomize: false,
+        animate: false,
+        fit: true,
+        padding: FIT_PADDING,
+        nodeSeparation: 150,
+        nodeRepulsion: 50000,
+        idealEdgeLength: 200,
+        edgeElasticity: 0.45,
+        nestingFactor: 0.1,
+        gravity: 0.1,
+        gravityRange: 3.8,
+      } as any);
+
+      layout.on("layoutstop", () => {
+        // Enforce Left-to-Right orientation
+        const anchorNode = "session_start";
+        const hasAnchor = cy.getElementById(anchorNode).length > 0;
+        const effectiveStartNode = hasAnchor
+          ? anchorNode
+          : cy.nodes()[0]?.id();
+
+        if (
+          effectiveStartNode &&
+          cy.getElementById(effectiveStartNode).length > 0
+        ) {
+          const startPos = cy.getElementById(effectiveStartNode).position();
+
+          // If start node is on the right (positive x), flip everything
+          if (startPos.x > 0) {
+            cy.nodes().forEach((node) => {
+              const pos = node.position();
+              node.position({ x: -pos.x, y: pos.y });
+            });
+          }
+        }
+
+        recalculateSelfLoopDirections(cy);
+
+        // Update positions ref after layout. Auto-layout results are NOT
+        // persisted — the layout is deterministic, so a recompute always
+        // reproduces them; only manual arrangements (drag) are saved.
+        cy.nodes().forEach((node) => {
+          const pos = node.position();
+          positionsRef.current[node.id()] = { x: pos.x, y: pos.y };
+        });
+
+        // Fit after auto-layout completes
+        requestAnimationFrame(() => cy.fit(undefined, FIT_PADDING));
+      });
+
+      // fcose runs synchronously with animate:false; the seeded PRNG is what
+      // actually makes the run reproducible — cose-base still draws
+      // Math.random() internally even with randomize:false.
+      withSeededRandom(LAYOUT_RANDOM_SEED, () => layout.run());
+    },
+    [],
+  );
+
   const visibleEvents = store.visibleEvents;
   // Include ALL events (visible + hidden) so users can find and unhide them
   const graphSearchEvents = React.useMemo(
@@ -502,14 +636,31 @@ export const TransitionGraph = observer(function TransitionGraph({
       const node = cy.getElementById(eventId);
       if (node.length === 0) return;
 
+      // Fit the node together with its visible neighborhood so none of its
+      // edges end outside the viewport. Manual zoom math because animate's
+      // `fit` has no upper zoom clamp (an isolated node would blow up to
+      // maxZoom) and display:none elements still contribute to boundingBox.
+      const edges = node
+        .connectedEdges()
+        .filter((edge: cytoscape.EdgeSingular) => !edge.hasClass("filtered"));
+      const neighborhood = edges.union(edges.connectedNodes()).union(node);
+      const bb = neighborhood.boundingBox();
+      const padding = 60;
+      const zoomX = bb.w > 0 ? (cy.width() - padding * 2) / bb.w : Infinity;
+      const zoomY = bb.h > 0 ? (cy.height() - padding * 2) / bb.h : Infinity;
+      const zoom = Math.max(
+        Math.min(zoomX, zoomY, 2.2),
+        cy.minZoom(),
+      );
       cy.animate({
-        center: { eles: node },
-        zoom: Math.max(Math.min(cy.zoom() * 1.15, 2.2), 1.15),
+        center: { eles: neighborhood },
+        zoom: Number.isFinite(zoom) ? zoom : 2.2,
         duration: 350,
         easing: "ease-out-cubic",
       });
 
       // Focus the node persistently instead of a temporary highlight
+      setFocusedEdge(null);
       setFocusedNodes([eventId]);
       setSearchOpen(false);
     },
@@ -568,6 +719,120 @@ export const TransitionGraph = observer(function TransitionGraph({
     [isTimeValue],
   );
 
+  // Single source of truth for the edge set: consumed by the graph-build
+  // effect, the label allocator, and the legend's coverage indicator.
+  // Sorted by |weight| descending.
+  const edgeList = React.useMemo(() => {
+    if (!store.hasData) return [];
+    const graphEvents = visibleEvents.filter((e) => e.id !== "");
+
+    // Logarithmic/linear normalization mirroring the edge rendering rules
+    const normalize = (weight: number): number => {
+      const magnitude = isDifferential ? Math.abs(weight) : weight;
+      if (isProbability) return Math.max(0, Math.min(1, magnitude));
+      if (maxWeight <= 0) return 0;
+      return magnitude / maxWeight;
+    };
+
+    const list: Array<{
+      source: string;
+      target: string;
+      weight: number;
+      normalizedWeight: number;
+      isSelfLoop: boolean;
+      hasBackward: boolean;
+    }> = [];
+
+    graphEvents.forEach((rowEvent) => {
+      graphEvents.forEach((colEvent) => {
+        const isSelfLoop = rowEvent.id === colEvent.id;
+
+        const forwardValue = store.getMatrixValue(rowEvent.id, colEvent.id);
+        if (!Number.isFinite(forwardValue) || forwardValue === 0) return;
+
+        const backwardValue = store.getMatrixValue(colEvent.id, rowEvent.id);
+        const hasBackward =
+          !isSelfLoop && Number.isFinite(backwardValue) && backwardValue !== 0;
+
+        list.push({
+          source: rowEvent.id,
+          target: colEvent.id,
+          weight: forwardValue,
+          normalizedWeight: normalize(forwardValue),
+          isSelfLoop,
+          hasBackward,
+        });
+      });
+    });
+
+    list.sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
+    return list;
+  }, [store, visibleEvents, maxWeight, isProbability, isDifferential]);
+
+  // Kept-edge set for the per-node top-k ("auto") filter mode.
+  const keptEdgeKeys = React.useMemo(
+    () =>
+      edgeFilter.mode === "topk"
+        ? computeTopKKeptSet(edgeList, edgeFilter.k)
+        : null,
+    [edgeFilter, edgeList],
+  );
+
+  // Single filter predicate shared by the cy filtering effect and the
+  // legend's coverage indicator.
+  const isEdgeVisible = React.useCallback(
+    (source: string, target: string, normalizedWeight: number) => {
+      if (edgeFilter.mode === "topk") {
+        return keptEdgeKeys?.has(edgeKey(source, target)) ?? true;
+      }
+      return (
+        normalizedWeight >= edgeFilter.range[0] &&
+        normalizedWeight <= edgeFilter.range[1]
+      );
+    },
+    [edgeFilter, keptEdgeKeys],
+  );
+
+  // Edges that get cytoscape elements at all. null = build everything; above
+  // the cap only the strongest EDGE_BUILD_CAP edges plus everything any
+  // top-k setting could show (k ≤ TOP_K_MAX) are instantiated.
+  const builtEdgeKeys = React.useMemo(() => {
+    if (edgeList.length <= EDGE_BUILD_CAP) return null;
+    const kept = computeTopKKeptSet(edgeList, TOP_K_MAX);
+    edgeList
+      .slice(0, EDGE_BUILD_CAP)
+      .forEach((edge) => kept.add(edgeKey(edge.source, edge.target)));
+    return kept;
+  }, [edgeList]);
+
+  // Coverage indicator data for the legend: how much of the graph the current
+  // edge filter actually shows.
+  const coverage = React.useMemo(() => {
+    const total = edgeList.length;
+    let shown = 0;
+    let sumShown = 0;
+    let sumTotal = 0;
+    edgeList.forEach((edge) => {
+      const w = Math.abs(edge.weight);
+      sumTotal += w;
+      const isBuilt =
+        builtEdgeKeys === null ||
+        builtEdgeKeys.has(edgeKey(edge.source, edge.target));
+      if (
+        isBuilt &&
+        isEdgeVisible(edge.source, edge.target, edge.normalizedWeight)
+      ) {
+        shown += 1;
+        sumShown += w;
+      }
+    });
+    return {
+      shown,
+      total,
+      weightShare: sumTotal > 0 ? sumShown / sumTotal : 1,
+    };
+  }, [edgeList, isEdgeVisible, builtEdgeKeys]);
+
   // Build / rebuild Cytoscape graph
   React.useEffect(() => {
     const container = containerRef.current;
@@ -578,65 +843,23 @@ export const TransitionGraph = observer(function TransitionGraph({
       return;
     }
 
-    // Use logarithmic normalization for better handling of huge differences
-    const normalizeWeight = (weight: number): number => {
-      const magnitude = isDifferential ? Math.abs(weight) : weight;
-
-      // For probability types (0-1), use absolute value directly
-      if (isProbability) {
-        return Math.max(0, Math.min(1, magnitude));
-      }
-
-      if (maxWeight <= 0) return 0;
-
-      // Linear scale to maxWeight to ensure 0 is the baseline
-      return magnitude / maxWeight;
-    };
-
-    // Collect all edges first to determine top 10
-    const edgesToAdd: Array<{
-      source: string;
-      target: string;
-      weight: number;
-      hasBackward: boolean;
-    }> = [];
-
     // Guard: cytoscape rejects empty-string element IDs; skip events that the
     // backend generated with an empty name (e.g. from null URL column values).
     const graphEvents = visibleEvents.filter((e) => e.id !== "");
 
-    graphEvents.forEach((rowEvent) => {
-      graphEvents.forEach((colEvent) => {
-        const isSelfLoop = rowEvent.id === colEvent.id;
-
-        const forwardValue = store.getMatrixValue(rowEvent.id, colEvent.id);
-        if (!Number.isFinite(forwardValue) || forwardValue === 0) return;
-        // Skip near-zero probability edges (< 1%) that add visual noise
-        if (isProbability && Math.abs(forwardValue) < 0.01) return;
-
-        const backwardValue = store.getMatrixValue(colEvent.id, rowEvent.id);
-        const hasBackward =
-          !isSelfLoop && Number.isFinite(backwardValue) && backwardValue !== 0;
-
-        edgesToAdd.push({
-          source: rowEvent.id,
-          target: colEvent.id,
-          weight: forwardValue,
-          hasBackward,
-        });
-      });
-    });
-
-    // Sort by weight descending to find top 10 (use absolute weight for diff)
-    edgesToAdd.sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
-    const top10Edges = new Set(
-      edgesToAdd.slice(0, 10).map((e) => `${e.source}|${e.target}`),
-    );
+    // Edge set (with normalized weights) comes from the shared edgeList memo,
+    // capped by builtEdgeKeys on huge graphs. Labels are allocated adaptively
+    // after build by allocateEdgeLabels.
+    const edgesToAdd = builtEdgeKeys
+      ? edgeList.filter((edge) =>
+          builtEdgeKeys.has(edgeKey(edge.source, edge.target)),
+        )
+      : edgeList;
 
     // Prepare Cytoscape elements
     const elements: ElementDefinition[] = [];
-    let positionsChanged = false;
     let requiresAutoLayout = false;
+    let usedApiPositions = false;
 
     // Get API-computed positions if available
     const apiPositions = graphLayoutResult ?? {};
@@ -666,18 +889,23 @@ export const TransitionGraph = observer(function TransitionGraph({
         Number.isFinite(apiPosition.x) &&
         Number.isFinite(apiPosition.y);
 
-      // Priority: saved position > API position > hash-based position
+      // Priority: saved position > API position > hash-based position.
+      // While the backend layout compute is still in flight, hash positions
+      // are TRANSIENT: they are not recorded into positionsRef, so the API
+      // result can still claim these nodes when it arrives (recorded
+      // positions would win forever and silently discard it).
       let position: StoredPosition;
       if (isValidPosition) {
         position = existing;
       } else if (hasApiPosition) {
         position = { x: apiPosition.x, y: apiPosition.y };
         positionsRef.current[event.id] = position;
-        positionsChanged = true;
+        usedApiPositions = true;
+      } else if (isGraphLayoutLoading) {
+        position = createInitialPosition(event.id);
       } else {
         position = createInitialPosition(event.id);
         positionsRef.current[event.id] = position;
-        positionsChanged = true;
         requiresAutoLayout = true;
       }
 
@@ -716,8 +944,8 @@ export const TransitionGraph = observer(function TransitionGraph({
 
     // Add edges
     edgesToAdd.forEach((edge) => {
-      const forwardNormalized = normalizeWeight(edge.weight);
-      const isSelfLoop = edge.source === edge.target;
+      const forwardNormalized = edge.normalizedWeight;
+      const isSelfLoop = edge.isSelfLoop;
 
       let edgeSize: number;
       let baseEdgeColor: string;
@@ -754,15 +982,9 @@ export const TransitionGraph = observer(function TransitionGraph({
 
       const edgeColor = applyAlphaColor(baseEdgeColor, edgeOpacity);
 
-      // Only show label if it's in the top 10
-      const showLabel = top10Edges.has(`${edge.source}|${edge.target}`);
-
       const baseValue = isDifferential
         ? (edge.weight > 0 ? "+" : "") + formatValue(edge.weight)
         : formatValue(edge.weight);
-
-      // Base label for static view (top 10).
-      const label = showLabel ? baseValue : "";
 
       elements.push({
         group: "edges",
@@ -770,7 +992,9 @@ export const TransitionGraph = observer(function TransitionGraph({
           id: `${edge.source}-${edge.target}`,
           source: edge.source,
           target: edge.target,
-          label,
+          // Labels are assigned adaptively by allocateEdgeLabels right after
+          // the build (invariant: label is "" whenever showLabel is false).
+          label: "",
           baseValue, // Just the number for dynamic arrow generation
           weight: edge.weight,
           normalizedWeight: forwardNormalized,
@@ -781,9 +1005,9 @@ export const TransitionGraph = observer(function TransitionGraph({
           baseAlpha: edgeOpacity,
           edgeSize,
           edgeColor,
-          showLabel,
+          showLabel: false,
           loopDirection: DEFAULT_LOOP_DIRECTION,
-          zIndex: showLabel ? 999 : 1, // Higher z-index for labeled edges
+          zIndex: 1, // Raised to 999 for labeled edges by allocateEdgeLabels
         },
       });
     });
@@ -989,7 +1213,7 @@ export const TransitionGraph = observer(function TransitionGraph({
     });
 
     cyRef.current = cy;
-    if (fitRef) fitRef.current = () => cy.fit(undefined, 12);
+    if (fitRef) fitRef.current = () => cy.fit(undefined, FIT_PADDING);
     // Expose cy on the container's root element so focusNode() can find it
     if (container?.parentElement) (container.parentElement as any).__cy = cy;
 
@@ -1004,83 +1228,37 @@ export const TransitionGraph = observer(function TransitionGraph({
 
     // Initial edge threshold is applied by a dedicated effect below.
 
-    // Apply layout if no saved positions
-    if (!hasSavedPositions && requiresAutoLayout) {
-      const layout = cy.layout({
-        name: "fcose",
-        randomize: true,
-        animate: false,
-        fit: true,
-        padding: 80,
-        nodeSeparation: 150,
-        nodeRepulsion: 50000,
-        idealEdgeLength: 200,
-        edgeElasticity: 0.45,
-        nestingFactor: 0.1,
-        gravity: 0.1,
-        gravityRange: 3.8,
-      } as any);
+    // Apply fcose only when nodes had to fall back to hash positions, the
+    // backend provided nothing, and its compute is not still in flight.
+    // Backend semantic positions are final and never persisted here —
+    // they are deterministic; only manual drags get saved.
+    if (
+      !hasSavedPositions &&
+      requiresAutoLayout &&
+      !usedApiPositions &&
+      !isGraphLayoutLoading
+    ) {
+      runAutoLayout(cy);
+    } else {
+      recalculateSelfLoopDirections(cy);
 
-      layout.run();
-
-      // Wait for layout to finish
-      layout.on("layoutstop", () => {
-        // Enforce Left-to-Right orientation
-        const anchorNode = "session_start";
-        const hasAnchor = cy.getElementById(anchorNode).length > 0;
-        const effectiveStartNode = hasAnchor
-          ? anchorNode
-          : visibleEvents[0]?.id;
-
-        if (
-          effectiveStartNode &&
-          cy.getElementById(effectiveStartNode).length > 0
-        ) {
-          const startPos = cy.getElementById(effectiveStartNode).position();
-
-          // If start node is on the right (positive x), flip everything
-          if (startPos.x > 0) {
-            cy.nodes().forEach((node) => {
-              const pos = node.position();
-              node.position({ x: -pos.x, y: pos.y });
-            });
-          }
-        }
-
-        recalculateSelfLoopDirections(cy);
-
-        // Update positions ref after layout
+      // Mirror current positions into the ref — but not while the layout
+      // compute is in flight (those hash positions are transient).
+      if (!isGraphLayoutLoading) {
         cy.nodes().forEach((node) => {
           const pos = node.position();
           positionsRef.current[node.id()] = { x: pos.x, y: pos.y };
         });
-
-        if (positionsChanged) {
-          persistPositions();
-        }
-
-        // Fit after auto-layout completes
-        requestAnimationFrame(() => cy.fit(undefined, 12));
-      });
-    } else {
-      recalculateSelfLoopDirections(cy);
-
-      // Update positions ref from current positions
-      cy.nodes().forEach((node) => {
-        const pos = node.position();
-        positionsRef.current[node.id()] = { x: pos.x, y: pos.y };
-      });
-
-      if (positionsChanged) {
-        persistPositions();
       }
 
       // Restore the saved viewport if there is one; otherwise fit to canvas
-      // after the browser has laid out the container.
-      const savedViewport = viewportRef.current;
+      // after the browser has laid out the container. When freshly arrived
+      // backend positions were just applied, any remembered viewport refers
+      // to the transient pre-layout graph — fit instead.
+      const savedViewport = usedApiPositions ? null : viewportRef.current;
       requestAnimationFrame(() => {
         if (savedViewport) cy.viewport({ zoom: savedViewport.zoom, pan: { ...savedViewport.pan } });
-        else cy.fit(undefined, 12);
+        else cy.fit(undefined, FIT_PADDING);
       });
     }
 
@@ -1140,6 +1318,7 @@ export const TransitionGraph = observer(function TransitionGraph({
       } else {
         setFocusedNodes([nodeId]);
       }
+      setFocusedEdge(null);
       setColorPicker(null);
       setTooltip(null);
     });
@@ -1194,7 +1373,10 @@ export const TransitionGraph = observer(function TransitionGraph({
       setTooltip((t) => t?.type === "node" ? null : t);
     });
 
-    // Edge click (color picker)
+    // Edge click → edge-focus mode (dims everything else, fits the node pair).
+    // Dimmed edges have events:"no", so this never fires for them; tapping a
+    // highlighted edge while node-focused switches to edge focus. The edge
+    // color picker lives in the toolbar while an edge is focused.
     cy.on("tap", "edge", (event) => {
       const edge = event.target;
       if (isDraggingRef.current || edge.hasClass("dimmed")) return;
@@ -1202,26 +1384,32 @@ export const TransitionGraph = observer(function TransitionGraph({
       const source = edge.source().id();
       const target = edge.target().id();
 
-      const renderedPosition = event.renderedPosition || event.position;
-
-      setColorPicker({
-        kind: "edge",
-        x: renderedPosition.x,
-        y: renderedPosition.y,
-        source,
-        target,
-      });
+      setFocusedNodes([]);
+      setFocusedEdge({ source, target });
+      setColorPicker(null);
       setTooltip(null);
+
+      const pair = edge.union(edge.connectedNodes());
+      cy.animate({
+        fit: { eles: pair, padding: 100 },
+        duration: 350,
+        easing: "ease-out-cubic",
+      });
     });
 
-    // Click stage to close color picker
+    // Click stage to clear focus / close color picker
     cy.on("tap", (event) => {
       if (event.target === cy) {
         setFocusedNodes([]);
+        setFocusedEdge(null);
         setColorPicker(null);
         setTooltip(null);
       }
     });
+
+    // Signal the new cy generation so the filter/label effect re-applies
+    // against it (a fresh instance has no `filtered` classes or labels yet).
+    setGraphVersion((v) => v + 1);
 
     return () => {
       if (dashAnimRef.current !== null) {
@@ -1235,6 +1423,7 @@ export const TransitionGraph = observer(function TransitionGraph({
     containerRef,
     formatValue,
     persistPositions,
+    runAutoLayout,
     visibleEvents,
     visibleEvents.length,
     positionsVersion,
@@ -1246,7 +1435,8 @@ export const TransitionGraph = observer(function TransitionGraph({
     hasSavedPositions,
     store,
     graphLayoutResult,
-    maxWeight,
+    isGraphLayoutLoading,
+    edgeList,
     nodeBaseSizes,
   ]);
 
@@ -1325,10 +1515,11 @@ export const TransitionGraph = observer(function TransitionGraph({
     }
   }, [store.overlayPathEdges, store.overlayPathEdges.size]);
 
-  // Apply node focus state to elements
+  // Apply focus state (focused nodes OR a focused edge) to elements
   const applyFocusState = React.useCallback(
     (cy: Core, progress: number) => {
       const activeFocusNodes = focusedNodes;
+      const activeFocusEdge = focusedEdge;
       const resetFocusVisuals = () => {
         cy.elements().removeClass("focus-incoming focus-outgoing focus-loop");
         // Clear transient inline opacity left by dimming animation.
@@ -1368,12 +1559,96 @@ export const TransitionGraph = observer(function TransitionGraph({
         });
       };
 
-      if (activeFocusNodes.length === 0 || progress <= 0) {
+      if (
+        (activeFocusNodes.length === 0 && !activeFocusEdge) ||
+        progress <= 0
+      ) {
         cy.elements().removeClass("dimmed highlighted");
         resetFocusVisuals();
         return;
       }
 
+      // ── Edge focus: dim everything except the edge and its endpoints ──
+      if (activeFocusEdge) {
+        const edge = cy.getElementById(
+          `${activeFocusEdge.source}-${activeFocusEdge.target}`,
+        );
+        if (edge.length === 0) {
+          cy.elements().removeClass("dimmed highlighted");
+          resetFocusVisuals();
+          return;
+        }
+
+        resetFocusVisuals();
+        cy.elements().addClass("dimmed");
+        const endpoints = edge.connectedNodes();
+        edge.removeClass("dimmed").addClass("highlighted");
+        endpoints.removeClass("dimmed").addClass("highlighted");
+
+        const dimOpacity = 1 - progress * 0.9;
+        cy.elements(".dimmed").forEach((element) => {
+          element.style("opacity", dimOpacity);
+        });
+        cy.edges(".dimmed").forEach((dimmedEdge) => {
+          dimmedEdge.style({
+            label: "",
+            "font-size": "",
+            "target-arrow-shape": "none",
+            "text-background-opacity": 0,
+            "text-background-padding": 0,
+          });
+        });
+        cy.elements(".highlighted").forEach((element) => {
+          element.style("opacity", 1);
+        });
+        cy.nodes(".dimmed").forEach((nodeElement) => {
+          nodeElement.style(
+            "label",
+            progress > 0.35 ? "" : nodeElement.data("label"),
+          );
+        });
+
+        endpoints.forEach((nodeElement) => {
+          const baseSize =
+            (nodeElement.data("nodeSize") as number) ?? NODE_BASE_MAX_SIZE;
+          const currentSize =
+            baseSize + (NODE_FOCUS_ACTIVE_SIZE - baseSize) * progress;
+          nodeElement.style({
+            width: currentSize,
+            height: currentSize,
+            "font-size": 17,
+          });
+        });
+
+        const isLoop = edge.data("isSelfLoop") as boolean;
+        if (!isDifferential) {
+          edge.addClass(isLoop ? "focus-loop" : "focus-outgoing");
+        }
+
+        const baseValue = edge.data("baseValue") as string;
+        const sourcePos = edge.source().position();
+        const targetPos = edge.target().position();
+        const isFlipped = sourcePos.x > targetPos.x;
+        const label = isLoop
+          ? baseValue
+          : isFlipped
+            ? `← ${baseValue}`
+            : `${baseValue} →`;
+        const startWidth = edge.data("edgeSize") as number;
+        const targetWidth = Math.max(startWidth, 6);
+
+        edge.style({
+          width: startWidth + (targetWidth - startWidth) * progress,
+          label: progress > 0.2 ? label : "",
+          "font-size": 15,
+          "target-arrow-shape": "triangle",
+          "text-background-opacity": 0,
+          "text-background-padding": 0,
+        });
+        return;
+      }
+
+      // ── Node focus ──
       const focusedSet = new Set(activeFocusNodes);
 
       // Union of all edges connected to any focused node
@@ -1538,10 +1813,8 @@ export const TransitionGraph = observer(function TransitionGraph({
         const showArrow =
           relativeWeight >= FOCUS_ARROW_MIN_VISIBLE_RATIO ||
           ((edge.data("showBaseArrow") as boolean) && relativeWeight >= 0.14);
-        const isSignificantEdge =
-          relativeWeight >= FOCUS_COLOR_MIN_VISIBLE_RATIO;
 
-        if (isSignificantEdge && !isDifferential) {
+        if (!isDifferential) {
           edge.addClass("focus-incoming");
         }
 
@@ -1550,13 +1823,6 @@ export const TransitionGraph = observer(function TransitionGraph({
           label,
           "target-arrow-shape": showArrow ? "triangle" : "none",
           "font-size": showFocusLabel ? 13 + relativeWeight * 9 : "",
-          ...(isSignificantEdge || isDifferential
-            ? {}
-            : {
-                "line-color": `rgb(${neutralFocusColor})`,
-                "target-arrow-color": `rgb(${neutralFocusColor})`,
-                "text-outline-color": `rgb(${neutralFocusColor})`,
-              }),
           "text-background-opacity": 0,
           "text-background-padding": 0,
         });
@@ -1576,10 +1842,8 @@ export const TransitionGraph = observer(function TransitionGraph({
         const showArrow =
           relativeWeight >= FOCUS_ARROW_MIN_VISIBLE_RATIO ||
           ((edge.data("showBaseArrow") as boolean) && relativeWeight >= 0.14);
-        const isSignificantEdge =
-          relativeWeight >= FOCUS_COLOR_MIN_VISIBLE_RATIO;
 
-        if (isSignificantEdge && !isDifferential) {
+        if (!isDifferential) {
           edge.addClass("focus-outgoing");
         }
 
@@ -1588,13 +1852,6 @@ export const TransitionGraph = observer(function TransitionGraph({
           label,
           "target-arrow-shape": showArrow ? "triangle" : "none",
           "font-size": showFocusLabel ? 13 + relativeWeight * 9 : "",
-          ...(isSignificantEdge || isDifferential
-            ? {}
-            : {
-                "line-color": `rgb(${neutralFocusColor})`,
-                "target-arrow-color": `rgb(${neutralFocusColor})`,
-                "text-outline-color": `rgb(${neutralFocusColor})`,
-              }),
           "text-background-opacity": 0,
           "text-background-padding": 0,
         });
@@ -1655,30 +1912,75 @@ export const TransitionGraph = observer(function TransitionGraph({
         cy.getElementById(nodeId).style("font-size", 17);
       });
     },
-    [focusedNodes, neutralFocusColor, isDifferential],
+    [focusedNodes, focusedEdge, isDifferential],
   );
 
-  // Separate effect for edge threshold filtering — avoids full graph recreation
-  // when the slider moves, so focusedNodes and other visual state persist.
+  // Adaptive label allocation over the currently visible (non-filtered)
+  // edges: small graphs get labels everywhere, large ones a bounded top share
+  // by |weight| — so tightening the threshold automatically labels more of
+  // what remains. Mutates edge *data* (not style), so resetFocusVisuals
+  // restores the current allocation when focus mode exits.
+  const allocateEdgeLabels = React.useCallback((cy: Core) => {
+    const visible = cy.edges().not(".filtered");
+    const total = visible.length;
+    const labeledCount =
+      total <= EDGE_LABELS_ALL_THRESHOLD
+        ? total
+        : Math.min(
+            EDGE_LABELS_MAX,
+            Math.max(EDGE_LABELS_MIN, Math.ceil(total * EDGE_LABELS_SHARE)),
+          );
+
+    const sorted = visible.sort(
+      (a, b) =>
+        Math.abs(b.data("weight") as number) -
+        Math.abs(a.data("weight") as number),
+    );
+
+    cy.batch(() => {
+      cy.edges(".filtered").forEach((edge) => {
+        edge.data("showLabel", false);
+        edge.data("label", "");
+        edge.data("zIndex", 1);
+      });
+      sorted.forEach((edge, index) => {
+        const labeled = index < labeledCount;
+        edge.data("showLabel", labeled);
+        // Invariant: label must be "" when unlabeled — the edge[showLabel]
+        // selector matches field *presence*, not truthiness.
+        edge.data("label", labeled ? (edge.data("baseValue") as string) : "");
+        edge.data("zIndex", labeled ? 999 : 1);
+      });
+    });
+  }, []);
+
+  // Separate effect for edge filtering — avoids full graph recreation when
+  // the filter changes, so focusedNodes and other visual state persist.
+  // graphVersion keeps it in sync with cy rebuilds: a fresh instance carries
+  // no `filtered` classes and no labels yet.
   React.useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
-    cy.edges().forEach((edge) => {
-      const normalized = edge.data("normalizedWeight") as number;
-      if (
-        normalized < edgeThresholdParsed[0] ||
-        normalized > edgeThresholdParsed[1]
-      ) {
-        edge.addClass("filtered");
-      } else {
-        edge.removeClass("filtered");
-      }
+    cy.batch(() => {
+      cy.edges().forEach((edge) => {
+        const visible = isEdgeVisible(
+          edge.source().id(),
+          edge.target().id(),
+          edge.data("normalizedWeight") as number,
+        );
+        if (visible) {
+          edge.removeClass("filtered");
+        } else {
+          edge.addClass("filtered");
+        }
+      });
+      allocateEdgeLabels(cy);
     });
     // Re-apply focus styling since the visible edge set changed
     if (focusProgressRef.current > 0) {
       applyFocusState(cy, focusProgressRef.current);
     }
-  }, [edgeThresholdParsed, applyFocusState]);
+  }, [isEdgeVisible, applyFocusState, allocateEdgeLabels, graphVersion]);
 
   // Focus animation
   React.useEffect(() => {
@@ -1691,7 +1993,7 @@ export const TransitionGraph = observer(function TransitionGraph({
       focusAnimationFrameRef.current = null;
     }
 
-    const target = focusedNodes.length > 0 ? 1 : 0;
+    const target = focusedNodes.length > 0 || focusedEdge ? 1 : 0;
 
     const animate = () => {
       const current = focusProgressRef.current;
@@ -1719,49 +2021,7 @@ export const TransitionGraph = observer(function TransitionGraph({
         focusAnimationFrameRef.current = null;
       }
     };
-  }, [focusedNodes, applyFocusState]);
-
-  const handleResetLayout = React.useCallback(() => {
-    const cy = cyRef.current;
-    if (!cy) return;
-
-    // Get API-computed positions if available
-    const apiPositions = graphLayoutData?.result ?? {};
-
-    // Reset to API positions if available, otherwise use hash-based positions
-    const newPositions: Record<string, StoredPosition> = {};
-
-    cy.nodes().forEach((node) => {
-      const nodeId = node.id();
-      const apiPosition = apiPositions[nodeId];
-      if (
-        apiPosition &&
-        Number.isFinite(apiPosition.x) &&
-        Number.isFinite(apiPosition.y)
-      ) {
-        newPositions[nodeId] = { x: apiPosition.x, y: apiPosition.y };
-      } else {
-        newPositions[nodeId] = createInitialPosition(nodeId);
-      }
-    });
-
-    // Animate to new positions
-    cy.nodes().forEach((node) => {
-      const newPos = newPositions[node.id()];
-      node.animate({
-        position: newPos,
-        duration: 500,
-        easing: "ease-out",
-      });
-    });
-
-    // Update positions ref and save after animation
-    setTimeout(() => {
-      positionsRef.current = newPositions;
-      persistPositions();
-      cy.fit(undefined, 80);
-    }, 550);
-  }, [persistPositions, graphLayoutData]);
+  }, [focusedNodes, focusedEdge, applyFocusState]);
 
   // Inline button style helper
   const btnStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
@@ -1879,7 +2139,26 @@ export const TransitionGraph = observer(function TransitionGraph({
         )}
       </div>
 
-      {/* Edge threshold slider */}
+      {/* Contextual legend + coverage indicator */}
+      <div style={{ position: "absolute", left: 16, bottom: 12, zIndex: 20 }}>
+        <GraphLegend
+          isDark={isDark}
+          mode={
+            focusedNodes.length > 0 || focusedEdge
+              ? "focus"
+              : isDifferential
+                ? "diff"
+                : "normal"
+          }
+          valuesType={committedValueType}
+          coverage={coverage}
+          diffLabel1={diffLabels.value1Label}
+          diffLabel2={diffLabels.value2Label}
+          widgetId={sharedPreferencesId}
+        />
+      </div>
+
+      {/* Edge filter: per-node top-k ("auto") or a manual weight range */}
       <div
         style={{
           pointerEvents: "none",
@@ -1890,35 +2169,113 @@ export const TransitionGraph = observer(function TransitionGraph({
           alignItems: "center",
         }}
       >
-        <div style={{ pointerEvents: "auto", width: 224 }}>
-          <RangeSlider
-            min={0}
-            max={isProbability ? 1 : maxWeight}
-            step={isProbability ? 0.001 : maxWeight > 1000 ? 10 : 1}
-            value={
-              isProbability
-                ? edgeThresholdParsed
-                : (edgeThresholdParsed.map((v) => v * maxWeight) as [
-                    number,
-                    number,
-                  ])
+        <div
+          style={{
+            pointerEvents: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          {edgeFilter.mode === "topk" ? (
+            <div
+              style={btnStyle({
+                cursor: "default",
+                gap: 4,
+                padding: "2px 6px",
+              })}
+            >
+              <span style={{ color: isDark ? "#9ca3af" : "#6b7280" }}>top</span>
+              <button
+                onClick={() =>
+                  handleEdgeFilterChange({
+                    mode: "topk",
+                    k: Math.max(TOP_K_MIN, edgeFilter.k - 1),
+                  })
+                }
+                disabled={edgeFilter.k <= TOP_K_MIN}
+                title="Fewer edges per node"
+                style={btnStyle({
+                  padding: "0 6px",
+                  opacity: edgeFilter.k <= TOP_K_MIN ? 0.4 : 1,
+                })}
+              >
+                −
+              </button>
+              <span style={{ minWidth: 14, textAlign: "center" }}>
+                {edgeFilter.k}
+              </span>
+              <button
+                onClick={() =>
+                  handleEdgeFilterChange({
+                    mode: "topk",
+                    k: Math.min(TOP_K_MAX, edgeFilter.k + 1),
+                  })
+                }
+                disabled={edgeFilter.k >= TOP_K_MAX}
+                title="More edges per node"
+                style={btnStyle({
+                  padding: "0 6px",
+                  opacity: edgeFilter.k >= TOP_K_MAX ? 0.4 : 1,
+                })}
+              >
+                +
+              </button>
+              <span style={{ color: isDark ? "#9ca3af" : "#6b7280" }}>
+                edges / node
+              </span>
+            </div>
+          ) : (
+            <div style={{ width: 224 }}>
+              <RangeSlider
+                min={0}
+                max={isProbability ? 1 : maxWeight}
+                step={isProbability ? 0.001 : maxWeight > 1000 ? 10 : 1}
+                value={
+                  isProbability
+                    ? edgeFilter.range
+                    : (edgeFilter.range.map((v) => v * maxWeight) as [
+                        number,
+                        number,
+                      ])
+                }
+                onChange={(newValues) => {
+                  const range: [number, number] = isProbability
+                    ? newValues
+                    : [newValues[0] / maxWeight, newValues[1] / maxWeight];
+                  handleEdgeFilterChange({ mode: "range", range });
+                }}
+                variant="mini"
+                formatValue={(v) =>
+                  isProbability ? `${(v * 100).toFixed(1)}%` : formatNumber(v)
+                }
+                scale={isProbability ? "linear" : "log"}
+              />
+            </div>
+          )}
+          <button
+            onClick={() =>
+              handleEdgeFilterChange(
+                edgeFilter.mode === "topk"
+                  ? { mode: "range", range: [0, 1] }
+                  : { mode: "topk", k: DEFAULT_TOP_K },
+              )
             }
-            onChange={(newValues) => {
-              if (isProbability) {
-                handleEdgeThresholdChange(newValues);
-              } else {
-                handleEdgeThresholdChange([
-                  newValues[0] / maxWeight,
-                  newValues[1] / maxWeight,
-                ]);
-              }
-            }}
-            variant="mini"
-            formatValue={(v) =>
-              isProbability ? `${(v * 100).toFixed(1)}%` : formatNumber(v)
+            aria-label={
+              edgeFilter.mode === "topk"
+                ? "Auto: strongest edges per node. Click for manual weight range."
+                : "Manual weight range. Click for auto (strongest edges per node)."
             }
-            scale={isProbability ? "linear" : "log"}
-          />
+            data-rete-tooltip={
+              edgeFilter.mode === "topk"
+                ? "Auto: strongest edges per node · click for manual range"
+                : "Manual weight range · click for auto"
+            }
+            data-rete-tooltip-pos="top"
+            style={btnStyle({ padding: "4px 8px" })}
+          >
+            {edgeFilter.mode === "topk" ? "Auto" : "Manual"}
+          </button>
         </div>
       </div>
 
@@ -1926,7 +2283,7 @@ export const TransitionGraph = observer(function TransitionGraph({
         style={{
           position: "absolute",
           right: 56,
-          top: 16,
+          top: 10,
           display: "flex",
           alignItems: "center",
           gap: 8,
@@ -1955,10 +2312,44 @@ export const TransitionGraph = observer(function TransitionGraph({
             Color Node
           </button>
         )}
+        {focusedEdge && (
+          <button
+            onClick={() => {
+              const containerWidth = containerRef.current?.clientWidth ?? 0;
+              const { source, target } = focusedEdge;
+              setColorPicker((current) => {
+                if (
+                  current?.kind === "edge" &&
+                  current.source === source &&
+                  current.target === target
+                ) {
+                  return null;
+                }
+                return {
+                  kind: "edge",
+                  source,
+                  target,
+                  x: Math.max(12, containerWidth - 176),
+                  y: 48,
+                };
+              });
+            }}
+            title={`Color edge: ${focusedEdge.source} → ${focusedEdge.target}`}
+            style={btnStyle()}
+          >
+            Color Edge
+          </button>
+        )}
         <button
-          onClick={() => cyRef.current?.fit(undefined, 30)}
-          title="Fit graph to canvas"
-          style={btnStyle({ padding: "4px 8px" })}
+          onClick={() => cyRef.current?.fit(undefined, FIT_PADDING)}
+          aria-label="Fit graph to canvas"
+          data-rete-tooltip="Fit graph to canvas"
+          style={btnStyle({
+            width: 32,
+            height: 32,
+            padding: 0,
+            justifyContent: "center",
+          })}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 3 21 3 21 9"/>
@@ -2270,6 +2661,28 @@ export const TransitionGraph = observer(function TransitionGraph({
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        [data-rete-tooltip] { position: relative; }
+        [data-rete-tooltip]:hover::after {
+          content: attr(data-rete-tooltip);
+          position: absolute;
+          top: calc(100% + 6px);
+          right: 0;
+          background: ${isDark ? "#1f2937" : "#ffffff"};
+          color: ${isDark ? "#f3f4f6" : "#111827"};
+          border: 1px solid ${isDark ? "#374151" : "#e5e7eb"};
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+          font-size: 11px;
+          line-height: 1;
+          padding: 5px 8px;
+          border-radius: 4px;
+          white-space: nowrap;
+          z-index: 100;
+          pointer-events: none;
+        }
+        [data-rete-tooltip][data-rete-tooltip-pos="top"]:hover::after {
+          top: auto;
+          bottom: calc(100% + 6px);
+        }
       `}</style>
     </div>
   );

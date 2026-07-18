@@ -79,6 +79,7 @@ dependencies = [
     "scipy>=1.11",
     "matplotlib>=3.5",
     "mcp[cli]>=1.28.0",
+    "gensim>=4.3.3",
 ]
 
 [project.urls]

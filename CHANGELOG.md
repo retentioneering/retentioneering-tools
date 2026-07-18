@@ -3,6 +3,55 @@
 All notable changes to this project will be documented in this file.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [Unreleased]
+
+### Added
+
+- Transition graph: deterministic semantic node layout (new
+  `tools/graph_layout.py`, adds a `gensim` dependency) — word2vec embedding
+  of user trajectories, recursively clustered and mapped onto nested canvas
+  regions so related events share a region. Deterministic across kernel
+  restarts (fixed seed, single worker, process-independent hash, pinned
+  corpus order). Used for new widgets, `Reset layout` (new toolbar button),
+  HTML export, and MCP report tabs; manually arranged positions still
+  always win
+- Transition graph: per-node top-k edge filter as the new default ("Auto"
+  mode, k strongest outgoing edges per node, adjustable stepper) with a
+  toggle back to the manual weight-range slider; saved states and old
+  exported HTML with a `[min, max]` filter keep working as manual mode
+- Transition graph: contextual legend (bottom-left, collapsible) explaining
+  node size / edge width / focus and diff colors, with a coverage indicator
+  ("edges: X / Y (Z% of weight)") and interaction hints
+- Transition graph: edge focus — clicking an edge dims everything else, fits
+  the node pair, and shows the weight label; edge coloring moved to a
+  toolbar button shown while an edge is focused
+
+### Changed
+
+- Transition graph: focusing a node (search, exported-report links) now fits
+  the node together with its neighborhood instead of zooming onto the node
+  itself, so its edges stay inside the viewport
+- Transition graph: in focus mode all incoming/outgoing edges are colored
+  (violet/orange) regardless of weight — the confusing gray fallback for
+  weak edges is gone
+- Transition graph: edge labels are allocated adaptively — small graphs get
+  every edge labeled, large ones a bounded share of the currently visible
+  edges (tightening the filter labels more of what remains); was a fixed
+  top-10
+- Transition graph: the auto-layout is deterministic — the same graph renders
+  the same picture every time (seeded PRNG around fcose)
+
+### Fixed
+
+- Transition graph: probability edges below 1% were silently dropped
+  (including |Δp| < 1pp in diff mode) — removed; hiding is now always explicit
+  via the edge filter and reported by the coverage indicator
+- Transition graph: a saved edge-weight filter was silently reset after any
+  graph rebuild (e.g. switching the weight type) until the slider was touched
+- Transition graph: the broken `graph_layout` backend compute (imported a
+  module that didn't exist and silently returned nothing) is implemented;
+  compute errors are now surfaced to the client instead of swallowed
+
 ## [5.0.1] - 2026-07-15
 
 ### Changed

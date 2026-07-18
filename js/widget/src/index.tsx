@@ -9,12 +9,13 @@ import {
   type MatrixValueType,
   type StoredPosition,
   type StoredViewport,
+  type EdgeFilterSpec,
   DEFAULT_VALUE_TYPE,
 } from "@retentioneering/viz-core";
 
 function SidebarToggle({ onClick }: { onClick: () => void }) {
   return (
-    <button onClick={onClick} title="Toggle settings" style={{
+    <button onClick={onClick} aria-label="Toggle settings sidebar" data-rete-tooltip="Toggle settings sidebar" style={{
       position: "absolute", top: 10, right: 16, zIndex: 25,
       display: "flex", alignItems: "center", justifyContent: "center",
       width: 32, height: 32, borderRadius: 6, cursor: "pointer",
@@ -180,12 +181,31 @@ export function render({ host, el, isStatic = false }: RenderContext) {
         host.set("node_positions", JSON.stringify(positions));
       }, [],
     );
-    const initialEdgeFilter = React.useMemo<[number, number] | null>(() => {
-      const f = parseJson<number[]>(host.get("edge_filter") || "", []);
-      return f.length === 2 ? [f[0], f[1]] : null;
+    // edge_filter accepts two serialized shapes: the legacy "[min, max]"
+    // array (old saved states and old exported HTML → manual range mode) and
+    // the newer '{"mode": "topk", "k": n}' object. Range mode is written
+    // back in the legacy array form so old readers keep working.
+    const initialEdgeFilter = React.useMemo<EdgeFilterSpec | null>(() => {
+      const parsed = parseJson<unknown>((host.get("edge_filter") as string) || "", null);
+      if (Array.isArray(parsed) && parsed.length === 2) {
+        return { mode: "range", range: [Number(parsed[0]), Number(parsed[1])] };
+      }
+      if (parsed && typeof parsed === "object") {
+        const spec = parsed as { mode?: string; k?: number; range?: number[] };
+        if (spec.mode === "topk" && Number.isFinite(spec.k)) {
+          return { mode: "topk", k: Number(spec.k) };
+        }
+        if (spec.mode === "range" && Array.isArray(spec.range) && spec.range.length === 2) {
+          return { mode: "range", range: [Number(spec.range[0]), Number(spec.range[1])] };
+        }
+      }
+      return null;
     }, []);
-    const handleEdgeFilterChange = React.useCallback((filter: [number, number]) => {
-      host.set("edge_filter", JSON.stringify(filter));
+    const handleEdgeFilterChange = React.useCallback((filter: EdgeFilterSpec) => {
+      host.set(
+        "edge_filter",
+        filter.mode === "range" ? JSON.stringify(filter.range) : JSON.stringify(filter),
+      );
     }, []);
     const initialViewport = React.useMemo<StoredViewport | null>(
       () => parseJson<StoredViewport | null>(host.get("viewport") || "", null),
@@ -200,6 +220,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
         <TransitionGraph
           store={store}
           host={isStatic ? null : host}
+          widgetId={(host.get("widget_id") as string) || undefined}
           valuesType={valuesType}
           onValuesTypeChange={handleValuesChange}
           diffSegment={diffSegment}

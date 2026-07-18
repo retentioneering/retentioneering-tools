@@ -31,7 +31,9 @@ class TransitionGraphWidget(RetentioneeringWidget):
     sidebar_open = traitlets.Bool(True).tag(sync=True)
     node_positions = traitlets.Unicode("{}").tag(sync=True)
     event_visibility = traitlets.Unicode("{}").tag(sync=True)
-    # "" | "[min, max]" — edge weight filter, normalized to 0..1
+    # "" (default: per-node top-k auto mode)
+    # | "[min, max]"              — manual edge weight range, normalized 0..1
+    # | '{"mode": "topk", "k": n}' — per-node top-k auto mode with explicit k
     edge_filter = traitlets.Unicode("").tag(sync=True)
     # "" | "[min, max]" — event count (population) filter, absolute counts
     event_count_filter = traitlets.Unicode("").tag(sync=True)
@@ -200,19 +202,25 @@ class TransitionGraphWidget(RetentioneeringWidget):
             }
         return {"events": tm.index.tolist(), "values": _df_to_list(tm)}
 
+    def semantic_layout_positions(self) -> dict:
+        """Best-effort semantic layout positions for static consumers (HTML
+        export, MCP report tabs) that have no kernel to compute them lazily.
+        Returns {} when the layout cannot be computed."""
+        return self._compute_graph_layout({}).get("result") or {}
+
     def _compute_graph_layout(self, params: dict) -> dict:
         try:
-            from retentioneering.tools.graph_layout import GraphLayout  # type: ignore
+            from retentioneering.tools.graph_layout import GraphLayout
 
             result = GraphLayout(self._eventstream).fit(
-                sample_size=params.get("sample_size", 1000),
-                embedding_dim=params.get("embedding_dim", 32),
-                n_clusters=params.get("n_clusters", 5),
-                random_state=params.get("random_state", 42),
+                path_col=params.get("path_col") or self.path_col or None,
             )
             return {"result": result}
-        except Exception:
-            return {"result": {}}
+        except Exception as exc:
+            # Layout is an enhancement, not a requirement — the JS side falls
+            # back to its own deterministic layout. Surface the reason instead
+            # of swallowing it so client code can at least log it.
+            return {"result": {}, "error": str(exc)}
 
     # ── HTML export ───────────────────────────────────────────────────────────
 
@@ -241,15 +249,22 @@ class TransitionGraphWidget(RetentioneeringWidget):
             Defaults to the widget's current ``sidebar_open`` value.
         """
         self._raise_if_error()
+        # A static export cannot call the graph_layout compute (no kernel), so
+        # when the user hasn't arranged nodes by hand, bake the semantic
+        # layout positions in at export time.
+        node_positions = json.loads(self.node_positions or "{}")
+        if not node_positions:
+            node_positions = self.semantic_layout_positions()
         data = {
             "widget_type": "transition_graph",
+            "widget_id": self.widget_id,
             "result": json.loads(self.result or "{}"),
             "edge_weight": self.edge_weight,
             "diff": json.loads(self.diff) if self.diff else None,
             "event_counts": json.loads(self.event_counts or "{}"),
             "event_counts_g1": json.loads(self.event_counts_g1 or "{}"),
             "event_counts_g2": json.loads(self.event_counts_g2 or "{}"),
-            "node_positions": json.loads(self.node_positions or "{}"),
+            "node_positions": node_positions,
             "event_visibility": json.loads(self.event_visibility or "{}"),
             "edge_filter": json.loads(self.edge_filter) if self.edge_filter else None,
             "event_count_filter": json.loads(self.event_count_filter)

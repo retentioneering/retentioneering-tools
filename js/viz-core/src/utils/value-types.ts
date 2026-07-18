@@ -11,7 +11,10 @@ export const MATRIX_VALUE_TYPES = [
 
 export type MatrixValueType = (typeof MATRIX_VALUE_TYPES)[number];
 
-export const DEFAULT_VALUE_TYPE: MatrixValueType = "unique_paths";
+// Keep in sync with the Python-side default (`edge_weight` traitlet in
+// widgets/transition_graph.py) — this is only a fallback for hosts that
+// don't provide an edge_weight value at all.
+export const DEFAULT_VALUE_TYPE: MatrixValueType = "proba_out";
 
 export const isTimeValueType = (value?: MatrixValueType | null) =>
   value === "time_median" || value === "time_q95";

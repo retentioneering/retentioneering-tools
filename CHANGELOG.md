@@ -50,6 +50,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 
+- `diff` over a boolean or numeric segment failed with
+  `SegmentValueNotFoundError` when the values arrived as strings (which is
+  what the widget UI and MCP always send): `'false'`/`'5'` now resolve back
+  to the typed segment levels `False`/`5`
 - Transition graph: probability edges below 1% were silently dropped
   (including |Δp| < 1pp in diff mode) — removed; hiding is now always explicit
   via the edge filter and reported by the coverage indicator

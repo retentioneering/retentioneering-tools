@@ -1318,6 +1318,28 @@ class Eventstream:
             if segment_col not in self.schema.segment_cols:
                 raise DiffConfigError(f"'{segment_col}' is not a segment column")
             all_vals = set(self.get_segment_levels().get(segment_col, []))
+
+            def _coerce(value):
+                """Match a value that arrived as a string (the JS widget, MCP
+                and any JSON round-trip stringify everything) back to the
+                actual typed segment level: 'false' -> False, '5' -> 5.
+                Returns the value unchanged when there is no unambiguous
+                match — the caller then raises its normal error."""
+                if value in all_vals or not isinstance(value, str):
+                    return value
+                matches = []
+                for candidate in all_vals:
+                    if isinstance(candidate, str):
+                        continue
+                    try:
+                        candidate_json = json.dumps(candidate)
+                    except (TypeError, ValueError):
+                        candidate_json = None
+                    if value in (candidate_json, str(candidate)):
+                        matches.append(candidate)
+                return matches[0] if len(matches) == 1 else value
+
+            v1 = _coerce(v1)
             if v1 not in all_vals:
                 raise SegmentValueNotFoundError(
                     segment_value=v1,
@@ -1333,6 +1355,7 @@ class Eventstream:
                         "'<REST>' requires at least one complementary value."
                     )
             else:
+                v2 = _coerce(v2)
                 if v2 not in all_vals:
                     raise SegmentValueNotFoundError(
                         segment_value=v2,

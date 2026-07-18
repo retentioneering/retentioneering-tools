@@ -59,7 +59,9 @@ release:
 	  echo "Refusing to release: local master differs from origin/master. Run 'git pull' first."; exit 1; \
 	fi
 	@if ! grep -q "^## \[$(VERSION)\]" CHANGELOG.md; then \
-	  echo "CHANGELOG.md has no '## [$(VERSION)]' section -- did you land the version bump on master?"; exit 1; \
+	  echo "CHANGELOG.md has no '## [$(VERSION)]' section -- as part of the version-bump PR," \
+	       "rename '## [Unreleased]' to '## [$(VERSION)] - $$(date +%Y-%m-%d)' (and add a fresh" \
+	       "empty '## [Unreleased]' above it), then land that on master before releasing."; exit 1; \
 	fi
 	git tag -a v$(VERSION) -m "Release v$(VERSION)"
 	git push origin v$(VERSION)

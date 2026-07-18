@@ -16,7 +16,8 @@
 - [ ] `uv run pytest tests/ -q` passes
 - [ ] Added/updated tests (a bug fix includes the failing-before test)
 - [ ] Docstrings updated and, if they changed, `uv run python docs/scripts/render_pages.py` re-run
-- [ ] Sync obligations handled where applicable (MCP tool layer, JS metric editor / widget contract, `CHANGELOG.md`)
+- [ ] Added an entry under `CHANGELOG.md`'s `[Unreleased]` section (skip only for docs/CI/internal-only changes)
+- [ ] Sync obligations handled where applicable (MCP tool layer, JS metric editor / widget contract)
 
 ## Breaking changes
 

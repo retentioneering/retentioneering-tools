@@ -40,6 +40,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   top-10
 - Transition graph: the auto-layout is deterministic — the same graph renders
   the same picture every time (seeded PRNG around fcose)
+- Transition graph: the manual edge filter slider is logarithmic for every
+  weight type, spanning exactly the data range (0.5%–100% for probabilities,
+  smallest nonzero weight to max otherwise) — no more dead track zones
+- Transition graph: in diff mode edge thickness/opacity for probability
+  weights is normalized against the largest |Δp| on the graph instead of
+  the absolute 100%, so the strongest changes render thick instead of
+  uniformly thin; diff self-loops keep their red/blue color in focus mode
 
 ### Fixed
 

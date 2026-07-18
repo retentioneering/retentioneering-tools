@@ -85,7 +85,7 @@ const LAYOUT_RANDOM_SEED = 0x9e3779b9;
 // the identical viewport.
 const FIT_PADDING = 30;
 // Per-node top-k edge filter (the default "auto" mode).
-const DEFAULT_TOP_K = 4;
+const DEFAULT_TOP_K = 3;
 const TOP_K_MIN = 1;
 const TOP_K_MAX = 10;
 // Hard cap on created cytoscape edge elements. Beyond it the ultra-thin tail
@@ -379,8 +379,28 @@ export const TransitionGraph = observer(function TransitionGraph({
     savePositions,
     hasSavedPositions,
   } = useNodePositions(effectiveWidgetId);
+
+  // Skip the backend layout compute entirely when the saved arrangement
+  // (state file / traitlet) already covers every event — the result would
+  // be discarded anyway (saved positions always win per node). Partial
+  // coverage still computes: events missing from the saved arrangement get
+  // computed positions. Mount-only decision, like the compute itself.
+  const skipLayoutCompute = React.useMemo(() => {
+    if (!initialPositions) return false;
+    const eventIds = Array.from(store.events.keys()).filter((id) => id !== "");
+    if (eventIds.length === 0) return false;
+    return eventIds.every((id) => {
+      const position = initialPositions[id];
+      return (
+        position &&
+        Number.isFinite(position.x) &&
+        Number.isFinite(position.y)
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { data: graphLayoutData, isLoading: isGraphLayoutLoading } =
-    useGraphLayout(host);
+    useGraphLayout(skipLayoutCompute ? null : host);
 
   const [edgeFilter, setEdgeFilterState] = React.useState<EdgeFilterSpec>(
     () => initialEdgeFilter ?? { mode: "topk", k: DEFAULT_TOP_K },
@@ -544,6 +564,11 @@ export const TransitionGraph = observer(function TransitionGraph({
   }, [effectiveWidgetId]);
 
   const persistPositions = React.useCallback(() => {
+    // From this point positionsRef is the source of truth: ignore the
+    // traitlet echo of this very persist coming back through the
+    // initialPositions prop — it would only trigger a redundant rebuild
+    // (visible as a viewport flicker on the first drag).
+    initialLoadDoneRef.current = true;
     savePositions(positionsRef.current);       // localStorage
     onPositionsChange?.(positionsRef.current); // → Python traitlet / file
   }, [savePositions, onPositionsChange]);
@@ -726,10 +751,16 @@ export const TransitionGraph = observer(function TransitionGraph({
     if (!store.hasData) return [];
     const graphEvents = visibleEvents.filter((e) => e.id !== "");
 
-    // Logarithmic/linear normalization mirroring the edge rendering rules
+    // Normalization mirroring the edge rendering rules. Probabilities keep
+    // their absolute meaning in normal mode (thickness = probability, 100%
+    // = thickest) — but NOT in diff mode: |Δp| rarely approaches 1, so an
+    // absolute scale would render every diff edge thin and pale. Diffs are
+    // normalized against the largest |Δp| on the graph, like other types.
     const normalize = (weight: number): number => {
       const magnitude = isDifferential ? Math.abs(weight) : weight;
-      if (isProbability) return Math.max(0, Math.min(1, magnitude));
+      if (isProbability && !isDifferential) {
+        return Math.max(0, Math.min(1, magnitude));
+      }
       if (maxWeight <= 0) return 0;
       return magnitude / maxWeight;
     };
@@ -769,6 +800,19 @@ export const TransitionGraph = observer(function TransitionGraph({
     return list;
   }, [store, visibleEvents, maxWeight, isProbability, isDifferential]);
 
+  // Smallest nonzero |weight| on the graph — the data-driven lower bound of
+  // the manual slider's log scale. Without it the scale starts at
+  // max × 0.0001 and half the track can cover values that simply don't
+  // exist (e.g. integer unique_paths diffs never go below 1).
+  const minNonzeroWeight = React.useMemo(() => {
+    let min = Infinity;
+    edgeList.forEach((edge) => {
+      const w = Math.abs(edge.weight);
+      if (w > 0 && w < min) min = w;
+    });
+    return Number.isFinite(min) ? min : 0;
+  }, [edgeList]);
+
   // Kept-edge set for the per-node top-k ("auto") filter mode.
   const keptEdgeKeys = React.useMemo(
     () =>
@@ -792,6 +836,61 @@ export const TransitionGraph = observer(function TransitionGraph({
     },
     [edgeFilter, keptEdgeKeys],
   );
+
+  // Mirror of isEdgeVisible for the graph-build effect: read through a ref
+  // so filter changes do NOT rebuild the graph (the filter effect handles
+  // them in place), yet a rebuild still creates edges with the correct
+  // `filtered` class — otherwise the first painted frame after any rebuild
+  // flashes every edge.
+  const isEdgeVisibleRef = React.useRef(isEdgeVisible);
+  isEdgeVisibleRef.current = isEdgeVisible;
+
+  // Same ref pattern for applyFocusState (declared below the build effect):
+  // lets a rebuild re-apply focus dimming synchronously, before the first
+  // paint, without a hook-ordering problem.
+  const applyFocusStateRef = React.useRef<
+    ((cy: Core, progress: number) => void) | null
+  >(null);
+
+  // Adaptive label allocation over the currently visible (non-filtered)
+  // edges: small graphs get labels everywhere, large ones a bounded top share
+  // by |weight| — so tightening the threshold automatically labels more of
+  // what remains. Mutates edge *data* (not style), so resetFocusVisuals
+  // restores the current allocation when focus mode exits. Declared before
+  // the graph-build effect, which calls it for the first paint.
+  const allocateEdgeLabels = React.useCallback((cy: Core) => {
+    const visible = cy.edges().not(".filtered");
+    const total = visible.length;
+    const labeledCount =
+      total <= EDGE_LABELS_ALL_THRESHOLD
+        ? total
+        : Math.min(
+            EDGE_LABELS_MAX,
+            Math.max(EDGE_LABELS_MIN, Math.ceil(total * EDGE_LABELS_SHARE)),
+          );
+
+    const sorted = visible.sort(
+      (a, b) =>
+        Math.abs(b.data("weight") as number) -
+        Math.abs(a.data("weight") as number),
+    );
+
+    cy.batch(() => {
+      cy.edges(".filtered").forEach((edge) => {
+        edge.data("showLabel", false);
+        edge.data("label", "");
+        edge.data("zIndex", 1);
+      });
+      sorted.forEach((edge, index) => {
+        const labeled = index < labeledCount;
+        edge.data("showLabel", labeled);
+        // Invariant: label must be "" when unlabeled — the edge[showLabel]
+        // selector matches field *presence*, not truthiness.
+        edge.data("label", labeled ? (edge.data("baseValue") as string) : "");
+        edge.data("zIndex", labeled ? 999 : 1);
+      });
+    });
+  }, []);
 
   // Edges that get cytoscape elements at all. null = build everything; above
   // the cap only the strongest EDGE_BUILD_CAP edges plus everything any
@@ -988,6 +1087,16 @@ export const TransitionGraph = observer(function TransitionGraph({
 
       elements.push({
         group: "edges",
+        // Filter state is applied at creation time so a rebuild never paints
+        // a frame with every edge visible; the filter effect re-applies it
+        // in place when the filter changes.
+        classes: isEdgeVisibleRef.current(
+          edge.source,
+          edge.target,
+          forwardNormalized,
+        )
+          ? undefined
+          : "filtered",
         data: {
           id: `${edge.source}-${edge.target}`,
           source: edge.source,
@@ -1255,11 +1364,17 @@ export const TransitionGraph = observer(function TransitionGraph({
       // after the browser has laid out the container. When freshly arrived
       // backend positions were just applied, any remembered viewport refers
       // to the transient pre-layout graph — fit instead.
+      //
+      // The restore is synchronous: deferring it to a rAF paints one frame
+      // at cytoscape's default zoom first, which reads as a zoom flicker on
+      // every rebuild. Only fit() needs the container laid out, so only it
+      // stays in a rAF.
       const savedViewport = usedApiPositions ? null : viewportRef.current;
-      requestAnimationFrame(() => {
-        if (savedViewport) cy.viewport({ zoom: savedViewport.zoom, pan: { ...savedViewport.pan } });
-        else cy.fit(undefined, FIT_PADDING);
-      });
+      if (savedViewport) {
+        cy.viewport({ zoom: savedViewport.zoom, pan: { ...savedViewport.pan } });
+      } else {
+        requestAnimationFrame(() => cy.fit(undefined, FIT_PADDING));
+      }
     }
 
     // Event handlers
@@ -1407,8 +1522,16 @@ export const TransitionGraph = observer(function TransitionGraph({
       }
     });
 
-    // Signal the new cy generation so the filter/label effect re-applies
-    // against it (a fresh instance has no `filtered` classes or labels yet).
+    // Allocate labels right away so the first painted frame is complete
+    // (edges are already created with their `filtered` classes above), and
+    // re-apply focus dimming if a focus is active.
+    allocateEdgeLabels(cy);
+    if (focusProgressRef.current > 0) {
+      applyFocusStateRef.current?.(cy, focusProgressRef.current);
+    }
+
+    // Signal the new cy generation so the filter/label effect re-runs
+    // against it when the filter changes later.
     setGraphVersion((v) => v + 1);
 
     return () => {
@@ -1424,6 +1547,7 @@ export const TransitionGraph = observer(function TransitionGraph({
     formatValue,
     persistPositions,
     runAutoLayout,
+    allocateEdgeLabels,
     visibleEvents,
     visibleEvents.length,
     positionsVersion,
@@ -1867,7 +1991,11 @@ export const TransitionGraph = observer(function TransitionGraph({
         const showArrow =
           relativeWeight >= FOCUS_ARROW_MIN_VISIBLE_RATIO ||
           ((edge.data("showBaseArrow") as boolean) && relativeWeight >= 0.14);
-        edge.addClass("focus-loop");
+        // In diff mode self-loops keep their red/blue diff color, like every
+        // other edge — the gray focus-loop class applies only to normal mode.
+        if (!isDifferential) {
+          edge.addClass("focus-loop");
+        }
         edge.style({
           width: (edge.data("edgeSize") as number) + progress * 2,
           label,
@@ -1914,45 +2042,7 @@ export const TransitionGraph = observer(function TransitionGraph({
     },
     [focusedNodes, focusedEdge, isDifferential],
   );
-
-  // Adaptive label allocation over the currently visible (non-filtered)
-  // edges: small graphs get labels everywhere, large ones a bounded top share
-  // by |weight| — so tightening the threshold automatically labels more of
-  // what remains. Mutates edge *data* (not style), so resetFocusVisuals
-  // restores the current allocation when focus mode exits.
-  const allocateEdgeLabels = React.useCallback((cy: Core) => {
-    const visible = cy.edges().not(".filtered");
-    const total = visible.length;
-    const labeledCount =
-      total <= EDGE_LABELS_ALL_THRESHOLD
-        ? total
-        : Math.min(
-            EDGE_LABELS_MAX,
-            Math.max(EDGE_LABELS_MIN, Math.ceil(total * EDGE_LABELS_SHARE)),
-          );
-
-    const sorted = visible.sort(
-      (a, b) =>
-        Math.abs(b.data("weight") as number) -
-        Math.abs(a.data("weight") as number),
-    );
-
-    cy.batch(() => {
-      cy.edges(".filtered").forEach((edge) => {
-        edge.data("showLabel", false);
-        edge.data("label", "");
-        edge.data("zIndex", 1);
-      });
-      sorted.forEach((edge, index) => {
-        const labeled = index < labeledCount;
-        edge.data("showLabel", labeled);
-        // Invariant: label must be "" when unlabeled — the edge[showLabel]
-        // selector matches field *presence*, not truthiness.
-        edge.data("label", labeled ? (edge.data("baseValue") as string) : "");
-        edge.data("zIndex", labeled ? 999 : 1);
-      });
-    });
-  }, []);
+  applyFocusStateRef.current = applyFocusState;
 
   // Separate effect for edge filtering — avoids full graph recreation when
   // the filter changes, so focusedNodes and other visual state persist.
@@ -2143,11 +2233,13 @@ export const TransitionGraph = observer(function TransitionGraph({
       <div style={{ position: "absolute", left: 16, bottom: 12, zIndex: 20 }}>
         <GraphLegend
           isDark={isDark}
+          // Diff mode keeps its red/blue edge colors even in focus, so the
+          // diff legend stays; the in/out focus legend is normal-mode only.
           mode={
-            focusedNodes.length > 0 || focusedEdge
-              ? "focus"
-              : isDifferential
-                ? "diff"
+            isDifferential
+              ? "diff"
+              : focusedNodes.length > 0 || focusedEdge
+                ? "focus"
                 : "normal"
           }
           valuesType={committedValueType}
@@ -2179,13 +2271,14 @@ export const TransitionGraph = observer(function TransitionGraph({
         >
           {edgeFilter.mode === "topk" ? (
             <div
+              data-rete-tooltip={`showing top ${edgeFilter.k} strongest edges per node`}
+              data-rete-tooltip-pos="top"
               style={btnStyle({
                 cursor: "default",
                 gap: 4,
                 padding: "2px 6px",
               })}
             >
-              <span style={{ color: isDark ? "#9ca3af" : "#6b7280" }}>top</span>
               <button
                 onClick={() =>
                   handleEdgeFilterChange({
@@ -2194,7 +2287,7 @@ export const TransitionGraph = observer(function TransitionGraph({
                   })
                 }
                 disabled={edgeFilter.k <= TOP_K_MIN}
-                title="Fewer edges per node"
+                aria-label="Fewer edges per node"
                 style={btnStyle({
                   padding: "0 6px",
                   opacity: edgeFilter.k <= TOP_K_MIN ? 0.4 : 1,
@@ -2213,7 +2306,7 @@ export const TransitionGraph = observer(function TransitionGraph({
                   })
                 }
                 disabled={edgeFilter.k >= TOP_K_MAX}
-                title="More edges per node"
+                aria-label="More edges per node"
                 style={btnStyle({
                   padding: "0 6px",
                   opacity: edgeFilter.k >= TOP_K_MAX ? 0.4 : 1,
@@ -2221,36 +2314,58 @@ export const TransitionGraph = observer(function TransitionGraph({
               >
                 +
               </button>
-              <span style={{ color: isDark ? "#9ca3af" : "#6b7280" }}>
-                edges / node
-              </span>
             </div>
           ) : (
             <div style={{ width: 224 }}>
-              <RangeSlider
-                min={0}
-                max={isProbability ? 1 : maxWeight}
-                step={isProbability ? 0.001 : maxWeight > 1000 ? 10 : 1}
-                value={
-                  isProbability
-                    ? edgeFilter.range
-                    : (edgeFilter.range.map((v) => v * maxWeight) as [
-                        number,
-                        number,
-                      ])
-                }
-                onChange={(newValues) => {
-                  const range: [number, number] = isProbability
-                    ? newValues
-                    : [newValues[0] / maxWeight, newValues[1] / maxWeight];
-                  handleEdgeFilterChange({ mode: "range", range });
-                }}
-                variant="mini"
-                formatValue={(v) =>
-                  isProbability ? `${(v * 100).toFixed(1)}%` : formatNumber(v)
-                }
-                scale={isProbability ? "linear" : "log"}
-              />
+              {(() => {
+                // Probabilities are stored as absolute values (normalized
+                // against 1) only in normal mode; in diff mode |Δp| is
+                // normalized against the graph maximum like any other type,
+                // so the slider converts through maxWeight to keep showing
+                // absolute percentages.
+                const isAbsoluteScale = isProbability && !isDifferential;
+                return (
+                  <RangeSlider
+                    min={0}
+                    max={isAbsoluteScale ? 1 : maxWeight}
+                    step={isProbability ? 0.001 : maxWeight > 1000 ? 10 : 1}
+                    value={
+                      isAbsoluteScale
+                        ? edgeFilter.range
+                        : (edgeFilter.range.map((v) => v * maxWeight) as [
+                            number,
+                            number,
+                          ])
+                    }
+                    onChange={(newValues) => {
+                      const range: [number, number] = isAbsoluteScale
+                        ? newValues
+                        : [newValues[0] / maxWeight, newValues[1] / maxWeight];
+                      handleEdgeFilterChange({ mode: "range", range });
+                    }}
+                    variant="mini"
+                    formatValue={(v) =>
+                      isProbability
+                        ? `${(v * 100).toFixed(1)}%`
+                        : formatNumber(v)
+                    }
+                    // Log for probabilities too: most edges sit near zero,
+                    // so a linear track wipes out too many edges per pixel
+                    // of thumb travel. 0.005 keeps the usable range at
+                    // 0.5%–100%; other types span exactly the data range
+                    // (smallest nonzero weight .. max) so no part of the
+                    // track is dead space.
+                    scale="log"
+                    logMin={
+                      isProbability
+                        ? 0.005
+                        : minNonzeroWeight > 0
+                          ? minNonzeroWeight
+                          : undefined
+                    }
+                  />
+                );
+              })()}
             </div>
           )}
           <button

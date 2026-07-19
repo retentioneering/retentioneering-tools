@@ -31,9 +31,12 @@ widget had before the first view was applied. Any manual interaction
 
 #### focus
 
-- `{"type": "node", "id": "cart"}` — focus one event: everything else dims,
-  incoming edges are colored violet, outgoing orange, and the viewport fits
-  the node together with its neighborhood.
+- `{"type": "node", "id": "cart"}` — focus one event: everything else dims
+  and the viewport fits the node together with its neighborhood. One
+  direction is shown at a time: outgoing transitions by default,
+  `"direction": "in"` for incoming. In the widget, clicking a node shows its
+  outgoing transitions and double-clicking shows the incoming ones. Diff
+  mode always shows both directions (red/blue).
 - `{"type": "edge", "source": "cart", "target": "checkout"}` — focus one
   transition: the edge and its two nodes stay bright (the edge is shown even
   when the edge filter would hide it), the weight label is forced on, and the

@@ -14,6 +14,8 @@ interface GraphLegendProps {
   /** Initial state when the user hasn't toggled the legend yet (persisted
    *  toggles always win). Static HTML exports start collapsed. */
   defaultCollapsed?: boolean;
+  /** Direction currently shown by the node focus (mode === "focus"). */
+  focusDirection?: "out" | "in";
 }
 
 const VALUE_TYPE_LABELS: Record<MatrixValueType, string> = {
@@ -71,6 +73,7 @@ export function GraphLegend({
   diffLabel2,
   widgetId,
   defaultCollapsed = false,
+  focusDirection = "out",
 }: GraphLegendProps) {
   const storageKey = `transition-graph-legend:${widgetId}`;
   const [collapsed, setCollapsed] = React.useState<boolean>(() => {
@@ -116,9 +119,6 @@ export function GraphLegend({
     gap: 6,
   };
 
-  const incomingColor = isDark ? "rgb(167,139,250)" : "rgb(99,102,241)";
-  const outgoingColor = isDark ? "rgb(251,146,60)" : "rgb(234,88,12)";
-  const loopColor = isDark ? "rgb(156,163,175)" : "rgb(107,114,128)";
   const edgeColor = isDark ? "rgb(156,163,175)" : "rgb(75,85,99)";
   const nodeColor = "rgb(250,204,21)";
 
@@ -191,16 +191,19 @@ export function GraphLegend({
       {mode === "focus" ? (
         <>
           <div style={rowStyle}>
-            <Swatch color={incomingColor} kind="line" />
-            <span>incoming</span>
+            <Swatch color={edgeColor} kind="line" />
+            <span>
+              {focusDirection === "in"
+                ? "showing incoming transitions"
+                : "showing outgoing transitions"}
+            </span>
           </div>
-          <div style={rowStyle}>
-            <Swatch color={outgoingColor} kind="line" />
-            <span>outgoing</span>
-          </div>
-          <div style={rowStyle}>
-            <Swatch color={loopColor} kind="line" />
-            <span>self-loop</span>
+          <div style={{ ...rowStyle, color: mutedColor }}>
+            <span>
+              {focusDirection === "in"
+                ? "click node = outgoing"
+                : "double-click node = incoming"}
+            </span>
           </div>
         </>
       ) : mode === "diff" ? (
@@ -230,8 +233,8 @@ export function GraphLegend({
       {coverageLine}
 
       <div style={{ ...rowStyle, color: mutedColor, flexWrap: "wrap", rowGap: 0 }}>
-        <span>click node = focus · click edge = inspect</span>
-        <span>⌘/ctrl+click = select path · click canvas = reset</span>
+        <span>click node = outgoing · 2×click = incoming</span>
+        <span>click edge = inspect · ⌘/ctrl+click = select path</span>
       </div>
     </div>
   );

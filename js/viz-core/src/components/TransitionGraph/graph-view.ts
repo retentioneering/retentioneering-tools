@@ -21,7 +21,7 @@ export interface GraphView {
   /** Pill label; also the handle for `[tab:view=Name]` links. */
   name?: string;
   focus?:
-    | { type: "node"; id: string }
+    | { type: "node"; id: string; direction?: "out" | "in" }
     | { type: "edge"; source: string; target: string }
     | { type: "path"; nodes: string[] };
   edgeFilter?: EdgeFilterSpec;
@@ -54,7 +54,11 @@ export function parseGraphView(raw: unknown): GraphView | null {
   const focus = view.focus as Record<string, unknown> | undefined;
   if (focus && typeof focus === "object") {
     if (focus.type === "node" && typeof focus.id === "string") {
-      out.focus = { type: "node", id: focus.id };
+      out.focus = {
+        type: "node",
+        id: focus.id,
+        ...(focus.direction === "in" ? { direction: "in" as const } : {}),
+      };
     } else if (
       focus.type === "edge" &&
       typeof focus.source === "string" &&

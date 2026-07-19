@@ -498,6 +498,13 @@ export const TransitionGraph = observer(function TransitionGraph({
   const [positionsVersion, setPositionsVersion] = React.useState(0);
   const [sceneMaskOpacity, setSceneMaskOpacity] = React.useState(0);
   const [focusedNodes, setFocusedNodes] = React.useState<string[]>([]);
+  // Node focus shows ONE direction at a time outside diff mode: click =
+  // outgoing, double-click = incoming. No color code needed — the shown
+  // edges stay neutral gray on the dimmed background. Diff mode always
+  // shows both directions (its red/blue is the natural code there).
+  const [focusDirection, setFocusDirection] = React.useState<"out" | "in">(
+    "out",
+  );
   // Edge-focus mode (click an edge) — mutually exclusive with focusedNodes.
   const [focusedEdge, setFocusedEdge] = React.useState<{
     source: string;
@@ -528,6 +535,7 @@ export const TransitionGraph = observer(function TransitionGraph({
     focusedNodes: string[];
     focusedEdge: { source: string; target: string } | null;
     focusedPath: string[] | null;
+    focusDirection: "out" | "in";
     population: { min: number; max: number } | null;
     hidden: string[];
     overlayEdges: Array<{ from: string; to: string }>;
@@ -731,12 +739,18 @@ export const TransitionGraph = observer(function TransitionGraph({
   // no upper zoom clamp (an isolated node would blow up to maxZoom) and
   // display:none elements still contribute to boundingBox.
   const fitNodeNeighborhood = React.useCallback(
-    (cy: Core, eventId: string) => {
+    (cy: Core, eventId: string, direction: "out" | "in" | "both" = "both") => {
       const node = cy.getElementById(eventId);
       if (node.length === 0) return;
-      const edges = node
-        .connectedEdges()
-        .filter((edge: cytoscape.EdgeSingular) => !edge.hasClass("filtered"));
+      const connected =
+        direction === "out"
+          ? node.outgoers("edge")
+          : direction === "in"
+            ? node.incomers("edge")
+            : node.connectedEdges();
+      const edges = connected.filter(
+        (edge: cytoscape.EdgeSingular) => !edge.hasClass("filtered"),
+      );
       const neighborhood = edges.union(edges.connectedNodes()).union(node);
       const bb = neighborhood.boundingBox();
       const padding = 60;
@@ -757,10 +771,11 @@ export const TransitionGraph = observer(function TransitionGraph({
     (eventId: string) => {
       const cy = cyRef.current;
       if (!cy) return;
-      fitNodeNeighborhood(cy, eventId);
+      fitNodeNeighborhood(cy, eventId, "out");
       // Focus the node persistently instead of a temporary highlight
       setActiveViewName(null);
       setFocusedEdge(null);
+      setFocusDirection("out");
       setFocusedNodes([eventId]);
       setSearchOpen(false);
     },
@@ -775,6 +790,7 @@ export const TransitionGraph = observer(function TransitionGraph({
       focusedNodes,
       focusedEdge,
       focusedPath,
+      focusDirection,
       population: store.populationCustomized
         ? { ...store.filters.population }
         : null,
@@ -789,7 +805,7 @@ export const TransitionGraph = observer(function TransitionGraph({
         ? { zoom: viewportRef.current.zoom, pan: { ...viewportRef.current.pan } }
         : null,
     };
-  }, [edgeFilter, focusedNodes, focusedEdge, focusedPath, store]);
+  }, [edgeFilter, focusedNodes, focusedEdge, focusedPath, focusDirection, store]);
 
   const setHiddenEvents = React.useCallback(
     (hidden: string[]) => {
@@ -822,6 +838,7 @@ export const TransitionGraph = observer(function TransitionGraph({
     setFocusedNodes(snap.focusedNodes);
     setFocusedEdge(snap.focusedEdge);
     setFocusedPath(snap.focusedPath);
+    setFocusDirection(snap.focusDirection);
     setPathSelecting(false);
   }, [store, setHiddenEvents]);
 
@@ -851,6 +868,7 @@ export const TransitionGraph = observer(function TransitionGraph({
       if (focus?.type === "node") {
         setFocusedEdge(null);
         setFocusedPath(null);
+        setFocusDirection(focus.direction === "in" ? "in" : "out");
         setFocusedNodes([focus.id]);
       } else if (focus?.type === "edge") {
         setFocusedNodes([]);
@@ -896,7 +914,11 @@ export const TransitionGraph = observer(function TransitionGraph({
     } else if (focusedEdge) {
       view.focus = { type: "edge", ...focusedEdge };
     } else if (focusedNodes.length === 1) {
-      view.focus = { type: "node", id: focusedNodes[0] };
+      view.focus = {
+        type: "node",
+        id: focusedNodes[0],
+        ...(focusDirection === "in" ? { direction: "in" as const } : {}),
+      };
     }
     view.edgeFilter = edgeFilter;
     if (store.populationCustomized) {
@@ -916,7 +938,7 @@ export const TransitionGraph = observer(function TransitionGraph({
       };
     }
     return view;
-  }, [edgeFilter, focusedNodes, focusedEdge, focusedPath, store]);
+  }, [edgeFilter, focusedNodes, focusedEdge, focusedPath, focusDirection, store]);
 
   React.useEffect(() => {
     if (applyViewRef) applyViewRef.current = applyView;
@@ -1357,10 +1379,6 @@ export const TransitionGraph = observer(function TransitionGraph({
     // Edge label text color: dark in dark theme (light outline), light in light theme (dark outline)
     const edgeLabelColor = isDark ? "#1f2937" : "#f3f4f6";
     const overlayColor = isDark ? "#fbbf24" : "#f59e0b"; // amber for AI overlay
-    // Focus palette: peach-orange + cool opposite tone, loops stay neutral gray.
-    const incomingFocusColor = isDark ? "167, 139, 250" : "99, 102, 241";
-    const outgoingFocusColor = isDark ? "251, 146, 60" : "234, 88, 12";
-    const loopFocusColor = isDark ? "156, 163, 175" : "107, 114, 128";
     const stylesheet: cytoscape.StylesheetStyle[] = [
       // Node styles
       {
@@ -1441,33 +1459,6 @@ export const TransitionGraph = observer(function TransitionGraph({
           },
           "text-outline-width": 4,
         } as any,
-      },
-      {
-        selector: "edge.focus-incoming",
-        style: {
-          "line-color": `rgb(${incomingFocusColor})`,
-          "target-arrow-color": `rgb(${incomingFocusColor})`,
-          "text-outline-color": `rgb(${incomingFocusColor})`,
-          "z-index": 9996,
-        },
-      },
-      {
-        selector: "edge.focus-outgoing",
-        style: {
-          "line-color": `rgb(${outgoingFocusColor})`,
-          "target-arrow-color": `rgb(${outgoingFocusColor})`,
-          "text-outline-color": `rgb(${outgoingFocusColor})`,
-          "z-index": 9997,
-        },
-      },
-      {
-        selector: "edge.focus-loop",
-        style: {
-          "line-color": `rgb(${loopFocusColor})`,
-          "target-arrow-color": `rgb(${loopFocusColor})`,
-          "text-outline-color": `rgb(${loopFocusColor})`,
-          "z-index": 9995,
-        },
       },
       // Self-loop styles - direction is updated after layout and node release.
       {
@@ -1694,10 +1685,30 @@ export const TransitionGraph = observer(function TransitionGraph({
         setFocusedEdge(null);
       } else {
         setFocusedNodes([nodeId]);
+        setFocusDirection("out");
         setFocusedEdge(null);
         setFocusedPath(null);
         setPathSelecting(false);
       }
+      store.applyPathEdges([]);
+      setActiveViewName(null);
+      setColorPicker(null);
+      setTooltip(null);
+    });
+
+    // Double-click switches the node focus to INCOMING transitions (a
+    // single click shows outgoing; the intermediate single-tap state is the
+    // same node's outgoing focus, so nothing is lost). Diff mode always
+    // shows both directions — no switch there.
+    cy.on("dbltap", "node", (event) => {
+      if (isDraggingRef.current || isDifferential) return;
+      const original = event.originalEvent as MouseEvent | undefined;
+      if (original?.metaKey || original?.ctrlKey) return; // path building
+      setFocusedNodes([event.target.id()]);
+      setFocusDirection("in");
+      setFocusedEdge(null);
+      setFocusedPath(null);
+      setPathSelecting(false);
       store.applyPathEdges([]);
       setActiveViewName(null);
       setColorPicker(null);
@@ -1919,15 +1930,14 @@ export const TransitionGraph = observer(function TransitionGraph({
       const activeFocusNodes = focusedNodes;
       const activeFocusEdge = focusedEdge;
       const activeFocusPath = focusedPath;
+      const activeFocusDirection = focusDirection;
       const resetFocusVisuals = () => {
         // Also drop stale dimmed/highlighted classes: an element left
         // `highlighted` by the previous focus target would win the opacity
         // battle in the next one (both classes → dimmed, then re-lit by the
         // ".highlighted" pass) and appear stuck at full brightness.
         cy.elements().removeClass("dimmed highlighted");
-        cy.elements().removeClass(
-          "focus-incoming focus-outgoing focus-loop focus-visible path-focus",
-        );
+        cy.elements().removeClass("focus-visible path-focus");
         // Clear transient inline opacity left by dimming animation.
         // Without this, some elements can stay visually dimmed after focus reset.
         cy.elements().forEach((element) => {
@@ -2014,13 +2024,47 @@ export const TransitionGraph = observer(function TransitionGraph({
                   edge.source().id() !== edge.target().id(),
               );
             candidateEdges.removeClass("dimmed").addClass("highlighted");
-            if (!isDifferential) {
-              candidateEdges.addClass("focus-outgoing");
-            }
             candidateEdges
               .targets()
               .removeClass("dimmed")
               .addClass("highlighted");
+
+            // Re-weight the candidates against each other, exactly like the
+            // outgoing edges of a node focus: thin-in-global-context edges
+            // grow in the context of the tip node.
+            let maxCandidate = 0;
+            candidateEdges.forEach((edge: cytoscape.EdgeSingular) => {
+              const w = Math.abs(edge.data("weight") as number);
+              if (w > maxCandidate) maxCandidate = w;
+            });
+            candidateEdges.forEach((edge: cytoscape.EdgeSingular) => {
+              const weight = Math.abs(edge.data("weight") as number);
+              const relativeWeight =
+                maxCandidate > 0 ? weight / maxCandidate : 0;
+              const startWidth = edge.data("edgeSize") as number;
+              const targetWidth = 2 + relativeWeight * 9;
+              const baseValue = edge.data("baseValue") as string;
+              const isFlipped =
+                edge.source().position().x > edge.target().position().x;
+              const showLabel =
+                progress > 0.2 &&
+                relativeWeight >= FOCUS_LABEL_MIN_VISIBLE_RATIO;
+              edge.style({
+                width: startWidth + (targetWidth - startWidth) * progress,
+                label: showLabel
+                  ? isFlipped
+                    ? `← ${baseValue}`
+                    : `${baseValue} →`
+                  : "",
+                "font-size": showLabel ? 13 + relativeWeight * 6 : "",
+                "target-arrow-shape":
+                  relativeWeight >= FOCUS_ARROW_MIN_VISIBLE_RATIO
+                    ? "triangle"
+                    : "none",
+                "text-background-opacity": 0,
+                "text-background-padding": 0,
+              });
+            });
           }
         }
 
@@ -2117,10 +2161,6 @@ export const TransitionGraph = observer(function TransitionGraph({
         });
 
         const isLoop = edge.data("isSelfLoop") as boolean;
-        if (!isDifferential) {
-          edge.addClass(isLoop ? "focus-loop" : "focus-outgoing");
-        }
-
         const baseValue = edge.data("baseValue") as string;
         const sourcePos = edge.source().position();
         const targetPos = edge.target().position();
@@ -2147,16 +2187,21 @@ export const TransitionGraph = observer(function TransitionGraph({
       // ── Node focus ──
       const focusedSet = new Set(activeFocusNodes);
 
-      // Union of all edges connected to any focused node
+      // Union of the focused nodes' edges. Outside diff mode only ONE
+      // direction is shown at a time (activeFocusDirection; self-loops
+      // always shown) — diff mode keeps both directions.
       const allConnectedEdges = activeFocusNodes.reduce((acc, nodeId) => {
         const n = cy.getElementById(nodeId);
         if (n.length === 0) return acc;
         return acc.union(
-          n
-            .connectedEdges()
-            .filter(
-              (edge: cytoscape.EdgeSingular) => !edge.hasClass("filtered"),
-            ),
+          n.connectedEdges().filter((edge: cytoscape.EdgeSingular) => {
+            if (edge.hasClass("filtered")) return false;
+            if (isDifferential) return true;
+            if (edge.source().id() === edge.target().id()) return true;
+            return activeFocusDirection === "out"
+              ? focusedSet.has(edge.source().id())
+              : focusedSet.has(edge.target().id());
+          }),
         ) as cytoscape.EdgeCollection;
       }, cy.collection() as cytoscape.EdgeCollection);
       const allConnectedNodes = allConnectedEdges.connectedNodes();
@@ -2310,10 +2355,6 @@ export const TransitionGraph = observer(function TransitionGraph({
           relativeWeight >= FOCUS_ARROW_MIN_VISIBLE_RATIO ||
           ((edge.data("showBaseArrow") as boolean) && relativeWeight >= 0.14);
 
-        if (!isDifferential) {
-          edge.addClass("focus-incoming");
-        }
-
         edge.style({
           width: currentWidth,
           label,
@@ -2339,10 +2380,6 @@ export const TransitionGraph = observer(function TransitionGraph({
           relativeWeight >= FOCUS_ARROW_MIN_VISIBLE_RATIO ||
           ((edge.data("showBaseArrow") as boolean) && relativeWeight >= 0.14);
 
-        if (!isDifferential) {
-          edge.addClass("focus-outgoing");
-        }
-
         edge.style({
           width: currentWidth,
           label,
@@ -2363,11 +2400,6 @@ export const TransitionGraph = observer(function TransitionGraph({
         const showArrow =
           relativeWeight >= FOCUS_ARROW_MIN_VISIBLE_RATIO ||
           ((edge.data("showBaseArrow") as boolean) && relativeWeight >= 0.14);
-        // In diff mode self-loops keep their red/blue diff color, like every
-        // other edge — the gray focus-loop class applies only to normal mode.
-        if (!isDifferential) {
-          edge.addClass("focus-loop");
-        }
         edge.style({
           width: (edge.data("edgeSize") as number) + progress * 2,
           label,
@@ -2412,7 +2444,14 @@ export const TransitionGraph = observer(function TransitionGraph({
         cy.getElementById(nodeId).style("font-size", 17);
       });
     },
-    [focusedNodes, focusedEdge, focusedPath, pathSelecting, isDifferential],
+    [
+      focusedNodes,
+      focusedEdge,
+      focusedPath,
+      focusDirection,
+      pathSelecting,
+      isDifferential,
+    ],
   );
   applyFocusStateRef.current = applyFocusState;
 
@@ -2510,7 +2549,11 @@ export const TransitionGraph = observer(function TransitionGraph({
         const focus = pending.focus;
         if (viewport !== "fit" && focus) {
           if (focus.type === "node") {
-            fitNodeNeighborhood(cy, focus.id);
+            fitNodeNeighborhood(
+              cy,
+              focus.id,
+              isDifferential ? "both" : focus.direction === "in" ? "in" : "out",
+            );
             return;
           }
           if (focus.type === "edge") {
@@ -2740,7 +2783,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           mode={
             isDifferential
               ? "diff"
-              : focusedNodes.length > 0 || focusedEdge
+              : focusedNodes.length > 0
                 ? "focus"
                 : "normal"
           }
@@ -2749,6 +2792,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           diffLabel1={diffLabels.value1Label}
           diffLabel2={diffLabels.value2Label}
           widgetId={sharedPreferencesId}
+          focusDirection={focusDirection}
           // Exported HTML starts with the legend collapsed — reports embed
           // several widgets and an open legend eats canvas space.
           defaultCollapsed={host === null}

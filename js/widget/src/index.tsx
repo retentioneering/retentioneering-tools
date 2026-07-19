@@ -10,6 +10,9 @@ import {
   type StoredPosition,
   type StoredViewport,
   type EdgeFilterSpec,
+  type GraphView,
+  parseGraphView,
+  decodeGraphView,
   DEFAULT_VALUE_TYPE,
 } from "@retentioneering/viz-core";
 
@@ -215,6 +218,47 @@ export function render({ host, el, isStatic = false }: RenderContext) {
       host.set("viewport", JSON.stringify(viewport));
     }, []);
 
+    // GraphView: named pills from the `views` traitlet; the initial view is
+    // a JSON object, a name from `views`, or (in static exports) a base64url
+    // string injected from the #view= URL fragment.
+    const [graphViews, setGraphViews] = React.useState<GraphView[]>(() =>
+      parseJson<unknown[]>(host.get("views") || "[]", [])
+        .map((raw) => parseGraphView(raw))
+        .filter((v): v is GraphView => v !== null),
+    );
+    useHostSubscriptions(host, [
+      ["views", () =>
+        setGraphViews(
+          parseJson<unknown[]>(host.get("views") || "[]", [])
+            .map((raw) => parseGraphView(raw))
+            .filter((v): v is GraphView => v !== null),
+        ),
+      ],
+    ]);
+    const initialGraphView = React.useMemo<GraphView | string | null>(() => {
+      const raw = (host.get("view") as string) || "";
+      if (!raw) return null;
+      const parsed = parseGraphView(raw);
+      if (parsed) return parsed;
+      const decoded = decodeGraphView(raw);
+      if (decoded) return decoded;
+      return raw; // plain name referencing an entry in `views`
+    }, []);
+    const applyViewRef = React.useRef<
+      ((view: GraphView | string) => void) | undefined
+    >(undefined);
+    // Expose per-root so analysis links (focusLink) can apply views/focus
+    // through the full GraphView pipeline.
+    React.useEffect(() => {
+      (el as HTMLElement & { __applyGraphView?: unknown }).__applyGraphView = (
+        view: GraphView | string,
+      ) => applyViewRef.current?.(view);
+      return () => {
+        delete (el as HTMLElement & { __applyGraphView?: unknown })
+          .__applyGraphView;
+      };
+    }, []);
+
     const graphArea = (
       <div style={{ flex: 1, position: "relative", overflow: "hidden", minWidth: 0 }}>
         <TransitionGraph
@@ -237,6 +281,9 @@ export function render({ host, el, isStatic = false }: RenderContext) {
           initialViewport={initialViewport}
           onViewportChange={handleViewportChange}
           fitRef={fitRef}
+          views={graphViews}
+          initialView={initialGraphView}
+          applyViewRef={applyViewRef}
         />
         <SidebarToggle onClick={handleToggleSidebar} />
         {isLoading && <ComputingSpinner opacity={0.55} />}

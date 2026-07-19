@@ -19,6 +19,11 @@ import { RangeSlider } from "./RangeSlider";
 import { SearchBar } from "./SearchBar";
 import { DiffBreakdownTooltip } from "./DiffBreakdownTooltip";
 import { GraphLegend } from "./GraphLegend";
+import {
+  type GraphView,
+  parseGraphView,
+  encodeGraphView,
+} from "./graph-view";
 
 // Register the fcose layout
 if (typeof cytoscape !== "undefined") {
@@ -288,6 +293,29 @@ function calculateSelfLoopDirection(node: cytoscape.NodeSingular): string {
   return `${bestAngle}deg`;
 }
 
+function fallbackCopyText(text: string): void {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand("copy");
+  } catch {
+    /* clipboard unavailable */
+  }
+  textarea.remove();
+}
+
+function copyTextToClipboard(text: string): void {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => fallbackCopyText(text));
+  } else {
+    fallbackCopyText(text);
+  }
+}
+
 function recalculateSelfLoopDirections(cy: Core, nodeIds?: Set<string>): void {
   const selfLoops = cy.edges("edge[source = target]");
   if (selfLoops.length === 0) return;
@@ -333,6 +361,14 @@ export interface TransitionGraphProps {
   onViewportChange?: (viewport: StoredViewport) => void;
   // ref that receives a fit() function — call to fit the graph to the canvas
   fitRef?: React.MutableRefObject<(() => void) | undefined>;
+  // GraphView: named visual presets rendered as pills above the graph
+  views?: GraphView[];
+  // view (or name from `views`) applied once after the first build
+  initialView?: GraphView | string | null;
+  // ref that receives applyView() — external entry point (analysis links)
+  applyViewRef?: React.MutableRefObject<
+    ((view: GraphView | string) => void) | undefined
+  >;
 }
 
 export const TransitionGraph = observer(function TransitionGraph({
@@ -357,6 +393,9 @@ export const TransitionGraph = observer(function TransitionGraph({
   initialViewport,
   onViewportChange,
   fitRef,
+  views,
+  initialView,
+  applyViewRef,
 }: TransitionGraphProps) {
   // internal state for uncontrolled valuesType
   const [internalValuesType, setInternalValuesType] = React.useState<MatrixValueType>(valuesTypeProp ?? DEFAULT_VALUE_TYPE);
@@ -407,6 +446,8 @@ export const TransitionGraph = observer(function TransitionGraph({
   );
   const handleEdgeFilterChange = React.useCallback(
     (filter: EdgeFilterSpec) => {
+      // User-driven filter change: the state diverged from any applied view
+      setActiveViewName(null);
       setEdgeFilterState(filter);
       onEdgeFilterChange?.(filter);
     },
@@ -462,6 +503,38 @@ export const TransitionGraph = observer(function TransitionGraph({
     source: string;
     target: string;
   } | null>(null);
+  // Path-focus mode (GraphView focus.type === "path" or an interactive
+  // Cmd/Ctrl+click selection): the amber overlay marks the route, this state
+  // dims everything outside it.
+  const [focusedPath, setFocusedPath] = React.useState<string[] | null>(null);
+  // True while the path is being assembled by Cmd/Ctrl+clicks: the dim is
+  // softer and node labels stay visible so the next node can still be found
+  // and clicked. Applied views (pills/links) dim at full strength.
+  const [pathSelecting, setPathSelecting] = React.useState(false);
+  // Mirrors for the cytoscape tap handlers (closures inside the build
+  // effect would otherwise see stale state).
+  const focusedNodesRef = React.useRef(focusedNodes);
+  focusedNodesRef.current = focusedNodes;
+  const focusedPathRef = React.useRef(focusedPath);
+  focusedPathRef.current = focusedPath;
+  // GraphView machinery: name of the last applied view pill (null = none /
+  // user diverged), the pre-view snapshot the Default pill restores, and a
+  // viewport request processed after the commit (post-rebuild) it triggered.
+  const [activeViewName, setActiveViewName] = React.useState<string | null>(
+    null,
+  );
+  const viewSnapshotRef = React.useRef<{
+    edgeFilter: EdgeFilterSpec;
+    focusedNodes: string[];
+    focusedEdge: { source: string; target: string } | null;
+    focusedPath: string[] | null;
+    population: { min: number; max: number } | null;
+    hidden: string[];
+    overlayEdges: Array<{ from: string; to: string }>;
+    viewport: StoredViewport | null;
+  } | null>(null);
+  const pendingViewViewportRef = React.useRef<GraphView | null>(null);
+  const [copiedView, setCopiedView] = React.useState(false);
   // Bumped after every cytoscape rebuild so effects that mutate the current cy
   // instance (filtering, label allocation) re-run against the new generation.
   const [graphVersion, setGraphVersion] = React.useState(0);
@@ -653,18 +726,14 @@ export const TransitionGraph = observer(function TransitionGraph({
     [store.events.size],
   );
 
-  const focusNodeFromSearch = React.useCallback(
-    (eventId: string) => {
-      const cy = cyRef.current;
-      if (!cy) return;
-
+  // Fit a node together with its visible neighborhood so none of its edges
+  // end outside the viewport. Manual zoom math because animate's `fit` has
+  // no upper zoom clamp (an isolated node would blow up to maxZoom) and
+  // display:none elements still contribute to boundingBox.
+  const fitNodeNeighborhood = React.useCallback(
+    (cy: Core, eventId: string) => {
       const node = cy.getElementById(eventId);
       if (node.length === 0) return;
-
-      // Fit the node together with its visible neighborhood so none of its
-      // edges end outside the viewport. Manual zoom math because animate's
-      // `fit` has no upper zoom clamp (an isolated node would blow up to
-      // maxZoom) and display:none elements still contribute to boundingBox.
       const edges = node
         .connectedEdges()
         .filter((edge: cytoscape.EdgeSingular) => !edge.hasClass("filtered"));
@@ -673,24 +742,185 @@ export const TransitionGraph = observer(function TransitionGraph({
       const padding = 60;
       const zoomX = bb.w > 0 ? (cy.width() - padding * 2) / bb.w : Infinity;
       const zoomY = bb.h > 0 ? (cy.height() - padding * 2) / bb.h : Infinity;
-      const zoom = Math.max(
-        Math.min(zoomX, zoomY, 2.2),
-        cy.minZoom(),
-      );
+      const zoom = Math.max(Math.min(zoomX, zoomY, 2.2), cy.minZoom());
       cy.animate({
         center: { eles: neighborhood },
         zoom: Number.isFinite(zoom) ? zoom : 2.2,
         duration: 350,
         easing: "ease-out-cubic",
       });
+    },
+    [],
+  );
 
+  const focusNodeFromSearch = React.useCallback(
+    (eventId: string) => {
+      const cy = cyRef.current;
+      if (!cy) return;
+      fitNodeNeighborhood(cy, eventId);
       // Focus the node persistently instead of a temporary highlight
+      setActiveViewName(null);
       setFocusedEdge(null);
       setFocusedNodes([eventId]);
       setSearchOpen(false);
     },
-    [setFocusedNodes],
+    [setFocusedNodes, fitNodeNeighborhood],
   );
+
+  // ── GraphView: apply / snapshot / reset ────────────────────────────────────
+
+  const captureViewSnapshot = React.useCallback(() => {
+    viewSnapshotRef.current = {
+      edgeFilter,
+      focusedNodes,
+      focusedEdge,
+      focusedPath,
+      population: store.populationCustomized
+        ? { ...store.filters.population }
+        : null,
+      hidden: Array.from(store.events.entries())
+        .filter(([, e]) => e.isHidden)
+        .map(([id]) => id),
+      overlayEdges: Array.from(store.overlayPathEdges).map((key: string) => {
+        const [from, to] = key.split("|");
+        return { from, to };
+      }),
+      viewport: viewportRef.current
+        ? { zoom: viewportRef.current.zoom, pan: { ...viewportRef.current.pan } }
+        : null,
+    };
+  }, [edgeFilter, focusedNodes, focusedEdge, focusedPath, store]);
+
+  const setHiddenEvents = React.useCallback(
+    (hidden: string[]) => {
+      const hiddenSet = new Set(hidden);
+      store.events.forEach((e, id) => {
+        const shouldHide = hiddenSet.has(id);
+        if (e.isHidden !== shouldHide) {
+          store.events.set(id, { ...e, isHidden: shouldHide });
+        }
+      });
+    },
+    [store],
+  );
+
+  // Restore the pre-view snapshot (shared by the Default pill and view
+  // switching — views are absolute presets over the Default state, so
+  // switching pills must not inherit leftovers from the previous view).
+  const restoreViewSnapshot = React.useCallback(() => {
+    const snap = viewSnapshotRef.current;
+    if (!snap) return;
+    setEdgeFilterState(snap.edgeFilter);
+    if (snap.population) {
+      store.setPopulationRange(snap.population.min, snap.population.max);
+    } else {
+      store.filters.population = { ...store.populationBounds };
+      store.populationCustomized = false;
+    }
+    setHiddenEvents(snap.hidden);
+    store.applyPathEdges(snap.overlayEdges);
+    setFocusedNodes(snap.focusedNodes);
+    setFocusedEdge(snap.focusedEdge);
+    setFocusedPath(snap.focusedPath);
+    setPathSelecting(false);
+  }, [store, setHiddenEvents]);
+
+  const applyView = React.useCallback(
+    (target: GraphView | string) => {
+      const view =
+        typeof target === "string"
+          ? (views ?? []).find((v) => v.name === target) ?? null
+          : parseGraphView(target);
+      if (!view) return;
+
+      // First view application: remember the state the Default pill
+      // restores. Subsequent ones: start from that baseline so views don't
+      // inherit each other's filters/focus.
+      if (!viewSnapshotRef.current) captureViewSnapshot();
+      else restoreViewSnapshot();
+
+      if (view.edgeFilter) setEdgeFilterState(view.edgeFilter);
+      if (view.eventCountFilter) {
+        store.setPopulationRange(...view.eventCountFilter);
+      }
+      if (view.hiddenEvents) setHiddenEvents(view.hiddenEvents);
+
+      store.applyPathEdges([]);
+      setPathSelecting(false); // applied views always dim at full strength
+      const focus = view.focus;
+      if (focus?.type === "node") {
+        setFocusedEdge(null);
+        setFocusedPath(null);
+        setFocusedNodes([focus.id]);
+      } else if (focus?.type === "edge") {
+        setFocusedNodes([]);
+        setFocusedPath(null);
+        setFocusedEdge({ source: focus.source, target: focus.target });
+      } else if (focus?.type === "path") {
+        setFocusedNodes([]);
+        setFocusedEdge(null);
+        setFocusedPath(focus.nodes);
+      } else {
+        setFocusedNodes([]);
+        setFocusedEdge(null);
+        setFocusedPath(null);
+      }
+
+      // Viewport is applied by a dedicated effect AFTER this commit's
+      // rebuild/filtering settled (hidden-event changes rebuild the graph).
+      pendingViewViewportRef.current = view;
+      setActiveViewName(view.name ?? null);
+    },
+    [views, captureViewSnapshot, restoreViewSnapshot, setHiddenEvents, store],
+  );
+
+  const resetToDefaultView = React.useCallback(() => {
+    const snap = viewSnapshotRef.current;
+    if (!snap) {
+      setActiveViewName(null);
+      return;
+    }
+    restoreViewSnapshot();
+    pendingViewViewportRef.current = {
+      viewport: snap.viewport ?? "fit",
+    };
+    setActiveViewName(null);
+  }, [restoreViewSnapshot]);
+
+  // Serialize the CURRENT live state as a GraphView — the "Copy view link"
+  // button (docs authors: click together the state, copy, paste).
+  const buildCurrentView = React.useCallback((): GraphView => {
+    const view: GraphView = { v: 1 };
+    if (focusedPath) {
+      view.focus = { type: "path", nodes: focusedPath };
+    } else if (focusedEdge) {
+      view.focus = { type: "edge", ...focusedEdge };
+    } else if (focusedNodes.length === 1) {
+      view.focus = { type: "node", id: focusedNodes[0] };
+    }
+    view.edgeFilter = edgeFilter;
+    if (store.populationCustomized) {
+      view.eventCountFilter = [
+        store.filters.population.min,
+        store.filters.population.max,
+      ];
+    }
+    const hidden = Array.from(store.events.entries())
+      .filter(([, e]) => e.isHidden)
+      .map(([id]) => id);
+    if (hidden.length > 0) view.hiddenEvents = hidden;
+    if (viewportRef.current) {
+      view.viewport = {
+        zoom: viewportRef.current.zoom,
+        pan: { ...viewportRef.current.pan },
+      };
+    }
+    return view;
+  }, [edgeFilter, focusedNodes, focusedEdge, focusedPath, store]);
+
+  React.useEffect(() => {
+    if (applyViewRef) applyViewRef.current = applyView;
+  });
 
   // Calculate max weight for the current view and value type
   const maxWeight = React.useMemo(() => {
@@ -1265,6 +1495,15 @@ export const TransitionGraph = observer(function TransitionGraph({
           display: "none",
         },
       },
+      // An explicitly focused edge outranks the edge filter (rule comes after
+      // edge.filtered, so it wins) — focusing an edge by name must show it
+      // even when the top-k/range filter would hide it.
+      {
+        selector: "edge.focus-visible",
+        style: {
+          display: "element",
+        } as any,
+      },
       // Dimmed edges in focus mode should not compete for attention/interactions.
       {
         selector: "edge.dimmed",
@@ -1294,14 +1533,20 @@ export const TransitionGraph = observer(function TransitionGraph({
       },
       // AI overlay highlighted edges (from highlight pills)
       {
-        selector: "edge.ai-overlay",
+        selector: "edge.ai-overlay, edge.path-focus",
         style: {
           width: 12,
+          "line-color": overlayColor,
+          "target-arrow-color": overlayColor,
           "line-style": "dashed",
           "line-dash-pattern": [5, 4],
           "line-dash-offset": 0,
           "target-arrow-shape": "triangle",
           "arrow-scale": 1.5,
+          opacity: 1,
+          // An explicit highlight outranks the edge filter (this rule comes
+          // after edge.filtered, so it wins and keeps the path visible)
+          display: "element",
           "z-index": 9999,
         } as any,
       },
@@ -1418,22 +1663,43 @@ export const TransitionGraph = observer(function TransitionGraph({
       releaseDrag(releasedNode.id());
     });
 
-    // Node click (focus mode); Shift+click toggles multi-select
+    // Node click (focus mode); Cmd/Ctrl+click assembles a PATH in click
+    // order, rendered as path focus (amber route, softly dimmed rest).
+    // Copy view link serializes it as focus.type === "path".
     cy.on("tap", "node", (event) => {
       if (isDraggingRef.current) return;
       const nodeId = event.target.id();
-      const isShift =
-        (event.originalEvent as MouseEvent | undefined)?.shiftKey ?? false;
-      if (isShift) {
-        setFocusedNodes((prev) =>
-          prev.includes(nodeId)
-            ? prev.filter((id) => id !== nodeId)
-            : [...prev, nodeId],
-        );
+      const original = event.originalEvent as MouseEvent | undefined;
+      const isMulti = (original?.metaKey || original?.ctrlKey) ?? false;
+      if (isMulti) {
+        // Continue from the current path, or start one from the currently
+        // focused node; clicking a selected node removes it again.
+        const base =
+          focusedPathRef.current ??
+          (focusedNodesRef.current.length === 1
+            ? [...focusedNodesRef.current]
+            : []);
+        const next = base.includes(nodeId)
+          ? base.filter((id) => id !== nodeId)
+          : [...base, nodeId];
+        if (next.length <= 1) {
+          setFocusedNodes(next);
+          setFocusedPath(null);
+          setPathSelecting(false);
+        } else {
+          setFocusedNodes([]);
+          setFocusedPath(next);
+          setPathSelecting(true);
+        }
+        setFocusedEdge(null);
       } else {
         setFocusedNodes([nodeId]);
+        setFocusedEdge(null);
+        setFocusedPath(null);
+        setPathSelecting(false);
       }
-      setFocusedEdge(null);
+      store.applyPathEdges([]);
+      setActiveViewName(null);
       setColorPicker(null);
       setTooltip(null);
     });
@@ -1501,6 +1767,10 @@ export const TransitionGraph = observer(function TransitionGraph({
 
       setFocusedNodes([]);
       setFocusedEdge({ source, target });
+      setFocusedPath(null);
+      setPathSelecting(false);
+      store.applyPathEdges([]);
+      setActiveViewName(null);
       setColorPicker(null);
       setTooltip(null);
 
@@ -1517,6 +1787,10 @@ export const TransitionGraph = observer(function TransitionGraph({
       if (event.target === cy) {
         setFocusedNodes([]);
         setFocusedEdge(null);
+        setFocusedPath(null);
+        setPathSelecting(false);
+        store.applyPathEdges([]);
+        setActiveViewName(null);
         setColorPicker(null);
         setTooltip(null);
       }
@@ -1639,13 +1913,21 @@ export const TransitionGraph = observer(function TransitionGraph({
     }
   }, [store.overlayPathEdges, store.overlayPathEdges.size]);
 
-  // Apply focus state (focused nodes OR a focused edge) to elements
+  // Apply focus state (focused nodes, edge, OR path) to elements
   const applyFocusState = React.useCallback(
     (cy: Core, progress: number) => {
       const activeFocusNodes = focusedNodes;
       const activeFocusEdge = focusedEdge;
+      const activeFocusPath = focusedPath;
       const resetFocusVisuals = () => {
-        cy.elements().removeClass("focus-incoming focus-outgoing focus-loop");
+        // Also drop stale dimmed/highlighted classes: an element left
+        // `highlighted` by the previous focus target would win the opacity
+        // battle in the next one (both classes → dimmed, then re-lit by the
+        // ".highlighted" pass) and appear stuck at full brightness.
+        cy.elements().removeClass("dimmed highlighted");
+        cy.elements().removeClass(
+          "focus-incoming focus-outgoing focus-loop focus-visible path-focus",
+        );
         // Clear transient inline opacity left by dimming animation.
         // Without this, some elements can stay visually dimmed after focus reset.
         cy.elements().forEach((element) => {
@@ -1684,11 +1966,99 @@ export const TransitionGraph = observer(function TransitionGraph({
       };
 
       if (
-        (activeFocusNodes.length === 0 && !activeFocusEdge) ||
+        (activeFocusNodes.length === 0 &&
+          !activeFocusEdge &&
+          !activeFocusPath) ||
         progress <= 0
       ) {
         cy.elements().removeClass("dimmed highlighted");
         resetFocusVisuals();
+        return;
+      }
+
+      // ── Path focus: dim everything outside the highlighted route (the
+      // amber path-focus class marks the route itself). While the path is
+      // being assembled by Cmd/Ctrl+clicks, the tip's visible outgoing
+      // edges and their targets stay lit — the candidates for the next
+      // click. ──
+      if (activeFocusPath && activeFocusPath.length >= 2) {
+        resetFocusVisuals();
+        cy.elements().addClass("dimmed");
+
+        let pathEles = cy.collection();
+        activeFocusPath.forEach((nodeId, i) => {
+          const node = cy.getElementById(nodeId);
+          if (node.length > 0) pathEles = pathEles.union(node);
+          if (i < activeFocusPath.length - 1) {
+            const edge = cy.getElementById(
+              `${nodeId}-${activeFocusPath[i + 1]}`,
+            );
+            if (edge.length > 0) {
+              edge.addClass("path-focus");
+              pathEles = pathEles.union(edge);
+            }
+          }
+        });
+        pathEles.removeClass("dimmed").addClass("highlighted");
+
+        if (pathSelecting) {
+          const tip = cy.getElementById(
+            activeFocusPath[activeFocusPath.length - 1],
+          );
+          if (tip.length > 0) {
+            const candidateEdges = tip
+              .outgoers("edge")
+              .filter(
+                (edge: cytoscape.EdgeSingular) =>
+                  !edge.hasClass("filtered") &&
+                  edge.source().id() !== edge.target().id(),
+              );
+            candidateEdges.removeClass("dimmed").addClass("highlighted");
+            if (!isDifferential) {
+              candidateEdges.addClass("focus-outgoing");
+            }
+            candidateEdges
+              .targets()
+              .removeClass("dimmed")
+              .addClass("highlighted");
+          }
+        }
+
+        const dimOpacity = 1 - progress * 0.9;
+        cy.elements(".dimmed").forEach((element) => {
+          element.style("opacity", dimOpacity);
+        });
+        cy.edges(".dimmed").forEach((dimmedEdge) => {
+          dimmedEdge.style({
+            label: "",
+            "font-size": "",
+            "target-arrow-shape": "none",
+            "text-background-opacity": 0,
+            "text-background-padding": 0,
+          });
+        });
+        cy.elements(".highlighted").forEach((element) => {
+          element.style("opacity", 1);
+        });
+        cy.nodes(".dimmed").forEach((nodeElement) => {
+          nodeElement.style(
+            "label",
+            progress > 0.35 ? "" : nodeElement.data("label"),
+          );
+        });
+
+        // Route weights along the highlighted edges
+        pathEles.edges().forEach((edge) => {
+          edge.style({
+            label: progress > 0.2 ? (edge.data("baseValue") as string) : "",
+            "font-size": 13,
+            "text-background-opacity": 0,
+            "text-background-padding": 0,
+          });
+        });
+        pathEles.nodes().forEach((nodeElement) => {
+          nodeElement.style("font-size", 15);
+        });
         return;
       }
 
@@ -1706,6 +2076,8 @@ export const TransitionGraph = observer(function TransitionGraph({
         resetFocusVisuals();
         cy.elements().addClass("dimmed");
         const endpoints = edge.connectedNodes();
+        // The focused edge must be visible even when the edge filter hides it
+        edge.addClass("focus-visible");
         edge.removeClass("dimmed").addClass("highlighted");
         endpoints.removeClass("dimmed").addClass("highlighted");
 
@@ -2040,7 +2412,7 @@ export const TransitionGraph = observer(function TransitionGraph({
         cy.getElementById(nodeId).style("font-size", 17);
       });
     },
-    [focusedNodes, focusedEdge, isDifferential],
+    [focusedNodes, focusedEdge, focusedPath, pathSelecting, isDifferential],
   );
   applyFocusStateRef.current = applyFocusState;
 
@@ -2083,7 +2455,8 @@ export const TransitionGraph = observer(function TransitionGraph({
       focusAnimationFrameRef.current = null;
     }
 
-    const target = focusedNodes.length > 0 || focusedEdge ? 1 : 0;
+    const target =
+      focusedNodes.length > 0 || focusedEdge || focusedPath ? 1 : 0;
 
     const animate = () => {
       const current = focusProgressRef.current;
@@ -2111,7 +2484,80 @@ export const TransitionGraph = observer(function TransitionGraph({
         focusAnimationFrameRef.current = null;
       }
     };
-  }, [focusedNodes, focusedEdge, applyFocusState]);
+  }, [focusedNodes, focusedEdge, focusedPath, applyFocusState]);
+
+  // Apply the viewport requested by a view AFTER the commit it triggered has
+  // fully settled — declared after the build/filter effects so it runs last
+  // in the same commit (hidden-event changes rebuild the cy instance).
+  // Double rAF: the build effect schedules its own fit in a rAF; running one
+  // frame later guarantees the view's viewport wins the race.
+  React.useEffect(() => {
+    const pending = pendingViewViewportRef.current;
+    if (!pending) return;
+    pendingViewViewportRef.current = null;
+    const cy = cyRef.current;
+    if (!cy) return;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cyRef.current !== cy) return;
+
+        const viewport = pending.viewport;
+        if (viewport && viewport !== "fit" && viewport !== "fit-focus") {
+          cy.viewport({ zoom: viewport.zoom, pan: { ...viewport.pan } });
+          return;
+        }
+        const focus = pending.focus;
+        if (viewport !== "fit" && focus) {
+          if (focus.type === "node") {
+            fitNodeNeighborhood(cy, focus.id);
+            return;
+          }
+          if (focus.type === "edge") {
+            const edge = cy.getElementById(`${focus.source}-${focus.target}`);
+            if (edge.length > 0) {
+              cy.animate({
+                fit: { eles: edge.union(edge.connectedNodes()), padding: 100 },
+                duration: 350,
+                easing: "ease-out-cubic",
+              });
+              return;
+            }
+          }
+          if (focus.type === "path") {
+            let eles = cy.collection();
+            focus.nodes.slice(0, -1).forEach((from, i) => {
+              const edge = cy.getElementById(`${from}-${focus.nodes[i + 1]}`);
+              if (edge.length > 0) {
+                eles = eles.union(edge).union(edge.connectedNodes());
+              }
+            });
+            if (eles.length > 0) {
+              cy.animate({
+                fit: { eles, padding: 120 },
+                duration: 350,
+                easing: "ease-out-cubic",
+              });
+              return;
+            }
+          }
+        }
+        cy.fit(undefined, FIT_PADDING);
+      });
+    });
+  });
+
+  // Apply the initial view (traitlet / URL hash) once, after the graph is
+  // built and the backend layout has settled — fit-focus needs final
+  // positions.
+  const initialViewAppliedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (initialViewAppliedRef.current) return;
+    if (!initialView) return;
+    if (graphVersion === 0 || isGraphLayoutLoading) return;
+    initialViewAppliedRef.current = true;
+    applyView(initialView);
+  }, [initialView, graphVersion, isGraphLayoutLoading, applyView]);
 
   // Inline button style helper
   const btnStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
@@ -2229,6 +2675,62 @@ export const TransitionGraph = observer(function TransitionGraph({
         )}
       </div>
 
+      {/* GraphView pills: named visual presets + return to Default */}
+      {(views?.length ?? 0) > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: 10,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 20,
+            display: "flex",
+            gap: 6,
+            flexWrap: "wrap",
+            justifyContent: "center",
+            maxWidth: "55%",
+          }}
+        >
+          <button
+            onClick={resetToDefaultView}
+            style={btnStyle({
+              padding: "3px 10px",
+              borderRadius: 999,
+              ...(activeViewName === null
+                ? {
+                    background: isDark ? "#374151" : "#fef3c7",
+                    borderColor: isDark ? "#6b7280" : "#f59e0b",
+                    fontWeight: 600,
+                  }
+                : {}),
+            })}
+          >
+            Default
+          </button>
+          {views!
+            .filter((view) => view.name)
+            .map((view) => (
+              <button
+                key={view.name}
+                onClick={() => applyView(view)}
+                style={btnStyle({
+                  padding: "3px 10px",
+                  borderRadius: 999,
+                  ...(activeViewName === view.name
+                    ? {
+                        background: isDark ? "#374151" : "#fef3c7",
+                        borderColor: isDark ? "#6b7280" : "#f59e0b",
+                        fontWeight: 600,
+                      }
+                    : {}),
+                })}
+              >
+                {view.name}
+              </button>
+            ))}
+        </div>
+      )}
+
       {/* Contextual legend + coverage indicator */}
       <div style={{ position: "absolute", left: 16, bottom: 12, zIndex: 20 }}>
         <GraphLegend
@@ -2247,6 +2749,9 @@ export const TransitionGraph = observer(function TransitionGraph({
           diffLabel1={diffLabels.value1Label}
           diffLabel2={diffLabels.value2Label}
           widgetId={sharedPreferencesId}
+          // Exported HTML starts with the legend collapsed — reports embed
+          // several widgets and an open legend eats canvas space.
+          defaultCollapsed={host === null}
         />
       </div>
 
@@ -2455,6 +2960,39 @@ export const TransitionGraph = observer(function TransitionGraph({
             Color Edge
           </button>
         )}
+        <button
+          onClick={() => {
+            const view = buildCurrentView();
+            // Static export: a shareable URL with the view in the hash.
+            // Live widget: a JSON snippet for views=[...] / export links.
+            const text =
+              host === null
+                ? `${window.location.href.split("#")[0]}#view=${encodeGraphView(view)}`
+                : JSON.stringify(view);
+            copyTextToClipboard(text);
+            setCopiedView(true);
+            window.setTimeout(() => setCopiedView(false), 1500);
+          }}
+          aria-label="Copy view link"
+          data-rete-tooltip={
+            copiedView
+              ? "Copied!"
+              : host === null
+                ? "Copy view link (URL with current focus & filters)"
+                : "Copy current view as JSON (for views=[...])"
+          }
+          style={btnStyle({
+            width: 32,
+            height: 32,
+            padding: 0,
+            justifyContent: "center",
+          })}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+        </button>
         <button
           onClick={() => cyRef.current?.fit(undefined, FIT_PADDING)}
           aria-label="Fit graph to canvas"

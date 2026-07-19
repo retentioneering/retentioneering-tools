@@ -64,6 +64,25 @@ def test_report_html_escapes_title(tmp_path):
     assert f'<div id="analysis-title">{escaped}</div>' in html
 
 
+def test_render_analysis_view_link():
+    html = _html_export.render_analysis(
+        "Drop-off is visible in [Flow:view=Checkout].",
+        label_map={
+            "Flow": {
+                "tab_id": "tab-0",
+                "widget_type": "transition_graph",
+                "segment_col": "",
+            }
+        },
+    )
+
+    assert 'data-view="Checkout"' in html
+    assert 'data-tab="tab-0"' in html
+    assert ">Checkout</a>" in html
+    # view= refs must not fall through to the data-node form
+    assert "data-node" not in html
+
+
 def test_bare_html_escapes_script_breakout_and_title(tmp_path):
     data = {"widget_type": "step_matrix", "note": XSS_VALUE}
     out = tmp_path / "widget.html"

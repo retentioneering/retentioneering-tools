@@ -277,6 +277,7 @@ def _build_server(
         edge_weight: str = "proba_out",
         diff: list | None = None,
         path_col: str | None = None,
+        views: list | None = None,
         local_preprocessors: list | None = None,
     ) -> str:
         """
@@ -298,6 +299,17 @@ def _build_server(
             Optional diff: [segment_col, value1, value2].
         path_col:
             Override the path ID column.
+        views:
+            Optional named visual presets rendered as pills above the graph and
+            addressable from the analysis text as [label:view=Name]. Each view is
+            {"name": str, "focus"?: {"type": "node", "id": e} |
+            {"type": "edge", "source": a, "target": b} |
+            {"type": "path", "nodes": [e1, e2, ...]},
+            "edgeFilter"?: {"mode": "topk", "k": n} | {"mode": "range", "range": [lo, hi]},
+            "hiddenEvents"?: [e, ...]}. Views change only the visual state
+            (focus, filters, viewport) — never the computed data. Add one view
+            per key claim of your analysis so the reader lands on the exact
+            picture the claim describes.
 
         Returns
         -------
@@ -311,7 +323,7 @@ def _build_server(
             applies to multiple visualisations.
         """
         result = tools.add_transition_graph(
-            session, label, edge_weight, diff, path_col, local_preprocessors
+            session, label, edge_weight, diff, path_col, views, local_preprocessors
         )
         return json.dumps(result, ensure_ascii=False)
 

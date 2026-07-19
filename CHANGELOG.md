@@ -25,6 +25,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Transition graph: edge focus — clicking an edge dims everything else, fits
   the node pair, and shows the weight label; edge coloring moved to a
   toolbar button shown while an edge is focused
+- Transition graph: GraphView — serializable named visual presets (focus on
+  a node/edge/path, filters, hidden events, viewport; never data
+  parameters). Entry points: `transition_graph(views=[...], view=...)`
+  kwargs rendered as pills with a Default reset, a "Copy view link" toolbar
+  button, a `#view=<base64url>` URL fragment on exported HTML,
+  `[Tab:view=Name]` links in MCP report analysis (plus a `views=` parameter
+  on the MCP `add_transition_graph` tool). Node/edge analysis links now go
+  through the same pipeline, so edge links in exported reports use the
+  proper edge focus instead of the marching-ants animation
 
 ### Changed
 

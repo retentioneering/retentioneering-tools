@@ -1730,6 +1730,8 @@ class Eventstream:
         path_col=None,
         height=None,
         sidebar_open=None,
+        views=None,
+        view=None,
         state_file=None,
     ):
         """
@@ -1752,6 +1754,18 @@ class Eventstream:
             Widget height in pixels.
         sidebar_open : bool, default True
             Whether the sidebar starts open.
+        views : list of dict, optional
+            Named visual presets rendered as pills above the graph. Each view
+            is a dict with the keys `name`, `focus`, `edgeFilter`,
+            `eventCountFilter`, `hiddenEvents`, `viewport` (all optional
+            except `name`) and describes only how the graph is *displayed* —
+            never the computed data. See the
+            [Views](/docs/widgets/transition-graph#views) section for a
+            detailed description of every key.
+        view : dict or str, optional
+            View applied once after the graph is built: a view dict (`name`
+            not required), or the name of an entry in `views`. See the
+            [Views](/docs/widgets/transition-graph#views) section.
         state_file : str, optional
             JSON file the widget state is bound to; see
             [Saving widget state](/docs/widgets#saving-widget-state).
@@ -1761,6 +1775,10 @@ class Eventstream:
             stream.transition_graph()
             stream.transition_graph(edge_weight="count", diff=("plan", "pro", "free"))
             stream.transition_graph(state_file="checkout_graph.json")
+            stream.transition_graph(
+                views=[{"name": "Checkout", "focus": {"type": "node", "id": "cart"}}],
+                view="Checkout",
+            )
         """
         from retentioneering.widgets.transition_graph import (
             TransitionGraphWidget,
@@ -1774,6 +1792,8 @@ class Eventstream:
             path_col=path_col if path_col is not None else _UNSET,
             height=height if height is not None else _UNSET,
             sidebar_open=sidebar_open if sidebar_open is not None else _UNSET,
+            views=views if views is not None else _UNSET,
+            view=view if view is not None else _UNSET,
             state_file=state_file,
         )
 

@@ -11,6 +11,9 @@ interface GraphLegendProps {
   diffLabel1?: string | null;
   diffLabel2?: string | null;
   widgetId: string;
+  /** Initial state when the user hasn't toggled the legend yet (persisted
+   *  toggles always win). Static HTML exports start collapsed. */
+  defaultCollapsed?: boolean;
 }
 
 const VALUE_TYPE_LABELS: Record<MatrixValueType, string> = {
@@ -67,13 +70,17 @@ export function GraphLegend({
   diffLabel1,
   diffLabel2,
   widgetId,
+  defaultCollapsed = false,
 }: GraphLegendProps) {
   const storageKey = `transition-graph-legend:${widgetId}`;
   const [collapsed, setCollapsed] = React.useState<boolean>(() => {
     try {
-      return window.localStorage.getItem(storageKey) === "collapsed";
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored === "collapsed") return true;
+      if (stored === "open") return false;
+      return defaultCollapsed;
     } catch {
-      return false;
+      return defaultCollapsed;
     }
   });
   const toggleCollapsed = React.useCallback(() => {
@@ -224,7 +231,7 @@ export function GraphLegend({
 
       <div style={{ ...rowStyle, color: mutedColor, flexWrap: "wrap", rowGap: 0 }}>
         <span>click node = focus · click edge = inspect</span>
-        <span>⇧click = multi-select · click canvas = reset</span>
+        <span>⌘/ctrl+click = select path · click canvas = reset</span>
       </div>
     </div>
   );

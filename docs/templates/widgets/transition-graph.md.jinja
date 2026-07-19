@@ -5,6 +5,78 @@
 
 {{ bullets(headless.parameters, "edge_weight") }}
 
+### Views
+
+`views` is a list of named **visual presets** rendered as pills above the
+graph; `view` applies one of them (or an inline preset) right after the graph
+is built. A view describes only how the graph is *displayed* — focus,
+filters, hidden events, viewport — never the computed data, so the same view
+works identically in the live widget, in exported HTML (including the
+`#view=<base64url>` URL fragment) and in MCP report tabs
+(`[Tab:view=Name]` links in the analysis text).
+
+Applying a pill always starts from the Default state — views do not inherit
+each other's settings — and the Default pill returns exactly the state the
+widget had before the first view was applied. Any manual interaction
+(clicking a node, moving a filter) deselects the active pill.
+
+| Key | Type | Description |
+|---|---|---|
+| `name` | `str` | Pill label; also the handle for `view="Name"` and `[Tab:view=Name]` links. Required for pills, optional for inline `view=` presets. |
+| `focus` | `dict, optional` | Dim everything except the focused element(s): a node, an edge, or a path. See [focus](#focus). |
+| `edgeFilter` | `dict, optional` | Edge filter override — the Auto/Manual control at the bottom right. See [edgeFilter](#edgefilter). |
+| `eventCountFilter` | `[min, max], optional` | Event-count (node) filter in absolute occurrence counts — the sidebar's Event Count slider. |
+| `hiddenEvents` | `list of str, optional` | Events hidden in this view. |
+| `viewport` | `str or dict, optional` | Camera control. See [viewport](#viewport). |
+
+#### focus
+
+- `{"type": "node", "id": "cart"}` — focus one event: everything else dims,
+  incoming edges are colored violet, outgoing orange, and the viewport fits
+  the node together with its neighborhood.
+- `{"type": "edge", "source": "cart", "target": "checkout"}` — focus one
+  transition: the edge and its two nodes stay bright (the edge is shown even
+  when the edge filter would hide it), the weight label is forced on, and the
+  viewport fits the pair.
+- `{"type": "path", "nodes": ["main", "catalog", "cart"]}` — highlight a
+  route of two or more events: consecutive transitions are drawn as an amber
+  dashed overlay (visible through the edge filter), weight labels appear
+  along the route, and everything outside the route dims. Segments with no
+  direct transition in the data are skipped.
+
+Omitting `focus` means "no focus" — the view only applies filters and the
+viewport.
+
+#### edgeFilter
+
+- `{"mode": "topk", "k": 3}` — the Auto mode: keep each node's `k` strongest
+  outgoing edges (plus every node's single strongest incoming edge, so no
+  node is left unconnected).
+- `{"mode": "range", "range": [0.05, 1]}` — the Manual mode: a weight range
+  normalized to 0..1. For probability weights the bounds are the
+  probabilities themselves; for other weight types they are fractions of the
+  largest weight on the graph.
+
+#### viewport
+
+- `"fit"` — fit the whole graph.
+- `"fit-focus"` — fit the focused node/edge/path; this is the default
+  whenever `focus` is present.
+- `{"zoom": 1.4, "pan": {"x": 350, "y": 220}}` — an exact camera position.
+
+The easiest way to author a view is the **Copy view link** toolbar button:
+arrange the graph by hand and click it — the current state (including the
+exact viewport) is copied as a JSON snippet for `views=[...]` in the live
+widget, or as a shareable `#view=` URL in exported HTML. To author a *path*
+view by mouse: click the route's first event, then Cmd/Ctrl+click the
+following events **in route order** — after every click, the outgoing edges
+of the route's last event stay lit, so the candidates for the next click are
+always visible (Cmd/Ctrl+clicking a selected event removes it again). Then
+Copy view link
+serializes the selection as `{"type": "path", ...}`. Note that transitions
+are directed: the route follows the click order, and segments with no direct
+transition in the data are skipped when the view is applied.
+
 {% endblock %}
 
 {% block demo_examples %}
@@ -18,5 +90,30 @@
 
 ### Diff mode
 <DemoWidget cmd={`stream.transition_graph(diff=["platform", "mobile", "desktop"])`} path="/docs-demos/widgets/transition-graph/diff.html" height={560} />
+
+### Views
+<DemoWidget cmd={`stream.transition_graph(
+    views=[
+        {
+            "name": "Cart",
+            "focus": {"type": "node", "id": "cart"},
+            "edgeFilter": {"mode": "topk", "k": 2}
+        },
+        {
+            "name": "Checkout path",
+            "focus": {
+                "type": "path",
+                "nodes": ["cart", "shipping_details", "payment_details", "purchase"]
+            }
+        },
+        {
+            "name": "Big picture",
+            "edgeFilter": {"mode": "range", "range": [0.10, 1]},
+            "eventCountFilter": [500, 7000]
+        },
+    ],
+    view="Checkout path",
+    sidebar_open=False
+)`} path="/docs-demos/widgets/transition-graph/views.html" height={560}/>
 
 {% endblock %}

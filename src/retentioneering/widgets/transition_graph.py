@@ -39,6 +39,14 @@ class TransitionGraphWidget(RetentioneeringWidget):
     event_count_filter = traitlets.Unicode("").tag(sync=True)
     # "" | '{"zoom": z, "pan": {"x": x, "y": y}}' — canvas zoom/pan
     viewport = traitlets.Unicode("").tag(sync=True)
+    # ── GraphView: named visual presets (see js/.../graph-view.ts) ─────────────
+    # JSON list of view objects — rendered as pills, addressable by name.
+    # Views describe only the VISUAL state (focus/filters/viewport), never
+    # data parameters, so they work identically in static exports.
+    views = traitlets.Unicode("[]").tag(sync=True)
+    # Initial view: JSON view object, a name from `views`, or (static export
+    # only) a base64url blob injected from the #view= URL fragment.
+    view = traitlets.Unicode("").tag(sync=True)
 
     _persist_names = (
         "edge_weight",
@@ -51,6 +59,7 @@ class TransitionGraphWidget(RetentioneeringWidget):
         "edge_filter",
         "event_count_filter",
         "viewport",
+        "views",
     )
 
     def __init__(
@@ -61,6 +70,8 @@ class TransitionGraphWidget(RetentioneeringWidget):
         path_col=_UNSET,
         height=_UNSET,
         sidebar_open=_UNSET,
+        views=_UNSET,
+        view=_UNSET,
         state_file=None,
         **kwargs,
     ):
@@ -87,6 +98,33 @@ class TransitionGraphWidget(RetentioneeringWidget):
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
         self.node_positions = "{}"
 
+        _views_val = views if views is not _UNSET else None
+        if _views_val is None:
+            self.views = "[]"
+        else:
+            if isinstance(_views_val, dict):
+                # list(dict) would silently produce the KEYS — a single view
+                # passed here by mistake must fail loudly instead.
+                raise TypeError(
+                    "views= expects a list of view dicts (rendered as pills). "
+                    "To apply a single view on load, pass it as view={...}."
+                )
+            _views_list = list(_views_val)
+            if not all(isinstance(v, dict) for v in _views_list):
+                raise TypeError("views= must be a list of view dicts")
+            self.views = json.dumps(_views_list)
+        _view_val = view if view is not _UNSET else None
+        if _view_val is None:
+            self.view = ""
+        elif isinstance(_view_val, str):
+            self.view = _view_val  # a name referencing an entry in `views`
+        elif isinstance(_view_val, dict):
+            self.view = json.dumps(_view_val)
+        else:
+            raise TypeError(
+                "view= must be a view dict or the name of an entry in views="
+            )
+
         self._apply_saved_state(
             exclude={
                 name
@@ -96,6 +134,7 @@ class TransitionGraphWidget(RetentioneeringWidget):
                     ("path_col", path_col),
                     ("height", height),
                     ("sidebar_open", sidebar_open),
+                    ("views", views),
                 )
                 if arg is not _UNSET
             }
@@ -278,6 +317,8 @@ class TransitionGraphWidget(RetentioneeringWidget):
             "sidebar_open": sidebar_open
             if sidebar_open is not None
             else self.sidebar_open,
+            "views": json.loads(self.views or "[]"),
+            "view": self.view,
         }
         write_html(path, title, "Transition Graph", data, analysis)
 

@@ -31,6 +31,9 @@ export interface GraphView {
   /** "fit" = whole graph, "fit-focus" = fit the focused elements (the
    *  default when focus is present), explicit {zoom, pan} otherwise. */
   viewport?: "fit" | "fit-focus" | StoredViewport;
+  /** Exact node coordinates — captured by Copy view link so a view
+   *  reproduces a manual arrangement, not just focus/filters. */
+  nodePositions?: Record<string, { x: number; y: number }>;
 }
 
 /** Loose runtime validation for a view arriving from JSON (traitlet, URL
@@ -131,6 +134,20 @@ export function parseGraphView(raw: unknown): GraphView | null {
         },
       };
     }
+  }
+
+  const positions = view.nodePositions as
+    | Record<string, unknown>
+    | undefined;
+  if (positions && typeof positions === "object" && !Array.isArray(positions)) {
+    const valid: Record<string, { x: number; y: number }> = {};
+    for (const [id, pos] of Object.entries(positions)) {
+      const p = pos as Record<string, unknown> | null;
+      if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+        valid[id] = { x: Number(p.x), y: Number(p.y) };
+      }
+    }
+    if (Object.keys(valid).length > 0) out.nodePositions = valid;
   }
 
   return Object.keys(out).length > 0 ? out : null;

@@ -536,6 +536,7 @@ export const TransitionGraph = observer(function TransitionGraph({
     focusedEdge: { source: string; target: string } | null;
     focusedPath: string[] | null;
     focusDirection: "out" | "in";
+    nodePositions: Record<string, StoredPosition>;
     population: { min: number; max: number } | null;
     hidden: string[];
     overlayEdges: Array<{ from: string; to: string }>;
@@ -791,6 +792,12 @@ export const TransitionGraph = observer(function TransitionGraph({
       focusedEdge,
       focusedPath,
       focusDirection,
+      nodePositions: Object.fromEntries(
+        Object.entries(positionsRef.current).map(([id, pos]) => [
+          id,
+          { ...pos },
+        ]),
+      ),
       population: store.populationCustomized
         ? { ...store.filters.population }
         : null,
@@ -823,6 +830,22 @@ export const TransitionGraph = observer(function TransitionGraph({
   // Restore the pre-view snapshot (shared by the Default pill and view
   // switching — views are absolute presets over the Default state, so
   // switching pills must not inherit leftovers from the previous view).
+  // Apply exact node coordinates (from a view or a snapshot) to the live
+  // cy instance and the in-memory ref. Not persisted — only manual drags
+  // are ever saved.
+  const applyNodePositions = React.useCallback(
+    (positions: Record<string, StoredPosition>) => {
+      const cy = cyRef.current;
+      Object.entries(positions).forEach(([id, pos]) => {
+        positionsRef.current[id] = { ...pos };
+        const node = cy?.getElementById(id);
+        if (node && node.length > 0) node.position({ ...pos });
+      });
+      if (cy) recalculateSelfLoopDirections(cy);
+    },
+    [],
+  );
+
   const restoreViewSnapshot = React.useCallback(() => {
     const snap = viewSnapshotRef.current;
     if (!snap) return;
@@ -834,13 +857,14 @@ export const TransitionGraph = observer(function TransitionGraph({
       store.populationCustomized = false;
     }
     setHiddenEvents(snap.hidden);
+    applyNodePositions(snap.nodePositions);
     store.applyPathEdges(snap.overlayEdges);
     setFocusedNodes(snap.focusedNodes);
     setFocusedEdge(snap.focusedEdge);
     setFocusedPath(snap.focusedPath);
     setFocusDirection(snap.focusDirection);
     setPathSelecting(false);
-  }, [store, setHiddenEvents]);
+  }, [store, setHiddenEvents, applyNodePositions]);
 
   const applyView = React.useCallback(
     (target: GraphView | string) => {
@@ -861,6 +885,7 @@ export const TransitionGraph = observer(function TransitionGraph({
         store.setPopulationRange(...view.eventCountFilter);
       }
       if (view.hiddenEvents) setHiddenEvents(view.hiddenEvents);
+      if (view.nodePositions) applyNodePositions(view.nodePositions);
 
       store.applyPathEdges([]);
       setPathSelecting(false); // applied views always dim at full strength
@@ -889,7 +914,14 @@ export const TransitionGraph = observer(function TransitionGraph({
       pendingViewViewportRef.current = view;
       setActiveViewName(view.name ?? null);
     },
-    [views, captureViewSnapshot, restoreViewSnapshot, setHiddenEvents, store],
+    [
+      views,
+      captureViewSnapshot,
+      restoreViewSnapshot,
+      setHiddenEvents,
+      applyNodePositions,
+      store,
+    ],
   );
 
   const resetToDefaultView = React.useCallback(() => {
@@ -937,6 +969,11 @@ export const TransitionGraph = observer(function TransitionGraph({
         pan: { ...viewportRef.current.pan },
       };
     }
+    // Node positions are deliberately NOT captured: manual arrangements
+    // persist on their own (per-dataset widget_id namespace + the
+    // node_positions traitlet, which exports also carry), and pinning them
+    // in every copied view would freeze future layout improvements. A view
+    // may still declare nodePositions by hand.
     return view;
   }, [edgeFilter, focusedNodes, focusedEdge, focusedPath, focusDirection, store]);
 
@@ -1524,7 +1561,7 @@ export const TransitionGraph = observer(function TransitionGraph({
       },
       // AI overlay highlighted edges (from highlight pills)
       {
-        selector: "edge.ai-overlay, edge.path-focus",
+        selector: "edge.ai-overlay",
         style: {
           width: 12,
           "line-color": overlayColor,
@@ -1537,6 +1574,22 @@ export const TransitionGraph = observer(function TransitionGraph({
           opacity: 1,
           // An explicit highlight outranks the edge filter (this rule comes
           // after edge.filtered, so it wins and keeps the path visible)
+          display: "element",
+          "z-index": 9999,
+        } as any,
+      },
+      // Path segments: a pure recolor — amber + dashed. Every size (width,
+      // labels, arrowheads) is set inline with the node-focus formulas, so
+      // a segment looks exactly like it did when it was picked.
+      {
+        selector: "edge.path-focus",
+        style: {
+          "line-color": overlayColor,
+          "target-arrow-color": overlayColor,
+          "line-style": "dashed",
+          "line-dash-pattern": [5, 4],
+          "line-dash-offset": 0,
+          opacity: 1,
           display: "element",
           "z-index": 9999,
         } as any,
@@ -1664,17 +1717,17 @@ export const TransitionGraph = observer(function TransitionGraph({
       const isMulti = (original?.metaKey || original?.ctrlKey) ?? false;
       if (isMulti) {
         // Continue from the current path, or start one from the currently
-        // focused node; clicking a selected node removes it again.
+        // focused node. ALWAYS append — repeated nodes build loops and
+        // cycles (A→B→B, A→B→A→C); removal is Cmd+double-click.
         const base =
           focusedPathRef.current ??
           (focusedNodesRef.current.length === 1
             ? [...focusedNodesRef.current]
             : []);
-        const next = base.includes(nodeId)
-          ? base.filter((id) => id !== nodeId)
-          : [...base, nodeId];
-        if (next.length <= 1) {
+        const next = [...base, nodeId];
+        if (next.length === 1) {
           setFocusedNodes(next);
+          setFocusDirection("out");
           setFocusedPath(null);
           setPathSelecting(false);
         } else {
@@ -1701,9 +1754,37 @@ export const TransitionGraph = observer(function TransitionGraph({
     // same node's outgoing focus, so nothing is lost). Diff mode always
     // shows both directions — no switch there.
     cy.on("dbltap", "node", (event) => {
-      if (isDraggingRef.current || isDifferential) return;
+      if (isDraggingRef.current) return;
       const original = event.originalEvent as MouseEvent | undefined;
-      if (original?.metaKey || original?.ctrlKey) return; // path building
+      if (original?.metaKey || original?.ctrlKey) {
+        // Cmd+double-click removes the LAST node of the path — a
+        // backspace-like undo. (Removing a mid-path node would silently
+        // splice a gap: A→B→C turning into A→C is rarely what was meant.)
+        // The gesture's own two Cmd+taps appended the clicked node twice:
+        // the first two pops drop those, the third pops the real tail —
+        // and only when the click was on that tail.
+        const nodeId = event.target.id();
+        const current = focusedPathRef.current;
+        if (!current) return;
+        const next = [...current];
+        if (next[next.length - 1] === nodeId) next.pop();
+        if (next[next.length - 1] === nodeId) next.pop();
+        if (next[next.length - 1] === nodeId) next.pop();
+        if (next.length === 0) {
+          setFocusedNodes([]);
+          setFocusedPath(null);
+          setPathSelecting(false);
+        } else if (next.length === 1) {
+          setFocusedNodes(next);
+          setFocusDirection("out");
+          setFocusedPath(null);
+          setPathSelecting(false);
+        } else {
+          setFocusedPath(next);
+        }
+        return;
+      }
+      if (isDifferential) return;
       setFocusedNodes([event.target.id()]);
       setFocusDirection("in");
       setFocusedEdge(null);
@@ -1956,6 +2037,8 @@ export const TransitionGraph = observer(function TransitionGraph({
             "target-arrow-shape": "",
             "line-color": "",
             "target-arrow-color": "",
+            color: "",
+            "text-outline-color": "",
             "text-outline-width": "",
             "text-background-opacity": 0,
             "text-background-padding": 0,
@@ -2019,9 +2102,7 @@ export const TransitionGraph = observer(function TransitionGraph({
             const candidateEdges = tip
               .outgoers("edge")
               .filter(
-                (edge: cytoscape.EdgeSingular) =>
-                  !edge.hasClass("filtered") &&
-                  edge.source().id() !== edge.target().id(),
+                (edge: cytoscape.EdgeSingular) => !edge.hasClass("filtered"),
               );
             candidateEdges.removeClass("dimmed").addClass("highlighted");
             candidateEdges
@@ -2091,11 +2172,58 @@ export const TransitionGraph = observer(function TransitionGraph({
           );
         });
 
-        // Route weights along the highlighted edges
+        // Route weights along the highlighted edges. Each segment is
+        // re-weighted the way a node focus would weight it: A→B's width is
+        // its weight relative to A's strongest visible outgoing edge — the
+        // same denominator the click-candidates of A use, so the segment
+        // keeps the width it had when it was picked.
+        const maxOutgoingCache = new Map<string, number>();
+        const maxOutgoingOf = (node: cytoscape.NodeSingular): number => {
+          const id = node.id();
+          const cached = maxOutgoingCache.get(id);
+          if (cached !== undefined) return cached;
+          let max = 0;
+          node.outgoers("edge").forEach((e: cytoscape.EdgeSingular) => {
+            if (e.hasClass("filtered")) return;
+            const w = Math.abs(e.data("weight") as number);
+            if (w > max) max = w;
+          });
+          maxOutgoingCache.set(id, max);
+          return max;
+        };
+        // Each segment keeps EXACTLY the look it had in the node focus it
+        // was picked from (width, label, font size, arrowhead and their
+        // visibility thresholds) — the class above only recolors it amber
+        // and makes it dashed. The label pill just turns amber.
+        const amberOutline = isDark ? "#fbbf24" : "#f59e0b";
         pathEles.edges().forEach((edge) => {
+          const weight = Math.abs(edge.data("weight") as number);
+          const maxOut = maxOutgoingOf(edge.source());
+          const relativeWeight = maxOut > 0 ? weight / maxOut : 0;
+          const startWidth = edge.data("edgeSize") as number;
+          const targetWidth = 2 + relativeWeight * 9;
+          const baseValue = edge.data("baseValue") as string;
+          const isLoop = edge.source().id() === edge.target().id();
+          const isFlipped =
+            edge.source().position().x > edge.target().position().x;
+          const showLabel =
+            progress > 0.2 && relativeWeight >= FOCUS_LABEL_MIN_VISIBLE_RATIO;
+          const showArrow =
+            relativeWeight >= FOCUS_ARROW_MIN_VISIBLE_RATIO ||
+            ((edge.data("showBaseArrow") as boolean) &&
+              relativeWeight >= 0.14);
           edge.style({
-            label: progress > 0.2 ? (edge.data("baseValue") as string) : "",
-            "font-size": 13,
+            width: startWidth + (targetWidth - startWidth) * progress,
+            label: showLabel
+              ? isLoop
+                ? baseValue
+                : isFlipped
+                  ? `← ${baseValue}`
+                  : `${baseValue} →`
+              : "",
+            "font-size": showLabel ? 13 + relativeWeight * 9 : "",
+            "target-arrow-shape": showArrow ? "triangle" : "none",
+            "text-outline-color": amberOutline,
             "text-background-opacity": 0,
             "text-background-padding": 0,
           });

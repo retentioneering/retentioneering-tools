@@ -76,7 +76,9 @@ class RetentioneeringWidget(StateFileMixin, anywidget.AnyWidget):
     #: deliberately NOT persisted to state files. JS uses it to namespace
     #: per-widget browser state (e.g. node positions in localStorage) so one
     #: widget's manual arrangement can never leak into another widget or a
-    #: re-created one.
+    #: re-created one. Subclasses may override it with a stable, data-derived
+    #: identity when that state SHOULD survive re-creation for the same data
+    #: (the transition graph does).
     widget_id = traitlets.Unicode().tag(sync=True)
 
     @traitlets.default("widget_id")

@@ -94,6 +94,21 @@ class TransitionGraphWidget(RetentioneeringWidget):
         _diff_val = diff if diff is not _UNSET else None
         self.diff = json.dumps(list(_diff_val)) if _diff_val else ""
         self.path_col = path_col if path_col is not _UNSET else ""
+
+        # Stable per-graph identity instead of the base class's random uuid:
+        # the browser namespaces node positions by widget_id, and a
+        # data-derived id lets a manual arrangement survive cell re-runs
+        # (same data → same namespace) without leaking across different
+        # graphs. Reuses the eventstream's content fingerprint (the same one
+        # recipes rely on) — note it includes event counts and row count, so
+        # any data change resets to the computed layout; use state_file to
+        # pin an arrangement to a logical graph regardless of data updates.
+        # Only manual drags are ever persisted, so untouched graphs still
+        # get the fresh computed layout every time.
+        try:
+            self.widget_id = "tg-" + eventstream.fingerprint[:12]
+        except Exception:
+            pass  # keep the base class's random uuid
         self.height = height if height is not _UNSET else 500
         self.sidebar_open = sidebar_open if sidebar_open is not _UNSET else True
         self.node_positions = "{}"

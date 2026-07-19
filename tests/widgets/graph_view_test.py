@@ -60,6 +60,26 @@ class TestGraphViewPlumbing:
         with pytest.raises(TypeError, match="view dict"):
             _stream().transition_graph(view=42)
 
+    def test_widget_id_stable_per_data(self):
+        # Node positions are namespaced by widget_id in the browser; a
+        # data-derived id lets manual arrangements survive cell re-runs.
+        assert (
+            _stream().transition_graph().widget_id
+            == _stream().transition_graph().widget_id
+        )
+
+        other = pd.DataFrame(
+            {
+                "user_id": [1, 1],
+                "event": ["X", "Y"],
+                "timestamp": pd.date_range("2024-01-01", periods=2, freq="1min"),
+            }
+        )
+        assert (
+            Eventstream(other).transition_graph().widget_id
+            != _stream().transition_graph().widget_id
+        )
+
     def test_defaults_empty(self):
         widget = _stream().transition_graph()
 

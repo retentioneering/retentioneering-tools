@@ -233,8 +233,8 @@ export function GraphLegend({
       {coverageLine}
 
       <div style={{ ...rowStyle, color: mutedColor, flexWrap: "wrap", rowGap: 0 }}>
-        <span>click node = outgoing · 2×click = incoming</span>
-        <span>click edge = inspect · ⌘/ctrl+click = select path</span>
+        <span>click node = outgoing · 2×click = incoming · click edge = inspect</span>
+        <span>⌘click = add to path (repeats ok) · ⌘2×click = undo last</span>
       </div>
     </div>
   );

@@ -28,6 +28,7 @@ widget had before the first view was applied. Any manual interaction
 | `eventCountFilter` | `[min, max], optional` | Event-count (node) filter in absolute occurrence counts — the sidebar's Event Count slider. |
 | `hiddenEvents` | `list of str, optional` | Events hidden in this view. |
 | `viewport` | `str or dict, optional` | Camera control. See [viewport](#viewport). |
+| `nodePositions` | `dict, optional` | Exact node coordinates (`{"event": {"x": …, "y": …}}`) the view pins on apply. Rarely needed by hand: manual arrangements persist on their own (per-dataset) and travel with exports. |
 
 #### focus
 
@@ -74,11 +75,12 @@ widget, or as a shareable `#view=` URL in exported HTML. To author a *path*
 view by mouse: click the route's first event, then Cmd/Ctrl+click the
 following events **in route order** — after every click, the outgoing edges
 of the route's last event stay lit, so the candidates for the next click are
-always visible (Cmd/Ctrl+clicking a selected event removes it again). Then
-Copy view link
-serializes the selection as `{"type": "path", ...}`. Note that transitions
-are directed: the route follows the click order, and segments with no direct
-transition in the data are skipped when the view is applied.
+always visible. Every Cmd/Ctrl+click *appends*, so repeated events build
+loops and cycles (`A→B→B`, `A→B→A→C`); Cmd/Ctrl+**double-click on the
+route's last event** removes it — a backspace-like undo. Then Copy view link serializes the selection as
+`{"type": "path", ...}`. Note that transitions are directed: the route
+follows the click order, and segments with no direct transition in the data
+are skipped when the view is applied.
 
 {% endblock %}
 

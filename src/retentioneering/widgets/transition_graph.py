@@ -190,12 +190,19 @@ class TransitionGraphWidget(RetentioneeringWidget):
     def _tool_graph_layout(self, params: dict):
         return self._compute_graph_layout(params)
 
+    def _tool_route_stats(self, params: dict):
+        return self._eventstream.route_stats(
+            nodes=params.get("nodes") or [],
+            path_col=params.get("path_col") or self.path_col or None,
+        )
+
     #: See RetentioneeringWidget.compute_tools — a platform backend can call
     #: these directly via ``dispatch_compute`` (or by looking this table up
     #: on the class) instead of hand-rolling a tool -> Eventstream-method map.
     compute_tools = {
         "transition_graph_data": _tool_transition_graph_data,
         "graph_layout": _tool_graph_layout,
+        "route_stats": _tool_route_stats,
     }
 
     # ── computations ───────────────────────────────────────────────────────────

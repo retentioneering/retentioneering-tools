@@ -82,6 +82,25 @@ route's last event** removes it — a backspace-like undo. Then Copy view link s
 follows the click order, and segments with no direct transition in the data
 are skipped when the view is applied.
 
+### Route statistics
+
+While a path of two or more events is selected in the live widget, a badge
+at the top shows statistics for that exact route — how many paths contain
+the sequence `A→B→…→N` as strict consecutive transitions (no other events
+in between). The badge's metric selector offers: **unique paths** (and their
+share of all paths), **traversals** (total occurrences; a path may traverse
+a route several times), **avg per path**, **median** / **p95 route time**
+(from the route's first to last event within one traversal), and
+**P(route)** — the product of the route's `P(next | source)` transition
+probabilities. The default metric follows the current edge weight. The same
+numbers are available headlessly via
+[`route_stats`](/docs/eventstream#route_stats):
+
+```python
+stream.route_stats(["catalog", "product_view", "cart"])
+# {'n_paths': 600, 'unique_paths': 43, 'unique_paths_share': 0.072, ...}
+```
+
 {% endblock %}
 
 {% block demo_examples %}

@@ -105,6 +105,55 @@ export type EdgeFilterSpec =
 
 const edgeKey = (source: string, target: string) => `${source}|${target}`;
 
+// ── Path stats (route badge) ─────────────────────────────────────────────────
+
+type PathStatsResult = {
+  n_paths: number;
+  unique_paths: number;
+  unique_paths_share: number;
+  occurrences: number;
+  avg_per_path: number;
+  time_median: number | null;
+  time_q95: number | null;
+  proba: number;
+};
+
+type PathMetric =
+  | "unique_paths"
+  | "count"
+  | "avg_per_path"
+  | "time_median"
+  | "time_q95"
+  | "proba_out";
+
+const PATH_METRIC_LABELS: Record<PathMetric, string> = {
+  unique_paths: "unique paths",
+  count: "traversals",
+  avg_per_path: "avg per path",
+  time_median: "median time",
+  time_q95: "p95 time",
+  proba_out: "P(route)",
+};
+
+// Default badge metric follows the edge weight shown on the graph; types
+// with no honest route generalization fall back to unique paths.
+const defaultPathMetric = (valuesType: MatrixValueType): PathMetric => {
+  switch (valuesType) {
+    case "count":
+      return "count";
+    case "avg_per_path":
+      return "avg_per_path";
+    case "time_median":
+      return "time_median";
+    case "time_q95":
+      return "time_q95";
+    case "proba_out":
+      return "proba_out";
+    default: // unique_paths, proba_in, share_of_total
+      return "unique_paths";
+  }
+};
+
 /**
  * Per-node top-k filter rule: keep an edge if it is among the k strongest
  * outgoing edges of its source (self-loops count as outgoing) OR it is the
@@ -544,6 +593,13 @@ export const TransitionGraph = observer(function TransitionGraph({
   } | null>(null);
   const pendingViewViewportRef = React.useRef<GraphView | null>(null);
   const [copiedView, setCopiedView] = React.useState(false);
+  // Route badge: backend stats for the focused path + user's metric choice
+  // (null = follow the edge weight)
+  const [pathStats, setPathStats] = React.useState<PathStatsResult | null>(
+    null,
+  );
+  const [pathMetricOverride, setPathMetricOverride] =
+    React.useState<PathMetric | null>(null);
   // Bumped after every cytoscape rebuild so effects that mutate the current cy
   // instance (filtering, label allocation) re-run against the new generation.
   const [graphVersion, setGraphVersion] = React.useState(0);
@@ -2718,6 +2774,35 @@ export const TransitionGraph = observer(function TransitionGraph({
     });
   });
 
+  // ── Route badge: fetch backend stats for the focused path ──
+  React.useEffect(() => {
+    setPathStats(null);
+    if (!host || !focusedPath || focusedPath.length < 2 || isDifferential) {
+      return;
+    }
+    const nodes = focusedPath;
+    // Debounce: while the user assembles the path click by click, compute
+    // only after the clicks settle.
+    const timer = window.setTimeout(() => {
+      host
+        .compute<PathStatsResult>("route_stats", { nodes })
+        .then((result) => {
+          // Ignore stale responses from a superseded path
+          if (focusedPathRef.current === nodes) setPathStats(result);
+        })
+        .catch(() => {
+          /* badge simply keeps its loading state */
+        });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [host, focusedPath, isDifferential]);
+
+  // Reset the metric override when the edge weight changes — the default
+  // follows the weight shown on the graph.
+  React.useEffect(() => {
+    setPathMetricOverride(null);
+  }, [committedValueType]);
+
   // Apply the initial view (traitlet / URL hash) once, after the graph is
   // built and the backend layout has settled — fit-focus needs final
   // positions.
@@ -2901,6 +2986,93 @@ export const TransitionGraph = observer(function TransitionGraph({
             ))}
         </div>
       )}
+
+      {/* Route badge: stats of the focused path + metric selector */}
+      {focusedPath &&
+        focusedPath.length >= 2 &&
+        !isDifferential &&
+        host !== null &&
+        (() => {
+          const metric =
+            pathMetricOverride ?? defaultPathMetric(committedValueType);
+          let value: string;
+          if (!pathStats) {
+            value = "…";
+          } else if (metric === "proba_out") {
+            value = `${(pathStats.proba * 100).toFixed(2)}%`;
+          } else if (metric === "unique_paths") {
+            value = `${formatNumber(pathStats.unique_paths)} (${(
+              pathStats.unique_paths_share * 100
+            ).toFixed(1)}%)`;
+          } else if (metric === "count") {
+            value = formatNumber(pathStats.occurrences);
+          } else if (metric === "avg_per_path") {
+            value = pathStats.avg_per_path.toFixed(2);
+          } else if (metric === "time_median") {
+            value =
+              pathStats.time_median != null
+                ? formatTime(pathStats.time_median)
+                : "—";
+          } else {
+            value =
+              pathStats.time_q95 != null
+                ? formatTime(pathStats.time_q95)
+                : "—";
+          }
+          const options = (
+            [
+              "unique_paths",
+              "count",
+              "avg_per_path",
+              "time_median",
+              "time_q95",
+              "proba_out",
+            ] as PathMetric[]
+          ).map((m) => (
+            <option key={m} value={m}>
+              {PATH_METRIC_LABELS[m]}
+            </option>
+          ));
+          return (
+            <div
+              style={{
+                position: "absolute",
+                top: 52,
+                right: 16,
+                zIndex: 19,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "4px 10px",
+                borderRadius: 6,
+                border: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
+                background: isDark
+                  ? "rgba(31,41,55,0.92)"
+                  : "rgba(255,255,255,0.92)",
+                fontSize: 12,
+                color: isDark ? "#f3f4f6" : "#111827",
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>{value}</span>
+              <select
+                value={metric}
+                onChange={(e) =>
+                  setPathMetricOverride(e.target.value as PathMetric)
+                }
+                style={{
+                  fontSize: 11,
+                  color: isDark ? "#9ca3af" : "#6b7280",
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {options}
+              </select>
+            </div>
+          );
+        })()}
 
       {/* Contextual legend + coverage indicator */}
       <div style={{ position: "absolute", left: 16, bottom: 12, zIndex: 20 }}>

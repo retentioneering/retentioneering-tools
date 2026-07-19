@@ -25,6 +25,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Transition graph: edge focus — clicking an edge dims everything else, fits
   the node pair, and shows the weight label; edge coloring moved to a
   toolbar button shown while an edge is focused
+- Transition graph: route statistics — selecting a path (⌘click) shows a
+  badge with stats for that exact contiguous route: unique paths (and share),
+  traversal count, average per path, median / p95 route duration, or the
+  Markov probability product of its edges; the default metric follows the
+  current edge weight and is switchable in the badge. Backed by a new
+  headless `Eventstream.route_stats(nodes)` method (strict contiguous
+  matching, overlapping occurrences counted)
 - Transition graph: GraphView — serializable named visual presets (focus on
   a node/edge/path, filters, hidden events, viewport; never data
   parameters). Entry points: `transition_graph(views=[...], view=...)`

@@ -39,7 +39,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   each target's share of the exits (`proba_out`), with raw counts in the
   tooltip — the graph payload now carries sparse transition counts to make
   this exact under any edge weight. Clicking a neighbor re-centers the view
-  on it; diff mode shows the displayed diff values with the red/blue code.
+  on it; diff mode shows the displayed diff values with the red/blue code,
+  and hovering a ribbon shows the same per-group breakdown tooltip as a
+  graph edge.
   Works in exported HTML too — no kernel needed
 - Transition graph: GraphView — serializable named visual presets (focus on
   a node/edge/path, filters, hidden events, viewport; never data

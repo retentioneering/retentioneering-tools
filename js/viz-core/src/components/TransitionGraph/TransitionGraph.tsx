@@ -3111,6 +3111,10 @@ export const TransitionGraph = observer(function TransitionGraph({
           formatValue={formatValue}
           isDark={isDark}
           isDifferential={isDifferential}
+          getDiffBreakdown={(source, target) =>
+            store.getDiffCellBreakdown(source, target)
+          }
+          diffLabels={diffLabels}
           onNavigate={setEgoNode}
           onClose={() => setEgoNode(null)}
         />

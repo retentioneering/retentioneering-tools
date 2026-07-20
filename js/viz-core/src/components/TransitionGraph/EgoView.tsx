@@ -1,4 +1,5 @@
 import React from "react";
+import { DiffBreakdownTooltip } from "./DiffBreakdownTooltip";
 
 // Ego view: a modal "centered two-step sankey" for one event — incoming
 // transitions on the left, outgoing on the right, ribbon thickness
@@ -11,6 +12,12 @@ export interface EgoEdge {
   target: string;
   weight: number;
   isSelfLoop: boolean;
+}
+
+interface DiffBreakdown {
+  group1Value: number | null;
+  group2Value: number | null;
+  diffValue: number | null;
 }
 
 interface EgoViewProps {
@@ -26,6 +33,15 @@ interface EgoViewProps {
   formatValue: (value: number) => string;
   isDark: boolean;
   isDifferential: boolean;
+  // Diff mode only: per-group breakdown for a transition, and the segment
+  // labels — the same data and copy the graph's own edge-hover tooltip
+  // uses, so ego view ribbons explain a diff exactly like graph edges do.
+  getDiffBreakdown?: (source: string, target: string) => DiffBreakdown;
+  diffLabels?: {
+    segmentName: string | null;
+    value1Label: string;
+    value2Label: string;
+  };
   onNavigate: (node: string) => void;
   onClose: () => void;
 }
@@ -127,10 +143,18 @@ export const EgoView: React.FC<EgoViewProps> = ({
   formatValue,
   isDark,
   isDifferential,
+  getDiffBreakdown,
+  diffLabels,
   onNavigate,
   onClose,
 }) => {
   const [hovered, setHovered] = React.useState<string | null>(null);
+  const [diffTooltip, setDiffTooltip] = React.useState<{
+    x: number;
+    y: number;
+    source: string;
+    target: string;
+  } | null>(null);
 
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -325,12 +349,22 @@ export const EgoView: React.FC<EgoViewProps> = ({
               row.y,
               row.height,
             );
+      const [source, target] =
+        side === "in" ? [row.other, node] : [node, row.other];
       return (
         <g
           key={key}
           onClick={() => onNavigate(row.other)}
           onMouseEnter={() => setHovered(key)}
-          onMouseLeave={() => setHovered(null)}
+          onMouseMove={(e) => {
+            if (isDifferential && getDiffBreakdown) {
+              setDiffTooltip({ x: e.clientX, y: e.clientY, source, target });
+            }
+          }}
+          onMouseLeave={() => {
+            setHovered(null);
+            setDiffTooltip(null);
+          }}
           style={{ cursor: "pointer" }}
         >
           <path d={ribbon} fill={ribbonFill(row.weight, key)} />
@@ -353,9 +387,13 @@ export const EgoView: React.FC<EgoViewProps> = ({
             {(row.isSelfLoop ? "↻ " : "") + truncate(row.other)}
             <tspan fill={mutedColor}>{`  ${valueText}`}</tspan>
           </text>
-          <title>{`${side === "in" ? `${row.other} → ${node}` : `${node} → ${row.other}`} ${valueText}${
-            sharesMode ? ` (${row.count} transitions out of ${total})` : ""
-          } – click to re-center`}</title>
+          {/* Diff mode shows the rich DiffBreakdownTooltip instead (below);
+              elsewhere a native tooltip is enough. */}
+          {!isDifferential && (
+            <title>{`${side === "in" ? `${row.other} → ${node}` : `${node} → ${row.other}`} ${valueText}${
+              sharesMode ? ` (${row.count} transitions out of ${total})` : ""
+            } – click to re-center`}</title>
+          )}
         </g>
       );
     });
@@ -500,6 +538,44 @@ export const EgoView: React.FC<EgoViewProps> = ({
           {moreNote(moreOut, "out")}
         </svg>
       </div>
+      {diffTooltip &&
+        getDiffBreakdown &&
+        (() => {
+          const breakdown = getDiffBreakdown(
+            diffTooltip.source,
+            diffTooltip.target,
+          );
+          return (
+            <div
+              style={{
+                position: "fixed",
+                left: diffTooltip.x + 12,
+                top: diffTooltip.y + 12,
+                zIndex: 50,
+                pointerEvents: "none",
+              }}
+            >
+              <DiffBreakdownTooltip
+                title={
+                  <span
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    <span>{diffTooltip.source}</span>
+                    <span style={{ color: mutedColor }}>→</span>
+                    <span>{diffTooltip.target}</span>
+                  </span>
+                }
+                segmentName={diffLabels?.segmentName ?? null}
+                value1Label={diffLabels?.value1Label ?? "group 1"}
+                value2Label={diffLabels?.value2Label ?? "group 2"}
+                group1Value={breakdown.group1Value}
+                group2Value={breakdown.group2Value}
+                diffValue={breakdown.diffValue}
+                isDark={isDark}
+              />
+            </div>
+          );
+        })()}
     </div>
   );
 };

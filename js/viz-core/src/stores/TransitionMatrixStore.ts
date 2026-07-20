@@ -15,6 +15,10 @@ export interface RawMatrixData {
   values: number[][];
   group1?: { events: string[]; values: number[][] } | null;
   group2?: { events: string[]; values: number[][] } | null;
+  // Sparse raw transition counts ({source: {target: n}}), independent of the
+  // displayed weight type; used by the ego view to derive exact
+  // incoming/outgoing shares. Absent in diff mode and in old exports.
+  counts?: Record<string, Record<string, number>> | null;
 }
 
 interface MatrixBounds {
@@ -26,6 +30,7 @@ export class TransitionMatrixStore {
   events = new Map<string, EventState>();
   values: number[][] = [];
   matrixType: "differential" | "proba_in" | "proba_out" | undefined;
+  transitionCounts: Record<string, Record<string, number>> | null = null;
 
   private _eventIds: string[] = [];
   private _indexById = new Map<string, number>();
@@ -242,6 +247,7 @@ export class TransitionMatrixStore {
     this._eventIds.forEach((id, i) => this._indexById.set(id, i));
     this._group1Values = data.group1?.values ?? null;
     this._group2Values = data.group2?.values ?? null;
+    this.transitionCounts = data.counts ?? null;
     this._group1IndexById.clear();
     data.group1?.events.forEach((id, i) => this._group1IndexById.set(id, i));
     this._group2IndexById.clear();

@@ -19,6 +19,7 @@ import { RangeSlider } from "./RangeSlider";
 import { SearchBar } from "./SearchBar";
 import { DiffBreakdownTooltip } from "./DiffBreakdownTooltip";
 import { GraphLegend } from "./GraphLegend";
+import { EgoView } from "./EgoView";
 import {
   type GraphView,
   parseGraphView,
@@ -567,6 +568,8 @@ export const TransitionGraph = observer(function TransitionGraph({
   // softer and node labels stay visible so the next node can still be found
   // and clicked. Applied views (pills/links) dim at full strength.
   const [pathSelecting, setPathSelecting] = React.useState(false);
+  // Ego view modal: the event whose neighborhood is expanded, or null.
+  const [egoNode, setEgoNode] = React.useState<string | null>(null);
   // Mirrors for the cytoscape tap handlers (closures inside the build
   // effect would otherwise see stale state).
   const focusedNodesRef = React.useRef(focusedNodes);
@@ -3099,6 +3102,20 @@ export const TransitionGraph = observer(function TransitionGraph({
         />
       </div>
 
+      {/* Ego view: modal neighborhood expansion of one event */}
+      {egoNode && (
+        <EgoView
+          node={egoNode}
+          edges={edgeList}
+          counts={store.transitionCounts}
+          formatValue={formatValue}
+          isDark={isDark}
+          isDifferential={isDifferential}
+          onNavigate={setEgoNode}
+          onClose={() => setEgoNode(null)}
+        />
+      )}
+
       {/* Edge filter: per-node top-k ("auto") or a manual weight range */}
       <div
         style={{
@@ -3253,6 +3270,16 @@ export const TransitionGraph = observer(function TransitionGraph({
           gap: 8,
         }}
       >
+        {focusedNodes.length === 1 && (
+          <button
+            onClick={() => setEgoNode(focusedNodes[0])}
+            title={`Ego view: ${focusedNodes[0]}`}
+            data-rete-tooltip="Expand neighborhood: incoming & outgoing in one view"
+            style={btnStyle()}
+          >
+            Ego view
+          </button>
+        )}
         {focusedNodes.length === 1 && (
           <button
             onClick={() => {

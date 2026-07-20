@@ -101,6 +101,24 @@ stream.route_stats(["catalog", "product_view", "cart"])
 # {'n_paths': 600, 'unique_paths': 43, 'unique_paths_share': 0.072, ...}
 ```
 
+### Ego view
+
+With a node focused, the **Ego view** toolbar button expands its
+neighborhood into a modal mini-sankey: the event in the center, incoming
+transitions on the left, outgoing on the right, sorted with ribbon
+thickness proportional to the value. The sides answer the two ego
+questions directly, independent of the edge weight selected on the graph:
+the left side shows each source's **share of the arrivals** at the event
+(`proba_in`), the right side each target's **share of the exits** from it
+(`proba_out`) — both sides sum to 100%, and the tooltip carries the raw
+transition counts. Unlike the graph, the same event can appear on both
+sides, and a self-loop shows up on each (marked ↻). The view is not
+limited by the edge filter — it always shows the strongest transitions of
+the focused event (up to 12 per side). Clicking a neighbor re-centers the
+view on it, so you can walk the graph one neighborhood at a time; Esc or
+clicking outside closes the modal. In diff mode the ribbons instead show
+the displayed diff values with the red/blue color code.
+
 {% endblock %}
 
 {% block demo_examples %}

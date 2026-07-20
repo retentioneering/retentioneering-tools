@@ -261,7 +261,27 @@ class TransitionGraphWidget(RetentioneeringWidget):
                 "group1": {"events": tm1.index.tolist(), "values": _df_to_list(tm1)},
                 "group2": {"events": tm2.index.tolist(), "values": _df_to_list(tm2)},
             }
-        return {"events": tm.index.tolist(), "values": _df_to_list(tm)}
+        # Raw transition counts ride along as a sparse mapping so the client
+        # can derive exact incoming/outgoing shares (proba_in / proba_out for
+        # the ego view) regardless of the displayed edge weight — including
+        # in static HTML exports, where no compute backend is available.
+        cnt = (
+            tm
+            if edge_weight == "count"
+            else self._eventstream.transition_graph_data(
+                edge_weight="count", path_col=path_col, diff=None
+            )
+        )
+        counts: dict = {}
+        for src, row in cnt.iterrows():
+            nonzero = {dst: int(v) for dst, v in row.items() if v}
+            if nonzero:
+                counts[src] = nonzero
+        return {
+            "events": tm.index.tolist(),
+            "values": _df_to_list(tm),
+            "counts": counts,
+        }
 
     def semantic_layout_positions(self) -> dict:
         """Best-effort semantic layout positions for static consumers (HTML

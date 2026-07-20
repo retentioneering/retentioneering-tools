@@ -32,6 +32,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   current edge weight and is switchable in the badge. Backed by a new
   headless `Eventstream.route_stats(nodes)` method (strict contiguous
   matching, overlapping occurrences counted)
+- Transition graph: ego view — with a node focused, a toolbar button expands
+  its neighborhood into a modal mini-sankey: incoming transitions left,
+  outgoing right, self-loops on both sides. The sides show shares, not the
+  graph's edge weights: each source's share of the arrivals (`proba_in`) and
+  each target's share of the exits (`proba_out`), with raw counts in the
+  tooltip — the graph payload now carries sparse transition counts to make
+  this exact under any edge weight. Clicking a neighbor re-centers the view
+  on it; diff mode shows the displayed diff values with the red/blue code.
+  Works in exported HTML too — no kernel needed
 - Transition graph: GraphView — serializable named visual presets (focus on
   a node/edge/path, filters, hidden events, viewport; never data
   parameters). Entry points: `transition_graph(views=[...], view=...)`

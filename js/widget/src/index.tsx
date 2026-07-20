@@ -53,7 +53,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
     try {
       const d = JSON.parse(raw);
       if (d?.events && d?.values) {
-        store.setData({ events: d.events, values: d.values, group1: d.group1 ?? null, group2: d.group2 ?? null });
+        store.setData({ events: d.events, values: d.values, group1: d.group1 ?? null, group2: d.group2 ?? null, counts: d.counts ?? null });
         applyEventVisibility();
       }
     } catch {}

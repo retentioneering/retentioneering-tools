@@ -1982,8 +1982,12 @@ class Eventstream:
         ----------
         features : list of dict, optional
             Metric configurations used as clustering features (see the [Path
-            Metrics](/docs/path-metrics); defaults to per-event counts for every
-            event in the eventstream.
+            Metrics](/docs/path-metrics)). If omitted, the sidebar starts
+            pre-filled with a wildcard `event_count_bulk` metric (one column
+            per event in the eventstream) — that pre-fill is a starting point
+            to edit, not something that runs on its own: passing `features`
+            explicitly (or clicking "Apply" in the sidebar) is what actually
+            triggers clustering.
         method : {"kmeans", "hdbscan"}, default "kmeans"
             Clustering algorithm.
         scaler : {"minmax", "standard"}, optional
@@ -1994,7 +1998,10 @@ class Eventstream:
             search over that range and picks the best. Defaults to `"3-8"`.
         overview_metrics : list of dict, optional
             Metrics shown in the overview heatmap after clustering (independent
-            of `features`); defaults to per-event counts for every event.
+            of `features`). If omitted, the sidebar starts pre-filled with a
+            wildcard `event_count_bulk` metric here too (mean count per event);
+            same as `features`, it only takes effect once you click "Apply" or
+            pass the argument explicitly.
             Both `features` and `overview_metrics` accept metric configs from the
             same [Path Metrics](/docs/path-metrics) registry.
         path_col : str, optional
@@ -2053,8 +2060,9 @@ class Eventstream:
         Run cluster analysis headlessly and return a dict of results.
 
         Pass lists for n_clusters / nmf_components / min_cluster_size to trigger
-        grid search with silhouette scoring. n_clusters is required for the kmeans
-        method (the default), including nmf_components-only searches.
+        grid search with silhouette scoring. For the kmeans method (the default),
+        n_clusters defaults to `"3-8"` if omitted — including for
+        nmf_components-only searches.
 
         `best_params` holds the concrete parameter values actually used to produce
         `overview_df` (the winning combination when searching, or just the fixed
@@ -2063,10 +2071,11 @@ class Eventstream:
 
         Parameters
         ----------
-        features : list of dict, optional
+        features : list of dict
             Metric configurations used as clustering features (see the Path
-            Metrics documentation page); defaults to per-event counts for every
-            event in the eventstream.
+            Metrics documentation page). Required — there is no interactive
+            sidebar here to pick them for you, unlike the `cluster_analysis`
+            widget.
         method : {"kmeans", "hdbscan"}, default "kmeans"
             Clustering algorithm.
         scaler : {"minmax", "standard"}, optional
@@ -2090,9 +2099,9 @@ class Eventstream:
             silhouette-scored grid search over the given values.
         overview_metrics : list of dict, optional
             Metrics shown in the overview heatmap after clustering (independent
-            of `features`); defaults to per-event counts for every event.
-            Both `features` and `overview_metrics` accept metric configs from the
-            same Path Metrics registry.
+            of `features`); if omitted, `overview_df` only has segment_size and
+            segment_share rows. Both `features` and `overview_metrics` accept
+            metric configs from the same Path Metrics registry.
         path_col : str, optional
             Path ID column override; defaults to `schema.path_col`.
         event_col : str, optional

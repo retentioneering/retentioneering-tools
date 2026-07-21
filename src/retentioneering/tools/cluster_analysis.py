@@ -5,8 +5,9 @@ Combines add_clusters (clustering) with segment_overview (aggregated metrics)
 without saving intermediate eventstream. Supports:
 - Parameter search: silhouette score over any combination of list-valued params
   (nmf_components, n_clusters, min_cluster_size, cluster_selection_epsilon).
-  Note: n_clusters is always required for the kmeans method — an nmf_components-only
-  search still needs a concrete n_clusters value (int or list of ints).
+  Note: n_clusters is always required for the kmeans method (defaults to "3-8" i.e.
+  range(3, 9) if omitted) — an nmf_components-only search still needs a concrete
+  n_clusters value (int, list of ints, or the default range).
 - NMF: returns H matrix from NMF decomposition alongside results.
 """
 
@@ -87,6 +88,8 @@ class ClusterAnalysis:
         path_col: str | None = None,
         event_col: str | None = None,
     ) -> Dict[str, Any]:
+        if n_clusters is None and method == "kmeans":
+            n_clusters = "3-8"
         n_clusters = parse_n_clusters(n_clusters)
 
         if method == "kmeans":

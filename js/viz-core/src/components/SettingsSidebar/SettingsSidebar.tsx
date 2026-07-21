@@ -345,10 +345,10 @@ export const SettingsSidebar = observer(function SettingsSidebar({
           </div>
         )}
 
-        {/* Event Count filter */}
+        {/* Event filter (by event count) */}
         <div style={{ marginBottom: 20 }}>
           <FieldLabel tooltip="How many times each event appears in the dataset. Move the left handle to hide rare events, move the right handle to hide very frequent ones.">
-            Event Count
+            Event filter
           </FieldLabel>
 
           {store.hasData && (store.populationBounds.max !== store.populationBounds.min) ? (

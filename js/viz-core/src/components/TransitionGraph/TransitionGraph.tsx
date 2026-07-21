@@ -504,6 +504,30 @@ export const TransitionGraph = observer(function TransitionGraph({
     [onEdgeFilterChange],
   );
 
+  // One-time hint explaining the default Auto edge filter. Dismissal is a
+  // user preference in the shared namespace (like colors/legend collapse,
+  // see the comment above sharedPreferencesId) so it survives cell re-runs
+  // instead of reappearing every time the Python widget gets a fresh id.
+  const edgeFilterHintStorageKey = `transition-graph-edge-filter-hint:${sharedPreferencesId}`;
+  const [edgeFilterHintDismissed, setEdgeFilterHintDismissed] =
+    React.useState<boolean>(() => {
+      try {
+        return (
+          window.localStorage.getItem(edgeFilterHintStorageKey) === "dismissed"
+        );
+      } catch {
+        return false;
+      }
+    });
+  const dismissEdgeFilterHint = React.useCallback(() => {
+    setEdgeFilterHintDismissed(true);
+    try {
+      window.localStorage.setItem(edgeFilterHintStorageKey, "dismissed");
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [edgeFilterHintStorageKey]);
+
   const requestedValueType = currentValuesType;
   const isDark =
     theme === "dark" ||
@@ -3120,6 +3144,48 @@ export const TransitionGraph = observer(function TransitionGraph({
         />
       )}
 
+      {/* One-time hint explaining the default Auto edge filter */}
+      {!edgeFilterHintDismissed && edgeFilter.mode === "topk" && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 50,
+            right: 12,
+            zIndex: 21,
+            maxWidth: 240,
+            padding: "8px 10px",
+            borderRadius: 6,
+            border: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
+            background: isDark ? "rgba(31,41,55,0.96)" : "rgba(255,255,255,0.96)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            fontSize: 11,
+            lineHeight: "15px",
+            color: isDark ? "#d1d5db" : "#4b5563",
+          }}
+        >
+          <div style={{ marginBottom: 6 }}>
+            By default, the Edge filter shows only each node's top{" "}
+            {DEFAULT_TOP_K} strongest edges — not the full graph. Switch to
+            Manual for a custom weight range.
+          </div>
+          <button
+            onClick={dismissEdgeFilterHint}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              fontSize: 11,
+              fontWeight: 600,
+              color: isDark ? "#e5e7eb" : "#374151",
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
+          >
+            Don't show again
+          </button>
+        </div>
+      )}
+
       {/* Edge filter: per-node top-k ("auto") or a manual weight range */}
       <div
         style={{
@@ -3129,8 +3195,18 @@ export const TransitionGraph = observer(function TransitionGraph({
           right: 12,
           display: "flex",
           alignItems: "center",
+          gap: 8,
         }}
       >
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: isDark ? "#9ca3af" : "#6b7280",
+          }}
+        >
+          Edge filter
+        </span>
         <div
           style={{
             pointerEvents: "auto",

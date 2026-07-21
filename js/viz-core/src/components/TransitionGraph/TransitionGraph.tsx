@@ -2662,7 +2662,6 @@ export const TransitionGraph = observer(function TransitionGraph({
       focusDirection,
       pathSelecting,
       isDifferential,
-      store.focusDimStrength,
     ],
   );
   applyFocusStateRef.current = applyFocusState;
@@ -2736,6 +2735,21 @@ export const TransitionGraph = observer(function TransitionGraph({
       }
     };
   }, [focusedNodes, focusedEdge, focusedPath, applyFocusState]);
+
+  // Live-reflect the Focus Dimming slider while a node/edge/path is already
+  // focused. Deliberately NOT routed through applyFocusState/the animation
+  // effect above — restyling just the already-`.dimmed` elements directly
+  // avoids re-triggering resetFocusVisuals/class churn or the rAF
+  // cancel-and-reschedule dance on every slider tick during a drag.
+  React.useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    if (focusProgressRef.current <= 0) return;
+    const dimOpacity = 1 - focusProgressRef.current * store.focusDimStrength;
+    cy.elements(".dimmed").forEach((element) => {
+      element.style("opacity", dimOpacity);
+    });
+  }, [store.focusDimStrength]);
 
   // Apply the viewport requested by a view AFTER the commit it triggered has
   // fully settled — declared after the build/filter effects so it runs last

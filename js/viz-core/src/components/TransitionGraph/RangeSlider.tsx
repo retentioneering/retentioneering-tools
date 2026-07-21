@@ -69,9 +69,13 @@ export function RangeSlider({
 
   const normStep = scale === "log" ? 0.001 : step / (max - min);
 
-  const thumbStyle: React.CSSProperties = variant === "mini"
-    ? { display: "block", width: 8, height: 16, borderRadius: 2, background: "#475569", border: "1px solid #94a3b8", cursor: "ew-resize", outline: "none" }
-    : { display: "block", width: 16, height: 16, borderRadius: "50%", background: "#475569", border: "1px solid #94a3b8", cursor: "ew-resize", outline: "none" };
+  // Same rectangular thumb regardless of variant — "mini"/"default" only
+  // differ in whether the numeric value labels above the track are shown.
+  const thumbStyle: React.CSSProperties = {
+    display: "block", width: 8, height: 16, borderRadius: 2,
+    background: "#475569", border: "1px solid #94a3b8",
+    cursor: "ew-resize", outline: "none",
+  };
 
   return (
     <div style={{ flexGrow: 1 }}>

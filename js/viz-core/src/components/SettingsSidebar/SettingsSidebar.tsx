@@ -55,13 +55,13 @@ function SingleSlider({ min, max, value, onChange }: {
       min={min} max={max} step={1} value={[value]}
       onValueChange={([v]) => onChange(v)}
     >
-      <SliderPrimitive.Track style={{ position: "relative", height: 6, flexGrow: 1, borderRadius: 9999, background: "#e2e8f0", overflow: "hidden" }}>
-        <SliderPrimitive.Range style={{ position: "absolute", height: "100%", borderRadius: 9999, background: C.accent }} />
+      <SliderPrimitive.Track style={{ position: "relative", height: 4, flexGrow: 1, borderRadius: 9999, background: "#e2e8f0" }}>
+        <SliderPrimitive.Range style={{ position: "absolute", height: "100%", borderRadius: 9999, background: "#94a3b8" }} />
       </SliderPrimitive.Track>
       <SliderPrimitive.Thumb style={{
-        display: "block", width: 16, height: 16, borderRadius: "50%",
-        background: "#ffffff", border: `1.5px solid ${C.borderLight}`,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.15)", cursor: "pointer", outline: "none",
+        display: "block", width: 8, height: 16, borderRadius: 2,
+        background: "#475569", border: "1px solid #94a3b8",
+        cursor: "ew-resize", outline: "none",
       }} />
     </SliderPrimitive.Root>
   );

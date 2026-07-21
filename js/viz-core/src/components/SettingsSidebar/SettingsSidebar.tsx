@@ -365,6 +365,23 @@ export const SettingsSidebar = observer(function SettingsSidebar({
           )}
         </div>
 
+        {/* Focus dimming — how strongly non-focused nodes/edges fade when a
+            node, edge, or path is focused (search included, same mechanism). */}
+        <div style={{ marginBottom: 20 }}>
+          <FieldLabel tooltip="How much non-focused nodes and edges fade when you focus a node, edge, or path.">
+            Focus Dimming
+          </FieldLabel>
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>
+            {Math.round(store.focusDimStrength * 100)}%
+          </div>
+          <SingleSlider
+            min={0}
+            max={100}
+            value={Math.round(store.focusDimStrength * 100)}
+            onChange={(v) => store.setFocusDimStrength(v / 100)}
+          />
+        </div>
+
       </div>
 
       {extraFooter && (

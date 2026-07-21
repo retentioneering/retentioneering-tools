@@ -2232,7 +2232,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           }
         }
 
-        const dimOpacity = 1 - progress * 0.9;
+        const dimOpacity = 1 - progress * store.focusDimStrength;
         cy.elements(".dimmed").forEach((element) => {
           element.style("opacity", dimOpacity);
         });
@@ -2336,7 +2336,7 @@ export const TransitionGraph = observer(function TransitionGraph({
         edge.removeClass("dimmed").addClass("highlighted");
         endpoints.removeClass("dimmed").addClass("highlighted");
 
-        const dimOpacity = 1 - progress * 0.9;
+        const dimOpacity = 1 - progress * store.focusDimStrength;
         cy.elements(".dimmed").forEach((element) => {
           element.style("opacity", dimOpacity);
         });
@@ -2511,7 +2511,7 @@ export const TransitionGraph = observer(function TransitionGraph({
       allConnectedEdges.removeClass("dimmed").addClass("highlighted");
       allConnectedNodes.removeClass("dimmed").addClass("highlighted");
 
-      const dimOpacity = 1 - progress * 0.9;
+      const dimOpacity = 1 - progress * store.focusDimStrength;
       cy.elements(".dimmed").forEach((element) => {
         element.style("opacity", dimOpacity);
       });
@@ -2662,6 +2662,7 @@ export const TransitionGraph = observer(function TransitionGraph({
       focusDirection,
       pathSelecting,
       isDifferential,
+      store.focusDimStrength,
     ],
   );
   applyFocusStateRef.current = applyFocusState;

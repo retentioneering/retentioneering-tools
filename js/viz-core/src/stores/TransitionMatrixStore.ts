@@ -60,6 +60,14 @@ export class TransitionMatrixStore {
   };
 
   collapseHidden = false;
+  // How strongly non-focused nodes/edges fade when a node/edge/path is
+  // focused: 0 = no dimming, 1 = fully invisible. Feeds the focus
+  // animation's easing (dimOpacity = 1 - progress * focusDimStrength) in
+  // TransitionGraph.tsx.
+  focusDimStrength = 0.9;
+  setFocusDimStrength = (value: number) => {
+    this.focusDimStrength = Math.min(1, Math.max(0, value));
+  };
   private shouldResetOnData = false;
   // True once the user has moved the Event Count slider manually.
   // When false, applyEventCounts freely syncs the filter to real bounds.

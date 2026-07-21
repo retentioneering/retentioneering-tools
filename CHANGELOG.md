@@ -8,6 +8,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Changed
 - Reorganized license files to clarify exact Apache-2.0, Notice file with copyright created
 
+### Fixed
+- `cluster_analysis_data()` now applies the documented `n_clusters="3-8"` default instead
+  of raising `ValueError` when it's omitted for the `kmeans` method; corrected the
+  `cluster_analysis`/`cluster_analysis_data` docstrings, which falsely claimed `features`
+  and `overview_metrics` default to per-event counts (#89)
+
 ## [5.0.1] - 2026-07-15
 
 ### Changed

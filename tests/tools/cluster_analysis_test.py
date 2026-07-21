@@ -39,6 +39,20 @@ def get_df():
     return df
 
 
+def get_large_df():
+    """12 users with varying path lengths - enough distinct paths for the
+    default n_clusters="3-8" grid search, which needs at least 8 samples."""
+    rows = []
+    for i in range(12):
+        uid = f"user_{i}"
+        rows.append([uid, "login", "2020-01-01 00:00:00"])
+        for j in range(i % 4):
+            rows.append([uid, "view", f"2020-01-01 00:0{j + 1}:00"])
+        if i % 3 == 0:
+            rows.append([uid, "purchase", "2020-01-01 00:09:00"])
+    return pd.DataFrame(rows, columns=["user_id", "event", "timestamp"])
+
+
 class TestClusterAnalysis:
     def test_kmeans_basic(self) -> None:
         """Test basic kmeans clustering with overview"""
@@ -318,39 +332,52 @@ class TestClusterAnalysis:
             {"n_clusters": 3, "nmf_components": 3},
         ]
 
-    def test_kmeans_missing_n_clusters(self) -> None:
-        """Test kmeans without n_clusters raises a clean ValueError (normal mode)"""
-        df = get_df()
+    def test_kmeans_missing_n_clusters_defaults_to_range(self) -> None:
+        """Omitting n_clusters for kmeans defaults to the documented "3-8"
+        range search instead of raising (regression test for issue #89)."""
+        df = get_large_df()
         stream = Eventstream(df)
 
-        with pytest.raises(
-            ValueError, match="n_clusters is required for kmeans method"
-        ):
-            stream.cluster_analysis_data(
-                features=[
-                    {"metric": "length"},
-                    {"metric": "duration"},
-                ],
-                method="kmeans",
-                nmf_components=2,
-            )
+        result = stream.cluster_analysis_data(
+            features=[
+                {"metric": "length"},
+                {"metric": "duration"},
+            ],
+            method="kmeans",
+            nmf_components=2,
+        )
 
-    def test_kmeans_missing_n_clusters_nmf_k_search(self) -> None:
-        """Test nmf_components-only search with kmeans and no n_clusters raises a clean ValueError"""
-        df = get_df()
+        assert "silhouette" in result
+        assert [p["n_clusters"] for p in result["silhouette"]["params"]] == [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+        ]
+        assert result["best_params"]["n_clusters"] in range(3, 9)
+
+    def test_kmeans_missing_n_clusters_nmf_k_search_defaults_to_range(self) -> None:
+        """The same "3-8" default applies when nmf_components is itself a
+        grid-search list, combining into the full nmf x n_clusters grid."""
+        df = get_large_df()
         stream = Eventstream(df)
 
-        with pytest.raises(
-            ValueError, match="n_clusters is required for kmeans method"
-        ):
-            stream.cluster_analysis_data(
-                features=[
-                    {"metric": "length"},
-                    {"metric": "duration"},
-                ],
-                method="kmeans",
-                nmf_components=[2, 3],
-            )
+        result = stream.cluster_analysis_data(
+            features=[
+                {"metric": "length"},
+                {"metric": "duration"},
+            ],
+            method="kmeans",
+            nmf_components=[2, 3],
+        )
+
+        assert "silhouette" in result
+        params = result["silhouette"]["params"]
+        assert {p["n_clusters"] for p in params} == set(range(3, 9))
+        assert {p["nmf_components"] for p in params} == {2, 3}
+        assert len(params) == 6 * 2
 
     def test_overview_empty_overview_metrics(self) -> None:
         """Test that overview works with empty overview_metrics (only segment_size/share)"""

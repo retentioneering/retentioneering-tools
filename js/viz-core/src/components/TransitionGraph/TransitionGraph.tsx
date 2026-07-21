@@ -3261,9 +3261,9 @@ export const TransitionGraph = observer(function TransitionGraph({
       >
         <span
           style={{
-            fontSize: 11,
+            fontSize: 13,
             fontWeight: 500,
-            color: isDark ? "#9ca3af" : "#6b7280",
+            color: isDark ? "#f3f4f6" : "#111827",
           }}
         >
           Edge filter

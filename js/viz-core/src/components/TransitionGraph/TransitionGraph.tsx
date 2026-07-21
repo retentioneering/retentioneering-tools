@@ -528,6 +528,28 @@ export const TransitionGraph = observer(function TransitionGraph({
     }
   }, [edgeFilterHintStorageKey]);
 
+  // One-time hint explaining node-focus gestures (click/double-click to
+  // switch direction, Cmd/Ctrl+click to trace a path, copy the focus as a
+  // view). Same shared-preferences dismissal pattern as the edge filter hint.
+  const focusHintStorageKey = `transition-graph-focus-hint:${sharedPreferencesId}`;
+  const [focusHintDismissed, setFocusHintDismissed] = React.useState<boolean>(
+    () => {
+      try {
+        return window.localStorage.getItem(focusHintStorageKey) === "dismissed";
+      } catch {
+        return false;
+      }
+    },
+  );
+  const dismissFocusHint = React.useCallback(() => {
+    setFocusHintDismissed(true);
+    try {
+      window.localStorage.setItem(focusHintStorageKey, "dismissed");
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [focusHintStorageKey]);
+
   const requestedValueType = currentValuesType;
   const isDark =
     theme === "dark" ||
@@ -3168,7 +3190,7 @@ export const TransitionGraph = observer(function TransitionGraph({
             right: 12,
             zIndex: 21,
             maxWidth: 240,
-            padding: "8px 10px",
+            padding: "8px 24px 8px 10px",
             borderRadius: 6,
             border: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
             background: isDark ? "rgba(31,41,55,0.96)" : "rgba(255,255,255,0.96)",
@@ -3178,6 +3200,29 @@ export const TransitionGraph = observer(function TransitionGraph({
             color: isDark ? "#d1d5db" : "#4b5563",
           }}
         >
+          <button
+            onClick={() => setEdgeFilterHintDismissed(true)}
+            aria-label="Close"
+            style={{
+              position: "absolute",
+              top: 6,
+              right: 6,
+              width: 14,
+              height: 14,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: isDark ? "#9ca3af" : "#6b7280",
+              padding: 0,
+            }}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
           <div style={{ marginBottom: 6 }}>
             By default, the Edge filter shows only each node's top{" "}
             {DEFAULT_TOP_K} strongest edges — not the full graph. Switch to
@@ -3354,6 +3399,75 @@ export const TransitionGraph = observer(function TransitionGraph({
           </button>
         </div>
       </div>
+
+      {/* One-time hint explaining node-focus gestures */}
+      {!focusHintDismissed &&
+        !isDifferential &&
+        (focusedNodes.length > 0 || focusedPath) && (
+          <div
+            style={{
+              position: "absolute",
+              top: 48,
+              right: 12,
+              zIndex: 21,
+              maxWidth: 260,
+              padding: "8px 24px 8px 10px",
+              borderRadius: 6,
+              border: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
+              background: isDark
+                ? "rgba(31,41,55,0.96)"
+                : "rgba(255,255,255,0.96)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              fontSize: 11,
+              lineHeight: "15px",
+              color: isDark ? "#d1d5db" : "#4b5563",
+            }}
+          >
+            <button
+              onClick={() => setFocusHintDismissed(true)}
+              aria-label="Close"
+              style={{
+                position: "absolute",
+                top: 6,
+                right: 6,
+                width: 14,
+                height: 14,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: isDark ? "#9ca3af" : "#6b7280",
+                padding: 0,
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+            <ul style={{ margin: "0 0 6px", paddingLeft: 14 }}>
+              <li style={{ marginBottom: 3 }}>Click a node to focus its outgoing edges — double-click to switch to incoming.</li>
+              <li style={{ marginBottom: 3 }}>Hold ⌘/Ctrl and click more nodes to trace a path.</li>
+              <li>The dashed-square icon copies this view.</li>
+            </ul>
+            <button
+              onClick={dismissFocusHint}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                fontSize: 11,
+                fontWeight: 600,
+                color: isDark ? "#e5e7eb" : "#374151",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              Don't show again
+            </button>
+          </div>
+        )}
 
       <div
         style={{

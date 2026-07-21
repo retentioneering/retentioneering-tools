@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { MatrixValueType } from "../../utils/value-types";
+import { VALUE_TYPE_DESCRIPTIONS, type MatrixValueType } from "../../utils/value-types";
 
 export type GraphLegendMode = "normal" | "diff" | "focus";
 
@@ -17,17 +17,6 @@ interface GraphLegendProps {
   /** Direction currently shown by the node focus (mode === "focus"). */
   focusDirection?: "out" | "in";
 }
-
-const VALUE_TYPE_LABELS: Record<MatrixValueType, string> = {
-  unique_paths: "unique paths",
-  count: "transition count",
-  share_of_total: "share of total",
-  avg_per_path: "avg per path",
-  proba_out: "P(next | source)",
-  proba_in: "P(prev | target)",
-  time_median: "median time",
-  time_q95: "95th pct time",
-};
 
 function Swatch({ color, kind }: { color: string; kind: "line" | "dot" }) {
   if (kind === "dot") {
@@ -152,7 +141,7 @@ export function GraphLegend({
   const coverageLine = (
     <div style={{ ...rowStyle, color: mutedColor }}>
       <span>
-        edges: {coverage.shown} / {coverage.total}
+        Edges shown: {coverage.shown} / {coverage.total}
         {coverage.total > 0 && coverage.shown < coverage.total
           ? ` (${Math.round(coverage.weightShare * 100)}% of weight)`
           : ""}
@@ -189,23 +178,14 @@ export function GraphLegend({
       </div>
 
       {mode === "focus" ? (
-        <>
-          <div style={rowStyle}>
-            <Swatch color={edgeColor} kind="line" />
-            <span>
-              {focusDirection === "in"
-                ? "showing incoming transitions"
-                : "showing outgoing transitions"}
-            </span>
-          </div>
-          <div style={{ ...rowStyle, color: mutedColor }}>
-            <span>
-              {focusDirection === "in"
-                ? "click node = outgoing"
-                : "double-click node = incoming"}
-            </span>
-          </div>
-        </>
+        <div style={rowStyle}>
+          <Swatch color={edgeColor} kind="line" />
+          <span>
+            {focusDirection === "in"
+              ? "showing incoming transitions"
+              : "showing outgoing transitions"}
+          </span>
+        </div>
       ) : mode === "diff" ? (
         <>
           <div style={rowStyle}>
@@ -225,17 +205,12 @@ export function GraphLegend({
           </div>
           <div style={rowStyle}>
             <Swatch color={edgeColor} kind="line" />
-            <span>edge width = {VALUE_TYPE_LABELS[valuesType] ?? valuesType}</span>
+            <span>edge width = {VALUE_TYPE_DESCRIPTIONS[valuesType] ?? valuesType}</span>
           </div>
         </>
       )}
 
       {coverageLine}
-
-      <div style={{ ...rowStyle, color: mutedColor, flexWrap: "wrap", rowGap: 0 }}>
-        <span>click node = outgoing · 2×click = incoming · click edge = inspect</span>
-        <span>⌘click = add to path (repeats ok) · ⌘2×click = undo last</span>
-      </div>
     </div>
   );
 }

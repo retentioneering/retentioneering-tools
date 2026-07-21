@@ -4,7 +4,7 @@ import * as SliderPrimitive from "@radix-ui/react-slider";
 import { observer } from "mobx-react-lite";
 import { TransitionMatrixStore } from "../../stores/TransitionMatrixStore";
 import { RangeSlider } from "../TransitionGraph/RangeSlider";
-import { type MatrixValueType } from "../../utils/value-types";
+import { type MatrixValueType, VALUE_TYPE_DESCRIPTIONS } from "../../utils/value-types";
 import { formatNumber, formatPopulation } from "../../utils/format-number";
 import { formatTime } from "../../utils/format-time";
 import { isTimeValueType } from "../../utils/value-types";
@@ -34,15 +34,15 @@ const C = {
 } as const;
 
 const VALUE_OPTIONS: { value: MatrixValueType; label: string; tooltip: string }[] = [
-  { value: "unique_paths", label: "Unique Paths",    tooltip: "Number of unique paths that have an A→B transition." },
-  { value: "count",        label: "Count",           tooltip: "Total number of A→B transitions." },
-  { value: "share_of_total", label: "Share of Total", tooltip: "Count divided by all transitions: #(A→B) / #(*→*)." },
-  { value: "avg_per_path",    label: "Avg per Path",       tooltip: "Count divided by total paths: #(A→B) / total paths." },
-  { value: "proba_out",   label: "Probability Out",  tooltip: "P(A→B) = #(A→B) / #(A→*). Markov transition probabilities." },
-  { value: "proba_in",    label: "Probability In",   tooltip: "P(A→B) = #(A→B) / #(*→B)." },
-  { value: "time_median", label: "Time Median",      tooltip: "Median time the A→B transition takes." },
-  { value: "time_q95",    label: "Time Q95",         tooltip: "95th percentile of time the A→B transition takes." },
-];
+  { value: "unique_paths", label: "Unique Paths" },
+  { value: "count",        label: "Count" },
+  { value: "share_of_total", label: "Share of Total" },
+  { value: "avg_per_path",    label: "Avg per Path" },
+  { value: "proba_out",   label: "Probability Out" },
+  { value: "proba_in",    label: "Probability In" },
+  { value: "time_median", label: "Time Median" },
+  { value: "time_q95",    label: "Time Q95" },
+].map((opt) => ({ ...opt, tooltip: VALUE_TYPE_DESCRIPTIONS[opt.value] }));
 
 // ── SingleSlider ───────────────────────────────────────────────────────────
 

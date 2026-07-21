@@ -3368,11 +3368,29 @@ export const TransitionGraph = observer(function TransitionGraph({
         {focusedNodes.length === 1 && (
           <button
             onClick={() => setEgoNode(focusedNodes[0])}
-            title={`Ego view: ${focusedNodes[0]}`}
-            data-rete-tooltip="Expand neighborhood: incoming & outgoing in one view"
-            style={btnStyle()}
+            aria-label={`Ego view: ${focusedNodes[0]}`}
+            data-rete-tooltip="Ego view: expand neighborhood (in & out)"
+            style={btnStyle({
+              width: 32,
+              height: 32,
+              padding: 0,
+              justifyContent: "center",
+            })}
           >
-            Ego view
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {/* "network", rotated 90° CCW and mirrored: two more nodes
+                  added to the left of the center so it reads as one focal
+                  node with neighbors on both sides, not just branching down. */}
+              <rect x="9" y="9" width="6" height="6" rx="1"/>
+              <rect x="18" y="2" width="4" height="4" rx="1"/>
+              <rect x="18" y="18" width="4" height="4" rx="1"/>
+              <rect x="2" y="2" width="4" height="4" rx="1"/>
+              <rect x="2" y="18" width="4" height="4" rx="1"/>
+              <path d="M15 9l3-3"/>
+              <path d="M15 15l3 3"/>
+              <path d="M9 9l-3-3"/>
+              <path d="M9 15l-3 3"/>
+            </svg>
           </button>
         )}
         {focusedNodes.length === 1 && (
@@ -3392,10 +3410,22 @@ export const TransitionGraph = observer(function TransitionGraph({
                 };
               });
             }}
-            title={`Color node: ${focusedNodes[0]}`}
-            style={btnStyle()}
+            aria-label={`Color node: ${focusedNodes[0]}`}
+            data-rete-tooltip="Color node"
+            style={btnStyle({
+              width: 32,
+              height: 32,
+              padding: 0,
+              justifyContent: "center",
+            })}
           >
-            Color Node
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="13.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/>
+              <circle cx="17.5" cy="10.5" r="1.1" fill="currentColor" stroke="none"/>
+              <circle cx="8.5" cy="7.5" r="1.1" fill="currentColor" stroke="none"/>
+              <circle cx="6.5" cy="12.5" r="1.1" fill="currentColor" stroke="none"/>
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.83-.44-1.13-.29-.29-.44-.65-.44-1.12a1.64 1.64 0 0 1 1.67-1.67h1.99c3.05 0 5.56-2.5 5.56-5.56C22 6.01 17.46 2 12 2z"/>
+            </svg>
           </button>
         )}
         {focusedEdge && (
@@ -3441,11 +3471,13 @@ export const TransitionGraph = observer(function TransitionGraph({
           }}
           aria-label="Copy view link"
           data-rete-tooltip={
-            copiedView
-              ? "Copied!"
-              : host === null
-                ? "Copy view link (URL with current focus & filters)"
-                : "Copy current view as JSON (for views=[...])"
+            host === null
+              ? copiedView
+                ? "Copied!"
+                : "Copy view link (URL with current focus & filters)"
+              : copiedView
+                ? "Copied. Paste it to the views arg"
+                : "Copy current view"
           }
           style={btnStyle({
             width: 32,
@@ -3455,8 +3487,16 @@ export const TransitionGraph = observer(function TransitionGraph({
           })}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            <path d="M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z"/>
+            <path d="M5 3a2 2 0 0 0-2 2"/>
+            <path d="M19 3a2 2 0 0 1 2 2"/>
+            <path d="M5 21a2 2 0 0 1-2-2"/>
+            <path d="M9 3h1"/>
+            <path d="M9 21h2"/>
+            <path d="M14 3h1"/>
+            <path d="M3 9v1"/>
+            <path d="M21 9v2"/>
+            <path d="M3 14v1"/>
           </svg>
         </button>
         <button
@@ -3471,10 +3511,10 @@ export const TransitionGraph = observer(function TransitionGraph({
           })}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 3 21 3 21 9"/>
-            <polyline points="9 21 3 21 3 15"/>
-            <line x1="21" y1="3" x2="14" y2="10"/>
-            <line x1="3" y1="21" x2="10" y2="14"/>
+            <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+            <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+            <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+            <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
           </svg>
         </button>
       </div>

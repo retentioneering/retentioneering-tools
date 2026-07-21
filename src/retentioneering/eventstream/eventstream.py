@@ -1982,9 +1982,12 @@ class Eventstream:
         ----------
         features : list of dict, optional
             Metric configurations used as clustering features (see the [Path
-            Metrics](/docs/path-metrics)). No default is computed for you — if
-            omitted, the widget starts empty and you pick features interactively
-            from the sidebar's feature picker before it will run.
+            Metrics](/docs/path-metrics)). If omitted, the sidebar starts
+            pre-filled with a wildcard `event_count_bulk` metric (one column
+            per event in the eventstream) — that pre-fill is a starting point
+            to edit, not something that runs on its own: passing `features`
+            explicitly (or clicking "Apply" in the sidebar) is what actually
+            triggers clustering.
         method : {"kmeans", "hdbscan"}, default "kmeans"
             Clustering algorithm.
         scaler : {"minmax", "standard"}, optional
@@ -1995,8 +1998,10 @@ class Eventstream:
             search over that range and picks the best. Defaults to `"3-8"`.
         overview_metrics : list of dict, optional
             Metrics shown in the overview heatmap after clustering (independent
-            of `features`). If omitted, the heatmap shows only segment_size and
-            segment_share until you add metrics from the sidebar.
+            of `features`). If omitted, the sidebar starts pre-filled with a
+            wildcard `event_count_bulk` metric here too (mean count per event);
+            same as `features`, it only takes effect once you click "Apply" or
+            pass the argument explicitly.
             Both `features` and `overview_metrics` accept metric configs from the
             same [Path Metrics](/docs/path-metrics) registry.
         path_col : str, optional

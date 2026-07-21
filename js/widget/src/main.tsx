@@ -52,7 +52,7 @@ export function focusNode(eventRef: string, el: HTMLElement) {
         },
       });
     } else {
-      applier({ focus: { type: "node", id: eventRef } });
+      applier({ focus: { type: "node", event: eventRef } });
     }
     return;
   }

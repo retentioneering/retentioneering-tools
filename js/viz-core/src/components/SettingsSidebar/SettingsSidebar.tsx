@@ -1,9 +1,9 @@
 "use client";
 import * as React from "react";
-import * as SliderPrimitive from "@radix-ui/react-slider";
 import { observer } from "mobx-react-lite";
 import { TransitionMatrixStore } from "../../stores/TransitionMatrixStore";
 import { RangeSlider } from "../TransitionGraph/RangeSlider";
+import { SingleSlider } from "../TransitionGraph/SingleSlider";
 import { type MatrixValueType, VALUE_TYPE_DESCRIPTIONS } from "../../utils/value-types";
 import { formatNumber, formatPopulation } from "../../utils/format-number";
 import { formatTime } from "../../utils/format-time";
@@ -43,29 +43,6 @@ const VALUE_OPTIONS: { value: MatrixValueType; label: string; tooltip: string }[
   { value: "time_median", label: "Time Median" },
   { value: "time_q95",    label: "Time Q95" },
 ].map((opt) => ({ ...opt, tooltip: VALUE_TYPE_DESCRIPTIONS[opt.value] }));
-
-// ── SingleSlider ───────────────────────────────────────────────────────────
-
-function SingleSlider({ min, max, value, onChange }: {
-  min: number; max: number; value: number; onChange: (v: number) => void;
-}) {
-  return (
-    <SliderPrimitive.Root
-      style={{ position: "relative", display: "flex", height: 20, width: "100%", alignItems: "center", userSelect: "none", touchAction: "none" }}
-      min={min} max={max} step={1} value={[value]}
-      onValueChange={([v]) => onChange(v)}
-    >
-      <SliderPrimitive.Track style={{ position: "relative", height: 4, flexGrow: 1, borderRadius: 9999, background: "#e2e8f0" }}>
-        <SliderPrimitive.Range style={{ position: "absolute", height: "100%", borderRadius: 9999, background: "#94a3b8" }} />
-      </SliderPrimitive.Track>
-      <SliderPrimitive.Thumb style={{
-        display: "block", width: 8, height: 16, borderRadius: 2,
-        background: "#475569", border: "1px solid #94a3b8",
-        cursor: "ew-resize", outline: "none",
-      }} />
-    </SliderPrimitive.Root>
-  );
-}
 
 // ── small UI primitives ────────────────────────────────────────────────────
 
@@ -136,6 +113,11 @@ export const SettingsSidebar = observer(function SettingsSidebar({
   isStatic = false,
 }: SettingsSidebarProps) {
   const segmentCols = Object.keys(segmentLevels);
+  // Only TransitionMatrixStore has this field — other SettingsSidebar
+  // consumers (step sankey's StepMatrixStore) pass a differently-shaped
+  // store `as any`, so this naturally hides the slider for them without
+  // needing every future consumer to remember an opt-out prop.
+  const showFocusDimming = typeof (store as { focusDimStrength?: unknown }).focusDimStrength === "number";
   const isDiff = store.matrixType === "differential";
   const isTime = isTimeValueType(valuesType);
 
@@ -367,20 +349,22 @@ export const SettingsSidebar = observer(function SettingsSidebar({
 
         {/* Focus dimming — how strongly non-focused nodes/edges fade when a
             node, edge, or path is focused (search included, same mechanism). */}
-        <div style={{ marginBottom: 20 }}>
-          <FieldLabel tooltip="How much non-focused nodes and edges fade when you focus a node, edge, or path.">
-            Focus Dimming
-          </FieldLabel>
-          <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>
-            {Math.round(store.focusDimStrength * 100)}%
+        {showFocusDimming && (
+          <div style={{ marginBottom: 20 }}>
+            <FieldLabel tooltip="How much non-focused nodes and edges fade when you focus a node, edge, or path.">
+              Focus Dimming
+            </FieldLabel>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>
+              {Math.round(store.focusDimStrength * 100)}%
+            </div>
+            <SingleSlider
+              min={0}
+              max={100}
+              value={Math.round(store.focusDimStrength * 100)}
+              onChange={(v) => store.setFocusDimStrength(v / 100)}
+            />
           </div>
-          <SingleSlider
-            min={0}
-            max={100}
-            value={Math.round(store.focusDimStrength * 100)}
-            onChange={(v) => store.setFocusDimStrength(v / 100)}
-          />
-        </div>
+        )}
 
       </div>
 

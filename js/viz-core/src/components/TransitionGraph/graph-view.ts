@@ -15,13 +15,18 @@ import type { StoredViewport } from "./TransitionGraph";
  *   - the "Copy view link" toolbar button,
  *   - `#view=<base64url>` fragment on a bare HTML export,
  *   - `[tab:view=Name]` links in MCP report analysis text.
+ *
+ * `egoNode` is the one field none of these capture automatically — the Ego
+ * view modal covers the toolbar while it's open, so there's no "copy this"
+ * button for it today. Write it by hand in `views=` to get a pill that
+ * jumps straight into Ego view for a specific event.
  */
 export interface GraphView {
   v?: 1;
   /** Pill label; also the handle for `[tab:view=Name]` links. */
   name?: string;
   focus?:
-    | { type: "node"; id: string; direction?: "out" | "in" }
+    | { type: "node"; event: string; direction?: "out" | "in" }
     | { type: "edge"; source: string; target: string }
     | { type: "path"; nodes: string[] };
   edgeFilter?: EdgeFilterSpec;
@@ -34,6 +39,11 @@ export interface GraphView {
   /** Exact node coordinates — captured by Copy view link so a view
    *  reproduces a manual arrangement, not just focus/filters. */
   nodePositions?: Record<string, { x: number; y: number }>;
+  /** Opens the Ego view modal for this event on apply. Independent of
+   *  `focus` — a view can set both, or just this. Not currently captured by
+   *  "Copy view link" (the modal covers the toolbar while open); author it
+   *  by hand in `views=` to get an "ego view for X" pill. */
+  egoNode?: string;
 }
 
 /** Loose runtime validation for a view arriving from JSON (traitlet, URL
@@ -56,10 +66,10 @@ export function parseGraphView(raw: unknown): GraphView | null {
 
   const focus = view.focus as Record<string, unknown> | undefined;
   if (focus && typeof focus === "object") {
-    if (focus.type === "node" && typeof focus.id === "string") {
+    if (focus.type === "node" && typeof focus.event === "string") {
       out.focus = {
         type: "node",
-        id: focus.id,
+        event: focus.event,
         ...(focus.direction === "in" ? { direction: "in" as const } : {}),
       };
     } else if (
@@ -148,6 +158,10 @@ export function parseGraphView(raw: unknown): GraphView | null {
       }
     }
     if (Object.keys(valid).length > 0) out.nodePositions = valid;
+  }
+
+  if (typeof view.egoNode === "string" && view.egoNode) {
+    out.egoNode = view.egoNode;
   }
 
   return Object.keys(out).length > 0 ? out : null;

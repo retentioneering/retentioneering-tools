@@ -2,10 +2,47 @@ import json
 
 import traitlets
 
-from retentioneering.exceptions import RetentioneeringError
+from retentioneering.exceptions import InvalidParameterError, RetentioneeringError
 from retentioneering.widgets._base import _UNSET, RetentioneeringWidget
 from retentioneering.widgets._utils import parse_diff as _parse_diff
 from retentioneering.widgets._html_export import write_html
+
+
+def _validate_view_events(view: dict, prefix: str, available: set) -> None:
+    """Raise if a hand-authored view dict (views=/view=) names an event that
+    doesn't exist — same contract as steps=/source_events=/mapping= etc.
+    elsewhere: fail loudly at construction time instead of silently
+    rendering an empty Ego view / focus in the browser."""
+    focus = view.get("focus")
+    if isinstance(focus, dict):
+        focus_type = focus.get("type")
+        if focus_type == "node":
+            node_id = focus.get("event")
+            if node_id not in available:
+                raise InvalidParameterError(
+                    f"{prefix}.focus.event", node_id, sorted(available)
+                )
+        elif focus_type == "edge":
+            for key in ("source", "target"):
+                event_id = focus.get(key)
+                if event_id not in available:
+                    raise InvalidParameterError(
+                        f"{prefix}.focus.{key}", event_id, sorted(available)
+                    )
+        elif focus_type == "path":
+            for node_id in focus.get("nodes") or []:
+                if node_id not in available:
+                    raise InvalidParameterError(
+                        f"{prefix}.focus.nodes", node_id, sorted(available)
+                    )
+    for event_id in view.get("hiddenEvents") or []:
+        if event_id not in available:
+            raise InvalidParameterError(
+                f"{prefix}.hiddenEvents", event_id, sorted(available)
+            )
+    ego_node = view.get("egoNode")
+    if ego_node is not None and ego_node not in available:
+        raise InvalidParameterError(f"{prefix}.egoNode", ego_node, sorted(available))
 
 
 class TransitionGraphWidget(RetentioneeringWidget):
@@ -86,9 +123,11 @@ class TransitionGraphWidget(RetentioneeringWidget):
             self.segment_levels = "{}"
         self.path_cols = json.dumps(eventstream.schema.path_cols)
         try:
-            self.event_counts = json.dumps(eventstream.get_event_counts())
+            _event_counts = eventstream.get_event_counts()
         except Exception:
-            self.event_counts = "{}"
+            _event_counts = {}
+        self.event_counts = json.dumps(_event_counts)
+        _available_events = set(_event_counts.keys())
 
         self.edge_weight = edge_weight if edge_weight is not _UNSET else "proba_out"
         _diff_val = diff if diff is not _UNSET else None
@@ -127,6 +166,8 @@ class TransitionGraphWidget(RetentioneeringWidget):
             _views_list = list(_views_val)
             if not all(isinstance(v, dict) for v in _views_list):
                 raise TypeError("views= must be a list of view dicts")
+            for _i, _v in enumerate(_views_list):
+                _validate_view_events(_v, f"views[{_i}]", _available_events)
             self.views = json.dumps(_views_list)
         _view_val = view if view is not _UNSET else None
         if _view_val is None:
@@ -134,6 +175,7 @@ class TransitionGraphWidget(RetentioneeringWidget):
         elif isinstance(_view_val, str):
             self.view = _view_val  # a name referencing an entry in `views`
         elif isinstance(_view_val, dict):
+            _validate_view_events(_view_val, "view", _available_events)
             self.view = json.dumps(_view_val)
         else:
             raise TypeError(

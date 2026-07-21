@@ -999,7 +999,7 @@ export const TransitionGraph = observer(function TransitionGraph({
         setFocusedEdge(null);
         setFocusedPath(null);
         setFocusDirection(focus.direction === "in" ? "in" : "out");
-        setFocusedNodes([focus.id]);
+        setFocusedNodes([focus.event]);
       } else if (focus?.type === "edge") {
         setFocusedNodes([]);
         setFocusedPath(null);
@@ -1013,6 +1013,7 @@ export const TransitionGraph = observer(function TransitionGraph({
         setFocusedEdge(null);
         setFocusedPath(null);
       }
+      setEgoNode(view.egoNode ?? null);
 
       // Viewport is applied by a dedicated effect AFTER this commit's
       // rebuild/filtering settled (hidden-event changes rebuild the graph).
@@ -1053,7 +1054,7 @@ export const TransitionGraph = observer(function TransitionGraph({
     } else if (focusedNodes.length === 1) {
       view.focus = {
         type: "node",
-        id: focusedNodes[0],
+        event: focusedNodes[0],
         ...(focusDirection === "in" ? { direction: "in" as const } : {}),
       };
     }
@@ -2799,7 +2800,7 @@ export const TransitionGraph = observer(function TransitionGraph({
           if (focus.type === "node") {
             fitNodeNeighborhood(
               cy,
-              focus.id,
+              focus.event,
               isDifferential ? "both" : focus.direction === "in" ? "in" : "out",
             );
             return;

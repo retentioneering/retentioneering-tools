@@ -1812,7 +1812,7 @@ class Eventstream:
             stream.transition_graph(edge_weight="count", diff=("plan", "pro", "free"))
             stream.transition_graph(state_file="checkout_graph.json")
             stream.transition_graph(
-                views=[{"name": "Checkout", "focus": {"type": "node", "id": "cart"}}],
+                views=[{"name": "Checkout", "focus": {"type": "node", "event": "cart"}}],
                 view="Checkout",
             )
         """

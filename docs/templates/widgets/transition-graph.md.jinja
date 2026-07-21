@@ -29,10 +29,11 @@ widget had before the first view was applied. Any manual interaction
 | `hiddenEvents` | `list of str, optional` | Events hidden in this view. |
 | `viewport` | `str or dict, optional` | Camera control. See [viewport](#viewport). |
 | `nodePositions` | `dict, optional` | Exact node coordinates (`{"event": {"x": …, "y": …}}`) the view pins on apply. Rarely needed by hand: manual arrangements persist on their own (per-dataset) and travel with exports. |
+| `egoNode` | `str, optional` | Opens the [Ego view](#ego-view) modal for this event on apply. Independent of `focus` — a view can set both, or just this. Not captured by the Copy view link button (the modal covers the toolbar while it's open) — write it by hand. |
 
 #### focus
 
-- `{"type": "node", "id": "cart"}` — focus one event: everything else dims
+- `{"type": "node", "event": "cart"}` — focus one event: everything else dims
   and the viewport fits the node together with its neighborhood. One
   direction is shown at a time: outgoing transitions by default,
   `"direction": "in"` for incoming. In the widget, clicking a node shows its
@@ -140,7 +141,7 @@ values and the diff between them.
     views=[
         {
             "name": "Cart",
-            "focus": {"type": "node", "id": "cart"},
+            "focus": {"type": "node", "event": "cart"},
             "edgeFilter": {"mode": "topk", "k": 2}
         },
         {
@@ -159,5 +160,17 @@ values and the diff between them.
     view="Checkout path",
     sidebar_open=False
 )`} path="/docs-demos/widgets/transition-graph/views.html" height={560}/>
+
+### Ego view
+<DemoWidget cmd={`stream.transition_graph(
+    views=[
+        {
+            "name": "Cart",
+            "focus": {"type": "node", "event": "cart"},
+            "egoNode": "cart"
+        },
+    ],
+    view="Cart"
+)`} path="/docs-demos/widgets/transition-graph/ego_view.html" height={560}/>
 
 {% endblock %}

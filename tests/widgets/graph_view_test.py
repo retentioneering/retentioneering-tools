@@ -31,7 +31,7 @@ def _stream() -> Eventstream:
 VIEWS = [
     {
         "name": "Checkout",
-        "focus": {"type": "node", "id": "A"},
+        "focus": {"type": "node", "event": "A"},
         "edgeFilter": {"mode": "topk", "k": 2},
     }
 ]

@@ -2,7 +2,7 @@ import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import { parseJson, ComputingSpinner, RetentioneeringSpinKeyframes, useHostSubscriptions, type RenderContext } from "./widget-utils";
-import { resolveDiffLabels } from "@retentioneering/viz-core";
+import { resolveDiffLabels, RangeSlider, SingleSlider } from "@retentioneering/viz-core";
 
 // ── types ──────────────────────────────────────────────────────────────────
 
@@ -124,64 +124,7 @@ const iconBtnStyle = (active: boolean, activeColor: string): React.CSSProperties
   flexShrink: 0, padding: 0,
 });
 
-// ── sliders (matching TransitionGraph / SettingsSidebar style) ─────────────
-
-const THUMB: React.CSSProperties = { position: "absolute", width: 16, height: 16, borderRadius: "50%", background: "#475569", border: "1px solid #94a3b8", cursor: "ew-resize", transform: "translateX(-50%)", top: "50%", marginTop: -8, zIndex: 1 };
-
-function RangeSlider({ min, max, value, onChange, scale = "linear", formatValue, compact = false }: {
-  min: number; max: number; value: [number, number]; onChange: (v: [number, number]) => void;
-  scale?: "linear" | "log"; formatValue?: (v: number) => string; compact?: boolean;
-}) {
-  const trackRef = React.useRef<HTMLDivElement>(null);
-  const fmt = formatValue ?? ((v: number) => (v * 100).toFixed(0) + "%");
-
-  const toPos = (v: number): number => {
-    if (v <= min) return 0;
-    if (v >= max) return 1;
-    if (scale === "log" && min > 0 && max > 0)
-      return (Math.log(v) - Math.log(min)) / (Math.log(max) - Math.log(min));
-    return (v - min) / ((max - min) || 1);
-  };
-  const fromPos = (pos: number): number => {
-    if (scale === "log" && min > 0 && max > 0)
-      return Math.exp(Math.log(min) + pos * (Math.log(max) - Math.log(min)));
-    return min + pos * (max - min);
-  };
-
-  const lp = toPos(value[0]) * 100;
-  const rp = toPos(value[1]) * 100;
-
-  const drag = (thumb: "lo" | "hi") => (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    const move = (ev: MouseEvent) => {
-      const rect = trackRef.current?.getBoundingClientRect(); if (!rect) return;
-      const pos = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
-      const v = fromPos(pos);
-      if (thumb === "lo") onChange([Math.min(v, value[1]), value[1]]);
-      else onChange([value[0], Math.max(v, value[0])]);
-    };
-    const up = () => { document.removeEventListener("mousemove", move); document.removeEventListener("mouseup", up); };
-    document.addEventListener("mousemove", move); document.addEventListener("mouseup", up);
-    move(e.nativeEvent as MouseEvent);
-  };
-
-  return (
-    <div>
-      {!compact && (
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 12, color: "#6b7280" }}>
-          <span>{fmt(value[0])}</span><span>–</span><span>{fmt(value[1])}</span>
-        </div>
-      )}
-      <div ref={trackRef} style={{ position: "relative", height: 20, display: "flex", alignItems: "center", userSelect: "none" }}>
-        <div style={{ width: "100%", height: 4, background: "#e2e8f0", borderRadius: 9999, position: "relative" }}>
-          <div style={{ position: "absolute", left: `${lp}%`, right: `${100 - rp}%`, height: "100%", background: "#94a3b8", borderRadius: 9999 }} />
-        </div>
-        <div style={{ ...THUMB, left: `${lp}%` }} onMouseDown={drag("lo")} />
-        <div style={{ ...THUMB, left: `${rp}%` }} onMouseDown={drag("hi")} />
-      </div>
-    </div>
-  );
-}
+// RangeSlider/SingleSlider imported from viz-core — see the import above.
 
 // ── matrix table ──────────────────────────────────────────────────────────
 
@@ -898,49 +841,6 @@ const FLabel = ({ children, tip }: { children: React.ReactNode; tip?: string }) 
   </div>
 );
 
-function SingleSlider({ min, max, value, onChange, scale = "linear", integer = false }: {
-  min: number; max: number; value: number; onChange: (v: number) => void;
-  scale?: "linear" | "log"; integer?: boolean;
-}) {
-  const trackRef = React.useRef<HTMLDivElement>(null);
-
-  const toPos = (v: number): number => {
-    if (v <= min) return 0; if (v >= max) return 1;
-    if (scale === "log" && min > 0 && max > 0)
-      return (Math.log(v) - Math.log(min)) / (Math.log(max) - Math.log(min));
-    return (v - min) / ((max - min) || 1);
-  };
-  const fromPos = (pos: number): number => {
-    if (scale === "log" && min > 0 && max > 0)
-      return Math.exp(Math.log(min) + pos * (Math.log(max) - Math.log(min)));
-    return min + pos * (max - min);
-  };
-
-  const pct = toPos(value) * 100;
-
-  const drag = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const move = (ev: MouseEvent) => {
-      const rect = trackRef.current?.getBoundingClientRect(); if (!rect) return;
-      const pos = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
-      const v = pos === 0 ? min : fromPos(pos);
-      onChange(integer ? Math.round(v) : v);
-    };
-    const up = () => { document.removeEventListener("mousemove", move); document.removeEventListener("mouseup", up); };
-    document.addEventListener("mousemove", move); document.addEventListener("mouseup", up);
-    move(e.nativeEvent as MouseEvent);
-  };
-
-  return (
-    <div ref={trackRef} style={{ position: "relative", height: 20, display: "flex", alignItems: "center", userSelect: "none", cursor: "ew-resize" }}
-      onMouseDown={drag}>
-      <div style={{ width: "100%", height: 4, background: "#e2e8f0", borderRadius: 9999, position: "relative" }}>
-        <div style={{ position: "absolute", left: 0, width: `${pct}%`, height: "100%", background: "#94a3b8", borderRadius: 9999 }} />
-      </div>
-      <div style={{ ...THUMB, left: `${pct}%` }} />
-    </div>
-  );
-}
 
 // ── App ────────────────────────────────────────────────────────────────────
 
@@ -1240,7 +1140,7 @@ export function render({ host, el, isStatic = false }: RenderContext) {
               <div style={{ marginBottom: 20 }}>
                 <FLabel tip="Steps visible on each side of the anchor column.">Step window</FLabel>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ flex: 1 }}><SingleSlider min={1} max={20} value={stepWindow} onChange={w => { setStepWindow(w); setParamDebounced("step_window", w); }} integer /></div>
+                  <div style={{ flex: 1 }}><SingleSlider min={1} max={20} value={stepWindow} onChange={w => { setStepWindow(w); setParamDebounced("step_window", w); }} /></div>
                   <input type="number" min={1} max={20} value={stepWindow}
                     onChange={e => { const w = Math.max(1, Math.min(20, parseInt(e.target.value) || 1)); setStepWindow(w); setParamDebounced("step_window", w); }}
                     style={{ width: 52, border: `1px solid ${SC.borderLight}`, borderRadius: 6, padding: "5px 8px", fontSize: 13, textAlign: "center", outline: "none", background: SC.bg, color: SC.text, boxShadow: "inset 0 1px 2px rgba(0,0,0,0.04)" }} />

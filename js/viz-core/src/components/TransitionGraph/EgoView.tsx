@@ -294,10 +294,6 @@ export const EgoView: React.FC<EgoViewProps> = ({
   const textColor = isDark ? "#f3f4f6" : "#111827";
   const mutedColor = isDark ? "#9ca3af" : "#6b7280";
   const barColor = isDark ? "#6b7280" : "#9ca3af";
-  // Amber marks the center event and, on hover, the neighbor being pointed
-  // at — more visible against the modal's white/dark background than the
-  // brand yellow.
-  const centerColor = isDark ? "#fbbf24" : "#f59e0b";
   const ribbonFill = (weight: number, key: string): string => {
     const base = isDifferential
       ? weight > 0
@@ -374,7 +370,7 @@ export const EgoView: React.FC<EgoViewProps> = ({
             width={BAR_WIDTH}
             height={row.height}
             rx={2}
-            fill={hovered === key ? centerColor : barColor}
+            fill={barColor}
           />
           <text
             x={labelX}
@@ -382,7 +378,8 @@ export const EgoView: React.FC<EgoViewProps> = ({
             dominantBaseline="central"
             textAnchor={side === "in" ? "end" : "start"}
             fontSize={12}
-            fill={hovered === key ? centerColor : textColor}
+            fontWeight={hovered === key ? 600 : 400}
+            fill={textColor}
           >
             {(row.isSelfLoop ? "↻ " : "") + truncate(row.other)}
             <tspan fill={mutedColor}>{`  ${valueText}`}</tspan>
@@ -522,7 +519,7 @@ export const EgoView: React.FC<EgoViewProps> = ({
             width={BAR_WIDTH}
             height={centerHeight}
             rx={2}
-            fill={centerColor}
+            fill={isDifferential ? barColor : "var(--retentioneering-yellow)"}
           />
           <text
             x={centerX + BAR_WIDTH / 2}

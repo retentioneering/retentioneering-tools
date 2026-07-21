@@ -302,7 +302,7 @@ def _build_server(
         views:
             Optional named visual presets rendered as pills above the graph and
             addressable from the analysis text as [label:view=Name]. Each view is
-            {"name": str, "focus"?: {"type": "node", "id": e} |
+            {"name": str, "focus"?: {"type": "node", "event": e} |
             {"type": "edge", "source": a, "target": b} |
             {"type": "path", "nodes": [e1, e2, ...]},
             "edgeFilter"?: {"mode": "topk", "k": n} | {"mode": "range", "range": [lo, hi]},

@@ -35,9 +35,11 @@ widget had before the first view was applied. Any manual interaction
 
 - `{"type": "node", "event": "cart"}` — focus one event: everything else dims
   and the viewport fits the node together with its neighborhood. One
-  direction is shown at a time: outgoing transitions by default,
-  `"direction": "in"` for incoming. In the widget, clicking a node shows its
-  outgoing transitions and double-clicking shows the incoming ones. Diff
+  direction is shown at a time by default: outgoing transitions,
+  `"direction": "in"` for incoming, `"direction": "both"` for both at once
+  (no color code — direction is read off the existing arrowheads). In the
+  widget, clicking a node shows its outgoing transitions; clicking that same
+  node again cycles to incoming, then to both, then back to outgoing. Diff
   mode always shows both directions (red/blue).
 - `{"type": "edge", "source": "cart", "target": "checkout"}` — focus one
   transition: the edge and its two nodes stay bright (the edge is shown even

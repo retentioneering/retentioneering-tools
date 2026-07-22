@@ -528,9 +528,9 @@ export const TransitionGraph = observer(function TransitionGraph({
     }
   }, [edgeFilterHintStorageKey]);
 
-  // One-time hint explaining node-focus gestures (click/double-click to
-  // switch direction, Cmd/Ctrl+click to trace a path, copy the focus as a
-  // view). Same shared-preferences dismissal pattern as the edge filter hint.
+  // One-time hint explaining node-focus gestures (repeated clicks cycle
+  // direction, Cmd/Ctrl+click to trace a path, copy the focus as a view).
+  // Same shared-preferences dismissal pattern as the edge filter hint.
   const focusHintStorageKey = `transition-graph-focus-hint:${sharedPreferencesId}`;
   const [focusHintDismissed, setFocusHintDismissed] = React.useState<boolean>(
     () => {
@@ -594,13 +594,15 @@ export const TransitionGraph = observer(function TransitionGraph({
   const [positionsVersion, setPositionsVersion] = React.useState(0);
   const [sceneMaskOpacity, setSceneMaskOpacity] = React.useState(0);
   const [focusedNodes, setFocusedNodes] = React.useState<string[]>([]);
-  // Node focus shows ONE direction at a time outside diff mode: click =
-  // outgoing, double-click = incoming. No color code needed — the shown
-  // edges stay neutral gray on the dimmed background. Diff mode always
-  // shows both directions (its red/blue is the natural code there).
-  const [focusDirection, setFocusDirection] = React.useState<"out" | "in">(
-    "out",
-  );
+  // Node focus cycles direction outside diff mode: clicking a fresh node
+  // shows its outgoing edges; re-clicking that SAME node advances the cycle
+  // out → in → both → out. No color code needed even for "both" — edges
+  // stay neutral gray on the dimmed background, direction is read off the
+  // arrowheads that are already there. Diff mode always shows both
+  // directions (its red/blue is the natural code there).
+  const [focusDirection, setFocusDirection] = React.useState<
+    "out" | "in" | "both"
+  >("out");
   // Edge-focus mode (click an edge) — mutually exclusive with focusedNodes.
   const [focusedEdge, setFocusedEdge] = React.useState<{
     source: string;
@@ -622,6 +624,8 @@ export const TransitionGraph = observer(function TransitionGraph({
   focusedNodesRef.current = focusedNodes;
   const focusedPathRef = React.useRef(focusedPath);
   focusedPathRef.current = focusedPath;
+  const focusDirectionRef = React.useRef(focusDirection);
+  focusDirectionRef.current = focusDirection;
   // GraphView machinery: name of the last applied view pill (null = none /
   // user diverged), the pre-view snapshot the Default pill restores, and a
   // viewport request processed after the commit (post-rebuild) it triggered.
@@ -633,7 +637,7 @@ export const TransitionGraph = observer(function TransitionGraph({
     focusedNodes: string[];
     focusedEdge: { source: string; target: string } | null;
     focusedPath: string[] | null;
-    focusDirection: "out" | "in";
+    focusDirection: "out" | "in" | "both";
     nodePositions: Record<string, StoredPosition>;
     population: { min: number; max: number } | null;
     hidden: string[];
@@ -998,7 +1002,11 @@ export const TransitionGraph = observer(function TransitionGraph({
       if (focus?.type === "node") {
         setFocusedEdge(null);
         setFocusedPath(null);
-        setFocusDirection(focus.direction === "in" ? "in" : "out");
+        setFocusDirection(
+          focus.direction === "in" || focus.direction === "both"
+            ? focus.direction
+            : "out",
+        );
         setFocusedNodes([focus.event]);
       } else if (focus?.type === "edge") {
         setFocusedNodes([]);
@@ -1055,7 +1063,9 @@ export const TransitionGraph = observer(function TransitionGraph({
       view.focus = {
         type: "node",
         event: focusedNodes[0],
-        ...(focusDirection === "in" ? { direction: "in" as const } : {}),
+        ...(focusDirection !== "out"
+          ? { direction: focusDirection as "in" | "both" }
+          : {}),
       };
     }
     view.edgeFilter = edgeFilter;
@@ -1842,6 +1852,24 @@ export const TransitionGraph = observer(function TransitionGraph({
           setPathSelecting(true);
         }
         setFocusedEdge(null);
+      } else if (
+        !isDifferential &&
+        focusedNodesRef.current.length === 1 &&
+        focusedNodesRef.current[0] === nodeId
+      ) {
+        // Re-clicking the already-focused node cycles its direction instead
+        // of just re-focusing it: out (default) → in → both → out. Diff
+        // mode always shows both directions, so there's nothing to cycle.
+        const nextDirection: "out" | "in" | "both" =
+          focusDirectionRef.current === "out"
+            ? "in"
+            : focusDirectionRef.current === "in"
+              ? "both"
+              : "out";
+        setFocusDirection(nextDirection);
+        setFocusedEdge(null);
+        setFocusedPath(null);
+        setPathSelecting(false);
       } else {
         setFocusedNodes([nodeId]);
         setFocusDirection("out");
@@ -1855,51 +1883,39 @@ export const TransitionGraph = observer(function TransitionGraph({
       setTooltip(null);
     });
 
-    // Double-click switches the node focus to INCOMING transitions (a
-    // single click shows outgoing; the intermediate single-tap state is the
-    // same node's outgoing focus, so nothing is lost). Diff mode always
-    // shows both directions — no switch there.
+    // Cmd/Ctrl+double-click is the only remaining double-click gesture: it
+    // removes the last node of a path selection (see below). Direction is
+    // now cycled by repeated plain clicks on the same node (see the "tap"
+    // handler above), not by double-click.
     cy.on("dbltap", "node", (event) => {
       if (isDraggingRef.current) return;
       const original = event.originalEvent as MouseEvent | undefined;
-      if (original?.metaKey || original?.ctrlKey) {
-        // Cmd+double-click removes the LAST node of the path — a
-        // backspace-like undo. (Removing a mid-path node would silently
-        // splice a gap: A→B→C turning into A→C is rarely what was meant.)
-        // The gesture's own two Cmd+taps appended the clicked node twice:
-        // the first two pops drop those, the third pops the real tail —
-        // and only when the click was on that tail.
-        const nodeId = event.target.id();
-        const current = focusedPathRef.current;
-        if (!current) return;
-        const next = [...current];
-        if (next[next.length - 1] === nodeId) next.pop();
-        if (next[next.length - 1] === nodeId) next.pop();
-        if (next[next.length - 1] === nodeId) next.pop();
-        if (next.length === 0) {
-          setFocusedNodes([]);
-          setFocusedPath(null);
-          setPathSelecting(false);
-        } else if (next.length === 1) {
-          setFocusedNodes(next);
-          setFocusDirection("out");
-          setFocusedPath(null);
-          setPathSelecting(false);
-        } else {
-          setFocusedPath(next);
-        }
-        return;
+      if (!(original?.metaKey || original?.ctrlKey)) return;
+      // Cmd+double-click removes the LAST node of the path — a
+      // backspace-like undo. (Removing a mid-path node would silently
+      // splice a gap: A→B→C turning into A→C is rarely what was meant.)
+      // The gesture's own two Cmd+taps appended the clicked node twice:
+      // the first two pops drop those, the third pops the real tail —
+      // and only when the click was on that tail.
+      const nodeId = event.target.id();
+      const current = focusedPathRef.current;
+      if (!current) return;
+      const next = [...current];
+      if (next[next.length - 1] === nodeId) next.pop();
+      if (next[next.length - 1] === nodeId) next.pop();
+      if (next[next.length - 1] === nodeId) next.pop();
+      if (next.length === 0) {
+        setFocusedNodes([]);
+        setFocusedPath(null);
+        setPathSelecting(false);
+      } else if (next.length === 1) {
+        setFocusedNodes(next);
+        setFocusDirection("out");
+        setFocusedPath(null);
+        setPathSelecting(false);
+      } else {
+        setFocusedPath(next);
       }
-      if (isDifferential) return;
-      setFocusedNodes([event.target.id()]);
-      setFocusDirection("in");
-      setFocusedEdge(null);
-      setFocusedPath(null);
-      setPathSelecting(false);
-      store.applyPathEdges([]);
-      setActiveViewName(null);
-      setColorPicker(null);
-      setTooltip(null);
     });
 
     // Edge hover (tooltip)
@@ -2421,16 +2437,17 @@ export const TransitionGraph = observer(function TransitionGraph({
       // ── Node focus ──
       const focusedSet = new Set(activeFocusNodes);
 
-      // Union of the focused nodes' edges. Outside diff mode only ONE
-      // direction is shown at a time (activeFocusDirection; self-loops
-      // always shown) — diff mode keeps both directions.
+      // Union of the focused nodes' edges. Outside diff mode, ONE direction
+      // is shown at a time by default (activeFocusDirection; self-loops
+      // always shown) — "both" (reached by clicking the focused node past
+      // "in") and diff mode both keep both directions.
       const allConnectedEdges = activeFocusNodes.reduce((acc, nodeId) => {
         const n = cy.getElementById(nodeId);
         if (n.length === 0) return acc;
         return acc.union(
           n.connectedEdges().filter((edge: cytoscape.EdgeSingular) => {
             if (edge.hasClass("filtered")) return false;
-            if (isDifferential) return true;
+            if (isDifferential || activeFocusDirection === "both") return true;
             if (edge.source().id() === edge.target().id()) return true;
             return activeFocusDirection === "out"
               ? focusedSet.has(edge.source().id())
@@ -2801,7 +2818,11 @@ export const TransitionGraph = observer(function TransitionGraph({
             fitNodeNeighborhood(
               cy,
               focus.event,
-              isDifferential ? "both" : focus.direction === "in" ? "in" : "out",
+              isDifferential
+                ? "both"
+                : focus.direction === "in" || focus.direction === "both"
+                  ? focus.direction
+                  : "out",
             );
             return;
           }
@@ -3448,9 +3469,8 @@ export const TransitionGraph = observer(function TransitionGraph({
               </svg>
             </button>
             <ul style={{ margin: "0 0 6px", paddingLeft: 14 }}>
-              <li style={{ marginBottom: 3 }}>Click a node to focus its outgoing edges — double-click to switch to incoming.</li>
-              <li style={{ marginBottom: 3 }}>Hold ⌘/Ctrl and click more nodes to trace a path.</li>
-              <li>The dashed-square icon copies this view.</li>
+              <li style={{ marginBottom: 3 }}>Click a node: 1st click shows outgoing edges, 2nd incoming, 3rd both.</li>
+              <li>Hold ⌘/Ctrl and click more nodes to trace a path — ⌘/Ctrl+double-click removes the last node.</li>
             </ul>
             <button
               onClick={dismissFocusHint}

@@ -15,7 +15,7 @@ interface GraphLegendProps {
    *  toggles always win). Static HTML exports start collapsed. */
   defaultCollapsed?: boolean;
   /** Direction currently shown by the node focus (mode === "focus"). */
-  focusDirection?: "out" | "in";
+  focusDirection?: "out" | "in" | "both";
 }
 
 function Swatch({ color, kind }: { color: string; kind: "line" | "dot" }) {
@@ -181,9 +181,11 @@ export function GraphLegend({
         <div style={rowStyle}>
           <Swatch color={edgeColor} kind="line" />
           <span>
-            {focusDirection === "in"
-              ? "showing incoming transitions"
-              : "showing outgoing transitions"}
+            {focusDirection === "both"
+              ? "showing incoming and outgoing transitions"
+              : focusDirection === "in"
+                ? "showing incoming transitions"
+                : "showing outgoing transitions"}
           </span>
         </div>
       ) : mode === "diff" ? (

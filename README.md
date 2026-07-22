@@ -42,7 +42,7 @@ Complete documentation is available at
 
 ## Installation
 
-Python 3.11+ is required.
+Python 3.10+ is required.
 
 ```bash
 pip install retentioneering

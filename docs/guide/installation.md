@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Python 3.11 or later
+- Python 3.10 or later
 - Jupyter, VS Code, or Google Colab
 
 ## Install the package

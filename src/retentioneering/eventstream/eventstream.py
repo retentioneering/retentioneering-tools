@@ -1466,42 +1466,6 @@ class Eventstream:
 
         return TransitionMatrix(self).fit(edge_weight, diff, path_col)
 
-    @_tracked("headless_route_stats")
-    def route_stats(self, nodes: list, path_col: str | None = None) -> dict:
-        """
-        Compute statistics of a route — a strict contiguous sequence of
-        transitions A→B→…→N — over the eventstream's paths (headless). This
-        is the data behind the route badge shown when a path is focused in
-        the `transition_graph` widget.
-
-        Matching is strict: the route must appear as consecutive events, in
-        order, with no gaps. Overlapping occurrences count (consistent with
-        transition counts). Routes may include `path_start` / `path_end`.
-
-        Parameters
-        ----------
-        nodes : list of str
-            The route: two or more event names, in order.
-        path_col : str, optional
-            Path ID column override; defaults to `schema.path_col`.
-
-        Returns
-        -------
-        dict
-            `n_paths`, `unique_paths`, `unique_paths_share`, `occurrences`,
-            `avg_per_path`, `time_median`, `time_q95` (seconds from the
-            route's first to last event within one traversal; None when the
-            route never occurs), `proba` (Markov probability of the route:
-            the product of `P(next | source)` over its consecutive pairs).
-
-        Examples
-        --------
-            stream.route_stats(["catalog", "product_view", "cart"])
-        """
-        from retentioneering.tools.route_stats import RouteStats
-
-        return RouteStats(self).fit(nodes, path_col=path_col)
-
     @_tracked("headless_step_sankey")
     def step_sankey_data(
         self,

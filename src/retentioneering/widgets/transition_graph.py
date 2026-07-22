@@ -245,8 +245,11 @@ class TransitionGraphWidget(RetentioneeringWidget):
         return self._compute_graph_layout(params)
 
     def _tool_route_stats(self, params: dict):
-        return self._eventstream.route_stats(
-            nodes=params.get("nodes") or [],
+        from retentioneering.utils.route_stats import route_stats
+
+        return route_stats(
+            self._eventstream,
+            params.get("nodes") or [],
             path_col=params.get("path_col") or self.path_col or None,
         )
 

@@ -3,6 +3,7 @@ import pytest
 
 from retentioneering.eventstream.eventstream import Eventstream
 from retentioneering.exceptions import InvalidParameterError
+from retentioneering.utils.route_stats import route_stats
 
 
 def _stream() -> Eventstream:
@@ -21,7 +22,7 @@ def _stream() -> Eventstream:
 
 class TestRouteStats:
     def test__edge_route(self):
-        stats = _stream().route_stats(["A", "B"])
+        stats = route_stats(_stream(), ["A", "B"])
 
         assert stats["n_paths"] == 3
         assert stats["unique_paths"] == 2
@@ -35,7 +36,7 @@ class TestRouteStats:
 
     def test__strict_matching_no_stutter_collapsing(self):
         # user 2 has A B B C — strict A→B→C only matches user 1
-        stats = _stream().route_stats(["A", "B", "C"])
+        stats = route_stats(_stream(), ["A", "B", "C"])
 
         assert stats["unique_paths"] == 1
         assert stats["occurrences"] == 1
@@ -44,7 +45,7 @@ class TestRouteStats:
         assert stats["proba"] == pytest.approx(4 / 9)
 
     def test__self_loop_route(self):
-        stats = _stream().route_stats(["B", "B"])
+        stats = route_stats(_stream(), ["B", "B"])
 
         assert stats["unique_paths"] == 1
         assert stats["occurrences"] == 1
@@ -57,14 +58,14 @@ class TestRouteStats:
                 "timestamp": pd.date_range("2024-01-01", periods=3, freq="1min"),
             }
         )
-        stats = Eventstream(df).route_stats(["A", "A"])
+        stats = route_stats(Eventstream(df), ["A", "A"])
 
         # A,A,A contains A→A twice (overlapping), same as transition counts
         assert stats["occurrences"] == 2
         assert stats["unique_paths"] == 1
 
     def test__no_occurrences(self):
-        stats = _stream().route_stats(["C", "A"])
+        stats = route_stats(_stream(), ["C", "A"])
 
         assert stats["unique_paths"] == 0
         assert stats["occurrences"] == 0
@@ -73,14 +74,14 @@ class TestRouteStats:
         assert stats["proba"] == 0.0
 
     def test__route_with_path_boundaries(self):
-        stats = _stream().route_stats(["path_start", "A"])
+        stats = route_stats(_stream(), ["path_start", "A"])
 
         assert stats["unique_paths"] == 3
         assert stats["unique_paths_share"] == pytest.approx(1.0)
 
     def test__route_too_short(self):
         with pytest.raises(InvalidParameterError):
-            _stream().route_stats(["A"])
+            route_stats(_stream(), ["A"])
 
     def test__quote_in_event_name(self):
         df = pd.DataFrame(
@@ -90,6 +91,6 @@ class TestRouteStats:
                 "timestamp": pd.date_range("2024-01-01", periods=2, freq="1min"),
             }
         )
-        stats = Eventstream(df).route_stats(["it's a trap", "B"])
+        stats = route_stats(Eventstream(df), ["it's a trap", "B"])
 
         assert stats["unique_paths"] == 1

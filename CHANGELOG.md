@@ -14,6 +14,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
   of raising `ValueError` when it's omitted for the `kmeans` method; corrected the
   `cluster_analysis`/`cluster_analysis_data` docstrings, which falsely claimed `features`
   and `overview_metrics` default to per-event counts (#89)
+- `add_clusters()`'s `scaler` argument now defaults to `"minmax"` instead of `None`,
+  matching the `AddClusters` processor's own default and `cluster_analysis_data()`'s
+  documented default. Previously, omitting `scaler` silently clustered on unscaled
+  features, so `add_clusters()` could produce a different clustering than
+  `cluster_analysis_data()` for the same `features`/`n_clusters`
 
 ## [5.0.1] - 2026-07-15
 

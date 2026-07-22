@@ -463,7 +463,7 @@ class Eventstream:
         name: str,
         features: list,
         method: str = "kmeans",
-        scaler=None,
+        scaler: str | None = "minmax",
         n_clusters=None,
         min_cluster_size=None,
         cluster_selection_epsilon=None,
@@ -494,7 +494,7 @@ class Eventstream:
             metric reference.
         method : str, default `"kmeans"`
             Clustering algorithm. One of `"kmeans"` or `"hdbscan"`.
-        scaler : str or None, default `None`
+        scaler : str or None, default `"minmax"`
             Feature scaler applied before clustering. One of `"minmax"`, `"standard"`, or `None`.
         n_clusters : int, optional
             Number of clusters (required for `"kmeans"`).
